@@ -1,0 +1,59 @@
+# cinder-rootwrap command filters for volume nodes
+# This file should be owned by (and only-writeable by) the root user
+
+[Filters]
+# cinder/volume/iscsi.py: iscsi_helper '--op' ...
+ietadm: CommandFilter, ietadm, root
+tgtadm: CommandFilter, tgtadm, root
+tgt-admin: CommandFilter, tgt-admin, root
+rtstool: CommandFilter, rtstool, root
+
+# cinder/volume/driver.py: 'vgs', '--noheadings', '-o', 'name'
+vgs: CommandFilter, vgs, root
+
+# cinder/volume/driver.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
+# cinder/volume/driver.py: 'lvcreate', '-L', ...
+lvcreate: CommandFilter, lvcreate, root
+
+# cinder/volume/driver.py: 'dd', 'if=%s' % srcstr, 'of=%s' % deststr,...
+dd: CommandFilter, dd, root
+
+# cinder/volume/driver.py: 'lvremove', '-f', %s/%s % ...
+lvremove: CommandFilter, lvremove, root
+
+# cinder/volume/driver.py: 'lvdisplay', '--noheading', '-C', '-o', 'Attr',..
+lvdisplay: CommandFilter, lvdisplay, root
+
+# cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
+# cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
+iscsiadm: CommandFilter, iscsiadm, root
+
+# cinder/volume/drivers/lvm.py: 'shred', '-n3'
+# cinder/volume/drivers/lvm.py: 'shred', '-n0', '-z', '-s%dMiB'
+shred: CommandFilter, shred, root
+
+#cinder/volume/.py: utils.temporary_chown(path, 0), ...
+chown: CommandFilter, chown, root
+
+# cinder/volume/driver.py
+dmsetup: CommandFilter, dmsetup, root
+ln: CommandFilter, ln, root
+qemu-img: CommandFilter, qemu-img, root
+env: CommandFilter, env, root
+
+# cinder/volume/driver.py: utils.read_file_as_root()
+cat: CommandFilter, cat, root
+
+# cinder/volume/nfs.py
+stat: CommandFilter, stat, root
+mount: CommandFilter, mount, root
+df: CommandFilter, df, root
+du: CommandFilter, du, root
+truncate: CommandFilter, truncate, root
+chmod: CommandFilter, chmod, root
+rm: CommandFilter, rm, root
+lvs: CommandFilter, lvs, root
+
+# cinder/volume/scality.py
+mount: CommandFilter, mount, root
+dd: CommandFilter, dd, root
