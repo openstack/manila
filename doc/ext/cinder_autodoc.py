@@ -1,9 +1,9 @@
 import gettext
 import os
 
-gettext.install('cinder')
+gettext.install('manila')
 
-from cinder import utils
+from manila import utils
 
 
 def setup(app):

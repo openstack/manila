@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# cinder documentation build configuration file, created by
+# manila documentation build configuration file, created by
 # sphinx-quickstart on Sat May  1 15:17:47 2010.
 #
 # This file is execfile()d with the current directory set
@@ -64,14 +64,14 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'cinder'
+project = u'manila'
 copyright = u'2010-present, OpenStack, LLC'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-from cinder.version import version_info
+from manila.version import version_info
 # The full version, including alpha/beta/rc tags.
 release = version_info.release_string()
 # The short X.Y version.
@@ -116,7 +116,7 @@ show_authors = False
 pygments_style = 'sphinx'
 
 # A list of ignored prefixes for module index sorting.
-modindex_common_prefix = ['cinder.']
+modindex_common_prefix = ['manila.']
 
 # -- Options for man page output ----------------------------------------------
 
@@ -124,7 +124,7 @@ modindex_common_prefix = ['cinder.']
 # List of tuples 'sourcefile', 'target', u'title', u'Authors name', 'manual'
 
 man_pages = [
-    ('man/cinder-manage', 'cinder-manage', u'Cloud controller fabric',
+    ('man/manila-manage', 'manila-manage', u'Cloud controller fabric',
      [u'OpenStack'], 1)
 ]
 

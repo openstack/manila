@@ -26,7 +26,7 @@ import textwrap
 
 from oslo.config import cfg
 
-from cinder.openstack.common import importutils
+from manila.openstack.common import importutils
 
 STROPT = "StrOpt"
 BOOLOPT = "BoolOpt"
@@ -47,7 +47,7 @@ WORDWRAP_WIDTH = 60
 
 
 def main(srcfiles):
-    print '\n'.join(['#' * 20, '# cinder.conf sample #', '#' * 20,
+    print '\n'.join(['#' * 20, '# manila.conf sample #', '#' * 20,
                      '', '[DEFAULT]', ''])
     _list_opts(cfg.ConfigOpts,
                cfg.__name__ + ':' + cfg.ConfigOpts.__name__)
@@ -131,7 +131,7 @@ def _sanitize_default(s):
     elif s == MY_IP:
         return '10.0.0.1'
     elif s == HOST:
-        return 'cinder'
+        return 'manila'
     elif s.strip() != s:
         return '"%s"' % s
     return s

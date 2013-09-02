@@ -29,12 +29,12 @@ from pylint.reporters import text
 # Note(maoy): E1103 is error code related to partial type inference
 ignore_codes = ["E1103"]
 # Note(maoy): the error message is the pattern of E0202. It should be ignored
-# for cinder.tests modules
-ignore_messages = ["An attribute affected in cinder.tests"]
+# for manila.tests modules
+ignore_messages = ["An attribute affected in manila.tests"]
 # Note(maoy): we ignore all errors in openstack.common because it should be
-# checked elsewhere. We also ignore cinder.tests for now due to high false
+# checked elsewhere. We also ignore manila.tests for now due to high false
 # positive rate.
-ignore_modules = ["cinder/openstack/common/", "cinder/tests/"]
+ignore_modules = ["manila/openstack/common/", "manila/tests/"]
 
 KNOWN_PYLINT_EXCEPTIONS_FILE = "tools/pylint_exceptions"
 
@@ -129,7 +129,7 @@ class ErrorKeys(object):
 def run_pylint():
     buff = StringIO.StringIO()
     reporter = text.ParseableTextReporter(output=buff)
-    args = ["--include-ids=y", "-E", "cinder"]
+    args = ["--include-ids=y", "-E", "manila"]
     lint.Run(args, reporter=reporter, exit=False)
     val = buff.getvalue()
     buff.close()
