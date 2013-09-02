@@ -113,112 +113,12 @@ class Service(BASE, CinderBase):
     availability_zone = Column(String(255), default='manila')
 
 
-class CinderNode(BASE, CinderBase):
+class ManilaNode(BASE, CinderBase):
     """Represents a running manila service on a host."""
 
-    __tablename__ = 'cinder_nodes'
+    __tablename__ = 'manila_nodes'
     id = Column(Integer, primary_key=True)
     service_id = Column(Integer, ForeignKey('services.id'), nullable=True)
-
-
-class Volume(BASE, CinderBase):
-    """Represents a block storage device that can be attached to a vm."""
-    __tablename__ = 'volumes'
-    id = Column(String(36), primary_key=True)
-
-    @property
-    def name(self):
-        return FLAGS.volume_name_template % self.id
-
-    ec2_id = Column(Integer)
-    user_id = Column(String(255))
-    project_id = Column(String(255))
-
-    snapshot_id = Column(String(36))
-
-    host = Column(String(255))  # , ForeignKey('hosts.id'))
-    size = Column(Integer)
-    availability_zone = Column(String(255))  # TODO(vish): foreign key?
-    instance_uuid = Column(String(36))
-    mountpoint = Column(String(255))
-    attach_time = Column(String(255))  # TODO(vish): datetime
-    status = Column(String(255))  # TODO(vish): enum?
-    attach_status = Column(String(255))  # TODO(vish): enum
-
-    scheduled_at = Column(DateTime)
-    launched_at = Column(DateTime)
-    terminated_at = Column(DateTime)
-
-    display_name = Column(String(255))
-    display_description = Column(String(255))
-
-    provider_location = Column(String(255))
-    provider_auth = Column(String(255))
-
-    volume_type_id = Column(String(36))
-    source_volid = Column(String(36))
-
-
-class VolumeMetadata(BASE, CinderBase):
-    """Represents a metadata key/value pair for a volume."""
-    __tablename__ = 'volume_metadata'
-    id = Column(Integer, primary_key=True)
-    key = Column(String(255))
-    value = Column(String(255))
-    volume_id = Column(String(36), ForeignKey('volumes.id'), nullable=False)
-    volume = relationship(Volume, backref="volume_metadata",
-                          foreign_keys=volume_id,
-                          primaryjoin='and_('
-                          'VolumeMetadata.volume_id == Volume.id,'
-                          'VolumeMetadata.deleted == False)')
-
-
-class VolumeTypes(BASE, CinderBase):
-    """Represent possible volume_types of volumes offered."""
-    __tablename__ = "volume_types"
-    id = Column(String(36), primary_key=True)
-    name = Column(String(255))
-
-    volumes = relationship(Volume,
-                           backref=backref('volume_type', uselist=False),
-                           foreign_keys=id,
-                           primaryjoin='and_('
-                           'Volume.volume_type_id == VolumeTypes.id, '
-                           'VolumeTypes.deleted == False)')
-
-
-class VolumeTypeExtraSpecs(BASE, CinderBase):
-    """Represents additional specs as key/value pairs for a volume_type."""
-    __tablename__ = 'volume_type_extra_specs'
-    id = Column(Integer, primary_key=True)
-    key = Column(String(255))
-    value = Column(String(255))
-    volume_type_id = Column(String(36),
-                            ForeignKey('volume_types.id'),
-                            nullable=False)
-    volume_type = relationship(
-        VolumeTypes,
-        backref="extra_specs",
-        foreign_keys=volume_type_id,
-        primaryjoin='and_('
-        'VolumeTypeExtraSpecs.volume_type_id == VolumeTypes.id,'
-        'VolumeTypeExtraSpecs.deleted == False)'
-    )
-
-
-class VolumeGlanceMetadata(BASE, CinderBase):
-    """Glance metadata for a bootable volume."""
-    __tablename__ = 'volume_glance_metadata'
-    id = Column(Integer, primary_key=True, nullable=False)
-    volume_id = Column(String(36), ForeignKey('volumes.id'))
-    snapshot_id = Column(String(36), ForeignKey('snapshots.id'))
-    key = Column(String(255))
-    value = Column(Text)
-    volume = relationship(Volume, backref="volume_glance_metadata",
-                          foreign_keys=volume_id,
-                          primaryjoin='and_('
-                          'VolumeGlanceMetadata.volume_id == Volume.id,'
-                          'VolumeGlanceMetadata.deleted == False)')
 
 
 class Quota(BASE, CinderBase):
@@ -292,71 +192,6 @@ class Reservation(BASE, CinderBase):
     expire = Column(DateTime, nullable=False)
 
 
-class Snapshot(BASE, CinderBase):
-    """Represents a block storage device that can be attached to a VM."""
-    __tablename__ = 'snapshots'
-    id = Column(String(36), primary_key=True)
-
-    @property
-    def name(self):
-        return FLAGS.snapshot_name_template % self.id
-
-    @property
-    def volume_name(self):
-        return FLAGS.volume_name_template % self.volume_id
-
-    user_id = Column(String(255))
-    project_id = Column(String(255))
-
-    volume_id = Column(String(36))
-    status = Column(String(255))
-    progress = Column(String(255))
-    volume_size = Column(Integer)
-
-    display_name = Column(String(255))
-    display_description = Column(String(255))
-
-    provider_location = Column(String(255))
-
-    volume = relationship(Volume, backref="snapshots",
-                          foreign_keys=volume_id,
-                          primaryjoin='and_('
-                          'Snapshot.volume_id == Volume.id,'
-                          'Snapshot.deleted == False)')
-
-
-class SnapshotMetadata(BASE, CinderBase):
-    """Represents a metadata key/value pair for a snapshot."""
-    __tablename__ = 'snapshot_metadata'
-    id = Column(Integer, primary_key=True)
-    key = Column(String(255))
-    value = Column(String(255))
-    snapshot_id = Column(String(36),
-                         ForeignKey('snapshots.id'),
-                         nullable=False)
-    snapshot = relationship(Snapshot, backref="snapshot_metadata",
-                            foreign_keys=snapshot_id,
-                            primaryjoin='and_('
-                            'SnapshotMetadata.snapshot_id == Snapshot.id,'
-                            'SnapshotMetadata.deleted == False)')
-
-
-class IscsiTarget(BASE, CinderBase):
-    """Represents an iscsi target for a given host."""
-    __tablename__ = 'iscsi_targets'
-    __table_args__ = (schema.UniqueConstraint("target_num", "host"),
-                      {'mysql_engine': 'InnoDB'})
-    id = Column(Integer, primary_key=True)
-    target_num = Column(Integer)
-    host = Column(String(255))
-    volume_id = Column(String(36), ForeignKey('volumes.id'), nullable=True)
-    volume = relationship(Volume,
-                          backref=backref('iscsi_target', uselist=False),
-                          foreign_keys=volume_id,
-                          primaryjoin='and_(IscsiTarget.volume_id==Volume.id,'
-                          'IscsiTarget.deleted==False)')
-
-
 class Migration(BASE, CinderBase):
     """Represents a running host-to-host migration."""
     __tablename__ = 'migrations'
@@ -391,14 +226,6 @@ class SMBackendConf(BASE, CinderBase):
     sr_uuid = Column(String(255))
     sr_type = Column(String(255))
     config_params = Column(String(2047))
-
-
-class SMVolume(BASE, CinderBase):
-    __tablename__ = 'sm_volume'
-    id = Column(String(36), ForeignKey(Volume.id), primary_key=True)
-    backend_id = Column(Integer, ForeignKey('sm_backend_config.id'),
-                        nullable=False)
-    vdi_uuid = Column(String(255))
 
 
 class Backup(BASE, CinderBase):
@@ -515,14 +342,7 @@ def register_models():
               ShareAccessMapping,
               ShareSnapshot,
               SMBackendConf,
-              SMFlavors,
-              SMVolume,
-              Volume,
-              VolumeMetadata,
-              SnapshotMetadata,
-              VolumeTypeExtraSpecs,
-              VolumeTypes,
-              VolumeGlanceMetadata,
+              SMFlavors
               )
     engine = create_engine(FLAGS.sql_connection, echo=False)
     for model in models:
