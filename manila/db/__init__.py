@@ -17,7 +17,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-DB abstraction for Cinder
+DB abstraction for Manila
 """
 
 from manila.db.api import *

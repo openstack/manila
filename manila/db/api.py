@@ -56,9 +56,6 @@ db_opts = [
     cfg.BoolOpt('enable_new_services',
                 default=True,
                 help='Services to be added to the available pool on create'),
-    cfg.StrOpt('volume_name_template',
-               default='volume-%s',
-               help='Template string to be used to generate volume names'),
     cfg.StrOpt('share_name_template',
                default='share-%s',
                help='Template string to be used to generate share names'),
@@ -78,11 +75,6 @@ FLAGS.register_opts(db_opts)
 
 IMPL = utils.LazyPluggable('db_backend',
                            sqlalchemy='manila.db.sqlalchemy.api')
-
-
-class NoMoreTargets(exception.CinderException):
-    """No more available targets"""
-    pass
 
 
 ###################
@@ -174,95 +166,7 @@ def migration_get_all_unconfirmed(context, confirm_window):
     return IMPL.migration_get_all_unconfirmed(context, confirm_window)
 
 
-###################
-
-
-def sm_backend_conf_create(context, values):
-    """Create a new SM Backend Config entry."""
-    return IMPL.sm_backend_conf_create(context, values)
-
-
-def sm_backend_conf_update(context, sm_backend_conf_id, values):
-    """Update a SM Backend Config entry."""
-    return IMPL.sm_backend_conf_update(context, sm_backend_conf_id, values)
-
-
-def sm_backend_conf_delete(context, sm_backend_conf_id):
-    """Delete a SM Backend Config."""
-    return IMPL.sm_backend_conf_delete(context, sm_backend_conf_id)
-
-
-def sm_backend_conf_get(context, sm_backend_conf_id):
-    """Get a specific SM Backend Config."""
-    return IMPL.sm_backend_conf_get(context, sm_backend_conf_id)
-
-
-def sm_backend_conf_get_by_sr(context, sr_uuid):
-    """Get a specific SM Backend Config."""
-    return IMPL.sm_backend_conf_get_by_sr(context, sr_uuid)
-
-
-def sm_backend_conf_get_all(context):
-    """Get all SM Backend Configs."""
-    return IMPL.sm_backend_conf_get_all(context)
-
-
 ####################
-
-
-def sm_flavor_create(context, values):
-    """Create a new SM Flavor entry."""
-    return IMPL.sm_flavor_create(context, values)
-
-
-def sm_flavor_update(context, sm_flavor_id, values):
-    """Update a SM Flavor entry."""
-    return IMPL.sm_flavor_update(context, values)
-
-
-def sm_flavor_delete(context, sm_flavor_id):
-    """Delete a SM Flavor."""
-    return IMPL.sm_flavor_delete(context, sm_flavor_id)
-
-
-def sm_flavor_get(context, sm_flavor):
-    """Get a specific SM Flavor."""
-    return IMPL.sm_flavor_get(context, sm_flavor)
-
-
-def sm_flavor_get_all(context):
-    """Get all SM Flavors."""
-    return IMPL.sm_flavor_get_all(context)
-
-
-####################
-
-
-def sm_volume_create(context, values):
-    """Create a new child Zone entry."""
-    return IMPL.sm_volume_create(context, values)
-
-
-def sm_volume_update(context, volume_id, values):
-    """Update a child Zone entry."""
-    return IMPL.sm_volume_update(context, values)
-
-
-def sm_volume_delete(context, volume_id):
-    """Delete a child Zone."""
-    return IMPL.sm_volume_delete(context, volume_id)
-
-
-def sm_volume_get(context, volume_id):
-    """Get a specific child Zone."""
-    return IMPL.sm_volume_get(context, volume_id)
-
-
-def sm_volume_get_all(context):
-    """Get all child Zones."""
-    return IMPL.sm_volume_get_all(context)
-
-###################
 
 
 def quota_create(context, project_id, resource, limit):
@@ -401,48 +305,6 @@ def reservation_expire(context):
 
 
 ###################
-
-
-def backup_get(context, backup_id):
-    """Get a backup or raise if it does not exist."""
-    return IMPL.backup_get(context, backup_id)
-
-
-def backup_get_all(context):
-    """Get all backups."""
-    return IMPL.backup_get_all(context)
-
-
-def backup_get_all_by_host(context, host):
-    """Get all backups belonging to a host."""
-    return IMPL.backup_get_all_by_host(context, host)
-
-
-def backup_create(context, values):
-    """Create a backup from the values dictionary."""
-    return IMPL.backup_create(context, values)
-
-
-def backup_get_all_by_project(context, project_id):
-    """Get all backups belonging to a project."""
-    return IMPL.backup_get_all_by_project(context, project_id)
-
-
-def backup_update(context, backup_id, values):
-    """
-    Set the given properties on a backup and update it.
-
-    Raises NotFound if backup does not exist.
-    """
-    return IMPL.backup_update(context, backup_id, values)
-
-
-def backup_destroy(context, backup_id):
-    """Destroy the backup or raise if it does not exist."""
-    return IMPL.backup_destroy(context, backup_id)
-
-
-####################
 
 
 def share_create(context, values):

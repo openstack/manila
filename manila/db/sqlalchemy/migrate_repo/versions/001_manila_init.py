@@ -106,4 +106,4 @@ def upgrade(migrate_engine):
 
 
 def downgrade(migrate_engine):
-    LOG.exception(_('Downgrade from initial Cinder install is unsupported.'))
+    LOG.exception(_('Downgrade from initial Manila install is unsupported.'))

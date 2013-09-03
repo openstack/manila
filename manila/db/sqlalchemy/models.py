@@ -18,7 +18,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-SQLAlchemy models for manila data.
+SQLAlchemy models for Manila data.
 """
 
 from sqlalchemy import Column, Integer, String, Text, schema
@@ -38,8 +38,8 @@ FLAGS = flags.FLAGS
 BASE = declarative_base()
 
 
-class CinderBase(object):
-    """Base class for Cinder Models."""
+class ManilaBase(object):
+    """Base class for Manila Models."""
     __table_args__ = {'mysql_engine': 'InnoDB'}
     __table_initialized__ = False
     created_at = Column(DateTime, default=timeutils.utcnow)
@@ -100,7 +100,7 @@ class CinderBase(object):
         return local.iteritems()
 
 
-class Service(BASE, CinderBase):
+class Service(BASE, ManilaBase):
     """Represents a running service on a host."""
 
     __tablename__ = 'services'
@@ -113,7 +113,7 @@ class Service(BASE, CinderBase):
     availability_zone = Column(String(255), default='manila')
 
 
-class ManilaNode(BASE, CinderBase):
+class ManilaNode(BASE, ManilaBase):
     """Represents a running manila service on a host."""
 
     __tablename__ = 'manila_nodes'
@@ -121,7 +121,7 @@ class ManilaNode(BASE, CinderBase):
     service_id = Column(Integer, ForeignKey('services.id'), nullable=True)
 
 
-class Quota(BASE, CinderBase):
+class Quota(BASE, ManilaBase):
     """Represents a single quota override for a project.
 
     If there is no row for a given project id and resource, then the
@@ -140,7 +140,7 @@ class Quota(BASE, CinderBase):
     hard_limit = Column(Integer, nullable=True)
 
 
-class QuotaClass(BASE, CinderBase):
+class QuotaClass(BASE, ManilaBase):
     """Represents a single quota override for a quota class.
 
     If there is no row for a given quota class and resource, then the
@@ -157,7 +157,7 @@ class QuotaClass(BASE, CinderBase):
     hard_limit = Column(Integer, nullable=True)
 
 
-class QuotaUsage(BASE, CinderBase):
+class QuotaUsage(BASE, ManilaBase):
     """Represents the current usage for a given resource."""
 
     __tablename__ = 'quota_usages'
@@ -176,7 +176,7 @@ class QuotaUsage(BASE, CinderBase):
     until_refresh = Column(Integer, nullable=True)
 
 
-class Reservation(BASE, CinderBase):
+class Reservation(BASE, ManilaBase):
     """Represents a resource reservation for quotas."""
 
     __tablename__ = 'reservations'
@@ -192,7 +192,7 @@ class Reservation(BASE, CinderBase):
     expire = Column(DateTime, nullable=False)
 
 
-class Migration(BASE, CinderBase):
+class Migration(BASE, ManilaBase):
     """Represents a running host-to-host migration."""
     __tablename__ = 'migrations'
     id = Column(Integer, primary_key=True, nullable=False)
@@ -210,33 +210,7 @@ class Migration(BASE, CinderBase):
     status = Column(String(255))
 
 
-class Backup(BASE, CinderBase):
-    """Represents a backup of a volume to Swift."""
-    __tablename__ = 'backups'
-    id = Column(String(36), primary_key=True)
-
-    @property
-    def name(self):
-        return FLAGS.backup_name_template % self.id
-
-    user_id = Column(String(255), nullable=False)
-    project_id = Column(String(255), nullable=False)
-
-    volume_id = Column(String(36), nullable=False)
-    host = Column(String(255))
-    availability_zone = Column(String(255))
-    display_name = Column(String(255))
-    display_description = Column(String(255))
-    container = Column(String(255))
-    status = Column(String(255))
-    fail_reason = Column(String(255))
-    service_metadata = Column(String(255))
-    service = Column(String(255))
-    size = Column(Integer)
-    object_count = Column(Integer)
-
-
-class Share(BASE, CinderBase):
+class Share(BASE, ManilaBase):
     """Represents an NFS and CIFS shares."""
     __tablename__ = 'shares'
 
@@ -261,7 +235,7 @@ class Share(BASE, CinderBase):
     export_location = Column(String(255))
 
 
-class ShareAccessMapping(BASE, CinderBase):
+class ShareAccessMapping(BASE, ManilaBase):
     """Represents access to NFS."""
     STATE_NEW = 'new'
     STATE_ACTIVE = 'active'
@@ -279,7 +253,7 @@ class ShareAccessMapping(BASE, CinderBase):
                    default=STATE_NEW)
 
 
-class ShareSnapshot(BASE, CinderBase):
+class ShareSnapshot(BASE, ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshots'
 
