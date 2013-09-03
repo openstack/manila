@@ -47,6 +47,6 @@ if __name__ == '__main__':
     flags.parse_args(sys.argv)
     logging.setup("manila")
     utils.monkey_patch()
-    server = service.WSGIService('osapi_volume')
+    server = service.WSGIService('osapi_share')
     service.serve(server)
     service.wait()
