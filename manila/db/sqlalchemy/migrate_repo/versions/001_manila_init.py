@@ -62,49 +62,6 @@ def upgrade(migrate_engine):
         mysql_engine='InnoDB'
     )
 
-    sm_flavors = Table(
-        'sm_flavors', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('label', String(length=255)),
-        Column('description', String(length=255)),
-        mysql_engine='InnoDB'
-    )
-
-    sm_backend_config = Table(
-        'sm_backend_config', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('flavor_id', Integer, ForeignKey('sm_flavors.id'),
-               nullable=False),
-        Column('sr_uuid', String(length=255)),
-        Column('sr_type', String(length=255)),
-        Column('config_params', String(length=2047)),
-        mysql_engine='InnoDB'
-    )
-
-    sm_volume = Table(
-        'sm_volume', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', String(length=36),
-               ForeignKey('volumes.id'),
-               primary_key=True,
-               nullable=False),
-        Column('backend_id', Integer, ForeignKey('sm_backend_config.id'),
-               nullable=False),
-        Column('vdi_uuid', String(length=255)),
-        mysql_engine='InnoDB'
-    )
-
     quotas = Table(
         'quotas', meta,
         Column('id', Integer, primary_key=True, nullable=False),
@@ -120,12 +77,9 @@ def upgrade(migrate_engine):
 
     # create all tables
     # Take care on create order for those with FK dependencies
-    tables = [sm_flavors,
-              sm_backend_config,
-              migrations,
+    tables = [migrations,
               quotas,
-              services,
-              sm_volume]
+              services]
 
     for table in tables:
         try:
@@ -136,13 +90,10 @@ def upgrade(migrate_engine):
             raise
 
     if migrate_engine.name == "mysql":
-        tables = ["sm_flavors",
-                  "sm_backend_config",
-                  "migrate_version",
+        tables = ["migrate_version",
                   "migrations",
                   "quotas",
-                  "services",
-                  "sm_volume"]
+                  "services"]
 
         sql = "SET foreign_key_checks = 0;"
         for table in tables:

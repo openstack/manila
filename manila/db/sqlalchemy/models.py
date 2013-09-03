@@ -210,24 +210,6 @@ class Migration(BASE, CinderBase):
     status = Column(String(255))
 
 
-class SMFlavors(BASE, CinderBase):
-    """Represents a flavor for SM volumes."""
-    __tablename__ = 'sm_flavors'
-    id = Column(Integer(), primary_key=True)
-    label = Column(String(255))
-    description = Column(String(255))
-
-
-class SMBackendConf(BASE, CinderBase):
-    """Represents the connection to the backend for SM."""
-    __tablename__ = 'sm_backend_config'
-    id = Column(Integer(), primary_key=True)
-    flavor_id = Column(Integer, ForeignKey('sm_flavors.id'), nullable=False)
-    sr_uuid = Column(String(255))
-    sr_type = Column(String(255))
-    config_params = Column(String(2047))
-
-
 class Backup(BASE, CinderBase):
     """Represents a backup of a volume to Swift."""
     __tablename__ = 'backups'
@@ -340,9 +322,7 @@ def register_models():
               Service,
               Share,
               ShareAccessMapping,
-              ShareSnapshot,
-              SMBackendConf,
-              SMFlavors
+              ShareSnapshot
               )
     engine = create_engine(FLAGS.sql_connection, echo=False)
     for model in models:
