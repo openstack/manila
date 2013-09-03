@@ -65,10 +65,7 @@ db_opts = [
                     'names'),
     cfg.StrOpt('snapshot_name_template',
                default='snapshot-%s',
-               help='Template string to be used to generate snapshot names'),
-    cfg.StrOpt('backup_name_template',
-               default='backup-%s',
-               help='Template string to be used to generate backup names'), ]
+               help='Template string to be used to generate snapshot names'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(db_opts)

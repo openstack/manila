@@ -291,8 +291,7 @@ def register_models():
     connection is lost and needs to be reestablished.
     """
     from sqlalchemy import create_engine
-    models = (Backup,
-              Migration,
+    models = (Migration,
               Service,
               Share,
               ShareAccessMapping,

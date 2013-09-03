@@ -565,14 +565,6 @@ class ImageCopyFailure(Invalid):
     message = _("Failed to copy image to volume")
 
 
-class BackupNotFound(NotFound):
-    message = _("Backup %(backup_id)s could not be found.")
-
-
-class InvalidBackup(Invalid):
-    message = _("Invalid backup: %(reason)s")
-
-
 class InvalidShare(CinderException):
     message = _("Invalid share: %(reason)s")
 
