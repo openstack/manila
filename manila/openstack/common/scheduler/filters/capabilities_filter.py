@@ -53,7 +53,7 @@ class CapabilitiesFilter(filters.BaseHostFilter):
 
     def host_passes(self, host_state, filter_properties):
         """Return a list of hosts that can create instance_type."""
-        # Note(zhiteng) Currently only Cinder and Nova are using
+        # Note(zhiteng) Currently only Manila and Nova are using
         # this filter, so the resource type is either instance or
         # volume.
         resource_type = filter_properties.get('resource_type')

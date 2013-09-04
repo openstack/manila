@@ -16,7 +16,7 @@
 #    under the License.
 
 """
-Unit tests for Windows Server 2012 OpenStack Cinder volume driver
+Unit tests for Windows Server 2012 OpenStack Manila volume driver
 """
 import sys
 

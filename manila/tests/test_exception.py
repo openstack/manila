@@ -50,45 +50,45 @@ def bad_function_exception():
     raise test.TestingException()
 
 
-class CinderExceptionTestCase(test.TestCase):
+class ManilaExceptionTestCase(test.TestCase):
     def test_default_error_msg(self):
-        class FakeCinderException(exception.CinderException):
+        class FakeManilaException(exception.ManilaException):
             message = "default message"
 
-        exc = FakeCinderException()
+        exc = FakeManilaException()
         self.assertEquals(unicode(exc), 'default message')
 
     def test_error_msg(self):
-        self.assertEquals(unicode(exception.CinderException('test')),
+        self.assertEquals(unicode(exception.ManilaException('test')),
                           'test')
 
     def test_default_error_msg_with_kwargs(self):
-        class FakeCinderException(exception.CinderException):
+        class FakeManilaException(exception.ManilaException):
             message = "default message: %(code)s"
 
-        exc = FakeCinderException(code=500)
+        exc = FakeManilaException(code=500)
         self.assertEquals(unicode(exc), 'default message: 500')
 
     def test_error_msg_exception_with_kwargs(self):
         # NOTE(dprince): disable format errors for this test
         self.flags(fatal_exception_format_errors=False)
 
-        class FakeCinderException(exception.CinderException):
+        class FakeManilaException(exception.ManilaException):
             message = "default message: %(mispelled_code)s"
 
-        exc = FakeCinderException(code=500)
+        exc = FakeManilaException(code=500)
         self.assertEquals(unicode(exc), 'default message: %(mispelled_code)s')
 
     def test_default_error_code(self):
-        class FakeCinderException(exception.CinderException):
+        class FakeManilaException(exception.ManilaException):
             code = 404
 
-        exc = FakeCinderException()
+        exc = FakeManilaException()
         self.assertEquals(exc.kwargs['code'], 404)
 
     def test_error_code_from_kwarg(self):
-        class FakeCinderException(exception.CinderException):
+        class FakeManilaException(exception.ManilaException):
             code = 500
 
-        exc = FakeCinderException(code=404)
+        exc = FakeManilaException(code=404)
         self.assertEquals(exc.kwargs['code'], 404)

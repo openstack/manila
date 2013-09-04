@@ -206,7 +206,7 @@ class ManagedRBDTestCase(DriverTestCase):
             return True
 
         def fake_clone_error(volume, image_location):
-            raise exception.CinderException()
+            raise exception.ManilaException()
 
         self.stubs.Set(self.volume.driver, '_is_cloneable', lambda x: True)
         if clone_works:
@@ -231,7 +231,7 @@ class ManagedRBDTestCase(DriverTestCase):
                                           volume_id,
                                           image_id=image_id)
             else:
-                self.assertRaises(exception.CinderException,
+                self.assertRaises(exception.ManilaException,
                                   self.volume.create_volume,
                                   self.context,
                                   volume_id,

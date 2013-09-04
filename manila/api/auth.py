@@ -21,13 +21,13 @@ from manila.openstack.common import log as logging
 LOG = logging.getLogger(__name__)
 
 
-class CinderKeystoneContext(auth.CinderKeystoneContext):
+class ManilaKeystoneContext(auth.ManilaKeystoneContext):
     def __init__(self, application):
-        LOG.warn(_('manila.api.auth:CinderKeystoneContext is deprecated. '
+        LOG.warn(_('manila.api.auth:ManilaKeystoneContext is deprecated. '
                    'Please use '
-                   'manila.api.middleware.auth:CinderKeystoneContext '
+                   'manila.api.middleware.auth:ManilaKeystoneContext '
                    'instead.'))
-        super(CinderKeystoneContext, self).__init__(application)
+        super(ManilaKeystoneContext, self).__init__(application)
 
 
 def pipeline_factory(loader, global_conf, **local_conf):

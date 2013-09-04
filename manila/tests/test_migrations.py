@@ -106,9 +106,9 @@ class TestMigrations(test.TestCase):
 
     DEFAULT_CONFIG_FILE = os.path.join(os.path.dirname(__file__),
                                        'test_migrations.conf')
-    # Test machines can set the CINDER_TEST_MIGRATIONS_CONF variable
+    # Test machines can set the MANILA_TEST_MIGRATIONS_CONF variable
     # to override the location of the config file for migration testing
-    CONFIG_FILE_PATH = os.environ.get('CINDER_TEST_MIGRATIONS_CONF',
+    CONFIG_FILE_PATH = os.environ.get('MANILA_TEST_MIGRATIONS_CONF',
                                       DEFAULT_CONFIG_FILE)
     MIGRATE_FILE = manila.db.sqlalchemy.migrate_repo.__file__
     REPOSITORY = repository.Repository(

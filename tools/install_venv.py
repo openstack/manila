@@ -19,7 +19,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Installation script for Cinder's development virtualenv."""
+"""Installation script for Manila's development virtualenv."""
 
 import optparse
 import os
@@ -31,12 +31,12 @@ import install_venv_common as install_venv
 
 def print_help():
     help = """
-    Cinder development environment setup is complete.
+    Manila development environment setup is complete.
 
-    Cinder development uses virtualenv to track and manage Python dependencies
+    Manila development uses virtualenv to track and manage Python dependencies
     while in development and testing.
 
-    To activate the Cinder virtualenv for the extent of your current shell
+    To activate the Manila virtualenv for the extent of your current shell
     session you can run:
 
     $ source .venv/bin/activate
@@ -56,7 +56,7 @@ def main(argv):
     venv = os.path.join(root, '.venv')
     pip_requires = os.path.join(root, 'tools', 'pip-requires')
     test_requires = os.path.join(root, 'tools', 'test-requires')
-    project = 'Cinder'
+    project = 'Manila'
     py_version = "python%s.%s" % (sys.version_info[0], sys.version_info[1])
     install = install_venv.InstallVenv(root, venv, pip_requires, test_requires,
                                        py_version, project)

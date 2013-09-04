@@ -1,11 +1,11 @@
 ####################
-# cinder.conf sample #
+# manila.conf sample #
 ####################
 
 [DEFAULT]
 
 #
-# Options defined in cinder.exception
+# Options defined in manila.exception
 #
 
 # make exception message format errors fatal (boolean value)
@@ -13,7 +13,7 @@
 
 
 #
-# Options defined in cinder.flags
+# Options defined in manila.flags
 #
 
 # Virtualization api connection type : libvirt, xenapi, or
@@ -28,18 +28,18 @@
 # 100=Everything (integer value)
 #sql_connection_debug=0
 
-# File name for the paste.deploy config for cinder-api (string
+# File name for the paste.deploy config for manila-api (string
 # value)
 #api_paste_config=api-paste.ini
 
-# Directory where the cinder python module is installed
+# Directory where the manila python module is installed
 # (string value)
 #pybasedir=/usr/lib/python/site-packages
 
-# Directory where cinder binaries are installed (string value)
+# Directory where manila binaries are installed (string value)
 #bindir=$pybasedir/bin
 
-# Top-level directory for maintaining cinder's state (string
+# Top-level directory for maintaining manila's state (string
 # value)
 #state_path=$pybasedir
 
@@ -52,7 +52,7 @@
 # default glance port (integer value)
 #glance_port=9292
 
-# A list of the glance api servers available to cinder
+# A list of the glance api servers available to manila
 # ([hostname|ip]:port) (list value)
 #glance_api_servers=$glance_host:$glance_port
 
@@ -68,18 +68,18 @@
 #glance_api_insecure=false
 
 # the topic scheduler nodes listen on (string value)
-#scheduler_topic=cinder-scheduler
+#scheduler_topic=manila-scheduler
 
 # the topic volume nodes listen on (string value)
-#volume_topic=cinder-volume
+#volume_topic=manila-volume
 
 # the topic volume backup nodes listen on (string value)
-#backup_topic=cinder-backup
+#backup_topic=manila-backup
 
-# Deploy v1 of the Cinder API.  (boolean value)
+# Deploy v1 of the Manila API.  (boolean value)
 #enable_v1_api=true
 
-# Deploy v2 of the Cinder API.  (boolean value)
+# Deploy v2 of the Manila API.  (boolean value)
 #enable_v2_api=true
 
 # whether to rate limit the api (boolean value)
@@ -87,11 +87,11 @@
 
 # Specify list of extensions to load when using
 # osapi_volume_extension option with
-# cinder.api.contrib.select_extensions (list value)
+# manila.api.contrib.select_extensions (list value)
 #osapi_volume_ext_list=
 
 # osapi volume extension to load (multi valued)
-#osapi_volume_extension=cinder.api.contrib.standard_extensions
+#osapi_volume_extension=manila.api.contrib.standard_extensions
 
 # Base URL that will be presented to users in links to the
 # OpenStack Volume API (string value)
@@ -102,7 +102,7 @@
 #osapi_max_limit=1000
 
 # the filename to use with sqlite (string value)
-#sqlite_db=cinder.sqlite
+#sqlite_db=manila.sqlite
 
 # If passed, use synchronous mode for sqlite (boolean value)
 #sqlite_synchronous=true
@@ -120,19 +120,19 @@
 #sql_retry_interval=10
 
 # full class name for the Manager for volume (string value)
-#volume_manager=cinder.volume.manager.VolumeManager
+#volume_manager=manila.volume.manager.VolumeManager
 
 # full class name for the Manager for volume backup (string
 # value)
-#backup_manager=cinder.backup.manager.BackupManager
+#backup_manager=manila.backup.manager.BackupManager
 
 # full class name for the Manager for scheduler (string value)
-#scheduler_manager=cinder.scheduler.manager.SchedulerManager
+#scheduler_manager=manila.scheduler.manager.SchedulerManager
 
 # Name of this node.  This can be an opaque identifier.  It is
 # not necessarily a hostname, FQDN, or IP address. (string
 # value)
-#host=cinder
+#host=manila
 
 # availability zone of this node (string value)
 #storage_availability_zone=nova
@@ -167,11 +167,11 @@
 
 # The full class name of the volume API class to use (string
 # value)
-#volume_api_class=cinder.volume.api.API
+#volume_api_class=manila.volume.api.API
 
 # The full class name of the volume backup API class (string
 # value)
-#backup_api_class=cinder.backup.api.API
+#backup_api_class=manila.backup.api.API
 
 # The strategy to use for auth. Supports noauth, keystone, and
 # deprecated. (string value)
@@ -188,7 +188,7 @@
 
 
 #
-# Options defined in cinder.policy
+# Options defined in manila.policy
 #
 
 # JSON file representing policy (string value)
@@ -199,7 +199,7 @@
 
 
 #
-# Options defined in cinder.quota
+# Options defined in manila.quota
 #
 
 # number of volumes allowed per project (integer value)
@@ -226,11 +226,11 @@
 #max_age=0
 
 # default driver to use for quota checks (string value)
-#quota_driver=cinder.quota.DbQuotaDriver
+#quota_driver=manila.quota.DbQuotaDriver
 
 
 #
-# Options defined in cinder.service
+# Options defined in manila.service
 #
 
 # seconds between nodes reporting state to datastore (integer
@@ -253,7 +253,7 @@
 
 
 #
-# Options defined in cinder.test
+# Options defined in manila.test
 #
 
 # File name of clean sqlite db (string value)
@@ -264,7 +264,7 @@
 
 
 #
-# Options defined in cinder.wsgi
+# Options defined in manila.wsgi
 #
 
 # Number of backlog requests to configure the socket with
@@ -289,7 +289,7 @@
 
 
 #
-# Options defined in cinder.api.middleware.auth
+# Options defined in manila.api.middleware.auth
 #
 
 # Treat X-Forwarded-For as the canonical remote address. Only
@@ -298,7 +298,7 @@
 
 
 #
-# Options defined in cinder.api.middleware.sizelimit
+# Options defined in manila.api.middleware.sizelimit
 #
 
 # Max size for body of a request (integer value)
@@ -306,15 +306,15 @@
 
 
 #
-# Options defined in cinder.backup.manager
+# Options defined in manila.backup.manager
 #
 
 # Service to use for backups. (string value)
-#backup_service=cinder.backup.services.swift
+#backup_service=manila.backup.services.swift
 
 
 #
-# Options defined in cinder.backup.services.swift
+# Options defined in manila.backup.services.swift
 #
 
 # The URL of the Swift endpoint (string value)
@@ -339,7 +339,7 @@
 
 
 #
-# Options defined in cinder.db.api
+# Options defined in manila.db.api
 #
 
 # The backend to use for db (string value)
@@ -363,15 +363,15 @@
 
 
 #
-# Options defined in cinder.db.base
+# Options defined in manila.db.base
 #
 
 # driver to use for database access (string value)
-#db_driver=cinder.db
+#db_driver=manila.db
 
 
 #
-# Options defined in cinder.image.image_utils
+# Options defined in manila.image.image_utils
 #
 
 # parent dir for tempdir used for image conversion (string
@@ -380,7 +380,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.lockutils
+# Options defined in manila.openstack.common.lockutils
 #
 
 # Whether to disable inter-process locks (boolean value)
@@ -392,7 +392,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.log
+# Options defined in manila.openstack.common.log
 #
 
 # Print debugging output (set logging level to DEBUG instead
@@ -475,7 +475,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.notifier.api
+# Options defined in manila.openstack.common.notifier.api
 #
 
 # Driver or drivers to handle sending notifications (multi
@@ -491,7 +491,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.notifier.rpc_notifier
+# Options defined in manila.openstack.common.notifier.rpc_notifier
 #
 
 # AMQP topic used for openstack notifications (list value)
@@ -499,7 +499,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.notifier.rpc_notifier2
+# Options defined in manila.openstack.common.notifier.rpc_notifier2
 #
 
 # AMQP topic(s) used for openstack notifications (list value)
@@ -507,12 +507,12 @@
 
 
 #
-# Options defined in cinder.openstack.common.rpc
+# Options defined in manila.openstack.common.rpc
 #
 
 # The messaging module to use, defaults to kombu. (string
 # value)
-#rpc_backend=cinder.openstack.common.rpc.impl_kombu
+#rpc_backend=manila.openstack.common.rpc.impl_kombu
 
 # Size of RPC thread pool (integer value)
 #rpc_thread_pool_size=64
@@ -530,7 +530,7 @@
 
 # Modules of exceptions that are permitted to be recreatedupon
 # receiving exception data from an rpc call. (list value)
-#allowed_rpc_exception_modules=cinder.openstack.common.exception,nova.exception,cinder.exception,exceptions
+#allowed_rpc_exception_modules=manila.openstack.common.exception,nova.exception,manila.exception,exceptions
 
 # If passed, use a fake RabbitMQ provider (boolean value)
 #fake_rabbit=false
@@ -541,7 +541,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.rpc.amqp
+# Options defined in manila.openstack.common.rpc.amqp
 #
 
 # Enable a fast single reply queue if using AMQP based RPC
@@ -550,7 +550,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.rpc.impl_kombu
+# Options defined in manila.openstack.common.rpc.impl_kombu
 #
 
 # SSL version to use (valid only if SSL enabled) (string
@@ -613,7 +613,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.rpc.impl_qpid
+# Options defined in manila.openstack.common.rpc.impl_qpid
 #
 
 # Qpid broker hostname (string value)
@@ -647,7 +647,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.rpc.impl_zmq
+# Options defined in manila.openstack.common.rpc.impl_zmq
 #
 
 # ZeroMQ bind address. Should be a wildcard (*), an ethernet
@@ -656,7 +656,7 @@
 #rpc_zmq_bind_address=*
 
 # MatchMaker driver (string value)
-#rpc_zmq_matchmaker=cinder.openstack.common.rpc.matchmaker.MatchMakerLocalhost
+#rpc_zmq_matchmaker=manila.openstack.common.rpc.matchmaker.MatchMakerLocalhost
 
 # ZeroMQ receiver listening port (integer value)
 #rpc_zmq_port=9501
@@ -674,11 +674,11 @@
 # Name of this node. Must be a valid hostname, FQDN, or IP
 # address. Must match "host" option, if running Nova. (string
 # value)
-#rpc_zmq_host=cinder
+#rpc_zmq_host=manila
 
 
 #
-# Options defined in cinder.openstack.common.rpc.matchmaker
+# Options defined in manila.openstack.common.rpc.matchmaker
 #
 
 # Matchmaker ring file (JSON) (string value)
@@ -692,7 +692,7 @@
 
 
 #
-# Options defined in cinder.openstack.common.rpc.matchmaker_redis
+# Options defined in manila.openstack.common.rpc.matchmaker_redis
 #
 
 # Host to locate redis (string value)
@@ -706,11 +706,11 @@
 
 
 #
-# Options defined in cinder.scheduler.driver
+# Options defined in manila.scheduler.driver
 #
 
 # The scheduler host manager class to use (string value)
-#scheduler_host_manager=cinder.scheduler.host_manager.HostManager
+#scheduler_host_manager=manila.scheduler.host_manager.HostManager
 
 # Maximum number of attempts to schedule an volume (integer
 # value)
@@ -718,7 +718,7 @@
 
 
 #
-# Options defined in cinder.scheduler.host_manager
+# Options defined in manila.scheduler.host_manager
 #
 
 # Which filter class names to use for filtering hosts when not
@@ -731,15 +731,15 @@
 
 
 #
-# Options defined in cinder.scheduler.manager
+# Options defined in manila.scheduler.manager
 #
 
 # Default scheduler driver to use (string value)
-#scheduler_driver=cinder.scheduler.filter_scheduler.FilterScheduler
+#scheduler_driver=manila.scheduler.filter_scheduler.FilterScheduler
 
 
 #
-# Options defined in cinder.scheduler.scheduler_options
+# Options defined in manila.scheduler.scheduler_options
 #
 
 # Absolute path to scheduler configuration JSON file. (string
@@ -748,7 +748,7 @@
 
 
 #
-# Options defined in cinder.scheduler.simple
+# Options defined in manila.scheduler.simple
 #
 
 # maximum number of volume gigabytes to allow per host
@@ -757,7 +757,7 @@
 
 
 #
-# Options defined in cinder.scheduler.weights.capacity
+# Options defined in manila.scheduler.weights.capacity
 #
 
 # Multiplier used for weighing volume capacity. Negative
@@ -766,7 +766,7 @@
 
 
 #
-# Options defined in cinder.volume.api
+# Options defined in manila.volume.api
 #
 
 # Create volume from snapshot at the host where snapshot
@@ -775,7 +775,7 @@
 
 
 #
-# Options defined in cinder.volume.driver
+# Options defined in manila.volume.driver
 #
 
 # number of times to attempt to run flakey shell commands
@@ -810,7 +810,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.coraid
+# Options defined in manila.volume.drivers.coraid
 #
 
 # IP address of Coraid ESM (string value)
@@ -832,12 +832,12 @@
 
 
 #
-# Options defined in cinder.volume.drivers.glusterfs
+# Options defined in manila.volume.drivers.glusterfs
 #
 
 # File with the list of available gluster shares (string
 # value)
-#glusterfs_shares_config=/etc/cinder/glusterfs_shares
+#glusterfs_shares_config=/etc/manila/glusterfs_shares
 
 # Base dir where gluster expected to be mounted (string value)
 #glusterfs_mount_point_base=$state_path/mnt
@@ -852,20 +852,20 @@
 
 
 #
-# Options defined in cinder.volume.drivers.huawei.huawei_iscsi
+# Options defined in manila.volume.drivers.huawei.huawei_iscsi
 #
 
-# config data for cinder huawei plugin (string value)
-#cinder_huawei_conf_file=/etc/cinder/cinder_huawei_conf.xml
+# config data for manila huawei plugin (string value)
+#manila_huawei_conf_file=/etc/manila/manila_huawei_conf.xml
 
 
 #
-# Options defined in cinder.volume.drivers.lvm
+# Options defined in manila.volume.drivers.lvm
 #
 
 # Name for the VG that will contain exported volumes (string
 # value)
-#volume_group=cinder-volumes
+#volume_group=manila-volumes
 
 # Method used to wipe old volumes (valid options are: none,
 # zero, shred) (string value)
@@ -879,7 +879,7 @@
 # value)
 #volume_dd_blocksize=1M
 
-# Size of thin provisioning pool (None uses entire cinder VG)
+# Size of thin provisioning pool (None uses entire manila VG)
 # (string value)
 #pool_size=<None>
 
@@ -890,7 +890,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.netapp.iscsi
+# Options defined in manila.volume.drivers.netapp.iscsi
 #
 
 # URL of the WSDL file for the DFM/Webservice server (string
@@ -936,7 +936,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.netapp.nfs
+# Options defined in manila.volume.drivers.netapp.nfs
 #
 
 # Does snapshot creation call returns immediately (integer
@@ -986,7 +986,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.nexenta.volume
+# Options defined in manila.volume.drivers.nexenta.volume
 #
 
 # IP address of Nexenta SA (string value)
@@ -1010,13 +1010,13 @@
 #nexenta_iscsi_target_portal_port=3260
 
 # pool on SA that will hold all volumes (string value)
-#nexenta_volume=cinder
+#nexenta_volume=manila
 
 # IQN prefix for iSCSI targets (string value)
-#nexenta_target_prefix=iqn.1986-03.com.sun:02:cinder-
+#nexenta_target_prefix=iqn.1986-03.com.sun:02:manila-
 
 # prefix for iSCSI target groups on SA (string value)
-#nexenta_target_group_prefix=cinder/
+#nexenta_target_group_prefix=manila/
 
 # block size for volumes (blank=default,8KB) (string value)
 #nexenta_blocksize=
@@ -1026,11 +1026,11 @@
 
 
 #
-# Options defined in cinder.volume.drivers.nfs
+# Options defined in manila.volume.drivers.nfs
 #
 
 # File with the list of available nfs shares (string value)
-#nfs_shares_config=/etc/cinder/nfs_shares
+#nfs_shares_config=/etc/manila/nfs_shares
 
 # Base dir where nfs expected to be mounted (string value)
 #nfs_mount_point_base=$state_path/mnt
@@ -1049,7 +1049,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.rbd
+# Options defined in manila.volume.drivers.rbd
 #
 
 # the RADOS pool in which rbd volumes are stored (string
@@ -1070,7 +1070,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.san.hp.hp_3par_common
+# Options defined in manila.volume.drivers.san.hp.hp_3par_common
 #
 
 # 3PAR WSAPI Server Url like https://<3par ip>:8080/api/v1
@@ -1106,7 +1106,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.san.san
+# Options defined in manila.volume.drivers.san.san
 #
 
 # Use thin provisioning for SAN volumes? (boolean value)
@@ -1146,7 +1146,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.san.solaris
+# Options defined in manila.volume.drivers.san.solaris
 #
 
 # The ZFS path under which to create zvols for volumes.
@@ -1155,7 +1155,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.scality
+# Options defined in manila.volume.drivers.scality
 #
 
 # Path or URL to Scality SOFS configuration file (string
@@ -1166,11 +1166,11 @@
 #scality_sofs_mount_point=$state_path/scality
 
 # Path from Scality SOFS root to volume dir (string value)
-#scality_sofs_volume_dir=cinder/volumes
+#scality_sofs_volume_dir=manila/volumes
 
 
 #
-# Options defined in cinder.volume.drivers.solidfire
+# Options defined in manila.volume.drivers.solidfire
 #
 
 # Set 512 byte emulation on volume creation;  (boolean value)
@@ -1181,7 +1181,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.storwize_svc
+# Options defined in manila.volume.drivers.storwize_svc
 #
 
 # Storage system storage pool for volumes (string value)
@@ -1223,7 +1223,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.windows
+# Options defined in manila.volume.drivers.windows
 #
 
 # Path to store VHD backed volumes (string value)
@@ -1231,7 +1231,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.xenapi.sm
+# Options defined in manila.volume.drivers.xenapi.sm
 #
 
 # NFS server to be used by XenAPINFSDriver (string value)
@@ -1254,7 +1254,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.xiv
+# Options defined in manila.volume.drivers.xiv
 #
 
 # Proxy driver (string value)
@@ -1262,7 +1262,7 @@
 
 
 #
-# Options defined in cinder.volume.drivers.zadara
+# Options defined in manila.volume.drivers.zadara
 #
 
 # Management IP of Zadara VPSA (string value)
@@ -1308,7 +1308,7 @@
 
 
 #
-# Options defined in cinder.volume.iscsi
+# Options defined in manila.volume.iscsi
 #
 
 # iscsi target user-land tool to use (string value)
@@ -1331,11 +1331,11 @@
 # iscsi_iotype=fileio
 
 #
-# Options defined in cinder.volume.manager
+# Options defined in manila.volume.manager
 #
 
 # Driver to use for volume creation (string value)
-#volume_driver=cinder.volume.drivers.lvm.LVMISCSIDriver
+#volume_driver=manila.volume.drivers.lvm.LVMISCSIDriver
 
 
 # Total option count: 299

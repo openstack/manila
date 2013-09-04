@@ -25,7 +25,7 @@ def get_test_admin_context():
     return manila.context.get_admin_context()
 
 
-def is_cinder_installed():
+def is_manila_installed():
     if os.path.exists('../../manila.manila.egg-info'):
         return True
     else:

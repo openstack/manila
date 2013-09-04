@@ -195,7 +195,7 @@ class ExceptionTest(test.TestCase):
         return fault.FaultWrapper(inner_app)
 
     def _do_test_exception_safety_reflected_in_faults(self, expose):
-        class ExceptionWithSafety(exception.CinderException):
+        class ExceptionWithSafety(exception.ManilaException):
             safe = expose
 
         @webob.dec.wsgify
@@ -235,14 +235,14 @@ class ExceptionTest(test.TestCase):
     def test_quota_error_mapping(self):
         self._do_test_exception_mapping(exception.QuotaError, 'too many used')
 
-    def test_non_cinder_notfound_exception_mapping(self):
+    def test_non_manila_notfound_exception_mapping(self):
         class ExceptionWithCode(Exception):
             code = 404
 
         self._do_test_exception_mapping(ExceptionWithCode,
                                         'NotFound')
 
-    def test_non_cinder_exception_mapping(self):
+    def test_non_manila_exception_mapping(self):
         class ExceptionWithCode(Exception):
             code = 417
 

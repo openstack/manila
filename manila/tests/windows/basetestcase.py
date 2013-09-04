@@ -25,7 +25,7 @@ import pickle
 
 from manila.tests.windows import mockproxy
 
-gen_test_mocks_key = 'CINDER_GENERATE_TEST_MOCKS'
+gen_test_mocks_key = 'MANILA_GENERATE_TEST_MOCKS'
 
 
 class BaseTestCase(manila.test.TestCase):

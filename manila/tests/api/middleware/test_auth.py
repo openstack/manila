@@ -18,10 +18,10 @@ import manila.api.middleware.auth
 from manila import test
 
 
-class TestCinderKeystoneContextMiddleware(test.TestCase):
+class TestManilaKeystoneContextMiddleware(test.TestCase):
 
     def setUp(self):
-        super(TestCinderKeystoneContextMiddleware, self).setUp()
+        super(TestManilaKeystoneContextMiddleware, self).setUp()
 
         @webob.dec.wsgify()
         def fake_app(req):
@@ -30,7 +30,7 @@ class TestCinderKeystoneContextMiddleware(test.TestCase):
 
         self.context = None
         self.middleware = (manila.api.middleware.auth
-                           .CinderKeystoneContext(fake_app))
+                           .ManilaKeystoneContext(fake_app))
         self.request = webob.Request.blank('/')
         self.request.headers['X_TENANT_ID'] = 'testtenantid'
         self.request.headers['X_AUTH_TOKEN'] = 'testauthtoken'

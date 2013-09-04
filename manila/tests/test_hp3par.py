@@ -16,7 +16,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Unit tests for OpenStack Cinder volume drivers
+Unit tests for OpenStack Manila volume drivers
 """
 import mox
 import shutil

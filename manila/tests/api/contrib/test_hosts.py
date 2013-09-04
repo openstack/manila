@@ -71,7 +71,7 @@ class FakeRequest(object):
     GET = {}
 
 
-class FakeRequestWithcinderZone(object):
+class FakeRequestWithmanilaZone(object):
     environ = {'manila.context': context.get_admin_context()}
     GET = {'zone': 'manila'}
 
@@ -96,13 +96,13 @@ class HostTestCase(test.TestCase):
         hosts = os_hosts._list_hosts(self.req)
         self.assertEqual(hosts, LIST_RESPONSE)
 
-        cinder_hosts = os_hosts._list_hosts(self.req, 'manila-volume')
+        manila_hosts = os_hosts._list_hosts(self.req, 'manila-volume')
         expected = [host for host in LIST_RESPONSE
                     if host['service'] == 'manila-volume']
-        self.assertEqual(cinder_hosts, expected)
+        self.assertEqual(manila_hosts, expected)
 
     def test_list_hosts_with_zone(self):
-        req = FakeRequestWithcinderZone()
+        req = FakeRequestWithmanilaZone()
         hosts = os_hosts._list_hosts(req)
         self.assertEqual(hosts, LIST_RESPONSE)
 

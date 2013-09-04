@@ -168,10 +168,10 @@ class HuaweiVolumeTestCase(test.TestCase):
         super(HuaweiVolumeTestCase, self).__init__(*args, **kwargs)
 
         self.tmp_dir = tempfile.mkdtemp()
-        self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
+        self.fake_conf_file = self.tmp_dir + '/manila_huawei_conf.xml'
         self._create_fake_conf_file()
         configuration = mox.MockObject(conf.Configuration)
-        configuration.cinder_huawei_conf_file = self.fake_conf_file
+        configuration.manila_huawei_conf_file = self.fake_conf_file
         configuration.append_config_values(mox.IgnoreArg())
         self.driver = FakeHuaweiStorage(configuration=configuration)
 

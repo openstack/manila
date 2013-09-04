@@ -13,10 +13,10 @@
 #    under the License.
 
 """
-:mod:`manila.share.driver` -- Cinder Share Drivers
+:mod:`manila.share.driver` -- Manila Share Drivers
 =====================================================
 
 .. automodule:: manila.share.driver
    :platform: Unix
-   :synopsis: Module containing all the Cinder Share drivers.
+   :synopsis: Module containing all the Manila Share drivers.
 """

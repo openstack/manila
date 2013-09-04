@@ -17,7 +17,7 @@
 #    under the License.
 
 """
-:mod:`manila.tests` -- Cinder Unittests
+:mod:`manila.tests` -- Manila Unittests
 =====================================================
 
 .. automodule:: manila.tests

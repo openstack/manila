@@ -134,7 +134,7 @@ class RequestContext(object):
         return context
 
     # NOTE(sirp): the openstack/common version of RequestContext uses
-    # tenant/user whereas the Cinder version uses project_id/user_id. We need
+    # tenant/user whereas the Manila version uses project_id/user_id. We need
     # this shim in order to use context-aware code from openstack/common, like
     # logging, until we make the switch to using openstack/common's version of
     # RequestContext.

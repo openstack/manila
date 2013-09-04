@@ -99,7 +99,7 @@ class NetappNfsDriverTestCase(test.TestCase):
             setattr(drv.configuration, flag, None)
 
         # check exception raises when flags are not set
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(exception.ManilaException,
                           drv.check_for_setup_error)
 
         # set required flags
@@ -154,7 +154,7 @@ class NetappNfsDriverTestCase(test.TestCase):
         volume = FakeVolume(1)
         snapshot = FakeSnapshot(2)
 
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(exception.ManilaException,
                           drv.create_volume_from_snapshot,
                           volume,
                           snapshot)
@@ -265,7 +265,7 @@ class NetappNfsDriverTestCase(test.TestCase):
         clone_name = 'clone_name'
         volume_id = volume_name + str(hash(volume_name))
 
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(exception.ManilaException,
                           drv._clone_volume,
                           volume_name, clone_name, volume_id)
 
@@ -278,7 +278,7 @@ class NetappNfsDriverTestCase(test.TestCase):
             self._driver.create_cloned_volume(volume_clone_fail,
                                               volume_src)
             raise AssertionError()
-        except exception.CinderException:
+        except exception.ManilaException:
             pass
 
 
@@ -310,7 +310,7 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
         for flag in required_flags:
             setattr(drv.configuration, flag, None)
         # check exception raises when flags are not set
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(exception.ManilaException,
                           drv.check_for_setup_error)
 
         # set required flags
@@ -363,7 +363,7 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
         volume = FakeVolume(1)
         snapshot = FakeSnapshot(2)
 
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(exception.ManilaException,
                           drv.create_volume_from_snapshot,
                           volume,
                           snapshot)
@@ -469,7 +469,7 @@ class NetappCmodeNfsDriverTestCase(test.TestCase):
             self._driver.create_cloned_volume(volume_clone_fail,
                                               volume_src)
             raise AssertionError()
-        except exception.CinderException:
+        except exception.ManilaException:
             pass
 
 
@@ -493,7 +493,7 @@ class NetappDirectCmodeNfsDriverTestCase(NetappCmodeNfsDriverTestCase):
         for flag in required_flags:
             setattr(drv.configuration, flag, None)
         # check exception raises when flags are not set
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(exception.ManilaException,
                           drv.check_for_setup_error)
 
         # set required flags
@@ -615,7 +615,7 @@ class NetappDirect7modeNfsDriverTestCase(NetappDirectCmodeNfsDriverTestCase):
         for flag in required_flags:
             setattr(drv.configuration, flag, None)
         # check exception raises when flags are not set
-        self.assertRaises(exception.CinderException,
+        self.assertRaises(exception.ManilaException,
                           drv.check_for_setup_error)
 
         # set required flags

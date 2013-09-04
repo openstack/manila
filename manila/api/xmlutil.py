@@ -38,7 +38,7 @@ def validate_schema(xml, schema_name):
     base_path = 'manila/api/schemas/v1.1/'
     if schema_name in ('atom', 'atom-link'):
         base_path = 'manila/api/schemas/'
-    schema_path = os.path.join(utils.cinderdir(),
+    schema_path = os.path.join(utils.maniladir(),
                                '%s%s.rng' % (base_path, schema_name))
     schema_doc = etree.parse(schema_path)
     relaxng = etree.RelaxNG(schema_doc)

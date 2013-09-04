@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.abspath('./'))
 
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
-              'ext.cinder_todo',
+              'ext.manila_todo',
               'sphinx.ext.coverage',
               'sphinx.ext.pngmath',
               'sphinx.ext.ifconfig',
@@ -40,7 +40,7 @@ extensions = ['sphinx.ext.autodoc',
 # when doing heavy text edit cycles. Execute "export SPHINX_DEBUG=1"
 # in your terminal to disable
 if not os.getenv('SPHINX_DEBUG'):
-    extensions += ['ext.cinder_autodoc']
+    extensions += ['ext.manila_autodoc']
 
 todo_include_todos = True
 
@@ -202,7 +202,7 @@ html_last_updated_fmt = os.popen(git_cmd).read()
 #html_file_suffix = ''
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'cinderdoc'
+htmlhelp_basename = 'maniladoc'
 
 
 # -- Options for LaTeX output -------------------------------------------------
@@ -217,7 +217,7 @@ htmlhelp_basename = 'cinderdoc'
 # (source start file, target name, title, author, documentclass
 # [howto/manual]).
 latex_documents = [
-    ('index', 'Cinder.tex', u'Cinder Documentation',
+    ('index', 'Manila.tex', u'Manila Documentation',
      u'Anso Labs, LLC', 'manual'),
 ]
 

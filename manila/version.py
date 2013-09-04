@@ -16,9 +16,9 @@
 
 from pbr import version as pbr_version
 
-CINDER_VENDOR = "OpenStack Foundation"
-CINDER_PRODUCT = "OpenStack Cinder"
-CINDER_PACKAGE = None  # OS distro package version suffix
+MANILA_VENDOR = "OpenStack Foundation"
+MANILA_PRODUCT = "OpenStack Manila"
+MANILA_PACKAGE = None  # OS distro package version suffix
 
 loaded = False
 version_info = pbr_version.VersionInfo('manila')

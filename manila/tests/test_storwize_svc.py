@@ -1811,7 +1811,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.driver.terminate_connection(volume, conn)
 
             self._set_flag('storwize_svc_multihostmap_enabled', False)
-            self.assertRaises(exception.CinderException,
+            self.assertRaises(exception.ManilaException,
                               self.driver.initialize_connection, volume, conn)
             self.driver.terminate_connection(volume, conn)
             self._reset_flags()

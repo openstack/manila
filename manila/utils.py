@@ -314,7 +314,7 @@ class SSHPool(pools.Pool):
                             timeout=self.conn_timeout)
             else:
                 msg = _("Specify a password or private_key")
-                raise exception.CinderException(msg)
+                raise exception.ManilaException(msg)
 
             # Paramiko by default sets the socket timeout to 0.1 seconds,
             # ignoring what we set thru the sshclient. This doesn't help for
@@ -364,7 +364,7 @@ class SSHPool(pools.Pool):
             self.current_size -= 1
 
 
-def cinderdir():
+def maniladir():
     import manila
     return os.path.abspath(manila.__file__).split('manila/__init__.py')[0]
 

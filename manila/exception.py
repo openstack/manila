@@ -16,9 +16,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Cinder base exception handling.
+"""Manila base exception handling.
 
-Includes decorator for re-raising Cinder-type exceptions.
+Includes decorator for re-raising Manila-type exceptions.
 
 SHOULD include dedicated exception logging.
 
@@ -93,8 +93,8 @@ def wrap_db_error(f):
     return _wrap
 
 
-class CinderException(Exception):
-    """Base Cinder Exception
+class ManilaException(Exception):
+    """Base Manila Exception
 
     To correctly use this class, inherit from it and define
     a 'message' property. That message will get printf'd
@@ -131,14 +131,14 @@ class CinderException(Exception):
                     # at least get the core message out if something happened
                     message = self.message
 
-        super(CinderException, self).__init__(message)
+        super(ManilaException, self).__init__(message)
 
 
-class GlanceConnectionFailed(CinderException):
+class GlanceConnectionFailed(ManilaException):
     message = _("Connection to glance failed") + ": %(reason)s"
 
 
-class NotAuthorized(CinderException):
+class NotAuthorized(ManilaException):
     message = _("Not authorized.")
     code = 403
 
@@ -151,11 +151,11 @@ class PolicyNotAuthorized(NotAuthorized):
     message = _("Policy doesn't allow %(action)s to be performed.")
 
 
-class ImageNotAuthorized(CinderException):
+class ImageNotAuthorized(ManilaException):
     message = _("Not authorized for image %(image_id)s.")
 
 
-class Invalid(CinderException):
+class Invalid(ManilaException):
     message = _("Unacceptable parameters.")
     code = 400
 
@@ -168,7 +168,7 @@ class VolumeAttached(Invalid):
     message = _("Volume %(volume_id)s is still attached, detach volume first.")
 
 
-class SfJsonEncodeFailure(CinderException):
+class SfJsonEncodeFailure(ManilaException):
     message = _("Failed to load data into json format")
 
 
@@ -219,7 +219,7 @@ class InvalidUUID(Invalid):
     message = _("Expected a uuid but received %(uuid).")
 
 
-class NotFound(CinderException):
+class NotFound(ManilaException):
     message = _("Resource could not be found.")
     code = 404
     safe = True
@@ -286,11 +286,11 @@ class SnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
 
 
-class VolumeIsBusy(CinderException):
+class VolumeIsBusy(ManilaException):
     message = _("deleting volume %(volume_name)s that has snapshot")
 
 
-class SnapshotIsBusy(CinderException):
+class SnapshotIsBusy(ManilaException):
     message = _("deleting snapshot %(snapshot_name)s that has "
                 "dependent volumes")
 
@@ -299,15 +299,15 @@ class ISCSITargetNotFoundForVolume(NotFound):
     message = _("No target id found for volume %(volume_id)s.")
 
 
-class ISCSITargetCreateFailed(CinderException):
+class ISCSITargetCreateFailed(ManilaException):
     message = _("Failed to create iscsi target for volume %(volume_id)s.")
 
 
-class ISCSITargetAttachFailed(CinderException):
+class ISCSITargetAttachFailed(ManilaException):
     message = _("Failed to attach iSCSI target for volume %(volume_id)s.")
 
 
-class ISCSITargetRemoveFailed(CinderException):
+class ISCSITargetRemoveFailed(ManilaException):
     message = _("Failed to remove iscsi target for volume %(volume_id)s.")
 
 
@@ -376,7 +376,7 @@ class ReservationNotFound(QuotaNotFound):
     message = _("Quota reservation %(uuid)s could not be found.")
 
 
-class OverQuota(CinderException):
+class OverQuota(ManilaException):
     message = _("Quota exceeded for resources: %(overs)s")
 
 
@@ -397,12 +397,12 @@ class ClassNotFound(NotFound):
     message = _("Class %(class_name)s could not be found: %(exception)s")
 
 
-class NotAllowed(CinderException):
+class NotAllowed(ManilaException):
     message = _("Action not allowed.")
 
 
 #TODO(bcwaldon): EOL this exception!
-class Duplicate(CinderException):
+class Duplicate(ManilaException):
     pass
 
 
@@ -414,11 +414,11 @@ class VolumeTypeExists(Duplicate):
     message = _("Volume Type %(id)s already exists.")
 
 
-class MigrationError(CinderException):
+class MigrationError(ManilaException):
     message = _("Migration error") + ": %(reason)s"
 
 
-class MalformedRequestBody(CinderException):
+class MalformedRequestBody(ManilaException):
     message = _("Malformed message body: %(reason)s")
 
 
@@ -430,15 +430,15 @@ class PasteAppNotFound(NotFound):
     message = _("Could not load paste app '%(name)s' from %(path)s")
 
 
-class NoValidHost(CinderException):
+class NoValidHost(ManilaException):
     message = _("No valid host was found. %(reason)s")
 
 
-class WillNotSchedule(CinderException):
+class WillNotSchedule(ManilaException):
     message = _("Host %(host)s is not up or doesn't exist.")
 
 
-class QuotaError(CinderException):
+class QuotaError(ManilaException):
     message = _("Quota exceeded") + ": code=%(code)s"
     code = 413
     headers = {'Retry-After': 0}
@@ -466,20 +466,20 @@ class DuplicateSfVolumeNames(Duplicate):
     message = _("Detected more than one volume with name %(vol_name)s")
 
 
-class Duplicate3PARHost(CinderException):
+class Duplicate3PARHost(ManilaException):
     message = _("3PAR Host already exists: %(err)s.  %(info)s")
 
 
-class Invalid3PARDomain(CinderException):
+class Invalid3PARDomain(ManilaException):
     message = _("Invalid 3PAR Domain: %(err)s")
 
 
-class VolumeTypeCreateFailed(CinderException):
+class VolumeTypeCreateFailed(ManilaException):
     message = _("Cannot create volume_type with "
                 "name %(name)s and specs %(extra_specs)s")
 
 
-class SolidFireAPIException(CinderException):
+class SolidFireAPIException(ManilaException):
     message = _("Bad response from SolidFire API")
 
 
@@ -495,15 +495,15 @@ class MalformedResponse(Invalid):
     message = _("Malformed response to command %(cmd)s: %(reason)s")
 
 
-class BadHTTPResponseStatus(CinderException):
+class BadHTTPResponseStatus(ManilaException):
     message = _("Bad HTTP response status %(status)s")
 
 
-class FailedCmdWithDump(CinderException):
+class FailedCmdWithDump(ManilaException):
     message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
 
 
-class ZadaraServerCreateFailure(CinderException):
+class ZadaraServerCreateFailure(ManilaException):
     message = _("Unable to create server object for initiator %(name)s")
 
 
@@ -511,7 +511,7 @@ class ZadaraServerNotFound(NotFound):
     message = _("Unable to find server object for initiator %(name)s")
 
 
-class ZadaraVPSANoActiveController(CinderException):
+class ZadaraVPSANoActiveController(ManilaException):
     message = _("Unable to find any active VPSA controller")
 
 
@@ -527,12 +527,12 @@ class InstanceNotFound(NotFound):
     message = _("Instance %(instance_id)s could not be found.")
 
 
-class VolumeBackendAPIException(CinderException):
+class VolumeBackendAPIException(ManilaException):
     message = _("Bad or unexpected response from the storage volume "
                 "backend API: %(data)s")
 
 
-class NfsException(CinderException):
+class NfsException(ManilaException):
     message = _("Unknown NFS exception")
 
 
@@ -544,7 +544,7 @@ class NfsNoSuitableShareFound(NotFound):
     message = _("There is no share which can host %(volume_size)sG")
 
 
-class GlusterfsException(CinderException):
+class GlusterfsException(ManilaException):
     message = _("Unknown Gluster exception")
 
 
@@ -565,7 +565,7 @@ class ImageCopyFailure(Invalid):
     message = _("Failed to copy image to volume")
 
 
-class InvalidShare(CinderException):
+class InvalidShare(ManilaException):
     message = _("Invalid share: %(reason)s")
 
 
@@ -577,15 +577,15 @@ class ShareAccessExists(Duplicate):
     message = _("Share access %(access_type)s:%(access)s exists")
 
 
-class InvalidShareAccess(CinderException):
+class InvalidShareAccess(ManilaException):
     message = _("Invalid access_rule: %(reason)s")
 
 
-class ShareIsBusy(CinderException):
+class ShareIsBusy(ManilaException):
     message = _("Deleting $(share_name) share that used")
 
 
-class ShareBackendException(CinderException):
+class ShareBackendException(ManilaException):
     message = _("Share backend error: %(msg)s")
 
 
@@ -593,14 +593,14 @@ class ShareSnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
 
 
-class ShareSnapshotIsBusy(CinderException):
+class ShareSnapshotIsBusy(ManilaException):
     message = _("Deleting snapshot %(snapshot_name)s that has "
                 "dependent shares.")
 
 
-class InvalidShareSnapshot(CinderException):
+class InvalidShareSnapshot(ManilaException):
     message = _("Invalid share snapshot: %(reason)s")
 
 
-class SwiftConnectionFailed(CinderException):
+class SwiftConnectionFailed(ManilaException):
     message = _("Connection to swift failed") + ": %(reason)s"

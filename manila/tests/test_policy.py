@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Test of Policy Engine For Cinder."""
+"""Test of Policy Engine For Manila."""
 
 import os.path
 import StringIO

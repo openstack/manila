@@ -30,10 +30,10 @@ from manila.volume import configuration as conf
 from manila.volume.drivers.emc.emc_smis_common import EMCSMISCommon
 from manila.volume.drivers.emc.emc_smis_iscsi import EMCSMISISCSIDriver
 
-CINDER_EMC_CONFIG_FILE = '/etc/manila/cinder_emc_config.xml'
+MANILA_EMC_CONFIG_FILE = '/etc/manila/manila_emc_config.xml'
 LOG = logging.getLogger(__name__)
 
-config_file_name = 'cinder_emc_config.xml'
+config_file_name = 'manila_emc_config.xml'
 storage_system = 'CLARiiON+APM00123456789'
 storage_system_vmax = 'SYMMETRIX+000195900551'
 lunmaskctrl_id = 'CLARiiON+APM00123456789+00aa11bb22cc33dd44ff55gg66hh77ii88jj'
@@ -604,7 +604,7 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         self.create_fake_config_file()
 
         configuration = mox.MockObject(conf.Configuration)
-        configuration.cinder_emc_config_file = self.config_file_path
+        configuration.manila_emc_config_file = self.config_file_path
         configuration.append_config_values(mox.IgnoreArg())
 
         self.stubs.Set(EMCSMISISCSIDriver, '_do_iscsi_discovery',

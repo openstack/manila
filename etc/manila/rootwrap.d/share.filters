@@ -1,0 +1,36 @@
+# manila-rootwrap command filters for share nodes
+# This file should be owned by (and only-writeable by) the root user
+
+[Filters]
+# manila/share/drivers/lvm.py: 'mkfs.ext4', '/dev/mapper/%s'
+mkfs.ext4: CommandFilter, /sbin/mkfs.ext4, root
+
+# manila/share/drivers/lvm.py: 'exportfs', ...
+exportfs: CommandFilter, /usr/sbin/exportfs, root
+
+# manila/share/drivers/lvm.py: 'smbd', '-s', '%s', '-D'
+smbd: CommandFilter, /usr/sbin/smbd, root
+
+# manila/share/drivers/lvm.py: 'umount', '-f', '%s'
+umount: CommandFilter, /bin/umount, root
+
+# manila/share/drivers/lvm.py: 'mount', '/dev/mapper/%s', '%s'
+mount: CommandFilter, /bin/mount, root
+
+# manila/share/drivers/lvm.py: 'chmod', '777', '%s'
+chmod: CommandFilter, /bin/chmod, root
+
+# manila/share/drivers/lvm.py: 'chown', 'nobody', '-R', '%s'
+chown: CommandFilter, /bin/chown, root
+
+# manila/share/drivers/lvm.py: 'pkill', '-HUP', 'smbd'
+pkill: CommandFilter, /usr/bin/pkill, root
+
+# manila/share/drivers/lvm.py: 'smbcontrol', 'all', 'close-share', '%s'
+smbcontrol: CommandFilter, /usr/bin/smbcontrol, root
+
+# manila/share/drivers/lvm.py: 'net', 'conf', 'addshare', '%s', '%s', 'writeable=y', 'guest_ok=y
+# manila/share/drivers/lvm.py: 'net', 'conf', 'delshare', '%s'
+# manila/share/drivers/lvm.py: 'net', 'conf', 'setparm', '%s', '%s', '%s'
+# manila/share/drivers/lvm.py: 'net', 'conf', 'getparm', '%s', 'hosts allow'
+net: CommandFilter, /usr/bin/net, root
