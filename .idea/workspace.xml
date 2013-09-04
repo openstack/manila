@@ -2,814 +2,113 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="1b1c7685-def3-415f-9322-bbcb3d480c5d" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/001_cinder_init.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/002_quota_class.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/003_glance_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/004_volume_type_to_uuid.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/005_add_source_volume_column.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/008_add_backup.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/009_add_snapshot_metadata_table.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/010_add_share_tables.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/011_add_share_snapshot_table.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/openstack/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/openstack/volume/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/backup/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/scheduler/filters/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/scheduler/weights/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/share/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/share/drivers/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/openstack/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/image/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/integrated/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/scheduler/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/san/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/admin_actions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/amqp.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/backup/api.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/api.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/api.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/notifier/api.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/share/api.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/api.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/netapp/api.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/auth.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/middleware/auth.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/scheduler/filters/availability_zone_filter.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/backups.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/views/backups.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/base.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/windows/basetestcase.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/scheduler/filters/capabilities_filter.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/weights/capacity.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/filters/capacity_filter.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/chance.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/bg_BG/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/bs/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/cs/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/da/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/de/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/en_AU/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/en_GB/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/en_US/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/es/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/fi_FI/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/fr/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/it/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/ja/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/ko/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/ko_KR/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/pt_BR/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/ru/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/tl/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/tr/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/uk/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/vi_VN/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/zh_CN/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/locale/zh_TW/LC_MESSAGES/cinder.po" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/integrated/api/client.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rootwrap/cmd.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/common.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/common.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/share/configuration.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/configuration.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/context.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/coraid.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/declare_flags.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/dispatcher.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/driver.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/share/driver.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/driver.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/emc/emc_smis_common.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/emc/emc_smis_iscsi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/exception.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/exception.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/excutils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/extended_snapshot_attributes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/extensions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/scheduler/filters/extra_specs_ops.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/image/fake.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/fake_driver.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/fake_flags.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/backup/fake_service.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/backup/fake_swift_client.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/fake_utils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/fakes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/db/fakes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/scheduler/fakes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/middleware/fault.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/filter_scheduler.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/flags.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/extensions/foxinsocks.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/gettextutils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/image/glance.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/glusterfs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/host_manager.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/hosts.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/san/hp/hp_3par_common.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/san/hp/hp_3par_fc.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/san/hp/hp_3par_iscsi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/san/hp_lefthand.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/huawei/huawei_iscsi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/image_create.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/image/image_utils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/impl_fake.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/impl_kombu.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/impl_qpid.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/impl_zmq.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/integrated/integrated_helpers.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/brick/iscsi/iscsi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/netapp/iscsi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/scheduler/filters/json_filter.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/nexenta/jsonrpc.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/jsonutils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/xenapi/lib.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v1/limits.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v2/limits.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/views/limits.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/lockutils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/log.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/notifier/log_notifier.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/loopingcall.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/brick/local_dev/lvm.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/share/drivers/lvm.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/lvm.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/manager.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/backup/manager.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/manager.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/share/manager.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/manager.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-all" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-api" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-backup" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-clear-rabbit-queues" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-manage" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-rootwrap" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-rpc-zmq-receiver" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-scheduler" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-share" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-volume-usage-audit" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/bin/manila-volume" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/matchmaker.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/matchmaker_redis.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/migration.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migration.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/models.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/share/drivers/netapp.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/nfs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/netapp/nfs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/policy.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/policy.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/processutils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/proxy.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/quota.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/quota_classes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/quotas.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/notifier/rabbit_notifier.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/rbd.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/filters/retry_filter.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v1/router.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v2/router.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/notifier/rpc_notifier.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/notifier/rpc_notifier2.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/backup/rpcapi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/rpcapi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/share/rpcapi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/rpcapi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/runtime_flags.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/san/san.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/scality.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/scheduler_options.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/service.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/service.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/service.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/services.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/session.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/share_actions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/share_snapshots.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/views/share_snapshots.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/shares.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/views/shares.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/sheepdog.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/scheduler/simple.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/sizelimit.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/middleware/sizelimit.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/xenapi/sm.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v1/snapshot_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v2/snapshot_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v1/snapshots.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v2/snapshots.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/san/solaris.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/solidfire.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/common/sqlalchemyutils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/storwize_svc.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/strutils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/stubs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v1/stubs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v2/stubs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/backup/services/swift.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/test.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_HpSanISCSIDriver.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_admin_actions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/middleware/test_auth.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_backup.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_backup_swift.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_backups.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/brick/test_brick_lvm.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/scheduler/test_capacity_weigher.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/test_common.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_context.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_coraid.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_drivers_compatibility.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_emc.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_exception.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_extended_snapshot_attributes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/test_extensions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/integrated/test_extensions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/middleware/test_faults.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/scheduler/test_filter_scheduler.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_flags.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/image/test_glance.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_glusterfs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/scheduler/test_host_filters.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/scheduler/test_host_manager.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_hosts.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_hp3par.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_huawei.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_iscsi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v1/test_limits.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v2/test_limits.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/integrated/test_login.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_migrations.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_misc.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_netapp.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_netapp_nfs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_nexenta.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_nfs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_policy.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_quota.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_rbd.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/test_router.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/scheduler/test_rpcapi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_scality.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/scheduler/test_scheduler.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/scheduler/test_scheduler_options.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_service.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_services.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_share.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_share_actions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_share_api.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_share_driver.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_share_lvm.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_share_netapp.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_share_rpcapi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_share_snapshots.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_shares.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_sheepdog.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/middleware/test_sizelimit.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_skip_examples.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v1/test_snapshot_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v2/test_snapshot_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v1/test_snapshots.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v2/test_snapshots.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_solidfire.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_storwize_svc.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_test.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_test_utils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v1/test_types.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v2/test_types.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_types_extra_specs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_types_manage.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_utils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_volume.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_volume_actions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_volume_configuration.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_volume_glance_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_volume_host_attribute.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_volume_image_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v1/test_volume_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_volume_rpcapi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/contrib/test_volume_tenant_attribute.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_volume_types.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_volume_types_extra_specs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_volume_utils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v1/test_volumes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/v2/test_volumes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/integrated/test_volumes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_windows.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_wsgi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/test_wsgi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/openstack/test_wsgi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_xenapi_sm.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_xiv.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/integrated/test_xml.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/api/test_xmlutil.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/test_zadara.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/threadgroup.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v1/types.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v2/types.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/views/types.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/types_extra_specs.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/types_manage.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/urlmap.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/openstack/urlmap.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/utils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/utils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/utils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/version.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/versions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/openstack/volume/versions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/nexenta/volume.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/volume_actions.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/volume_host_attribute.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/volume_image_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v1/volume_metadata.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/contrib/volume_tenant_attribute.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/volume_types.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v1/volumes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v2/volumes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/v2/views/volumes.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/windows.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/tests/windows/windowsutils.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rootwrap/wrapper.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/wsgi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/openstack/wsgi.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/xiv.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/api/xmlutil.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/volume/drivers/zadara.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/manila/openstack/common/rpc/zmq_receiver.py" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-all" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-api" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-backup" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-clear-rabbit-queues" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-manage" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-rootwrap" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-rpc-zmq-receiver" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-scheduler" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-share" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-volume" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/bin/cinder-volume-usage-audit" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/auth.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/common.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/admin_actions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/backups.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/extended_snapshot_attributes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/hosts.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/image_create.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/quota_classes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/quotas.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/services.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/share_actions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/share_snapshots.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/shares.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/types_extra_specs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/types_manage.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/volume_actions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/volume_host_attribute.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/volume_image_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/contrib/volume_tenant_attribute.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/extensions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/middleware/auth.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/middleware/fault.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/middleware/sizelimit.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/openstack/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/openstack/urlmap.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/openstack/volume/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/openstack/volume/versions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/openstack/wsgi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/sizelimit.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/urlmap.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v1/limits.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v1/router.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v1/snapshot_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v1/snapshots.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v1/types.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v1/volume_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v1/volumes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v2/limits.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v2/router.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v2/snapshot_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v2/snapshots.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v2/types.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v2/views/volumes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/v2/volumes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/versions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/views/backups.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/views/limits.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/views/share_snapshots.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/views/shares.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/views/types.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/api/xmlutil.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/backup/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/backup/api.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/backup/manager.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/backup/rpcapi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/backup/services/swift.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/brick/iscsi/iscsi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/brick/local_dev/lvm.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/common/sqlalchemyutils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/context.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/api.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/base.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/migration.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/api.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/001_cinder_init.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/002_quota_class.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/003_glance_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/004_volume_type_to_uuid.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/005_add_source_volume_column.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/008_add_backup.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/009_add_snapshot_metadata_table.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/010_add_share_tables.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/011_add_share_snapshot_table.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migration.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/models.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/session.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/exception.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/flags.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/image/glance.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/image/image_utils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/bg_BG/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/bs/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/cs/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/da/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/de/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/en_AU/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/en_GB/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/en_US/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/es/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/fi_FI/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/fr/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/it/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/ja/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/ko/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/ko_KR/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/pt_BR/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/ru/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/tl/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/tr/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/uk/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/vi_VN/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/zh_CN/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/locale/zh_TW/LC_MESSAGES/cinder.po" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/manager.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/exception.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/excutils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/gettextutils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/jsonutils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/lockutils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/log.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/loopingcall.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/notifier/api.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/notifier/log_notifier.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/notifier/rabbit_notifier.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/notifier/rpc_notifier.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/notifier/rpc_notifier2.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/policy.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/processutils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rootwrap/cmd.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rootwrap/wrapper.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/amqp.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/common.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/dispatcher.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/impl_fake.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/impl_kombu.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/impl_qpid.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/impl_zmq.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/matchmaker.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/matchmaker_redis.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/proxy.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/service.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rpc/zmq_receiver.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/scheduler/filters/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/scheduler/filters/availability_zone_filter.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/scheduler/filters/capabilities_filter.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/scheduler/filters/extra_specs_ops.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/scheduler/filters/json_filter.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/scheduler/weights/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/service.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/strutils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/openstack/common/threadgroup.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/policy.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/quota.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/chance.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/driver.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/filter_scheduler.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/filters/capacity_filter.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/filters/retry_filter.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/host_manager.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/manager.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/rpcapi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/scheduler_options.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/simple.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/scheduler/weights/capacity.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/service.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/share/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/share/api.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/share/configuration.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/share/driver.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/share/drivers/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/share/drivers/lvm.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/share/drivers/netapp.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/share/manager.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/share/rpcapi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/test.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/stubs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_admin_actions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_backups.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_extended_snapshot_attributes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_hosts.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_services.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_share_actions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_share_snapshots.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_shares.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_types_extra_specs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_types_manage.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_volume_actions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_volume_host_attribute.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_volume_image_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/contrib/test_volume_tenant_attribute.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/extensions/foxinsocks.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/fakes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/middleware/test_auth.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/middleware/test_faults.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/middleware/test_sizelimit.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/openstack/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/openstack/test_wsgi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/test_common.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/test_extensions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/test_router.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/test_wsgi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/test_xmlutil.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v1/stubs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v1/test_limits.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v1/test_snapshot_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v1/test_snapshots.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v1/test_types.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v1/test_volume_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v1/test_volumes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v2/stubs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v2/test_limits.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v2/test_snapshot_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v2/test_snapshots.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v2/test_types.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/api/v2/test_volumes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/backup/fake_service.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/backup/fake_swift_client.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/brick/test_brick_lvm.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/db/fakes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/declare_flags.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/fake_driver.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/fake_flags.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/fake_utils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/image/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/image/fake.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/image/test_glance.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/integrated/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/integrated/api/client.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/integrated/integrated_helpers.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/integrated/test_extensions.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/integrated/test_login.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/integrated/test_volumes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/integrated/test_xml.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/runtime_flags.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/scheduler/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/scheduler/fakes.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/scheduler/test_capacity_weigher.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/scheduler/test_filter_scheduler.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/scheduler/test_host_filters.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/scheduler/test_host_manager.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/scheduler/test_rpcapi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/scheduler/test_scheduler.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/scheduler/test_scheduler_options.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_HpSanISCSIDriver.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_backup.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_backup_swift.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_context.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_coraid.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_drivers_compatibility.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_emc.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_exception.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_flags.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_glusterfs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_hp3par.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_huawei.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_iscsi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_migrations.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_misc.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_netapp.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_netapp_nfs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_nexenta.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_nfs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_policy.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_quota.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_rbd.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_scality.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_service.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_share.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_share_api.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_share_driver.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_share_lvm.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_share_netapp.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_share_rpcapi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_sheepdog.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_skip_examples.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_solidfire.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_storwize_svc.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_test.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_test_utils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_utils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_volume.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_volume_configuration.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_volume_glance_metadata.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_volume_rpcapi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_volume_types.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_volume_types_extra_specs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_volume_utils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_windows.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_wsgi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_xenapi_sm.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_xiv.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/test_zadara.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/utils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/windows/basetestcase.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/tests/windows/windowsutils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/utils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/version.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/api.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/configuration.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/driver.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/coraid.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/emc/emc_smis_common.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/emc/emc_smis_iscsi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/glusterfs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/huawei/huawei_iscsi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/lvm.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/netapp/api.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/netapp/iscsi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/netapp/nfs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/nexenta/jsonrpc.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/nexenta/volume.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/nfs.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/rbd.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/san/__init__.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/san/hp/hp_3par_common.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/san/hp/hp_3par_fc.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/san/hp/hp_3par_iscsi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/san/hp_lefthand.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/san/san.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/san/solaris.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/scality.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/sheepdog.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/solidfire.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/storwize_svc.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/windows.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/xenapi/lib.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/xenapi/sm.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/xiv.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/zadara.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/manager.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/rpcapi.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/utils.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/volume/volume_types.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/cinder/wsgi.py" afterPath="" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/middleware/__init__.py" afterPath="$PROJECT_DIR$/manila/api/middleware/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/schemas/atom-link.rng" afterPath="$PROJECT_DIR$/manila/api/schemas/atom-link.rng" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/schemas/v1.1/extension.rng" afterPath="$PROJECT_DIR$/manila/api/schemas/v1.1/extension.rng" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/schemas/v1.1/extensions.rng" afterPath="$PROJECT_DIR$/manila/api/schemas/v1.1/extensions.rng" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/schemas/v1.1/limits.rng" afterPath="$PROJECT_DIR$/manila/api/schemas/v1.1/limits.rng" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/schemas/v1.1/metadata.rng" afterPath="$PROJECT_DIR$/manila/api/schemas/v1.1/metadata.rng" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/v1/__init__.py" afterPath="$PROJECT_DIR$/manila/api/v1/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/v2/__init__.py" afterPath="$PROJECT_DIR$/manila/api/v2/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/v2/views/__init__.py" afterPath="$PROJECT_DIR$/manila/api/v2/views/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/views/__init__.py" afterPath="$PROJECT_DIR$/manila/api/views/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/api/views/versions.py" afterPath="$PROJECT_DIR$/manila/api/views/versions.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/backup/services/__init__.py" afterPath="$PROJECT_DIR$/manila/backup/services/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/brick/__init__.py" afterPath="$PROJECT_DIR$/manila/brick/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/brick/iscsi/__init__.py" afterPath="$PROJECT_DIR$/manila/brick/iscsi/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/brick/local_dev/__init__.py" afterPath="$PROJECT_DIR$/manila/brick/local_dev/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/common/__init__.py" afterPath="$PROJECT_DIR$/manila/common/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/compute/__init__.py" afterPath="$PROJECT_DIR$/manila/compute/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/compute/aggregate_states.py" afterPath="$PROJECT_DIR$/manila/compute/aggregate_states.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/__init__.py" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/README" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/README" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/__init__.py" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/manage.py" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/manage.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/migrate.cfg" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/migrate.cfg" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/005_sqlite_downgrade.sql" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/005_sqlite_downgrade.sql" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/006_snapshots_add_provider_location.py" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/006_snapshots_add_provider_location.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/007_add_volume_snapshot_fk.py" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/007_add_volume_snapshot_fk.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/007_sqlite_downgrade.sql" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/007_sqlite_downgrade.sql" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/db/sqlalchemy/migrate_repo/versions/__init__.py" afterPath="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/image/__init__.py" afterPath="$PROJECT_DIR$/manila/image/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/locale/cinder.pot" afterPath="$PROJECT_DIR$/manila/locale/cinder.pot" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/__init__.py" afterPath="$PROJECT_DIR$/manila/openstack/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/README" afterPath="$PROJECT_DIR$/manila/openstack/common/README" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/__init__.py" afterPath="$PROJECT_DIR$/manila/openstack/common/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/context.py" afterPath="$PROJECT_DIR$/manila/openstack/common/context.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/eventlet_backdoor.py" afterPath="$PROJECT_DIR$/manila/openstack/common/eventlet_backdoor.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/fileutils.py" afterPath="$PROJECT_DIR$/manila/openstack/common/fileutils.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/importutils.py" afterPath="$PROJECT_DIR$/manila/openstack/common/importutils.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/local.py" afterPath="$PROJECT_DIR$/manila/openstack/common/local.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/network_utils.py" afterPath="$PROJECT_DIR$/manila/openstack/common/network_utils.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/notifier/__init__.py" afterPath="$PROJECT_DIR$/manila/openstack/common/notifier/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/notifier/no_op_notifier.py" afterPath="$PROJECT_DIR$/manila/openstack/common/notifier/no_op_notifier.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/notifier/test_notifier.py" afterPath="$PROJECT_DIR$/manila/openstack/common/notifier/test_notifier.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rootwrap/__init__.py" afterPath="$PROJECT_DIR$/manila/openstack/common/rootwrap/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/rootwrap/filters.py" afterPath="$PROJECT_DIR$/manila/openstack/common/rootwrap/filters.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/scheduler/__init__.py" afterPath="$PROJECT_DIR$/manila/openstack/common/scheduler/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/scheduler/filter.py" afterPath="$PROJECT_DIR$/manila/openstack/common/scheduler/filter.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/scheduler/weight.py" afterPath="$PROJECT_DIR$/manila/openstack/common/scheduler/weight.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/timeutils.py" afterPath="$PROJECT_DIR$/manila/openstack/common/timeutils.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/openstack/common/uuidutils.py" afterPath="$PROJECT_DIR$/manila/openstack/common/uuidutils.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/scheduler/filters/__init__.py" afterPath="$PROJECT_DIR$/manila/scheduler/filters/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/scheduler/weights/__init__.py" afterPath="$PROJECT_DIR$/manila/scheduler/weights/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/testing/README.rst" afterPath="$PROJECT_DIR$/manila/testing/README.rst" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/api/common.py" afterPath="$PROJECT_DIR$/manila/tests/api/common.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/api/extensions/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/api/extensions/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/api/middleware/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/api/middleware/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/api/v1/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/api/v1/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/api/v2/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/api/v2/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/backup/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/backup/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/brick/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/brick/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/db/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/db/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/glance/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/glance/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/glance/stubs.py" afterPath="$PROJECT_DIR$/manila/tests/glance/stubs.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/integrated/api/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/integrated/api/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/monkey_patch_example/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/monkey_patch_example/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/monkey_patch_example/example_a.py" afterPath="$PROJECT_DIR$/manila/tests/monkey_patch_example/example_a.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/monkey_patch_example/example_b.py" afterPath="$PROJECT_DIR$/manila/tests/monkey_patch_example/example_b.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/policy.json" afterPath="$PROJECT_DIR$/manila/tests/policy.json" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/test_api.py" afterPath="$PROJECT_DIR$/manila/tests/test_api.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/test_migrations.conf" afterPath="$PROJECT_DIR$/manila/tests/test_migrations.conf" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/var/ca.crt" afterPath="$PROJECT_DIR$/manila/tests/var/ca.crt" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/var/certificate.crt" afterPath="$PROJECT_DIR$/manila/tests/var/certificate.crt" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/var/privatekey.key" afterPath="$PROJECT_DIR$/manila/tests/var/privatekey.key" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/windows/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/db_fakes.py" afterPath="$PROJECT_DIR$/manila/tests/windows/db_fakes.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/mockproxy.py" afterPath="$PROJECT_DIR$/manila/tests/windows/mockproxy.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/README.rst" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/README.rst" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_check_for_setup_errors_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_check_for_setup_errors_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_export_os.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_export_os.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_export_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_export_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_snapshot_os.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_snapshot_os.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_snapshot_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_snapshot_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_volume_from_snapshot_os.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_volume_from_snapshot_os.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_volume_from_snapshot_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_volume_from_snapshot_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_volume_os.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_volume_os.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_volume_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_create_volume_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_delete_snapshot_os.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_delete_snapshot_os.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_delete_snapshot_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_delete_snapshot_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_delete_volume_os.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_delete_volume_os.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_delete_volume_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_delete_volume_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_ensure_export_os.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_ensure_export_os.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_ensure_export_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_ensure_export_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_initialize_connection_os.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_initialize_connection_os.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_initialize_connection_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_initialize_connection_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_remove_export_os.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_remove_export_os.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/windows/stubs/test_windows.TestWindowsDriver.test_remove_export_wmi.p.gz" afterPath="$PROJECT_DIR$/manila/tests/windows/stubs/test_windows.TestWindowsDriver.test_remove_export_wmi.p.gz" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/tests/xenapi/__init__.py" afterPath="$PROJECT_DIR$/manila/tests/xenapi/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/emc/__init__.py" afterPath="$PROJECT_DIR$/manila/volume/drivers/emc/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/emc/cinder_emc_config.xml.sample" afterPath="$PROJECT_DIR$/manila/volume/drivers/emc/cinder_emc_config.xml.sample" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/huawei/__init__.py" afterPath="$PROJECT_DIR$/manila/volume/drivers/huawei/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/huawei/cinder_huawei_conf.xml.sample" afterPath="$PROJECT_DIR$/manila/volume/drivers/huawei/cinder_huawei_conf.xml.sample" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/netapp/__init__.py" afterPath="$PROJECT_DIR$/manila/volume/drivers/netapp/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/nexenta/__init__.py" afterPath="$PROJECT_DIR$/manila/volume/drivers/nexenta/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/san/hp/__init__.py" afterPath="$PROJECT_DIR$/manila/volume/drivers/san/hp/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/xenapi/__init__.py" afterPath="$PROJECT_DIR$/manila/volume/drivers/xenapi/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/cinder/volume/drivers/xenapi/tools.py" afterPath="$PROJECT_DIR$/manila/volume/drivers/xenapi/tools.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/doc/ext/cinder_autodoc.py" afterPath="$PROJECT_DIR$/doc/ext/cinder_autodoc.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/doc/source/conf.py" afterPath="$PROJECT_DIR$/doc/source/conf.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tools/conf/extract_opts.py" afterPath="$PROJECT_DIR$/tools/conf/extract_opts.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tools/lintstack.py" afterPath="$PROJECT_DIR$/tools/lintstack.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/tools/patch_tox_venv.py" afterPath="$PROJECT_DIR$/tools/patch_tox_venv.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/setup.cfg" afterPath="$PROJECT_DIR$/setup.cfg" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/contrib/admin_actions.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/contrib/extended_snapshot_attributes.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/contrib/hosts.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/contrib/types_extra_specs.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/contrib/types_manage.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/contrib/volume_actions.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/contrib/volume_host_attribute.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/contrib/volume_image_metadata.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/contrib/volume_tenant_attribute.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v1/snapshot_metadata.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v1/snapshots.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v1/types.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v1/volume_metadata.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v1/volumes.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v2/snapshot_metadata.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v2/snapshots.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v2/types.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v2/views/volumes.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/v2/volumes.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/manila/api/views/types.py" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/manila/api/v1/router.py" afterPath="$PROJECT_DIR$/manila/api/v1/router.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/manila/api/v2/router.py" afterPath="$PROJECT_DIR$/manila/api/v2/router.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="manila.iws" />
     <ignored path=".idea/workspace.xml" />
-    <file path="/Dummy.txt" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1377869547775" ignored="false" />
-    <file path="/a.dummy" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1377869962180" ignored="false" />
+    <file path="/Dummy.txt" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378207548419" ignored="false" />
+    <file path="/a.dummy" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378278263409" ignored="false" />
+    <file path="/migration.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378193247103" ignored="false" />
+    <file path="/models.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378195295470" ignored="false" />
+    <file path="/migrate.cfg" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378195338621" ignored="false" />
+    <file path="/001_manila_init.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378195376666" ignored="false" />
+    <file path="/__init__.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378195469985" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/setup.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="/setup.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208172263" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/LICENSE" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208236147" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/README.rst" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/volume_backups_restore.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244533" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/openstack-common.conf" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/__init__.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/volume_snapshots.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/contrib/list_extensions.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/test_utils.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/volume_backups_restore.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/run_tests.sh" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/__init__.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/test_client.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/volume_snapshots.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/volume_types.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/test_service_catalog.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/volume_backups.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/shell.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/test_http.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/utils.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/test_base.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/test_shell.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/base.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378209841523" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/extension.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/client.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/service_catalog.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v1/test_types.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v1/test_shell.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v1/fakes.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/shell.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v1/test_auth.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/volume_types.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/share_snapshots.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/volume_backups.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/contrib/list_extensions.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/volumes.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v1/shares/test_share_snapshots.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v1/shares/fakes.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v1/shares/test_shares.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v1/contrib/test_list_extensions.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v2/test_types.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v2/test_shell.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v2/fakes.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v2/test_auth.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/openstack/common/version.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v2/shares/test_share_snapshots.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/doc/Makefile" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v2/shares/fakes.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v2/shares/test_shares.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/doc/source/index.rst" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/doc/source/conf.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tests/v2/contrib/test_list_extensions.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tools/install_venv.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tools/cinder.bash_completion" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/shell.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/limits.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/client.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378209975637" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/shares.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/quotas.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v1/quota_classes.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/__init__.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/volumes.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/share_snapshots.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/limits.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/client.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/shares.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/quotas.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/manilaclient/v2/quota_classes.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="$PROJECT_DIR$/../python-manilaclient/tox.ini" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378208244534" ignored="false" />
+    <file path="/base.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378209841523" ignored="false" />
+    <file path="/client.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378209975637" ignored="false" />
+    <file path="/manila-api" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378212629636" ignored="false" />
+    <file path="/auth.py" changelist="1b1c7685-def3-415f-9322-bbcb3d480c5d" time="1378213653088" ignored="false" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -829,92 +128,98 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="manila-backup" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/manila-backup">
+      <file leaf-file-name="api.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/manila/db/api.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="17" column="22" selection-start="706" selection-end="706" vertical-scroll-proportion="0.0">
+            <state line="69" column="19" selection-start="2706" selection-end="2706" vertical-scroll-proportion="-12.84">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="manila-clear-rabbit-queues" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/manila-clear-rabbit-queues">
+      <file leaf-file-name="models.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/manila/db/sqlalchemy/models.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="18" column="53" selection-start="755" selection-end="755" vertical-scroll-proportion="0.0">
+            <state line="294" column="22" selection-start="9404" selection-end="9404" vertical-scroll-proportion="-16.92">
+              <folding>
+                <element signature="e#928#988#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="iscsi.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/manila/brick/iscsi/iscsi.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="-0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="manila-manage" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/manila-manage">
+      <file leaf-file-name="manila-api" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/bin/manila-api">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="53" column="20" selection-start="2506" selection-end="2506" vertical-scroll-proportion="0.0">
+            <state line="49" column="27" selection-start="1639" selection-end="1639" vertical-scroll-proportion="-7.72">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="manila-rootwrap" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/manila-rootwrap">
+      <file leaf-file-name="service.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/manila/service.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="22" column="20" selection-start="840" selection-end="840" vertical-scroll-proportion="0.0">
+            <state line="521" column="8" selection-start="18410" selection-end="18410" vertical-scroll-proportion="13.32">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="manila-rpc-zmq-receiver" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/manila-rpc-zmq-receiver">
+      <file leaf-file-name="auth.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/manila/api/middleware/auth.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="24" column="8" selection-start="772" selection-end="772" vertical-scroll-proportion="0.0">
+            <state line="71" column="12" selection-start="2224" selection-end="2224" vertical-scroll-proportion="-1.7142857">
+              <folding>
+                <element signature="e#707#716#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="extensions.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/manila/api/extensions.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="185" column="42" selection-start="5369" selection-end="5375" vertical-scroll-proportion="-1.7142857">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="manila-scheduler" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/manila-scheduler">
+      <file leaf-file-name="image_create.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/manila/api/contrib/image_create.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="19" column="22" selection-start="821" selection-end="821" vertical-scroll-proportion="0.0">
+            <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="9.44">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="manila-share" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/manila-share">
+      <file leaf-file-name="router.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/manila/api/v1/router.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="18" column="22" selection-start="711" selection-end="711" vertical-scroll-proportion="0.0">
+            <state line="25" column="32" selection-start="954" selection-end="954" vertical-scroll-proportion="-6.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="manila-volume" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/manila-volume">
+      <file leaf-file-name="router.py" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/manila/api/v2/router.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="19" column="22" selection-start="821" selection-end="821" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="manila-volume-usage-audit" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/bin/manila-volume-usage-audit">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="70" column="0" selection-start="2654" selection-end="2654" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="setup.cfg" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/setup.cfg">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="19" column="0" selection-start="606" selection-end="606" vertical-scroll-proportion="0.5153707">
-              <folding />
+            <state line="46" column="32" selection-start="1563" selection-end="1563" vertical-scroll-proportion="0.7178683">
+              <folding>
+                <element signature="e#860#893#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -937,27 +242,30 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/manila/image/glance.py" />
-        <option value="$PROJECT_DIR$/bin/cinder-all" />
-        <option value="$PROJECT_DIR$/bin/cinder-api" />
-        <option value="$PROJECT_DIR$/bin/cinder-backup" />
-        <option value="$PROJECT_DIR$/bin/cinder-clear-rabbit-queues" />
-        <option value="$PROJECT_DIR$/bin/cinder-manage" />
-        <option value="$PROJECT_DIR$/bin/cinder-rootwrap" />
-        <option value="$PROJECT_DIR$/bin/cinder-rpc-zmq-receiver" />
-        <option value="$PROJECT_DIR$/bin/cinder-scheduler" />
-        <option value="$PROJECT_DIR$/bin/cinder-share" />
-        <option value="$PROJECT_DIR$/bin/cinder-volume" />
-        <option value="$PROJECT_DIR$/bin/cinder-volume-usage-audit" />
+        <option value="$PROJECT_DIR$/manila/db/sqlalchemy/migration.py" />
+        <option value="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/migrate.cfg" />
+        <option value="$PROJECT_DIR$/manila/db/sqlalchemy/migrate_repo/versions/001_manila_init.py" />
+        <option value="$PROJECT_DIR$/manila/db/__init__.py" />
+        <option value="$PROJECT_DIR$/manila/db/sqlalchemy/api.py" />
         <option value="$PROJECT_DIR$/setup.cfg" />
+        <option value="$PROJECT_DIR$/bin/manila-manage" />
+        <option value="$PROJECT_DIR$/manila/exception.py" />
+        <option value="$PROJECT_DIR$/manila/flags.py" />
+        <option value="$PROJECT_DIR$/manila/db/api.py" />
+        <option value="$PROJECT_DIR$/manila/db/sqlalchemy/models.py" />
+        <option value="$PROJECT_DIR$/bin/manila-api" />
+        <option value="$PROJECT_DIR$/manila/api/middleware/auth.py" />
+        <option value="$PROJECT_DIR$/manila/api/contrib/admin_actions.py" />
+        <option value="$PROJECT_DIR$/manila/api/v1/router.py" />
+        <option value="$PROJECT_DIR$/manila/api/v2/router.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="65" />
-    <option name="y" value="52" />
-    <option name="width" value="1855" />
-    <option name="height" value="1028" />
+    <option name="x" value="64" />
+    <option name="y" value="-4" />
+    <option name="width" value="1303" />
+    <option name="height" value="773" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="false">
     <OptionsSetting value="true" id="Add" />
@@ -985,6 +293,7 @@
       <sortByType />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -1013,21 +322,153 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="bin" />
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="api" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="api" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="views" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="api" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="v2" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="api" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="v2" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="views" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="api" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="v1" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="manila" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="api" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="middleware" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="options.splitter.main.proportions" value="0.3" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="options.lastSelected" value="project.propVCSSupport.Mappings" />
-    <property name="options.splitter.details.proportions" value="0.2" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../python-manilaclient" />
     <property name="options.searchVisible" value="true" />
+    <property name="options.splitter.details.proportions" value="0.2" />
   </component>
   <component name="RunManager">
     <configuration default="true" type="tests" factoryName="Nosetests">
@@ -1101,26 +542,26 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="65" y="52" width="1855" height="1028" extended-state="7" />
+    <frame x="64" y="-4" width="1303" height="773" extended-state="6" />
     <editor active="false" />
     <layout>
-      <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.339934" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.35332254" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2498618" sideWeight="0.660066" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.28856915" sideWeight="0.6466775" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="true" content_ui="tabs" />
-      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="true" content_ui="tabs" />
+      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="SLIDING" type="SLIDING" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="VcsContentAnnotationSettings">
@@ -1186,99 +627,119 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/manila/compute/aggregate_states.py">
       <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="-0.33451957">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/compute/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
         <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/manila/image/glance.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="34" column="23" selection-start="1040" selection-end="1040" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-all">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="44" column="5" selection-start="1535" selection-end="1535" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-api">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="19" column="22" selection-start="820" selection-end="820" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-backup">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="17" column="22" selection-start="706" selection-end="706" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-clear-rabbit-queues">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="18" column="53" selection-start="755" selection-end="755" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-manage">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="53" column="20" selection-start="2506" selection-end="2506" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-rootwrap">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="22" column="20" selection-start="840" selection-end="840" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-rpc-zmq-receiver">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="24" column="8" selection-start="772" selection-end="772" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-scheduler">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="19" column="22" selection-start="821" selection-end="821" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-share">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="18" column="22" selection-start="711" selection-end="711" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-volume">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="19" column="22" selection-start="821" selection-end="821" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/manila-volume-usage-audit">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="70" column="0" selection-start="2654" selection-end="2654" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/setup.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="19" column="0" selection-start="606" selection-end="606" vertical-scroll-proportion="0.5153707">
+        <state line="35" column="20" selection-start="892" selection-end="892" vertical-scroll-proportion="0.0">
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/bin/manila-manage">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="644" column="48" selection-start="23215" selection-end="23215" vertical-scroll-proportion="-120.92">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/exception.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="564" column="49" selection-start="15313" selection-end="15313" vertical-scroll-proportion="-1.6428572">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/flags.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="226" column="74" selection-start="9048" selection-end="9048" vertical-scroll-proportion="-1.6428572">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/db/api.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="69" column="19" selection-start="2706" selection-end="2706" vertical-scroll-proportion="-12.84">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/db/sqlalchemy/models.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="294" column="22" selection-start="9404" selection-end="9404" vertical-scroll-proportion="-16.92">
+          <folding>
+            <element signature="e#928#988#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/brick/iscsi/iscsi.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/bin/manila-api">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="49" column="27" selection-start="1639" selection-end="1639" vertical-scroll-proportion="-7.72">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/service.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="521" column="8" selection-start="18410" selection-end="18410" vertical-scroll-proportion="13.32">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/api/middleware/auth.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="71" column="12" selection-start="2224" selection-end="2224" vertical-scroll-proportion="-1.7142857">
+          <folding>
+            <element signature="e#707#716#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/api/extensions.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="185" column="42" selection-start="5369" selection-end="5375" vertical-scroll-proportion="-1.7142857">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/api/contrib/image_create.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="9.44">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/api/v1/router.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="25" column="32" selection-start="954" selection-end="954" vertical-scroll-proportion="-6.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/manila/api/v2/router.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="46" column="32" selection-start="1563" selection-end="1563" vertical-scroll-proportion="0.7178683">
+          <folding>
+            <element signature="e#860#893#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

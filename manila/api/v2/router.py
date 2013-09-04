@@ -24,9 +24,6 @@ WSGI middleware for OpenStack Volume API.
 from manila.api import extensions
 import manila.api.openstack
 from manila.api.v2 import limits
-from manila.api.v2 import snapshots
-from manila.api.v2 import types
-from manila.api.v2 import volumes
 from manila.api import versions
 from manila.openstack.common import log as logging
 
@@ -48,23 +45,3 @@ class APIRouter(manila.api.openstack.APIRouter):
                        action='show')
 
         mapper.redirect("", "/")
-
-        self.resources['volumes'] = volumes.create_resource(ext_mgr)
-        mapper.resource("volume", "volumes",
-                        controller=self.resources['volumes'],
-                        collection={'detail': 'GET'},
-                        member={'action': 'POST'})
-
-        self.resources['types'] = types.create_resource()
-        mapper.resource("type", "types",
-                        controller=self.resources['types'])
-
-        self.resources['snapshots'] = snapshots.create_resource(ext_mgr)
-        mapper.resource("snapshot", "snapshots",
-                        controller=self.resources['snapshots'],
-                        collection={'detail': 'GET'},
-                        member={'action': 'POST'})
-
-        self.resources['limits'] = limits.create_resource()
-        mapper.resource("limit", "limits",
-                        controller=self.resources['limits'])

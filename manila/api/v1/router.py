@@ -24,11 +24,6 @@ WSGI middleware for OpenStack Volume API.
 from manila.api import extensions
 import manila.api.openstack
 from manila.api.v1 import limits
-from manila.api.v1 import snapshot_metadata
-from manila.api.v1 import snapshots
-from manila.api.v1 import types
-from manila.api.v1 import volume_metadata
-from manila.api.v1 import volumes
 from manila.api import versions
 from manila.openstack.common import log as logging
 
@@ -50,46 +45,3 @@ class APIRouter(manila.api.openstack.APIRouter):
                        action='show')
 
         mapper.redirect("", "/")
-
-        self.resources['volumes'] = volumes.create_resource(ext_mgr)
-        mapper.resource("volume", "volumes",
-                        controller=self.resources['volumes'],
-                        collection={'detail': 'GET'},
-                        member={'action': 'POST'})
-
-        self.resources['types'] = types.create_resource()
-        mapper.resource("type", "types",
-                        controller=self.resources['types'])
-
-        self.resources['snapshots'] = snapshots.create_resource(ext_mgr)
-        mapper.resource("snapshot", "snapshots",
-                        controller=self.resources['snapshots'],
-                        collection={'detail': 'GET'},
-                        member={'action': 'POST'})
-
-        self.resources['snapshot_metadata'] = \
-            snapshot_metadata.create_resource()
-        snapshot_metadata_controller = self.resources['snapshot_metadata']
-
-        mapper.resource("snapshot_metadata", "metadata",
-                        controller=snapshot_metadata_controller,
-                        parent_resource=dict(member_name='snapshot',
-                        collection_name='snapshots'))
-
-        self.resources['limits'] = limits.create_resource()
-        mapper.resource("limit", "limits",
-                        controller=self.resources['limits'])
-        self.resources['volume_metadata'] = \
-            volume_metadata.create_resource()
-        volume_metadata_controller = self.resources['volume_metadata']
-
-        mapper.resource("volume_metadata", "metadata",
-                        controller=volume_metadata_controller,
-                        parent_resource=dict(member_name='volume',
-                        collection_name='volumes'))
-
-        mapper.connect("metadata",
-                       "/{project_id}/volumes/{volume_id}/metadata",
-                       controller=volume_metadata_controller,
-                       action='update_all',
-                       conditions={"method": ['PUT']})
