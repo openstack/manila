@@ -91,7 +91,6 @@ class HostState(object):
         self.host = host
         self.update_capabilities(capabilities, service)
 
-        self.volume_backend_name = None
         self.share_backend_name = None
         self.vendor_name = None
         self.driver_version = 0
@@ -115,24 +114,6 @@ class HostState(object):
             service = {}
         self.service = ReadOnlyDict(service)
 
-    def update_from_volume_capability(self, capability):
-        """Update information about a host from its volume_node info."""
-        if capability:
-            if self.updated and self.updated > capability['timestamp']:
-                return
-
-            self.volume_backend = capability.get('volume_backend_name', None)
-            self.vendor_name = capability.get('vendor_name', None)
-            self.driver_version = capability.get('driver_version', None)
-            self.storage_protocol = capability.get('storage_protocol', None)
-            self.QoS_support = capability.get('QoS_support', False)
-
-            self.total_capacity_gb = capability['total_capacity_gb']
-            self.free_capacity_gb = capability['free_capacity_gb']
-            self.reserved_percentage = capability['reserved_percentage']
-
-            self.updated = capability['timestamp']
-
     def update_from_share_capability(self, capability):
         """Update information about a host from its volume_node info."""
         if capability:
@@ -150,24 +131,6 @@ class HostState(object):
             self.reserved_percentage = capability['reserved_percentage']
 
             self.updated = capability['timestamp']
-
-    def consume_from_volume(self, volume):
-        """Incrementally update host state from an volume."""
-        volume_gb = volume['size']
-        if self.free_capacity_gb == 'infinite':
-            # There's virtually infinite space on back-end
-            pass
-        elif self.free_capacity_gb == 'unknown':
-            # Unable to determine the actual free space on back-end
-            pass
-        else:
-            self.free_capacity_gb -= volume_gb
-        self.updated = timeutils.utcnow()
-
-    def __repr__(self):
-        return ("host '%s': free_capacity_gb: %s" %
-                (self.host, self.free_capacity_gb))
-
 
 class HostManager(object):
     """Base HostManager class."""
@@ -255,7 +218,7 @@ class HostManager(object):
 
     def update_service_capabilities(self, service_name, host, capabilities):
         """Update the per-service capabilities based on this notification."""
-        if service_name not in ('volume', 'share'):
+        if service_name not in ('share'):
             LOG.debug(_('Ignoring %(service_name)s service update '
                         'from %(host)s'), locals())
             return
@@ -267,40 +230,6 @@ class HostManager(object):
         capab_copy = dict(capabilities)
         capab_copy["timestamp"] = timeutils.utcnow()  # Reported time
         self.service_states[host] = capab_copy
-
-    def get_all_host_states(self, context):
-        """Returns a dict of all the hosts the HostManager
-          knows about. Also, each of the consumable resources in HostState
-          are pre-populated and adjusted based on data in the db.
-
-          For example:
-          {'192.168.1.100': HostState(), ...}
-        """
-
-        # Get resource usage across the available volume nodes:
-        topic = FLAGS.volume_topic
-        volume_services = db.service_get_all_by_topic(context, topic)
-        for service in volume_services:
-            if not utils.service_is_up(service) or service['disabled']:
-                LOG.warn(_("service is down or disabled."))
-                continue
-            host = service['host']
-            capabilities = self.service_states.get(host, None)
-            host_state = self.host_state_map.get(host)
-            if host_state:
-                # copy capabilities to host_state.capabilities
-                host_state.update_capabilities(capabilities,
-                                               dict(service.iteritems()))
-            else:
-                host_state = self.host_state_cls(host,
-                                                 capabilities=capabilities,
-                                                 service=
-                                                 dict(service.iteritems()))
-                self.host_state_map[host] = host_state
-            # update host_state
-            host_state.update_from_volume_capability(capabilities)
-
-        return self.host_state_map.itervalues()
 
     def get_all_host_states_share(self, context):
         """Returns a dict of all the hosts the HostManager

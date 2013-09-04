@@ -33,7 +33,6 @@ from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common.notifier import api as notifier
 from manila.share import rpcapi as share_rpcapi
-from manila.volume import rpcapi as volume_rpcapi
 
 LOG = logging.getLogger(__name__)
 
@@ -47,7 +46,7 @@ FLAGS.register_opt(scheduler_driver_opt)
 
 
 class SchedulerManager(manager.Manager):
-    """Chooses a host to create volumes."""
+    """Chooses a host to create shares."""
 
     RPC_API_VERSION = '1.3'
 
@@ -78,42 +77,6 @@ class SchedulerManager(manager.Manager):
         self.driver.update_service_capabilities(service_name,
                                                 host,
                                                 capabilities)
-
-    def create_volume(self, context, topic, volume_id, snapshot_id=None,
-                      image_id=None, request_spec=None,
-                      filter_properties=None):
-        try:
-            if request_spec is None:
-                # For RPC version < 1.2 backward compatibility
-                request_spec = {}
-                volume_ref = db.volume_get(context, volume_id)
-                size = volume_ref.get('size')
-                availability_zone = volume_ref.get('availability_zone')
-                volume_type_id = volume_ref.get('volume_type_id')
-                vol_type = db.volume_type_get(context, volume_type_id)
-                volume_properties = {'size': size,
-                                     'availability_zone': availability_zone,
-                                     'volume_type_id': volume_type_id}
-                request_spec.update(
-                    {'volume_id': volume_id,
-                     'snapshot_id': snapshot_id,
-                     'image_id': image_id,
-                     'volume_properties': volume_properties,
-                     'volume_type': dict(vol_type).iteritems()})
-
-            self.driver.schedule_create_volume(context, request_spec,
-                                               filter_properties)
-        except exception.NoValidHost as ex:
-            volume_state = {'volume_state': {'status': 'error'}}
-            self._set_volume_state_and_notify('create_volume',
-                                              volume_state,
-                                              context, ex, request_spec)
-        except Exception as ex:
-            with excutils.save_and_reraise_exception():
-                volume_state = {'volume_state': {'status': 'error'}}
-                self._set_volume_state_and_notify('create_volume',
-                                                  volume_state,
-                                                  context, ex, request_spec)
 
     def create_share(self, context, topic, share_id, snapshot_id=None,
                      request_spec=None, filter_properties=None):
@@ -151,28 +114,5 @@ class SchedulerManager(manager.Manager):
         notifier.notify(context, notifier.publisher_id("scheduler"),
                         'scheduler.' + method, notifier.ERROR, payload)
 
-    def _set_volume_state_and_notify(self, method, updates, context, ex,
-                                     request_spec):
-        LOG.error(_("Failed to schedule_%(method)s: %(ex)s") % locals())
-
-        volume_state = updates['volume_state']
-        properties = request_spec.get('volume_properties', {})
-
-        volume_id = request_spec.get('volume_id', None)
-
-        if volume_id:
-            db.volume_update(context, volume_id, volume_state)
-
-        payload = dict(request_spec=request_spec,
-                       volume_properties=properties,
-                       volume_id=volume_id,
-                       state=volume_state,
-                       method=method,
-                       reason=ex)
-
-        notifier.notify(context, notifier.publisher_id("scheduler"),
-                        'scheduler.' + method, notifier.ERROR, payload)
-
     def request_service_capabilities(self, context):
-        volume_rpcapi.VolumeAPI().publish_service_capabilities(context)
         share_rpcapi.ShareAPI().publish_service_capabilities(context)

@@ -29,7 +29,6 @@ from manila.openstack.common import importutils
 from manila.openstack.common import timeutils
 from manila.share import rpcapi as share_rpcapi
 from manila import utils
-from manila.volume import rpcapi as volume_rpcapi
 
 scheduler_driver_opts = [
     cfg.StrOpt('scheduler_host_manager',
@@ -37,7 +36,7 @@ scheduler_driver_opts = [
                help='The scheduler host manager class to use'),
     cfg.IntOpt('scheduler_max_attempts',
                default=3,
-               help='Maximum number of attempts to schedule an volume'),
+               help='Maximum number of attempts to schedule a share'),
 ]
 
 FLAGS = flags.FLAGS
@@ -54,16 +53,6 @@ def share_update_db(context, share_id, host):
     return db.share_update(context, share_id, values)
 
 
-def volume_update_db(context, volume_id, host):
-    '''Set the host and set the scheduled_at field of a volume.
-
-    :returns: A Volume with the updated fields set properly.
-    '''
-    now = timeutils.utcnow()
-    values = {'host': host, 'scheduled_at': now}
-    return db.volume_update(context, volume_id, values)
-
-
 class Scheduler(object):
     """The base class that all Scheduler classes should inherit from."""
 
@@ -71,7 +60,6 @@ class Scheduler(object):
         self.host_manager = importutils.import_object(
             FLAGS.scheduler_host_manager)
         self.share_rpcapi = share_rpcapi.ShareAPI()
-        self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
     def get_host_list(self):
         """Get a list of hosts from the HostManager."""
@@ -99,10 +87,6 @@ class Scheduler(object):
     def schedule(self, context, topic, method, *_args, **_kwargs):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement a fallback schedule"))
-
-    def schedule_create_volume(self, context, request_spec, filter_properties):
-        """Must override schedule method for scheduler to work."""
-        raise NotImplementedError(_("Must implement schedule_create_volume"))
 
     def schedule_create_share(self, context, request_spec, filter_properties):
         """Must override schedule method for scheduler to work."""

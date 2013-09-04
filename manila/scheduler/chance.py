@@ -58,19 +58,6 @@ class ChanceScheduler(driver.Scheduler):
 
         return hosts[int(random.random() * len(hosts))]
 
-    def schedule_create_volume(self, context, request_spec, filter_properties):
-        """Picks a host that is up at random."""
-        topic = FLAGS.volume_topic
-        host = self._schedule(context, topic, request_spec,
-                              filter_properties=filter_properties)
-        volume_id = request_spec['volume_id']
-        snapshot_id = request_spec['snapshot_id']
-        image_id = request_spec['image_id']
-
-        updated_volume = driver.volume_update_db(context, volume_id, host)
-        self.volume_rpcapi.create_volume(context, updated_volume, host,
-                                         snapshot_id, image_id)
-
     def schedule_create_share(self, context, request_spec, filter_properties):
         """Picks a host that is up at random."""
         topic = FLAGS.share_topic

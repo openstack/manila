@@ -45,20 +45,6 @@ class SchedulerAPI(manila.openstack.common.rpc.proxy.RpcProxy):
             topic=FLAGS.scheduler_topic,
             default_version=self.RPC_API_VERSION)
 
-    def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
-                      image_id=None, request_spec=None,
-                      filter_properties=None):
-        request_spec_p = jsonutils.to_primitive(request_spec)
-        return self.cast(ctxt, self.make_msg(
-            'create_volume',
-            topic=topic,
-            volume_id=volume_id,
-            snapshot_id=snapshot_id,
-            image_id=image_id,
-            request_spec=request_spec_p,
-            filter_properties=filter_properties),
-            version='1.2')
-
     def create_share(self, ctxt, topic, share_id, snapshot_id=None,
                      request_spec=None, filter_properties=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
