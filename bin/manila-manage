@@ -671,16 +671,16 @@ class ServiceCommands(object):
 
 
 CATEGORIES = {
-    'backup': BackupCommands,
+    # 'backup': BackupCommands,
     'config': ConfigCommands,
     'db': DbCommands,
     'host': HostCommands,
     'logs': GetLogCommands,
     'service': ServiceCommands,
     'shell': ShellCommands,
-    'sm': StorageManagerCommands,
+    # 'sm': StorageManagerCommands,
     'version': VersionCommands,
-    'volume': VolumeCommands,
+    # 'volume': VolumeCommands,
     'migrate': ImportCommands,
 }
 
