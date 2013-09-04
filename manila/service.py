@@ -56,11 +56,11 @@ service_opts = [
                help='range of seconds to randomly delay when starting the'
                     ' periodic task scheduler to reduce stampeding.'
                     ' (Disable by setting to 0)'),
-    cfg.StrOpt('osapi_volume_listen',
+    cfg.StrOpt('osapi_share_listen',
                default="0.0.0.0",
                help='IP address for OpenStack Volume API to listen'),
-    cfg.IntOpt('osapi_volume_listen_port',
-               default=8776,
+    cfg.IntOpt('osapi_share_listen_port',
+               default=8786,
                help='port for os volume api to listen'), ]
 
 FLAGS = flags.FLAGS
