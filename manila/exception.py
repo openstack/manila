@@ -160,14 +160,6 @@ class Invalid(ManilaException):
     code = 400
 
 
-class InvalidSnapshot(Invalid):
-    message = _("Invalid snapshot") + ": %(reason)s"
-
-
-class VolumeAttached(Invalid):
-    message = _("Volume %(volume_id)s is still attached, detach volume first.")
-
-
 class SfJsonEncodeFailure(ManilaException):
     message = _("Failed to load data into json format")
 
@@ -182,14 +174,6 @@ class InvalidResults(Invalid):
 
 class InvalidInput(Invalid):
     message = _("Invalid input received") + ": %(reason)s"
-
-
-class InvalidVolumeType(Invalid):
-    message = _("Invalid volume type") + ": %(reason)s"
-
-
-class InvalidVolume(Invalid):
-    message = _("Invalid volume") + ": %(reason)s"
 
 
 class InvalidContentType(Invalid):
@@ -223,96 +207,6 @@ class NotFound(ManilaException):
     message = _("Resource could not be found.")
     code = 404
     safe = True
-
-
-class PersistentVolumeFileNotFound(NotFound):
-    message = _("Volume %(volume_id)s persistence file could not be found.")
-
-
-class VolumeNotFound(NotFound):
-    message = _("Volume %(volume_id)s could not be found.")
-
-
-class SfAccountNotFound(NotFound):
-    message = _("Unable to locate account %(account_name)s on "
-                "Solidfire device")
-
-
-class VolumeNotFoundForInstance(VolumeNotFound):
-    message = _("Volume not found for instance %(instance_id)s.")
-
-
-class VolumeMetadataNotFound(NotFound):
-    message = _("Volume %(volume_id)s has no metadata with "
-                "key %(metadata_key)s.")
-
-
-class InvalidVolumeMetadata(Invalid):
-    message = _("Invalid metadata") + ": %(reason)s"
-
-
-class InvalidVolumeMetadataSize(Invalid):
-    message = _("Invalid metadata size") + ": %(reason)s"
-
-
-class SnapshotMetadataNotFound(NotFound):
-    message = _("Snapshot %(snapshot_id)s has no metadata with "
-                "key %(metadata_key)s.")
-
-
-class InvalidSnapshotMetadata(Invalid):
-    message = _("Invalid metadata") + ": %(reason)s"
-
-
-class InvalidSnapshotMetadataSize(Invalid):
-    message = _("Invalid metadata size") + ": %(reason)s"
-
-
-class VolumeTypeNotFound(NotFound):
-    message = _("Volume type %(volume_type_id)s could not be found.")
-
-
-class VolumeTypeNotFoundByName(VolumeTypeNotFound):
-    message = _("Volume type with name %(volume_type_name)s "
-                "could not be found.")
-
-
-class VolumeTypeExtraSpecsNotFound(NotFound):
-    message = _("Volume Type %(volume_type_id)s has no extra specs with "
-                "key %(extra_specs_key)s.")
-
-
-class SnapshotNotFound(NotFound):
-    message = _("Snapshot %(snapshot_id)s could not be found.")
-
-
-class VolumeIsBusy(ManilaException):
-    message = _("deleting volume %(volume_name)s that has snapshot")
-
-
-class SnapshotIsBusy(ManilaException):
-    message = _("deleting snapshot %(snapshot_name)s that has "
-                "dependent volumes")
-
-
-class ISCSITargetNotFoundForVolume(NotFound):
-    message = _("No target id found for volume %(volume_id)s.")
-
-
-class ISCSITargetCreateFailed(ManilaException):
-    message = _("Failed to create iscsi target for volume %(volume_id)s.")
-
-
-class ISCSITargetAttachFailed(ManilaException):
-    message = _("Failed to attach iSCSI target for volume %(volume_id)s.")
-
-
-class ISCSITargetRemoveFailed(ManilaException):
-    message = _("Failed to remove iscsi target for volume %(volume_id)s.")
-
-
-class DiskNotFound(NotFound):
-    message = _("No disk at %(location)s")
 
 
 class InvalidImageRef(Invalid):
@@ -410,10 +304,6 @@ class KeyPairExists(Duplicate):
     message = _("Key pair %(key_name)s already exists.")
 
 
-class VolumeTypeExists(Duplicate):
-    message = _("Volume Type %(id)s already exists.")
-
-
 class MigrationError(ManilaException):
     message = _("Migration error") + ": %(reason)s"
 
@@ -445,38 +335,12 @@ class QuotaError(ManilaException):
     safe = True
 
 
-class VolumeSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested volume or snapshot exceeds "
-                "allowed Gigabytes quota")
-
-
-class VolumeSizeExceedsQuota(QuotaError):
-    message = _("Maximum volume/snapshot size exceeded")
-
-
-class VolumeLimitExceeded(QuotaError):
-    message = _("Maximum number of volumes allowed (%(allowed)d) exceeded")
-
-
-class SnapshotLimitExceeded(QuotaError):
-    message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
-
-
-class DuplicateSfVolumeNames(Duplicate):
-    message = _("Detected more than one volume with name %(vol_name)s")
-
-
 class Duplicate3PARHost(ManilaException):
     message = _("3PAR Host already exists: %(err)s.  %(info)s")
 
 
 class Invalid3PARDomain(ManilaException):
     message = _("Invalid 3PAR Domain: %(err)s")
-
-
-class VolumeTypeCreateFailed(ManilaException):
-    message = _("Cannot create volume_type with "
-                "name %(name)s and specs %(extra_specs)s")
 
 
 class SolidFireAPIException(ManilaException):
@@ -503,32 +367,12 @@ class FailedCmdWithDump(ManilaException):
     message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
 
 
-class ZadaraServerCreateFailure(ManilaException):
-    message = _("Unable to create server object for initiator %(name)s")
-
-
-class ZadaraServerNotFound(NotFound):
-    message = _("Unable to find server object for initiator %(name)s")
-
-
-class ZadaraVPSANoActiveController(ManilaException):
-    message = _("Unable to find any active VPSA controller")
-
-
-class ZadaraAttachmentsNotFound(NotFound):
-    message = _("Failed to retrieve attachments for volume %(name)s")
-
-
-class ZadaraInvalidAttachmentInfo(Invalid):
-    message = _("Invalid attachment info for volume %(name)s: %(reason)s")
-
-
 class InstanceNotFound(NotFound):
     message = _("Instance %(instance_id)s could not be found.")
 
 
-class VolumeBackendAPIException(ManilaException):
-    message = _("Bad or unexpected response from the storage volume "
+class ShareBackendAPIException(ManilaException):
+    message = _("Bad or unexpected response from the storage share "
                 "backend API: %(data)s")
 
 
@@ -541,7 +385,7 @@ class NfsNoSharesMounted(NotFound):
 
 
 class NfsNoSuitableShareFound(NotFound):
-    message = _("There is no share which can host %(volume_size)sG")
+    message = _("There is no share which can host %(share_size)sG")
 
 
 class GlusterfsException(ManilaException):
@@ -553,16 +397,11 @@ class GlusterfsNoSharesMounted(NotFound):
 
 
 class GlusterfsNoSuitableShareFound(NotFound):
-    message = _("There is no share which can host %(volume_size)sG")
-
-
-class GlanceMetadataExists(Invalid):
-    message = _("Glance metadata cannot be updated, key %(key)s"
-                " exists for volume id %(volume_id)s")
+    message = _("There is no share which can host %(share_size)sG")
 
 
 class ImageCopyFailure(Invalid):
-    message = _("Failed to copy image to volume")
+    message = _("Failed to copy image to share")
 
 
 class InvalidShare(ManilaException):
