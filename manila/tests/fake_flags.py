@@ -20,20 +20,13 @@ from manila import flags
 
 FLAGS = flags.FLAGS
 
-flags.DECLARE('iscsi_num_targets', 'manila.volume.drivers.lvm')
 flags.DECLARE('policy_file', 'manila.policy')
-flags.DECLARE('volume_driver', 'manila.volume.manager')
-flags.DECLARE('xiv_proxy', 'manila.volume.drivers.xiv')
-flags.DECLARE('backup_service', 'manila.backup.manager')
 
 def_vol_type = 'fake_vol_type'
 
 
 def set_defaults(conf):
     conf.set_default('default_volume_type', def_vol_type)
-    conf.set_default('volume_driver',
-                     'manila.tests.fake_driver.FakeISCSIDriver')
-    conf.set_default('iscsi_helper', 'fake')
     conf.set_default('connection_type', 'fake')
     conf.set_default('fake_rabbit', True)
     conf.set_default('rpc_backend', 'manila.openstack.common.rpc.impl_fake')
@@ -43,4 +36,3 @@ def set_defaults(conf):
     conf.set_default('sqlite_synchronous', False)
     conf.set_default('policy_file', 'manila/tests/policy.json')
     conf.set_default('xiv_proxy', 'manila.tests.test_xiv.XIVFakeProxyDriver')
-    conf.set_default('backup_service', 'manila.tests.backup.fake_service')
