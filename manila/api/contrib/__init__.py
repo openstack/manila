@@ -36,4 +36,4 @@ def standard_extensions(ext_mgr):
 
 def select_extensions(ext_mgr):
     extensions.load_standard_extensions(ext_mgr, LOG, __path__, __package__,
-                                        FLAGS.osapi_volume_ext_list)
+                                        FLAGS.osapi_share_ext_list)

@@ -183,7 +183,7 @@ class ExtensionManager(object):
     def __init__(self):
         LOG.audit(_('Initializing extension manager.'))
 
-        self.cls_list = FLAGS.osapi_volume_extension
+        self.cls_list = FLAGS.osapi_share_extension
         self.extensions = {}
         self._load_extensions()
 
@@ -275,10 +275,10 @@ class ExtensionManager(object):
                             'standard_extensions')
         new_contrib_path = 'manila.api.contrib.standard_extensions'
         if old_contrib_path in extensions:
-            LOG.warn(_('osapi_volume_extension is set to deprecated path: %s'),
+            LOG.warn(_('osapi_share_extension is set to deprecated path: %s'),
                      old_contrib_path)
             LOG.warn(_('Please set your flag or manila.conf settings for '
-                       'osapi_volume_extension to: %s'), new_contrib_path)
+                       'osapi_share_extension to: %s'), new_contrib_path)
             extensions = [e.replace(old_contrib_path, new_contrib_path)
                           for e in extensions]
 

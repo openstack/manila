@@ -146,15 +146,15 @@ global_opts = [
     cfg.BoolOpt('api_rate_limit',
                 default=True,
                 help='whether to rate limit the api'),
-    cfg.ListOpt('osapi_volume_ext_list',
+    cfg.ListOpt('osapi_share_ext_list',
                 default=[],
                 help='Specify list of extensions to load when using osapi_'
                      'volume_extension option with manila.api.contrib.'
                      'select_extensions'),
-    cfg.MultiStrOpt('osapi_volume_extension',
+    cfg.MultiStrOpt('osapi_share_extension',
                     default=['manila.api.contrib.standard_extensions'],
                     help='osapi volume extension to load'),
-    cfg.StrOpt('osapi_volume_base_URL',
+    cfg.StrOpt('osapi_share_base_URL',
                default=None,
                help='Base URL that will be presented to users in links '
                     'to the OpenStack Volume API',
