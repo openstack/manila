@@ -35,7 +35,7 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
         fake_driver.LoggingVolumeDriver.clear_logs()
 
     def _start_api_service(self):
-        self.osapi = service.WSGIService("osapi_volume")
+        self.osapi = service.WSGIService("osapi_share")
         self.osapi.start()
         self.auth_url = 'http://%s:%s/v1' % (self.osapi.host, self.osapi.port)
         LOG.warn(self.auth_url)

@@ -28,7 +28,7 @@ import tempfile
 
 from lxml import etree
 
-from manila.exception import VolumeBackendAPIException
+from manila.exception import ShareBackendAPIException
 from manila.openstack.common import log as logging
 from manila import test
 from manila.volume import configuration as conf
@@ -1061,7 +1061,7 @@ class NetAppDriverTestCase(test.TestCase):
             self.driver.create_cloned_volume(volume_clone_fail,
                                              volume_src)
             raise AssertionError()
-        except VolumeBackendAPIException:
+        except ShareBackendAPIException:
             pass
 
 
@@ -1470,7 +1470,7 @@ class NetAppCmodeISCSIDriverTestCase(test.TestCase):
             self.driver.create_volume_from_snapshot(self.volume,
                                                     self.snapshot_fail)
             raise AssertionError()
-        except VolumeBackendAPIException:
+        except ShareBackendAPIException:
             pass
         finally:
             self.driver.delete_volume(self.volume)
@@ -1487,7 +1487,7 @@ class NetAppCmodeISCSIDriverTestCase(test.TestCase):
             self.driver.create_cloned_volume(self.volume_clone_fail,
                                              self.volume)
             raise AssertionError()
-        except VolumeBackendAPIException:
+        except ShareBackendAPIException:
             pass
         finally:
             self.driver.delete_volume(self.volume)
@@ -1900,7 +1900,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(NetAppCmodeISCSIDriverTestCase):
             raise AssertionError('Target portal is none')
 
     def test_fail_create_vol(self):
-        self.assertRaises(VolumeBackendAPIException,
+        self.assertRaises(ShareBackendAPIException,
                           self.driver.create_volume, self.vol_fail)
 
 
@@ -2329,7 +2329,7 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
         success = False
         try:
             self.driver.create_volume(self.volume)
-        except VolumeBackendAPIException:
+        except ShareBackendAPIException:
             success = True
             pass
         finally:

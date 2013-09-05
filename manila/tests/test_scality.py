@@ -117,19 +117,19 @@ class ScalityDriverTestCase(test.TestCase):
     def test_setup_no_config(self):
         """Missing SOFS configuration shall raise an error."""
         scality.FLAGS.scality_sofs_config = None
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self._driver.do_setup, None)
 
     def test_setup_missing_config(self):
         """Non-existent SOFS configuration file shall raise an error."""
         scality.FLAGS.scality_sofs_config = 'nonexistent.conf'
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self._driver.do_setup, None)
 
     def test_setup_no_mount_helper(self):
         """SOFS must be installed to use the driver."""
         self._set_access_wrapper(False)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self._driver.do_setup, None)
 
     def test_setup_make_voldir(self):

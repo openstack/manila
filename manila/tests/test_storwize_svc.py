@@ -1319,16 +1319,16 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # as well as receiving unexpected results from the storage
         if self.USESIM:
             self.sim.error_injection('lsnodecanister', 'header_mismatch')
-            self.assertRaises(exception.VolumeBackendAPIException,
+            self.assertRaises(exception.ShareBackendAPIException,
                               self.driver.do_setup, None)
             self.sim.error_injection('lsnodecanister', 'remove_field')
-            self.assertRaises(exception.VolumeBackendAPIException,
+            self.assertRaises(exception.ShareBackendAPIException,
                               self.driver.do_setup, None)
             self.sim.error_injection('lsportip', 'header_mismatch')
-            self.assertRaises(exception.VolumeBackendAPIException,
+            self.assertRaises(exception.ShareBackendAPIException,
                               self.driver.do_setup, None)
             self.sim.error_injection('lsportip', 'remove_field')
-            self.assertRaises(exception.VolumeBackendAPIException,
+            self.assertRaises(exception.ShareBackendAPIException,
                               self.driver.do_setup, None)
 
         # Check with bad parameters
@@ -1497,7 +1497,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Try to create where source size != target size
         vol2['size'] += 1
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           vol2, snap1)
         self._assert_vol_exists(vol2['name'], False)
@@ -1511,7 +1511,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # Try to clone where source size != target size
         vol3['size'] += 1
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_cloned_volume,
                           vol3, vol2)
         self._assert_vol_exists(vol3['name'], False)
@@ -1709,7 +1709,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             if protocol == 'FC' and self.USESIM:
                 for error in ['remove_field', 'header_mismatch']:
                     self.sim.error_injection('lsfabric', error)
-                    self.assertRaises(exception.VolumeBackendAPIException,
+                    self.assertRaises(exception.ShareBackendAPIException,
                                       self.driver.initialize_connection,
                                       volume2, conn)
 
@@ -1737,7 +1737,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Test no preferred node
         if self.USESIM:
             self.sim.error_injection('lsvdisk', 'no_pref_node')
-            self.assertRaises(exception.VolumeBackendAPIException,
+            self.assertRaises(exception.ShareBackendAPIException,
                               self.driver.initialize_connection,
                               volume1, conn)
 
@@ -1752,7 +1752,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         conn_no_exist = conn.copy()
         conn_no_exist['initiator'] = 'i_dont_exist'
         conn_no_exist['wwpns'] = ['0000000000000000']
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.terminate_connection,
                           volume1,
                           conn_no_exist)

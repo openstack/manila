@@ -58,10 +58,10 @@ service_opts = [
                     ' (Disable by setting to 0)'),
     cfg.StrOpt('osapi_share_listen',
                default="0.0.0.0",
-               help='IP address for OpenStack Volume API to listen'),
+               help='IP address for OpenStack Share API to listen'),
     cfg.IntOpt('osapi_share_listen_port',
                default=8786,
-               help='port for os volume api to listen'), ]
+               help='port for os share api to listen'), ]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(service_opts)

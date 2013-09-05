@@ -183,7 +183,7 @@ class HuaweiVolumeTestCase(test.TestCase):
         self._test_check_for_setup_errors()
 
     def test_create_export_failed(self):
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_export,
                           {}, FakeVolume)
 
@@ -191,7 +191,7 @@ class HuaweiVolumeTestCase(test.TestCase):
         self._test_delete_volume()
 
     def test_create_snapshot_failed(self):
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_snapshot,
                           FakeSnapshot)
 
@@ -199,17 +199,17 @@ class HuaweiVolumeTestCase(test.TestCase):
         self._test_delete_snapshot()
 
     def test_create_luncopy_failed(self):
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           FakeVolumeCopy, FakeSnapshot)
 
     def test_initialize_failed(self):
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.initialize_connection,
                           FakeVolume, FakeConnector)
 
     def test_terminate_connection_failed(self):
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.terminate_connection,
                           FakeVolume, FakeConnector)
 
@@ -231,15 +231,15 @@ class HuaweiVolumeTestCase(test.TestCase):
         self.driver._test_flg = 'check_for_Dorado2100G2'
         self._test_check_for_setup_errors()
         self._test_create_volume()
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_snapshot,
                           FakeSnapshot)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           FakeVolumeCopy, FakeSnapshot)
         self._test_initialize_connection_for_Dorado2100G2()
         self._test_terminate_connection()
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.delete_snapshot,
                           FakeSnapshot)
         self._test_delete_volume()
@@ -249,7 +249,7 @@ class HuaweiVolumeTestCase(test.TestCase):
         self._test_check_for_setup_errors()
         self._test_create_volume()
         self._test_create_snapshot()
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           FakeVolumeCopy, FakeSnapshot)
         self._test_initialize_connection_for_Dorado5100()

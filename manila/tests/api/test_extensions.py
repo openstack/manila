@@ -33,11 +33,11 @@ NS = "{http://docs.openstack.org/common/api/v1.0}"
 class ExtensionTestCase(test.TestCase):
     def setUp(self):
         super(ExtensionTestCase, self).setUp()
-        ext_list = FLAGS.osapi_volume_extension[:]
+        ext_list = FLAGS.osapi_share_extension[:]
         fox = ('manila.tests.api.extensions.foxinsocks.Foxinsocks')
         if fox not in ext_list:
             ext_list.append(fox)
-            self.flags(osapi_volume_extension=ext_list)
+            self.flags(osapi_share_extension=ext_list)
 
 
 class ExtensionControllerTest(ExtensionTestCase):

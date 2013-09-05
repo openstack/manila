@@ -77,7 +77,7 @@ class _IntegratedTestBase(test.TestCase):
         super(_IntegratedTestBase, self).tearDown()
 
     def _start_api_service(self):
-        self.osapi = service.WSGIService("osapi_volume")
+        self.osapi = service.WSGIService("osapi_share")
         self.osapi.start()
         # FIXME(ja): this is not the auth url - this is the service url
         # FIXME(ja): this needs fixed in nova as well
@@ -89,10 +89,10 @@ class _IntegratedTestBase(test.TestCase):
         f = {}
 
         # Ensure tests only listen on localhost
-        f['osapi_volume_listen'] = '127.0.0.1'
+        f['osapi_share_listen'] = '127.0.0.1'
 
         # Auto-assign ports to allow concurrent tests
-        f['osapi_volume_listen_port'] = 0
+        f['osapi_share_listen_port'] = 0
 
         return f
 

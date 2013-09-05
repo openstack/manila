@@ -27,8 +27,8 @@ LOG = logging.getLogger(__name__)
 class ExtensionsTest(integrated_helpers._IntegratedTestBase):
     def _get_flags(self):
         f = super(ExtensionsTest, self)._get_flags()
-        f['osapi_volume_extension'] = FLAGS.osapi_volume_extension[:]
-        f['osapi_volume_extension'].append(
+        f['osapi_share_extension'] = FLAGS.osapi_share_extension[:]
+        f['osapi_share_extension'].append(
             'manila.tests.api.extensions.foxinsocks.Foxinsocks')
         return f
 

@@ -181,7 +181,7 @@ class XIVVolumeDriverTest(test.TestCase):
         """Vertify that the xiv_proxy validates volume pool space."""
 
         self.driver.do_setup(None)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_volume,
                           {'name': FAKE,
                            'id': 1,

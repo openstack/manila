@@ -22,7 +22,7 @@ LOG = logging.getLogger(__name__)
 
 
 class CapabilitiesFilter(filters.BaseHostFilter):
-    """HostFilter to work with resource (instance & volume) type records."""
+    """HostFilter to work with resource (instance & share) type records."""
 
     def _satisfies_extra_specs(self, capabilities, resource_type):
         """Check that the capabilities provided by the services

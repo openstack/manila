@@ -693,14 +693,14 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(test_volume)
 
     def test_create_volume_failed(self):
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_volume,
                           test_failed_volume)
 
     def test_create_volume_snapshot_unsupported(self):
         self.driver.create_volume(test_volume)
         self.driver.create_snapshot(test_snapshot_vmax)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           test_clone,
                           test_snapshot_vmax)
@@ -710,7 +710,7 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
     def test_create_volume_snapshot_replica_failed(self):
         self.driver.create_volume(test_volume)
         self.driver.create_snapshot(test_snapshot)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           failed_snapshot_replica,
                           test_snapshot)
@@ -720,7 +720,7 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
     def test_create_volume_snapshot_sync_failed(self):
         self.driver.create_volume(test_volume)
         self.driver.create_snapshot(test_snapshot)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           failed_snapshot_sync,
                           test_snapshot)
@@ -729,7 +729,7 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
 
     def test_create_volume_clone_replica_failed(self):
         self.driver.create_volume(test_volume)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_cloned_volume,
                           failed_clone_replica,
                           test_volume)
@@ -737,7 +737,7 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
 
     def test_create_volume_clone_sync_failed(self):
         self.driver.create_volume(test_volume)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.create_cloned_volume,
                           failed_clone_sync,
                           test_volume)
@@ -751,7 +751,7 @@ class EMCSMISISCSIDriverTestCase(test.TestCase):
 
     def test_delete_volume_failed(self):
         self.driver.create_volume(failed_delete_vol)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.ShareBackendAPIException,
                           self.driver.delete_volume,
                           failed_delete_vol)
 
