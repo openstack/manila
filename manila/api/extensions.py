@@ -271,7 +271,7 @@ class ExtensionManager(object):
 
         # NOTE(thingee): Backwards compat for the old extension loader path.
         # We can drop this post-grizzly in the H release.
-        old_contrib_path = ('manila.api.openstack.volume.contrib.'
+        old_contrib_path = ('manila.api.openstack.share.contrib.'
                             'standard_extensions')
         new_contrib_path = 'manila.api.contrib.standard_extensions'
         if old_contrib_path in extensions:

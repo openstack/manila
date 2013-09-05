@@ -26,7 +26,7 @@ from manila import quota
 QUOTAS = quota.QUOTAS
 
 
-authorize = extensions.extension_authorizer('volume', 'quota_classes')
+authorize = extensions.extension_authorizer('share', 'quota_classes')
 
 
 class QuotaClassTemplate(xmlutil.TemplateBuilder):

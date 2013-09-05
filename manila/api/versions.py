@@ -270,7 +270,7 @@ class Versions(wsgi.Resource):
         return args
 
 
-class VolumeVersionV1(object):
+class ShareVersionV1(object):
     @wsgi.serializers(xml=VersionTemplate,
                       atom=VersionAtomSerializer)
     def show(self, req):
@@ -279,4 +279,4 @@ class VolumeVersionV1(object):
 
 
 def create_resource():
-    return wsgi.Resource(VolumeVersionV1())
+    return wsgi.Resource(ShareVersionV1())

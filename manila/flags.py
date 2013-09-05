@@ -153,7 +153,7 @@ global_opts = [
                      'select_extensions'),
     cfg.MultiStrOpt('osapi_share_extension',
                     default=['manila.api.contrib.standard_extensions'],
-                    help='osapi volume extension to load'),
+                    help='osapi share extension to load'),
     cfg.StrOpt('osapi_share_base_URL',
                default=None,
                help='Base URL that will be presented to users in links '

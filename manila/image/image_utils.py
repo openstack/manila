@@ -250,34 +250,3 @@ def fetch_to_raw(context, image_service,
         os.unlink(tmp)
 
 
-def upload_volume(context, image_service, image_meta, volume_path):
-    image_id = image_meta['id']
-    if (image_meta['disk_format'] == 'raw'):
-        LOG.debug("%s was raw, no need to convert to %s" %
-                  (image_id, image_meta['disk_format']))
-        with utils.temporary_chown(volume_path):
-            with utils.file_open(volume_path) as image_file:
-                image_service.update(context, image_id, {}, image_file)
-        return
-
-    if (FLAGS.image_conversion_dir and not
-            os.path.exists(FLAGS.image_conversion_dir)):
-        os.makedirs(FLAGS.image_conversion_dir)
-
-    fd, tmp = tempfile.mkstemp(dir=FLAGS.image_conversion_dir)
-    os.close(fd)
-    with utils.remove_path_on_error(tmp):
-        LOG.debug("%s was raw, converting to %s" %
-                  (image_id, image_meta['disk_format']))
-        convert_image(volume_path, tmp, image_meta['disk_format'])
-
-        data = qemu_img_info(tmp)
-        if data.file_format != image_meta['disk_format']:
-            raise exception.ImageUnacceptable(
-                image_id=image_id,
-                reason=_("Converted to %(f1)s, but format is now %(f2)s") %
-                {'f1': image_meta['disk_format'], 'f2': data.file_format})
-
-        with utils.file_open(tmp) as image_file:
-            image_service.update(context, image_id, {}, image_file)
-        os.unlink(tmp)

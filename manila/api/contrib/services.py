@@ -29,7 +29,7 @@ from manila import utils
 
 
 LOG = logging.getLogger(__name__)
-authorize = extensions.extension_authorizer('volume', 'services')
+authorize = extensions.extension_authorizer('share', 'services')
 
 
 class ServicesIndexTemplate(xmlutil.TemplateBuilder):

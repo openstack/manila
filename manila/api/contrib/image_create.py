@@ -25,7 +25,7 @@ from manila.api import extensions
 class Image_create(extensions.ExtensionDescriptor):
     """Allow creating a volume from an image in the Create Volume v1 API"""
 
-    name = "CreateVolumeExtension"
+    name = "CreateShareExtension"
     alias = "os-image-create"
     namespace = "http://docs.openstack.org/volume/ext/image-create/api/v1"
     updated = "2012-08-13T00:00:00+00:00"

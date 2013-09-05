@@ -18,7 +18,7 @@
 #    under the License.
 
 """
-WSGI middleware for OpenStack Volume API.
+WSGI middleware for OpenStack Share API.
 """
 
 from manila.api import extensions
