@@ -57,11 +57,11 @@ if __name__ == '__main__':
     servers = []
     # manila-api
     try:
-        servers.append(service.WSGIService('osapi_volume'))
+        servers.append(service.WSGIService('osapi_share'))
     except (Exception, SystemExit):
-        LOG.exception(_('Failed to load osapi_volume'))
+        LOG.exception(_('Failed to load osapi_share'))
 
-    for binary in ['manila-volume', 'manila-scheduler']:
+    for binary in ['manila-share', 'manila-scheduler']:
         try:
             servers.append(service.Service.create(binary=binary))
         except (Exception, SystemExit):
