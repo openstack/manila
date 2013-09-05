@@ -26,13 +26,10 @@ def_vol_type = 'fake_vol_type'
 
 
 def set_defaults(conf):
-    conf.set_default('default_volume_type', def_vol_type)
     conf.set_default('connection_type', 'fake')
     conf.set_default('fake_rabbit', True)
     conf.set_default('rpc_backend', 'manila.openstack.common.rpc.impl_fake')
-    conf.set_default('iscsi_num_targets', 8)
     conf.set_default('verbose', True)
     conf.set_default('sql_connection', "sqlite://")
     conf.set_default('sqlite_synchronous', False)
     conf.set_default('policy_file', 'manila/tests/policy.json')
-    conf.set_default('xiv_proxy', 'manila.tests.test_xiv.XIVFakeProxyDriver')
