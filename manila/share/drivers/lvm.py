@@ -44,7 +44,8 @@ share_opts = [
                default=None,
                help='IP to be added to export string'),
     cfg.StrOpt('smb_config_path',
-               default='$state_path/smb.conf'),
+               default='$state_path/smb.conf',
+               help="Path to smb config"),
     cfg.IntOpt('share_lvm_mirrors',
                default=0,
                help='If set, create lvms with multiple mirrors. Note that '
