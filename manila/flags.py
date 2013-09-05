@@ -149,7 +149,7 @@ global_opts = [
     cfg.ListOpt('osapi_share_ext_list',
                 default=[],
                 help='Specify list of extensions to load when using osapi_'
-                     'volume_extension option with manila.api.contrib.'
+                     'share_extension option with manila.api.contrib.'
                      'select_extensions'),
     cfg.MultiStrOpt('osapi_share_extension',
                     default=['manila.api.contrib.standard_extensions'],
@@ -157,7 +157,7 @@ global_opts = [
     cfg.StrOpt('osapi_share_base_URL',
                default=None,
                help='Base URL that will be presented to users in links '
-                    'to the OpenStack Volume API',
+                    'to the OpenStack Share API',
                deprecated_name='osapi_compute_link_prefix'),
     cfg.IntOpt('osapi_max_limit',
                default=1000,
@@ -179,9 +179,6 @@ global_opts = [
     cfg.IntOpt('sql_retry_interval',
                default=10,
                help='interval between retries of opening a sql connection'),
-    cfg.StrOpt('volume_manager',
-               default='manila.volume.manager.VolumeManager',
-               help='full class name for the Manager for volume'),
     cfg.StrOpt('scheduler_manager',
                default='manila.scheduler.manager.SchedulerManager',
                help='full class name for the Manager for scheduler'),
@@ -199,12 +196,9 @@ global_opts = [
     cfg.ListOpt('memcached_servers',
                 default=None,
                 help='Memcached servers or None for in process cache.'),
-    cfg.StrOpt('default_volume_type',
-               default=None,
-               help='default volume type to use'),
-    cfg.StrOpt('volume_usage_audit_period',
+    cfg.StrOpt('share_usage_audit_period',
                default='month',
-               help='time period to generate volume usages for.  '
+               help='time period to generate share usages for.  '
                     'Time period must be hour, day, month or year'),
     cfg.StrOpt('root_helper',
                default='sudo',
@@ -222,9 +216,6 @@ global_opts = [
     cfg.IntOpt('service_down_time',
                default=60,
                help='maximum time since last check-in for up service'),
-    cfg.StrOpt('volume_api_class',
-               default='manila.volume.api.API',
-               help='The full class name of the volume API class to use'),
     cfg.StrOpt('share_api_class',
                default='manila.share.api.API',
                help='The full class name of the share API class to use'),
