@@ -29,7 +29,6 @@ from manila.openstack.common import timeutils
 from manila import quota
 from manila import test
 import manila.tests.image.fake
-from manila import volume
 
 
 FLAGS = flags.FLAGS

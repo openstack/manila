@@ -201,19 +201,3 @@ class TestOpenStackClient(object):
         kwargs['method'] = 'DELETE'
         kwargs.setdefault('check_response_status', [200, 202, 204])
         return self.api_request(relative_uri, **kwargs)
-
-    def get_volume(self, volume_id):
-        return self.api_get('/volumes/%s' % volume_id)['volume']
-
-    def get_volumes(self, detail=True):
-        rel_url = '/volumes/detail' if detail else '/volumes'
-        return self.api_get(rel_url)['volumes']
-
-    def post_volume(self, volume):
-        return self.api_post('/volumes', volume)['volume']
-
-    def delete_volume(self, volume_id):
-        return self.api_delete('/volumes/%s' % volume_id)
-
-    def put_volume(self, volume_id, volume):
-        return self.api_put('/volumes/%s' % volume_id, volume)['volume']

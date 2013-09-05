@@ -89,29 +89,6 @@ class SchedulerManagerTestCase(test.TestCase):
             service_name=service_name, host=host,
             capabilities=capabilities)
 
-    def test_create_volume_exception_puts_volume_in_error_state(self):
-        """Test that a NoValideHost exception for create_volume.
-
-        Puts the volume in 'error' state and eats the exception.
-        """
-        fake_volume_id = 1
-        self._mox_schedule_method_helper('schedule_create_volume')
-        self.mox.StubOutWithMock(db, 'volume_update')
-
-        topic = 'fake_topic'
-        volume_id = fake_volume_id
-        request_spec = {'volume_id': fake_volume_id}
-
-        self.manager.driver.schedule_create_volume(
-            self.context,
-            request_spec, {}).AndRaise(exception.NoValidHost(reason=""))
-        db.volume_update(self.context, fake_volume_id, {'status': 'error'})
-
-        self.mox.ReplayAll()
-        self.manager.create_volume(self.context, topic, volume_id,
-                                   request_spec=request_spec,
-                                   filter_properties={})
-
     def test_create_share_exception_puts_share_in_error_state(self):
         """Test that a NoValideHost exception for create_share.
 
@@ -211,18 +188,6 @@ class SchedulerDriverModuleTestCase(test.TestCase):
     def setUp(self):
         super(SchedulerDriverModuleTestCase, self).setUp()
         self.context = context.RequestContext('fake_user', 'fake_project')
-
-    def test_volume_host_update_db(self):
-        self.mox.StubOutWithMock(timeutils, 'utcnow')
-        self.mox.StubOutWithMock(db, 'volume_update')
-
-        timeutils.utcnow().AndReturn('fake-now')
-        db.volume_update(self.context, 31337,
-                         {'host': 'fake_host',
-                          'scheduled_at': 'fake-now'})
-
-        self.mox.ReplayAll()
-        driver.volume_update_db(self.context, 31337, 'fake_host')
 
     def test_share_host_update_db(self):
         self.mox.StubOutWithMock(timeutils, 'utcnow')
