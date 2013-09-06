@@ -41,6 +41,7 @@ FLAGS = flags.FLAGS
 
 LOG = logging.getLogger(__name__)
 GB = 1048576 * 1024
+QUOTAS = quota.QUOTAS
 
 
 def wrap_check_policy(func):
@@ -109,6 +110,33 @@ class API(base.Base):
         if share_proto.lower() not in ['nfs', 'cifs']:
             msg = (_("Invalid share type provided: %s") % share_proto)
             raise exception.InvalidInput(reason=msg)
+
+        try:
+            reservations = QUOTAS.reserve(context, shares=1, gigabytes=size)
+        except exception.OverQuota as e:
+            overs = e.kwargs['overs']
+            usages = e.kwargs['usages']
+            quotas = e.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            if 'gigabytes' in overs:
+                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                        "%(s_size)sG volume (%(d_consumed)dG of %(d_quota)dG "
+                        "already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                                's_size': size,
+                                'd_consumed': _consumed('gigabytes'),
+                                'd_quota': quotas['gigabytes']})
+                raise exception.ShareSizeExceedsAvailableQuota()
+            elif 'volumes' in overs:
+                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                        "volume (%(d_consumed)d volumes "
+                        "already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                                'd_consumed': _consumed('volumes')})
+                raise exception.ShareLimitExceeded(allowed=quotas['shares'])
 
         if availability_zone is None:
             availability_zone = FLAGS.storage_availability_zone

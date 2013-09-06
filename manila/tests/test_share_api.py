@@ -30,6 +30,7 @@ from manila.share import api as share_api
 from manila.share import rpcapi as share_rpcapi
 from manila import test
 from manila.tests.db import fakes as db_fakes
+from manila import quota
 
 
 def fake_share(id, **kwargs):
@@ -104,6 +105,7 @@ class ShareAPITestCase(test.TestCase):
 
         self.stubs.Set(self.api, 'scheduler_rpcapi', self.scheduler_rpcapi)
         self.stubs.Set(self.api, 'share_rpcapi', self.share_rpcapi)
+        self.stubs.Set(quota.QUOTAS, 'reserve', lambda *args, **kwargs : None)
 
     def tearDown(self):
         super(ShareAPITestCase, self).tearDown()

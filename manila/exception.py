@@ -335,6 +335,23 @@ class QuotaError(ManilaException):
     safe = True
 
 
+class ShareSizeExceedsAvailableQuota(QuotaError):
+    message = _("Requested share or snapshot exceeds "
+                "allowed Gigabytes quota")
+
+
+class ShareSizeExceedsQuota(QuotaError):
+    message = _("Maximum share/snapshot size exceeded")
+
+
+class ShareLimitExceeded(QuotaError):
+    message = _("Maximum number of shares allowed (%(allowed)d) exceeded")
+
+
+class SnapshotLimitExceeded(QuotaError):
+    message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
+
+
 class Duplicate3PARHost(ManilaException):
     message = _("3PAR Host already exists: %(err)s.  %(info)s")
 
@@ -443,3 +460,6 @@ class InvalidShareSnapshot(ManilaException):
 
 class SwiftConnectionFailed(ManilaException):
     message = _("Connection to swift failed") + ": %(reason)s"
+
+
+

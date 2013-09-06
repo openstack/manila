@@ -32,15 +32,15 @@ from manila.openstack.common import timeutils
 LOG = logging.getLogger(__name__)
 
 quota_opts = [
-    cfg.IntOpt('quota_volumes',
+    cfg.IntOpt('quota_shares',
                default=10,
-               help='number of volumes allowed per project'),
+               help='number of shares allowed per project'),
     cfg.IntOpt('quota_snapshots',
                default=10,
-               help='number of volume snapshots allowed per project'),
+               help='number of share snapshots allowed per project'),
     cfg.IntOpt('quota_gigabytes',
                default=1000,
-               help='number of volume gigabytes (snapshots are also included) '
+               help='number of share gigabytes (snapshots are also included) '
                     'allowed per project'),
     cfg.IntOpt('reservation_expire',
                default=86400,
@@ -386,7 +386,7 @@ class BaseResource(object):
         """
         Initializes a Resource.
 
-        :param name: The name of the resource, i.e., "volumes".
+        :param name: The name of the resource, i.e., "shares".
         :param flag: The name of the flag or configuration option
                      which specifies the default value of the quota
                      for this resource.
@@ -457,7 +457,7 @@ class ReservableResource(BaseResource):
         Initializes a ReservableResource.
 
         Reservable resources are those resources which directly
-        correspond to objects in the database, i.e., volumes, gigabytes,
+        correspond to objects in the database, i.e., shares, gigabytes,
         etc.  A ReservableResource must be constructed with a usage
         synchronization function, which will be called to determine the
         current counts of one or more resources.
@@ -472,7 +472,7 @@ class ReservableResource(BaseResource):
         synchronization functions may be associated with more than one
         ReservableResource.
 
-        :param name: The name of the resource, i.e., "volumes".
+        :param name: The name of the resource, i.e., "shares".
         :param sync: A callable which returns a dictionary to
                      resynchronize the in_use count for one or more
                      resources, as described above.
@@ -502,7 +502,7 @@ class CountableResource(AbsoluteResource):
         Initializes a CountableResource.
 
         Countable resources are those resources which directly
-        correspond to objects in the database, i.e., volumes, gigabytes,
+        correspond to objects in the database, i.e., shares, gigabytes,
         etc., but for which a count by project ID is inappropriate.  A
         CountableResource must be constructed with a counting
         function, which will be called to determine the current counts
@@ -518,7 +518,7 @@ class CountableResource(AbsoluteResource):
         required functionality, until a better approach to solving
         this problem can be evolved.
 
-        :param name: The name of the resource, i.e., "volumes".
+        :param name: The name of the resource, i.e., "shares".
         :param count: A callable which returns the count of the
                       resource.  The arguments passed are as described
                       above.
@@ -774,10 +774,10 @@ class QuotaEngine(object):
         return sorted(self._resources.keys())
 
 
-def _sync_volumes(context, project_id, session):
-    (volumes, gigs) = db.volume_data_get_for_project(context,
-                                                     project_id,
-                                                     session=session)
+def _sync_shares(context, project_id, session):
+    (volumes, gigs) = db.share_data_get_for_project(context,
+                                                    project_id,
+                                                    session=session)
     return {'volumes': volumes}
 
 
@@ -789,24 +789,27 @@ def _sync_snapshots(context, project_id, session):
 
 
 def _sync_gigabytes(context, project_id, session):
-    (_junk, vol_gigs) = db.volume_data_get_for_project(context,
-                                                       project_id,
-                                                       session=session)
+    (_junk, share_gigs) = db.share_data_get_for_project(context,
+                                                      project_id,
+                                                      session=session)
     if FLAGS.no_snapshot_gb_quota:
-        return {'gigabytes': vol_gigs}
+        return {'gigabytes': share_gigs}
 
-    (_junk, snap_gigs) = db.snapshot_data_get_for_project(context,
-                                                          project_id,
-                                                          session=session)
-    return {'gigabytes': vol_gigs + snap_gigs}
+    # TODO: Uncomment when Snapshot size is implemented
+    # (_junk, snap_gigs) = db.snapshot_data_get_for_project(context,
+    #                                                       project_id,
+    #                                                       session=session)
+    # return {'gigabytes': share_gigs + snap_gigs}
+    return {'gigabytes': share_gigs}
 
 
 QUOTAS = QuotaEngine()
 
 
 resources = [
-    ReservableResource('volumes', _sync_volumes, 'quota_volumes'),
-    ReservableResource('snapshots', _sync_snapshots, 'quota_snapshots'),
+    ReservableResource('shares', _sync_shares, 'quota_shares'),
+    # TODO: Uncomment when Snapshot size is implemented
+    # ReservableResource('snapshots', _sync_snapshots, 'quota_snapshots'),
     ReservableResource('gigabytes', _sync_gigabytes, 'quota_gigabytes'), ]
 
 

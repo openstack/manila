@@ -827,6 +827,20 @@ def share_create(context, values):
     return share_ref
 
 
+@require_admin_context
+def share_data_get_for_project(context, project_id, session=None):
+    query = model_query(context,
+                        func.count(models.Share.id),
+                        func.sum(models.Share.size),
+                        read_deleted="no",
+                        session=session).\
+        filter_by(project_id=project_id)
+
+    result = query.first()
+
+    return (result[0] or 0, result[1] or 0)
+
+
 @require_context
 def share_update(context, share_id, values):
     session = get_session()
@@ -955,6 +969,23 @@ def share_snapshot_create(context, values):
         snapshot_ref.save(session=session)
 
     return share_snapshot_get(context, values['id'], session=session)
+
+
+@require_admin_context
+def snapshot_data_get_for_project(context, project_id, session=None):
+    # TODO: Add
+    raise NotImplementedError()
+
+    query = model_query(context,
+                        func.count(models.ShareSnapshot.id),
+                        func.sum(models.ShareSnapshot.share.size),
+                        read_deleted="no",
+                        session=session).\
+        filter_by(project_id=project_id)
+
+    result = query.first()
+
+    return (result[0] or 0, result[1] or 0)
 
 
 @require_admin_context

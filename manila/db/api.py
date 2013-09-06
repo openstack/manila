@@ -309,6 +309,11 @@ def share_create(context, values):
     return IMPL.share_create(context, values)
 
 
+def share_data_get_for_project(context, project_id, session=None):
+    """Get (share_count, gigabytes) for project."""
+    return IMPL.share_data_get_for_project(context, project_id)
+
+
 def share_update(context, share_id, values):
     """Update share fields."""
     return IMPL.share_update(context, share_id, values)
@@ -373,6 +378,11 @@ def share_access_update(context, access_id, values):
 def share_snapshot_create(context, values):
     """Create a snapshot from the values dictionary."""
     return IMPL.share_snapshot_create(context, values)
+
+
+def snapshot_data_get_for_project(context, project_id, session=None):
+    """Get (snapshot_count, gigabytes) for project."""
+    return IMPL.snapshot_data_get_for_project(context, project_id)
 
 
 def share_snapshot_destroy(context, snapshot_id):
