@@ -100,65 +100,6 @@ class HostManagerTestCase(test.TestCase):
                                                       fake_properties)
         self._verify_result(info, result)
 
-    def test_update_service_capabilities(self):
-        service_states = self.host_manager.service_states
-        self.assertDictMatch(service_states, {})
-        self.mox.StubOutWithMock(timeutils, 'utcnow')
-        timeutils.utcnow().AndReturn(31337)
-        timeutils.utcnow().AndReturn(31338)
-        timeutils.utcnow().AndReturn(31339)
-
-        host1_volume_capabs = dict(free_capacity_gb=4321, timestamp=1)
-        host2_volume_capabs = dict(free_capacity_gb=5432, timestamp=1)
-        host3_volume_capabs = dict(free_capacity_gb=6543, timestamp=1)
-
-        self.mox.ReplayAll()
-        service_name = 'volume'
-        self.host_manager.update_service_capabilities(service_name, 'host1',
-                                                      host1_volume_capabs)
-        self.host_manager.update_service_capabilities(service_name, 'host2',
-                                                      host2_volume_capabs)
-        self.host_manager.update_service_capabilities(service_name, 'host3',
-                                                      host3_volume_capabs)
-
-        # Make sure dictionary isn't re-assigned
-        self.assertEqual(self.host_manager.service_states, service_states)
-        # Make sure original dictionary wasn't copied
-        self.assertEqual(host1_volume_capabs['timestamp'], 1)
-
-        host1_volume_capabs['timestamp'] = 31337
-        host2_volume_capabs['timestamp'] = 31338
-        host3_volume_capabs['timestamp'] = 31339
-
-        expected = {'host1': host1_volume_capabs,
-                    'host2': host2_volume_capabs,
-                    'host3': host3_volume_capabs}
-        self.assertDictMatch(service_states, expected)
-
-    def test_get_all_host_states(self):
-        context = 'fake_context'
-        topic = FLAGS.volume_topic
-
-        self.mox.StubOutWithMock(db, 'service_get_all_by_topic')
-        self.mox.StubOutWithMock(host_manager.LOG, 'warn')
-
-        ret_services = fakes.VOLUME_SERVICES
-        db.service_get_all_by_topic(context, topic).AndReturn(ret_services)
-        # Disabled service
-        host_manager.LOG.warn("service is down or disabled.")
-
-        self.mox.ReplayAll()
-        self.host_manager.get_all_host_states(context)
-        host_state_map = self.host_manager.host_state_map
-
-        self.assertEqual(len(host_state_map), 4)
-        # Check that service is up
-        for i in xrange(4):
-            volume_node = fakes.VOLUME_SERVICES[i]
-            host = volume_node['host']
-            self.assertEqual(host_state_map[host].service,
-                             volume_node)
-
     def test_update_service_capabilities_for_shares(self):
         service_states = self.host_manager.service_states
         self.assertDictMatch(service_states, {})

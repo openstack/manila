@@ -32,7 +32,7 @@ class IsolationTestCase(test.TestCase):
     def test_service_isolation(self):
         import os
         print os.path.abspath(".")
-        self.start_service('volume')
+        self.start_service('share')
 
     def test_rpc_consumer_isolation(self):
         class NeverCalled(object):
@@ -42,5 +42,5 @@ class IsolationTestCase(test.TestCase):
 
         connection = rpc.create_connection(new=True)
         proxy = NeverCalled()
-        connection.create_consumer('volume', proxy, fanout=False)
+        connection.create_consumer('share', proxy, fanout=False)
         connection.consume_in_thread()

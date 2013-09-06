@@ -44,7 +44,7 @@ class ExtensionControllerTest(ExtensionTestCase):
 
     def setUp(self):
         super(ExtensionControllerTest, self).setUp()
-        self.ext_list = ["TypesManage", "TypesExtraSpecs", ]
+        self.ext_list = []
         self.ext_list.sort()
 
     def test_list_extensions_json(self):

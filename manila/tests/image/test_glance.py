@@ -552,6 +552,8 @@ class TestGlanceClientVersion(test.TestCase):
 
         self.stubs.Set(glanceclient_v2, '_get_image_model',
                        fake_get_image_model)
+        self.stubs.Set(glanceclient_v2, '_get_member_model',
+                       fake_get_image_model)
 
     def test_glance_version_by_flag(self):
         """Test glance version set by flag is honoured"""

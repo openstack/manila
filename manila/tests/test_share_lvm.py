@@ -243,7 +243,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'vgs --noheadings --nosuffix --unit=G -o name,size,free fakevg',
         ]
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
-        FLAGS.set_default('reserved_percentage', 1)
+        FLAGS.set_default('reserved_share_percentage', 1)
         self.mox.ReplayAll()
         ret = self._driver.get_share_stats(refresh=True)
         expected_ret = {
@@ -253,7 +253,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': 5.38,
             'free_capacity_gb': 4.30,
-            'reserved_percentage': 0,
+            'reserved_percentage': 1,
             'QoS_support': False,
         }
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
@@ -267,7 +267,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'vgs --noheadings --nosuffix --unit=G -o name,size,free fakevg',
         ]
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
-        FLAGS.set_default('reserved_percentage', 1)
+        FLAGS.set_default('reserved_share_percentage', 1)
         self.mox.ReplayAll()
         ret = self._driver.get_share_stats(refresh=True)
         expected_ret = {
@@ -277,7 +277,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': 0,
             'free_capacity_gb': 0,
-            'reserved_percentage': 0,
+            'reserved_percentage': 1,
             'QoS_support': False,
         }
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)

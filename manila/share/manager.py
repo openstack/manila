@@ -168,7 +168,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         try:
             self.driver.delete_snapshot(context, snapshot_ref)
-        except exception.SnapshotIsBusy:
+        except exception.ShareSnapshotIsBusy:
             self.db.share_snapshot_update(context, snapshot_ref['id'],
                                           {'status': 'available'})
         except Exception:

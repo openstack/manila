@@ -65,7 +65,7 @@ class _IntegratedTestBase(test.TestCase):
         self.flags(verbose=True)
 
         # set up services
-        self.volume = self.start_service('volume')
+        self.volume = self.start_service('share')
         self.scheduler = self.start_service('scheduler')
 
         self._start_api_service()

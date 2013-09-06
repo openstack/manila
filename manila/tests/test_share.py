@@ -247,7 +247,7 @@ class ShareTestCase(test.TestCase):
         """Test snapshot could not be deleted if busy."""
 
         def _fake_delete_snapshot(self, context, snapshot):
-            raise exception.SnapshotIsBusy(snapshot_name='fakename')
+            raise exception.ShareSnapshotIsBusy(snapshot_name='fakename')
 
         self.stubs.Set(FakeShareDriver, "delete_snapshot",
                        _fake_delete_snapshot)

@@ -27,24 +27,13 @@ LOG = logging.getLogger(__name__)
 
 class XmlTests(integrated_helpers._IntegratedTestBase):
     """"Some basic XML sanity checks."""
-
-    # FIXME(ja): does manila need limits?
-    # def test_namespace_limits(self):
-    #     headers = {}
-    #     headers['Accept'] = 'application/xml'
-
-    #     response = self.api.api_request('/limits', headers=headers)
-    #     data = response.read()
-    #     LOG.debug("data: %s" % data)
-    #     root = etree.XML(data)
-    #     self.assertEqual(root.nsmap.get(None), xmlutil.XMLNS_COMMON_V10)
-
+    
     def test_namespace_volumes(self):
         """/servers should have v1.1 namespace (has changed in 1.1)."""
         headers = {}
         headers['Accept'] = 'application/xml'
 
-        response = self.api.api_request('/volumes', headers=headers)
+        response = self.api.api_request('/shares', headers=headers)
         data = response.read()
         LOG.warn("data: %s" % data)
         root = etree.XML(data)

@@ -16,8 +16,6 @@
 
 from manila.api.openstack import wsgi
 from manila.api.v1 import router
-from manila.api.v1 import snapshots
-from manila.api.v1 import volumes
 from manila.api import versions
 from manila import flags
 from manila.openstack.common import log as logging
@@ -48,8 +46,6 @@ class VolumeRouterTestCase(test.TestCase):
     def setUp(self):
         super(VolumeRouterTestCase, self).setUp()
         # NOTE(vish): versions is just returning text so, no need to stub.
-        self.stubs.Set(snapshots, 'create_resource', create_resource)
-        self.stubs.Set(volumes, 'create_resource', create_resource)
         self.app = router.APIRouter()
 
     def test_versions(self):
@@ -122,37 +118,3 @@ class VolumeRouterTestCase(test.TestCase):
         ids = [v['id'] for v in result['versions']]
         self.assertEqual(set(ids), set(['v1.0']))
 
-    def test_volumes(self):
-        req = fakes.HTTPRequest.blank('/fake/volumes')
-        req.method = 'GET'
-        req.content_type = 'application/json'
-        response = req.get_response(self.app)
-        self.assertEqual(200, response.status_int)
-
-    def test_volumes_detail(self):
-        req = fakes.HTTPRequest.blank('/fake/volumes/detail')
-        req.method = 'GET'
-        req.content_type = 'application/json'
-        response = req.get_response(self.app)
-        self.assertEqual(200, response.status_int)
-
-    def test_types(self):
-        req = fakes.HTTPRequest.blank('/fake/types')
-        req.method = 'GET'
-        req.content_type = 'application/json'
-        response = req.get_response(self.app)
-        self.assertEqual(200, response.status_int)
-
-    def test_snapshots(self):
-        req = fakes.HTTPRequest.blank('/fake/snapshots')
-        req.method = 'GET'
-        req.content_type = 'application/json'
-        response = req.get_response(self.app)
-        self.assertEqual(200, response.status_int)
-
-    def test_snapshots_detail(self):
-        req = fakes.HTTPRequest.blank('/fake/snapshots/detail')
-        req.method = 'GET'
-        req.content_type = 'application/json'
-        response = req.get_response(self.app)
-        self.assertEqual(200, response.status_int)
