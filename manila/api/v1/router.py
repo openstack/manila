@@ -27,7 +27,6 @@ from manila.api.v1 import limits
 from manila.api import versions
 
 from manila.api.v1 import shares
-from manila.api.v1 import share_actions
 from manila.api.v1 import share_snapshots
 
 from manila.openstack.common import log as logging
@@ -62,10 +61,6 @@ class APIRouter(manila.api.openstack.APIRouter):
                         controller=self.resources['share-snapshots'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
-        #
-        # self.resources['shares'] = share_actions.create_resource()
-        # mapper.resource("share", "shares",
-        #                 controller=self.resources['shares'])
 
         self.resources['limits'] = limits.create_resource()
         mapper.resource("limit", "limits",
