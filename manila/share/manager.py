@@ -31,6 +31,7 @@ from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 from manila.share.configuration import Configuration
+from manila import quota
 
 from oslo.config import cfg
 
@@ -44,6 +45,8 @@ share_manager_opts = [
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(share_manager_opts)
+
+QUOTAS = quota.QUOTAS
 
 
 class ShareManager(manager.SchedulerDependentManager):
@@ -124,7 +127,13 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def delete_share(self, context, share_id):
         """Delete a share."""
+        context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
+
+        if context.project_id != share_ref['project_id']:
+            project_id = share_ref['project_id']
+        else:
+            project_id = context.project_id
         rules = self.db.share_access_get_all_for_share(context, share_id)
         try:
             for access_ref in rules:
@@ -136,8 +145,20 @@ class ShareManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 self.db.share_update(context, share_id,
                                      {'status': 'error_deleting'})
-        else:
-            self.db.share_delete(context, share_id)
+        try:
+            reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
+                                          shares=-1,
+                                          gigabytes=-share_ref['size'])
+        except Exception:
+            reservations = None
+            LOG.exception(_("Failed to update usages deleting share"))
+
+        self.db.share_delete(context, share_id)
+        LOG.info(_("share %s: deleted successfully"), share_ref['name'])
+
+        if reservations:
+            QUOTAS.commit(context, reservations, project_id=project_id)
 
     def create_snapshot(self, context, share_id, snapshot_id):
         """Create snapshot for share."""

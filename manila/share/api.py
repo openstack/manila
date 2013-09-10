@@ -26,7 +26,7 @@ from manila.db import base
 from manila import exception
 from manila import flags
 from manila.image import glance
-from manila.openstack.common import log as logging
+from manila.openstack.common import log as logging, excutils
 from manila.openstack.common import rpc
 from manila.openstack.common import timeutils
 import manila.policy
@@ -153,7 +153,15 @@ class API(base.Base):
                    'share_proto': share_proto,
                    }
 
-        share = self.db.share_create(context, options)
+        try:
+            share = self.db.share_create(context, options)
+            QUOTAS.commit(context, reservations)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    self.db.share_delete(context, share['id'])
+                finally:
+                    QUOTAS.rollback(context, reservations)
 
         request_spec = {'share_properties': options,
                         'share_proto': share_proto,
@@ -175,10 +183,25 @@ class API(base.Base):
 
     def delete(self, context, share):
         """Delete share."""
+        if context.is_admin and context.project_id != share['project_id']:
+            project_id = share['project_id']
+        else:
+            project_id = context.project_id
+            
         share_id = share['id']
         if not share['host']:
-            # NOTE(rushiagr): scheduling failed, delete
-            self.db.share_delete(context, share_id)
+            try:
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              volumes=-1,
+                                              gigabytes=-share['size'])
+            except Exception:
+                reservations = None
+                LOG.exception(_("Failed to update quota for deleting volume"))
+            self.db.share_delete(context.elevated(), share_id)
+
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id)
             return
 
         if share['status'] not in ["available", "error"]:
