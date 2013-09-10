@@ -26,8 +26,8 @@ from manila.api.middleware import auth
 from manila.api.middleware import fault
 from manila.api.openstack import wsgi as os_wsgi
 from manila.api import urlmap
-from manila.api.v2 import limits
-from manila.api.v2 import router
+from manila.api.v1 import limits
+from manila.api.v1 import router
 from manila.api import versions
 from manila import context
 from manila import exception as exc

@@ -17,7 +17,7 @@ import datetime
 
 import webob
 
-from manila.api.contrib import share_snapshots
+from manila.api.v1 import share_snapshots
 from manila import exception
 from manila.share import api as share_api
 from manila import test

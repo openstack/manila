@@ -17,7 +17,7 @@ import datetime
 
 import webob
 
-from manila.api.contrib import shares
+from manila.api.v1 import shares
 from manila import context
 from manila import exception
 from manila.share import api as share_api

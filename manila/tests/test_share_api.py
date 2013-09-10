@@ -24,6 +24,7 @@ from manila import context
 from manila import db as db_driver
 from manila import exception
 from manila.openstack.common import timeutils
+from manila.context import RequestContext
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import share
 from manila.share import api as share_api
@@ -316,7 +317,7 @@ class ShareAPITestCase(test.TestCase):
         share['host'] = None
 
         self.mox.StubOutWithMock(db_driver, 'share_delete')
-        db_driver.share_delete(self.context, 'fakeid')
+        db_driver.share_delete(mox.IsA(RequestContext), 'fakeid')
         self.mox.ReplayAll()
         self.api.delete(self.context, share)
 

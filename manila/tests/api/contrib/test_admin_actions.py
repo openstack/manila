@@ -8,7 +8,7 @@ from manila import exception
 from manila.openstack.common import jsonutils
 from manila import test
 from manila.tests.api import fakes
-from manila.tests.api.v2 import stubs
+from manila.tests.api.v1 import stubs
 
 
 def app():
