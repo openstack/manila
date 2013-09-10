@@ -123,19 +123,19 @@ class API(base.Base):
 
             if 'gigabytes' in overs:
                 msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG volume (%(d_consumed)dG of %(d_quota)dG "
+                        "%(s_size)sG share (%(d_consumed)dG of %(d_quota)dG "
                         "already consumed)")
                 LOG.warn(msg % {'s_pid': context.project_id,
                                 's_size': size,
                                 'd_consumed': _consumed('gigabytes'),
                                 'd_quota': quotas['gigabytes']})
                 raise exception.ShareSizeExceedsAvailableQuota()
-            elif 'volumes' in overs:
+            elif 'shares' in overs:
                 msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "volume (%(d_consumed)d volumes "
+                        "share (%(d_consumed)d shares "
                         "already consumed)")
                 LOG.warn(msg % {'s_pid': context.project_id,
-                                'd_consumed': _consumed('volumes')})
+                                'd_consumed': _consumed('shares')})
                 raise exception.ShareLimitExceeded(allowed=quotas['shares'])
 
         if availability_zone is None:
@@ -193,11 +193,11 @@ class API(base.Base):
             try:
                 reservations = QUOTAS.reserve(context,
                                               project_id=project_id,
-                                              volumes=-1,
+                                              shares=-1,
                                               gigabytes=-share['size'])
             except Exception:
                 reservations = None
-                LOG.exception(_("Failed to update quota for deleting volume"))
+                LOG.exception(_("Failed to update quota for deleting share"))
             self.db.share_delete(context.elevated(), share_id)
 
             if reservations:
