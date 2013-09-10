@@ -200,16 +200,19 @@ class ShareController(wsgi.Controller):
         return self._view_builder.summary(req, dict(new_share.iteritems()))
 
 
-class Shares(extensions.ExtensionDescriptor):
-    """Enable share API."""
-    name = 'Shares'
-    alias = 'shares'
-    namespace = ''
-    updated = '2013-01-29T00:00:00+00:00'
+def create_resource():
+    return wsgi.Resource(ShareController())
 
-    def get_resources(self):
-        controller = ShareController()
-        resource = extensions.ResourceExtension(
-            'shares', controller, collection_actions={'detail': 'GET'},
-            member_actions={'action': 'POST'})
-        return [resource]
+# class Shares(extensions.ExtensionDescriptor):
+#     """Enable share API."""
+#     name = 'Shares'
+#     alias = 'shares'
+#     namespace = ''
+#     updated = '2013-01-29T00:00:00+00:00'
+#
+#     def get_resources(self):
+#         controller = ShareController()
+#         resource = extensions.ResourceExtension(
+#             'shares', controller, collection_actions={'detail': 'GET'},
+#             member_actions={'action': 'POST'})
+#         return [resource]

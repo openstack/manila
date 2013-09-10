@@ -19,7 +19,7 @@ import webob
 from webob import exc
 
 from manila.api import common
-from manila.api.contrib import shares
+from manila.api.v1 import shares
 from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila.api.views import share_snapshots as snapshot_views
@@ -166,16 +166,20 @@ class ShareSnapshotsController(wsgi.Controller):
         return self._view_builder.summary(req, dict(new_snapshot.iteritems()))
 
 
-class Share_snapshots(extensions.ExtensionDescriptor):
-    """Enable share snapshtos API."""
-    name = 'ShareSnapshots'
-    alias = 'share-snapshots'
-    namespace = ''
-    updated = '2013-03-01T00:00:00+00:00'
+def create_resource():
+    return wsgi.Resource(ShareSnapshotsController())
 
-    def get_resources(self):
-        controller = ShareSnapshotsController()
-        resource = extensions.ResourceExtension(
-            'share-snapshots', controller,
-            collection_actions={'detail': 'GET'})
-        return [resource]
+#
+# class Share_snapshots(extensions.ExtensionDescriptor):
+#     """Enable share snapshtos API."""
+#     name = 'ShareSnapshots'
+#     alias = 'share-snapshots'
+#     namespace = ''
+#     updated = '2013-03-01T00:00:00+00:00'
+#
+#     def get_resources(self):
+#         controller = ShareSnapshotsController()
+#         resource = extensions.ResourceExtension(
+#             'share-snapshots', controller,
+#             collection_actions={'detail': 'GET'})
+#         return [resource]

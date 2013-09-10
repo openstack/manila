@@ -20,9 +20,6 @@ from manila import exception
 from manila import share
 
 
-authorize = extensions.extension_authorizer('share', 'services')
-
-
 class ShareActionsController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         super(ShareActionsController, self).__init__(*args, **kwargs)
@@ -68,20 +65,20 @@ class ShareActionsController(wsgi.Controller):
         return {'access_list': access_list}
 
 
-# def create_resource():
-#     return wsgi.Resource(ShareActionsController())
-
-
-class Share_actions(extensions.ExtensionDescriptor):
-    """Enable share actions."""
-
-    name = 'ShareActions'
-    alias = 'share-actions'
-    namespace = ''
-    updated = '2012-08-14T00:00:00+00:00'
-
-    def get_controller_extensions(self):
-        controller = ShareActionsController()
-        extension = extensions.ControllerExtension(self, 'shares',
-                                                   controller)
-        return [extension]
+def create_resource():
+    return wsgi.Resource(ShareActionsController())
+#
+#
+# class Share_actions(extensions.ExtensionDescriptor):
+#     """Enable share actions."""
+#
+#     name = 'ShareActions'
+#     alias = 'share-actions'
+#     namespace = ''
+#     updated = '2012-08-14T00:00:00+00:00'
+#
+#     def get_controller_extensions(self):
+#         controller = ShareActionsController()
+#         extension = extensions.ControllerExtension(self, 'shares',
+#                                                    controller)
+#         return [extension]
