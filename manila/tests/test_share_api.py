@@ -24,14 +24,13 @@ from manila import context
 from manila import db as db_driver
 from manila import exception
 from manila.openstack.common import timeutils
-from manila.context import RequestContext
+from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import share
 from manila.share import api as share_api
 from manila.share import rpcapi as share_rpcapi
 from manila import test
 from manila.tests.db import fakes as db_fakes
-from manila import quota
 
 
 def fake_share(id, **kwargs):
@@ -106,7 +105,7 @@ class ShareAPITestCase(test.TestCase):
 
         self.stubs.Set(self.api, 'scheduler_rpcapi', self.scheduler_rpcapi)
         self.stubs.Set(self.api, 'share_rpcapi', self.share_rpcapi)
-        self.stubs.Set(quota.QUOTAS, 'reserve', lambda *args, **kwargs : None)
+        self.stubs.Set(quota.QUOTAS, 'reserve', lambda *args, **kwargs: None)
 
     def tearDown(self):
         super(ShareAPITestCase, self).tearDown()
@@ -317,7 +316,7 @@ class ShareAPITestCase(test.TestCase):
         share['host'] = None
 
         self.mox.StubOutWithMock(db_driver, 'share_delete')
-        db_driver.share_delete(mox.IsA(RequestContext), 'fakeid')
+        db_driver.share_delete(mox.IsA(context.RequestContext), 'fakeid')
         self.mox.ReplayAll()
         self.api.delete(self.context, share)
 

@@ -19,9 +19,9 @@ import webob
 from webob import exc
 
 from manila.api import common
-from manila.api.v1 import shares
 from manila.api import extensions
 from manila.api.openstack import wsgi
+from manila.api.v1 import shares
 from manila.api.views import share_snapshots as snapshot_views
 from manila.api import xmlutil
 from manila import exception

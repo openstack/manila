@@ -49,6 +49,7 @@ PY_EXT = ".py"
 BASEDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 WORDWRAP_WIDTH = 60
 
+
 def main(srcfiles):
     print('\n'.join(['#' * 20, '# manila.conf sample #', '#' * 20,
                      '', '[DEFAULT]', '']))

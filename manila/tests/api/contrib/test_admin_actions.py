@@ -29,4 +29,3 @@ class AdminActionsTest(test.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
-

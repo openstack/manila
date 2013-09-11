@@ -18,8 +18,8 @@
 TestCase for MockProxy based tests and related classes.
 """
 
-import manila.test
 import gzip
+import manila.test
 import os
 import pickle
 

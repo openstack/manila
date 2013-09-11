@@ -248,5 +248,3 @@ def fetch_to_raw(context, image_service,
                 reason=_("Converted to raw, but format is now %s") %
                 data.file_format)
         os.unlink(tmp)
-
-

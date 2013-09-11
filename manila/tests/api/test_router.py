@@ -117,4 +117,3 @@ class VolumeRouterTestCase(test.TestCase):
         result = resource.dispatch(resource.index, req, {})
         ids = [v['id'] for v in result['versions']]
         self.assertEqual(set(ids), set(['v1.0']))
-

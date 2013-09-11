@@ -132,6 +132,7 @@ class HostState(object):
 
             self.updated = capability['timestamp']
 
+
 class HostManager(object):
     """Base HostManager class."""
 

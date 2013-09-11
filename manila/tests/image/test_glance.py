@@ -21,6 +21,7 @@ import random
 import time
 
 import glanceclient.exc
+from glanceclient.v2.client import Client as glanceclient_v2
 
 from manila import context
 from manila import exception
@@ -28,7 +29,6 @@ from manila import flags
 from manila.image import glance
 from manila import test
 from manila.tests.glance import stubs as glance_stubs
-from glanceclient.v2.client import Client as glanceclient_v2
 
 
 FLAGS = flags.FLAGS

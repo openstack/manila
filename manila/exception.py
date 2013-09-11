@@ -460,6 +460,3 @@ class InvalidShareSnapshot(ManilaException):
 
 class SwiftConnectionFailed(ManilaException):
     message = _("Connection to swift failed") + ": %(reason)s"
-
-
-

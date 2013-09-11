@@ -30,8 +30,8 @@ from manila.openstack.common import excutils
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
-from manila.share.configuration import Configuration
 from manila import quota
+from manila.share.configuration import Configuration
 
 from oslo.config import cfg
 

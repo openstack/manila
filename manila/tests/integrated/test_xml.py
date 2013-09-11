@@ -27,7 +27,7 @@ LOG = logging.getLogger(__name__)
 
 class XmlTests(integrated_helpers._IntegratedTestBase):
     """"Some basic XML sanity checks."""
-    
+
     def test_namespace_volumes(self):
         """/servers should have v1.1 namespace (has changed in 1.1)."""
         headers = {}

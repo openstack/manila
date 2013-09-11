@@ -14,6 +14,7 @@
 #    under the License.
 
 
+from datetime import datetime
 from manila.api.contrib import services
 from manila import context
 from manila import db
@@ -22,7 +23,6 @@ from manila.openstack.common import timeutils
 from manila import policy
 from manila import test
 from manila.tests.api import fakes
-from datetime import datetime
 
 
 fake_services_list = [{'binary': 'manila-scheduler',

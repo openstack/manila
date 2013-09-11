@@ -187,7 +187,7 @@ class API(base.Base):
             project_id = share['project_id']
         else:
             project_id = context.project_id
-            
+
         share_id = share['id']
         if not share['host']:
             try:

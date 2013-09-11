@@ -41,7 +41,7 @@ class _FakeImageService(object):
         self.images = {}
         # NOTE(justinsb): The OpenStack API can't upload an image?
         # So, make sure we've got one..
-        timestamp = datetime.datetime(2011, 01, 01, 01, 02, 03)
+        timestamp = datetime.datetime(2011, 0o1, 0o1, 0o1, 0o2, 0o3)
 
         image1 = {'id': '155d900f-4e14-4e4c-a73d-069cbf4541e6',
                   'name': 'fakeimage123456',

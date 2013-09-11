@@ -795,7 +795,7 @@ def _sync_gigabytes(context, project_id, session):
     if FLAGS.no_snapshot_gb_quota:
         return {'gigabytes': share_gigs}
 
-    # TODO: Uncomment when Snapshot size is implemented
+    # TODO(yportnova): Uncomment when Snapshot size is implemented
     # (_junk, snap_gigs) = db.snapshot_data_get_for_project(context,
     #                                                       project_id,
     #                                                       session=session)
@@ -808,7 +808,7 @@ QUOTAS = QuotaEngine()
 
 resources = [
     ReservableResource('shares', _sync_shares, 'quota_shares'),
-    # TODO: Uncomment when Snapshot size is implemented
+    # TODO(yportnova): Uncomment when Snapshot size is implemented
     # ReservableResource('snapshots', _sync_snapshots, 'quota_snapshots'),
     ReservableResource('gigabytes', _sync_gigabytes, 'quota_gigabytes'), ]
 
