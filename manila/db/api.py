@@ -60,7 +60,7 @@ db_opts = [
                default='share-%s',
                help='Template string to be used to generate share names'),
     cfg.StrOpt('share_snapshot_name_template',
-               default='share-snapshot-%s',
+               default='snapshot-%s',
                help='Template string to be used to generate share snapshot '
                     'names'),
     cfg.StrOpt('snapshot_name_template',

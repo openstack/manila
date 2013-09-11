@@ -184,6 +184,7 @@ class ExtensionManager(object):
         LOG.audit(_('Initializing extension manager.'))
 
         self.cls_list = FLAGS.osapi_share_extension
+
         self.extensions = {}
         self._load_extensions()
 

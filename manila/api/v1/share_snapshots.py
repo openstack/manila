@@ -44,17 +44,17 @@ def make_snapshot(elem):
 
 class SnapshotTemplate(xmlutil.TemplateBuilder):
     def construct(self):
-        root = xmlutil.TemplateElement('share-snapshot',
-                                       selector='share-snapshot')
+        root = xmlutil.TemplateElement('snapshot',
+                                       selector='snapshot')
         make_snapshot(root)
         return xmlutil.MasterTemplate(root, 1)
 
 
 class SnapshotsTemplate(xmlutil.TemplateBuilder):
     def construct(self):
-        root = xmlutil.TemplateElement('share-snapshots')
-        elem = xmlutil.SubTemplateElement(root, 'share-snapshot',
-                                          selector='share-snapshots')
+        root = xmlutil.TemplateElement('snapshots')
+        elem = xmlutil.SubTemplateElement(root, 'snapshot',
+                                          selector='snapshots')
         make_snapshot(elem)
         return xmlutil.MasterTemplate(root, 1)
 
@@ -137,10 +137,10 @@ class ShareSnapshotsController(wsgi.Controller):
         """Creates a new snapshot."""
         context = req.environ['manila.context']
 
-        if not self.is_valid_body(body, 'share-snapshot'):
+        if not self.is_valid_body(body, 'snapshot'):
             raise exc.HTTPUnprocessableEntity()
 
-        snapshot = body['share-snapshot']
+        snapshot = body['snapshot']
 
         share_id = snapshot['share_id']
         share = self.share_api.get(context, share_id)
@@ -173,13 +173,13 @@ def create_resource():
 # class Share_snapshots(extensions.ExtensionDescriptor):
 #     """Enable share snapshtos API."""
 #     name = 'ShareSnapshots'
-#     alias = 'share-snapshots'
+#     alias = 'snapshots'
 #     namespace = ''
 #     updated = '2013-03-01T00:00:00+00:00'
 #
 #     def get_resources(self):
 #         controller = ShareSnapshotsController()
 #         resource = extensions.ResourceExtension(
-#             'share-snapshots', controller,
+#             'snapshots', controller,
 #             collection_actions={'detail': 'GET'})
 #         return [resource]

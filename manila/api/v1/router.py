@@ -58,7 +58,7 @@ class APIRouter(manila.api.openstack.APIRouter):
 
         self.resources['snapshots'] = share_snapshots.create_resource()
         mapper.resource("snapshot", "snapshots",
-                        controller=self.resources['share-snapshots'],
+                        controller=self.resources['snapshots'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
 

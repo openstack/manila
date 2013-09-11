@@ -44,26 +44,26 @@ class ShareSnapshotApiTest(test.TestCase):
         self.stubs.Set(share_api.API, 'create_snapshot',
                        stubs.stub_snapshot_create)
         body = {
-            'share-snapshot': {
+            'snapshot': {
                 'share_id': 100,
                 'force': False,
                 'name': 'fake_share_name',
                 'description': 'fake_share_description',
             }
         }
-        req = fakes.HTTPRequest.blank('/share-snapshots')
+        req = fakes.HTTPRequest.blank('/snapshots')
         res_dict = self.controller.create(req, body)
         expected = {
-            'share-snapshot': {
+            'snapshot': {
                 'id': 200,
                 'name': 'fake_share_name',
                 'links': [
                     {
-                        'href': 'http://localhost/v1/fake/share-snapshots/200',
+                        'href': 'http://localhost/v1/fake/snapshots/200',
                         'rel': 'self'
                     },
                     {
-                        'href': 'http://localhost/fake/share-snapshots/200',
+                        'href': 'http://localhost/fake/snapshots/200',
                         'rel': 'bookmark'
                     }
                 ],
@@ -73,7 +73,7 @@ class ShareSnapshotApiTest(test.TestCase):
 
     def test_snapshot_create_no_body(self):
         body = {}
-        req = fakes.HTTPRequest.blank('/share-snapshots')
+        req = fakes.HTTPRequest.blank('/snapshots')
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
                           self.controller.create,
                           req,
@@ -82,24 +82,24 @@ class ShareSnapshotApiTest(test.TestCase):
     def test_snapshot_delete(self):
         self.stubs.Set(share_api.API, 'delete_snapshot',
                        stubs.stub_snapshot_delete)
-        req = fakes.HTTPRequest.blank('/share-snapshots/200')
+        req = fakes.HTTPRequest.blank('/snapshots/200')
         resp = self.controller.delete(req, 200)
         self.assertEqual(resp.status_int, 202)
 
     def test_snapshot_delete_nofound(self):
         self.stubs.Set(share_api.API, 'get_snapshot',
                        stubs.stub_snapshot_get_notfound)
-        req = fakes.HTTPRequest.blank('/share-snapshots/200')
+        req = fakes.HTTPRequest.blank('/snapshots/200')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.delete,
                           req,
                           200)
 
     def test_snapshot_show(self):
-        req = fakes.HTTPRequest.blank('/share-snapshots/200')
+        req = fakes.HTTPRequest.blank('/snapshots/200')
         res_dict = self.controller.show(req, 200)
         expected = {
-            'share-snapshot': {
+            'snapshot': {
                 'id': 200,
                 'share_id': 'fakeshareid',
                 'share_size': 1,
@@ -111,11 +111,11 @@ class ShareSnapshotApiTest(test.TestCase):
                 'export_location': 'fakesnaplocation',
                 'links': [
                     {
-                        'href': 'http://localhost/v1/fake/share-snapshots/200',
+                        'href': 'http://localhost/v1/fake/snapshots/200',
                         'rel': 'self',
                     },
                     {
-                        'href': 'http://localhost/fake/share-snapshots/200',
+                        'href': 'http://localhost/fake/snapshots/200',
                         'rel': 'bookmark',
                     },
                 ],
@@ -126,7 +126,7 @@ class ShareSnapshotApiTest(test.TestCase):
     def test_snapshot_show_nofound(self):
         self.stubs.Set(share_api.API, 'get_snapshot',
                        stubs.stub_snapshot_get_notfound)
-        req = fakes.HTTPRequest.blank('/share-snapshots/200')
+        req = fakes.HTTPRequest.blank('/snapshots/200')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show,
                           req, '200')
@@ -134,21 +134,21 @@ class ShareSnapshotApiTest(test.TestCase):
     def test_snapshot_list_summary(self):
         self.stubs.Set(share_api.API, 'get_all_snapshots',
                        stubs.stub_snapshot_get_all_by_project)
-        req = fakes.HTTPRequest.blank('/share-snapshots')
+        req = fakes.HTTPRequest.blank('/snapshots')
         res_dict = self.controller.index(req)
         expected = {
-            'share-snapshots': [
+            'snapshots': [
                 {
                     'name': 'displaysnapname',
                     'id': 2,
                     'links': [
                         {
                             'href': 'http://localhost/v1/fake/'
-                                    'share-snapshots/2',
+                                    'snapshots/2',
                             'rel': 'self'
                         },
                         {
-                            'href': 'http://localhost/fake/share-snapshots/2',
+                            'href': 'http://localhost/fake/snapshots/2',
                             'rel': 'bookmark'
                         }
                     ],
@@ -162,7 +162,7 @@ class ShareSnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares/detail', environ=env)
         res_dict = self.controller.detail(req)
         expected = {
-            'share-snapshots': [
+            'snapshots': [
                 {
                     'id': 2,
                     'share_id': 'fakeshareid',
@@ -175,12 +175,12 @@ class ShareSnapshotApiTest(test.TestCase):
                     'export_location': 'fakesnaplocation',
                     'links': [
                         {
-                            'href': 'http://localhost/v1/fake/share-snapshots/'
+                            'href': 'http://localhost/v1/fake/snapshots/'
                                     '2',
                             'rel': 'self',
                         },
                         {
-                            'href': 'http://localhost/fake/share-snapshots/2',
+                            'href': 'http://localhost/fake/snapshots/2',
                             'rel': 'bookmark',
                         },
                     ],

@@ -22,7 +22,7 @@ from manila.openstack.common import log as logging
 class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
-    _collection_name = 'share-snapshots'
+    _collection_name = 'snapshots'
 
     def summary_list(self, request, snapshots):
         """Show a list of share snapshots without many details."""
@@ -35,7 +35,7 @@ class ViewBuilder(common.ViewBuilder):
     def summary(self, request, snapshot):
         """Generic, non-detailed view of an share snapshot."""
         return {
-            'share-snapshot': {
+            'snapshot': {
                 'id': snapshot.get('id'),
                 'name': snapshot.get('display_name'),
                 'links': self._get_links(request, snapshot['id'])
@@ -45,7 +45,7 @@ class ViewBuilder(common.ViewBuilder):
     def detail(self, request, snapshot):
         """Detailed view of a single share snapshot."""
         return {
-            'share-snapshot': {
+            'snapshot': {
                 'id': snapshot.get('id'),
                 'share_id': snapshot.get('share_id'),
                 'share_size': snapshot.get('share_size'),
@@ -61,7 +61,7 @@ class ViewBuilder(common.ViewBuilder):
 
     def _list_view(self, func, request, snapshots):
         """Provide a view for a list of share snapshots."""
-        snapshots_list = [func(request, snapshot)['share-snapshot']
+        snapshots_list = [func(request, snapshot)['snapshot']
                           for snapshot in snapshots]
         snapshots_links = self._get_collection_links(request,
                                                      snapshots,
