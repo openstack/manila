@@ -369,4 +369,3 @@ class TestMigrations(test.TestCase):
             LOG.error("Failed to migrate to version %s on engine %s" %
                       (version, engine))
             raise
-
