@@ -131,10 +131,16 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Deletes a logical volume for share."""
         # zero out old volumes to prevent data leaking between users
         # TODO(ja): reclaiming space should be done lazy and low priority
-        self._try_execute('lvremove', '-f', "%s/%s" %
-                          (self.configuration.share_volume_group,
-                           share_name),
-                          run_as_root=True)
+        try:
+            self._try_execute('lvremove', '-f', "%s/%s" %
+                             (self.configuration.share_volume_group,
+                              share_name),
+                              run_as_root=True)
+        except exception.ProcessExecutionError as exc:
+            if "not found" not in exc.stderr:
+                LOG.error(_("Error deleting volume: %s") % exc.stderr)
+                raise
+            LOG.error(_("Volume not found: %s") % exc.stderr)
 
     def get_share_stats(self, refresh=False):
         """Get share status.
