@@ -987,7 +987,7 @@ def snapshot_data_get_for_project(context, project_id, session=None):
     # return (result[0] or 0, result[1] or 0)
 
 
-@require_admin_context
+@require_context
 def share_snapshot_destroy(context, snapshot_id):
     session = get_session()
     with session.begin():
