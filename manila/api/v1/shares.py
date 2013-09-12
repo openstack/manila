@@ -104,6 +104,9 @@ class ShareController(wsgi.Controller):
             self.share_api.delete(context, share)
         except exception.NotFound:
             raise exc.HTTPNotFound()
+        except exception.InvalidShare:
+            raise exc.HTTPForbidden()
+
         return webob.Response(status_int=202)
 
     @wsgi.serializers(xml=SharesTemplate)
@@ -178,10 +181,11 @@ class ShareController(wsgi.Controller):
         kwargs = {}
         kwargs['availability_zone'] = share.get('availability_zone')
 
-        snapshot_id = share.get('snapshot_id')
-        if snapshot_id is not None:
+        sn_id = share.get('snapshot_id')
+        if snapshot_id and isinstance(sn_id, str) and \
+                not 'null' in sn_id.lower():
             kwargs['snapshot'] = self.share_api.get_snapshot(context,
-                                                             snapshot_id)
+                                                             sn_id)
         else:
             kwargs['snapshot'] = None
 
