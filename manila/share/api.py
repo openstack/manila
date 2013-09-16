@@ -228,6 +228,7 @@ class API(base.Base):
             raise exception.InvalidShare(reason=msg)
 
         options = {'share_id': share['id'],
+                   'size': share['size'],
                    'user_id': context.user_id,
                    'project_id': context.project_id,
                    'status': "creating",
@@ -245,7 +246,7 @@ class API(base.Base):
     @wrap_check_policy
     def delete_snapshot(self, context, snapshot, force=False):
         if not force and snapshot['status'] not in ["available", "error"]:
-            msg = _("Share Snapshot status must be available or error")
+            msg = _("Share Snapshot status must be available or ")
             raise exception.InvalidShareSnapshot(reason=msg)
 
         self.db.share_snapshot_update(context, snapshot['id'],

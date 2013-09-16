@@ -41,6 +41,7 @@ def upgrade(migrate_engine):
         Column('project_id', String(length=255)),
         Column('share_id', String(36), ForeignKey('shares.id'),
                nullable=False),
+        Column('size', Integer),
         Column('status', String(length=255)),
         Column('progress', String(length=255)),
         Column('display_name', String(length=255)),

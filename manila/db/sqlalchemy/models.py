@@ -269,6 +269,7 @@ class ShareSnapshot(BASE, ManilaBase):
     user_id = Column(String(255))
     project_id = Column(String(255))
     share_id = Column(String(36))
+    size = Column(Integer)
     status = Column(String(255))
     progress = Column(String(255))
     display_name = Column(String(255))
