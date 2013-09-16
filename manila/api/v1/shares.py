@@ -181,10 +181,11 @@ class ShareController(wsgi.Controller):
         kwargs = {}
         kwargs['availability_zone'] = share.get('availability_zone')
 
-        sn_id = share.get('snapshot_id')
-        if sn_id and isinstance(sn_id, str) and not 'null' in sn_id.lower():
+        snapshot_id = share.get('snapshot_id')
+        if snapshot_id and isinstance(snapshot_id, str) and \
+                not 'null' in snapshot_id.lower():
             kwargs['snapshot'] = self.share_api.get_snapshot(context,
-                                                             sn_id)
+                                                             snapshot_id)
         else:
             kwargs['snapshot'] = None
 
