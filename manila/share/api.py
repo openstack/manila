@@ -227,6 +227,35 @@ class API(base.Base):
             msg = _("must be available")
             raise exception.InvalidShare(reason=msg)
 
+        size = share['size']
+
+        try:
+            reservations = QUOTAS.reserve(context, snapshots=1, gigabytes=size)
+        except exception.OverQuota as e:
+            overs = e.kwargs['overs']
+            usages = e.kwargs['usages']
+            quotas = e.kwargs['quotas']
+
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            if 'gigabytes' in overs:
+                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                        "%(s_size)sG snapshot (%(d_consumed)dG of %(d_quota)dG "
+                        "already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                                's_size': size,
+                                'd_consumed': _consumed('gigabytes'),
+                                'd_quota': quotas['gigabytes']})
+                raise exception.ShareSizeExceedsAvailableQuota()
+            elif 'snapshots' in overs:
+                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                        "snapshot (%(d_consumed)d snapshots "
+                        "already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                                'd_consumed': _consumed('snapshots')})
+                raise exception.SnapshotLimitExceeded(
+                    allowed=quotas['snapshots'])
         options = {'share_id': share['id'],
                    'size': share['size'],
                    'user_id': context.user_id,
@@ -239,7 +268,16 @@ class API(base.Base):
                    'share_proto': share['share_proto'],
                    'export_location': share['export_location']}
 
-        snapshot = self.db.share_snapshot_create(context, options)
+        try:
+            snapshot = self.db.share_snapshot_create(context, options)
+            QUOTAS.commit(context, reservations)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    self.db.snapshot_delete(context, share['id'])
+                finally:
+                    QUOTAS.rollback(context, reservations)
+
         self.share_rpcapi.create_snapshot(context, share, snapshot)
         return snapshot
 

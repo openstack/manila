@@ -972,19 +972,16 @@ def share_snapshot_create(context, values):
 
 @require_admin_context
 def snapshot_data_get_for_project(context, project_id, session=None):
-    # TODO(yportnova): Uncomment when snapshot size implemented
-    raise NotImplementedError()
-    #
-    # query = model_query(context,
-    #                     func.count(models.ShareSnapshot.id),
-    #                     func.sum(models.ShareSnapshot.size),
-    #                     read_deleted="no",
-    #                     session=session).\
-    #     filter_by(project_id=project_id)
-    #
-    # result = query.first()
-    #
-    # return (result[0] or 0, result[1] or 0)
+    query = model_query(context,
+                        func.count(models.ShareSnapshot.id),
+                        func.sum(models.ShareSnapshot.size),
+                        read_deleted="no",
+                        session=session).\
+        filter_by(project_id=project_id)
+
+    result = query.first()
+
+    return (result[0] or 0, result[1] or 0)
 
 
 @require_context

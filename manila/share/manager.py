@@ -185,7 +185,13 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def delete_snapshot(self, context, snapshot_id):
         """Delete share snapshot."""
+        context = context.elevated()
         snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
+
+        if context.project_id != snapshot_ref['project_id']:
+            project_id = snapshot_ref['project_id']
+        else:
+            project_id = context.project_id
 
         try:
             self.driver.delete_snapshot(context, snapshot_ref)
@@ -198,6 +204,17 @@ class ShareManager(manager.SchedulerDependentManager):
                                               {'status': 'error_deleting'})
         else:
             self.db.share_snapshot_destroy(context, snapshot_id)
+            try:
+                reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
+                                          shares=-1,
+                                          gigabytes=-snapshot_ref['size'])
+            except Exception:
+                reservations = None
+                LOG.exception(_("Failed to update usages deleting snapshot"))
+
+        if reservations:
+            QUOTAS.commit(context, reservations, project_id=project_id)
 
     def allow_access(self, context, access_id):
         """Allow access to some share."""

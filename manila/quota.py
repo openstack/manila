@@ -16,7 +16,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Quotas for volumes."""
+"""Quotas for shares."""
 
 import datetime
 
@@ -775,10 +775,10 @@ class QuotaEngine(object):
 
 
 def _sync_shares(context, project_id, session):
-    (volumes, gigs) = db.share_data_get_for_project(context,
-                                                    project_id,
-                                                    session=session)
-    return {'volumes': volumes}
+    (shares, gigs) = db.share_data_get_for_project(context,
+                                                   project_id,
+                                                   session=session)
+    return {'shares': shares}
 
 
 def _sync_snapshots(context, project_id, session):
@@ -790,17 +790,15 @@ def _sync_snapshots(context, project_id, session):
 
 def _sync_gigabytes(context, project_id, session):
     (_junk, share_gigs) = db.share_data_get_for_project(context,
-                                                      project_id,
-                                                      session=session)
+                                                        project_id,
+                                                        session=session)
     if FLAGS.no_snapshot_gb_quota:
         return {'gigabytes': share_gigs}
 
-    # TODO(yportnova): Uncomment when Snapshot size is implemented
-    # (_junk, snap_gigs) = db.snapshot_data_get_for_project(context,
-    #                                                       project_id,
-    #                                                       session=session)
-    # return {'gigabytes': share_gigs + snap_gigs}
-    return {'gigabytes': share_gigs}
+    (_junk, snap_gigs) = db.snapshot_data_get_for_project(context,
+                                                          project_id,
+                                                          session=session)
+    return {'gigabytes': share_gigs + snap_gigs}
 
 
 QUOTAS = QuotaEngine()
@@ -808,8 +806,7 @@ QUOTAS = QuotaEngine()
 
 resources = [
     ReservableResource('shares', _sync_shares, 'quota_shares'),
-    # TODO(yportnova): Uncomment when Snapshot size is implemented
-    # ReservableResource('snapshots', _sync_snapshots, 'quota_snapshots'),
+    ReservableResource('snapshots', _sync_snapshots, 'quota_snapshots'),
     ReservableResource('gigabytes', _sync_gigabytes, 'quota_gigabytes'), ]
 
 
