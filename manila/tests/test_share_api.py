@@ -154,6 +154,7 @@ class ShareAPITestCase(test.TestCase):
                    'status': "creating",
                    'progress': '0%',
                    'share_size': share['size'],
+                   'size': 1,
                    'display_name': fake_name,
                    'display_description': fake_desc,
                    'share_proto': share['share_proto'],
@@ -161,9 +162,14 @@ class ShareAPITestCase(test.TestCase):
 
         self.mox.StubOutWithMock(share_api, 'check_policy')
         share_api.check_policy(self.context, 'create_snapshot', share)
+        self.mox.StubOutWithMock(quota.QUOTAS, 'reserve')
+        quota.QUOTAS.reserve(self.context, snapshots=1, gigabytes=1).\
+            AndReturn('reservation')
         self.mox.StubOutWithMock(db_driver, 'share_snapshot_create')
         db_driver.share_snapshot_create(self.context,
                                         options).AndReturn(snapshot)
+        self.mox.StubOutWithMock(quota.QUOTAS, 'commit')
+        quota.QUOTAS.commit(self.context, 'reservation')
         self.share_rpcapi.create_snapshot(self.context, share, snapshot)
         self.mox.ReplayAll()
         self.api.create_snapshot(self.context, share, fake_name, fake_desc)

@@ -213,8 +213,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 reservations = None
                 LOG.exception(_("Failed to update usages deleting snapshot"))
 
-        if reservations:
-            QUOTAS.commit(context, reservations, project_id=project_id)
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id)
 
     def allow_access(self, context, access_id):
         """Allow access to some share."""

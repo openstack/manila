@@ -54,6 +54,7 @@ def stub_snapshot(id, **kwargs):
         'project_id': 'fakesnapproject',
         'host': 'fakesnaphost',
         'share_size': 1,
+        'size': 1,
         'status': 'fakesnapstatus',
         'share_name': 'fakesharename',
         'display_name': 'displaysnapname',

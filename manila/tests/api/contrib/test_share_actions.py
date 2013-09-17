@@ -61,15 +61,16 @@ class ShareActionsTest(test.TestCase):
 
     def test_allow_access(self):
         def _stub_allow_access(*args, **kwargs):
-            pass
+            return {'fake': 'fake'}
         self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
 
         id = 'fake_share_id'
         body = {"os-allow_access": {"access_type": 'fakeip',
                                     "access_to": '127.0.0.1'}}
+        expected = {'access': {'fake': 'fake'}}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
         res = self.controller._allow_access(req, id, body)
-        self.assertEqual(res.status_int, 202)
+        self.assertEqual(res, expected)
 
     def test_deny_access(self):
         def _stub_deny_access(*args, **kwargs):
