@@ -64,7 +64,7 @@ Module Reference
 
    services
    database
-   volume
+   share
    auth
    api
    scheduler

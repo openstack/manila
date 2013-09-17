@@ -18,7 +18,7 @@
 Manila System Architecture
 ========================
 
-The Manila Block Storage Service is intended to be ran on one or more nodes.
+The Manila Shared Filesystem Management Service is intended to be ran on one or more nodes.
 
 Manila uses a sql-based central database that is shared by all Manila services in the system.  The amount and depth of the data fits into a sql database quite well.  For small deployments this seems like an optimal solution.  For larger deployments, and especially if security is a concern, manila will be moving towards multiple data stores with some kind of aggregation system.
 
@@ -34,11 +34,11 @@ Below you will a brief explanation of the different components.
                                      |            \- ( DB )
                                      |
                                      |
-                    manilaclient     |
-                   /             \   |
- [ Web Dashboard ]-               -[ api ] -- < AMQP > -- [ scheduler ] -- [ volume ] -- ( iSCSI )
-                   \             /   |
-                    novaclient       |
+
+                                     |
+ [ Web Dashboard ]- manilaclient -[ api ] -- < AMQP > -- [ scheduler ] -- [ share ] -- ( shared filesystem )
+                                     |
+                                     |
                                      |
                                      |
                                      |
@@ -50,4 +50,4 @@ Below you will a brief explanation of the different components.
 * api: component that receives http requests, converts commands and communicates with other components via the queue or http
 * Auth Manager: component responsible for users/projects/and roles.  Can backend to DB or LDAP.  This is not a separate binary, but rather a python class that is used by most components in the system.
 * scheduler: decides which host gets each volume
-* volume: manages dynamically attachable block devices.
+* share: manages shared filesystems.

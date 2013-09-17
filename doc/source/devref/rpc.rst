@@ -97,8 +97,8 @@ The figure below shows the status of a RabbitMQ node after Manila components' bo
        2. compute
        3. network.phantom (phantom is hostname)
        4. network
-       5. volume.phantom (phantom is hostname)
-       6. volume
+       5. share.phantom (phantom is hostname)
+       6. share
        7. scheduler.phantom (phantom is hostname)
        8. scheduler
 

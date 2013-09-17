@@ -15,25 +15,25 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Storage Volumes, Disks
+Shared Filesystems
 ======================
 
-.. todo:: rework after iSCSI merge (see 'Old Docs') (todd or vish)
+.. todo:: rework
 
 
-The :mod:`manila.volume.manager` Module
+The :mod:`manila.share.manager` Module
 -------------------------------------
 
-.. automodule:: manila.volume.manager
+.. automodule:: manila.share.manager
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-The :mod:`manila.volume.driver` Module
+The :mod:`manila.share.driver` Module
 -------------------------------------
 
-.. automodule:: manila.volume.driver
+.. automodule:: manila.share.driver
     :noindex:
     :members:
     :undoc-members:
@@ -43,22 +43,15 @@ The :mod:`manila.volume.driver` Module
 Tests
 -----
 
-The :mod:`volume_unittest` Module
+The :mod:`share_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.tests.volume_unittest
+.. automodule:: manila.tests.share_unittest
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-Old Docs
---------
 
-Manila uses iSCSI to export storage volumes from multiple storage nodes. These iSCSI exports are attached (using libvirt) directly to running instances.
-
-Manila volumes are exported over the primary system VLAN (usually VLAN 1), and not over individual VLANs.
-
-The underlying volumes by default are LVM logical volumes, created on demand within a single large volume group.
 
 
