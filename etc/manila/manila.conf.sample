@@ -70,11 +70,8 @@
 # the topic scheduler nodes listen on (string value)
 #scheduler_topic=manila-scheduler
 
-# the topic volume nodes listen on (string value)
-#volume_topic=manila-volume
-
-# the topic volume backup nodes listen on (string value)
-#backup_topic=manila-backup
+# the topic share nodes listen on (string value)
+#share_topic=manila-share
 
 # Deploy v1 of the Manila API.  (boolean value)
 #enable_v1_api=true
@@ -86,16 +83,16 @@
 #api_rate_limit=true
 
 # Specify list of extensions to load when using
-# osapi_volume_extension option with
+# osapi_share_extension option with
 # manila.api.contrib.select_extensions (list value)
-#osapi_volume_ext_list=
+#osapi_share_ext_list=
 
-# osapi volume extension to load (multi valued)
-#osapi_volume_extension=manila.api.contrib.standard_extensions
+# osapi share extension to load (multi valued)
+#osapi_share_extension=manila.api.contrib.standard_extensions
 
 # Base URL that will be presented to users in links to the
-# OpenStack Volume API (string value)
-#osapi_volume_base_URL=<None>
+# OpenStack Share API (string value)
+#osapi_share_base_URL=<None>
 
 # the maximum number of items returned in a single response
 # from a collection resource (integer value)
@@ -119,15 +116,11 @@
 # (integer value)
 #sql_retry_interval=10
 
-# full class name for the Manager for volume (string value)
-#volume_manager=manila.volume.manager.VolumeManager
-
-# full class name for the Manager for volume backup (string
-# value)
-#backup_manager=manila.backup.manager.BackupManager
-
 # full class name for the Manager for scheduler (string value)
 #scheduler_manager=manila.scheduler.manager.SchedulerManager
+
+# full class name for the Manager for share (string value)
+#share_manager=manila.share.manager.ShareManager
 
 # Name of this node.  This can be an opaque identifier.  It is
 # not necessarily a hostname, FQDN, or IP address. (string
@@ -140,12 +133,9 @@
 # Memcached servers or None for in process cache. (list value)
 #memcached_servers=<None>
 
-# default volume type to use (string value)
-#default_volume_type=<None>
-
-# time period to generate volume usages for.  Time period must
+# time period to generate share usages for.  Time period must
 # be hour, day, month or year (string value)
-#volume_usage_audit_period=month
+#share_usage_audit_period=month
 
 # Deprecated: command to use for running commands as root
 # (string value)
@@ -165,13 +155,9 @@
 # value)
 #service_down_time=60
 
-# The full class name of the volume API class to use (string
+# The full class name of the share API class to use (string
 # value)
-#volume_api_class=manila.volume.api.API
-
-# The full class name of the volume backup API class (string
-# value)
-#backup_api_class=manila.backup.api.API
+#share_api_class=manila.share.api.API
 
 # The strategy to use for auth. Supports noauth, keystone, and
 # deprecated. (string value)
@@ -181,6 +167,11 @@
 # be backed by a unique [CONFIG] group with its options (list
 # value)
 #enabled_backends=<None>
+
+# A list of share backend names to use. These backend names
+# should be backed by a unique [CONFIG] group with its options
+# (list value)
+#enabled_share_backends=<None>
 
 # Whether snapshots count against GigaByte quota (boolean
 # value)
@@ -202,14 +193,14 @@
 # Options defined in manila.quota
 #
 
-# number of volumes allowed per project (integer value)
-#quota_volumes=10
+# number of shares allowed per project (integer value)
+#quota_shares=10
 
-# number of volume snapshots allowed per project (integer
+# number of share snapshots allowed per project (integer
 # value)
 #quota_snapshots=10
 
-# number of volume gigabytes (snapshots are also included)
+# number of share gigabytes (snapshots are also included)
 # allowed per project (integer value)
 #quota_gigabytes=1000
 
@@ -245,11 +236,11 @@
 # setting to 0) (integer value)
 #periodic_fuzzy_delay=60
 
-# IP address for OpenStack Volume API to listen (string value)
-#osapi_volume_listen=0.0.0.0
+# IP address for OpenStack Share API to listen (string value)
+#osapi_share_listen=0.0.0.0
 
-# port for os volume api to listen (integer value)
-#osapi_volume_listen_port=8776
+# port for os share api to listen (integer value)
+#osapi_share_listen_port=8786
 
 
 #
@@ -306,39 +297,6 @@
 
 
 #
-# Options defined in manila.backup.manager
-#
-
-# Service to use for backups. (string value)
-#backup_service=manila.backup.services.swift
-
-
-#
-# Options defined in manila.backup.services.swift
-#
-
-# The URL of the Swift endpoint (string value)
-#backup_swift_url=http://localhost:8080/v1/AUTH_
-
-# The default Swift container to use (string value)
-#backup_swift_container=volumebackups
-
-# The size in bytes of Swift backup objects (integer value)
-#backup_swift_object_size=52428800
-
-# The number of retries to make for Swift operations (integer
-# value)
-#backup_swift_retry_attempts=3
-
-# The backoff time in seconds between Swift retries (integer
-# value)
-#backup_swift_retry_backoff=2
-
-# Compression algorithm (None to disable) (string value)
-#backup_compression_algorithm=zlib
-
-
-#
 # Options defined in manila.db.api
 #
 
@@ -349,17 +307,13 @@
 # (boolean value)
 #enable_new_services=true
 
-# Template string to be used to generate volume names (string
+# Template string to be used to generate share names (string
 # value)
-#volume_name_template=volume-%s
+#share_name_template=share-%s
 
-# Template string to be used to generate snapshot names
+# Template string to be used to generate share snapshot names
 # (string value)
-#snapshot_name_template=snapshot-%s
-
-# Template string to be used to generate backup names (string
-# value)
-#backup_name_template=backup-%s
+#share_snapshot_name_template=share-snapshot-%s
 
 
 #
@@ -377,6 +331,14 @@
 # parent dir for tempdir used for image conversion (string
 # value)
 #image_conversion_dir=/tmp
+
+
+#
+# Options defined in manila.openstack.common.eventlet_backdoor
+#
+
+# port for eventlet backdoor to listen (integer value)
+#backdoor_port=<None>
 
 
 #
@@ -412,7 +374,7 @@
 
 # format string to use for log messages with context (string
 # value)
-#logging_context_format_string=%(asctime)s.%(msecs)03d %(levelname)s %(name)s [%(request_id)s %(user)s %(tenant)s] %(instance)s%(message)s
+#logging_context_format_string=%(asctime)s.%(msecs)03d %(process)d %(levelname)s %(name)s [%(request_id)s %(user)s %(tenant)s] %(instance)s%(message)s
 
 # format string to use for log messages without context
 # (string value)
@@ -459,12 +421,12 @@
 # %(default)s (string value)
 #log_date_format=%Y-%m-%d %H:%M:%S
 
-# (Optional) Name of log file to output to. If not set,
-# logging will go to stdout. (string value)
+# (Optional) Name of log file to output to. If no default is
+# set, logging will go to stdout. (string value)
 #log_file=<None>
 
-# (Optional) The directory to keep log files in (will be
-# prepended to --log-file) (string value)
+# (Optional) The base directory used for relative --log-file
+# paths (string value)
 #log_dir=<None>
 
 # Use syslog for logging. (boolean value)
@@ -619,7 +581,7 @@
 # Qpid broker hostname (string value)
 #qpid_hostname=localhost
 
-# Qpid broker port (string value)
+# Qpid broker port (integer value)
 #qpid_port=5672
 
 # Qpid HA cluster host:port pairs (list value)
@@ -712,7 +674,7 @@
 # The scheduler host manager class to use (string value)
 #scheduler_host_manager=manila.scheduler.host_manager.HostManager
 
-# Maximum number of attempts to schedule an volume (integer
+# Maximum number of attempts to schedule a share (integer
 # value)
 #scheduler_max_attempts=3
 
@@ -766,576 +728,76 @@
 
 
 #
-# Options defined in manila.volume.api
-#
-
-# Create volume from snapshot at the host where snapshot
-# resides (boolean value)
-#snapshot_same_host=true
-
-
-#
-# Options defined in manila.volume.driver
+# Options defined in manila.share.driver
 #
 
 # number of times to attempt to run flakey shell commands
 # (integer value)
 #num_shell_tries=3
 
-# The percentage of backend capacity is reserved (integer
-# value)
-#reserved_percentage=0
-
-# number of times to rescan iSCSI target to find volume
-# (integer value)
-#num_iscsi_scan_tries=3
-
-# Number of iscsi target ids per host (integer value)
-#iscsi_num_targets=100
-
-# prefix for iscsi volumes (string value)
-#iscsi_target_prefix=iqn.2010-10.org.openstack:
-
-# The port that the iSCSI daemon is listening on (string
-# value)
-#iscsi_ip_address=$my_ip
-
-# The port that the iSCSI daemon is listening on (integer
-# value)
-#iscsi_port=3260
+# The percentage of backend capacity reserved (integer value)
+#reserved_share_percentage=0
 
 # The backend name for a given driver implementation (string
 # value)
-#volume_backend_name=<None>
+#share_backend_name=<None>
 
 
 #
-# Options defined in manila.volume.drivers.coraid
+# Options defined in manila.share.drivers.lvm
 #
 
-# IP address of Coraid ESM (string value)
-#coraid_esm_address=
+# Base folder where exported shares are located (string value)
+#share_export_root=$state_path/mnt
 
-# User name to connect to Coraid ESM (string value)
-#coraid_user=admin
+# IP to be added to export string (string value)
+#share_export_ip=<None>
 
-# Group name of coraid_user (must have admin privilege)
-# (boolean value)
-#coraid_group=false
-
-# Password to connect to Coraid ESM (string value)
-#coraid_password=password
-
-# Volume Type key name to store ESM Repository Name (string
-# value)
-#coraid_repository_key=coraid_repository
-
-
-#
-# Options defined in manila.volume.drivers.glusterfs
-#
-
-# File with the list of available gluster shares (string
-# value)
-#glusterfs_shares_config=/etc/manila/glusterfs_shares
-
-# Base dir where gluster expected to be mounted (string value)
-#glusterfs_mount_point_base=$state_path/mnt
-
-# Use du or df for free space calculation (string value)
-#glusterfs_disk_util=df
-
-# Create volumes as sparsed files which take no space.If set
-# to False volume is created as regular file.In such case
-# volume creation takes a lot of time. (boolean value)
-#glusterfs_sparsed_volumes=true
-
-
-#
-# Options defined in manila.volume.drivers.huawei.huawei_iscsi
-#
-
-# config data for manila huawei plugin (string value)
-#manila_huawei_conf_file=/etc/manila/manila_huawei_conf.xml
-
-
-#
-# Options defined in manila.volume.drivers.lvm
-#
-
-# Name for the VG that will contain exported volumes (string
-# value)
-#volume_group=manila-volumes
-
-# Method used to wipe old volumes (valid options are: none,
-# zero, shred) (string value)
-#volume_clear=zero
-
-# Size in MiB to wipe at start of old volumes. 0 => all
-# (integer value)
-#volume_clear_size=0
-
-# The default block size used when clearing volumes (string
-# value)
-#volume_dd_blocksize=1M
-
-# Size of thin provisioning pool (None uses entire manila VG)
-# (string value)
-#pool_size=<None>
+# Path to smb config (string value)
+#smb_config_path=$state_path/smb.conf
 
 # If set, create lvms with multiple mirrors. Note that this
 # requires lvm_mirrors + 2 pvs with available space (integer
 # value)
-#lvm_mirrors=0
+#share_lvm_mirrors=0
 
-
-#
-# Options defined in manila.volume.drivers.netapp.iscsi
-#
-
-# URL of the WSDL file for the DFM/Webservice server (string
+# Name for the VG that will contain exported shares (string
 # value)
-#netapp_wsdl_url=<None>
+#share_volume_group=stack-shares
 
-# User name for the DFM/Controller server (string value)
-#netapp_login=<None>
-
-# Password for the DFM/Controller server (string value)
-#netapp_password=<None>
-
-# Hostname for the DFM/Controller server (string value)
-#netapp_server_hostname=<None>
-
-# Port number for the DFM/Controller server (integer value)
-#netapp_server_port=8088
-
-# Storage service to use for provisioning (when
-# volume_type=None) (string value)
-#netapp_storage_service=<None>
-
-# Prefix of storage service name to use for provisioning
-# (volume_type name will be appended) (string value)
-#netapp_storage_service_prefix=<None>
-
-# Vfiler to use for provisioning (string value)
-#netapp_vfiler=<None>
-
-# Transport type protocol (string value)
-#netapp_transport_type=http
-
-# Cluster vserver to use for provisioning (string value)
-#netapp_vserver=openstack
-
-# Volume size multiplier to ensure while creation (floating
-# point value)
-#netapp_size_multiplier=1.2
-
-# Comma separated eligible volumes for provisioning on 7 mode
-# (string value)
-#netapp_volume_list=
+# Specify list of share export helpers. (list value)
+#share_lvm_helpers=CIFS=manila.share.drivers.lvm.CIFSNetConfHelper,NFS=manila.share.drivers.lvm.NFSHelper
 
 
 #
-# Options defined in manila.volume.drivers.netapp.nfs
+# Options defined in manila.share.drivers.netapp
 #
 
-# Does snapshot creation call returns immediately (integer
-# value)
-#synchronous_snapshot_create=0
+# URL of the WSDL file for the DFM server (string value)
+#netapp_nas_wsdl_url=<None>
 
-# URL of the WSDL file for the DFM/Webservice server (string
-# value)
-#netapp_wsdl_url=<None>
+# User name for the DFM server (string value)
+#netapp_nas_login=<None>
 
-# User name for the DFM/Controller server (string value)
-#netapp_login=<None>
+# Password for the DFM server (string value)
+#netapp_nas_password=<None>
 
-# Password for the DFM/Controller server (string value)
-#netapp_password=<None>
+# Hostname for the DFM server (string value)
+#netapp_nas_server_hostname=<None>
 
-# Hostname for the DFM/Controller server (string value)
-#netapp_server_hostname=<None>
+# Port number for the DFM server (integer value)
+#netapp_nas_server_port=8088
 
-# Port number for the DFM/Controller server (integer value)
-#netapp_server_port=8088
-
-# Storage service to use for provisioning (when
-# volume_type=None) (string value)
-#netapp_storage_service=<None>
-
-# Prefix of storage service name to use for provisioning
-# (volume_type name will be appended) (string value)
-#netapp_storage_service_prefix=<None>
-
-# Vfiler to use for provisioning (string value)
-#netapp_vfiler=<None>
-
-# Transport type protocol (string value)
-#netapp_transport_type=http
-
-# Cluster vserver to use for provisioning (string value)
-#netapp_vserver=openstack
-
-# Volume size multiplier to ensure while creation (floating
-# point value)
-#netapp_size_multiplier=1.2
-
-# Comma separated eligible volumes for provisioning on 7 mode
-# (string value)
-#netapp_volume_list=
+# Use secure connection to server. (boolean value)
+#netapp_nas_server_secure=true
 
 
 #
-# Options defined in manila.volume.drivers.nexenta.volume
+# Options defined in manila.share.manager
 #
 
-# IP address of Nexenta SA (string value)
-#nexenta_host=
+# Driver to use for share creation (string value)
+#share_driver=manila.share.drivers.lvm.LVMShareDriver
 
-# HTTP port to connect to Nexenta REST API server (integer
-# value)
-#nexenta_rest_port=2000
 
-# Use http or https for REST connection (default auto) (string
-# value)
-#nexenta_rest_protocol=auto
-
-# User name to connect to Nexenta SA (string value)
-#nexenta_user=admin
-
-# Password to connect to Nexenta SA (string value)
-#nexenta_password=nexenta
-
-# Nexenta target portal port (integer value)
-#nexenta_iscsi_target_portal_port=3260
-
-# pool on SA that will hold all volumes (string value)
-#nexenta_volume=manila
-
-# IQN prefix for iSCSI targets (string value)
-#nexenta_target_prefix=iqn.1986-03.com.sun:02:manila-
-
-# prefix for iSCSI target groups on SA (string value)
-#nexenta_target_group_prefix=manila/
-
-# block size for volumes (blank=default,8KB) (string value)
-#nexenta_blocksize=
-
-# flag to create sparse volumes (boolean value)
-#nexenta_sparse=false
-
-
-#
-# Options defined in manila.volume.drivers.nfs
-#
-
-# File with the list of available nfs shares (string value)
-#nfs_shares_config=/etc/manila/nfs_shares
-
-# Base dir where nfs expected to be mounted (string value)
-#nfs_mount_point_base=$state_path/mnt
-
-# Use du or df for free space calculation (string value)
-#nfs_disk_util=df
-
-# Create volumes as sparsed files which take no space.If set
-# to False volume is created as regular file.In such case
-# volume creation takes a lot of time. (boolean value)
-#nfs_sparsed_volumes=true
-
-# Mount options passed to the nfs client. See section of the
-# nfs man page for details (string value)
-#nfs_mount_options=<None>
-
-
-#
-# Options defined in manila.volume.drivers.rbd
-#
-
-# the RADOS pool in which rbd volumes are stored (string
-# value)
-#rbd_pool=rbd
-
-# the RADOS client name for accessing rbd volumes (string
-# value)
-#rbd_user=<None>
-
-# the libvirt uuid of the secret for the rbd_uservolumes
-# (string value)
-#rbd_secret_uuid=<None>
-
-# where to store temporary image files if the volume driver
-# does not write them directly to the volume (string value)
-#volume_tmp_dir=<None>
-
-
-#
-# Options defined in manila.volume.drivers.san.hp.hp_3par_common
-#
-
-# 3PAR WSAPI Server Url like https://<3par ip>:8080/api/v1
-# (string value)
-#hp3par_api_url=
-
-# 3PAR Super user username (string value)
-#hp3par_username=
-
-# 3PAR Super user password (string value)
-#hp3par_password=
-
-# The 3par domain name to use (string value)
-#hp3par_domain=OpenStack
-
-# The CPG to use for volume creation (string value)
-#hp3par_cpg=OpenStack
-
-# The CPG to use for Snapshots for volumes. If empty
-# hp3par_cpg will be used (string value)
-#hp3par_cpg_snap=
-
-# The time in hours to retain a snapshot.  You can't delete it
-# before this expires. (string value)
-#hp3par_snapshot_retention=
-
-# The time in hours when a snapshot expires  and is deleted.
-# This must be larger than expiration (string value)
-#hp3par_snapshot_expiration=
-
-# Enable HTTP debugging to 3PAR (boolean value)
-#hp3par_debug=false
-
-
-#
-# Options defined in manila.volume.drivers.san.san
-#
-
-# Use thin provisioning for SAN volumes? (boolean value)
-#san_thin_provision=true
-
-# IP address of SAN controller (string value)
-#san_ip=
-
-# Username for SAN controller (string value)
-#san_login=admin
-
-# Password for SAN controller (string value)
-#san_password=
-
-# Filename of private key to use for SSH authentication
-# (string value)
-#san_private_key=
-
-# Cluster name to use for creating volumes (string value)
-#san_clustername=
-
-# SSH port to use with SAN (integer value)
-#san_ssh_port=22
-
-# Execute commands locally instead of over SSH; use if the
-# volume service is running on the SAN device (boolean value)
-#san_is_local=false
-
-# SSH connection timeout in seconds (integer value)
-#ssh_conn_timeout=30
-
-# Minimum ssh connections in the pool (integer value)
-#ssh_min_pool_conn=1
-
-# Maximum ssh connections in the pool (integer value)
-#ssh_max_pool_conn=5
-
-
-#
-# Options defined in manila.volume.drivers.san.solaris
-#
-
-# The ZFS path under which to create zvols for volumes.
-# (string value)
-#san_zfs_volume_base=rpool/
-
-
-#
-# Options defined in manila.volume.drivers.scality
-#
-
-# Path or URL to Scality SOFS configuration file (string
-# value)
-#scality_sofs_config=<None>
-
-# Base dir where Scality SOFS shall be mounted (string value)
-#scality_sofs_mount_point=$state_path/scality
-
-# Path from Scality SOFS root to volume dir (string value)
-#scality_sofs_volume_dir=manila/volumes
-
-
-#
-# Options defined in manila.volume.drivers.solidfire
-#
-
-# Set 512 byte emulation on volume creation;  (boolean value)
-#sf_emulate_512=true
-
-# Allow tenants to specify QOS on create (boolean value)
-#sf_allow_tenant_qos=false
-
-
-#
-# Options defined in manila.volume.drivers.storwize_svc
-#
-
-# Storage system storage pool for volumes (string value)
-#storwize_svc_volpool_name=volpool
-
-# Storage system space-efficiency parameter for volumes
-# (percentage) (integer value)
-#storwize_svc_vol_rsize=2
-
-# Storage system threshold for volume capacity warnings
-# (percentage) (integer value)
-#storwize_svc_vol_warning=0
-
-# Storage system autoexpand parameter for volumes (True/False)
-# (boolean value)
-#storwize_svc_vol_autoexpand=true
-
-# Storage system grain size parameter for volumes
-# (32/64/128/256) (integer value)
-#storwize_svc_vol_grainsize=256
-
-# Storage system compression option for volumes (boolean
-# value)
-#storwize_svc_vol_compression=false
-
-# Enable Easy Tier for volumes (boolean value)
-#storwize_svc_vol_easytier=true
-
-# Maximum number of seconds to wait for FlashCopy to be
-# prepared. Maximum value is 600 seconds (10 minutes).
-# (integer value)
-#storwize_svc_flashcopy_timeout=120
-
-# Connection protocol (iSCSI/FC) (string value)
-#storwize_svc_connection_protocol=iSCSI
-
-# Connect with multipath (currently FC-only) (boolean value)
-#storwize_svc_multipath_enabled=false
-
-
-#
-# Options defined in manila.volume.drivers.windows
-#
-
-# Path to store VHD backed volumes (string value)
-#windows_iscsi_lun_path=C:\iSCSIVirtualDisks
-
-
-#
-# Options defined in manila.volume.drivers.xenapi.sm
-#
-
-# NFS server to be used by XenAPINFSDriver (string value)
-#xenapi_nfs_server=<None>
-
-# Path of exported NFS, used by XenAPINFSDriver (string value)
-#xenapi_nfs_serverpath=<None>
-
-# URL for XenAPI connection (string value)
-#xenapi_connection_url=<None>
-
-# Username for XenAPI connection (string value)
-#xenapi_connection_username=root
-
-# Password for XenAPI connection (string value)
-#xenapi_connection_password=<None>
-
-# Base path to the storage repository (string value)
-#xenapi_sr_base_path=/var/run/sr-mount
-
-
-#
-# Options defined in manila.volume.drivers.xiv
-#
-
-# Proxy driver (string value)
-#xiv_proxy=xiv_openstack.nova_proxy.XIVNovaProxy
-
-
-#
-# Options defined in manila.volume.drivers.zadara
-#
-
-# Management IP of Zadara VPSA (string value)
-#zadara_vpsa_ip=<None>
-
-# Zadara VPSA port number (string value)
-#zadara_vpsa_port=<None>
-
-# Use SSL connection (boolean value)
-#zadara_vpsa_use_ssl=false
-
-# User name for the VPSA (string value)
-#zadara_user=<None>
-
-# Password for the VPSA (string value)
-#zadara_password=<None>
-
-# Name of VPSA storage pool for volumes (string value)
-#zadara_vpsa_poolname=<None>
-
-# Default cache policy for volumes (string value)
-#zadara_default_cache_policy=write-through
-
-# Default encryption policy for volumes (string value)
-#zadara_default_encryption=NO
-
-# Default striping mode for volumes (string value)
-#zadara_default_striping_mode=simple
-
-# Default stripe size for volumes (string value)
-#zadara_default_stripesize=64
-
-# Default template for VPSA volume names (string value)
-#zadara_vol_name_template=OS_%s
-
-# Automatically detach from servers on volume delete (boolean
-# value)
-#zadara_vpsa_auto_detach_on_delete=true
-
-# Don't halt on deletion of non-existing volumes (boolean
-# value)
-#zadara_vpsa_allow_nonexistent_delete=true
-
-
-#
-# Options defined in manila.volume.iscsi
-#
-
-# iscsi target user-land tool to use (string value)
-#iscsi_helper=tgtadm
-
-# Volume configuration file storage directory (string value)
-#volumes_dir=$state_path/volumes
-
-# IET configuration file (string value)
-#iet_conf=/etc/iet/ietd.conf
-
-# Comma-separatd list of initiator IQNs allowed to connect to
-# the iSCSI target. (From Nova compute nodes.) (string value)
-#lio_initiator_iqns=
-
-# The type of IO the iSCSI target will issue to the backend storage.
-# This option only currently works with IET.
-# Valid settings are 'blockio','fileio' and 'auto' which will autodetect
-# the type of file provided to the target. (string value)
-# iscsi_iotype=fileio
-
-#
-# Options defined in manila.volume.manager
-#
-
-# Driver to use for volume creation (string value)
-#volume_driver=manila.volume.drivers.lvm.LVMISCSIDriver
-
-
-# Total option count: 299
+# Total option count: 173

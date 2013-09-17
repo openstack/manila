@@ -44,7 +44,7 @@ FILES=$(find manila -type f -name "*.py" ! -path "manila/tests/*" -exec \
     grep -l "Opt(" {} \; | sort -u)
 
 PYTHONPATH=./:${PYTHONPATH} \
-    python $(dirname "$0")/extract_opts_new.py ${FILES} > \
+    python $(dirname "$0")/extract_opts.py ${FILES} > \
     $OUTPUTFILE
 
 # When we use openstack.common.config.generate we won't need this any more
