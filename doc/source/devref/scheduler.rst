@@ -18,30 +18,30 @@
 Scheduler
 =========
 
-The :mod:`cinder.scheduler.manager` Module
+The :mod:`manila.scheduler.manager` Module
 ----------------------------------------
 
-.. automodule:: cinder.scheduler.manager
+.. automodule:: manila.scheduler.manager
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.scheduler.driver` Module
+The :mod:`manila.scheduler.driver` Module
 ---------------------------------------
 
-.. automodule:: cinder.scheduler.driver
+.. automodule:: manila.scheduler.driver
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.scheduler.simple` Driver
+The :mod:`manila.scheduler.simple` Driver
 ---------------------------------------
 
-.. automodule:: cinder.scheduler.simple
+.. automodule:: manila.scheduler.simple
     :noindex:
     :members:
     :undoc-members:
@@ -54,7 +54,7 @@ Tests
 The :mod:`scheduler_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.scheduler_unittest
+.. automodule:: manila.tests.scheduler_unittest
     :noindex:
     :members:
     :undoc-members:

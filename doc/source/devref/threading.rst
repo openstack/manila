@@ -46,6 +46,6 @@ block, but this implementation resulted in a `bug`_ and was removed.
 See this `mailing list thread`_ for a discussion of this issue, including
 a discussion of the `impact on performance`_.
 
-.. _bug: https://bugs.launchpad.net/cinder/+bug/838581
+.. _bug: https://bugs.launchpad.net/manila/+bug/838581
 .. _mailing list thread: https://lists.launchpad.net/openstack/msg08118.html
 .. _impact on performance: https://lists.launchpad.net/openstack/msg08217.html

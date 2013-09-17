@@ -18,7 +18,7 @@
 Developer Guide
 ===============
 
-In this section you will find information on Cinder's lower level programming APIs.
+In this section you will find information on Manila's lower level programming APIs.
 
 
 Programming HowTos and Tutorials
@@ -31,7 +31,7 @@ Programming HowTos and Tutorials
     addmethod.openstackapi
 
 
-Background Concepts for Cinder
+Background Concepts for Manila
 ----------------------------
 .. toctree::
    :maxdepth: 3
@@ -69,7 +69,7 @@ Module Reference
    api
    scheduler
    fakes
-   cinder
+   manila
 
 
 Indices and tables

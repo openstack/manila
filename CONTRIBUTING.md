@@ -8,5 +8,5 @@ the workflow documented at [http://wiki.openstack.org/GerritWorkflow](http://wik
 
 Pull requests submitted through GitHub will be ignored.
 
-Bugs should be filed [on Launchpad](https://bugs.launchpad.net/cinder),
+Bugs should be filed [on Launchpad](https://bugs.launchpad.net/manila),
 not in GitHub's issue tracker.

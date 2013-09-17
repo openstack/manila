@@ -21,19 +21,19 @@ Storage Volumes, Disks
 .. todo:: rework after iSCSI merge (see 'Old Docs') (todd or vish)
 
 
-The :mod:`cinder.volume.manager` Module
+The :mod:`manila.volume.manager` Module
 -------------------------------------
 
-.. automodule:: cinder.volume.manager
+.. automodule:: manila.volume.manager
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-The :mod:`cinder.volume.driver` Module
+The :mod:`manila.volume.driver` Module
 -------------------------------------
 
-.. automodule:: cinder.volume.driver
+.. automodule:: manila.volume.driver
     :noindex:
     :members:
     :undoc-members:
@@ -46,7 +46,7 @@ Tests
 The :mod:`volume_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.volume_unittest
+.. automodule:: manila.tests.volume_unittest
     :noindex:
     :members:
     :undoc-members:
@@ -55,9 +55,9 @@ The :mod:`volume_unittest` Module
 Old Docs
 --------
 
-Cinder uses iSCSI to export storage volumes from multiple storage nodes. These iSCSI exports are attached (using libvirt) directly to running instances.
+Manila uses iSCSI to export storage volumes from multiple storage nodes. These iSCSI exports are attached (using libvirt) directly to running instances.
 
-Cinder volumes are exported over the primary system VLAN (usually VLAN 1), and not over individual VLANs.
+Manila volumes are exported over the primary system VLAN (usually VLAN 1), and not over individual VLANs.
 
 The underlying volumes by default are LVM logical volumes, created on demand within a single large volume group.
 

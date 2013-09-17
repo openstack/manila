@@ -24,60 +24,60 @@ When the real thing isn't available and you have some development to do these
 fake implementations of various drivers let you get on with your day.
 
 
-The :mod:`cinder.virt.fake` Module
+The :mod:`manila.virt.fake` Module
 --------------------------------
 
-.. automodule:: cinder.virt.fake
+.. automodule:: manila.virt.fake
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.auth.fakeldap` Module
+The :mod:`manila.auth.fakeldap` Module
 ------------------------------------
 
-.. automodule:: cinder.auth.fakeldap
+.. automodule:: manila.auth.fakeldap
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
     
 
-The :mod:`cinder.testing.fake.rabbit` Module
+The :mod:`manila.testing.fake.rabbit` Module
 ------------------------------------------
 
-.. automodule:: cinder.testing.fake.rabbit
+.. automodule:: manila.testing.fake.rabbit
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :class:`cinder.volume.driver.FakeAOEDriver` Class
+The :class:`manila.volume.driver.FakeAOEDriver` Class
 ---------------------------------------------------
 
-.. autoclass:: cinder.volume.driver.FakeAOEDriver
+.. autoclass:: manila.volume.driver.FakeAOEDriver
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :class:`cinder.tests.service_unittest.FakeManager` Class
+The :class:`manila.tests.service_unittest.FakeManager` Class
 ----------------------------------------------------------
 
-.. autoclass:: cinder.tests.service_unittest.FakeManager
+.. autoclass:: manila.tests.service_unittest.FakeManager
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.tests.api.openstack.fakes` Module
+The :mod:`manila.tests.api.openstack.fakes` Module
 ------------------------------------------------
 
-.. automodule:: cinder.tests.api.openstack.fakes
+.. automodule:: manila.tests.api.openstack.fakes
     :noindex:
     :members:
     :undoc-members:

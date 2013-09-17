@@ -4,7 +4,7 @@
 *.pyc
 *.sqlite
 *.swp
-.cinder-venv
+.manila-venv
 .coverage
 .testrepository
 .tox
@@ -16,7 +16,7 @@ build/*
 build-stamp
 CA/
 ChangeLog
-cinder.egg-info
+manila.egg-info
 cover/*
 covhtml
 dist/*
@@ -24,7 +24,7 @@ instances
 keeper
 keys
 local_settings.py
-tools/conf/cinder.conf*
+tools/conf/manila.conf*
 tools/lintstack.head.py
 tools/pylint_exceptions
 tags

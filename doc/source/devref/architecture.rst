@@ -15,12 +15,12 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Cinder System Architecture
+Manila System Architecture
 ========================
 
-The Cinder Block Storage Service is intended to be ran on one or more nodes.
+The Manila Block Storage Service is intended to be ran on one or more nodes.
 
-Cinder uses a sql-based central database that is shared by all Cinder services in the system.  The amount and depth of the data fits into a sql database quite well.  For small deployments this seems like an optimal solution.  For larger deployments, and especially if security is a concern, cinder will be moving towards multiple data stores with some kind of aggregation system.
+Manila uses a sql-based central database that is shared by all Manila services in the system.  The amount and depth of the data fits into a sql database quite well.  For small deployments this seems like an optimal solution.  For larger deployments, and especially if security is a concern, manila will be moving towards multiple data stores with some kind of aggregation system.
 
 Components
 ----------
@@ -34,7 +34,7 @@ Below you will a brief explanation of the different components.
                                      |            \- ( DB )
                                      |
                                      |
-                    cinderclient     |
+                    manilaclient     |
                    /             \   |
  [ Web Dashboard ]-               -[ api ] -- < AMQP > -- [ scheduler ] -- [ volume ] -- ( iSCSI )
                    \             /   |

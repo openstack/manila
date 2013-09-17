@@ -19,16 +19,16 @@ Setting Up a Development Environment
 ====================================
 
 This page describes how to setup a working Python development
-environment that can be used in developing cinder on Ubuntu, Fedora or
+environment that can be used in developing manila on Ubuntu, Fedora or
 Mac OS X. These instructions assume you're already familiar with
 git. Refer to GettingTheCode_ for additional information.
 
 .. _GettingTheCode: http://wiki.openstack.org/GettingTheCode
 
-Following these instructions will allow you to run the cinder unit
-tests. If you want to be able to run cinder (i.e., launch VM instances),
+Following these instructions will allow you to run the manila unit
+tests. If you want to be able to run manila (i.e., launch VM instances),
 you will also need to install libvirt and at least one of the
-`supported hypervisors`_. Running cinder is currently only supported on
+`supported hypervisors`_. Running manila is currently only supported on
 Linux, although you can run the unit tests on Mac OS X. See
 :doc:`../quickstart` for how to get a working version of OpenStack
 Compute running as quickly as possible.
@@ -38,10 +38,10 @@ Compute running as quickly as possible.
 Virtual environments
 --------------------
 
-Cinder development uses `virtualenv <http://pypi.python.org/pypi/virtualenv>`__ to track and manage Python
+Manila development uses `virtualenv <http://pypi.python.org/pypi/virtualenv>`__ to track and manage Python
 dependencies while in development and testing. This allows you to
 install all of the Python package dependencies in a virtual
-environment or "virtualenv" (a special subdirectory of your cinder
+environment or "virtualenv" (a special subdirectory of your manila
 directory), instead of installing the packages at the system level.
 
 .. note::
@@ -54,7 +54,7 @@ Linux Systems
 
 .. note::
 
-  This section is tested for Cinder on Ubuntu (12.04-64) and
+  This section is tested for Manila on Ubuntu (12.04-64) and
   Fedora-based (RHEL 6.1) distributions. Feel free to add notes and
   change according to your experiences or operating system.
 
@@ -82,18 +82,18 @@ Check the version of OpenSSL you have installed::
 
 If you have installed OpenSSL 1.0.0a, which can happen when installing a
 MacPorts package for OpenSSL, you will see an error when running
-``cinder.tests.auth_unittest.AuthTestCase.test_209_can_generate_x509``.
+``manila.tests.auth_unittest.AuthTestCase.test_209_can_generate_x509``.
 
 The stock version of OpenSSL that ships with Mac OS X 10.6 (OpenSSL 0.9.8l)
-or Mac OS X 10.7 (OpenSSL 0.9.8r) works fine with cinder.
+or Mac OS X 10.7 (OpenSSL 0.9.8r) works fine with manila.
 
 
 Getting the code
 ----------------
 Grab the code from GitHub::
 
-    git clone https://github.com/openstack/cinder.git
-    cd cinder
+    git clone https://github.com/openstack/manila.git
+    cd manila
 
 
 Running unit tests
@@ -127,9 +127,9 @@ by the ``tools/install_venv.py`` file into the virutalenv.
 
 If all goes well, you should get a message something like this::
 
-  Cinder development environment setup is complete.
+  Manila development environment setup is complete.
 
-To activate the Cinder virtualenv for the extent of your current shell session
+To activate the Manila virtualenv for the extent of your current shell session
 you can run::
 
      $ source .venv/bin/activate
@@ -145,7 +145,7 @@ Contributing Your Work
 Once your work is complete you may wish to contribute it to the project.  Add
 your name and email address to the ``Authors`` file, and also to the ``.mailmap``
 file if you use multiple email addresses. Your contributions can not be merged
-into trunk unless you are listed in the Authors file. Cinder uses the Gerrit
+into trunk unless you are listed in the Authors file. Manila uses the Gerrit
 code review system. For information on how to submit your branch to Gerrit,
 see GerritWorkflow_.
 

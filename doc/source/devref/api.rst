@@ -18,25 +18,25 @@
 API Endpoint
 ============
 
-Cinder has a system for managing multiple APIs on different subdomains.
+Manila has a system for managing multiple APIs on different subdomains.
 Currently there is support for the OpenStack API, as well as the Amazon EC2
 API.
 
 Common Components
 -----------------
 
-The :mod:`cinder.api` Module
+The :mod:`manila.api` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cinder.api
+.. automodule:: manila.api
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-The :mod:`cinder.api.cloud` Module
+The :mod:`manila.api.cloud` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.api.cloud
+.. automodule:: manila.api.cloud
     :noindex:
     :members:
     :undoc-members:
@@ -47,7 +47,7 @@ OpenStack API
 
 The :mod:`openstack` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cinder.api.openstack
+.. automodule:: manila.api.openstack
     :noindex:
     :members:
     :undoc-members:
@@ -55,7 +55,7 @@ The :mod:`openstack` Module
 
 The :mod:`auth` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cinder.api.openstack.auth
+.. automodule:: manila.api.openstack.auth
     :noindex:
     :members:
     :undoc-members:
@@ -64,10 +64,10 @@ The :mod:`auth` Module
 EC2 API
 -------
 
-The :mod:`cinder.api.ec2` Module
+The :mod:`manila.api.ec2` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.api.ec2
+.. automodule:: manila.api.ec2
     :noindex:
     :members:
     :undoc-members:
@@ -76,7 +76,7 @@ The :mod:`cinder.api.ec2` Module
 The :mod:`cloud` Module
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.api.ec2.cloud
+.. automodule:: manila.api.ec2.cloud
     :noindex:
     :members:
     :undoc-members:
@@ -85,7 +85,7 @@ The :mod:`cloud` Module
 The :mod:`metadatarequesthandler` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.api.ec2.metadatarequesthandler
+.. automodule:: manila.api.ec2.metadatarequesthandler
     :noindex:
     :members:
     :undoc-members:
@@ -97,7 +97,7 @@ Tests
 The :mod:`api_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.api_unittest
+.. automodule:: manila.tests.api_unittest
     :noindex:
     :members:
     :undoc-members:
@@ -106,7 +106,7 @@ The :mod:`api_unittest` Module
 The :mod:`api_integration` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.api_integration
+.. automodule:: manila.tests.api_integration
     :noindex:
     :members:
     :undoc-members:
@@ -115,7 +115,7 @@ The :mod:`api_integration` Module
 The :mod:`cloud_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.cloud_unittest
+.. automodule:: manila.tests.cloud_unittest
     :noindex:
     :members:
     :undoc-members:
@@ -124,7 +124,7 @@ The :mod:`cloud_unittest` Module
 The :mod:`api.fakes` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.api.fakes
+.. automodule:: manila.tests.api.fakes
     :noindex:
     :members:
     :undoc-members:
@@ -133,7 +133,7 @@ The :mod:`api.fakes` Module
 The :mod:`api.test_wsgi` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.api.test_wsgi
+.. automodule:: manila.tests.api.test_wsgi
     :noindex:
     :members:
     :undoc-members:
@@ -142,7 +142,7 @@ The :mod:`api.test_wsgi` Module
 The :mod:`test_api` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.api.openstack.test_api
+.. automodule:: manila.tests.api.openstack.test_api
     :noindex:
     :members:
     :undoc-members:
@@ -151,7 +151,7 @@ The :mod:`test_api` Module
 The :mod:`test_auth` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.api.openstack.test_auth
+.. automodule:: manila.tests.api.openstack.test_auth
     :noindex:
     :members:
     :undoc-members:
@@ -160,7 +160,7 @@ The :mod:`test_auth` Module
 The :mod:`test_faults` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.api.openstack.test_faults
+.. automodule:: manila.tests.api.openstack.test_faults
     :noindex:
     :members:
     :undoc-members:

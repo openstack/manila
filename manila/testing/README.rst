@@ -1,21 +1,21 @@
 =====================================
-OpenStack Cinder Testing Infrastructure
+OpenStack Manila Testing Infrastructure
 =====================================
 
 A note of clarification is in order, to help those who are new to testing in
-OpenStack cinder:
+OpenStack manila:
 
 - actual unit tests are created in the "tests" directory;
 - the "testing" directory is used to house the infrastructure needed to support
-  testing in OpenStack Cinder.
+  testing in OpenStack Manila.
 
 This README file attempts to provide current and prospective contributors with
 everything they need to know in order to start creating unit tests and
-utilizing the convenience code provided in cinder.testing.
+utilizing the convenience code provided in manila.testing.
 
 Note: the content for the rest of this file will be added as the work items in
 the following blueprint are completed:
-  https://blueprints.launchpad.net/cinder/+spec/consolidate-testing-infrastructure
+  https://blueprints.launchpad.net/manila/+spec/consolidate-testing-infrastructure
 
 
 Test Types: Unit vs. Functional vs. Integration
@@ -35,7 +35,7 @@ TBD
 
 test.TestCase
 -------------
-The TestCase class from cinder.test (generally imported as test) will
+The TestCase class from manila.test (generally imported as test) will
 automatically manage self.stubs using the stubout module and self.mox
 using the mox module during the setUp step. They will automatically
 verify and clean up during the tearDown step.

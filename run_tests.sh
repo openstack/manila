@@ -4,7 +4,7 @@ set -u
 
 function usage {
   echo "Usage: $0 [OPTION]..."
-  echo "Run Cinder's test suite(s)"
+  echo "Run Manila's test suite(s)"
   echo ""
   echo "  -V, --virtual-env        Always use virtualenv.  Install automatically if not present"
   echo "  -N, --no-virtual-env     Don't use virtualenv.  Run tests in local environment"
@@ -76,10 +76,10 @@ done
 
 # If enabled, tell nose to collect coverage data
 if [ $coverage -eq 1 ]; then
-    noseopts="$noseopts --with-coverage --cover-package=cinder"
+    noseopts="$noseopts --with-coverage --cover-package=manila"
 fi
 if [ $coverage_xml -eq 1 ]; then
-    noseopts="$noseopts --with-xcoverage --cover-package=cinder --xcoverage-file=`pwd`/coverage.xml"
+    noseopts="$noseopts --with-xcoverage --cover-package=manila --xcoverage-file=`pwd`/coverage.xml"
 fi
 
 if [ $no_site_packages -eq 1 ]; then
@@ -96,21 +96,21 @@ function run_tests {
 }
 
 # Files of interest
-# NOTE(lzyeval): Avoid selecting cinder-api-paste.ini and cinder.conf in cinder/bin
+# NOTE(lzyeval): Avoid selecting manila-api-paste.ini and manila.conf in manila/bin
 #                when running on devstack.
 # NOTE(lzyeval): Avoid selecting *.pyc files to reduce pep8 check-up time
 #                when running on devstack.
 # NOTE(dprince): Exclude xenapi plugins. They are Python 2.4 code and as such
 #                cannot be expected to work with tools/hacking checks.
 xen_net_path="plugins/xenserver/networking/etc/xensource/scripts"
-srcfiles=`find cinder -type f -name "*.py" ! -path "cinder/openstack/common/*"`
-srcfiles+=" `find bin -type f ! -name "cinder.conf*" ! -name "*api-paste.ini*"`"
+srcfiles=`find manila -type f -name "*.py" ! -path "manila/openstack/common/*"`
+srcfiles+=" `find bin -type f ! -name "manila.conf*" ! -name "*api-paste.ini*"`"
 srcfiles+=" `find tools -type f -name "*.py"`"
 srcfiles+=" setup.py"
 
 function run_pep8 {
   echo "Running PEP8 and HACKING compliance check..."
-  bash -c "${wrapper} flake8 cinder* bin"
+  bash -c "${wrapper} flake8 manila* bin"
 }
 
 
@@ -176,7 +176,7 @@ fi
 if [ $coverage -eq 1 ]; then
     echo "Generating coverage report in covhtml/"
     # Don't compute coverage for common code, which is tested elsewhere
-    ${wrapper} coverage html --include='cinder/*' --omit='cinder/openstack/common/*' -d covhtml -i
+    ${wrapper} coverage html --include='manila/*' --omit='manila/openstack/common/*' -d covhtml -i
 fi
 
 exit $RET

@@ -20,25 +20,25 @@
 Services, Managers and Drivers
 ==============================
 
-The responsibilities of Services, Managers, and Drivers, can be a bit confusing to people that are new to cinder.  This document attempts to outline the division of responsibilities to make understanding the system a little bit easier.
+The responsibilities of Services, Managers, and Drivers, can be a bit confusing to people that are new to manila.  This document attempts to outline the division of responsibilities to make understanding the system a little bit easier.
 
 Currently, Managers and Drivers are specified by flags and loaded using utils.load_object().  This method allows for them to be implemented as singletons, classes, modules or objects.  As long as the path specified by the flag leads to an object (or a callable that returns an object) that responds to getattr, it should work as a manager or driver.
 
 
-The :mod:`cinder.service` Module
+The :mod:`manila.service` Module
 ------------------------------
 
-.. automodule:: cinder.service
+.. automodule:: manila.service
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.manager` Module
+The :mod:`manila.manager` Module
 ------------------------------
 
-.. automodule:: cinder.manager
+.. automodule:: manila.manager
     :noindex:
     :members:
     :undoc-members:

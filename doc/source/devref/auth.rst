@@ -20,20 +20,20 @@
 Authentication and Authorization
 ================================
 
-The :mod:`cinder.quota` Module
+The :mod:`manila.quota` Module
 ----------------------------
 
-.. automodule:: cinder.quota
+.. automodule:: manila.quota
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.auth.signer` Module
+The :mod:`manila.auth.signer` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.auth.signer
+.. automodule:: manila.auth.signer
     :noindex:
     :members:
     :undoc-members:
@@ -43,10 +43,10 @@ The :mod:`cinder.auth.signer` Module
 Auth Manager
 ------------
 
-The :mod:`cinder.auth.manager` Module
+The :mod:`manila.auth.manager` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.auth.manager
+.. automodule:: manila.auth.manager
     :noindex:
     :members:
     :undoc-members:
@@ -60,7 +60,7 @@ Tests
 The :mod:`auth_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.auth_unittest
+.. automodule:: manila.tests.auth_unittest
     :noindex:
     :members:
     :undoc-members:
@@ -70,7 +70,7 @@ The :mod:`auth_unittest` Module
 The :mod:`access_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.access_unittest
+.. automodule:: manila.tests.access_unittest
     :noindex:
     :members:
     :undoc-members:
@@ -80,7 +80,7 @@ The :mod:`access_unittest` Module
 The :mod:`quota_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.quota_unittest
+.. automodule:: manila.tests.quota_unittest
     :noindex:
     :members:
     :undoc-members:
@@ -90,7 +90,7 @@ The :mod:`quota_unittest` Module
 Legacy Docs
 -----------
 
-Cinder provides RBAC (Role-based access control) of the AWS-type APIs. We define the following roles:
+Manila provides RBAC (Role-based access control) of the AWS-type APIs. We define the following roles:
 
 Roles-Based Access Control of AWS-style APIs using SAML Assertions
 “Achieving FIPS 199 Moderate certification of a hybrid cloud environment using CloudAudit and declarative C.I.A. classifications”

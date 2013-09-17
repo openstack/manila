@@ -27,7 +27,7 @@ make_hook() {
     fi
 }
 
-# NOTE(jk0): Make sure we are in cinder's root directory before adding the hook.
+# NOTE(jk0): Make sure we are in manila's root directory before adding the hook.
 if [ ! -d ".git" ]; then
     echo "unable to find .git; moving up a directory"
     cd ..

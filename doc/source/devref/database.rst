@@ -18,10 +18,10 @@
 The Database Layer
 ==================
 
-The :mod:`cinder.db.api` Module
+The :mod:`manila.db.api` Module
 -----------------------------
 
-.. automodule:: cinder.db.api
+.. automodule:: manila.db.api
     :noindex:
     :members:
     :undoc-members:
@@ -31,25 +31,25 @@ The :mod:`cinder.db.api` Module
 The Sqlalchemy Driver
 ---------------------
 
-The :mod:`cinder.db.sqlalchemy.api` Module
+The :mod:`manila.db.sqlalchemy.api` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.db.sqlalchemy.api
+.. automodule:: manila.db.sqlalchemy.api
     :noindex:
 
-The :mod:`cinder.db.sqlalchemy.models` Module
+The :mod:`manila.db.sqlalchemy.models` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.db.sqlalchemy.models
+.. automodule:: manila.db.sqlalchemy.models
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-The :mod:`cinder.db.sqlalchemy.session` Module
+The :mod:`manila.db.sqlalchemy.session` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.db.sqlalchemy.session
+.. automodule:: manila.db.sqlalchemy.session
     :noindex:
     :members:
     :undoc-members:

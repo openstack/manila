@@ -18,114 +18,114 @@
 Common and Misc Libraries
 =========================
 
-Libraries common throughout Cinder or just ones that haven't been categorized
+Libraries common throughout Manila or just ones that haven't been categorized
 very well yet.
 
 
-The :mod:`cinder.adminclient` Module
+The :mod:`manila.adminclient` Module
 ----------------------------------
 
-.. automodule:: cinder.adminclient
+.. automodule:: manila.adminclient
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.context` Module
+The :mod:`manila.context` Module
 ------------------------------
 
-.. automodule:: cinder.context
+.. automodule:: manila.context
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.exception` Module
+The :mod:`manila.exception` Module
 --------------------------------
 
-.. automodule:: cinder.exception
+.. automodule:: manila.exception
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.flags` Module
+The :mod:`manila.flags` Module
 ----------------------------
 
-.. automodule:: cinder.flags
+.. automodule:: manila.flags
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.process` Module
+The :mod:`manila.process` Module
 ------------------------------
 
-.. automodule:: cinder.process
+.. automodule:: manila.process
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.rpc` Module
+The :mod:`manila.rpc` Module
 --------------------------
 
-.. automodule:: cinder.rpc
+.. automodule:: manila.rpc
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.server` Module
+The :mod:`manila.server` Module
 -----------------------------
 
-.. automodule:: cinder.server
+.. automodule:: manila.server
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.test` Module
+The :mod:`manila.test` Module
 ---------------------------
 
-.. automodule:: cinder.test
+.. automodule:: manila.test
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:  
 
 
-The :mod:`cinder.utils` Module
+The :mod:`manila.utils` Module
 ----------------------------
 
-.. automodule:: cinder.utils
+.. automodule:: manila.utils
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.validate` Module
+The :mod:`manila.validate` Module
 -------------------------------
 
-.. automodule:: cinder.validate
+.. automodule:: manila.validate
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`cinder.wsgi` Module
+The :mod:`manila.wsgi` Module
 ---------------------------
 
-.. automodule:: cinder.wsgi
+.. automodule:: manila.wsgi
     :noindex:
     :members:
     :undoc-members:
@@ -138,7 +138,7 @@ Tests
 The :mod:`declare_flags` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.declare_flags
+.. automodule:: manila.tests.declare_flags
     :noindex:
     :members:
     :undoc-members:
@@ -148,7 +148,7 @@ The :mod:`declare_flags` Module
 The :mod:`fake_flags` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.fake_flags
+.. automodule:: manila.tests.fake_flags
     :noindex:
     :members:
     :undoc-members:
@@ -158,7 +158,7 @@ The :mod:`fake_flags` Module
 The :mod:`flags_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.flags_unittest
+.. automodule:: manila.tests.flags_unittest
     :noindex:
     :members:
     :undoc-members:
@@ -168,7 +168,7 @@ The :mod:`flags_unittest` Module
 The :mod:`process_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.process_unittest
+.. automodule:: manila.tests.process_unittest
     :noindex:
     :members:
     :undoc-members:
@@ -178,7 +178,7 @@ The :mod:`process_unittest` Module
 The :mod:`real_flags` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.real_flags
+.. automodule:: manila.tests.real_flags
     :noindex:
     :members:
     :undoc-members:
@@ -188,7 +188,7 @@ The :mod:`real_flags` Module
 The :mod:`rpc_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.rpc_unittest
+.. automodule:: manila.tests.rpc_unittest
     :noindex:
     :members:
     :undoc-members:
@@ -198,7 +198,7 @@ The :mod:`rpc_unittest` Module
 The :mod:`runtime_flags` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.runtime_flags
+.. automodule:: manila.tests.runtime_flags
     :noindex:
     :members:
     :undoc-members:
@@ -208,7 +208,7 @@ The :mod:`runtime_flags` Module
 The :mod:`validator_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.validator_unittest
+.. automodule:: manila.tests.validator_unittest
     :noindex:
     :members:
     :undoc-members:

@@ -1,7 +1,7 @@
 Unit Tests
 ==========
 
-Cinder contains a suite of unit tests, in the cinder/tests directory.
+Manila contains a suite of unit tests, in the manila/tests directory.
 
 Any proposed code change will be automatically rejected by the OpenStack
 Jenkins server [#f1]_ if the change causes unit test failures.
@@ -28,7 +28,7 @@ flags by doing::
 This will show the following help information::
 
     Usage: ./run_tests.sh [OPTION]...
-    Run Cinder's test suite(s)
+    Run Manila's test suite(s)
 
       -V, --virtual-env        Always use virtualenv.  Install automatically if not present
       -N, --no-virtual-env     Don't use virtualenv.  Run tests in local environment
@@ -55,21 +55,21 @@ Running a subset of tests
 Instead of running all tests, you can specify an individual directory, file,
 class, or method that contains test code.
 
-To run the tests in the ``cinder/tests/scheduler`` directory::
+To run the tests in the ``manila/tests/scheduler`` directory::
 
     ./run_tests.sh scheduler
 
-To run the tests in the ``cinder/tests/test_libvirt.py`` file::
+To run the tests in the ``manila/tests/test_libvirt.py`` file::
 
     ./run_tests.sh test_libvirt
 
 To run the tests in the `HostStateTestCase` class in
-``cinder/tests/test_libvirt.py``::
+``manila/tests/test_libvirt.py``::
 
     ./run_tests.sh test_libvirt:HostStateTestCase
 
 To run the `ToPrimitiveTestCase.test_dict` test method in
-``cinder/tests/test_utils.py``::
+``manila/tests/test_utils.py``::
 
     ./run_tests.sh test_utils:ToPrimitiveTestCase.test_dict
 
@@ -128,7 +128,7 @@ exists it can be reused by using the flag::
     -n, --no-recreate-db
 
 Reusing an existing database may cause tests to fail if the schema has
-changed. If any files in the ``cinder/db/sqlalchemy`` have changed, it's a good
+changed. If any files in the ``manila/db/sqlalchemy`` have changed, it's a good
 idea to recreate the test database.
 
 Gotchas
@@ -139,7 +139,7 @@ Gotchas
 If you are running the unit tests from a shared folder, you may see tests start
 to fail or stop completely as a result of Python lockfile issues [#f4]_. You
 can get around this by manually setting or updating the following line in
-``cinder/tests/fake_flags.py``::
+``manila/tests/fake_flags.py``::
 
     FLAGS['lock_path'].SetDefault('/tmp')
 
@@ -156,4 +156,4 @@ a shared folder.
 .. [#f3] There is an effort underway to use a fake DB implementation for the
    unit tests. See https://lists.launchpad.net/openstack/msg05604.html
 
-.. [#f4] See Vish's comment in this bug report: https://bugs.launchpad.net/cinder/+bug/882933
+.. [#f4] See Vish's comment in this bug report: https://bugs.launchpad.net/manila/+bug/882933

@@ -1,6 +1,6 @@
 Internationalization
 ====================
-cinder uses `gettext <http://docs.python.org/library/gettext.html>`_ so that
+manila uses `gettext <http://docs.python.org/library/gettext.html>`_ so that
 user-facing strings such as log messages appear in the appropriate
 language in different locales.
 
@@ -20,14 +20,14 @@ For example::
 
 If you do not follow the project conventions, your code may cause the
 LocalizationTestCase.test_multiple_positional_format_placeholders test to fail
-in cinder/tests/test_localization.py.
+in manila/tests/test_localization.py.
 
 The ``_()`` function is brought into the global scope by doing::
 
-    from cinder.openstack.common import gettextutils
-    gettextutils.install("cinder")
+    from manila.openstack.common import gettextutils
+    gettextutils.install("manila")
 
-These lines are needed in any toplevel script before any cinder modules are
+These lines are needed in any toplevel script before any manila modules are
 imported. If this code is missing, it may result in an error that looks like::
 
     NameError: name '_' is not defined

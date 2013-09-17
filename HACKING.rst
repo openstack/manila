@@ -1,4 +1,4 @@
-Cinder Style Commandments
+Manila Style Commandments
 =======================
 
 - Step 1: Read http://www.python.org/dev/peps/pep-0008/
@@ -59,7 +59,7 @@ Imports
 
 - imports from ``migrate`` package
 - imports from ``sqlalchemy`` package
-- imports from ``cinder.db.sqlalchemy.session`` module
+- imports from ``manila.db.sqlalchemy.session`` module
 
 Example::
 
@@ -68,7 +68,7 @@ Example::
   \n
   {{third-party lib imports in human alphabetical order}}
   \n
-  {{cinder imports in human alphabetical order}}
+  {{manila imports in human alphabetical order}}
   \n
   \n
   {{begin your code}}
@@ -88,12 +88,12 @@ Example::
   import eventlet
   import webob.exc
 
-  import cinder.api.ec2
-  from cinder.api import openstack
-  from cinder.auth import users
-  from cinder.endpoint import cloud
-  import cinder.flags
-  from cinder import test
+  import manila.api.ec2
+  from manila.api import openstack
+  from manila.auth import users
+  from manila.endpoint import cloud
+  import manila.flags
+  from manila import test
 
 
 Docstrings
@@ -216,7 +216,7 @@ submitted bug fix does have a unit test, be sure to add a new one that fails
 without the patch and passes with the patch.
 
 For more information on creating unit tests and utilizing the testing
-infrastructure in OpenStack Cinder, please read cinder/testing/README.rst.
+infrastructure in OpenStack Manila, please read manila/testing/README.rst.
 
 
 openstack-common
