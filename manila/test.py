@@ -33,6 +33,7 @@ from oslo.config import cfg
 import stubout
 
 from manila import flags
+from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 from manila import service
@@ -176,6 +177,10 @@ class TestCase(unittest.TestCase):
             FLAGS.set_override(k, v)
 
     def start_service(self, name, host=None, **kwargs):
+        self.stubs.Set(importutils.import_class(FLAGS.share_driver),
+                       'do_setup', lambda *x, **y: True)
+        self.stubs.Set(importutils.import_class(FLAGS.share_driver),
+                       'check_for_setup_error', lambda *x, **y: True)
         host = host and host or uuid.uuid4().hex
         kwargs.setdefault('host', host)
         kwargs.setdefault('binary', 'manila-%s' % name)
