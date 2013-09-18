@@ -62,7 +62,8 @@ db_opts = [
     cfg.StrOpt('share_snapshot_name_template',
                default='share-snapshot-%s',
                help='Template string to be used to generate share snapshot '
-                    'names'),]
+                    'names'),
+]
 
 FLAGS = flags.FLAGS
 FLAGS.register_opts(db_opts)

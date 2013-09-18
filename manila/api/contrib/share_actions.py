@@ -38,7 +38,8 @@ class ShareActionsController(wsgi.Controller):
         access_type = body['os-allow_access']['access_type']
         access_to = body['os-allow_access']['access_to']
 
-        access = self.share_api.allow_access(context, share, access_type, access_to)
+        access = self.share_api.allow_access(
+            context, share, access_type, access_to)
         return {'access': access}
 
     @wsgi.action('os-deny_access')

@@ -26,7 +26,8 @@ from manila.db import base
 from manila import exception
 from manila import flags
 from manila.image import glance
-from manila.openstack.common import log as logging, excutils
+from manila.openstack.common import excutils
+from manila.openstack.common import log as logging
 from manila.openstack.common import rpc
 from manila.openstack.common import timeutils
 import manila.policy
@@ -241,8 +242,8 @@ class API(base.Base):
 
             if 'gigabytes' in overs:
                 msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG snapshot (%(d_consumed)dG of %(d_quota)dG "
-                        "already consumed)")
+                        "%(s_size)sG snapshot (%(d_consumed)dG of "
+                        "%(d_quota)dG already consumed)")
                 LOG.warn(msg % {'s_pid': context.project_id,
                                 's_size': size,
                                 'd_consumed': _consumed('gigabytes'),

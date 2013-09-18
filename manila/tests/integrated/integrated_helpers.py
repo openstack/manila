@@ -25,7 +25,6 @@ import uuid
 
 from manila import flags
 from manila.openstack.common import log as logging
-from manila.openstack.common import importutils
 from manila import service
 from manila import test  # For the flags
 from manila.tests.integrated.api import client
