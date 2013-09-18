@@ -118,7 +118,8 @@ class LimitsControllerTest(BaseLimitTestSuite):
         request = self._populate_limits(request)
         self.absolute_limits = {
             'gigabytes': 512,
-            'volumes': 5,
+            'shares': 5,
+            'snapshots': 5
         }
         response = request.get_response(self.controller)
         expected = {
@@ -159,8 +160,10 @@ class LimitsControllerTest(BaseLimitTestSuite):
                     },
 
                 ],
-                "absolute": {"maxTotalVolumeGigabytes": 512,
-                             "maxTotalVolumes": 5, },
+                "absolute": {"maxTotalShareGigabytes": 512,
+                             "maxTotalShares": 5,
+                             "maxTotalSnapshots": 5,
+                             },
             },
         }
         body = jsonutils.loads(response.body)
@@ -769,9 +772,9 @@ class LimitsViewBuilderTest(test.TestCase):
                              "remaining": 10,
                              "unit": "DAY",
                              "resetTime": 1311272226}]
-        self.absolute_limits = {"metadata_items": 1,
-                                "injected_files": 5,
-                                "injected_file_content_bytes": 5}
+        self.absolute_limits = {"shares": 1,
+                                "gigabytes": 5,
+                                "snapshots": 5}
 
     def test_build_limits(self):
         tdate = "2011-07-21T18:17:06Z"
@@ -790,10 +793,9 @@ class LimitsViewBuilderTest(test.TestCase):
                                              "remaining": 10,
                                              "unit": "DAY",
                                              "next-available": tdate}]}],
-                        "absolute": {"maxServerMeta": 1,
-                                     "maxImageMeta": 1,
-                                     "maxPersonality": 5,
-                                     "maxPersonalitySize": 5}}}
+                        "absolute": {"maxTotalShareGigabytes": 5,
+                                     "maxTotalShares": 1,
+                                     "maxTotalSnapshots": 5}}}
 
         output = self.view_builder.build(self.rate_limits,
                                          self.absolute_limits)
