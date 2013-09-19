@@ -206,9 +206,9 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.share_snapshot_destroy(context, snapshot_id)
             try:
                 reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          shares=-1,
-                                          gigabytes=-snapshot_ref['size'])
+                                              project_id=project_id,
+                                              snapshots=-1,
+                                              gigabytes=-snapshot_ref['size'])
             except Exception:
                 reservations = None
                 LOG.exception(_("Failed to update usages deleting snapshot"))
