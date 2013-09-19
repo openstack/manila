@@ -182,8 +182,7 @@ class ShareController(wsgi.Controller):
         kwargs['availability_zone'] = share.get('availability_zone')
 
         snapshot_id = share.get('snapshot_id')
-        if snapshot_id and isinstance(snapshot_id, str) and \
-                not 'null' in snapshot_id.lower():
+        if snapshot_id:
             kwargs['snapshot'] = self.share_api.get_snapshot(context,
                                                              snapshot_id)
         else:
@@ -206,17 +205,3 @@ class ShareController(wsgi.Controller):
 
 def create_resource():
     return wsgi.Resource(ShareController())
-
-# class Shares(extensions.ExtensionDescriptor):
-#     """Enable share API."""
-#     name = 'Shares'
-#     alias = 'shares'
-#     namespace = ''
-#     updated = '2013-01-29T00:00:00+00:00'
-#
-#     def get_resources(self):
-#         controller = ShareController()
-#         resource = extensions.ResourceExtension(
-#             'shares', controller, collection_actions={'detail': 'GET'},
-#             member_actions={'action': 'POST'})
-#         return [resource]
