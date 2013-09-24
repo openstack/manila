@@ -14,7 +14,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from unittest import skip
 
 from manila.openstack.common import log as logging
 from manila.tests.integrated import integrated_helpers
@@ -24,9 +23,8 @@ LOG = logging.getLogger(__name__)
 
 
 class LoginTest(integrated_helpers._IntegratedTestBase):
-    @skip('We do not have self.api.get_volumes()')
     def test_login(self):
-        """Simple check - we list volumes - so we know we're logged in."""
-        volumes = self.api.get_volumes()
-        for volume in volumes:
-            LOG.debug(_("volume: %s") % volume)
+        """Simple check - we list shares - so we know we're logged in."""
+        shares = self.api.get_shares()
+        for share in shares:
+            LOG.debug(_("share: %s") % share)

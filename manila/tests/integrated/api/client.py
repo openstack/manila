@@ -201,3 +201,7 @@ class TestOpenStackClient(object):
         kwargs['method'] = 'DELETE'
         kwargs.setdefault('check_response_status', [200, 202, 204])
         return self.api_request(relative_uri, **kwargs)
+
+    def get_shares(self, detail=True):
+        rel_url = '/shares/detail' if detail else '/shares'
+        return self.api_get(rel_url)['shares']
