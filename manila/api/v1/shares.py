@@ -40,6 +40,9 @@ def make_share(elem):
     elem.set('description')
     elem.set('share_proto')
     elem.set('export_location')
+    elem.set('links')
+    elem.set('snapshot_id')
+    elem.set('created_at')
 
 
 def remove_invalid_options(context, search_options, allowed_search_options):
