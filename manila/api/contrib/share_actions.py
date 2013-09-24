@@ -16,11 +16,46 @@ import webob
 
 from manila.api import extensions
 from manila.api.openstack import wsgi
+from manila.api import xmlutil
 from manila import exception
 from manila import share
 
 
 authorize = extensions.extension_authorizer('share', 'services')
+
+
+class ShareAccessTemplate(xmlutil.TemplateBuilder):
+    """XML Template for share access management methods."""
+
+    def construct(self):
+        root = xmlutil.TemplateElement('access',
+                                       selector='access')
+        root.set("share_id")
+        root.set("deleted")
+        root.set("created_at")
+        root.set("updated_at")
+        root.set("access_type")
+        root.set("access_to")
+        root.set("state")
+        root.set("deleted_at")
+        root.set("id")
+
+        return xmlutil.MasterTemplate(root, 1)
+
+
+class ShareAccessListTemplate(xmlutil.TemplateBuilder):
+    """XML Template for share access list."""
+
+    def construct(self):
+        root = xmlutil.TemplateElement('access_list')
+        elem = xmlutil.SubTemplateElement(root, 'share',
+                                          selector='access_list')
+        elem.set("state")
+        elem.set("id")
+        elem.set("access_type")
+        elem.set("access_to")
+
+        return xmlutil.MasterTemplate(root, 1)
 
 
 class ShareActionsController(wsgi.Controller):
@@ -29,6 +64,7 @@ class ShareActionsController(wsgi.Controller):
         self.share_api = share.API()
 
     @wsgi.action('os-allow_access')
+    @wsgi.serializers(xml=ShareAccessTemplate)
     def _allow_access(self, req, id, body):
         """Add share access rule."""
         context = req.environ['manila.context']
@@ -43,6 +79,7 @@ class ShareActionsController(wsgi.Controller):
         return {'access': access}
 
     @wsgi.action('os-deny_access')
+    @wsgi.serializers(xml=ShareAccessTemplate)
     def _deny_access(self, req, id, body):
         """Remove access rule."""
         context = req.environ['manila.context']
@@ -60,6 +97,7 @@ class ShareActionsController(wsgi.Controller):
         return webob.Response(status_int=202)
 
     @wsgi.action('os-access_list')
+    @wsgi.serializers(xml=ShareAccessListTemplate)
     def _access_list(self, req, id, body):
         """list access rules."""
         context = req.environ['manila.context']
