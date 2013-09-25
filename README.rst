@@ -8,9 +8,7 @@ To monitor it from a distance: follow `@openstack <http://twitter.com/openstack>
 
 To tame it for use in your own cloud: read http://docs.openstack.org
 
-To study its anatomy: read http://manila.openstack.org
-
-To dissect it in detail: visit http://github.com/openstack/manila
+To dissect it in detail: visit http://github.com/stackforge/manila
 
 To taunt it with its weaknesses: use http://bugs.launchpad.net/manila
 
