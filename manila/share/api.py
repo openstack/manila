@@ -64,7 +64,7 @@ def check_policy(context, action, target_obj=None):
         'project_id': context.project_id,
         'user_id': context.user_id,
     }
-    target.update(target_obj or {})
+    target.update(target_obj if isinstance(target_obj, dict) else {})
     _action = 'share:%s' % action
     manila.policy.enforce(context, _action, target)
 
@@ -77,6 +77,7 @@ class API(base.Base):
         self.share_rpcapi = share_rpcapi.ShareAPI()
         super(API, self).__init__(db_driver)
 
+    @wrap_check_policy
     def create(self, context, share_proto, size, name, description,
                snapshot=None, availability_zone=None):
         """Create new share."""
@@ -182,6 +183,7 @@ class API(base.Base):
 
         return share
 
+    @wrap_check_policy
     def delete(self, context, share):
         """Delete share."""
         if context.is_admin and context.project_id != share['project_id']:
