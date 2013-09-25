@@ -151,6 +151,33 @@ class ShareController(wsgi.Controller):
         return ('name', 'status')
 
     @wsgi.serializers(xml=ShareTemplate)
+    def update(self, req, id, body):
+        """Update a share."""
+        context = req.environ['manila.context']
+
+        if not body or 'share' not in body:
+            raise exc.HTTPUnprocessableEntity()
+
+        share_data = body['share']
+        valid_update_keys = (
+            'display_name',
+            'display_description',
+        )
+
+        update_dict = dict([(key, share_data[key])
+                            for key in valid_update_keys
+                            if key in share_data])
+
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+
+        share = self.share_api.update(context, share, update_dict)
+        share.update(update_dict)
+        return self._view_builder.detail(req, share)
+
+    @wsgi.serializers(xml=ShareTemplate)
     def create(self, req, body):
         """Creates a new share."""
         context = req.environ['manila.context']

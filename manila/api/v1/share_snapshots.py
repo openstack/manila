@@ -131,6 +131,34 @@ class ShareSnapshotsController(wsgi.Controller):
         """Return share search options allowed by non-admin."""
         return ('name', 'status', 'share_id')
 
+    @wsgi.serializers(xml=SnapshotTemplate)
+    def update(self, req, id, body):
+        """Update a snapshot."""
+        context = req.environ['manila.context']
+
+        if not body or 'snapshot' not in body:
+            raise exc.HTTPUnprocessableEntity()
+
+        snapshot_data = body['snapshot']
+        valid_update_keys = (
+            'display_name',
+            'display_description',
+        )
+
+        update_dict = dict([(key, snapshot_data[key])
+                            for key in valid_update_keys
+                            if key in snapshot_data])
+
+        try:
+            snapshot = self.share_api.get_snapshot(context, id)
+        except exception.NotFound:
+            raise exc.HTTPNotFound()
+
+        snapshot = self.share_api.snapshot_update(context, snapshot,
+                                                  update_dict)
+        snapshot.update(update_dict)
+        return self._view_builder.detail(req, snapshot)
+
     @wsgi.response(202)
     @wsgi.serializers(xml=SnapshotTemplate)
     def create(self, req, body):

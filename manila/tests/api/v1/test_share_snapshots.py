@@ -37,7 +37,15 @@ class ShareSnapshotApiTest(test.TestCase):
                        stubs.stub_snapshot_get_all_by_project)
         self.stubs.Set(share_api.API, 'get_snapshot',
                        stubs.stub_snapshot_get)
-
+        self.stubs.Set(share_api.API, 'snapshot_update',
+                       stubs.stub_snapshot_update)
+        self.snp_example = {
+            'share_id': 100,
+            'size': 12,
+            'force': False,
+            'display_name': 'updated_share_name',
+            'display_description': 'updated_share_description',
+        }
         self.maxDiff = None
 
     def test_snapshot_create(self):
@@ -190,3 +198,30 @@ class ShareSnapshotApiTest(test.TestCase):
             ]
         }
         self.assertEqual(res_dict, expected)
+
+    def test_snapshot_updates_description(self):
+        snp = self.snp_example
+        body = {"snapshot": snp}
+
+        req = fakes.HTTPRequest.blank('/snapshot/1')
+        res_dict = self.controller.update(req, 1, body)
+        self.assertEqual(res_dict['snapshot']["name"], snp["display_name"])
+
+    def test_snapshot_updates_display_descr(self):
+        snp = self.snp_example
+        body = {"snapshot": snp}
+
+        req = fakes.HTTPRequest.blank('/snapshot/1')
+        res_dict = self.controller.update(req, 1, body)
+
+        self.assertEqual(res_dict['snapshot']["description"],
+                         snp["display_description"])
+
+    def test_share_not_updates_size(self):
+        snp = self.snp_example
+        body = {"snapshot": snp}
+
+        req = fakes.HTTPRequest.blank('/snapshot/1')
+        res_dict = self.controller.update(req, 1, body)
+
+        self.assertNotEqual(res_dict['snapshot']["size"], snp["size"])

@@ -295,7 +295,11 @@ class API(base.Base):
 
     @wrap_check_policy
     def update(self, context, share, fields):
-        self.db.share_update(context, share['id'], fields)
+        return self.db.share_update(context, share['id'], fields)
+
+    @wrap_check_policy
+    def snapshot_update(self, context, snapshot, fields):
+        return self.db.share_snapshot_update(context, snapshot['id'], fields)
 
     def get(self, context, share_id):
         rv = self.db.share_get(context, share_id)
