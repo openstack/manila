@@ -64,7 +64,7 @@ def check_policy(context, action, target_obj=None):
         'project_id': context.project_id,
         'user_id': context.user_id,
     }
-    target.update(target_obj if isinstance(target_obj, dict) else {})
+    target.update(target_obj or {})
     _action = 'share:%s' % action
     manila.policy.enforce(context, _action, target)
 
@@ -77,11 +77,10 @@ class API(base.Base):
         self.share_rpcapi = share_rpcapi.ShareAPI()
         super(API, self).__init__(db_driver)
 
-    @wrap_check_policy
     def create(self, context, share_proto, size, name, description,
                snapshot=None, availability_zone=None):
         """Create new share."""
-
+        check_policy(context, 'create')
         if snapshot is not None:
             if snapshot['status'] != 'available':
                 msg = _('status must be available')
