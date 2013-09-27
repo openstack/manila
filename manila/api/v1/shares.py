@@ -32,17 +32,11 @@ LOG = logging.getLogger(__name__)
 
 
 def make_share(elem):
-    elem.set('id')
-    elem.set('size')
-    elem.set('availability_zone')
-    elem.set('status')
-    elem.set('name')
-    elem.set('description')
-    elem.set('share_proto')
-    elem.set('export_location')
-    elem.set('links')
-    elem.set('snapshot_id')
-    elem.set('created_at')
+    attrs = ['id', 'size', 'availability_zone', 'status', 'name',
+             'description', 'share_proto', 'export_location', 'links',
+             'snapshot_id', 'created_at']
+    for attr in attrs:
+        elem.set(attr)
 
 
 def remove_invalid_options(context, search_options, allowed_search_options):

@@ -33,13 +33,11 @@ LOG = logging.getLogger(__name__)
 
 
 def make_snapshot(elem):
-    elem.set('id')
-    elem.set('size')
-    elem.set('status')
-    elem.set('name')
-    elem.set('description')
-    elem.set('share_proto')
-    elem.set('export_location')
+    attrs = ['id', 'size', 'status', 'name', 'description', 'share_proto',
+             'export_location', 'links', 'share_id', 'created_at',
+             'share_size']
+    for attr in attrs:
+        elem.set(attr)
 
 
 class SnapshotTemplate(xmlutil.TemplateBuilder):
