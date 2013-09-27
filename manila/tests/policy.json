@@ -6,6 +6,8 @@
     "share:get": [],
     "share:get_all": [],
     "share:delete": [],
+    "share:update": [],
+    "share:snapshot_update": [],
     "share:create_snapshot": [],
     "share:delete_snapshot": [],
     "share:get_snapshot": [],

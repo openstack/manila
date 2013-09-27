@@ -36,9 +36,16 @@ class ShareApiTest(test.TestCase):
                        stubs.stub_get_all_shares)
         self.stubs.Set(share_api.API, 'get',
                        stubs.stub_share_get)
+        self.stubs.Set(share_api.API, 'update', stubs.stub_share_update)
         self.stubs.Set(share_api.API, 'delete', stubs.stub_share_delete)
         self.stubs.Set(share_api.API, 'get_snapshot', stubs.stub_snapshot_get)
         self.maxDiff = None
+        self.shr_example = {
+            "size": 100,
+            "name": "Share Test Name",
+            "display_name": "Updated Desc",
+            "display_description": "Updated Display Desc",
+        }
 
     def test_share_create(self):
         self.stubs.Set(share_api.API, 'create', stubs.stub_share_create)
@@ -157,6 +164,33 @@ class ShareApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares/1')
         resp = self.controller.delete(req, 1)
         self.assertEqual(resp.status_int, 202)
+
+    def test_share_updates_description(self):
+        shr = self.shr_example
+        body = {"share": shr}
+
+        req = fakes.HTTPRequest.blank('/share/1')
+        res_dict = self.controller.update(req, 1, body)
+        self.assertEqual(res_dict['share']["name"], shr["display_name"])
+
+    def test_share_updates_display_descr(self):
+        shr = self.shr_example
+        body = {"share": shr}
+
+        req = fakes.HTTPRequest.blank('/share/1')
+        res_dict = self.controller.update(req, 1, body)
+
+        self.assertEqual(res_dict['share']["description"],
+                         shr["display_description"])
+
+    def test_share_not_updates_size(self):
+        shr = self.shr_example
+        body = {"share": shr}
+
+        req = fakes.HTTPRequest.blank('/share/1')
+        res_dict = self.controller.update(req, 1, body)
+
+        self.assertNotEqual(res_dict['share']["size"], shr["size"])
 
     def test_share_delete_no_share(self):
         self.stubs.Set(share_api.API, 'get',

@@ -89,7 +89,13 @@ def stub_share_delete(self, context, *args, **param):
 
 
 def stub_share_update(self, context, *args, **param):
-    pass
+    share = stub_share('1')
+    return share
+
+
+def stub_snapshot_update(self, context, *args, **param):
+    share = stub_share('1')
+    return share
 
 
 def stub_share_get_all_by_project(self, context, search_opts=None):
