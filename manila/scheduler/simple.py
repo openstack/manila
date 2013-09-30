@@ -64,8 +64,10 @@ class SimpleScheduler(chance.ChanceScheduler):
             self.share_rpcapi.create_share(context,
                                            updated_share,
                                            host,
-                                           snapshot_id,
-                                           None)
+                                           request_spec,
+                                           None,
+                                           snapshot_id=snapshot_id
+                                           )
             return None
 
         results = db.service_get_all_share_sorted(elevated)
@@ -83,7 +85,9 @@ class SimpleScheduler(chance.ChanceScheduler):
                 self.share_rpcapi.create_share(context,
                                                updated_share,
                                                service['host'],
-                                               snapshot_id, None)
+                                               request_spec,
+                                               None,
+                                               snapshot_id=snapshot_id)
                 return None
         msg = _("Is the appropriate service running?")
         raise exception.NoValidHost(reason=msg)
