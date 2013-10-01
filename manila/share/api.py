@@ -87,6 +87,11 @@ class API(base.Base):
                 raise exception.InvalidShareSnapshot(reason=msg)
             if not size:
                 size = snapshot['share_size']
+            else:
+                if size < snapshot['share_size']:
+                    msg = (_("Share size '%s' must be equal or greater "
+                             "than snapshot size") % size)
+                    raise exception.InvalidInput(reason=msg)
 
             snapshot_id = snapshot['id']
         else:
