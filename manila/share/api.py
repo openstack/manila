@@ -86,12 +86,7 @@ class API(base.Base):
                 msg = _('status must be available')
                 raise exception.InvalidShareSnapshot(reason=msg)
             if not size:
-                size = snapshot['share_size']
-            else:
-                if size < snapshot['share_size']:
-                    msg = (_("Share size '%s' must be equal or greater "
-                             "than snapshot size") % size)
-                    raise exception.InvalidInput(reason=msg)
+                size = snapshot['size']
 
             snapshot_id = snapshot['id']
         else:
@@ -109,6 +104,11 @@ class API(base.Base):
         if not isinstance(size, int) or size <= 0:
             msg = (_("Share size '%s' must be an integer and greater than 0")
                    % size)
+            raise exception.InvalidInput(reason=msg)
+
+        if snapshot and size < snapshot['size']:
+            msg = (_("Share size '%s' must be equal or greater "
+                     "than snapshot size") % size)
             raise exception.InvalidInput(reason=msg)
 
         #TODO(rushiagr): Find a suitable place to keep all the allowed

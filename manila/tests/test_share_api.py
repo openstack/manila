@@ -59,6 +59,7 @@ def fake_snapshot(id, **kwargs):
     snapshot = {
         'id': id,
         'share_size': 1,
+        'size': 1,
         'user_id': 'fakeuser',
         'project_id': 'fakeproject',
         'share_id': None,
@@ -262,6 +263,13 @@ class ShareAPITestCase(test.TestCase):
                           self.context, 'nfs', '1', 'fakename',
                           'fakedesc', snapshot=snapshot,
                           availability_zone='fakeaz')
+
+    def test_create_from_snapshot_larger_size(self):
+        snapshot = fake_snapshot(1, size=100, status='available')
+        self.mox.ReplayAll()
+        self.assertRaises(exception.InvalidInput, self.api.create,
+                          self.context, 'nfs', 1, 'fakename', 'fakedesc',
+                          availability_zone='fakeaz', snapshot=snapshot)
 
     def test_create_wrong_size_0(self):
         self.mox.ReplayAll()
