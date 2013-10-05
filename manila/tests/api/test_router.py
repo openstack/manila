@@ -17,12 +17,13 @@
 from manila.api.openstack import wsgi
 from manila.api.v1 import router
 from manila.api import versions
-from manila import flags
+
 from manila.openstack.common import log as logging
 from manila import test
 from manila.tests.api import fakes
+from oslo.config import cfg
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 

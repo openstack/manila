@@ -22,11 +22,12 @@ It can't be called 'extensions' because that causes namespacing problems.
 """
 
 from manila.api import extensions
-from manila import flags
+
 from manila.openstack.common import log as logging
 
+from oslo.config import cfg
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -36,4 +37,4 @@ def standard_extensions(ext_mgr):
 
 def select_extensions(ext_mgr):
     extensions.load_standard_extensions(ext_mgr, LOG, __path__, __package__,
-                                        FLAGS.osapi_share_ext_list)
+                                        CONF.osapi_share_ext_list)

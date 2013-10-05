@@ -135,20 +135,20 @@ The :mod:`manila.wsgi` Module
 Tests
 -----
 
-The :mod:`declare_flags` Module
+The :mod:`declare_conf` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.tests.declare_flags
+.. automodule:: manila.tests.declare_conf
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`fake_flags` Module
+The :mod:`conf_fixture` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.tests.fake_flags
+.. automodule:: manila.tests.conf_fixture
     :noindex:
     :members:
     :undoc-members:
@@ -195,10 +195,10 @@ The :mod:`rpc_unittest` Module
     :show-inheritance:
 
 
-The :mod:`runtime_flags` Module
+The :mod:`runtime_conf` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.tests.runtime_flags
+.. automodule:: manila.tests.runtime_conf
     :noindex:
     :members:
     :undoc-members:

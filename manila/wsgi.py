@@ -36,7 +36,7 @@ import webob.dec
 import webob.exc
 
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import log as logging
 from manila import utils
 
@@ -65,7 +65,7 @@ socket_opts = [
 CONF = cfg.CONF
 CONF.register_opts(socket_opts)
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -475,7 +475,7 @@ class Loader(object):
         :returns: None
 
         """
-        config_path = config_path or FLAGS.api_paste_config
+        config_path = config_path or CONF.api_paste_config
         self.config_path = utils.find_config(config_path)
 
     def load_app(self, name):

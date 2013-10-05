@@ -16,11 +16,13 @@ import StringIO
 import webob
 
 from manila.api.middleware import sizelimit
-from manila import flags
+
 from manila import test
 
-FLAGS = flags.FLAGS
-MAX_REQUEST_BODY_SIZE = FLAGS.osapi_max_request_body_size
+from oslo.config import cfg
+
+CONF = cfg.CONF
+MAX_REQUEST_BODY_SIZE = CONF.osapi_max_request_body_size
 
 
 class TestLimitingReader(test.TestCase):

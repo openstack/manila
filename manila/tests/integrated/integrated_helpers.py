@@ -23,13 +23,15 @@ import random
 import string
 import uuid
 
-from manila import flags
+
 from manila.openstack.common import log as logging
 from manila import service
 from manila import test  # For the flags
 from manila.tests.integrated.api import client
 
-FLAGS = flags.FLAGS
+from oslo.config import cfg
+
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 

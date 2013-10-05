@@ -19,12 +19,12 @@ Client side of the share RPC API.
 """
 
 from manila import exception
-from manila import flags
 from manila.openstack.common import rpc
 import manila.openstack.common.rpc.proxy
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class ShareAPI(manila.openstack.common.rpc.proxy.RpcProxy):
@@ -41,7 +41,7 @@ class ShareAPI(manila.openstack.common.rpc.proxy.RpcProxy):
 
     def __init__(self, topic=None):
         super(ShareAPI, self).__init__(
-            topic=topic or FLAGS.share_topic,
+            topic=topic or CONF.share_topic,
             default_version=self.BASE_RPC_API_VERSION)
 
     def create_share(self, ctxt, share, host,

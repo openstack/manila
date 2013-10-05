@@ -13,7 +13,7 @@
 
 
 #
-# Options defined in manila.flags
+# Options defined in manila.common.config
 #
 
 # Virtualization api connection type : libvirt, xenapi, or

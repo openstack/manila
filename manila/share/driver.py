@@ -25,7 +25,6 @@ import re
 import time
 
 from manila import exception
-from manila import flags
 from manila.openstack.common import log as logging
 from manila.share.configuration import Configuration
 from manila import utils
@@ -48,8 +47,8 @@ share_opts = [
                help='The backend name for a given driver implementation'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(share_opts)
+CONF = cfg.CONF
+CONF.register_opts(share_opts)
 
 
 #TODO(rushiagr): keep the configuration option in only one class and not two

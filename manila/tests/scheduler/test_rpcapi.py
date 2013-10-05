@@ -19,13 +19,14 @@ Unit Tests for manila.scheduler.rpcapi
 """
 
 from manila import context
-from manila import flags
+
 from manila.openstack.common import rpc
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import test
 
+from oslo.config import cfg
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class SchedulerRpcAPITestCase(test.TestCase):
@@ -58,7 +59,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
         retval = getattr(rpcapi, method)(ctxt, **kwargs)
 
         self.assertEqual(retval, expected_retval)
-        expected_args = [ctxt, FLAGS.scheduler_topic, expected_msg]
+        expected_args = [ctxt, CONF.scheduler_topic, expected_msg]
         for arg, expected_arg in zip(self.fake_args, expected_args):
             self.assertEqual(arg, expected_arg)
 

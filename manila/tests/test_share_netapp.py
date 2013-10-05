@@ -680,11 +680,11 @@ class NetAppApiClientTestCase(test.TestCase):
     def test_successfull_setup(self):
         drv = self._driver
         for flag in drv.REQUIRED_FLAGS:
-            setattr(netapp.FLAGS, flag, 'val')
-        conf_obj = Configuration(netapp.FLAGS)
+            setattr(netapp.CONF, flag, 'val')
+        conf_obj = Configuration(netapp.CONF)
         drv.check_configuration(conf_obj)
 
     def test_failing_setup(self):
         drv = self._driver
         self.assertRaises(exception.Error, drv.check_configuration,
-                          Configuration(netapp.FLAGS))
+                          Configuration(netapp.CONF))

@@ -22,18 +22,19 @@ import webob
 
 from manila.api.v1 import router
 from manila.api import xmlutil
-from manila import flags
+
 from manila.openstack.common import jsonutils
 from manila import test
+from oslo.config import cfg
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 NS = "{http://docs.openstack.org/common/api/v1.0}"
 
 
 class ExtensionTestCase(test.TestCase):
     def setUp(self):
         super(ExtensionTestCase, self).setUp()
-        ext_list = FLAGS.osapi_share_extension[:]
+        ext_list = CONF.osapi_share_extension[:]
         fox = ('manila.tests.api.extensions.foxinsocks.Foxinsocks')
         if fox not in ext_list:
             ext_list.append(fox)

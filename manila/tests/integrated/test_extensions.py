@@ -15,19 +15,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from manila import flags
+
 from manila.openstack.common import log as logging
 from manila.tests.integrated import integrated_helpers
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
 class ExtensionsTest(integrated_helpers._IntegratedTestBase):
     def _get_flags(self):
         f = super(ExtensionsTest, self)._get_flags()
-        f['osapi_share_extension'] = FLAGS.osapi_share_extension[:]
+        f['osapi_share_extension'] = CONF.osapi_share_extension[:]
         f['osapi_share_extension'].append(
             'manila.tests.api.extensions.foxinsocks.Foxinsocks')
         return f

@@ -21,9 +21,10 @@ from lxml import etree
 from manila.api.openstack import wsgi
 from manila.api.views import versions as views_versions
 from manila.api import xmlutil
-from manila import flags
 
-FLAGS = flags.FLAGS
+from oslo.config import cfg
+
+CONF = cfg.CONF
 
 
 _KNOWN_VERSIONS = {
@@ -94,9 +95,9 @@ _KNOWN_VERSIONS = {
 def get_supported_versions():
     versions = {}
 
-    if FLAGS.enable_v1_api:
+    if CONF.enable_v1_api:
         versions['v1.0'] = _KNOWN_VERSIONS['v1.0']
-    if FLAGS.enable_v2_api:
+    if CONF.enable_v2_api:
         versions['v2.0'] = _KNOWN_VERSIONS['v2.0']
 
     return versions

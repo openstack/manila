@@ -30,11 +30,12 @@ from sqlalchemy.orm import relationship, backref, object_mapper
 from manila.db.sqlalchemy.session import get_session
 
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import timeutils
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 BASE = declarative_base()
 
 
@@ -216,7 +217,7 @@ class Share(BASE, ManilaBase):
 
     @property
     def name(self):
-        return FLAGS.share_name_template % self.id
+        return CONF.share_name_template % self.id
 
     id = Column(String(36), primary_key=True)
     user_id = Column(String(255))
@@ -259,11 +260,11 @@ class ShareSnapshot(BASE, ManilaBase):
 
     @property
     def name(self):
-        return FLAGS.share_snapshot_name_template % self.id
+        return CONF.share_snapshot_name_template % self.id
 
     @property
     def share_name(self):
-        return FLAGS.share_name_template % self.share_id
+        return CONF.share_name_template % self.share_id
 
     id = Column(String(36), primary_key=True)
     user_id = Column(String(255))
@@ -298,6 +299,6 @@ def register_models():
               ShareAccessMapping,
               ShareSnapshot
               )
-    engine = create_engine(FLAGS.sql_connection, echo=False)
+    engine = create_engine(CONF.sql_connection, echo=False)
     for model in models:
         model.metadata.create_all(engine)

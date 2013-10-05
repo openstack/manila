@@ -21,14 +21,15 @@ Unit Tests for manila.volume.rpcapi.
 
 from manila import context
 from manila import db
-from manila import flags
+
 from manila.openstack.common import jsonutils
 from manila.openstack.common import rpc
 from manila.share import rpcapi as share_rpcapi
 from manila import test
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class ShareRpcAPITestCase(test.TestCase):
@@ -37,7 +38,7 @@ class ShareRpcAPITestCase(test.TestCase):
         self.context = context.get_admin_context()
         shr = {}
         shr['host'] = 'fake_host'
-        shr['availability_zone'] = FLAGS.storage_availability_zone
+        shr['availability_zone'] = CONF.storage_availability_zone
         shr['status'] = "available"
         share = db.share_create(self.context, shr)
         acs = {}
@@ -91,7 +92,7 @@ class ShareRpcAPITestCase(test.TestCase):
             host = kwargs['host']
         else:
             host = kwargs['share']['host']
-        expected_topic = '%s.%s' % (FLAGS.share_topic, host)
+        expected_topic = '%s.%s' % (CONF.share_topic, host)
 
         self.fake_args = None
         self.fake_kwargs = None

@@ -28,30 +28,11 @@ stepping stone.
 
 import os
 import socket
-import sys
 
 from oslo.config import cfg
 
-from manila import version
 
-FLAGS = cfg.CONF
-
-
-def parse_args(argv, default_config_files=None):
-    FLAGS(argv[1:], project='manila',
-          version=version.version_string(),
-          default_config_files=default_config_files)
-
-
-class UnrecognizedFlag(Exception):
-    pass
-
-
-def DECLARE(name, module_string, flag_values=FLAGS):
-    if module_string not in sys.modules:
-        __import__(module_string, globals(), locals())
-    if name not in flag_values:
-        raise UnrecognizedFlag('%s not defined by %s' % (name, module_string))
+CONF = cfg.CONF
 
 
 def _get_my_ip():
@@ -92,7 +73,8 @@ core_opts = [
                help='File name for the paste.deploy config for manila-api'),
     cfg.StrOpt('pybasedir',
                default=os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                    '../')),
+                                                    '..',
+                                                    '..')),
                help='Directory where the manila python module is installed'),
     cfg.StrOpt('bindir',
                default='$pybasedir/bin',
@@ -104,8 +86,8 @@ core_opts = [
 debug_opts = [
 ]
 
-FLAGS.register_cli_opts(core_opts)
-FLAGS.register_cli_opts(debug_opts)
+CONF.register_cli_opts(core_opts)
+CONF.register_cli_opts(debug_opts)
 
 global_opts = [
     cfg.StrOpt('my_ip',
@@ -237,4 +219,4 @@ global_opts = [
                 default=False,
                 help='Whether snapshots count against GigaByte quota'), ]
 
-FLAGS.register_opts(global_opts)
+CONF.register_opts(global_opts)

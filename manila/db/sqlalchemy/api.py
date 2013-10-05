@@ -23,6 +23,7 @@ import datetime
 import uuid
 import warnings
 
+from oslo.config import cfg
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -34,12 +35,11 @@ from manila import db
 from manila.db.sqlalchemy import models
 from manila.db.sqlalchemy.session import get_session
 from manila import exception
-from manila import flags
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 
@@ -278,7 +278,7 @@ def _service_get_all_topic_subquery(context, session, topic, subq, label):
 def service_get_all_share_sorted(context):
     session = get_session()
     with session.begin():
-        topic = FLAGS.share_topic
+        topic = CONF.share_topic
         label = 'share_gigabytes'
         subq = model_query(context, models.Share.host,
                            func.sum(models.Share.size).label(label),
@@ -309,7 +309,7 @@ def service_get_by_args(context, host, binary):
 def service_create(context, values):
     service_ref = models.Service()
     service_ref.update(values)
-    if not FLAGS.enable_new_services:
+    if not CONF.enable_new_services:
         service_ref.disabled = True
     service_ref.save()
     return service_ref

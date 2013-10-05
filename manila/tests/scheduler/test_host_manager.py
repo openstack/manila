@@ -19,15 +19,16 @@ Tests For HostManager
 
 from manila import db
 from manila import exception
-from manila import flags
+
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common import timeutils
 from manila.scheduler import host_manager
 from manila import test
 from manila.tests.scheduler import fakes
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class FakeFilterClass1(filters.BaseHostFilter):
@@ -137,7 +138,7 @@ class HostManagerTestCase(test.TestCase):
 
     def test_get_all_host_states_share(self):
         context = 'fake_context'
-        topic = FLAGS.share_topic
+        topic = CONF.share_topic
 
         self.mox.StubOutWithMock(db, 'service_get_all_by_topic')
         self.mox.StubOutWithMock(host_manager.LOG, 'warn')

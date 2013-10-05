@@ -23,16 +23,17 @@ from manila import db
 from manila.db.sqlalchemy import api as sqa_api
 from manila.db.sqlalchemy import models as sqa_models
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import rpc
 from manila.openstack.common import timeutils
 from manila import quota
 from manila import share
 from manila import test
 import manila.tests.image.fake
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class QuotaIntegrationTestCase(test.TestCase):
@@ -79,7 +80,7 @@ class QuotaIntegrationTestCase(test.TestCase):
     @test.skip_test("SQLAlchemy sqlite insert bug")
     def test_too_many_shares(self):
         share_ids = []
-        for i in range(FLAGS.quota_shares):
+        for i in range(CONF.quota_shares):
             share_ref = self._create_share()
             share_ids.append(share_ref['id'])
         self.assertRaises(exception.QuotaError,

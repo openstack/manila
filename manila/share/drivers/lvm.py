@@ -25,7 +25,6 @@ import os
 import re
 
 from manila import exception
-from manila import flags
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.share import driver
@@ -61,8 +60,8 @@ share_opts = [
                 help='Specify list of share export helpers.'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(share_opts)
+CONF = cfg.CONF
+CONF.register_opts(share_opts)
 
 
 class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):

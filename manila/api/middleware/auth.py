@@ -26,7 +26,7 @@ import webob.exc
 
 from manila.api.openstack import wsgi
 from manila import context
-from manila import flags
+
 from manila.openstack.common import log as logging
 from manila import wsgi as base_wsgi
 
@@ -36,16 +36,16 @@ use_forwarded_for_opt = cfg.BoolOpt(
     help='Treat X-Forwarded-For as the canonical remote address. '
          'Only enable this if you have a sanitizing proxy.')
 
-FLAGS = flags.FLAGS
-FLAGS.register_opt(use_forwarded_for_opt)
+CONF = cfg.CONF
+CONF.register_opt(use_forwarded_for_opt)
 LOG = logging.getLogger(__name__)
 
 
 def pipeline_factory(loader, global_conf, **local_conf):
     """A paste pipeline replica that keys off of auth_strategy."""
-    pipeline = local_conf[FLAGS.auth_strategy]
-    if not FLAGS.api_rate_limit:
-        limit_name = FLAGS.auth_strategy + '_nolimit'
+    pipeline = local_conf[CONF.auth_strategy]
+    if not CONF.api_rate_limit:
+        limit_name = CONF.auth_strategy + '_nolimit'
         pipeline = local_conf.get(limit_name, pipeline)
     pipeline = pipeline.split()
     filters = [loader.get_filter(n) for n in pipeline[:-1]]
@@ -94,7 +94,7 @@ class ManilaKeystoneContext(base_wsgi.Middleware):
 
         # Build a context, including the auth_token...
         remote_address = req.remote_addr
-        if FLAGS.use_forwarded_for:
+        if CONF.use_forwarded_for:
             remote_address = req.headers.get('X-Forwarded-For', remote_address)
         ctx = context.RequestContext(user_id,
                                      project_id,
@@ -129,7 +129,7 @@ class NoAuthMiddleware(base_wsgi.Middleware):
         user_id, _sep, project_id = token.partition(':')
         project_id = project_id or user_id
         remote_address = getattr(req, 'remote_address', '127.0.0.1')
-        if FLAGS.use_forwarded_for:
+        if CONF.use_forwarded_for:
             remote_address = req.headers.get('X-Forwarded-For', remote_address)
         ctx = context.RequestContext(user_id,
                                      project_id,

@@ -53,15 +53,16 @@ This module provides Manager, a base class for managers.
 
 """
 
+from oslo.config import cfg
+
 from manila.db import base
-from manila import flags
 from manila.openstack.common import log as logging
 from manila.openstack.common.rpc import dispatcher as rpc_dispatcher
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import version
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 LOG = logging.getLogger(__name__)
@@ -136,7 +137,7 @@ class Manager(base.Base):
 
     def __init__(self, host=None, db_driver=None):
         if not host:
-            host = FLAGS.host
+            host = CONF.host
         self.host = host
         super(Manager, self).__init__(db_driver)
 
@@ -184,8 +185,8 @@ class Manager(base.Base):
 
     def service_config(self, context):
         config = {}
-        for key in FLAGS:
-            config[key] = FLAGS.get(key, None)
+        for key in CONF:
+            config[key] = CONF.get(key, None)
         return config
 
 

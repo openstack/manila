@@ -29,7 +29,7 @@ import tempfile
 from manila import context
 from manila import db
 from manila import exception
-from manila import flags
+
 from manila.image import image_utils
 from manila.openstack.common import importutils
 from manila.openstack.common.notifier import api as notifier_api
@@ -38,9 +38,10 @@ from manila.openstack.common import rpc
 import manila.policy
 from manila.share import manager
 from manila import test
-from manila.tests import fake_flags
+from manila.tests import conf_fixture
+from oslo.config import cfg
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class FakeShareDriver(object):
@@ -100,7 +101,7 @@ class ShareTestCase(test.TestCase):
         super(ShareTestCase, self).setUp()
         self.flags(connection_type='fake',
                    share_driver='manila.tests.test_share.FakeShareDriver')
-        self.share = importutils.import_object(FLAGS.share_manager)
+        self.share = importutils.import_object(CONF.share_manager)
         self.context = context.get_admin_context()
 
     @staticmethod
@@ -112,9 +113,9 @@ class ShareTestCase(test.TestCase):
         share['snapshot_id'] = snapshot_id
         share['user_id'] = 'fake'
         share['project_id'] = 'fake'
-        share['availability_zone'] = FLAGS.storage_availability_zone
+        share['availability_zone'] = CONF.storage_availability_zone
         share['status'] = status
-        share['host'] = FLAGS.host
+        share['host'] = CONF.host
         return db.share_create(context.get_admin_context(), share)
 
     @staticmethod

@@ -19,10 +19,12 @@
 import distutils.version as dist_version
 import os
 
+from oslo.config import cfg
+
 from manila.db import migration
 from manila.db.sqlalchemy.session import get_engine
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import log as logging
 
 
@@ -61,7 +63,7 @@ from migrate import exceptions as versioning_exceptions
 from migrate.versioning import api as versioning_api
 from migrate.versioning.repository import Repository
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 _REPOSITORY = None
 

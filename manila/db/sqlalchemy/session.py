@@ -20,17 +20,17 @@
 
 import time
 
+from oslo.config import cfg
 from sqlalchemy.exc import DisconnectionError, OperationalError
 import sqlalchemy.interfaces
 import sqlalchemy.orm
 from sqlalchemy.pool import NullPool, StaticPool
 
 import manila.exception
-import manila.flags as flags
 from manila.openstack.common import log as logging
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 _ENGINE = None
@@ -89,33 +89,33 @@ def get_engine():
     """Return a SQLAlchemy engine."""
     global _ENGINE
     if _ENGINE is None:
-        connection_dict = sqlalchemy.engine.url.make_url(FLAGS.sql_connection)
+        connection_dict = sqlalchemy.engine.url.make_url(CONF.sql_connection)
 
         engine_args = {
-            "pool_recycle": FLAGS.sql_idle_timeout,
+            "pool_recycle": CONF.sql_idle_timeout,
             "echo": False,
             'convert_unicode': True,
         }
 
         # Map our SQL debug level to SQLAlchemy's options
-        if FLAGS.sql_connection_debug >= 100:
+        if CONF.sql_connection_debug >= 100:
             engine_args['echo'] = 'debug'
-        elif FLAGS.sql_connection_debug >= 50:
+        elif CONF.sql_connection_debug >= 50:
             engine_args['echo'] = True
 
         if "sqlite" in connection_dict.drivername:
             engine_args["poolclass"] = NullPool
 
-            if FLAGS.sql_connection == "sqlite://":
+            if CONF.sql_connection == "sqlite://":
                 engine_args["poolclass"] = StaticPool
                 engine_args["connect_args"] = {'check_same_thread': False}
 
-        _ENGINE = sqlalchemy.create_engine(FLAGS.sql_connection, **engine_args)
+        _ENGINE = sqlalchemy.create_engine(CONF.sql_connection, **engine_args)
 
         if 'mysql' in connection_dict.drivername:
             sqlalchemy.event.listen(_ENGINE, 'checkout', ping_listener)
         elif "sqlite" in connection_dict.drivername:
-            if not FLAGS.sqlite_synchronous:
+            if not CONF.sqlite_synchronous:
                 sqlalchemy.event.listen(_ENGINE, 'connect',
                                         synchronous_switch_listener)
 
@@ -125,7 +125,7 @@ def get_engine():
             if not is_db_connection_error(e.args[0]):
                 raise
 
-            remaining = FLAGS.sql_max_retries
+            remaining = CONF.sql_max_retries
             if remaining == -1:
                 remaining = 'infinite'
             while True:
@@ -133,7 +133,7 @@ def get_engine():
                 LOG.warn(msg % remaining)
                 if remaining != 'infinite':
                     remaining -= 1
-                time.sleep(FLAGS.sql_retry_interval)
+                time.sleep(CONF.sql_retry_interval)
                 try:
                     _ENGINE.connect()
                     break

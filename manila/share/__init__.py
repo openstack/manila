@@ -18,8 +18,9 @@
 
 # Importing full names to not pollute the namespace and cause possible
 # collisions with use of 'from manila.share import <foo>' elsewhere.
-import manila.flags
-import manila.openstack.common.importutils
+from manila.common import config
+import manila.openstack.common.importutils as import_utils
 
-API = manila.openstack.common.importutils.import_class(
-    manila.flags.FLAGS.share_api_class)
+CONF = config.CONF
+
+API = import_utils.import_class(CONF.share_api_class)

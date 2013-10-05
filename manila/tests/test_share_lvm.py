@@ -21,7 +21,7 @@ import os
 from manila import context
 from manila.db.sqlalchemy import models
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.share.configuration import Configuration
@@ -29,9 +29,10 @@ from manila.share.drivers import lvm
 from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_utils
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 def fake_share(**kwargs):
@@ -80,8 +81,8 @@ class LVMShareDriverTestCase(test.TestCase):
         self._execute = fake_utils.fake_execute
         self._context = context.get_admin_context()
 
-        FLAGS.set_default('share_volume_group', 'fakevg')
-        FLAGS.set_default('share_export_ip', '10.0.0.1')
+        CONF.set_default('share_volume_group', 'fakevg')
+        CONF.set_default('share_export_ip', '10.0.0.1')
 
         self._helper_cifs = self.mox.CreateMock(lvm.CIFSNetConfHelper)
         self._helper_nfs = self.mox.CreateMock(lvm.NFSHelper)
@@ -152,27 +153,27 @@ class LVMShareDriverTestCase(test.TestCase):
 
         fake_utils.fake_execute_set_repliers([('vgs --noheadings -o name',
                                                exec_runner)])
-        FLAGS.set_default('share_export_ip', None)
+        CONF.set_default('share_export_ip', None)
         self.mox.ReplayAll()
         self.assertRaises(exception.InvalidParameterValue,
                           self._driver.check_for_setup_error)
 
     def test_local_path_normal(self):
         share = fake_share(name='fake_sharename')
-        FLAGS.set_default('share_volume_group', 'fake_vg')
+        CONF.set_default('share_volume_group', 'fake_vg')
         self.mox.ReplayAll()
         ret = self._driver._local_path(share)
         self.assertEqual(ret, '/dev/mapper/fake_vg-fake_sharename')
 
     def test_local_path_escapes(self):
         share = fake_share(name='fake-sharename')
-        FLAGS.set_default('share_volume_group', 'fake-vg')
+        CONF.set_default('share_volume_group', 'fake-vg')
         self.mox.ReplayAll()
         ret = self._driver._local_path(share)
         self.assertEqual(ret, '/dev/mapper/fake--vg-fake--sharename')
 
     def test_allocate_container_normal(self):
-        FLAGS.set_default('share_lvm_mirrors', 0)
+        CONF.set_default('share_lvm_mirrors', 0)
         self.mox.ReplayAll()
         ret = self._driver.allocate_container(self._context, self.share)
         expected_exec = [
@@ -182,7 +183,7 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_allocate_container_from_snapshot(self):
-        FLAGS.set_default('share_lvm_mirrors', 0)
+        CONF.set_default('share_lvm_mirrors', 0)
         mount_share = '/dev/mapper/fakevg-fakename'
         mount_snapshot = '/dev/mapper/fakevg-fakesnapshotname'
         self.mox.ReplayAll()
@@ -202,7 +203,7 @@ class LVMShareDriverTestCase(test.TestCase):
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise exception.ProcessExecutionError()
 
-        FLAGS.set_default('share_lvm_mirrors', 0)
+        CONF.set_default('share_lvm_mirrors', 0)
         mount_share = '/dev/mapper/fakevg-fakename'
         mount_snapshot = '/dev/mapper/fakevg-fakesnapshotname'
         expected_exec = [
@@ -220,7 +221,7 @@ class LVMShareDriverTestCase(test.TestCase):
 
     def test_allocate_container_mirrors(self):
         share = fake_share(size='2048')
-        FLAGS.set_default('share_lvm_mirrors', 2)
+        CONF.set_default('share_lvm_mirrors', 2)
         self.mox.ReplayAll()
         ret = self._driver.allocate_container(self._context, share)
         expected_exec = [
@@ -243,7 +244,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'vgs --noheadings --nosuffix --unit=G -o name,size,free fakevg',
         ]
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
-        FLAGS.set_default('reserved_share_percentage', 1)
+        CONF.set_default('reserved_share_percentage', 1)
         self.mox.ReplayAll()
         ret = self._driver.get_share_stats(refresh=True)
         expected_ret = {
@@ -267,7 +268,7 @@ class LVMShareDriverTestCase(test.TestCase):
             'vgs --noheadings --nosuffix --unit=G -o name,size,free fakevg',
         ]
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
-        FLAGS.set_default('reserved_share_percentage', 1)
+        CONF.set_default('reserved_share_percentage', 1)
         self.mox.ReplayAll()
         ret = self._driver.get_share_stats(refresh=True)
         expected_ret = {
@@ -354,7 +355,7 @@ class LVMShareDriverTestCase(test.TestCase):
         self._driver.create_snapshot(self._context, self.snapshot)
         expected_exec = [
             ("lvcreate -L 1G --name fakesnapshotname --snapshot %s/fakename" %
-             (FLAGS.share_volume_group,)),
+             (CONF.share_volume_group,)),
         ]
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
@@ -466,7 +467,7 @@ class LVMShareDriverTestCase(test.TestCase):
                           fake_share(share_proto='FAKE'))
 
     def _get_mount_path(self, share):
-        return os.path.join(FLAGS.share_export_root, share['name'])
+        return os.path.join(CONF.share_export_root, share['name'])
 
 
 class NFSHelperTestCase(test.TestCase):
@@ -475,7 +476,7 @@ class NFSHelperTestCase(test.TestCase):
     def setUp(self):
         super(NFSHelperTestCase, self).setUp()
         fake_utils.stub_out_utils_execute(self.stubs)
-        FLAGS.set_default('share_export_ip', '127.0.0.1')
+        CONF.set_default('share_export_ip', '127.0.0.1')
         self._execute = fake_utils.fake_execute
         self.fake_conf = Configuration(None)
         self._helper = lvm.NFSHelper(self._execute, self.fake_conf)
@@ -497,7 +498,7 @@ class NFSHelperTestCase(test.TestCase):
     def test_create_export(self):
         self.mox.ReplayAll()
         ret = self._helper.create_export('/opt/nfs', 'volume-00001')
-        expected_location = '%s:/opt/nfs' % FLAGS.share_export_ip
+        expected_location = '%s:/opt/nfs' % CONF.share_export_ip
         self.assertEqual(ret, expected_location)
 
     def test_remove_export(self):
@@ -545,7 +546,7 @@ class CIFSNetConfHelperTestCase(test.TestCase):
     def setUp(self):
         super(CIFSNetConfHelperTestCase, self).setUp()
         fake_utils.stub_out_utils_execute(self.stubs)
-        FLAGS.set_default('share_export_ip', '127.0.0.1')
+        CONF.set_default('share_export_ip', '127.0.0.1')
         self.share = fake_share()
         self._execute = fake_utils.fake_execute
         self.fake_conf = Configuration(None)

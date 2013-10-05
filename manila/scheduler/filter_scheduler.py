@@ -23,14 +23,15 @@ Weighing Functions.
 import operator
 
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.scheduler import driver
 from manila.scheduler import scheduler_options
 
+from oslo.config import cfg
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -72,7 +73,7 @@ class FilterScheduler(driver.Scheduler):
         hosts.append(host)
 
     def _max_attempts(self):
-        max_attempts = FLAGS.scheduler_max_attempts
+        max_attempts = CONF.scheduler_max_attempts
         if max_attempts < 1:
             msg = _("Invalid value for 'scheduler_max_attempts', "
                     "must be >=1")

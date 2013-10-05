@@ -25,13 +25,14 @@ from glanceclient.v2.client import Client as glanceclient_v2
 
 from manila import context
 from manila import exception
-from manila import flags
+
 from manila.image import glance
 from manila import test
 from manila.tests.glance import stubs as glance_stubs
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class NullWriter(object):
@@ -566,7 +567,7 @@ class TestGlanceClientVersion(test.TestCase):
                                                        9292)
         self.assertEquals(client_wrapper_v2.client.__module__,
                           'glanceclient.v2.client')
-        FLAGS.reset()
+        CONF.reset()
 
     def test_glance_version_by_arg(self):
         """Test glance version set by arg to GlanceClientWrapper"""

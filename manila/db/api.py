@@ -46,7 +46,7 @@ these objects be simple dictionaries.
 from oslo.config import cfg
 
 from manila import exception
-from manila import flags
+
 from manila import utils
 
 db_opts = [
@@ -65,8 +65,8 @@ db_opts = [
                     'names'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(db_opts)
+CONF = cfg.CONF
+CONF.register_opts(db_opts)
 
 IMPL = utils.LazyPluggable('db_backend',
                            sqlalchemy='manila.db.sqlalchemy.api')

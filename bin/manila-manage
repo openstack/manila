@@ -76,18 +76,18 @@ gettextutils.install('manila')
 
 from oslo.config import cfg
 
+from manila.common import config  # Need to register global_opts
 from manila import context
 from manila import db
 from manila.db import migration
 from manila import exception
-from manila import flags
 from manila.openstack.common import log as logging
 from manila.openstack.common import rpc
 from manila.openstack.common import uuidutils
 from manila import utils
 from manila import version
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 # Decorators for actions
@@ -243,7 +243,7 @@ class ConfigCommands(object):
         pass
 
     def list(self):
-        for key, value in FLAGS.iteritems():
+        for key, value in CONF.iteritems():
             if value is not None:
                 print '%s = %s' % (key, value)
 
@@ -254,10 +254,10 @@ class GetLogCommands(object):
     def errors(self):
         """Get all of the errors from the log files."""
         error_found = 0
-        if FLAGS.log_dir:
-            logs = [x for x in os.listdir(FLAGS.log_dir) if x.endswith('.log')]
+        if CONF.log_dir:
+            logs = [x for x in os.listdir(CONF.log_dir) if x.endswith('.log')]
             for file in logs:
-                log_file = os.path.join(FLAGS.log_dir, file)
+                log_file = os.path.join(CONF.log_dir, file)
                 lines = [line.strip() for line in open(log_file, "r")]
                 lines.reverse()
                 print_name = 0
@@ -373,7 +373,7 @@ category_opt = cfg.SubCommandOpt('category',
 def get_arg_string(args):
     arg = None
     if args[0] == '-':
-    # (Note)zhiteng: args starts with FLAGS.oparser.prefix_chars
+    # (Note)zhiteng: args starts with CONF.oparser.prefix_chars
     # is optional args. Notice that cfg module takes care of
     # actual ArgParser so prefix_chars is always '-'.
         if args[1] == '-':
@@ -391,14 +391,14 @@ def fetch_func_args(func):
     fn_args = []
     for args, kwargs in getattr(func, 'args', []):
         arg = get_arg_string(args[0])
-        fn_args.append(getattr(FLAGS.category, arg))
+        fn_args.append(getattr(CONF.category, arg))
 
     return fn_args
 
 
 def main():
     """Parse options and call the appropriate class/method."""
-    FLAGS.register_cli_opt(category_opt)
+    CONF.register_cli_opt(category_opt)
     script_name = sys.argv[0]
     if len(sys.argv) < 2:
         print(_("\nOpenStack manila version: %(version)s\n") %
@@ -410,10 +410,11 @@ def main():
         sys.exit(2)
 
     try:
-        flags.parse_args(sys.argv)
+        CONF(sys.argv[1:], project='manila',
+            version=version.version_string())
         logging.setup("manila")
     except cfg.ConfigFilesNotFoundError:
-        cfgfile = FLAGS.config_file[-1] if FLAGS.config_file else None
+        cfgfile = CONF.config_file[-1] if CONF.config_file else None
         if cfgfile and not os.access(cfgfile, os.R_OK):
             st = os.stat(cfgfile)
             print _("Could not read %s. Re-running with sudo") % cfgfile
@@ -425,7 +426,7 @@ def main():
         print _('Please re-run manila-manage as root.')
         sys.exit(2)
 
-    fn = FLAGS.category.action_fn
+    fn = CONF.category.action_fn
 
     fn_args = fetch_func_args(fn)
     fn(*fn_args)

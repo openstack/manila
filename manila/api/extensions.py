@@ -25,15 +25,16 @@ import manila.api.openstack
 from manila.api.openstack import wsgi
 from manila.api import xmlutil
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import exception as common_exception
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 import manila.policy
+from oslo.config import cfg
 
 
 LOG = logging.getLogger(__name__)
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class ExtensionDescriptor(object):
@@ -183,7 +184,7 @@ class ExtensionManager(object):
     def __init__(self):
         LOG.audit(_('Initializing extension manager.'))
 
-        self.cls_list = FLAGS.osapi_share_extension
+        self.cls_list = CONF.osapi_share_extension
 
         self.extensions = {}
         self._load_extensions()

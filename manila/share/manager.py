@@ -24,7 +24,6 @@
 
 from manila import context
 from manila import exception
-from manila import flags
 from manila import manager
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
@@ -43,8 +42,8 @@ share_manager_opts = [
                help='Driver to use for share creation'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(share_manager_opts)
+CONF = cfg.CONF
+CONF.register_opts(share_manager_opts)
 
 QUOTAS = quota.QUOTAS
 

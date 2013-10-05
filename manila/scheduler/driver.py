@@ -24,7 +24,7 @@ Scheduler base class that all Schedulers should inherit from
 from oslo.config import cfg
 
 from manila import db
-from manila import flags
+
 from manila.openstack.common import importutils
 from manila.openstack.common import timeutils
 from manila.share import rpcapi as share_rpcapi
@@ -39,8 +39,8 @@ scheduler_driver_opts = [
                help='Maximum number of attempts to schedule a share'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(scheduler_driver_opts)
+CONF = cfg.CONF
+CONF.register_opts(scheduler_driver_opts)
 
 
 def share_update_db(context, share_id, host):
@@ -58,7 +58,7 @@ class Scheduler(object):
 
     def __init__(self):
         self.host_manager = importutils.import_object(
-            FLAGS.scheduler_host_manager)
+            CONF.scheduler_host_manager)
         self.share_rpcapi = share_rpcapi.ShareAPI()
 
     def get_host_list(self):

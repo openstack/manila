@@ -28,14 +28,15 @@ import mox
 
 import manila
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import strutils
 from manila.openstack.common import timeutils
 from manila import test
 from manila import utils
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class ExecuteTestCase(test.TestCase):
@@ -302,7 +303,7 @@ class GenericUtilsTestCase(test.TestCase):
 
     def test_generate_glance_url(self):
         generated_url = utils.generate_glance_url()
-        actual_url = "http://%s:%d" % (FLAGS.glance_host, FLAGS.glance_port)
+        actual_url = "http://%s:%d" % (CONF.glance_host, CONF.glance_port)
         self.assertEqual(generated_url, actual_url)
 
     def test_read_cached_file(self):

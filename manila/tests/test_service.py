@@ -26,7 +26,7 @@ from oslo.config import cfg
 from manila import context
 from manila import db
 from manila import exception
-from manila import flags
+
 from manila import manager
 from manila import service
 from manila import test
@@ -43,7 +43,8 @@ test_service_opts = [
                default=0,
                help="Port number to bind test service to"), ]
 
-flags.FLAGS.register_opts(test_service_opts)
+CONF = cfg.CONF
+CONF.register_opts(test_service_opts)
 
 
 class FakeManager(manager.Manager):

@@ -21,7 +21,7 @@
 Configuration support for all drivers.
 
 This module allows support for setting configurations either from default
-or from a particular FLAGS group, to be able to set multiple configurations
+or from a particular CONF group, to be able to set multiple configurations
 for a given set of values.
 
 For instance, two lvm configurations can be set by naming them in groups as
@@ -45,11 +45,10 @@ and registered in the group in which they are used.
 
 from oslo.config import cfg
 
-from manila import flags
 from manila.openstack.common import log as logging
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -63,12 +62,12 @@ class Configuration(object):
         # set the local conf so that __call__'s know what to use
         if self.config_group:
             self._ensure_config_values(share_opts)
-            self.local_conf = FLAGS._get(self.config_group)
+            self.local_conf = CONF._get(self.config_group)
         else:
-            self.local_conf = FLAGS
+            self.local_conf = CONF
 
     def _ensure_config_values(self, share_opts):
-            FLAGS.register_opts(share_opts,
+            CONF.register_opts(share_opts,
                                 group=self.config_group)
 
     def append_config_values(self, share_opts):

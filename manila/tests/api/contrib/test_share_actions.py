@@ -20,7 +20,7 @@ import webob
 
 from manila.api.contrib import share_actions
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import jsonutils
 from manila.openstack.common.rpc import common as rpc_common
 from manila import share
@@ -28,9 +28,10 @@ from manila.share import api as share_api
 from manila import test
 from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 def _fake_access_get(self, ctxt, access_id):

@@ -24,16 +24,17 @@ from mox import IsA
 from manila import context
 from manila import db
 from manila import exception
-from manila import flags
+
 from manila.openstack.common import timeutils
 from manila.scheduler import driver
 from manila.scheduler import manager
 from manila.scheduler import simple
 from manila import test
 from manila import utils
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class SchedulerManagerTestCase(test.TestCase):

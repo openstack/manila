@@ -19,8 +19,6 @@ import os
 
 import manila.context
 
-FLAGS = manila.flags.FLAGS
-
 
 def get_test_admin_context():
     return manila.context.get_admin_context()

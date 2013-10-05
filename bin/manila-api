@@ -29,6 +29,7 @@ eventlet.monkey_patch()
 import os
 import sys
 
+from oslo.config import cfg
 
 possible_topdir = os.path.normpath(os.path.join(os.path.abspath(
         sys.argv[0]), os.pardir, os.pardir))
@@ -38,13 +39,17 @@ if os.path.exists(os.path.join(possible_topdir, "manila", "__init__.py")):
 from manila.openstack.common import gettextutils
 gettextutils.install('manila')
 
-from manila import flags
+from manila.common import config  # Need to register global_opts
 from manila.openstack.common import log as logging
 from manila import service
 from manila import utils
+from manila import version
+
+CONF = cfg.CONF
 
 if __name__ == '__main__':
-    flags.parse_args(sys.argv)
+    CONF(sys.argv[1:], project='manila',
+            version=version.version_string())
     logging.setup("manila")
     utils.monkey_patch()
     server = service.WSGIService('osapi_share')

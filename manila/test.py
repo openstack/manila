@@ -32,13 +32,13 @@ import nose.plugins.skip
 from oslo.config import cfg
 import stubout
 
-from manila import flags
+from manila.common import config
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 from manila import service
 from manila import tests
-from manila.tests import fake_flags
+from manila.tests import conf_fixture
 
 test_opts = [
     cfg.StrOpt('sqlite_clean_db',
@@ -48,8 +48,8 @@ test_opts = [
                 default=True,
                 help='should we use everything for testing'), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(test_opts)
+CONF = cfg.CONF
+CONF.register_opts(test_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def skip_if_fake(func):
     """Decorator that skips a test if running in fake mode."""
     def _skipper(*args, **kw):
         """Wrapped skipper function."""
-        if FLAGS.fake_tests:
+        if CONF.fake_tests:
             raise unittest.SkipTest('Test cannot be run in fake mode')
         else:
             return func(*args, **kw)
@@ -122,8 +122,8 @@ class TestCase(unittest.TestCase):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
 
-        fake_flags.set_defaults(FLAGS)
-        flags.parse_args([], default_config_files=[])
+        conf_fixture.set_defaults(CONF)
+        CONF([], default_config_files=[])
 
         # NOTE(vish): We need a better method for creating fixtures for tests
         #             now that we have some required db setup for the system
@@ -137,7 +137,7 @@ class TestCase(unittest.TestCase):
         self.stubs = stubout.StubOutForTesting()
         self.injected = []
         self._services = []
-        FLAGS.set_override('fatal_exception_format_errors', True)
+        CONF.set_override('fatal_exception_format_errors', True)
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""
@@ -149,7 +149,7 @@ class TestCase(unittest.TestCase):
             super(TestCase, self).tearDown()
         finally:
             # Reset any overridden flags
-            FLAGS.reset()
+            CONF.reset()
 
             # Stop any timers
             for x in self.injected:
@@ -174,7 +174,7 @@ class TestCase(unittest.TestCase):
     def flags(self, **kw):
         """Override flag variables for a test."""
         for k, v in kw.iteritems():
-            FLAGS.set_override(k, v)
+            CONF.set_override(k, v)
 
     def start_service(self, name, host=None, **kwargs):
         host = host and host or uuid.uuid4().hex

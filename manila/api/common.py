@@ -23,13 +23,13 @@ import webob
 
 from manila.api.openstack import wsgi
 from manila.api import xmlutil
-from manila import flags
 from manila.openstack.common import log as logging
 from manila import utils
+from oslo.config import cfg
 
 
 LOG = logging.getLogger(__name__)
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 XML_NS_V1 = 'http://docs.openstack.org/volume/api/v1'
@@ -73,7 +73,7 @@ def _get_marker_param(request):
     return request.GET['marker']
 
 
-def limited(items, request, max_limit=FLAGS.osapi_max_limit):
+def limited(items, request, max_limit=CONF.osapi_max_limit):
     """Return a slice of items according to requested offset and limit.
 
     :param items: A sliceable entity
@@ -110,7 +110,7 @@ def limited(items, request, max_limit=FLAGS.osapi_max_limit):
     return items[offset:range_end]
 
 
-def limited_by_marker(items, request, max_limit=FLAGS.osapi_max_limit):
+def limited_by_marker(items, request, max_limit=CONF.osapi_max_limit):
     """Return a slice of items according to the requested marker and limit."""
     params = get_pagination_params(request)
 
@@ -192,7 +192,7 @@ class ViewBuilder(object):
         params = request.params.copy()
         params["marker"] = identifier
         prefix = self._update_link_prefix(request.application_url,
-                                          FLAGS.osapi_share_base_URL)
+                                          CONF.osapi_share_base_URL)
         url = os.path.join(prefix,
                            request.environ["manila.context"].project_id,
                            self._collection_name)
@@ -201,7 +201,7 @@ class ViewBuilder(object):
     def _get_href_link(self, request, identifier):
         """Return an href string pointing to this object."""
         prefix = self._update_link_prefix(request.application_url,
-                                          FLAGS.osapi_share_base_URL)
+                                          CONF.osapi_share_base_URL)
         return os.path.join(prefix,
                             request.environ["manila.context"].project_id,
                             self._collection_name,
@@ -211,7 +211,7 @@ class ViewBuilder(object):
         """Create a URL that refers to a specific resource."""
         base_url = remove_version_from_href(request.application_url)
         base_url = self._update_link_prefix(base_url,
-                                            FLAGS.osapi_share_base_URL)
+                                            CONF.osapi_share_base_URL)
         return os.path.join(base_url,
                             request.environ["manila.context"].project_id,
                             self._collection_name,

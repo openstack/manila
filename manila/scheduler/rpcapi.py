@@ -18,12 +18,13 @@
 Client side of the scheduler manager RPC API.
 """
 
-from manila import flags
+
 from manila.openstack.common import jsonutils
 import manila.openstack.common.rpc.proxy
+from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class SchedulerAPI(manila.openstack.common.rpc.proxy.RpcProxy):
@@ -42,7 +43,7 @@ class SchedulerAPI(manila.openstack.common.rpc.proxy.RpcProxy):
 
     def __init__(self):
         super(SchedulerAPI, self).__init__(
-            topic=FLAGS.scheduler_topic,
+            topic=CONF.scheduler_topic,
             default_version=self.RPC_API_VERSION)
 
     def create_share(self, ctxt, topic, share_id, snapshot_id=None,

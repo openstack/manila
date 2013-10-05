@@ -24,7 +24,6 @@ import functools
 
 from manila.db import base
 from manila import exception
-from manila import flags
 from manila.image import glance
 from manila.openstack.common import excutils
 from manila.openstack.common import log as logging
@@ -38,7 +37,7 @@ from manila.share import rpcapi as share_rpcapi
 from oslo.config import cfg
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 GB = 1048576 * 1024
@@ -145,7 +144,7 @@ class API(base.Base):
                 raise exception.ShareLimitExceeded(allowed=quotas['shares'])
 
         if availability_zone is None:
-            availability_zone = FLAGS.storage_availability_zone
+            availability_zone = CONF.storage_availability_zone
 
         options = {'size': size,
                    'user_id': context.user_id,
@@ -179,7 +178,7 @@ class API(base.Base):
 
         self.scheduler_rpcapi.create_share(
             context,
-            FLAGS.share_topic,
+            CONF.share_topic,
             share['id'],
             snapshot_id,
             request_spec=request_spec,

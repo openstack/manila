@@ -16,11 +16,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from manila import flags
+from oslo.config import cfg
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
-flags.DECLARE('policy_file', 'manila.policy')
+CONF.import_opt('policy_file', 'manila.policy')
 
 def_vol_type = 'fake_vol_type'
 

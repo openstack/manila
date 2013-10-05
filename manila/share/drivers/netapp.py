@@ -23,7 +23,6 @@ import suds
 from suds.sax import text
 
 from manila import exception
-from manila import flags
 from manila.openstack.common import log
 from manila.share import driver
 
@@ -53,8 +52,8 @@ NETAPP_NAS_OPTS = [
                 help='Use secure connection to server.'),
 ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(NETAPP_NAS_OPTS)
+CONF = cfg.CONF
+CONF.register_opts(NETAPP_NAS_OPTS)
 
 
 class NetAppShareDriver(driver.ShareDriver):

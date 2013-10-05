@@ -23,14 +23,15 @@ import urllib2
 
 from manila import context
 from manila import exception
-from manila import flags
+
 import manila.openstack.common.policy
 from manila.openstack.common import policy as common_policy
 from manila import policy
 from manila import test
 from manila import utils
+from oslo.config import cfg
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class PolicyFileTestCase(test.TestCase):
@@ -209,7 +210,7 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
         rules = {
             'context_is_admin': [["role:administrator"], ["role:johnny-admin"]]
         }
-        brain = common_policy.Brain(rules, FLAGS.policy_default_rule)
+        brain = common_policy.Brain(rules, CONF.policy_default_rule)
         common_policy.set_brain(brain)
         ctx = context.RequestContext('fake', 'fake', roles=['johnny-admin'])
         self.assert_(ctx.is_admin)
@@ -224,7 +225,7 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
             "admin_or_owner": [["role:admin"], ["project_id:%(project_id)s"]],
             "default": [["rule:admin_or_owner"]],
         }
-        brain = common_policy.Brain(rules, FLAGS.policy_default_rule)
+        brain = common_policy.Brain(rules, CONF.policy_default_rule)
         common_policy.set_brain(brain)
         ctx = context.RequestContext('fake', 'fake')
         self.assertFalse(ctx.is_admin)

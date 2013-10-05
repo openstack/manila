@@ -18,7 +18,6 @@
 
 from oslo.config import cfg
 
-from manila import flags
 
-FLAGS = flags.FLAGS
-FLAGS.register_opt(cfg.IntOpt('runtime_answer', default=54, help='test flag'))
+CONF = cfg.CONF
+CONF.register_opt(cfg.IntOpt('runtime_answer', default=54, help='test flag'))

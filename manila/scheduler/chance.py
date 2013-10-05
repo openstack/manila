@@ -24,11 +24,12 @@ Chance (Random) Scheduler implementation
 import random
 
 from manila import exception
-from manila import flags
+
 from manila.scheduler import driver
 
+from oslo.config import cfg
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class ChanceScheduler(driver.Scheduler):
@@ -60,7 +61,7 @@ class ChanceScheduler(driver.Scheduler):
 
     def schedule_create_share(self, context, request_spec, filter_properties):
         """Picks a host that is up at random."""
-        topic = FLAGS.share_topic
+        topic = CONF.share_topic
         host = self._schedule(context, topic, request_spec,
                               filter_properties=filter_properties)
         share_id = request_spec['share_id']

@@ -25,7 +25,7 @@ from oslo.config import cfg
 
 from manila import db
 from manila import exception
-from manila import flags
+
 from manila.scheduler import chance
 from manila.scheduler import driver
 from manila import utils
@@ -35,8 +35,8 @@ simple_scheduler_opts = [
                default=10000,
                help="maximum number of volume gigabytes to allow per host"), ]
 
-FLAGS = flags.FLAGS
-FLAGS.register_opts(simple_scheduler_opts)
+CONF = cfg.CONF
+CONF.register_opts(simple_scheduler_opts)
 
 
 class SimpleScheduler(chance.ChanceScheduler):
@@ -57,7 +57,7 @@ class SimpleScheduler(chance.ChanceScheduler):
         if availability_zone:
             zone, _x, host = availability_zone.partition(':')
         if host and context.is_admin:
-            service = db.service_get_by_args(elevated, host, FLAGS.share_topic)
+            service = db.service_get_by_args(elevated, host, CONF.share_topic)
             if not utils.service_is_up(service):
                 raise exception.WillNotSchedule(host=host)
             updated_share = driver.share_update_db(context, share_id, host)
@@ -76,7 +76,7 @@ class SimpleScheduler(chance.ChanceScheduler):
                        if service['availability_zone'] == zone]
         for result in results:
             (service, share_gigabytes) = result
-            if share_gigabytes + share_size > FLAGS.max_gigabytes:
+            if share_gigabytes + share_size > CONF.max_gigabytes:
                 msg = _("Not enough allocatable share gigabytes remaining")
                 raise exception.NoValidHost(reason=msg)
             if utils.service_is_up(service) and not service['disabled']:

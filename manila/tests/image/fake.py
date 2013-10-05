@@ -23,15 +23,16 @@ import datetime
 import uuid
 
 from manila import exception
-from manila import flags
+
 import manila.image.glance
 from manila.openstack.common import log as logging
 
+from oslo.config import cfg
 
 LOG = logging.getLogger(__name__)
 
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 
 class _FakeImageService(object):

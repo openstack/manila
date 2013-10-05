@@ -26,7 +26,7 @@ from oslo.config import cfg
 from manila import context
 from manila import db
 from manila import exception
-from manila import flags
+
 from manila import manager
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
@@ -41,8 +41,8 @@ scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
                                           'FilterScheduler',
                                   help='Default scheduler driver to use')
 
-FLAGS = flags.FLAGS
-FLAGS.register_opt(scheduler_driver_opt)
+CONF = cfg.CONF
+CONF.register_opt(scheduler_driver_opt)
 
 
 class SchedulerManager(manager.Manager):
@@ -53,7 +53,7 @@ class SchedulerManager(manager.Manager):
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
         if not scheduler_driver:
-            scheduler_driver = FLAGS.scheduler_driver
+            scheduler_driver = CONF.scheduler_driver
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
 

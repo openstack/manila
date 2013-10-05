@@ -24,6 +24,8 @@ eventlet.monkey_patch()
 import os
 import sys
 
+from oslo.config import cfg
+
 # If ../manila/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
 possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
@@ -35,21 +37,23 @@ if os.path.exists(os.path.join(possible_topdir, 'manila', '__init__.py')):
 from manila.openstack.common import gettextutils
 gettextutils.install('manila')
 
-from manila import flags
+from manila.common import config  # Need to register global_opts
 from manila.openstack.common import log as logging
 from manila import service
 from manila import utils
+from manila import version
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 if __name__ == '__main__':
-    flags.parse_args(sys.argv)
+    args = CONF(sys.argv[1:], project='manila',
+            version=version.version_string())
     logging.setup("manila")
     utils.monkey_patch()
     launcher = service.ProcessLauncher()
-    if FLAGS.enabled_share_backends:
-        for backend in FLAGS.enabled_share_backends:
-            host = "%s@%s" % (FLAGS.host, backend)
+    if CONF.enabled_share_backends:
+        for backend in CONF.enabled_share_backends:
+            host = "%s@%s" % (CONF.host, backend)
             server = service.Service.create(
                                         host=host,
                                         service_name=backend)
