@@ -65,6 +65,7 @@ class ExtensionDescriptor(object):
         """Register extension with the extension manager."""
 
         ext_mgr.register(self)
+        self.ext_mgr = ext_mgr
 
     def get_resources(self):
         """List of extensions.ResourceExtension extension objects.

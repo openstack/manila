@@ -242,36 +242,46 @@ class InvalidReservationExpiration(Invalid):
 
 
 class InvalidQuotaValue(Invalid):
-    message = _("Change would make usage less than 0 for the following "
+    msg_fmt = _("Change would make usage less than 0 for the following "
                 "resources: %(unders)s")
 
 
 class QuotaNotFound(NotFound):
-    message = _("Quota could not be found")
+    msg_fmt = _("Quota could not be found")
+
+
+class QuotaExists(ManilaException):
+    msg_fmt = _("Quota exists for project %(project_id)s, "
+                "resource %(resource)s")
 
 
 class QuotaResourceUnknown(QuotaNotFound):
-    message = _("Unknown quota resources %(unknown)s.")
+    msg_fmt = _("Unknown quota resources %(unknown)s.")
+
+
+class ProjectUserQuotaNotFound(QuotaNotFound):
+    msg_fmt = _("Quota for user %(user_id)s in project %(project_id)s "
+                "could not be found.")
 
 
 class ProjectQuotaNotFound(QuotaNotFound):
-    message = _("Quota for project %(project_id)s could not be found.")
+    msg_fmt = _("Quota for project %(project_id)s could not be found.")
 
 
 class QuotaClassNotFound(QuotaNotFound):
-    message = _("Quota class %(class_name)s could not be found.")
+    msg_fmt = _("Quota class %(class_name)s could not be found.")
 
 
 class QuotaUsageNotFound(QuotaNotFound):
-    message = _("Quota usage for project %(project_id)s could not be found.")
+    msg_fmt = _("Quota usage for project %(project_id)s could not be found.")
 
 
 class ReservationNotFound(QuotaNotFound):
-    message = _("Quota reservation %(uuid)s could not be found.")
+    msg_fmt = _("Quota reservation %(uuid)s could not be found.")
 
 
 class OverQuota(ManilaException):
-    message = _("Quota exceeded for resources: %(overs)s")
+    msg_fmt = _("Quota exceeded for resources: %(overs)s")
 
 
 class MigrationNotFound(NotFound):
