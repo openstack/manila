@@ -141,6 +141,19 @@ class Quota(BASE, ManilaBase):
     hard_limit = Column(Integer, nullable=True)
 
 
+class ProjectUserQuota(BASE, ManilaBase):
+    """Represents a single quota override for a user with in a project."""
+
+    __tablename__ = 'project_user_quotas'
+    id = Column(Integer, primary_key=True, nullable=False)
+
+    project_id = Column(String(255), nullable=False)
+    user_id = Column(String(255), nullable=False)
+
+    resource = Column(String(255), nullable=False)
+    hard_limit = Column(Integer)
+
+
 class QuotaClass(BASE, ManilaBase):
     """Represents a single quota override for a quota class.
 
@@ -165,6 +178,7 @@ class QuotaUsage(BASE, ManilaBase):
     id = Column(Integer, primary_key=True)
 
     project_id = Column(String(255), index=True)
+    user_id = Column(String(255))
     resource = Column(String(255))
 
     in_use = Column(Integer)
@@ -187,10 +201,17 @@ class Reservation(BASE, ManilaBase):
     usage_id = Column(Integer, ForeignKey('quota_usages.id'), nullable=False)
 
     project_id = Column(String(255), index=True)
+    user_id = Column(String(255))
     resource = Column(String(255))
 
     delta = Column(Integer)
     expire = Column(DateTime, nullable=False)
+
+#    usage = relationship(
+#        "QuotaUsage",
+#        foreign_keys=usage_id,
+#        primaryjoin='and_(Reservation.usage_id == QuotaUsage.id,'
+#                         'QuotaUsage.deleted == 0)')
 
 
 class Migration(BASE, ManilaBase):
