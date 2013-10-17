@@ -126,9 +126,6 @@ class InstallVenv(object):
         self.pip_install('-r', self.pip_requires)
         self.pip_install('-r', self.test_requires)
 
-    def post_process(self):
-        self.get_distro().post_process()
-
     def parse_args(self, argv):
         """Parses command-line arguments."""
         parser = argparse.ArgumentParser()
@@ -161,14 +158,6 @@ class Distro(InstallVenv):
                  ' requires virtualenv, please install it using your'
                  ' favorite package management tool' % self.project)
 
-    def post_process(self):
-        """Any distribution-specific post-processing gets done here.
-
-        In particular, this is useful for applying patches to code inside
-        the venv.
-        """
-        pass
-
 
 class Fedora(Distro):
     """This covers all Fedora-based distributions.
@@ -184,10 +173,6 @@ class Fedora(Distro):
         print "Attempting to install '%s' via yum" % pkg
         self.run_command(['sudo', 'yum', 'install', '-y', pkg], **kwargs)
 
-    def apply_patch(self, originalfile, patchfile):
-        self.run_command(['patch', '-N', originalfile, patchfile],
-                         check_exit_code=False)
-
     def install_virtualenv(self):
         if self.check_cmd('virtualenv'):
             return
@@ -196,25 +181,3 @@ class Fedora(Distro):
             self.yum_install('python-virtualenv', check_exit_code=False)
 
         super(Fedora, self).install_virtualenv()
-
-    def post_process(self):
-        """Workaround for a bug in eventlet.
-
-        This currently affects RHEL6.1, but the fix can safely be
-        applied to all RHEL and Fedora distributions.
-
-        This can be removed when the fix is applied upstream.
-
-        Nova: https://bugs.launchpad.net/nova/+bug/884915
-        Upstream: https://bitbucket.org/which_linden/eventlet/issue/89
-        """
-
-        # Install "patch" program if it's not there
-        if not self.check_pkg('patch'):
-            self.yum_install('patch')
-
-        # Apply the eventlet patch
-        self.apply_patch(os.path.join(self.venv, 'lib', self.py_version,
-                                      'site-packages',
-                                      'eventlet/green/subprocess.py'),
-                         'contrib/redhat-eventlet.patch')
