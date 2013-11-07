@@ -134,6 +134,10 @@ class ManilaException(Exception):
         super(ManilaException, self).__init__(message)
 
 
+class NetworkException(ManilaException):
+    message = _("Exception due to network failure")
+
+
 class GlanceConnectionFailed(ManilaException):
     message = _("Connection to glance failed") + ": %(reason)s"
 
@@ -433,6 +437,10 @@ class ImageCopyFailure(Invalid):
 
 class InvalidShare(ManilaException):
     message = _("Invalid share: %(reason)s")
+
+
+class PortLimitExceeded(QuotaError):
+    message = _("Maximum number of ports exceeded")
 
 
 class ShareAccessNotFound(NotFound):

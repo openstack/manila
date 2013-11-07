@@ -799,5 +799,16 @@
 # Driver to use for share creation (string value)
 #share_driver=manila.share.drivers.lvm.LVMShareDriver
 
+#
+# Option defined in manila.network.neutron.api
+#
 
-# Total option count: 173
+#neutron_url = http://127.0.0.1:9696
+#neutron_region_name = RegionOne
+#neutron_admin_tenant_name = service
+#neutron_auth_strategy = keystone
+#neutron_admin_auth_url = http://127.0.0.1:35357/v2.0
+#neutron_admin_password = %admin_pass
+#neutron_admin_username = neutron
+
+# Total option count: 180
