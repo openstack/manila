@@ -34,3 +34,13 @@ smbcontrol: CommandFilter, /usr/bin/smbcontrol, root
 # manila/share/drivers/lvm.py: 'net', 'conf', 'setparm', '%s', '%s', '%s'
 # manila/share/drivers/lvm.py: 'net', 'conf', 'getparm', '%s', 'hosts allow'
 net: CommandFilter, /usr/bin/net, root
+
+# manila/share/drivers/glusterfs.py: 'mkdir', '%s'
+mkdir: CommandFilter, /usr/bin/mkdir, root
+
+# manila/share/drivers/glusterfs.py: 'rm', '-rf', '%s'
+rm: CommandFilter, /usr/bin/rm, root
+
+# manila/share/drivers/glusterfs.py: 'gluster', '--xml', 'volume', 'info', '%s'
+# manila/share/drivers/glusterfs.py: 'gluster', 'volume', 'set', '%s', 'nfs.export-dir', '%s'
+gluster: CommandFilter, /usr/sbin/gluster, root
