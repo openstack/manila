@@ -1,0 +1,368 @@
+# lib/manila
+# Install and start **Manila** file shares service
+
+# Dependencies:
+# - functions
+# - DEST, DATA_DIR, STACK_USER must be defined
+# SERVICE_{TENANT_NAME|PASSWORD} must be defined
+# ``KEYSTONE_TOKEN_FORMAT`` must be defined
+
+# stack.sh
+# ---------
+# install_manila #
+# configure_manila #
+# init_manila #
+# start_manila #
+# stop_manila #
+# cleanup_manila #
+
+# Save trace setting
+XTRACE=$(set +o | grep xtrace)
+set +o xtrace
+
+
+# Defaults
+# --------
+
+MANILA_REPO_ROOT=stackforge
+MANILA_GIT_BASE=${MANILA_GIT_BASE:-https://github.com}
+MANILA_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/manila.git
+MANILA_BRANCH=master
+
+MANILACLIENT_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/python-manilaclient.git
+MANILACLIENT_BRANCH=master
+
+SHARE_BACKING_FILE_SIZE=${SHARE_BACKING_FILE_SIZE:-8400M}
+
+MANILA_SECURE_DELETE=`trueorfalse True $MANILA_SECURE_DELETE`
+
+# set up default driver
+MANILA_DRIVER=${MANILA_DRIVER:-default}
+
+# set up default directories
+MANILA_DIR=$DEST/manila
+MANILACLIENT_DIR=$DEST/python-manilaclient
+MANILA_STATE_PATH=${MANILA_STATE_PATH:=$DATA_DIR/manila}
+MANILA_MNT_DIR=${MANILA_MNT_DIR:=$MANILA_STATE_PATH/mnt}
+MANILA_AUTH_CACHE_DIR=${MANILA_AUTH_CACHE_DIR:-/var/cache/manila}
+
+MANILA_CONF_DIR=/etc/manila
+MANILA_CONF=$MANILA_CONF_DIR/manila.conf
+MANILA_API_PASTE_INI=$MANILA_CONF_DIR/api-paste.ini
+
+# Public facing bits
+MANILA_SERVICE_HOST=${MANILA_SERVICE_HOST:-$SERVICE_HOST}
+MANILA_SERVICE_PORT=${MANILA_SERVICE_PORT:-8786}
+MANILA_SERVICE_PORT_INT=${MANILA_SERVICE_PORT_INT:-18776}
+MANILA_SERVICE_PROTOCOL=${MANILA_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
+
+# Support entry points installation of console scripts
+if [[ -d $MANILA_DIR/bin ]]; then
+    MANILA_BIN_DIR=$MANILA_DIR/bin
+else
+    MANILA_BIN_DIR=/usr/local/bin
+fi
+
+SHARE_GROUP=${SHARE_GROUP:-stack-shares}
+SHARE_NAME_PREFIX=${SHARE_NAME_PREFIX:-share-}
+SHARE_EXPORT_IP=${SHARE_EXPORT_IP:-$HOST_IP}
+SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.lvm.LVMShareDriver}
+
+MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.simple.SimpleScheduler}
+
+CIFS_HELPER=${CIFS_HELPER:-manila.share.drivers.lvm.CIFSNetConfHelper}
+# NetApp ShareDriver specific parameters
+NETAPP_SHARE_DFM_HOST=${NETAPP_DFM_IP:-$HOST_IP}
+NETAPP_SHARE_WSDL_URL=${NETAPP_SHARE_WSDL_URL:-http://$NETAPP_SHARE_DFM_HOST:8080/dfm.wsdl}
+NETAPP_SHARE_DFM_LOGIN=${NETAPP_SHARE_DFM_LOGIN:-root}
+NETAPP_SHARE_DFM_PASSWORD=${NETAPP_SHARE_DFM_PASSWORD:-secrete}
+NETAPP_SHARE_DFM_PORT=${NETAPP_SHARE_DFM_PORT:-8488}
+
+function _clean_share_group() {
+   local vg=$1
+   local vg_prefix=$2
+   # Clean out existing shares
+   for lv in `sudo lvs --noheadings -o lv_name $vg`; do
+       # vg_prefix prefixes the LVs we want
+       if [[ "${lv#$vg_prefix}" != "$lv" ]]; then
+           sudo umount $MANILA_MNT_DIR/$lv
+           sudo lvremove -f $vg/$lv
+           sudo rm -rf $MANILA_MNT_DIR/$lv
+       fi
+   done
+}
+
+# _clean_share_group removes all manila shares from the specified shares group
+_clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
+
+function _clean_lvm_backing_file() {
+    local vg=$1
+
+    # if there is no logical volume left, it's safe to attempt a cleanup
+    # of the backing file
+    if [ -z "`sudo lvs --noheadings -o lv_name $vg`" ]; then
+        # if the backing physical device is a loop device, it was probably setup by devstack
+        VG_DEV=$(sudo losetup -j $DATA_DIR/${vg}-backing-file | awk -F':' '/backing-file/ { print $1}')
+        if [[ -n "$VG_DEV" ]]; then
+            sudo losetup -d $VG_DEV
+            rm -f $DATA_DIR/${vg}-backing-file
+        fi
+    fi
+}
+
+# cleanup_manila() - Remove residual data files, anything left over from previous
+# runs that a clean run would need to clean up
+function cleanup_manila() {
+    # ensure the volume group is cleared up because fails might
+    # leave dead volumes in the group
+
+    # Campsite rule: leave behind a share volume group at least as clean as we found it
+    # _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
+    _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
+    _clean_lvm_backing_file $SHARE_GROUP
+
+
+}
+
+# configure_manila() - Set config files, create data dirs, etc
+function configure_manila() {
+    setup_develop $MANILA_DIR
+    setup_develop $MANILACLIENT_DIR
+
+    if [[ ! -d $MANILA_CONF_DIR ]]; then
+        sudo mkdir -p $MANILA_CONF_DIR
+    fi
+    sudo chown $STACK_USER $MANILA_CONF_DIR
+
+    cp -p $MANILA_DIR/etc/manila/policy.json $MANILA_CONF_DIR
+
+    # Set the paths of certain binaries
+    MANILA_ROOTWRAP=$(get_rootwrap_location manila)
+
+    # If Manila ships the new rootwrap filters files, deploy them
+    # (owned by root) and add a parameter to $MANILA_ROOTWRAP
+    ROOTWRAP_MANILA_SUDOER_CMD="$MANILA_ROOTWRAP"
+    if [[ -d $MANILA_DIR/etc/manila/rootwrap.d ]]; then
+        # Wipe any existing rootwrap.d files first
+        if [[ -d $MANILA_CONF_DIR/rootwrap.d ]]; then
+            sudo rm -rf $MANILA_CONF_DIR/rootwrap.d
+        fi
+        # Deploy filters to /etc/manila/rootwrap.d
+        sudo mkdir -m 755 $MANILA_CONF_DIR/rootwrap.d
+        sudo cp $MANILA_DIR/etc/manila/rootwrap.d/*.filters $MANILA_CONF_DIR/rootwrap.d
+        sudo chown -R root:root $MANILA_CONF_DIR/rootwrap.d
+        sudo chmod 644 $MANILA_CONF_DIR/rootwrap.d/*
+        # Set up rootwrap.conf, pointing to /etc/manila/rootwrap.d
+        sudo cp $MANILA_DIR/etc/manila/rootwrap.conf $MANILA_CONF_DIR/
+        sudo sed -e "s:^filters_path=.*$:filters_path=$MANILA_CONF_DIR/rootwrap.d:" -i $MANILA_CONF_DIR/rootwrap.conf
+        sudo chown root:root $MANILA_CONF_DIR/rootwrap.conf
+        sudo chmod 0644 $MANILA_CONF_DIR/rootwrap.conf
+        # Specify rootwrap.conf as first parameter to manila-rootwrap
+        MANILA_ROOTWRAP="$MANILA_ROOTWRAP $MANILA_CONF_DIR/rootwrap.conf"
+        ROOTWRAP_MANILA_SUDOER_CMD="$MANILA_ROOTWRAP *"
+    fi
+
+    TEMPFILE=`mktemp`
+    echo "$USER ALL=(root) NOPASSWD: $ROOTWRAP_MANILA_SUDOER_CMD" >$TEMPFILE
+    chmod 0440 $TEMPFILE
+    sudo chown root:root $TEMPFILE
+    sudo mv $TEMPFILE /etc/sudoers.d/manila-rootwrap
+
+    cp $MANILA_DIR/etc/manila/api-paste.ini $MANILA_API_PASTE_INI
+    iniset $MANILA_API_PASTE_INI filter:authtoken auth_host $KEYSTONE_AUTH_HOST
+    iniset $MANILA_API_PASTE_INI filter:authtoken auth_port $KEYSTONE_AUTH_PORT
+    iniset $MANILA_API_PASTE_INI filter:authtoken auth_protocol $KEYSTONE_AUTH_PROTOCOL
+    iniset $MANILA_API_PASTE_INI filter:authtoken admin_tenant_name $SERVICE_TENANT_NAME
+    iniset $MANILA_API_PASTE_INI filter:authtoken admin_user manila
+    iniset $MANILA_API_PASTE_INI filter:authtoken admin_password $SERVICE_PASSWORD
+    iniset $MANILA_API_PASTE_INI filter:authtoken signing_dir $MANILA_AUTH_CACHE_DIR
+
+    cp $MANILA_DIR/etc/manila/manila.conf.sample $MANILA_CONF
+    iniset $MANILA_CONF DEFAULT auth_strategy keystone
+    iniset $MANILA_CONF DEFAULT debug True
+    iniset $MANILA_CONF DEFAULT verbose True
+    iniset $MANILA_CONF DEFAULT scheduler_driver $MANILA_SCHEDULER_DRIVER
+    iniset $MANILA_CONF DEFAULT share_export_ip $SHARE_EXPORT_IP 
+    iniset $MANILA_CONF DEFAULT share_volume_group $SHARE_GROUP
+    iniset $MANILA_CONF DEFAULT share_name_template ${SHARE_NAME_PREFIX}%s
+    iniset $MANILA_CONF DEFAULT iscsi_helper tgtadm
+    iniset $MANILA_CONF DEFAULT sql_connection `database_connection_url manila`
+    iniset $MANILA_CONF DEFAULT api_paste_config $MANILA_API_PASTE_INI
+    iniset $MANILA_CONF DEFAULT root_helper "sudo ${MANILA_ROOTWRAP}"
+    iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.openstack.share.contrib.standard_extensions
+    iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
+    iniset $MANILA_CONF DEFAULT share_driver $SHARE_DRIVER
+    iniset $MANILA_CONF DEFAULT share_lvm_helpers CIFS=$CIFS_HELPER,NFS=manila.share.drivers.lvm.NFSHelper
+    iniset $MANILA_CONF DEFAULT netapp_nas_wsdl_url $NETAPP_SHARE_WSDL_URL
+    iniset $MANILA_CONF DEFAULT netapp_nas_login $NETAPP_SHARE_DFM_LOGIN
+    iniset $MANILA_CONF DEFAULT netapp_nas_password $NETAPP_SHARE_DFM_PASSWORD
+    iniset $MANILA_CONF DEFAULT netapp_nas_server_hostname $NETAPP_DFM_IP
+    iniset $MANILA_CONF DEFAULT netapp_nas_server_port $NETAPP_SHARE_DFM_PORT
+    iniset $MANILA_CONF DEFAULT path_to_key /home/stack/.ssh/id_rsa.pub
+
+    if is_service_enabled tls-proxy; then
+        # Set the service port for a proxy to take the original
+        iniset $MANILA_CONF DEFAULT osapi_share_listen_port $MANILA_SERVICE_PORT_INT
+    fi
+
+    if [ "$SYSLOG" != "False" ]; then
+        iniset $MANILA_CONF DEFAULT use_syslog True
+    fi
+
+    iniset_rpc_backend manila $MANILA_CONF DEFAULT
+
+    if [[ "$MANILA_SECURE_DELETE" == "False" ]]; then
+        iniset $MANILA_CONF DEFAULT secure_delete False
+        iniset $MANILA_CONF DEFAULT share_clear none
+    fi
+
+    if [ "$LOG_COLOR" == "True" ] && [ "$SYSLOG" == "False" ]; then
+        # Add color to logging output
+        iniset $MANILA_CONF DEFAULT logging_context_format_string "%(asctime)s.%(msecs)d %(color)s%(levelname)s %(name)s [[01;36m%(request_id)s [00;36m%(user_id)s %(project_id)s%(color)s] [01;35m%(instance)s%(color)s%(message)s[00m"
+        iniset $MANILA_CONF DEFAULT logging_default_format_string "%(asctime)s.%(msecs)d %(color)s%(levelname)s %(name)s [[00;36m-%(color)s] [01;35m%(instance)s%(color)s%(message)s[00m"
+        iniset $MANILA_CONF DEFAULT logging_debug_format_suffix "[00;33mfrom (pid=%(process)d) %(funcName)s %(pathname)s:%(lineno)d[00m"
+        iniset $MANILA_CONF DEFAULT logging_exception_prefix "%(color)s%(asctime)s.%(msecs)d TRACE %(name)s [01;35m%(instance)s[00m"
+    fi
+
+}
+
+# create_manila_accounts() - Set up common required manila accounts
+
+# Tenant               User       Roles
+# ------------------------------------------------------------------
+# service              manila     admin        # if enabled
+
+# Migrated from keystone_data.sh
+function create_manila_accounts() {
+
+    SERVICE_TENANT=$(keystone tenant-list | awk "/ $SERVICE_TENANT_NAME / { print \$2 }")
+    ADMIN_ROLE=$(keystone role-list | awk "/ admin / { print \$2 }")
+
+    # Manila
+    if [[ "$ENABLED_SERVICES" =~ "m-api" ]]; then
+        MANILA_USER=$(keystone user-create \
+            --name=manila \
+            --pass="$SERVICE_PASSWORD" \
+            --tenant_id $SERVICE_TENANT \
+            --email=manila@example.com \
+            | grep " id " | get_field 2)
+        keystone user-role-add \
+            --tenant_id $SERVICE_TENANT \
+            --user_id $MANILA_USER \
+            --role_id $ADMIN_ROLE
+        if [[ "$KEYSTONE_CATALOG_BACKEND" = 'sql' ]]; then
+            MANILA_SERVICE=$(keystone service-create \
+                --name=manila \
+                --type=share \
+                --description="Manila Shared Filesystem Service" \
+                | grep " id " | get_field 2)
+            keystone endpoint-create \
+                --region RegionOne \
+                --service_id $MANILA_SERVICE \
+                --publicurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
+                --adminurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
+                --internalurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s"
+        fi
+    fi
+}
+
+# init_manila() - Initialize database and volume group
+function init_manila() {
+    # Force nova volumes off 
+    # NOVA_ENABLED_APIS=$(echo $NOVA_ENABLED_APIS | sed "s/osapi_volume,//")
+
+    if is_service_enabled $DATABASE_BACKENDS; then
+        # (re)create manila database
+        recreate_database manila utf8
+
+        # (re)create manila database
+        $MANILA_BIN_DIR/manila-manage db sync
+    fi
+
+    if is_service_enabled m-shr; then
+        # Configure a default volume group called '`stack-volumes`' for the volume
+        # service if it does not yet exist.  If you don't wish to use a file backed
+        # volume group, create your own volume group called ``stack-volumes`` before
+        # invoking ``stack.sh``.
+        #
+        # By default, the backing file is 5G in size, and is stored in ``/opt/stack/data``.
+
+        if ! sudo vgs $SHARE_GROUP; then
+            SHARE_BACKING_FILE=${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}
+            # Only create if the file doesn't already exists
+            # [[ -f $SHARE_BACKING_FILE ]] || truncate -s $VOLUME_BACKING_FILE_SIZE $SHARE_BACKING_FILE
+            [[ -f $SHARE_BACKING_FILE ]] || truncate -s $SHARE_BACKING_FILE_SIZE $SHARE_BACKING_FILE
+            DEV=`sudo losetup -f --show $SHARE_BACKING_FILE`
+            # Only create if the loopback device doesn't contain $VOLUME_GROUP
+            if ! sudo vgs $SHARE_GROUP; then sudo vgcreate $SHARE_GROUP $DEV; fi
+        fi
+
+        mkdir -p $MANILA_STATE_PATH/shares
+
+        if sudo vgs $SHARE_GROUP; then
+            _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
+        fi
+    fi
+
+    # Create cache dir
+    sudo mkdir -p $MANILA_AUTH_CACHE_DIR
+    sudo chown $STACK_USER $MANILA_AUTH_CACHE_DIR
+    rm -f $MANILA_AUTH_CACHE_DIR/*
+}
+
+# install_manila() - Collect source and prepare
+function install_manila() {
+    # short hack for development
+    MAIN_RECLONE=$RECLONE 
+    RECLONE=yes
+    git_clone $MANILA_REPO $MANILA_DIR $MANILA_BRANCH
+    git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
+    RECLONE=$MAIN_RECLONE
+
+    sudo apt-get install -y nfs-kernel-server nfs-common samba
+}
+
+# apply config.d approach (e.g. Oneiric does not have this)
+function _configure_tgt_for_config_d() {
+    if [[ ! -d /etc/tgt/conf.d/ ]]; then
+        sudo mkdir -p /etc/tgt/conf.d
+        echo "include /etc/tgt/conf.d/*.conf" | sudo tee -a /etc/tgt/targets.conf
+    fi
+}
+
+# start_manila() - Start running processes, including screen
+function start_manila() {
+    if is_service_enabled m-shr; then
+        if is_ubuntu; then
+            sudo service smbd  stop
+        fi
+    fi
+
+    screen_it m-api "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
+    screen_it m-shr "sudo service smbd stop ; sudo losetup -f ${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file} ; cd $MANILA_DIR && $MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
+    screen_it m-sch "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"
+
+    # Start proxies if enabled
+    if is_service_enabled m-api && is_service_enabled tls-proxy; then
+        start_tls_proxy '*' $MANILA_SERVICE_PORT $MANILA_SERVICE_HOST $MANILA_SERVICE_PORT_INT &
+    fi
+}
+
+# stop_manila() - Stop running processes
+function stop_manila() {
+    # Kill the manila screen windows
+    for serv in m-api m-sch m-shr; do
+        screen -S $SCREEN_NAME -p $serv -X kill
+    done
+
+    if is_service_enabled m-shr; then
+        if is_ubuntu; then
+            stop_service smbd
+        else
+            stop_service smbd
+        fi
+    fi
+}
+
+# Restore xtrace
+$XTRACE
