@@ -201,3 +201,49 @@ class HostStateTestCase(test.TestCase):
         fake_host.update_from_share_capability(share_capability)
         self.assertEqual(fake_host.total_capacity_gb, 'infinite')
         self.assertEqual(fake_host.free_capacity_gb, 'unknown')
+
+    def test_consume_from_share_capability(self):
+        fake_host = host_manager.HostState('host1')
+        share_size = 10
+        free_capacity = 100
+        fake_share = {'id': 'foo', 'size': share_size}
+
+        share_capability = {'total_capacity_gb': free_capacity * 2,
+                             'free_capacity_gb': free_capacity,
+                             'reserved_percentage': 0,
+                             'timestamp': None}
+
+        fake_host.update_from_share_capability(share_capability)
+        fake_host.consume_from_share(fake_share)
+        self.assertEqual(fake_host.free_capacity_gb,
+                         free_capacity - share_size)
+
+    def test_consume_from_share_infinite_capability(self):
+        fake_host = host_manager.HostState('host1')
+        share_size = 1000
+        fake_share = {'id': 'foo', 'size': share_size}
+
+        share_capability = {'total_capacity_gb': 'infinite',
+                             'free_capacity_gb': 'infinite',
+                             'reserved_percentage': 0,
+                             'timestamp': None}
+
+        fake_host.update_from_share_capability(share_capability)
+        fake_host.consume_from_share(fake_share)
+        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
+        self.assertEqual(fake_host.free_capacity_gb, 'infinite')
+
+    def test_consume_from_share_unknown_capability(self):
+        fake_host = host_manager.HostState('host1')
+        share_size = 1000
+        fake_share = {'id': 'foo', 'size': share_size}
+
+        share_capability = {'total_capacity_gb': 'infinite',
+                             'free_capacity_gb': 'unknown',
+                             'reserved_percentage': 0,
+                             'timestamp': None}
+
+        fake_host.update_from_share_capability(share_capability)
+        fake_host.consume_from_share(fake_share)
+        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
+        self.assertEqual(fake_host.free_capacity_gb, 'unknown')

@@ -132,6 +132,19 @@ class HostState(object):
 
             self.updated = capability['timestamp']
 
+    def consume_from_share(self, share):
+        """Incrementally update host state from an share"""
+        share_gb = share['size']
+        if self.free_capacity_gb == 'infinite':
+            # There's virtually infinite space on back-end
+            pass
+        elif self.free_capacity_gb == 'unknown':
+            # Unable to determine the actual free space on back-end
+            pass
+        else:
+            self.free_capacity_gb -= share_gb
+        self.updated = timeutils.utcnow()
+
 
 class HostManager(object):
     """Base HostManager class."""

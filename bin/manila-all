@@ -64,7 +64,7 @@ if __name__ == '__main__':
     except (Exception, SystemExit):
         LOG.exception(_('Failed to load osapi_share'))
 
-    for binary in ['manila-share', 'manila-scheduler']:
+    for binary in ['manila-share', 'manila-scheduler', 'manila-api']:
         try:
             servers.append(service.Service.create(binary=binary))
         except (Exception, SystemExit):
