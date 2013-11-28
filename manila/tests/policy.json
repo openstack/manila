@@ -11,5 +11,9 @@
     "share:create_snapshot": [],
     "share:delete_snapshot": [],
     "share:get_snapshot": [],
-    "share:get_all_snapshots": []
+    "share:get_all_snapshots": [],
+
+    "share:get_share_metadata": [],
+    "share:delete_share_metadata": [],
+    "share:update_share_metadata": []
 }

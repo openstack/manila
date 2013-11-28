@@ -128,6 +128,20 @@ def require_context(f):
     return wrapper
 
 
+def require_share_exists(f):
+    """Decorator to require the specified share to exist.
+
+    Requires the wrapped function to use context and share_id as
+    their first two arguments.
+    """
+
+    def wrapper(context, share_id, *args, **kwargs):
+        db.share_get(context, share_id)
+        return f(context, share_id, *args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
+
+
 def model_query(context, *args, **kwargs):
     """Query helper that accounts for context's `read_deleted` field.
 
@@ -1037,11 +1051,25 @@ def reservation_expire(context):
 def _share_get_query(context, session=None):
     if session is None:
         session = get_session()
-    return model_query(context, models.Share, session=session)
+    return model_query(context, models.Share, session=session).\
+            options(joinedload('share_metadata'))
+
+
+def _metadata_refs(metadata_dict, meta_class):
+    metadata_refs = []
+    if metadata_dict:
+        for k, v in metadata_dict.iteritems():
+            metadata_ref = meta_class()
+            metadata_ref['key'] = k
+            metadata_ref['value'] = v
+            metadata_refs.append(metadata_ref)
+    return metadata_refs
 
 
 @require_context
 def share_create(context, values):
+    values['share_metadata'] = _metadata_refs(values.get('metadata'),
+                                              models.ShareMetadata)
     share_ref = models.Share()
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
@@ -1112,6 +1140,12 @@ def share_delete(context, share_id):
                       'deleted_at': timeutils.utcnow(),
                       'updated_at': literal_column('updated_at'),
                       'status': 'deleted'})
+    session.query(models.ShareMetadata).\
+            filter_by(share_id=share_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+
     share_ref.save(session)
 
 
@@ -1284,3 +1318,99 @@ def share_snapshot_update(context, snapshot_id, values):
         snapshot_ref.update(values)
         snapshot_ref.save(session=session)
         return snapshot_ref
+
+
+#################################
+
+
+@require_context
+@require_share_exists
+def share_metadata_get(context, share_id):
+    return _share_metadata_get(context, share_id)
+
+
+@require_context
+@require_share_exists
+def share_metadata_delete(context, share_id, key):
+    _share_metadata_get_query(context, share_id).\
+        filter_by(key=key).\
+        update({'deleted': True,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': literal_column('updated_at')})
+
+
+@require_context
+@require_share_exists
+def share_metadata_update(context, share_id, metadata, delete):
+    return _share_metadata_update(context, share_id, metadata, delete)
+
+
+def _share_metadata_get_query(context, share_id, session=None):
+    return model_query(context, models.ShareMetadata, session=session,
+                       read_deleted="no").\
+        filter_by(share_id=share_id)
+
+
+@require_context
+@require_share_exists
+def _share_metadata_get(context, share_id, session=None):
+    rows = _share_metadata_get_query(context, share_id,
+                                     session=session).all()
+    result = {}
+    for row in rows:
+        result[row['key']] = row['value']
+
+    return result
+
+
+@require_context
+@require_share_exists
+def _share_metadata_update(context, share_id, metadata, delete, session=None):
+    if not session:
+        session = get_session()
+
+    with session.begin():
+        # Set existing metadata to deleted if delete argument is True
+        if delete:
+            original_metadata = _share_metadata_get(context, share_id,
+                                                    session=session)
+            for meta_key, meta_value in original_metadata.iteritems():
+                if meta_key not in metadata:
+                    meta_ref = _share_metadata_get_item(context, share_id,
+                                                        meta_key,
+                                                        session=session)
+                    meta_ref.update({'deleted': True})
+                    meta_ref.save(session=session)
+
+        meta_ref = None
+
+        # Now update all existing items with new values, or create new meta
+        # objects
+        for meta_key, meta_value in metadata.items():
+
+            # update the value whether it exists or not
+            item = {"value": meta_value}
+
+            try:
+                meta_ref = _share_metadata_get_item(context, share_id,
+                                                    meta_key,
+                                                    session=session)
+            except exception.ShareMetadataNotFound:
+                meta_ref = models.ShareMetadata()
+                item.update({"key": meta_key, "share_id": share_id})
+
+            meta_ref.update(item)
+            meta_ref.save(session=session)
+
+        return metadata
+
+
+def _share_metadata_get_item(context, share_id, key, session=None):
+    result = _share_metadata_get_query(context, share_id, session=session).\
+        filter_by(key=key).\
+        first()
+
+    if not result:
+        raise exception.ShareMetadataNotFound(metadata_key=key,
+                                              share_id=share_id)
+    return result

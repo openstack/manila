@@ -430,3 +430,18 @@ def share_snapshot_data_get_for_project(context, project_id, session=None):
 
 
 ####################
+
+
+def share_metadata_get(context, share_id):
+    """Get all metadata for a share."""
+    return IMPL.share_metadata_get(context, share_id)
+
+
+def share_metadata_delete(context, share_id, key):
+    """Delete the given metadata item."""
+    IMPL.share_metadata_delete(context, share_id, key)
+
+
+def share_metadata_update(context, share, metadata, delete):
+    """Update metadata if it exists, otherwise create it."""
+    IMPL.share_metadata_update(context, share, metadata, delete)

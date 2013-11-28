@@ -113,6 +113,7 @@ class ShareTestCase(test.TestCase):
         share['snapshot_id'] = snapshot_id
         share['user_id'] = 'fake'
         share['project_id'] = 'fake'
+        share['metadata'] = {'fake_key': 'fake_value'}
         share['availability_zone'] = CONF.storage_availability_zone
         share['status'] = status
         share['host'] = CONF.host
@@ -367,3 +368,32 @@ class ShareTestCase(test.TestCase):
 
         acs = db.share_access_get(self.context, access_id)
         self.assertEquals(acs['state'], 'error')
+
+    def test_create_delete_share_with_metadata(self):
+        """Test share can be created with metadata and deleted."""
+        test_meta = {'fake_key': 'fake_value'}
+        share = self._create_share()
+        share_id = share['id']
+        self.share.create_share(self.context, share_id)
+        result_meta = {
+            share.share_metadata[0].key: share.share_metadata[0].value}
+        self.assertEqual(result_meta, test_meta)
+
+        self.share.delete_share(self.context, share_id)
+        self.assertRaises(exception.NotFound,
+                          db.share_get,
+                          self.context,
+                          share_id)
+
+    def test_create_share_with_invalid_metadata(self):
+        """Test share create with too much metadata fails."""
+        share_api = manila.share.api.API()
+        test_meta = {'fake_key': 'fake_value' * 1025}
+        self.assertRaises(exception.InvalidShareMetadataSize,
+                          share_api.create,
+                          self.context,
+                          'nfs',
+                          1,
+                          'name',
+                          'description',
+                          metadata=test_meta)

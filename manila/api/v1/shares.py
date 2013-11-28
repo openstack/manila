@@ -205,6 +205,8 @@ class ShareController(wsgi.Controller):
         kwargs = {}
         kwargs['availability_zone'] = share.get('availability_zone')
 
+        kwargs['metadata'] = share.get('metadata', None)
+
         snapshot_id = share.get('snapshot_id')
         if snapshot_id:
             kwargs['snapshot'] = self.share_api.get_snapshot(context,

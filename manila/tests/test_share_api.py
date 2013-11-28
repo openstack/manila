@@ -43,6 +43,7 @@ def fake_share(id, **kwargs):
         'availability_zone': 'fakeaz',
         'status': 'fakestatus',
         'display_name': 'fakename',
+        'metadata': None,
         'display_description': 'fakedesc',
         'share_proto': 'nfs',
         'export_location': 'fake_location',
@@ -527,3 +528,34 @@ class ShareAPITestCase(test.TestCase):
                                   'access_type': 'fakeacctype',
                                   'access_to': 'fakeaccto',
                                   'state': 'fakeerror'}])
+
+    def test_share_metadata_get(self):
+        metadata = {'a': 'b', 'c': 'd'}
+        db_driver.share_create(self.context, {'id': '1', 'metadata': metadata})
+
+        self.assertEqual(metadata,
+                         db_driver.share_metadata_get(self.context, '1'))
+
+    def test_share_metadata_update(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3', 'd': '5'}
+        should_be = {'a': '3', 'c': '2', 'd': '5'}
+
+        db_driver.share_create(self.context, {'id': '1',
+                                              'metadata': metadata1})
+        db_driver.share_metadata_update(self.context, '1', metadata2, False)
+
+        self.assertEqual(should_be,
+                         db_driver.share_metadata_get(self.context, '1'))
+
+    def test_share_metadata_update_delete(self):
+        metadata1 = {'a': '1', 'c': '2'}
+        metadata2 = {'a': '3', 'd': '4'}
+        should_be = metadata2
+
+        db_driver.share_create(self.context, {'id': '1',
+                                              'metadata': metadata1})
+        db_driver.share_metadata_update(self.context, '1', metadata2, True)
+
+        self.assertEqual(should_be,
+                         db_driver.share_metadata_get(self.context, '1'))

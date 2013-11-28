@@ -77,9 +77,12 @@ class API(base.Base):
         super(API, self).__init__(db_driver)
 
     def create(self, context, share_proto, size, name, description,
-               snapshot=None, availability_zone=None):
+               snapshot=None, availability_zone=None, metadata=None):
         """Create new share."""
         check_policy(context, 'create')
+
+        self._check_metadata_properties(context, metadata)
+
         if snapshot is not None:
             if snapshot['status'] != 'available':
                 msg = _('status must be available')
@@ -151,6 +154,7 @@ class API(base.Base):
                    'project_id': context.project_id,
                    'snapshot_id': snapshot_id,
                    'availability_zone': availability_zone,
+                   'metadata': metadata,
                    'status': "creating",
                    'scheduled_at': timeutils.utcnow(),
                    'display_name': name,
@@ -423,3 +427,54 @@ class API(base.Base):
         check_policy(context, 'access_get')
         rule = self.db.share_access_get(context, access_id)
         return rule
+
+    @wrap_check_policy
+    def get_share_metadata(self, context, share):
+        """Get all metadata associated with a share."""
+        rv = self.db.share_metadata_get(context, share['id'])
+        return dict(rv.iteritems())
+
+    @wrap_check_policy
+    def delete_share_metadata(self, context, share, key):
+        """Delete the given metadata item from a share."""
+        self.db.share_metadata_delete(context, share['id'], key)
+
+    def _check_metadata_properties(self, context, metadata=None):
+        if not metadata:
+            metadata = {}
+
+        for k, v in metadata.iteritems():
+            if len(k) == 0:
+                msg = _("Metadata property key is blank")
+                LOG.warn(msg)
+                raise exception.InvalidShareMetadata(message=msg)
+            if len(k) > 255:
+                msg = _("Metadata property key is greater than 255 characters")
+                LOG.warn(msg)
+                raise exception.InvalidShareMetadataSize(message=msg)
+            if len(v) > 1024:
+                msg = _("Metadata property value is "
+                        "greater than 1024 characters")
+                LOG.warn(msg)
+                raise exception.InvalidShareMetadataSize(message=msg)
+
+    @wrap_check_policy
+    def update_share_metadata(self, context, share, metadata, delete=False):
+        """Updates or creates share metadata.
+
+        If delete is True, metadata items that are not specified in the
+        `metadata` argument will be deleted.
+
+        """
+        orig_meta = self.get_share_metadata(context, share)
+        if delete:
+            _metadata = metadata
+        else:
+            _metadata = orig_meta.copy()
+            _metadata.update(metadata)
+
+        self._check_metadata_properties(context, _metadata)
+        self.db.share_metadata_update(context, share['id'],
+                                      _metadata, delete)
+
+        return _metadata

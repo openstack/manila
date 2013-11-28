@@ -26,6 +26,7 @@ import manila.api.openstack
 from manila.api.v1 import limits
 from manila.api import versions
 
+from manila.api.v1 import share_metadata
 from manila.api.v1 import share_snapshots
 from manila.api.v1 import shares
 
@@ -61,6 +62,20 @@ class APIRouter(manila.api.openstack.APIRouter):
                         controller=self.resources['snapshots'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
+
+        self.resources['share_metadata'] = share_metadata.create_resource()
+        share_metadata_controller = self.resources['share_metadata']
+
+        mapper.resource("share_metadata", "metadata",
+                        controller=share_metadata_controller,
+                        parent_resource=dict(member_name='share',
+                                             collection_name='shares'))
+
+        mapper.connect("metadata",
+                       "/{project_id}/shares/{share_id}/metadata",
+                       controller=share_metadata_controller,
+                       action='update_all',
+                       conditions={"method": ['PUT']})
 
         self.resources['limits'] = limits.create_resource()
         mapper.resource("limit", "limits",

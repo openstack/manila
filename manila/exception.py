@@ -131,6 +131,7 @@ class ManilaException(Exception):
                     # at least get the core message out if something happened
                     message = self.message
 
+        self.msg = message
         super(ManilaException, self).__init__(message)
 
 
@@ -478,3 +479,15 @@ class InvalidShareSnapshot(ManilaException):
 
 class SwiftConnectionFailed(ManilaException):
     message = _("Connection to swift failed") + ": %(reason)s"
+
+
+class ShareMetadataNotFound(NotFound):
+    message = _("Metadata item is not found")
+
+
+class InvalidShareMetadata(Invalid):
+    message = _("Invalid metadata")
+
+
+class InvalidShareMetadataSize(Invalid):
+    message = _("Invalid metadata size")

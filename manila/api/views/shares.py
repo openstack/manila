@@ -44,6 +44,12 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, share):
         """Detailed view of a single share."""
+        metadata = share.get('share_metadata')
+        if metadata:
+            metadata = dict((item['key'], item['value']) for item in metadata)
+        else:
+            metadata = {}
+
         return {
             'share': {
                 'id': share.get('id'),
@@ -56,6 +62,7 @@ class ViewBuilder(common.ViewBuilder):
                 'snapshot_id': share.get('snapshot_id'),
                 'share_proto': share.get('share_proto'),
                 'export_location': share.get('export_location'),
+                'metadata': metadata,
                 'links': self._get_links(request, share['id'])
             }
         }

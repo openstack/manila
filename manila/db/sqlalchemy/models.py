@@ -21,7 +21,7 @@
 SQLAlchemy models for Manila data.
 """
 
-from sqlalchemy import Column, Integer, String, Text, schema
+from sqlalchemy import Column, Index, Integer, String, Text, schema
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
@@ -255,6 +255,20 @@ class Share(BASE, ManilaBase):
     snapshot_id = Column(String(36))
     share_proto = Column(String(255))
     export_location = Column(String(255))
+
+
+class ShareMetadata(BASE, ManilaBase):
+    """Represents a metadata key/value pair for a share."""
+    __tablename__ = 'share_metadata'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255), nullable=False)
+    value = Column(String(1024), nullable=False)
+    share_id = Column(String(36), ForeignKey('shares.id'), nullable=False)
+    share = relationship(Share, backref="share_metadata",
+                         foreign_keys=share_id,
+                         primaryjoin='and_('
+                         'ShareMetadata.share_id == Share.id,'
+                         'ShareMetadata.deleted == False)')
 
 
 class ShareAccessMapping(BASE, ManilaBase):
