@@ -23,7 +23,7 @@ import suds
 from manila import context
 from manila import exception
 from manila.share.configuration import Configuration
-from manila.share.drivers import netapp
+from manila.share.drivers.netapp import driver as netapp
 from manila import test
 
 
