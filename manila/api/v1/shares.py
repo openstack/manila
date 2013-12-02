@@ -34,7 +34,7 @@ LOG = logging.getLogger(__name__)
 def make_share(elem):
     attrs = ['id', 'size', 'availability_zone', 'status', 'name',
              'description', 'share_proto', 'export_location', 'links',
-             'snapshot_id', 'created_at']
+             'snapshot_id', 'created_at', 'metadata']
     for attr in attrs:
         elem.set(attr)
 
