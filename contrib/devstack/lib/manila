@@ -333,7 +333,7 @@ function start_manila() {
     fi
 
     screen_it m-api "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
-    screen_it m-shr "sudo service smbd stop ; sudo losetup -f ${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file} ; cd $MANILA_DIR && $MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
+    screen_it m-shr "sudo service smbd stop; devloop='sudo losetup -j ${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}'; if [[ \$( \$devloop ) != *'/dev/loop'* ]]; then sudo losetup -f ${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}; fi; cd $MANILA_DIR && $MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
     screen_it m-sch "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"
 
     # Start proxies if enabled
