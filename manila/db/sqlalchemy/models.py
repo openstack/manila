@@ -262,7 +262,7 @@ class ShareMetadata(BASE, ManilaBase):
     __tablename__ = 'share_metadata'
     id = Column(Integer, primary_key=True)
     key = Column(String(255), nullable=False)
-    value = Column(String(1024), nullable=False)
+    value = Column(String(1023), nullable=False)
     share_id = Column(String(36), ForeignKey('shares.id'), nullable=False)
     share = relationship(Share, backref="share_metadata",
                          foreign_keys=share_id,

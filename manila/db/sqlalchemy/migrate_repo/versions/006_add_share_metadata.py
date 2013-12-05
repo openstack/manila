@@ -38,7 +38,7 @@ def upgrade(migrate_engine):
         Column('share_id', String(length=36), ForeignKey('shares.id'),
                nullable=False),
         Column('key', String(length=255), nullable=False),
-        Column('value', String(length=1024), nullable=False),
+        Column('value', String(length=1023), nullable=False),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )

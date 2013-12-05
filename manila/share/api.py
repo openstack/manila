@@ -452,9 +452,9 @@ class API(base.Base):
                 msg = _("Metadata property key is greater than 255 characters")
                 LOG.warn(msg)
                 raise exception.InvalidShareMetadataSize(message=msg)
-            if len(v) > 1024:
+            if len(v) > 1023:
                 msg = _("Metadata property value is "
-                        "greater than 1024 characters")
+                        "greater than 1023 characters")
                 LOG.warn(msg)
                 raise exception.InvalidShareMetadataSize(message=msg)
 
