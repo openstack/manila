@@ -32,6 +32,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql import func
 
+from manila.common import constants
 from manila.common import sqlalchemyutils
 from manila import db
 from manila.db.sqlalchemy import models
@@ -1480,3 +1481,170 @@ def _security_service_get_query(context, session=None):
     if session is None:
         session = get_session()
     return model_query(context, models.SecurityService, session=session)
+
+
+###################
+
+
+def _network_get_query(context, session=None):
+    if session is None:
+        session = get_session()
+    return model_query(context, models.ShareNetwork, session=session).\
+            options(joinedload('shares'),
+                    joinedload('network_allocations'),
+                    joinedload('security_services'))
+
+
+@require_context
+def share_network_create(context, values):
+    if not values.get('id'):
+        values['id'] = uuidutils.generate_uuid()
+
+    network_ref = models.ShareNetwork()
+    network_ref.update(values)
+    session = get_session()
+    with session.begin():
+        network_ref.save(session=session)
+    return network_ref
+
+
+@require_context
+def share_network_delete(context, id):
+    session = get_session()
+    with session.begin():
+        network_ref = share_network_get(context, id, session=session)
+        network_ref.delete(session=session)
+
+
+@require_context
+def share_network_update(context, id, values):
+    session = get_session()
+    with session.begin():
+        network_ref = share_network_get(context, id, session=session)
+        network_ref.update(values)
+        network_ref.save(session=session)
+        return network_ref
+
+
+@require_context
+def share_network_get(context, id, session=None):
+    result = _network_get_query(context, session).filter_by(id=id).first()
+    if result is None:
+        raise exception.ShareNetworkNotFound(share_network_id=id)
+    return result
+
+
+@require_context
+def share_network_get_all(context):
+    return _network_get_query(context).all()
+
+
+@require_context
+def share_network_get_all_by_project(context, project_id):
+    return _network_get_query(context).filter_by(project_id=project_id).all()
+
+
+@require_context
+def share_network_add_security_service(context, id, security_service_id):
+    session = get_session()
+
+    with session.begin():
+        assoc_ref = model_query(
+            context,
+            models.ShareNetworkSecurityServiceAssociation,
+            session=session).\
+            filter_by(share_network_id=id).\
+            filter_by(security_service_id=security_service_id).first()
+
+        if assoc_ref:
+            msg = "Already associated"
+            raise exception.ShareNetworkSecurityServiceAssociationError(
+                    share_network_id=id,
+                    security_service_id=security_service_id,
+                    reason=msg)
+
+        share_nw_ref = share_network_get(context, id, session=session)
+
+        if share_nw_ref['status'] == constants.STATUS_ACTIVE:
+            msg = "Share network is active"
+            raise exception.ShareNetworkSecurityServiceAssociationError(
+                    share_network_id=id,
+                    security_service_id=security_service_id,
+                    reason=msg)
+
+        security_service_ref = security_service_get(context,
+                                                    security_service_id,
+                                                    session=session)
+        share_nw_ref.security_services += [security_service_ref]
+        share_nw_ref.save(session=session)
+
+    return share_nw_ref
+
+
+@require_context
+def share_network_remove_security_service(context, id, security_service_id):
+    session = get_session()
+
+    with session.begin():
+        share_nw_ref = share_network_get(context, id, session=session)
+        security_service_get(context, security_service_id, session=session)
+
+        assoc_ref = model_query(
+            context,
+            models.ShareNetworkSecurityServiceAssociation,
+            session=session).\
+            filter_by(share_network_id=id).\
+            filter_by(security_service_id=security_service_id).first()
+
+        if assoc_ref:
+            assoc_ref.delete(session=session)
+        else:
+            msg = "No association defined"
+            raise exception.ShareNetworkSecurityServiceDissociationError(
+                    share_network_id=id,
+                    security_service_id=security_service_id,
+                    reason=msg)
+
+    return share_nw_ref
+
+
+###################
+
+
+@require_context
+def network_allocation_create(context, values):
+    alloc_ref = models.NetworkAllocation()
+    alloc_ref.update(values)
+    session = get_session()
+    with session.begin():
+        alloc_ref.save(session=session)
+    return alloc_ref
+
+
+@require_context
+def network_allocation_delete(context, id):
+    session = get_session()
+    with session.begin():
+        alloc_ref = network_allocation_get(context, id, session=session)
+        alloc_ref.delete(session=session)
+
+
+@require_context
+def network_allocation_get(context, id, session=None):
+    if session is None:
+        session = get_session()
+    result = model_query(context, models.NetworkAllocation, session=session).\
+                        filter_by(id=id).first()
+    if result is None:
+        raise exception.NotFound()
+    return result
+
+
+@require_context
+def network_allocation_update(context, id, values):
+    session = get_session()
+    with session.begin():
+        alloc_ref = network_allocation_get(context, id, session=session)
+        alloc_ref.update(values)
+        alloc_ref.save(session=session)
+        return alloc_ref

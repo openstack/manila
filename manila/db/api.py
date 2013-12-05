@@ -73,8 +73,6 @@ IMPL = utils.LazyPluggable('db_backend',
 
 
 ###################
-
-
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""
     return IMPL.service_destroy(context, service_id)
@@ -476,3 +474,61 @@ def share_metadata_delete(context, share_id, key):
 def share_metadata_update(context, share, metadata, delete):
     """Update metadata if it exists, otherwise create it."""
     IMPL.share_metadata_update(context, share, metadata, delete)
+
+
+###################
+def share_network_create(context, values):
+    """Create a share network DB record."""
+    return IMPL.share_network_create(context, values)
+
+
+def share_network_delete(context, id):
+    """Delete a share network DB record."""
+    return IMPL.share_network_delete(context, id)
+
+
+def share_network_update(context, id, values):
+    """Update a share network DB record."""
+    return IMPL.share_network_update(context, id, values)
+
+
+def share_network_get(context, id):
+    """Get requested share network DB record."""
+    return IMPL.share_network_get(context, id)
+
+
+def share_network_get_all(context):
+    """Get all share network DB records."""
+    return IMPL.share_network_get_all(context)
+
+
+def share_network_get_all_by_project(context, project_id):
+    """Get all share network DB records for the given project."""
+    return IMPL.share_network_get_all_by_project(context, project_id)
+
+
+def share_network_add_security_service(context, id, security_service_id):
+    return IMPL.share_network_add_security_service(context,
+                                                   id,
+                                                   security_service_id)
+
+
+def share_network_remove_security_service(context, id, security_service_id):
+    return IMPL.share_network_remove_security_service(context,
+                                                   id,
+                                                   security_service_id)
+
+
+def network_allocation_create(context, values):
+    """Create a network allocation DB record."""
+    return IMPL.network_allocation_create(context, values)
+
+
+def network_allocation_delete(context, id):
+    """Delete a network allocation DB record."""
+    return IMPL.network_allocation_delete(context, id)
+
+
+def network_allocation_update(context, id, values):
+    """Update a network allocation DB record."""
+    return IMPL.network_allocation_update(context, id, values)

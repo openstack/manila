@@ -139,6 +139,14 @@ class NetworkException(ManilaException):
     message = _("Exception due to network failure")
 
 
+class NetworkAllocationException(NetworkException):
+    message = _("Failure during network allocation")
+
+
+class NetworkBadConfigurationException(NetworkException):
+    message = _("Bad network configuration: %(reason)s")
+
+
 class GlanceConnectionFailed(ManilaException):
     message = _("Connection to glance failed") + ": %(reason)s"
 
@@ -212,6 +220,14 @@ class NotFound(ManilaException):
     message = _("Resource could not be found.")
     code = 404
     safe = True
+
+
+class InUse(ManilaException):
+    message = _("Resource is in use.")
+
+
+class ShareNetworkNotFound(NotFound):
+    message = _("Network %(share_network_id)s could not be found.")
 
 
 class InvalidImageRef(Invalid):
@@ -495,3 +511,13 @@ class InvalidShareMetadataSize(Invalid):
 
 class SecurityServiceNotFound(NotFound):
     message = _("Security service %(security_service_id)s could not be found.")
+
+
+class ShareNetworkSecurityServiceAssociationError(ManilaException):
+    message = _("Failed to associate share network %(share_network_id)s"
+                " and security service %(security_service_id)s: %(reason)s.")
+
+
+class ShareNetworkSecurityServiceDissociationError(ManilaException):
+    message = _("Failed to dissociate share network %(share_network_id)s"
+                " and security service %(security_service_id)s: %(reason)s.")

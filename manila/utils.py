@@ -33,6 +33,8 @@ import re
 import shlex
 import shutil
 import signal
+import socket
+import struct
 import sys
 import tempfile
 import time
@@ -1209,3 +1211,17 @@ def to_bytes(text, default=0):
         raise TypeError(msg)
     except ValueError:
         return default
+
+
+def cidr_to_netmask(cidr):
+    """
+    Convert cidr notation to the netmask string
+
+    :param cidr: integer which represents cidr notation
+    :rtype: string
+    """
+    cidr = int(cidr)
+    bits = 0
+    for i in xrange(32 - cidr, 32):
+        bits |= (1 << i)
+    return socket.inet_ntoa(struct.pack('>I', bits))

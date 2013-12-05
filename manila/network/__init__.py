@@ -14,15 +14,16 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import abc
 
 import manila.openstack.common.importutils
 from oslo.config import cfg
 
 network_opts = [
     cfg.StrOpt('network_api_class',
-                           default='manila.network.neutron.api.API',
-                           help='The full class name of the '
-                                'network API class to use'),
+    default=
+        'manila.network.neutron.neutron_network_plugin.NeutronNetworkPlugin',
+    help='The full class name of the network API class to use'),
 ]
 
 cfg.CONF.register_opts(network_opts)
@@ -33,3 +34,14 @@ def API():
     network_api_class = cfg.CONF.network_api_class
     cls = importutils.import_class(network_api_class)
     return cls()
+
+
+class NetworkBaseAPI(object):
+
+    @abc.abstractmethod
+    def allocate_network(self, context, share_network, **kwargs):
+        pass
+
+    @abc.abstractmethod
+    def deallocate_network(self, context, share_network):
+        pass

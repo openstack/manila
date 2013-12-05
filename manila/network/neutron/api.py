@@ -73,7 +73,6 @@ neutron_opts = [
                      'neutron client requests.'),
     ]
 
-PORTBINDING_EXT = 'Port Binding'
 CONF = cfg.CONF
 CONF.register_opts(neutron_opts)
 LOG = logging.getLogger(__name__)
@@ -118,7 +117,7 @@ class API(base.Base):
                 port_req_body['port']['device_owner'] = device_owner
             if device_id:
                 port_req_body['port']['device_id'] = device_id
-            port = self.client.create_port(port_req_body)
+            port = self.client.create_port(port_req_body).get('port', {})
             return port
         except neutron_client_exc.NeutronClientException as e:
             LOG.exception(_('Neutron error creating port on network %s') %
@@ -160,9 +159,19 @@ class API(base.Base):
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
 
+    def get_subnet(self, subnet_uuid):
+        """Get specific subnet for client."""
+        try:
+            return self.client.show_subnet(subnet_uuid).get('subnet', {})
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
+    def list_extensions(self):
+        extensions_list = self.client.list_extensions().get('extensions')
+        return dict((ext['name'], ext) for ext in extensions_list)
+
     def _has_port_binding_extension(self):
         if not self.extensions:
-            extensions_list = self.client.list_extensions()['extensions']
-            self.extensions = dict((ext['name'], ext)
-                                   for ext in extensions_list)
-        return PORTBINDING_EXT in self.extensions
+            self.extensions = self.list_extensions()
+        return neutron.constants.PORTBINDING_EXT in self.extensions

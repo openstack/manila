@@ -256,6 +256,8 @@ class Share(BASE, ManilaBase):
     snapshot_id = Column(String(36))
     share_proto = Column(String(255))
     export_location = Column(String(255))
+    share_network_id = Column(String(36), ForeignKey('share_networks.id'),
+                              nullable=True)
 
 
 class ShareMetadata(BASE, ManilaBase):
@@ -334,6 +336,72 @@ class SecurityService(BASE, ManilaBase):
     sid = Column(String(255), nullable=True)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
+    status = Column(Enum(constants.STATUS_NEW, constants.STATUS_ACTIVE,
+                         constants.STATUS_ERROR),
+                    default=constants.STATUS_NEW)
+
+
+class ShareNetwork(BASE, ManilaBase):
+    "Represents network data used by share."
+    __tablename__ = 'share_networks'
+    id = Column(String(36), primary_key=True, nullable=False)
+    project_id = Column(String(36), nullable=False)
+    neutron_net_id = Column(String(36), nullable=True)
+    neutron_subnet_id = Column(String(36), nullable=True)
+    network_type = Column(String(32), nullable=True)
+    segmentation_id = Column(Integer, nullable=True)
+    cidr = Column(String(64), nullable=True)
+    ip_version = Column(Integer, nullable=True)
+    name = Column(String(255), nullable=True)
+    description = Column(String(255), nullable=True)
+    status = Column(Enum(constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
+                         constants.STATUS_ERROR),
+                    default=constants.STATUS_INACTIVE)
+    security_services = relationship("SecurityService",
+                    secondary="share_network_security_service_association",
+                    backref="share_networks",
+                    primaryjoin='and_('
+        'ShareNetwork.id == '
+        'ShareNetworkSecurityServiceAssociation.share_network_id,'
+        'ShareNetworkSecurityServiceAssociation.deleted == False,'
+        'ShareNetwork.deleted == False)',
+                    secondaryjoin='and_('
+        'SecurityService.id == '
+        'ShareNetworkSecurityServiceAssociation.security_service_id,'
+        'SecurityService.deleted == False)')
+    network_allocations = relationship("NetworkAllocation",
+                                        primaryjoin='and_('
+                    'ShareNetwork.id == NetworkAllocation.share_network_id,'
+                    'NetworkAllocation.deleted == False)')
+    shares = relationship("Share",
+                          backref='share_network',
+                          primaryjoin='and_('
+                          'ShareNetwork.id == Share.share_network_id,'
+                          'Share.deleted == False)')
+
+
+class ShareNetworkSecurityServiceAssociation(BASE, ManilaBase):
+    """" Association table between compute_zones and compute_nodes tables.
+    """
+    __tablename__ = 'share_network_security_service_association'
+
+    id = Column(Integer, primary_key=True)
+    share_network_id = Column(String(36),
+                              ForeignKey('share_networks.id'),
+                              nullable=False)
+    security_service_id = Column(String(36),
+                                 ForeignKey('security_services.id'),
+                                 nullable=False)
+
+
+class NetworkAllocation(BASE, ManilaBase):
+    "Represents network allocation data."
+    __tablename__ = 'network_allocations'
+    id = Column(String(36), primary_key=True, nullable=False)
+    ip_address = Column(String(64), nullable=True)
+    mac_address = Column(String(32), nullable=True)
+    share_network_id = Column(String(36), ForeignKey('share_networks.id'),
+                              nullable=False)
     status = Column(Enum(constants.STATUS_NEW, constants.STATUS_ACTIVE,
                          constants.STATUS_ERROR),
                     default=constants.STATUS_NEW)
