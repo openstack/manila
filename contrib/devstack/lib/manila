@@ -71,12 +71,6 @@ SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.lvm.LVMShareDriver}
 MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.simple.SimpleScheduler}
 
 CIFS_HELPER=${CIFS_HELPER:-manila.share.drivers.lvm.CIFSNetConfHelper}
-# NetApp ShareDriver specific parameters
-NETAPP_SHARE_DFM_HOST=${NETAPP_DFM_IP:-$HOST_IP}
-NETAPP_SHARE_WSDL_URL=${NETAPP_SHARE_WSDL_URL:-http://$NETAPP_SHARE_DFM_HOST:8080/dfm.wsdl}
-NETAPP_SHARE_DFM_LOGIN=${NETAPP_SHARE_DFM_LOGIN:-root}
-NETAPP_SHARE_DFM_PASSWORD=${NETAPP_SHARE_DFM_PASSWORD:-secrete}
-NETAPP_SHARE_DFM_PORT=${NETAPP_SHARE_DFM_PORT:-8488}
 
 function _clean_share_group() {
    local vg=$1
