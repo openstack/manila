@@ -51,9 +51,6 @@ CONF = cfg.CONF
 CONF.register_opts(share_opts)
 
 
-#TODO(rushiagr): keep the configuration option in only one class and not two
-#NOTE(rushiagr): The right place for this class is manila.driver or
-#               manila.utils.
 class ExecuteMixin(object):
     """Provides an executable functionality to a driver class."""
 
@@ -77,7 +74,7 @@ class ExecuteMixin(object):
                 self._execute(*command, **kwargs)
                 return True
             except exception.ProcessExecutionError:
-                tries = tries + 1
+                tries += 1
                 if tries >= self.configuration.num_shell_tries:
                     raise
                 LOG.exception(_("Recovering from a failed execute.  "
@@ -94,20 +91,12 @@ class ShareDriver(object):
         if self.configuration:
             self.configuration.append_config_values(share_opts)
 
-    def allocate_container(self, context, share):
-        """Is called to allocate container for share."""
-        raise NotImplementedError()
-
-    def allocate_container_from_snapshot(self, context, share, snapshot):
-        """Is called to create share from snapshot."""
-        raise NotImplementedError()
-
-    def deallocate_container(self, context, share):
-        """Is called to deallocate container of share."""
-        raise NotImplementedError()
-
     def create_share(self, context, share):
         """Is called to create share."""
+        raise NotImplementedError()
+
+    def create_share_from_snapshot(self, context, share, snapshot):
+        """Is called to create share from snapshot."""
         raise NotImplementedError()
 
     def create_snapshot(self, context, snapshot):
@@ -120,14 +109,6 @@ class ShareDriver(object):
 
     def delete_snapshot(self, context, snapshot):
         """Is called to remove snapshot."""
-        raise NotImplementedError()
-
-    def create_export(self, context, share):
-        """Is called to export share."""
-        raise NotImplementedError()
-
-    def remove_export(self, context, share):
-        """Is called to stop exporting share."""
         raise NotImplementedError()
 
     def ensure_share(self, context, share):

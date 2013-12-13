@@ -18,27 +18,16 @@
 Tests for Share Code.
 
 """
-
-import datetime
-import os
-
-import mox
-import shutil
-import tempfile
+import mock
 
 from manila import context
 from manila import db
 from manila import exception
 
-from manila.image import image_utils
 from manila.openstack.common import importutils
-from manila.openstack.common.notifier import api as notifier_api
-from manila.openstack.common.notifier import test_notifier
-from manila.openstack.common import rpc
 import manila.policy
 from manila.share import manager
 from manila import test
-from manila.tests import conf_fixture
 from oslo.config import cfg
 
 CONF = cfg.CONF
@@ -48,31 +37,19 @@ class FakeShareDriver(object):
     def __init__(self, db, **kwargs):
         self.db = db
 
-    def allocate_container(self, context, share):
-        pass
-
-    def allocate_container_from_snapshot(self, context, share, snapshot):
-        pass
-
     def create_snapshot(self, context, snapshot):
         pass
 
     def delete_snapshot(self, context, snapshot):
         pass
 
-    def deallocate_container(self, context, share):
+    def create_share(self, context, share):
         pass
 
-    def create_share(self, context, share):
-        return 'fake_location'
+    def create_share_from_snapshot(self, context, share, snapshot):
+        pass
 
     def delete_share(self, context, share):
-        pass
-
-    def create_export(self, context, share):
-        pass
-
-    def remove_export(self, context, share):
         pass
 
     def ensure_share(self, context, share):
@@ -151,24 +128,17 @@ class ShareTestCase(test.TestCase):
 
         access = self._create_access(share_id=share_id, state='active')
 
-        self.mox.StubOutWithMock(context, 'get_admin_context')
-        context.get_admin_context().AndReturn(self.context)
-
-        self.mox.StubOutWithMock(db, 'share_get_all_by_host')
-        db.share_get_all_by_host(self.context, mox.IgnoreArg())\
-            .AndReturn([share, another_share])
-
-        driver = self.mox.CreateMockAnything(FakeShareDriver)
-        driver.do_setup(self.context)
-        driver.check_for_setup_error()
-        driver.ensure_share(self.context, share)
-        driver.allow_access(self.context, share, mox.IgnoreArg())
-        driver.get_share_stats(refresh=True)
+        context.get_admin_context = mock.Mock(return_value=self.context)
+        db.share_get_all_by_host = mock.Mock(
+            return_value=[share, another_share])
+        driver = mock.Mock()
+        driver.get_share_stats.return_value = {}
         self.share.driver = driver
-
-        self.mox.ReplayAll()
-
         self.share.init_host()
+        driver.ensure_share.assert_called_once_with(self.context, share)
+        driver.allow_access.assert_called_once_with(
+            self.context, share, mock.ANY)
+        driver.get_share_stats.assert_called_once_with(refresh=True)
 
     def test_create_share_from_snapshot(self):
         """Test share can be created from snapshot."""
@@ -209,9 +179,6 @@ class ShareTestCase(test.TestCase):
         self.assertEquals(snap['status'], 'available')
 
         self.share.delete_snapshot(self.context, snapshot_id)
-
-        self.assertEquals('deleted', db.share_snapshot_get(
-            context.get_admin_context(read_deleted='yes'), snapshot_id).status)
         self.assertRaises(exception.NotFound,
                           db.share_snapshot_get,
                           self.context,
@@ -276,10 +243,6 @@ class ShareTestCase(test.TestCase):
         self.assertEquals(shr['status'], 'available')
 
         self.share.delete_share(self.context, share_id)
-        shr = db.share_get(context.get_admin_context(read_deleted='yes'),
-                           share_id)
-
-        self.assertEquals(shr['status'], 'deleted')
         self.assertRaises(exception.NotFound,
                           db.share_get,
                           self.context,
@@ -288,15 +251,15 @@ class ShareTestCase(test.TestCase):
     def test_create_delete_share_error(self):
         """Test share can be created and deleted with error."""
 
-        def _fake_create_export(self, context, share):
+        def _fake_create_share(self, context, share):
             raise exception.NotFound()
 
-        def _fake_deallocate_container(self, context, share):
+        def _fake_delete_share(self, context, share):
             raise exception.NotFound()
 
-        self.stubs.Set(FakeShareDriver, "create_export", _fake_create_export)
-        self.stubs.Set(FakeShareDriver, "deallocate_container",
-                       _fake_deallocate_container)
+        self.stubs.Set(FakeShareDriver, "create_share", _fake_create_share)
+        self.stubs.Set(FakeShareDriver, "delete_share",
+                       _fake_delete_share)
 
         share = self._create_share()
         share_id = share['id']
@@ -317,7 +280,6 @@ class ShareTestCase(test.TestCase):
 
     def test_allow_deny_access(self):
         """Test access rules to share can be created and deleted."""
-
         share = self._create_share()
         share_id = share['id']
         access = self._create_access(share_id=share_id)
@@ -327,10 +289,6 @@ class ShareTestCase(test.TestCase):
                                                        access_id).state)
 
         self.share.deny_access(self.context, access_id)
-        acs = db.share_access_get(
-            context.get_admin_context(read_deleted='yes'),
-            access_id)
-        self.assertEquals(acs['state'], 'deleted')
         self.assertRaises(exception.NotFound,
                           db.share_access_get,
                           self.context,
