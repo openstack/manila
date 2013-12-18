@@ -27,6 +27,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
 from sqlalchemy.orm import relationship, backref, object_mapper
 
+from manila.common import constants
 from manila.db.sqlalchemy.session import get_session
 
 from manila import exception
@@ -318,6 +319,24 @@ class ShareSnapshot(BASE, ManilaBase):
                          primaryjoin='and_('
                          'ShareSnapshot.share_id == Share.id,'
                          'ShareSnapshot.deleted == False)')
+
+
+class SecurityService(BASE, ManilaBase):
+    """Security service information for manila shares"""
+
+    __tablename__ = 'security_services'
+    id = Column(String(36), primary_key=True)
+    project_id = Column(String(36), nullable=False)
+    type = Column(String(32), nullable=False)
+    dns_ip = Column(String(64), nullable=True)
+    server = Column(String(255), nullable=True)
+    domain = Column(String(255), nullable=True)
+    sid = Column(String(255), nullable=True)
+    name = Column(String(255), nullable=True)
+    description = Column(String(255), nullable=True)
+    status = Column(Enum(constants.STATUS_NEW, constants.STATUS_ACTIVE,
+                         constants.STATUS_ERROR),
+                    default=constants.STATUS_NEW)
 
 
 def register_models():

@@ -39,6 +39,7 @@ from manila.db.sqlalchemy.session import get_session
 from manila import exception
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
+from manila.openstack.common import uuidutils
 
 
 CONF = cfg.CONF
@@ -251,6 +252,7 @@ QUOTA_SYNC_FUNCTIONS = {
     '_sync_snapshots': _sync_snapshots,
     '_sync_gigabytes': _sync_gigabytes,
 }
+
 
 ###################
 
@@ -1414,3 +1416,67 @@ def _share_metadata_get_item(context, share_id, key, session=None):
         raise exception.ShareMetadataNotFound(metadata_key=key,
                                               share_id=share_id)
     return result
+
+
+@require_context
+def security_service_create(context, values):
+    if not values.get('id'):
+        values['id'] = uuidutils.generate_uuid()
+
+    security_service_ref = models.SecurityService()
+    security_service_ref.update(values)
+    session = get_session()
+
+    with session.begin():
+        security_service_ref.save(session=session)
+
+    return security_service_ref
+
+
+@require_context
+def security_service_delete(context, id):
+    session = get_session()
+    with session.begin():
+        security_service_ref = security_service_get(context,
+                                                    id,
+                                                    session=session)
+        security_service_ref.delete(session=session)
+
+
+@require_context
+def security_service_update(context, id, values):
+    session = get_session()
+    with session.begin():
+        security_service_ref = security_service_get(context,
+                                                    id,
+                                                    session=session)
+        security_service_ref.update(values)
+        security_service_ref.save(session=session)
+        return security_service_ref
+
+
+@require_context
+def security_service_get(context, id, session=None):
+    result = _security_service_get_query(context, session=session).\
+                filter_by(id=id).first()
+
+    if result is None:
+        raise exception.SecurityServiceNotFound(security_service_id=id)
+    return result
+
+
+@require_context
+def security_service_get_all(context):
+    return _security_service_get_query(context).all()
+
+
+@require_context
+def security_service_get_all_by_project(context, project_id):
+    return _security_service_get_query(context).\
+            filter_by(project_id=project_id).all()
+
+
+def _security_service_get_query(context, session=None):
+    if session is None:
+        session = get_session()
+    return model_query(context, models.SecurityService, session=session)

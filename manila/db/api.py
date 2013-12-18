@@ -429,6 +429,37 @@ def share_snapshot_data_get_for_project(context, project_id, session=None):
                                                     session=None)
 
 
+###################
+def security_service_create(context, values):
+    """ Create security service DB record."""
+    return IMPL.security_service_create(context, values)
+
+
+def security_service_delete(context, id):
+    """ Delete security service DB record."""
+    return IMPL.security_service_delete(context, id)
+
+
+def security_service_update(context, id, values):
+    """ Update security service DB record."""
+    return IMPL.security_service_update(context, id, values)
+
+
+def security_service_get(context, id):
+    """ Get security service DB record."""
+    return IMPL.security_service_get(context, id)
+
+
+def security_service_get_all(context):
+    """ Get all security service DB records."""
+    return IMPL.security_service_get_all(context)
+
+
+def security_service_get_all_by_project(context, project_id):
+    """ Get all security service DB records for the given project."""
+    return IMPL.security_service_get_all_by_project(context, project_id)
+
+
 ####################
 
 

@@ -491,3 +491,7 @@ class InvalidShareMetadata(Invalid):
 
 class InvalidShareMetadataSize(Invalid):
     message = _("Invalid metadata size")
+
+
+class SecurityServiceNotFound(NotFound):
+    message = _("Security service %(security_service_id)s could not be found.")
