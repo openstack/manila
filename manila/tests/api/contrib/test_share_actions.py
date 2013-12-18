@@ -66,12 +66,51 @@ class ShareActionsTest(test.TestCase):
         self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
 
         id = 'fake_share_id'
-        body = {"os-allow_access": {"access_type": 'fakeip',
+        body = {"os-allow_access": {"access_type": 'ip',
                                     "access_to": '127.0.0.1'}}
         expected = {'access': {'fake': 'fake'}}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
         res = self.controller._allow_access(req, id, body)
         self.assertEqual(res, expected)
+
+    def test_allow_access_error(self):
+        id = 'fake_share_id'
+
+        body = {"os-allow_access": {"access_type": 'error_type',
+                                    "access_to": '127.0.0.1'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._allow_access, req, id, body)
+
+        body = {"os-allow_access": {"access_type": 'ip',
+                                    "access_to": '127.0.0.*'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._allow_access, req, id, body)
+
+        body = {"os-allow_access": {"access_type": 'ip',
+                                    "access_to": '127.0.0.0/33'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._allow_access, req, id, body)
+
+        body = {"os-allow_access": {"access_type": 'ip',
+                                    "access_to": '127.0.0.256'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._allow_access, req, id, body)
+
+        body = {"os-allow_access": {"access_type": 'sid',
+                                    "access_to": '1'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._allow_access, req, id, body)
+
+        body = {"os-allow_access": {"access_type": 'sid',
+                "access_to": '1' * 33}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._allow_access, req, id, body)
 
     def test_deny_access(self):
         def _stub_deny_access(*args, **kwargs):

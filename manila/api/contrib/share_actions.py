@@ -12,6 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+import re
 import webob
 
 from manila.api import extensions
@@ -63,6 +64,41 @@ class ShareActionsController(wsgi.Controller):
         super(ShareActionsController, self).__init__(*args, **kwargs)
         self.share_api = share.API()
 
+    @staticmethod
+    def _validate_username(access):
+        valid_useraname_re = '[\w\.\-_\`;\'\{\}\[\]]{4,32}$'
+        username = access
+        if not re.match(valid_useraname_re, username):
+            exc_str = ('Invalid user or group name. Must be 4-32 chars long '
+                       'and consist of alfanum and ]{.-_\'`;}[')
+            raise webob.exc.HTTPBadRequest(explanation=exc_str)
+
+    @staticmethod
+    def _validate_ip_range(ip_range):
+        ip_range = ip_range.split('/')
+        exc_str = ('Supported ip format examples:\n'
+                   '\t10.0.0.2, 10.0.0.0/24')
+        if len(ip_range) > 2:
+            raise webob.exc.HTTPBadRequest(explanation=exc_str)
+        if len(ip_range) == 2:
+            try:
+                prefix = int(ip_range[1])
+                if prefix < 0 or prefix > 32:
+                    raise ValueError()
+            except ValueError:
+                msg = 'IP prefix should be in range from 0 to 32'
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+        ip_range = ip_range[0].split('.')
+        if len(ip_range) != 4:
+            raise webob.exc.HTTPBadRequest(explanation=exc_str)
+        for item in ip_range:
+            try:
+                if 0 <= int(item) <= 255:
+                    continue
+                raise ValueError()
+            except ValueError:
+                raise webob.exc.HTTPBadRequest(explanation=exc_str)
+
     @wsgi.action('os-allow_access')
     @wsgi.serializers(xml=ShareAccessTemplate)
     def _allow_access(self, req, id, body):
@@ -73,7 +109,13 @@ class ShareActionsController(wsgi.Controller):
 
         access_type = body['os-allow_access']['access_type']
         access_to = body['os-allow_access']['access_to']
-
+        if access_type == 'ip':
+            self._validate_ip_range(access_to)
+        elif access_type == 'sid':
+            self._validate_username(access_to)
+        else:
+            exc_str = "Only 'ip' or 'sid' access types are supported"
+            raise webob.exc.HTTPBadRequest(explanation=exc_str)
         access = self.share_api.allow_access(
             context, share, access_type, access_to)
         return {'access': access}
