@@ -16,5 +16,6 @@
     "share:get_share_metadata": [],
     "share:delete_share_metadata": [],
     "share:update_share_metadata": [],
-    "share_extension:share_admin_actions:reset_status": [["rule:admin_api"]]
+    "share_extension:share_admin_actions:reset_status": [["rule:admin_api"]],
+    "share_extension:snapshot_admin_actions:reset_status": [["rule:admin_api"]]
 }
