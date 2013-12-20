@@ -22,9 +22,11 @@
                        :class:`manila.share.drivers.lvm.LVMShareDriver`.
 """
 
+from manila.common import constants
 from manila import context
 from manila import exception
 from manila import manager
+from manila import network
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
@@ -62,9 +64,8 @@ class ShareManager(manager.SchedulerDependentManager):
         if not share_driver:
             share_driver = self.configuration.share_driver
         self.driver = importutils.import_object(
-                        share_driver,
-                        self.db,
-                        configuration=self.configuration)
+            share_driver, self.db, configuration=self.configuration)
+        self.network_api = network.API()
 
     def init_host(self):
         """Initialization for a standalone service."""
@@ -92,6 +93,18 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.publish_service_capabilities(ctxt)
 
+    def _setup_share_network(self, context, network_ref):
+        allocation_number = self.driver.get_network_allocations_number()
+        if allocation_number:
+            network_info = self.network_api.allocate_network(
+                context, network_ref, count=allocation_number)
+            try:
+                self.driver.setup_network(network_info)
+            except exception.ManilaException as e:
+                with excutils.save_and_reraise_exception():
+                    self.db.share_network_update(context, network_ref['id'],
+                                                 {'status': 'error'})
+
     def create_share(self, context, share_id, request_spec=None,
                      filter_properties=None, snapshot_id=None):
         """Creates a share."""
@@ -104,6 +117,23 @@ class ShareManager(manager.SchedulerDependentManager):
             snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
         else:
             snapshot_ref = None
+
+        network_id = share_ref.get('share_network_id', None)
+        if network_id:
+            network_ref = self.db.share_network_get(
+                context, share_ref['share_network_id'])
+            if network_ref['status'] != constants.STATUS_ACTIVE:
+                if network_ref['status'] in [constants.STATUS_INACTIVE,
+                                             constants.STATUS_NEW]:
+                    self._setup_share_network(context, network_ref)
+                else:
+                    msg = _("Network status should be ACTIVE, INACTIVE or NEW")
+                    LOG.error(msg)
+                    raise exception.InvalidShareNetwork(reason=msg)
+        else:
+            network_ref = {}
+
+        share_ref['network_info'] = network_ref
 
         try:
             if snapshot_ref:

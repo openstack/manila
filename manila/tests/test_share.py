@@ -70,6 +70,12 @@ class FakeShareDriver(object):
     def do_setup(self, context):
         pass
 
+    def setup_network(self, context, network, policy=None):
+        pass
+
+    def get_network_allocations_number(self):
+        pass
+
 
 class ShareTestCase(test.TestCase):
     """Test Case for shares."""
@@ -355,3 +361,31 @@ class ShareTestCase(test.TestCase):
                           'name',
                           'description',
                           metadata=test_meta)
+
+    def test_setup_share_network(self):
+        network_info = {'fake': 'fake'}
+        self.share.driver.get_network_allocations_number = mock.Mock(
+            return_value=555)
+        self.share.network_api.allocate_network = mock.Mock(
+            return_value={'network_info': 'network_info'})
+        self.share.driver.setup_network = mock.Mock()
+        self.share._setup_share_network(self.context, network_info)
+        self.share.network_api.allocate_network.assert_called_once_with(
+            self.context, network_info, count=555)
+        self.share.driver.setup_network.assert_called_once_with(
+            {'network_info': 'network_info'})
+
+    def test_setup_share_network_error(self):
+        network_info = {'fake': 'fake', 'id': 'fakeid'}
+        self.share.driver.get_network_allocations_number = mock.Mock(
+            return_value=555)
+        self.share.network_api.allocate_network = mock.Mock(
+            return_value={'network_info': 'network_info'})
+        self.share.driver.setup_network = mock.Mock(
+            side_effect=exception.Invalid)
+        self.share.db.share_network_update = mock.Mock()
+        self.assertRaises(exception.Invalid,
+                          self.share._setup_share_network,
+                          self.context, network_info)
+        self.share.db.share_network_update.assert_called_once_with(
+            self.context, 'fakeid', {'status': 'error'})

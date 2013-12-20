@@ -521,3 +521,7 @@ class ShareNetworkSecurityServiceAssociationError(ManilaException):
 class ShareNetworkSecurityServiceDissociationError(ManilaException):
     message = _("Failed to dissociate share network %(share_network_id)s"
                 " and security service %(security_service_id)s: %(reason)s.")
+
+
+class InvalidShareNetwork(ManilaException):
+    message = _("Invalid share network: %(reason)s")

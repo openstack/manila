@@ -291,6 +291,14 @@ class NetAppShareDriver(driver.ShareDriver):
 
         self._stats = data
 
+    def get_network_allocations_number(self):
+        """7mode driver does not need to create VIFS"""
+        return 0
+
+    def setup_network(self, network_info):
+        """Nothing to set up"""
+        pass
+
 
 def _check_response(request, response):
     """Checks RPC responses from NetApp devices."""
