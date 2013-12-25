@@ -71,8 +71,8 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Do initialization."""
         super(LVMShareDriver, self).__init__(*args, **kwargs)
         self.db = db
-        self._helpers = None
         self.configuration.append_config_values(share_opts)
+        self._helpers = None
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -112,8 +112,9 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         escaped_name = share['name'].replace('-', '--')
         return "/dev/mapper/%s-%s" % (escaped_group, escaped_name)
 
-    def _allocate_container(self, share_name, sizestr):
-        cmd = ['lvcreate', '-L', sizestr, '-n', share_name,
+    def _allocate_container(self, share):
+        sizestr = '%sG' % share['size']
+        cmd = ['lvcreate', '-L', sizestr, '-n', share['name'],
                self.configuration.share_volume_group]
         if self.configuration.share_lvm_mirrors:
             cmd += ['-m', self.configuration.share_lvm_mirrors, '--nosync']
@@ -125,6 +126,8 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 cmd += ['-R', str(rsize)]
 
         self._try_execute(*cmd, run_as_root=True)
+        device_name = self._local_path(share)
+        self._execute('mkfs.ext4', device_name, run_as_root=True)
 
     def _deallocate_container(self, share_name):
         """Deletes a logical volume for share."""
@@ -187,32 +190,36 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         self._stats = data
 
-    def deallocate_container(self, ctx, share):
-        """Remove LVM volume that will be represented as share."""
-        self._deallocate_container(share['name'])
-
-    def allocate_container(self, ctx, share):
-        """Create LVM volume that will be represented as share."""
-        self._allocate_container(share['name'], '%sG' % share['size'])
+    def create_share(self, context, share):
+        self._allocate_container(share)
         #create file system
         device_name = self._local_path(share)
-        self._execute('mkfs.ext4', device_name, run_as_root=True)
-
-    def allocate_container_from_snapshot(self, context, share, snapshot):
-        """Is called to create share from snapshot."""
-        self._allocate_container(share['name'], '%sG' % share['size'])
-        self._copy_volume(self._local_path(snapshot), self._local_path(share),
-                          snapshot['share_size'])
-
-    def create_export(self, ctx, share):
-        """Exports the volume. Can optionally return a Dictionary of changes
-        to the share object to be persisted."""
-        device_name = self._local_path(share)
-        location = self._mount_device(share, device_name)
+        mount_path = self._get_mount_path(share)
+        location = self._get_helper(share).create_export(mount_path,
+                                                         share['name'])
+        self._mount_device(share, device_name)
         #TODO(rushiagr): what is the provider_location? realy needed?
-        return {'provider_location': location}
+        return location
 
-    def remove_export(self, ctx, share):
+    def create_share_from_snapshot(self, context, share, snapshot):
+        """Is called to create share from snapshot."""
+        self._allocate_container(share)
+        device_name = self._local_path(snapshot)
+        self._copy_volume(device_name, self._local_path(share),
+                          snapshot['share_size'])
+        mount_path = self._get_mount_path(share)
+        location = self._get_helper(share).create_export(mount_path,
+                                                         share['name'])
+        self._mount_device(share, device_name)
+        #TODO(rushiagr): what is the provider_location? realy needed?
+        return location
+
+    def delete_share(self, context, share):
+        self._remove_export(context, share)
+        self._delete_share(context, share)
+        self._deallocate_container(share['name'])
+
+    def _remove_export(self, ctx, share):
         """Removes an access rules for a share."""
         mount_path = self._get_mount_path(share)
         if os.path.exists(mount_path):
@@ -230,13 +237,6 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             except OSError:
                 LOG.info('Unable to delete %s', mount_path)
 
-    def create_share(self, ctx, share):
-        """Is called after allocate_space to create share on the volume."""
-        location = self._get_mount_path(share)
-        location = self._get_helper(share).create_export(location,
-                                                         share['name'])
-        return location
-
     def create_snapshot(self, context, snapshot):
         """Creates a snapshot."""
         orig_lv_name = "%s/%s" % (self.configuration.share_volume_group,
@@ -252,7 +252,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._get_helper(share).create_export(location, share['name'],
                                               recreate=True)
 
-    def delete_share(self, ctx, share):
+    def _delete_share(self, ctx, share):
         """Delete a share."""
         try:
             location = self._get_mount_path(share)
@@ -558,6 +558,7 @@ class CIFSNetConfHelper(NASHelperBase):
                     raise exception.ShareBackendException(msg=msg)
             else:
                 raise
+
         parameters = {
             'browseable': 'yes',
             'create mask': '0755',

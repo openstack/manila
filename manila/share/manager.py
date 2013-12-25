@@ -107,15 +107,12 @@ class ShareManager(manager.SchedulerDependentManager):
 
         try:
             if snapshot_ref:
-                self.driver.allocate_container_from_snapshot(context,
-                                                             share_ref,
-                                                             snapshot_ref)
+                export_location = self.driver.create_share_from_snapshot(
+                    context, share_ref, snapshot_ref)
             else:
-                self.driver.allocate_container(context, share_ref)
-            export_location = self.driver.create_share(context, share_ref)
+                export_location = self.driver.create_share(context, share_ref)
             self.db.share_update(context, share_id,
                                  {'export_location': export_location})
-            self.driver.create_export(context, share_ref)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.share_update(context, share_id, {'status': 'error'})
@@ -137,9 +134,7 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             for access_ref in rules:
                 self._deny_access(context, access_ref, share_ref)
-            self.driver.remove_export(context, share_ref)
             self.driver.delete_share(context, share_ref)
-            self.driver.deallocate_container(context, share_ref)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.share_update(context, share_id,
