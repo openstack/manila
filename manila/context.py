@@ -45,7 +45,7 @@ class RequestContext(object):
     def __init__(self, user_id, project_id, is_admin=None, read_deleted="no",
                  roles=None, remote_address=None, timestamp=None,
                  request_id=None, auth_token=None, overwrite=True,
-                 quota_class=None, **kwargs):
+                 quota_class=None, service_catalog=None, **kwargs):
         """
         :param read_deleted: 'no' indicates deleted records are hidden, 'yes'
             indicates deleted records are visible, 'only' indicates that
@@ -76,6 +76,12 @@ class RequestContext(object):
         if isinstance(timestamp, basestring):
             timestamp = timeutils.parse_strtime(timestamp)
         self.timestamp = timestamp
+        if service_catalog:
+            self.service_catalog = [s for s in service_catalog
+                                    if s.get('type') in ('compute', 'volume')]
+        else:
+            self.service_catalog = []
+
         if not request_id:
             request_id = generate_request_id()
         self.request_id = request_id
@@ -114,6 +120,7 @@ class RequestContext(object):
                 'auth_token': self.auth_token,
                 'quota_class': self.quota_class,
                 'tenant': self.tenant,
+                'service_catalog': self.service_catalog,
                 'user': self.user}
 
     @classmethod

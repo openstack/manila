@@ -293,3 +293,12 @@ class TestCase(unittest.TestCase):
             self.assertTrue(isinstance(a, b))
         else:
             f(a, b, *args, **kwargs)
+
+    def assertIsNone(self, a, *args, **kwargs):
+        """Python < v2.7 compatibility."""
+        try:
+            f = super(TestCase, self).assertIsNone
+        except AttributeError:
+            self.assertTrue(a is None)
+        else:
+            f(a, *args, **kwargs)

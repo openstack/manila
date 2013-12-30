@@ -26,6 +26,7 @@ import webob.exc
 
 from manila.api.openstack import wsgi
 from manila import context
+from manila.openstack.common import jsonutils
 
 from manila.openstack.common import log as logging
 from manila import wsgi as base_wsgi
@@ -96,11 +97,22 @@ class ManilaKeystoneContext(base_wsgi.Middleware):
         remote_address = req.remote_addr
         if CONF.use_forwarded_for:
             remote_address = req.headers.get('X-Forwarded-For', remote_address)
+
+        service_catalog = None
+        if req.headers.get('X_SERVICE_CATALOG') is not None:
+            try:
+                catalog_header = req.headers.get('X_SERVICE_CATALOG')
+                service_catalog = jsonutils.loads(catalog_header)
+            except ValueError:
+                raise webob.exc.HTTPInternalServerError(
+                    _('Invalid service catalog json.'))
+
         ctx = context.RequestContext(user_id,
                                      project_id,
                                      roles=roles,
                                      auth_token=auth_token,
-                                     remote_address=remote_address)
+                                     remote_address=remote_address,
+                                     service_catalog=service_catalog)
 
         req.environ['manila.context'] = ctx
         return self.application
