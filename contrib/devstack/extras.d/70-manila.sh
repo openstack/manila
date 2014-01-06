@@ -8,10 +8,10 @@ if is_service_enabled manila; then
         echo_summary "Installing Manila"
         install_manila
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
-        echo_summary "Initialing Manila"
-        init_manila
         echo_summary "Configuring Manila"
         configure_manila
+        echo_summary "Initialing Manila"
+        init_manila
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Starting Manila"
         start_manila
