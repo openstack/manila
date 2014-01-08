@@ -101,6 +101,21 @@ class ShareAdminController(AdminController):
         return self.share_api.delete(*args, **kwargs)
 
 
+class SnapshotAdminController(AdminController):
+    """AdminController for Snapshots."""
+
+    collection = 'snapshots'
+
+    def _update(self, *args, **kwargs):
+        db.share_snapshot_update(*args, **kwargs)
+
+    def _get(self, *args, **kwargs):
+        return self.share_api.get_snapshot(*args, **kwargs)
+
+    def _delete(self, *args, **kwargs):
+        return self.share_api.delete_snapshot(*args, **kwargs)
+
+
 class Admin_actions(extensions.ExtensionDescriptor):
     """Enable admin actions."""
 
@@ -111,9 +126,9 @@ class Admin_actions(extensions.ExtensionDescriptor):
 
     def get_controller_extensions(self):
         exts = []
-        controller = ShareAdminController()
-        extension = extensions.ControllerExtension(self,
-                                        ShareAdminController.collection,
-                                        controller)
-        exts.append(extension)
+        for class_ in (ShareAdminController, SnapshotAdminController):
+            controller = class_()
+            extension = extensions.ControllerExtension(
+                self, class_.collection, controller)
+            exts.append(extension)
         return exts

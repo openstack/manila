@@ -145,3 +145,48 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(resp.status_int, 404)
         self.assertRaises(exception.NotFound, db.share_get, ctx,
                           'missing-share-id')
+
+    def test_snapshot_reset_status(self):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # snapshot in 'error_deleting'
+        share = db.share_create(ctx, {})
+        snapshot = db.share_snapshot_create(ctx, {'status': 'error_deleting',
+                                                  'share_id': share['id']})
+        req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
+                                  snapshot['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        # request status of 'error'
+        req.body = jsonutils.dumps({'os-reset_status': {'status': 'error'}})
+        # attach admin context to request
+        req.environ['manila.context'] = ctx
+        resp = req.get_response(app())
+        # request is accepted
+        self.assertEqual(resp.status_int, 202)
+        snapshot = db.share_snapshot_get(ctx, snapshot['id'])
+        # status changed to 'error'
+        self.assertEqual(snapshot['status'], 'error')
+
+    def test_invalid_status_for_snapshot(self):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        # snapshot in 'available'
+        share = db.share_create(ctx, {})
+        snapshot = db.share_snapshot_create(ctx, {'status': 'available',
+                                                  'share_id': share['id']})
+        req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
+                                  snapshot['id'])
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        # 'attaching' is not a valid status for snapshots
+        req.body = jsonutils.dumps({'os-reset_status': {'status':
+                                                        'attaching'}})
+        # attach admin context to request
+        req.environ['manila.context'] = ctx
+        resp = req.get_response(app())
+        # request is accepted
+        self.assertEqual(resp.status_int, 400)
+        snapshot = db.share_snapshot_get(ctx, snapshot['id'])
+        # status is still 'available'
+        self.assertEqual(snapshot['status'], 'available')
