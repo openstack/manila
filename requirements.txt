@@ -22,6 +22,7 @@ SQLAlchemy>=0.7.8,<=0.7.99
 sqlalchemy-migrate>=0.7.2
 stevedore>=0.10
 python-cinderclient>=1.0.6
+python-novaclient>=2.15.0
 suds>=0.4
 WebOb>=1.2.3,<1.3
 wsgiref>=0.1.2

@@ -537,3 +537,7 @@ class VolumeNotFound(NotFound):
 
 class VolumeSnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
+
+
+class InstanceNotFound(NotFound):
+    message = _("Instance %(instance_id)s could not be found.")
