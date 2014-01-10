@@ -19,7 +19,6 @@ import webob
 from webob import exc
 
 from manila.api import common
-from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila.api.views import shares as share_views
 from manila.api import xmlutil
@@ -37,21 +36,6 @@ def make_share(elem):
              'snapshot_id', 'created_at', 'metadata']
     for attr in attrs:
         elem.set(attr)
-
-
-def remove_invalid_options(context, search_options, allowed_search_options):
-    """Remove search options that are not valid for non-admin API/context."""
-    if context.is_admin:
-        # Allow all options
-        return
-    # Otherwise, strip out all unknown options
-    unknown_options = [opt for opt in search_options
-                       if opt not in allowed_search_options]
-    bad_options = ", ".join(unknown_options)
-    log_msg = _("Removing options '%(bad_options)s' from query") % locals()
-    LOG.debug(log_msg)
-    for opt in unknown_options:
-        del search_options[opt]
 
 
 class ShareTemplate(xmlutil.TemplateBuilder):
@@ -130,8 +114,8 @@ class ShareController(wsgi.Controller):
             search_opts['display_name'] = search_opts['name']
             del search_opts['name']
 
-        remove_invalid_options(context, search_opts,
-                               self._get_share_search_options())
+        common.remove_invalid_options(
+            context, search_opts, self._get_share_search_options())
 
         shares = self.share_api.get_all(context, search_opts=search_opts)
 

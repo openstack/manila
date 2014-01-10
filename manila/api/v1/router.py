@@ -26,6 +26,7 @@ import manila.api.openstack
 from manila.api.v1 import limits
 from manila.api import versions
 
+from manila.api.v1 import security_service
 from manila.api.v1 import share_metadata
 from manila.api.v1 import share_snapshots
 from manila.api.v1 import shares
@@ -80,3 +81,8 @@ class APIRouter(manila.api.openstack.APIRouter):
         self.resources['limits'] = limits.create_resource()
         mapper.resource("limit", "limits",
                         controller=self.resources['limits'])
+
+        self.resources["security_services"] = \
+            security_service.create_resource()
+        mapper.resource("security-service", "security-services",
+                        controller=self.resources['security_services'])

@@ -312,3 +312,18 @@ class MetadataTemplate(xmlutil.TemplateBuilder):
         elem.set('key', 0)
         elem.text = 1
         return xmlutil.MasterTemplate(root, 1, nsmap=metadata_nsmap)
+
+
+def remove_invalid_options(context, search_options, allowed_search_options):
+    """Remove search options that are not valid for non-admin API/context."""
+    if context.is_admin:
+        # Allow all options
+        return
+    # Otherwise, strip out all unknown options
+    unknown_options = [opt for opt in search_options
+                       if opt not in allowed_search_options]
+    bad_options = ", ".join(unknown_options)
+    log_msg = _("Removing options '%(bad_options)s' from query") % locals()
+    LOG.debug(log_msg)
+    for opt in unknown_options:
+        del search_options[opt]

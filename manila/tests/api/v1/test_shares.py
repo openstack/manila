@@ -17,6 +17,7 @@ import datetime
 
 import webob
 
+from manila.api import common
 from manila.api.v1 import shares
 from manila import context
 from manila import exception
@@ -268,7 +269,7 @@ class ShareApiTest(test.TestCase):
         expected_opts = {'a': 'a', 'c': 'c'}
         allowed_opts = ['a', 'c']
         self.mox.ReplayAll()
-        shares.remove_invalid_options(ctx, search_opts, allowed_opts)
+        common.remove_invalid_options(ctx, search_opts, allowed_opts)
         self.assertEqual(search_opts, expected_opts)
 
     def test_remove_invalid_options_admin(self):
@@ -277,5 +278,5 @@ class ShareApiTest(test.TestCase):
         expected_opts = {'a': 'a', 'b': 'b', 'c': 'c', 'd': 'd'}
         allowed_opts = ['a', 'c']
         self.mox.ReplayAll()
-        shares.remove_invalid_options(ctx, search_opts, allowed_opts)
+        common.remove_invalid_options(ctx, search_opts, allowed_opts)
         self.assertEqual(search_opts, expected_opts)

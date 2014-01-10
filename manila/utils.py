@@ -25,7 +25,6 @@ import errno
 import functools
 import hashlib
 import inspect
-import itertools
 import os
 import paramiko
 import pyclbr
@@ -34,27 +33,22 @@ import re
 import shlex
 import shutil
 import signal
-import socket
-import struct
 import sys
 import tempfile
 import time
-import types
-import warnings
 from xml.dom import minidom
 from xml.parsers import expat
 from xml import sax
 from xml.sax import expatreader
 from xml.sax import saxutils
 
+from oslo.config import cfg
+
 from eventlet import event
 from eventlet.green import subprocess
 from eventlet import greenthread
 from eventlet import pools
-from oslo.config import cfg
-
 from manila import exception
-
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
 from manila.openstack.common import lockutils
