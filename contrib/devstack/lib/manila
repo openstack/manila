@@ -187,11 +187,6 @@ function configure_manila() {
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
     iniset $MANILA_CONF DEFAULT share_driver $SHARE_DRIVER
     iniset $MANILA_CONF DEFAULT share_lvm_helpers CIFS=$CIFS_HELPER,NFS=manila.share.drivers.lvm.NFSHelper
-    iniset $MANILA_CONF DEFAULT netapp_nas_wsdl_url $NETAPP_SHARE_WSDL_URL
-    iniset $MANILA_CONF DEFAULT netapp_nas_login $NETAPP_SHARE_DFM_LOGIN
-    iniset $MANILA_CONF DEFAULT netapp_nas_password $NETAPP_SHARE_DFM_PASSWORD
-    iniset $MANILA_CONF DEFAULT netapp_nas_server_hostname $NETAPP_DFM_IP
-    iniset $MANILA_CONF DEFAULT netapp_nas_server_port $NETAPP_SHARE_DFM_PORT
     iniset $MANILA_CONF DEFAULT path_to_key /home/stack/.ssh/id_rsa.pub
 
     if is_service_enabled tls-proxy; then
