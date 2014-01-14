@@ -113,25 +113,31 @@ class SecurityServiceController(wsgi.Controller):
         search_opts = {}
         search_opts.update(req.GET)
 
-        common.remove_invalid_options(
-            context, search_opts, self._get_security_services_search_options())
-        if 'all_tenants' in search_opts:
-            security_services = db.security_service_get_all(context)
-            del search_opts['all_tenants']
+        if 'share_network_id' in search_opts:
+            share_nw = db.share_network_get(context,
+                                            search_opts['share_network_id'])
+            security_services = share_nw['security_services']
         else:
-            security_services = db.security_service_get_all_by_project(
-                context, context.project_id)
-
-        if search_opts:
-            results = []
-            not_found = object()
-            for service in security_services:
-                for opt, value in search_opts.iteritems():
-                    if service.get(opt, not_found) != value:
-                        break
-                else:
-                    results.append(service)
-            security_services = results
+            common.remove_invalid_options(
+                context,
+                search_opts,
+                self._get_security_services_search_options())
+            if 'all_tenants' in search_opts:
+                security_services = db.security_service_get_all(context)
+                del search_opts['all_tenants']
+            else:
+                security_services = db.security_service_get_all_by_project(
+                    context, context.project_id)
+            if search_opts:
+                results = []
+                not_found = object()
+                for service in security_services:
+                    for opt, value in search_opts.iteritems():
+                        if service.get(opt, not_found) != value:
+                            break
+                    else:
+                        results.append(service)
+                security_services = results
 
         limited_list = common.limited(security_services, req)
 

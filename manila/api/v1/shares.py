@@ -198,6 +198,8 @@ class ShareController(wsgi.Controller):
         else:
             kwargs['snapshot'] = None
 
+        kwargs['share_network_id'] = share.get('share_network_id')
+
         display_name = share.get('display_name')
         display_description = share.get('display_description')
         new_share = self.share_api.create(context,

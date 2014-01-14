@@ -60,6 +60,7 @@ class ViewBuilder(common.ViewBuilder):
                 'name': share.get('display_name'),
                 'description': share.get('display_description'),
                 'snapshot_id': share.get('snapshot_id'),
+                'share_network_id': share.get('share_network_id'),
                 'share_proto': share.get('share_proto'),
                 'export_location': share.get('export_location'),
                 'metadata': metadata,

@@ -28,6 +28,7 @@ from manila.api import versions
 
 from manila.api.v1 import security_service
 from manila.api.v1 import share_metadata
+from manila.api.v1 import share_networks
 from manila.api.v1 import share_snapshots
 from manila.api.v1 import shares
 
@@ -86,3 +87,9 @@ class APIRouter(manila.api.openstack.APIRouter):
             security_service.create_resource()
         mapper.resource("security-service", "security-services",
                         controller=self.resources['security_services'])
+
+        self.resources['share_networks'] = share_networks.create_resource()
+        mapper.resource(share_networks.RESOURCE_NAME,
+                        'share-networks',
+                        controller=self.resources['share_networks'],
+                        member={'action': 'POST'})

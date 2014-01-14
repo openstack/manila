@@ -40,6 +40,7 @@ def fake_share(id, **kwargs):
         'user_id': 'fakeuser',
         'project_id': 'fakeproject',
         'snapshot_id': None,
+        'share_network_id': None,
         'availability_zone': 'fakeaz',
         'status': 'fakestatus',
         'display_name': 'fakename',

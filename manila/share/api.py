@@ -49,7 +49,8 @@ class API(base.Base):
         super(API, self).__init__(db_driver)
 
     def create(self, context, share_proto, size, name, description,
-               snapshot=None, availability_zone=None, metadata=None):
+               snapshot=None, availability_zone=None, metadata=None,
+               share_network_id=None):
         """Create new share."""
         policy.check_policy(context, 'create')
 
@@ -125,6 +126,7 @@ class API(base.Base):
                    'user_id': context.user_id,
                    'project_id': context.project_id,
                    'snapshot_id': snapshot_id,
+                   'share_network_id': share_network_id,
                    'availability_zone': availability_zone,
                    'metadata': metadata,
                    'status': "creating",
