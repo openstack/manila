@@ -1196,6 +1196,16 @@ def share_access_get_all_for_share(context, share_id):
 
 
 @require_context
+def share_access_get_all_by_type_and_access(context, share_id, access_type,
+                                            access):
+    session = get_session()
+    return _share_access_get_query(context, session,
+                                   {'share_id': share_id,
+                                    'access_type': access_type,
+                                    'access_to': access}).all()
+
+
+@require_context
 def share_access_delete(context, access_id):
     session = get_session()
     with session.begin():

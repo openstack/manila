@@ -358,6 +358,11 @@ class API(base.Base):
         values = {'share_id': share['id'],
                   'access_type': access_type,
                   'access_to': access_to}
+        access = self.db.share_access_get_all_by_type_and_access(
+            ctx, share['id'], access_type, access_to)
+        if access:
+            raise exception.ShareAccessExists(access_type=access_type,
+                                              access=access_to)
         access = self.db.share_access_create(ctx, values)
         self.share_rpcapi.allow_access(ctx, share, access)
         return access
