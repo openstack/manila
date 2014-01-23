@@ -182,7 +182,7 @@ function configure_manila() {
     iniset $MANILA_CONF DEFAULT iscsi_helper tgtadm
     iniset $MANILA_CONF DEFAULT sql_connection `database_connection_url manila`
     iniset $MANILA_CONF DEFAULT api_paste_config $MANILA_API_PASTE_INI
-    iniset $MANILA_CONF DEFAULT root_helper "sudo ${MANILA_ROOTWRAP}"
+    iniset $MANILA_CONF DEFAULT rootwrap_config $MANILA_CONF_DIR/rootwrap.conf
     iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.openstack.share.contrib.standard_extensions
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
     iniset $MANILA_CONF DEFAULT share_driver $SHARE_DRIVER
