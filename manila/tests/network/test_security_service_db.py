@@ -27,6 +27,7 @@ security_service_dict = {'id': 'fake id',
                          'server': 'fake ldap server',
                          'domain': 'fake ldap domain',
                          'sid': 'fake sid',
+                         "password": "fake password",
                          'name': 'whatever',
                          'description': 'nevermind',
                          'status': constants.STATUS_NEW}
@@ -83,6 +84,7 @@ class SecurityServiceDBTest(test.TestCase):
                        'server': 'new ldap server',
                        'domain': 'new ldap domain',
                        'sid': 'new sid',
+                       'password': 'new password',
                        'name': 'new whatever',
                        'description': 'new nevermind',
                        'status': constants.STATUS_ERROR}
