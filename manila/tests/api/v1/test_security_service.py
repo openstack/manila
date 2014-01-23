@@ -41,6 +41,7 @@ class ShareApiTest(test.TestCase):
             "server": "fake-server",
             "domain": "fake-domain",
             "sid": "fake-sid",
+            "password": "fake-password",
             "status": "new"
         }
         security_service.policy.check_policy = mock.Mock()

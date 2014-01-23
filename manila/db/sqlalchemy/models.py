@@ -334,6 +334,7 @@ class SecurityService(BASE, ManilaBase):
     server = Column(String(255), nullable=True)
     domain = Column(String(255), nullable=True)
     sid = Column(String(255), nullable=True)
+    password = Column(String(255), nullable=True)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
     status = Column(Enum(constants.STATUS_NEW, constants.STATUS_ACTIVE,
