@@ -152,7 +152,7 @@ class SecurityServiceController(wsgi.Controller):
     def _get_security_services_search_options(self):
         return ('status', 'name', 'id')
 
-    @wsgi.serializers(xml=SecurityServicesTemplate)
+    @wsgi.serializers(xml=SecurityServiceTemplate)
     def update(self, req, id, body):
         """Update a security service."""
         context = req.environ['manila.context']
@@ -182,7 +182,7 @@ class SecurityServiceController(wsgi.Controller):
         security_service = db.security_service_update(context, id, update_dict)
         return self._view_builder.detail(req, security_service)
 
-    @wsgi.serializers(xml=SecurityServicesTemplate)
+    @wsgi.serializers(xml=SecurityServiceTemplate)
     def create(self, req, body):
         """Creates a new security service."""
         context = req.environ['manila.context']
