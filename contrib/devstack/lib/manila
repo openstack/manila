@@ -308,7 +308,13 @@ function install_manila() {
     git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
     RECLONE=$MAIN_RECLONE
 
-    sudo apt-get install -y nfs-kernel-server nfs-common samba
+    if is_service_enabled m-shr; then
+        if is_ubuntu; then
+            sudo apt-get install -y nfs-kernel-server nfs-common samba
+        elif is_fedora; then
+            sudo yum install -y nfs-utils nfs-utils-lib samba
+        fi
+    fi
 }
 
 # apply config.d approach (e.g. Oneiric does not have this)
@@ -321,14 +327,16 @@ function _configure_tgt_for_config_d() {
 
 # start_manila() - Start running processes, including screen
 function start_manila() {
+    samba_daemon_name=smbd
     if is_service_enabled m-shr; then
-        if is_ubuntu; then
-            sudo service smbd  stop
+        if is_fedora; then
+            samba_daemon_name=smb
         fi
+        stop_service $samba_daemon_name
     fi
 
     screen_it m-api "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
-    screen_it m-shr "sudo service smbd stop; devloop='sudo losetup -j ${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}'; if [[ \$( \$devloop ) != *'/dev/loop'* ]]; then sudo losetup -f ${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}; fi; cd $MANILA_DIR && $MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
+    screen_it m-shr "sudo service $samba_daemon_name stop; devloop='sudo losetup -j ${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}'; if [[ \$( \$devloop ) != *'/dev/loop'* ]]; then sudo losetup -f ${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}; fi; cd $MANILA_DIR && $MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
     screen_it m-sch "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"
 
     # Start proxies if enabled
@@ -343,14 +351,6 @@ function stop_manila() {
     for serv in m-api m-sch m-shr; do
         screen -S $SCREEN_NAME -p $serv -X kill
     done
-
-    if is_service_enabled m-shr; then
-        if is_ubuntu; then
-            stop_service smbd
-        else
-            stop_service smbd
-        fi
-    fi
 }
 
 # Restore xtrace
