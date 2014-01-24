@@ -47,7 +47,7 @@ class ManilaBase(object):
     created_at = Column(DateTime, default=timeutils.utcnow)
     updated_at = Column(DateTime, onupdate=timeutils.utcnow)
     deleted_at = Column(DateTime)
-    deleted = Column(Boolean, default=False)
+    deleted = Column(Integer, default=0)
     metadata = None
 
     def save(self, session=None):
@@ -65,7 +65,7 @@ class ManilaBase(object):
 
     def delete(self, session=None):
         """Delete this object."""
-        self.deleted = True
+        self.deleted = self.id
         self.deleted_at = timeutils.utcnow()
         self.save(session=session)
 
@@ -242,6 +242,7 @@ class Share(BASE, ManilaBase):
         return CONF.share_name_template % self.id
 
     id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
     user_id = Column(String(255))
     project_id = Column(String(255))
     host = Column(String(255))
@@ -271,7 +272,7 @@ class ShareMetadata(BASE, ManilaBase):
                          foreign_keys=share_id,
                          primaryjoin='and_('
                          'ShareMetadata.share_id == Share.id,'
-                         'ShareMetadata.deleted == False)')
+                         'ShareMetadata.deleted == 0)')
 
 
 class ShareAccessMapping(BASE, ManilaBase):
@@ -284,6 +285,7 @@ class ShareAccessMapping(BASE, ManilaBase):
 
     __tablename__ = 'share_access_map'
     id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
     share_id = Column(String(36), ForeignKey('shares.id'))
     access_type = Column(String(255))
     access_to = Column(String(255))
@@ -305,6 +307,7 @@ class ShareSnapshot(BASE, ManilaBase):
         return CONF.share_name_template % self.share_id
 
     id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
     user_id = Column(String(255))
     project_id = Column(String(255))
     share_id = Column(String(36))
@@ -320,7 +323,7 @@ class ShareSnapshot(BASE, ManilaBase):
                          foreign_keys=share_id,
                          primaryjoin='and_('
                          'ShareSnapshot.share_id == Share.id,'
-                         'ShareSnapshot.deleted == False)')
+                         'ShareSnapshot.deleted == "False")')
 
 
 class SecurityService(BASE, ManilaBase):
@@ -328,6 +331,7 @@ class SecurityService(BASE, ManilaBase):
 
     __tablename__ = 'security_services'
     id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
     project_id = Column(String(36), nullable=False)
     type = Column(String(32), nullable=False)
     dns_ip = Column(String(64), nullable=True)
@@ -346,6 +350,7 @@ class ShareNetwork(BASE, ManilaBase):
     "Represents network data used by share."
     __tablename__ = 'share_networks'
     id = Column(String(36), primary_key=True, nullable=False)
+    deleted = Column(String(36), default='False')
     project_id = Column(String(36), nullable=False)
     neutron_net_id = Column(String(36), nullable=True)
     neutron_subnet_id = Column(String(36), nullable=True)
@@ -364,21 +369,21 @@ class ShareNetwork(BASE, ManilaBase):
                     primaryjoin='and_('
         'ShareNetwork.id == '
         'ShareNetworkSecurityServiceAssociation.share_network_id,'
-        'ShareNetworkSecurityServiceAssociation.deleted == False,'
-        'ShareNetwork.deleted == False)',
+        'ShareNetworkSecurityServiceAssociation.deleted == 0,'
+        'ShareNetwork.deleted == "False")',
                     secondaryjoin='and_('
         'SecurityService.id == '
         'ShareNetworkSecurityServiceAssociation.security_service_id,'
-        'SecurityService.deleted == False)')
+        'SecurityService.deleted == "False")')
     network_allocations = relationship("NetworkAllocation",
                                         primaryjoin='and_('
                     'ShareNetwork.id == NetworkAllocation.share_network_id,'
-                    'NetworkAllocation.deleted == False)')
+                    'NetworkAllocation.deleted == "False")')
     shares = relationship("Share",
                           backref='share_network',
                           primaryjoin='and_('
                           'ShareNetwork.id == Share.share_network_id,'
-                          'Share.deleted == False)')
+                          'Share.deleted == "False")')
 
 
 class ShareNetworkSecurityServiceAssociation(BASE, ManilaBase):
@@ -399,6 +404,7 @@ class NetworkAllocation(BASE, ManilaBase):
     "Represents network allocation data."
     __tablename__ = 'network_allocations'
     id = Column(String(36), primary_key=True, nullable=False)
+    deleted = Column(String(36), default='False')
     ip_address = Column(String(64), nullable=True)
     mac_address = Column(String(32), nullable=True)
     share_network_id = Column(String(36), ForeignKey('share_networks.id'),

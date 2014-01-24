@@ -52,6 +52,15 @@ class SecurityServiceDBTest(test.TestCase):
 
         self._check_expected_fields(result, security_service_dict)
 
+    def test_create_with_duplicated_id(self):
+        db_api.security_service_create(self.fake_context,
+                                       security_service_dict)
+
+        self.assertRaises(exception.DBError,
+                          db_api.security_service_create,
+                          self.fake_context,
+                          security_service_dict)
+
     def test_get(self):
         db_api.security_service_create(self.fake_context,
                                        security_service_dict)
