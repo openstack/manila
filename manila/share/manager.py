@@ -100,6 +100,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, network_ref, count=allocation_number)
             try:
                 self.driver.setup_network(network_info)
+                return network_info
             except exception.ManilaException as e:
                 with excutils.save_and_reraise_exception():
                     self.db.share_network_update(context, network_ref['id'],
@@ -125,7 +126,8 @@ class ShareManager(manager.SchedulerDependentManager):
             if network_ref['status'] != constants.STATUS_ACTIVE:
                 if network_ref['status'] in [constants.STATUS_INACTIVE,
                                              constants.STATUS_NEW]:
-                    self._setup_share_network(context, network_ref)
+                    network_ref = self._setup_share_network(context,
+                                                            network_ref)
                 else:
                     msg = _("Network status should be ACTIVE, INACTIVE or NEW")
                     LOG.error(msg)
