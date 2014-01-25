@@ -55,6 +55,30 @@ class FakeNeutronClient(object):
     def show_subnet(self, subnet_uuid):
         pass
 
+    def create_router(self, body):
+        return body
+
+    def list_routers(self):
+        pass
+
+    def create_network(self, body):
+        return body
+
+    def create_subnet(self, body):
+        return body
+
+    def update_port(self, port_id, body):
+        return body
+
+    def add_interface_router(self, router_id, subnet_id, port_id):
+        pass
+
+    def update_router(self, router_id, body):
+        return body
+
+    def show_router(self, router_id):
+        pass
+
     def list_extensions(self):
         pass
 
@@ -241,6 +265,169 @@ class NeutronApiTest(unittest.TestCase):
                              extensions[0])
             self.assertEqual(result[neutron_constants.PROVIDER_NW_EXT],
                              extensions[1])
+
+    def test_create_network(self):
+        net_args = {'tenant_id': 'test tenant', 'name': 'test name'}
+
+        network = self.neutron_api.network_create(**net_args)
+        self.assertEqual(network['tenant_id'], net_args['tenant_id'])
+        self.assertEqual(network['name'], net_args['name'])
+
+    def test_create_subnet(self):
+        subnet_args = {'tenant_id': 'test tenant', 'name': 'test name',
+                       'net_id': 'test net id', 'cidr': '10.0.0.0/24'}
+
+        subnet = self.neutron_api.subnet_create(**subnet_args)
+        self.assertEqual(subnet['tenant_id'], subnet_args['tenant_id'])
+        self.assertEqual(subnet['name'], subnet_args['name'])
+
+    def test_create_router(self):
+        router_args = {'tenant_id': 'test tenant', 'name': 'test name'}
+
+        router = self.neutron_api.router_create(**router_args)
+        self.assertEqual(router['tenant_id'], router_args['tenant_id'])
+        self.assertEqual(router['name'], router_args['name'])
+
+    def test_list_routers(self):
+        fake_routers = [{'fake router': 'fake router info'}]
+        client_list_routers_mock = mock.Mock(
+                                     return_value={'routers': fake_routers})
+
+        with mock.patch.object(self.neutron_api.client, 'list_routers',
+                          client_list_routers_mock):
+
+            networks = self.neutron_api.router_list()
+            client_list_routers_mock.assert_any_call()
+            self.assertEqual(networks, fake_routers)
+
+    @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
+    def test_create_network_exception(self):
+        net_args = {'tenant_id': 'test tenant', 'name': 'test name'}
+        client_create_network_mock = mock.Mock(side_effect=
+                                     neutron_client_exc.NeutronClientException)
+
+        with mock.patch.object(self.neutron_api.client, 'create_network',
+                          client_create_network_mock):
+
+            self.assertRaises(exception.NetworkException,
+                             self.neutron_api.network_create,
+                             **net_args)
+            neutron_api.LOG.exception.assert_called_once()
+
+    @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
+    def test_create_subnet_exception(self):
+        subnet_args = {'tenant_id': 'test tenant', 'name': 'test name',
+                       'net_id': 'test net id', 'cidr': '10.0.0.0/24'}
+        client_create_subnet_mock = mock.Mock(side_effect=
+                                     neutron_client_exc.NeutronClientException)
+
+        with mock.patch.object(self.neutron_api.client, 'create_subnet',
+                          client_create_subnet_mock):
+
+            self.assertRaises(exception.NetworkException,
+                             self.neutron_api.subnet_create,
+                             **subnet_args)
+            neutron_api.LOG.exception.assert_called_once()
+
+    @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
+    def test_create_router_exception(self):
+        router_args = {'tenant_id': 'test tenant', 'name': 'test name'}
+        client_create_router_mock = mock.Mock(side_effect=
+                                     neutron_client_exc.NeutronClientException)
+
+        with mock.patch.object(self.neutron_api.client, 'create_router',
+                          client_create_router_mock):
+
+            self.assertRaises(exception.NetworkException,
+                             self.neutron_api.router_create,
+                             **router_args)
+            neutron_api.LOG.exception.assert_called_once()
+
+    def test_update_port_fixed_ips(self):
+        port_id = 'test_port'
+        fixed_ips = {'fixed_ips': [{'subnet_id': 'test subnet'}]}
+        port = self.neutron_api.update_port_fixed_ips(port_id, fixed_ips)
+        self.assertEqual(port, fixed_ips)
+
+    @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
+    def test_update_port_fixed_ips_exception(self):
+        port_id = 'test_port'
+        fixed_ips = {'fixed_ips': [{'subnet_id': 'test subnet'}]}
+        client_update_port_mock = mock.Mock(side_effect=
+                                     neutron_client_exc.NeutronClientException)
+
+        with mock.patch.object(self.neutron_api.client, 'update_port',
+                          client_update_port_mock):
+
+            self.assertRaises(exception.NetworkException,
+                             self.neutron_api.update_port_fixed_ips,
+                             port_id, fixed_ips)
+            neutron_api.LOG.exception.assert_called_once()
+
+    def test_router_update_routes(self):
+        router_id = 'test_router'
+        routes = {'routes': [{'destination': '0.0.0.0/0',
+                              'nexthop': '8.8.8.8'}]}
+        router = self.neutron_api.router_update_routes(router_id, routes)
+        self.assertEqual(router, routes)
+
+    @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
+    def test_router_update_routes_exception(self):
+        router_id = 'test_router'
+        routes = {'routes': [{'destination': '0.0.0.0/0',
+                              'nexthop': '8.8.8.8'}]}
+        client_update_router_mock = mock.Mock(side_effect=
+                                     neutron_client_exc.NeutronClientException)
+
+        with mock.patch.object(self.neutron_api.client, 'update_router',
+                          client_update_router_mock):
+
+            self.assertRaises(exception.NetworkException,
+                             self.neutron_api.router_update_routes,
+                             router_id, routes)
+            neutron_api.LOG.exception.assert_called_once()
+
+    def test_show_router(self):
+        router_id = 'test router id'
+        fake_router = {'fake router': 'fake router info'}
+        client_show_router_mock = mock.Mock(return_value={'router':
+                                                                fake_router})
+
+        with mock.patch.object(self.neutron_api.client, 'show_router',
+                          client_show_router_mock):
+
+            port = self.neutron_api.show_router(router_id)
+            client_show_router_mock.assert_called_once_with(router_id)
+            self.assertEqual(port, fake_router)
+
+    def test_router_add_interface(self):
+        router_id = 'test port id'
+        subnet_id = 'test subnet id'
+        port_id = 'test port id'
+        with mock.patch.object(self.neutron_api.client, 'add_interface_router',
+                          mock.Mock()) as client_add_interface_router_mock:
+
+            self.neutron_api.router_add_interface(router_id,
+                                                  subnet_id,
+                                                  port_id)
+            client_add_interface_router_mock.assert_called_once_with(
+                    port_id, {'subnet_id': subnet_id, 'port_id': port_id})
+
+    @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
+    def test_router_add_interface_exception(self):
+        router_id = 'test port id'
+        subnet_id = 'test subnet id'
+        port_id = 'test port id'
+        client_add_interface_router_mock = mock.Mock(side_effect=
+                                     neutron_client_exc.NeutronClientException)
+
+        with mock.patch.object(self.neutron_api.client, 'add_interface_router',
+                          client_add_interface_router_mock):
+
+            self.assertRaises(exception.NetworkException,
+                             self.neutron_api.router_add_interface,
+                             router_id, subnet_id, port_id)
+            neutron_api.LOG.exception.assert_called_once()
 
 
 class TestNeutronClient(unittest.TestCase):

@@ -87,6 +87,12 @@ class API(base.Base):
         self.extensions = {}
         self.client = neutron.get_client(context.get_admin_context())
 
+    @property
+    def admin_tenant_id(self):
+        if self.client.httpclient.auth_token is None:
+            self.client.httpclient.authenticate()
+        return self.client.httpclient.auth_tenant_id
+
     def get_all_tenant_networks(self, tenant_id):
         search_opts = {'tenant_id': tenant_id, 'shared': False}
         nets = self.client.list_networks(**search_opts).get('networks', [])
@@ -175,3 +181,84 @@ class API(base.Base):
         if not self.extensions:
             self.extensions = self.list_extensions()
         return neutron.constants.PORTBINDING_EXT in self.extensions
+
+    def router_create(self, tenant_id, name):
+        router_req_body = {'router': {}}
+        router_req_body['router']['tenant_id'] = tenant_id
+        router_req_body['router']['name'] = name
+        try:
+            return self.client.create_router(router_req_body).get('router', {})
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
+    def network_create(self, tenant_id, name):
+        network_req_body = {'network': {}}
+        network_req_body['network']['tenant_id'] = tenant_id
+        network_req_body['network']['name'] = name
+        try:
+            return self.client.create_network(network_req_body).\
+                                                        get('network', {})
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
+    def subnet_create(self, tenant_id, net_id, name, cidr):
+        subnet_req_body = {'subnet': {}}
+        subnet_req_body['subnet']['tenant_id'] = tenant_id
+        subnet_req_body['subnet']['name'] = name
+        subnet_req_body['subnet']['network_id'] = net_id
+        subnet_req_body['subnet']['cidr'] = cidr
+        subnet_req_body['subnet']['ip_version'] = 4
+        try:
+            return self.client.create_subnet(subnet_req_body).\
+                                                        get('subnet', {})
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
+    def router_add_interface(self, router_id, subnet_id, port_id=None):
+        body = {}
+        if subnet_id:
+            body['subnet_id'] = subnet_id
+        if port_id:
+            body['port_id'] = port_id
+        try:
+            self.client.add_interface_router(router_id, body)
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
+    def router_list(self):
+        try:
+            return self.client.list_routers().get('routers', {})
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
+    def update_port_fixed_ips(self, port_id, fixed_ips):
+        try:
+            port_req_body = {'port': fixed_ips}
+            port = self.client.update_port(port_id, port_req_body).\
+                                                            get('port', {})
+            return port
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
+    def show_router(self, router_id):
+        try:
+            return self.client.show_router(router_id).get('router', {})
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
+    def router_update_routes(self, router_id, routes):
+        try:
+            router_req_body = {'router': routes}
+            port = self.client.update_router(router_id, router_req_body).\
+                                                            get('router', {})
+            return port
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
