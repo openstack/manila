@@ -90,7 +90,11 @@ class API(base.Base):
     @property
     def admin_tenant_id(self):
         if self.client.httpclient.auth_token is None:
-            self.client.httpclient.authenticate()
+            try:
+                self.client.httpclient.authenticate()
+            except neutron_client_exc.NeutronClientException as e:
+                raise exception.NetworkException(code=e.status_code,
+                                                 message=e.message)
         return self.client.httpclient.auth_tenant_id
 
     def get_all_tenant_networks(self, tenant_id):

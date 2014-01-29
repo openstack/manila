@@ -26,8 +26,60 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
+class FakeNetwork(object):
+    def __init__(self, **kwargs):
+        self.id = kwargs.pop('id', 'fake_net_id')
+        self.name = kwargs.pop('name', 'net_name')
+        self.subnets = kwargs.pop('subnets', [])
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __getitem__(self, attr):
+        return getattr(self, attr)
+
+
+class FakeSubnet(object):
+    def __init__(self, **kwargs):
+        self.id = kwargs.pop('id', 'fake_subnet_id')
+        self.network_id = kwargs.pop('network_id', 'fake_net_id')
+        self.cidr = kwargs.pop('cidr', 'fake_cidr')
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __getitem__(self, attr):
+        return getattr(self, attr)
+
+
+class FakePort(object):
+    def __init__(self, **kwargs):
+        self.id = kwargs.pop('id', 'fake_subnet_id')
+        self.network_id = kwargs.pop('network_id', 'fake_net_id')
+        self.fixed_ips = kwargs.pop('fixed_ips', [])
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __getitem__(self, attr):
+        return getattr(self, attr)
+
+
+class FakeRouter(object):
+    def __init__(self, **kwargs):
+        self.id = kwargs.pop('id', 'fake_router_id')
+        self.name = kwargs.pop('name', 'fake_router_name')
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __getitem__(self, attr):
+        return getattr(self, attr)
+
+    def __setitem__(self, attr, value):
+        setattr(self, attr, value)
+
+
 class API(object):
     """Fake Network API"""
+    admin_tenant_id = 'fake admin tenant id'
+
     network = {
         "status": "ACTIVE",
         "subnets": ["fake_subnet_id"],
@@ -103,6 +155,24 @@ class API(object):
         port['id'] = port_id
         return port
 
+    def delete_port(self, port_id):
+        pass
+
+    def get_subnet(self, subnet_id):
+        pass
+
+    def subnet_create(self, *args, **kwargs):
+        pass
+
+    def router_add_interface(self, *args, **kwargs):
+        pass
+
+    def show_router(self, *args, **kwargs):
+        pass
+
+    def update_port_fixed_ips(self, *args, **kwargs):
+        pass
+
     def get_all_networks(self):
         """Get all networks for client."""
         net1 = self.network.copy()
@@ -115,4 +185,10 @@ class API(object):
         """Get specific network for client."""
         network = self.network.copy()
         network['id'] = network_uuid
+        return network
+
+    def network_create(self, tenant_id, name):
+        network = self.network.copy()
+        network['tenant_id'] = tenant_id
+        network['name'] = name
         return network

@@ -415,10 +415,6 @@ class FailedCmdWithDump(ManilaException):
     message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
 
 
-class InstanceNotFound(NotFound):
-    message = _("Instance %(instance_id)s could not be found.")
-
-
 class ShareBackendAPIException(ManilaException):
     message = _("Bad or unexpected response from the storage share "
                 "backend API: %(data)s")
