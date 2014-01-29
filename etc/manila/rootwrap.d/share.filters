@@ -44,3 +44,9 @@ rm: CommandFilter, /usr/bin/rm, root
 # manila/share/drivers/glusterfs.py: 'gluster', '--xml', 'volume', 'info', '%s'
 # manila/share/drivers/glusterfs.py: 'gluster', 'volume', 'set', '%s', 'nfs.export-dir', '%s'
 gluster: CommandFilter, /usr/sbin/gluster, root
+
+# manila/network/linux/ip_lib.py: 'ip', 'netns', 'exec', '%s', '%s'
+ip: CommandFilter, /sbin/ip, root
+
+# manila/network/linux/interface.py: 'ovs-vsctl', 'add-port', '%s', '%s'
+ovs-vsctl: CommandFilter, /usr/bin/ovs-vsctl, root

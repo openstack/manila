@@ -541,3 +541,7 @@ class VolumeSnapshotNotFound(NotFound):
 
 class InstanceNotFound(NotFound):
     message = _("Instance %(instance_id)s could not be found.")
+
+
+class BridgeDoesNotExist(ManilaException):
+    message = _("Bridge %(bridge)s does not exist.")
