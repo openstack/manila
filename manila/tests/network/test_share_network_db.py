@@ -83,6 +83,14 @@ class ShareNetworkDBTest(test.TestCase):
                           self.fake_context,
                           share_nw_dict2)
 
+    def test_create_with_duplicated_id(self):
+        db_api.share_network_create(self.fake_context, self.share_nw_dict)
+
+        self.assertRaises(exception.DBError,
+                          db_api.share_network_create,
+                          self.fake_context,
+                          self.share_nw_dict)
+
     def test_get(self):
         db_api.share_network_create(self.fake_context, self.share_nw_dict)
         result = db_api.share_network_get(self.fake_context,

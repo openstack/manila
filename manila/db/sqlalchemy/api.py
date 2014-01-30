@@ -144,7 +144,7 @@ def require_share_exists(f):
     return wrapper
 
 
-def model_query(context, *args, **kwargs):
+def model_query(context, model, *args, **kwargs):
     """Query helper that accounts for context's `read_deleted` field.
 
     :param context: context to query under
@@ -157,17 +157,18 @@ def model_query(context, *args, **kwargs):
     read_deleted = kwargs.get('read_deleted') or context.read_deleted
     project_only = kwargs.get('project_only')
 
-    query = session.query(*args)
+    query = session.query(model, *args)
 
+    default_deleted_value = model.__mapper__.c.deleted.default.arg
     if read_deleted == 'no':
-        query = query.filter_by(deleted=False)
+        query = query.filter(model.deleted == default_deleted_value)
     elif read_deleted == 'yes':
         pass  # omit the filter to include deleted and active
     elif read_deleted == 'only':
-        query = query.filter_by(deleted=True)
+        query = query.filter(model.deleted != default_deleted_value)
     else:
-        raise Exception(
-            _("Unrecognized read_deleted value '%s'") % read_deleted)
+        raise Exception(_("Unrecognized read_deleted value '%s'")
+                            % read_deleted)
 
     if project_only and is_user_context(context):
         query = query.filter_by(project_id=context.project_id)
