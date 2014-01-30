@@ -116,8 +116,11 @@ class ShareActionsController(wsgi.Controller):
         else:
             exc_str = "Only 'ip' or 'sid' access types are supported"
             raise webob.exc.HTTPBadRequest(explanation=exc_str)
-        access = self.share_api.allow_access(
-            context, share, access_type, access_to)
+        try:
+            access = self.share_api.allow_access(
+                context, share, access_type, access_to)
+        except exception.ShareAccessExists as e:
+            raise webob.exc.HTTPBadRequest(explanation=e.msg)
         return {'access': access}
 
     @wsgi.action('os-deny_access')
