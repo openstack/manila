@@ -52,7 +52,7 @@ class API(base.Base):
                snapshot=None, availability_zone=None, metadata=None,
                share_network_id=None):
         """Create new share."""
-        policy.check_policy(context, 'create')
+        policy.check_policy(context, 'share', 'create')
 
         self._check_metadata_properties(context, metadata)
 
@@ -164,7 +164,7 @@ class API(base.Base):
 
         return share
 
-    @policy.wrap_check_policy
+    @policy.wrap_check_policy('share')
     def delete(self, context, share):
         """Delete share."""
         if context.is_admin and context.project_id != share['project_id']:
@@ -205,7 +205,7 @@ class API(base.Base):
 
     def create_snapshot(self, context, share, name, description,
                         force=False):
-        policy.check_policy(context, 'create_snapshot', share)
+        policy.check_policy(context, 'share', 'create_snapshot', share)
 
         if ((not force) and (share['status'] != "available")):
             msg = _("must be available")
@@ -265,7 +265,7 @@ class API(base.Base):
         self.share_rpcapi.create_snapshot(context, share, snapshot)
         return snapshot
 
-    @policy.wrap_check_policy
+    @policy.wrap_check_policy('share')
     def delete_snapshot(self, context, snapshot, force=False):
         if not force and snapshot['status'] not in ["available", "error"]:
             msg = _("Share Snapshot status must be available or ")
@@ -276,21 +276,21 @@ class API(base.Base):
         share = self.db.share_get(context, snapshot['share_id'])
         self.share_rpcapi.delete_snapshot(context, snapshot, share['host'])
 
-    @policy.wrap_check_policy
+    @policy.wrap_check_policy('share')
     def update(self, context, share, fields):
         return self.db.share_update(context, share['id'], fields)
 
-    @policy.wrap_check_policy
+    @policy.wrap_check_policy('share')
     def snapshot_update(self, context, snapshot, fields):
         return self.db.share_snapshot_update(context, snapshot['id'], fields)
 
     def get(self, context, share_id):
         rv = self.db.share_get(context, share_id)
-        policy.check_policy(context, 'get', rv)
+        policy.check_policy(context, 'share', 'get', rv)
         return rv
 
     def get_all(self, context, search_opts={}):
-        policy.check_policy(context, 'get_all')
+        policy.check_policy(context, 'share', 'get_all')
 
         search_opts = search_opts or {}
 
@@ -317,12 +317,12 @@ class API(base.Base):
         return shares
 
     def get_snapshot(self, context, snapshot_id):
-        policy.check_policy(context, 'get_snapshot')
+        policy.check_policy(context, 'share', 'get_snapshot')
         rv = self.db.share_snapshot_get(context, snapshot_id)
         return dict(rv.iteritems())
 
     def get_all_snapshots(self, context, search_opts=None):
-        policy.check_policy(context, 'get_all_snapshots')
+        policy.check_policy(context, 'share', 'get_all_snapshots')
 
         search_opts = search_opts or {}
 
@@ -356,7 +356,7 @@ class API(base.Base):
         if share['status'] not in ["available"]:
             msg = _("Share status must be available")
             raise exception.InvalidShare(reason=msg)
-        policy.check_policy(ctx, 'allow_access')
+        policy.check_policy(ctx, 'share', 'allow_access')
         values = {'share_id': share['id'],
                   'access_type': access_type,
                   'access_to': access_to}
@@ -371,7 +371,7 @@ class API(base.Base):
 
     def deny_access(self, ctx, share, access):
         """Deny access to share."""
-        policy.check_policy(ctx, 'deny_access')
+        policy.check_policy(ctx, 'share', 'deny_access')
         #First check state of the target share
         if not share['host']:
             msg = _("Share host is None")
@@ -394,7 +394,7 @@ class API(base.Base):
 
     def access_get_all(self, context, share):
         """Returns all access rules for share."""
-        policy.check_policy(context, 'access_get_all')
+        policy.check_policy(context, 'share', 'access_get_all')
         rules = self.db.share_access_get_all_for_share(context, share['id'])
         return [{'id': rule.id,
                  'access_type': rule.access_type,
@@ -403,17 +403,17 @@ class API(base.Base):
 
     def access_get(self, context, access_id):
         """Returns access rule with the id."""
-        policy.check_policy(context, 'access_get')
+        policy.check_policy(context, 'share', 'access_get')
         rule = self.db.share_access_get(context, access_id)
         return rule
 
-    @policy.wrap_check_policy
+    @policy.wrap_check_policy('share')
     def get_share_metadata(self, context, share):
         """Get all metadata associated with a share."""
         rv = self.db.share_metadata_get(context, share['id'])
         return dict(rv.iteritems())
 
-    @policy.wrap_check_policy
+    @policy.wrap_check_policy('share')
     def delete_share_metadata(self, context, share, key):
         """Delete the given metadata item from a share."""
         self.db.share_metadata_delete(context, share['id'], key)
@@ -437,7 +437,7 @@ class API(base.Base):
                 LOG.warn(msg)
                 raise exception.InvalidShareMetadataSize(message=msg)
 
-    @policy.wrap_check_policy
+    @policy.wrap_check_policy('share')
     def update_share_metadata(self, context, share, metadata, delete=False):
         """Updates or creates share metadata.
 

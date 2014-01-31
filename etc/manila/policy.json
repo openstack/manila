@@ -18,5 +18,9 @@
     "share_extension:share_admin_actions:reset_status": [["rule:admin_api"]],
     "share_extension:snapshot_admin_actions:reset_status": [["rule:admin_api"]],
 
-    "share_extension:services": [["rule:admin_api"]]
+    "share_extension:services": [["rule:admin_api"]],
+
+    "security_service:create": [["rule:admin_api"]],
+    "security_service:delete": [["rule:admin_api"]],
+    "security_service:update": [["rule:admin_api"]]
 }

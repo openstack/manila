@@ -164,7 +164,8 @@ class ShareAPITestCase(test.TestCase):
                    'export_location': share['export_location']}
 
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'create_snapshot', share)
+        share_api.policy.check_policy(self.context, 'share',
+                                      'create_snapshot', share)
         self.mox.StubOutWithMock(quota.QUOTAS, 'reserve')
         quota.QUOTAS.reserve(self.context, snapshots=1, gigabytes=1).\
             AndReturn('reservation')
@@ -185,7 +186,7 @@ class ShareAPITestCase(test.TestCase):
                                  status='available')
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
         share_api.policy.check_policy(
-            self.context, 'delete_snapshot', snapshot)
+            self.context, 'share', 'delete_snapshot', snapshot)
         self.mox.StubOutWithMock(db_driver, 'share_snapshot_update')
         db_driver.share_snapshot_update(self.context, snapshot['id'],
                                         {'status': 'deleting'})
@@ -202,7 +203,7 @@ class ShareAPITestCase(test.TestCase):
                                  status='creating')
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
         share_api.policy.check_policy(
-            self.context, 'delete_snapshot', snapshot)
+            self.context, 'share', 'delete_snapshot', snapshot)
         self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShareSnapshot,
                           self.api.delete_snapshot, self.context, snapshot)
@@ -211,7 +212,8 @@ class ShareAPITestCase(test.TestCase):
         share = fake_share('fakeid',
                            status='error')
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'create_snapshot', share)
+        share_api.policy.check_policy(self.context, 'share',
+                                      'create_snapshot', share)
         self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShare, self.api.create_snapshot,
                           self.context, share, 'fakename', 'fakedesc')
@@ -250,7 +252,7 @@ class ShareAPITestCase(test.TestCase):
     def test_get_snapshot(self):
         fake_get_snap = {'fake_key': 'fake_val'}
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'get_snapshot')
+        share_api.policy.check_policy(self.context, 'share', 'get_snapshot')
         self.mox.StubOutWithMock(db_driver, 'share_snapshot_get')
         db_driver.share_snapshot_get(self.context,
                                      'fakeid').AndReturn(fake_get_snap)
@@ -342,7 +344,8 @@ class ShareAPITestCase(test.TestCase):
         self.mox.StubOutWithMock(db_driver, 'share_get')
         db_driver.share_get(self.context, 'fakeid').AndReturn('fakeshare')
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'get', 'fakeshare')
+        share_api.policy.check_policy(self.context, 'share', 'get',
+                                      'fakeshare')
         self.mox.ReplayAll()
         result = self.api.get(self.context, 'fakeid')
         self.assertEqual(result, 'fakeshare')
@@ -350,7 +353,7 @@ class ShareAPITestCase(test.TestCase):
     def test_get_all_admin_not_all_tenants(self):
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=True)
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'get_all')
+        share_api.policy.check_policy(ctx, 'share', 'get_all')
         self.mox.StubOutWithMock(db_driver, 'share_get_all_by_project')
         db_driver.share_get_all_by_project(ctx, 'fakepid')
         self.mox.ReplayAll()
@@ -358,7 +361,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_admin_all_tenants(self):
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'get_all')
+        share_api.policy.check_policy(self.context, 'share', 'get_all')
         self.mox.StubOutWithMock(db_driver, 'share_get_all')
         db_driver.share_get_all(self.context)
         self.mox.ReplayAll()
@@ -367,7 +370,7 @@ class ShareAPITestCase(test.TestCase):
     def test_get_all_not_admin(self):
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=False)
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'get_all')
+        share_api.policy.check_policy(ctx, 'share', 'get_all')
         self.mox.StubOutWithMock(db_driver, 'share_get_all_by_project')
         db_driver.share_get_all_by_project(ctx, 'fakepid')
         self.mox.ReplayAll()
@@ -378,7 +381,7 @@ class ShareAPITestCase(test.TestCase):
         fake_objs = [{'name': 'fakename1'}, search_opts]
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=False)
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'get_all')
+        share_api.policy.check_policy(ctx, 'share', 'get_all')
         self.mox.StubOutWithMock(db_driver, 'share_get_all_by_project')
         db_driver.share_get_all_by_project(ctx,
                                            'fakepid').AndReturn(fake_objs)
@@ -389,7 +392,7 @@ class ShareAPITestCase(test.TestCase):
     def test_get_all_snapshots_admin_not_all_tenants(self):
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=True)
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'get_all_snapshots')
+        share_api.policy.check_policy(ctx, 'share', 'get_all_snapshots')
         self.mox.StubOutWithMock(db_driver,
                                  'share_snapshot_get_all_by_project')
         db_driver.share_snapshot_get_all_by_project(ctx, 'fakepid')
@@ -398,7 +401,8 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_snapshots_admin_all_tenants(self):
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'get_all_snapshots')
+        share_api.policy.check_policy(self.context, 'share',
+                                      'get_all_snapshots')
         self.mox.StubOutWithMock(db_driver, 'share_snapshot_get_all')
         db_driver.share_snapshot_get_all(self.context)
         self.mox.ReplayAll()
@@ -408,7 +412,7 @@ class ShareAPITestCase(test.TestCase):
     def test_get_all_snapshots_not_admin(self):
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=False)
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'get_all_snapshots')
+        share_api.policy.check_policy(ctx, 'share', 'get_all_snapshots')
         self.mox.StubOutWithMock(db_driver,
                                  'share_snapshot_get_all_by_project')
         db_driver.share_snapshot_get_all_by_project(ctx, 'fakepid')
@@ -420,7 +424,7 @@ class ShareAPITestCase(test.TestCase):
         fake_objs = [{'name': 'fakename1'}, search_opts]
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=False)
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'get_all_snapshots')
+        share_api.policy.check_policy(ctx, 'share', 'get_all_snapshots')
         self.mox.StubOutWithMock(db_driver,
                                  'share_snapshot_get_all_by_project')
         db_driver.share_snapshot_get_all_by_project(ctx, 'fakepid').\
@@ -435,7 +439,7 @@ class ShareAPITestCase(test.TestCase):
                   'access_type': 'fakeacctype',
                   'access_to': 'fakeaccto'}
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'allow_access')
+        share_api.policy.check_policy(self.context, 'share', 'allow_access')
         self.mox.StubOutWithMock(db_driver, 'share_access_create')
         db_driver.share_access_create(self.context, values).\
             AndReturn('fakeacc')
@@ -461,7 +465,7 @@ class ShareAPITestCase(test.TestCase):
         share = fake_share('fakeid', status='available')
         access = fake_access('fakaccid', state='fakeerror')
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'deny_access')
+        share_api.policy.check_policy(self.context, 'share', 'deny_access')
         self.mox.StubOutWithMock(db_driver, 'share_access_delete')
         db_driver.share_access_delete(self.context, access['id'])
         self.mox.ReplayAll()
@@ -471,7 +475,7 @@ class ShareAPITestCase(test.TestCase):
         share = fake_share('fakeid', status='available')
         access = fake_access('fakaccid', state='fakeactive')
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'deny_access')
+        share_api.policy.check_policy(self.context, 'share', 'deny_access')
         self.mox.StubOutWithMock(db_driver, 'share_access_update')
         db_driver.share_access_update(self.context, access['id'],
                                       {'state': 'fakedeleting'})
@@ -483,7 +487,7 @@ class ShareAPITestCase(test.TestCase):
         share = fake_share('fakeid', status='available')
         access = fake_access('fakaccid', state='fakenew')
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'deny_access')
+        share_api.policy.check_policy(self.context, 'share', 'deny_access')
         self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShareAccess, self.api.deny_access,
                           self.context, share, access)
@@ -491,7 +495,7 @@ class ShareAPITestCase(test.TestCase):
     def test_deny_access_status_not_available(self):
         share = fake_share('fakeid', status='error')
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'deny_access')
+        share_api.policy.check_policy(self.context, 'share', 'deny_access')
         self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShare, self.api.deny_access,
                           self.context, share, 'fakeacc')
@@ -499,14 +503,14 @@ class ShareAPITestCase(test.TestCase):
     def test_deny_access_no_host(self):
         share = fake_share('fakeid', host=None)
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'deny_access')
+        share_api.policy.check_policy(self.context, 'share', 'deny_access')
         self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShare, self.api.deny_access,
                           self.context, share, 'fakeacc')
 
     def test_access_get(self):
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'access_get')
+        share_api.policy.check_policy(self.context, 'share', 'access_get')
         self.mox.StubOutWithMock(db_driver, 'share_access_get')
         db_driver.share_access_get(self.context, 'fakeid').AndReturn('fake')
         self.mox.ReplayAll()
@@ -516,7 +520,7 @@ class ShareAPITestCase(test.TestCase):
     def test_access_get_all(self):
         share = fake_share('fakeid')
         self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'access_get_all')
+        share_api.policy.check_policy(self.context, 'share', 'access_get_all')
         self.mox.StubOutWithMock(db_driver, 'share_access_get_all_for_share')
         db_driver.share_access_get_all_for_share(self.context, 'fakeid').\
             AndReturn([fake_access('fakeacc0id', state='fakenew'),

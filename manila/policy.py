@@ -106,25 +106,24 @@ def check_is_admin(roles):
     return policy.enforce(match_list, target, credentials)
 
 
-def wrap_check_policy(func):
+def wrap_check_policy(resource):
     """Check policy corresponding to the wrapped methods prior to execution.
-
-    This decorator requires the first 3 args of the wrapped function
-    to be (self, context, share).
     """
-    @functools.wraps(func)
-    def wrapped(self, context, target_obj, *args, **kwargs):
-        check_policy(context, func.__name__, target_obj)
-        return func(self, context, target_obj, *args, **kwargs)
+    def check_policy_wraper(func):
+        @functools.wraps(func)
+        def wrapped(self, context, target_obj, *args, **kwargs):
+            check_policy(context, resource, func.__name__, target_obj)
+            return func(self, context, target_obj, *args, **kwargs)
 
-    return wrapped
+        return wrapped
+    return check_policy_wraper
 
 
-def check_policy(context, action, target_obj=None):
+def check_policy(context, resource, action, target_obj=None):
     target = {
         'project_id': context.project_id,
         'user_id': context.user_id,
     }
     target.update(target_obj or {})
-    _action = 'share:%s' % action
+    _action = '%s:%s' % (resource, action)
     enforce(context, _action, target)
