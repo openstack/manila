@@ -86,9 +86,6 @@ def fake_update_share_metadata(self, context, share, diff):
     pass
 
 
-@test.skip_test("Skip because of DB migration #10")
-#NOTE(achirko): There should be no interaction between DB on 'share_api
-#               creation'
 class ShareMetaDataTest(test.TestCase):
 
     def setUp(self):

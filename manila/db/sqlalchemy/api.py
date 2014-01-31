@@ -340,7 +340,7 @@ def service_get_all_share_sorted(context):
     with session.begin():
         topic = CONF.share_topic
         label = 'share_gigabytes'
-        subq = model_query(context, models.Share.host,
+        subq = model_query(context, models.Share, models.Share.host,
                            func.sum(models.Share.size).label(label),
                            session=session, read_deleted="no").\
             group_by(models.Share.host).\
@@ -405,9 +405,9 @@ def quota_get(context, project_id, resource, session=None):
 def quota_get_all_by_project_and_user(context, project_id, user_id):
     authorize_project_context(context, project_id)
 
-    user_quotas = model_query(context, models.ProjectUserQuota.resource,
-                       models.ProjectUserQuota.hard_limit,
-                       base_model=models.ProjectUserQuota).\
+    user_quotas = model_query(context, models.ProjectUserQuota,
+                              models.ProjectUserQuota.resource,
+                              models.ProjectUserQuota.hard_limit).\
                    filter_by(project_id=project_id).\
                    filter_by(user_id=user_id).\
                    all()
@@ -1087,7 +1087,7 @@ def share_create(context, values):
 
 @require_admin_context
 def share_data_get_for_project(context, project_id, user_id, session=None):
-    query = model_query(context,
+    query = model_query(context, models.Share,
                         func.count(models.Share.id),
                         func.sum(models.Share.size),
                         read_deleted="no",
@@ -1249,7 +1249,7 @@ def share_snapshot_create(context, values):
 
 @require_admin_context
 def snapshot_data_get_for_project(context, project_id, user_id, session=None):
-    query = model_query(context,
+    query = model_query(context, models.ShareSnapshot,
                         func.count(models.ShareSnapshot.id),
                         func.sum(models.ShareSnapshot.size),
                         read_deleted="no",
@@ -1311,7 +1311,7 @@ def share_snapshot_get_all_for_share(context, share_id):
 @require_context
 def share_snapshot_data_get_for_project(context, project_id, session=None):
     authorize_project_context(context, project_id)
-    result = model_query(context,
+    result = model_query(context, models.ShareSnapshot,
                          func.count(models.ShareSnapshot.id),
                          func.sum(models.ShareSnapshot.share_size),
                          read_deleted="no",
