@@ -31,6 +31,7 @@ from manila.openstack.common import log as logging
 from manila import policy
 
 
+RESOURCE_NAME = 'security_service'
 LOG = logging.getLogger(__name__)
 
 
@@ -69,7 +70,8 @@ class SecurityServiceController(wsgi.Controller):
         context = req.environ['manila.context']
         try:
             security_service = db.security_service_get(context, id)
-            policy.check_policy(context, 'show', security_service)
+            policy.check_policy(context, RESOURCE_NAME, 'show',
+                                security_service)
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
@@ -84,7 +86,8 @@ class SecurityServiceController(wsgi.Controller):
 
         try:
             security_service = db.security_service_get(context, id)
-            policy.check_policy(context, 'show', security_service)
+            policy.check_policy(context, RESOURCE_NAME,
+                                'delete', security_service)
             db.security_service_delete(context, id)
         except exception.NotFound:
             raise exc.HTTPNotFound()
@@ -108,7 +111,8 @@ class SecurityServiceController(wsgi.Controller):
            builder.
         """
         context = req.environ['manila.context']
-        policy.check_policy(context, 'get_all_security_services')
+        policy.check_policy(context, RESOURCE_NAME,
+                            'get_all_security_services')
 
         search_opts = {}
         search_opts.update(req.GET)
@@ -168,7 +172,8 @@ class SecurityServiceController(wsgi.Controller):
 
         try:
             security_service = db.security_service_get(context, id)
-            policy.check_policy(context, 'show', security_service)
+            policy.check_policy(context, RESOURCE_NAME, 'show',
+                                security_service)
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
@@ -179,6 +184,7 @@ class SecurityServiceController(wsgi.Controller):
                                 for key in valid_update_keys
                                 if key in security_service_data])
 
+        policy.check_policy(context, RESOURCE_NAME, 'update', security_service)
         security_service = db.security_service_update(context, id, update_dict)
         return self._view_builder.detail(req, security_service)
 
@@ -186,7 +192,7 @@ class SecurityServiceController(wsgi.Controller):
     def create(self, req, body):
         """Creates a new security service."""
         context = req.environ['manila.context']
-        policy.check_policy(context, 'create')
+        policy.check_policy(context, RESOURCE_NAME, 'create')
 
         if not self.is_valid_body(body, 'security_service'):
             raise exc.HTTPUnprocessableEntity()
