@@ -25,6 +25,7 @@ from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
 from manila.openstack.common import log as logging
+from manila import policy
 
 RESOURCE_NAME = 'share_network'
 RESOURCES_NAME = 'share_networks'
@@ -74,6 +75,7 @@ class ShareNetworkController(wsgi.Controller):
     def show(self, req, id):
         """Return data about the requested network info."""
         context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'show')
 
         try:
             share_network = db_api.share_network_get(context, id)
@@ -86,6 +88,7 @@ class ShareNetworkController(wsgi.Controller):
     def delete(self, req, id):
         """Delete specified share network."""
         context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'delete')
 
         try:
             share_network = db_api.share_network_get(context, id)
@@ -105,6 +108,7 @@ class ShareNetworkController(wsgi.Controller):
     def index(self, req):
         """Returns a summary list of share's networks."""
         context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'index')
 
         search_opts = {}
         search_opts.update(req.GET)
@@ -126,6 +130,7 @@ class ShareNetworkController(wsgi.Controller):
     def update(self, req, id, body):
         """Update specified share network."""
         context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'update')
 
         if not body or RESOURCE_NAME not in body:
             raise exc.HTTPUnprocessableEntity()
@@ -156,6 +161,7 @@ class ShareNetworkController(wsgi.Controller):
     def create(self, req, body):
         """Creates a new share network."""
         context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'create')
 
         if not body or RESOURCE_NAME not in body:
             raise exc.HTTPUnprocessableEntity()
@@ -186,6 +192,7 @@ class ShareNetworkController(wsgi.Controller):
 
     def _add_security_service(self, req, id, data):
         context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'add_security_service')
         try:
             share_network = db_api.share_network_add_security_service(
                                 context,
@@ -205,6 +212,7 @@ class ShareNetworkController(wsgi.Controller):
 
     def _remove_security_service(self, req, id, data):
         context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'remove_security_service')
         try:
             share_network = db_api.share_network_remove_security_service(
                                 context,

@@ -22,5 +22,11 @@
 
     "security_service:create": [["rule:admin_api"]],
     "security_service:delete": [["rule:admin_api"]],
-    "security_service:update": [["rule:admin_api"]]
+    "security_service:update": [["rule:admin_api"]],
+
+    "share_network:create": [["rule:admin_api"]],
+    "share_network:delete": [["rule:admin_api"]],
+    "share_network:update": [["rule:admin_api"]],
+    "share_network:add_security_service": [["rule:admin_api"]],
+    "share_network:remove_security_service": [["rule:admin_api"]]
 }
