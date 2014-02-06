@@ -24,8 +24,11 @@ from manila.api import xmlutil
 from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
+from manila import network
+from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila import policy
+from manila.share import rpcapi as share_rpcapi
 
 RESOURCE_NAME = 'share_network'
 RESOURCES_NAME = 'share_networks'
@@ -70,6 +73,10 @@ class ShareNetworkController(wsgi.Controller):
     """The Share Network API controller for the OpenStack API."""
 
     _view_builder_class = share_networks_views.ViewBuilder
+
+    def __init__(self):
+        super(ShareNetworkController, self).__init__()
+        self.share_rpcapi = share_rpcapi.ShareAPI()
 
     @wsgi.serializers(xml=ShareNetworkTemplate)
     def show(self, req, id):
@@ -192,6 +199,8 @@ class ShareNetworkController(wsgi.Controller):
         _actions = {
             'add_security_service': self._add_security_service,
             'remove_security_service': self._remove_security_service,
+            'activate': self._activate,
+            'deactivate': self._deactivate,
         }
         for action, data in body.iteritems():
             try:
@@ -201,6 +210,7 @@ class ShareNetworkController(wsgi.Controller):
                 raise exc.HTTPBadRequest(explanation=msg)
 
     def _add_security_service(self, req, id, data):
+        """Associate share network with a given security service."""
         context = req.environ['manila.context']
         policy.check_policy(context, RESOURCE_NAME, 'add_security_service')
         try:
@@ -221,6 +231,7 @@ class ShareNetworkController(wsgi.Controller):
         return self._view_builder.build_share_network(share_network)
 
     def _remove_security_service(self, req, id, data):
+        """Dissociate share network from a given security service."""
         context = req.environ['manila.context']
         policy.check_policy(context, RESOURCE_NAME, 'remove_security_service')
         try:
@@ -237,6 +248,47 @@ class ShareNetworkController(wsgi.Controller):
         except exception.ShareNetworkSecurityServiceDissociationError as e:
             msg = "%s" % e
             raise exc.HTTPBadRequest(explanation=msg)
+
+        return self._view_builder.build_share_network(share_network)
+
+    def _activate(self, req, id, data):
+        """Activate share network."""
+        context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'activate')
+
+        try:
+            share_network = db_api.share_network_get(context, id)
+        except exception.ShareNetworkNotFound as e:
+            msg = _("Share-network was not found. %s") % e
+            raise exc.HTTPNotFound(explanation=msg)
+
+        if share_network['status'] != constants.STATUS_INACTIVE:
+            msg = _("Share network should be 'INACTIVE'.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        self.share_rpcapi.activate_network(context, id, data)
+
+        return self._view_builder.build_share_network(share_network)
+
+    def _deactivate(self, req, id, data):
+        context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'deactivate')
+
+        try:
+            share_network = db_api.share_network_get(context, id)
+        except exception.ShareNetworkNotFound as e:
+            msg = _("Share-network was not found. %s") % e
+            raise exc.HTTPNotFound(explanation=msg)
+
+        if share_network['status'] != constants.STATUS_ACTIVE:
+            msg = _("Share network should be 'ACTIVE'.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        if len(share_network['shares']) > 0:
+            msg = _("Share network is in use.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        self.share_rpcapi.deactivate_network(context, id)
 
         return self._view_builder.build_share_network(share_network)
 

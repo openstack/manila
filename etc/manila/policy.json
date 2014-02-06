@@ -27,6 +27,11 @@
     "share_network:create": [],
     "share_network:delete": [],
     "share_network:update": [],
+    "share_network:index": [],
+    "share_network:detail": [],
+    "share_network:show": [],
     "share_network:add_security_service": [],
-    "share_network:remove_security_service": []
+    "share_network:remove_security_service": [],
+    "share_network:activate": [],
+    "share_network:deactivate": []
 }

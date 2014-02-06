@@ -22,6 +22,7 @@ from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import shares as share_views
 from manila.api import xmlutil
+from manila.common import constants
 from manila import exception
 from manila.openstack.common import log as logging
 from manila import share
@@ -201,10 +202,15 @@ class ShareController(wsgi.Controller):
         share_network_id = share.get('share_network_id')
         if share_network_id:
             try:
-                self.share_api.db.share_network_get(context, share_network_id)
+                share_network = self.share_api.db.share_network_get(
+                                context,
+                                share_network_id)
             except exception.ShareNetworkNotFound as e:
                 msg = "%s" % e
                 raise exc.HTTPNotFound(explanation=msg)
+            if share_network['status'] == constants.STATUS_ERROR:
+                msg = _("Share network is in 'ERROR' state.")
+                raise exc.HTTPBadRequest(explanation=msg)
             else:
                 kwargs['share_network_id'] = share_network_id
 
