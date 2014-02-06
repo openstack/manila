@@ -198,7 +198,15 @@ class ShareController(wsgi.Controller):
         else:
             kwargs['snapshot'] = None
 
-        kwargs['share_network_id'] = share.get('share_network_id')
+        share_network_id = share.get('share_network_id')
+        if share_network_id:
+            try:
+                self.share_api.db.share_network_get(context, share_network_id)
+            except exception.ShareNetworkNotFound as e:
+                msg = "%s" % e
+                raise exc.HTTPNotFound(explanation=msg)
+            else:
+                kwargs['share_network_id'] = share_network_id
 
         display_name = share.get('display_name')
         display_description = share.get('display_description')
