@@ -18,19 +18,20 @@
 
 import datetime
 
+import mock
+from oslo.config import cfg
+
 from manila import context
 from manila import db
 from manila.db.sqlalchemy import api as sqa_api
 from manila.db.sqlalchemy import models as sqa_models
 from manila import exception
-
 from manila.openstack.common import rpc
 from manila.openstack.common import timeutils
 from manila import quota
 from manila import share
 from manila import test
 import manila.tests.image.fake
-from oslo.config import cfg
 
 
 CONF = cfg.CONF
@@ -640,10 +641,12 @@ class DbQuotaDriverTestCase(test.TestCase):
 
         self.calls = []
 
-        timeutils.set_time_override()
+        self.patcher = mock.patch.object(timeutils, 'utcnow')
+        self.mock_utcnow = self.patcher.start()
+        self.mock_utcnow.return_value = datetime.datetime.utcnow()
 
     def tearDown(self):
-        timeutils.clear_time_override()
+        self.patcher.stop()
         super(DbQuotaDriverTestCase, self).tearDown()
 
     def test_get_defaults(self):
@@ -1247,7 +1250,13 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         self.stubs.Set(sqa_api, '_quota_usage_create', fake_quota_usage_create)
         self.stubs.Set(sqa_api, '_reservation_create', fake_reservation_create)
 
-        timeutils.set_time_override()
+        self.patcher = mock.patch.object(timeutils, 'utcnow')
+        self.mock_utcnow = self.patcher.start()
+        self.mock_utcnow.return_value = datetime.datetime.utcnow()
+
+    def tearDown(self):
+        self.patcher.stop()
+        super(QuotaReserveSqlAlchemyTestCase, self).tearDown()
 
     def _make_quota_usage(self, project_id, user_id, resource, in_use,
                           reserved, until_refresh, created_at, updated_at):

@@ -16,8 +16,11 @@
 """Unit tests for the Share API module."""
 
 import datetime
-import mox
 import random
+import uuid
+
+import mock
+import mox
 import suds
 
 from manila import context
@@ -110,13 +113,17 @@ class ShareAPITestCase(test.TestCase):
         self.stubs.Set(self.api, 'share_rpcapi', self.share_rpcapi)
         self.stubs.Set(quota.QUOTAS, 'reserve', lambda *args, **kwargs: None)
 
+        self.patcher = mock.patch.object(timeutils, 'utcnow')
+        self.mock_utcnow = self.patcher.start()
+        self.mock_utcnow.return_value = datetime.datetime.utcnow()
+
     def tearDown(self):
+        self.patcher.stop()
         super(ShareAPITestCase, self).tearDown()
-        timeutils.clear_time_override()
 
     def test_create(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        timeutils.set_time_override(override_time=date)
+        self.mock_utcnow.return_value = date
         share = fake_share('fakeid',
                            user_id=self.context.user_id,
                            project_id=self.context.project_id,
@@ -143,7 +150,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_create_snapshot(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        timeutils.set_time_override(override_time=date)
+        self.mock_utcnow.return_value = date
         share = fake_share('fakeid',
                            status='available')
         snapshot = fake_snapshot('fakesnapshotid',
@@ -180,7 +187,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_delete_snapshot(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        timeutils.set_time_override(override_time=date)
+        self.mock_utcnow.return_value = date
         share = fake_share('fakeid')
         snapshot = fake_snapshot('fakesnapshotid', share_id=share['id'],
                                  status='available')
@@ -220,7 +227,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_create_from_snapshot_available(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        timeutils.set_time_override(override_time=date)
+        self.mock_utcnow.return_value = date
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id='fakeshare_id',
                                  status='available')
@@ -291,7 +298,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_delete_available(self):
         date = datetime.datetime(2, 2, 2, 2, 2, 2)
-        timeutils.set_time_override(override_time=date)
+        self.mock_utcnow.return_value = date
         share = fake_share('fakeid', status='available')
         options = {'status': 'deleting',
                    'terminated_at': date}
@@ -309,7 +316,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_delete_error(self):
         date = datetime.datetime(2, 2, 2, 2, 2, 2)
-        timeutils.set_time_override(override_time=date)
+        self.mock_utcnow.return_value = date
         share = fake_share('fakeid', status='error')
         options = {'status': 'deleting',
                    'terminated_at': date}
@@ -538,31 +545,37 @@ class ShareAPITestCase(test.TestCase):
 
     def test_share_metadata_get(self):
         metadata = {'a': 'b', 'c': 'd'}
-        db_driver.share_create(self.context, {'id': '1', 'metadata': metadata})
+        share_id = str(uuid.uuid4())
+        db_driver.share_create(self.context, {'id': share_id,
+                                              'metadata': metadata})
 
         self.assertEqual(metadata,
-                         db_driver.share_metadata_get(self.context, '1'))
+                         db_driver.share_metadata_get(self.context, share_id))
 
     def test_share_metadata_update(self):
         metadata1 = {'a': '1', 'c': '2'}
         metadata2 = {'a': '3', 'd': '5'}
         should_be = {'a': '3', 'c': '2', 'd': '5'}
 
-        db_driver.share_create(self.context, {'id': '1',
+        share_id = str(uuid.uuid4())
+        db_driver.share_create(self.context, {'id': share_id,
                                               'metadata': metadata1})
-        db_driver.share_metadata_update(self.context, '1', metadata2, False)
+        db_driver.share_metadata_update(self.context, share_id,
+                                        metadata2, False)
 
         self.assertEqual(should_be,
-                         db_driver.share_metadata_get(self.context, '1'))
+                         db_driver.share_metadata_get(self.context, share_id))
 
     def test_share_metadata_update_delete(self):
         metadata1 = {'a': '1', 'c': '2'}
         metadata2 = {'a': '3', 'd': '4'}
         should_be = metadata2
 
-        db_driver.share_create(self.context, {'id': '1',
+        share_id = str(uuid.uuid4())
+        db_driver.share_create(self.context, {'id': share_id,
                                               'metadata': metadata1})
-        db_driver.share_metadata_update(self.context, '1', metadata2, True)
+        db_driver.share_metadata_update(self.context, share_id,
+                                        metadata2, True)
 
         self.assertEqual(should_be,
-                         db_driver.share_metadata_get(self.context, '1'))
+                         db_driver.share_metadata_get(self.context, share_id))
