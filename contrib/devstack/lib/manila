@@ -269,20 +269,19 @@ function init_manila() {
     fi
 
     if is_service_enabled m-shr; then
-        # Configure a default volume group called '`stack-volumes`' for the volume
+        # Configure a default volume group called '`stack-shares`' for the share
         # service if it does not yet exist.  If you don't wish to use a file backed
         # volume group, create your own volume group called ``stack-volumes`` before
         # invoking ``stack.sh``.
         #
-        # By default, the backing file is 5G in size, and is stored in ``/opt/stack/data``.
+        # By default, the backing file is 8G in size, and is stored in ``/opt/stack/data``.
 
         if ! sudo vgs $SHARE_GROUP; then
             SHARE_BACKING_FILE=${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}
             # Only create if the file doesn't already exists
-            # [[ -f $SHARE_BACKING_FILE ]] || truncate -s $VOLUME_BACKING_FILE_SIZE $SHARE_BACKING_FILE
             [[ -f $SHARE_BACKING_FILE ]] || truncate -s $SHARE_BACKING_FILE_SIZE $SHARE_BACKING_FILE
             DEV=`sudo losetup -f --show $SHARE_BACKING_FILE`
-            # Only create if the loopback device doesn't contain $VOLUME_GROUP
+            # Only create if the loopback device doesn't contain $SHARE_GROUP
             if ! sudo vgs $SHARE_GROUP; then sudo vgcreate $SHARE_GROUP $DEV; fi
         fi
 
