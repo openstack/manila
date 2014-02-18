@@ -189,6 +189,10 @@ function configure_manila() {
     iniset $MANILA_CONF DEFAULT share_lvm_helpers CIFS=$CIFS_HELPER,NFS=manila.share.drivers.lvm.NFSHelper
     iniset $MANILA_CONF DEFAULT path_to_key /home/stack/.ssh/id_rsa.pub
 
+    iniset $MANILA_CONF DEFAULT nova_admin_password $SERVICE_PASSWORD
+    iniset $MANILA_CONF DEFAULT cinder_admin_password $SERVICE_PASSWORD
+    iniset $MANILA_CONF DEFAULT neutron_admin_password $SERVICE_PASSWORD
+
     if is_service_enabled tls-proxy; then
         # Set the service port for a proxy to take the original
         iniset $MANILA_CONF DEFAULT osapi_share_listen_port $MANILA_SERVICE_PORT_INT
