@@ -105,8 +105,8 @@ class ShareNetworkController(wsgi.Controller):
         return webob.Response(status_int=202)
 
     @wsgi.serializers(xml=ShareNetworksTemplate)
-    def index(self, req):
-        """Returns a summary list of share's networks."""
+    def _get_share_networks(self, req, is_detail=True):
+        """Returns a list of share networks."""
         context = req.environ['manila.context']
         policy.check_policy(context, RESOURCE_NAME, 'index')
 
@@ -124,7 +124,17 @@ class ShareNetworkController(wsgi.Controller):
             for key, value in search_opts.iteritems():
                 networks = [network for network in networks
                             if network[key] == value]
-        return self._view_builder.build_share_networks(networks)
+        return self._view_builder.build_share_networks(networks, is_detail)
+
+    @wsgi.serializers(xml=ShareNetworksTemplate)
+    def index(self, req):
+        """Returns a summary list of share networks."""
+        return self._get_share_networks(req, is_detail=False)
+
+    @wsgi.serializers(xml=ShareNetworksTemplate)
+    def detail(self, req):
+        """Returns a detailed list of share networks."""
+        return self._get_share_networks(req)
 
     @wsgi.serializers(xml=ShareNetworkTemplate)
     def update(self, req, id, body):

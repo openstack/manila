@@ -93,4 +93,5 @@ class APIRouter(manila.api.openstack.APIRouter):
         mapper.resource(share_networks.RESOURCE_NAME,
                         'share-networks',
                         controller=self.resources['share_networks'],
+                        collection={'detail': 'GET'},
                         member={'action': 'POST'})

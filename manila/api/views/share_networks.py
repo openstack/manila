@@ -28,14 +28,19 @@ class ViewBuilder(common.ViewBuilder):
 
         return {'share_network': self._build_share_network_view(share_network)}
 
-    def build_share_networks(self, share_networks):
+    def build_share_networks(self, share_networks, is_detail=True):
         return {'share_networks':
-                [self._build_share_network_view(share_network)
+                [self._build_share_network_view(share_network, is_detail)
                  for share_network in share_networks]}
 
-    def _build_share_network_view(self, share_network):
-        return {
-                'id': share_network.get('id'),
+    def _build_share_network_view(self, share_network, is_detail=True):
+        sn = {
+            'id': share_network.get('id'),
+            'name': share_network.get('name'),
+            'status': share_network.get('status'),
+        }
+        if is_detail:
+            sn.update({
                 'project_id': share_network.get('project_id'),
                 'created_at': share_network.get('created_at'),
                 'updated_at': share_network.get('updated_at'),
@@ -45,7 +50,6 @@ class ViewBuilder(common.ViewBuilder):
                 'segmentation_id': share_network.get('segmentation_id'),
                 'cidr': share_network.get('cidr'),
                 'ip_version': share_network.get('ip_version'),
-                'name': share_network.get('name'),
                 'description': share_network.get('description'),
-                'status': share_network.get('status'),
-                }
+            })
+        return sn

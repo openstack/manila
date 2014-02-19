@@ -24,23 +24,29 @@ from manila import exception
 from manila.tests.api import fakes
 
 
-fake_share_network = {'id': 'fake network id',
-                      'project_id': 'fake project',
-                      'created_at': None,
-                      'updated_at': None,
-                      'neutron_net_id': 'fake net id',
-                      'neutron_subnet_id': 'fake subnet id',
-                      'network_type': 'vlan',
-                      'segmentation_id': 1000,
-                      'cidr': '10.0.0.0/24',
-                      'ip_version': 4,
-                      'name': 'fake name',
-                      'description': 'fake description',
-                      'status': constants.STATUS_INACTIVE,
-                      'shares': [],
-                      'network_allocations': [],
-                      'security_services': []
-                     }
+fake_share_network = {
+    'id': 'fake network id',
+    'project_id': 'fake project',
+    'created_at': None,
+    'updated_at': None,
+    'neutron_net_id': 'fake net id',
+    'neutron_subnet_id': 'fake subnet id',
+    'network_type': 'vlan',
+    'segmentation_id': 1000,
+    'cidr': '10.0.0.0/24',
+    'ip_version': 4,
+    'name': 'fake name',
+    'description': 'fake description',
+    'status': constants.STATUS_INACTIVE,
+    'shares': [],
+    'network_allocations': [],
+    'security_services': []
+}
+fake_share_network_shortened = {
+    'id': 'fake network id',
+    'name': 'fake name',
+    'status': constants.STATUS_INACTIVE,
+}
 
 
 class ShareNetworkAPITest(unittest.TestCase):
@@ -51,6 +57,11 @@ class ShareNetworkAPITest(unittest.TestCase):
         self.req = fakes.HTTPRequest.blank('/share-networks')
         self.context = self.req.environ['manila.context']
         self.body = {share_networks.RESOURCE_NAME: {'name': 'fake name'}}
+
+    def _check_share_network_view_shortened(self, view, share_nw):
+        self.assertEqual(view['id'], share_nw['id'])
+        self.assertEqual(view['name'], share_nw['name'])
+        self.assertEqual(view['status'], share_nw['status'])
 
     def _check_share_network_view(self, view, share_nw):
         self.assertEqual(view['id'], share_nw['id'])
@@ -174,6 +185,23 @@ class ShareNetworkAPITest(unittest.TestCase):
                                mock.Mock(return_value=networks)):
 
             result = self.controller.index(self.req)
+
+            db_api.share_network_get_all_by_project.assert_called_once_with(
+                self.context,
+                self.context.project_id)
+
+            self.assertEqual(len(result[share_networks.RESOURCES_NAME]), 1)
+            self._check_share_network_view_shortened(
+                result[share_networks.RESOURCES_NAME][0],
+                fake_share_network_shortened)
+
+    def test_index_detailed(self):
+        networks = [fake_share_network]
+        with mock.patch.object(db_api,
+                               'share_network_get_all_by_project',
+                               mock.Mock(return_value=networks)):
+
+            result = self.controller.detail(self.req)
 
             db_api.share_network_get_all_by_project.assert_called_once_with(
                 self.context,
