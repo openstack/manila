@@ -44,8 +44,8 @@ class ManilaBase(object):
     """Base class for Manila Models."""
     __table_args__ = {'mysql_engine': 'InnoDB'}
     __table_initialized__ = False
-    created_at = Column(DateTime, default=timeutils.utcnow)
-    updated_at = Column(DateTime, onupdate=timeutils.utcnow)
+    created_at = Column(DateTime, default=lambda: timeutils.utcnow())
+    updated_at = Column(DateTime, onupdate=lambda: timeutils.utcnow())
     deleted_at = Column(DateTime)
     deleted = Column(Integer, default=0)
     metadata = None

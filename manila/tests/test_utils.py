@@ -19,21 +19,21 @@ import datetime
 import hashlib
 import os
 import os.path
-import paramiko
 import StringIO
 import tempfile
 import uuid
 
+import mock
 import mox
+from oslo.config import cfg
+import paramiko
 
 import manila
 from manila import exception
-
 from manila.openstack.common import strutils
 from manila.openstack.common import timeutils
 from manila import test
 from manila import utils
-from oslo.config import cfg
 
 
 CONF = cfg.CONF
@@ -514,10 +514,12 @@ class AuditPeriodTest(test.TestCase):
                                            day=5,
                                            month=3,
                                            year=2012)
-        timeutils.set_time_override(override_time=self.test_time)
+        self.patcher = mock.patch.object(timeutils, 'utcnow')
+        self.mock_utcnow = self.patcher.start()
+        self.mock_utcnow.return_value = self.test_time
 
     def tearDown(self):
-        timeutils.clear_time_override()
+        self.patcher.stop()
         super(AuditPeriodTest, self).tearDown()
 
     def test_hour(self):
