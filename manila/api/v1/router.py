@@ -86,7 +86,8 @@ class APIRouter(manila.api.openstack.APIRouter):
         self.resources["security_services"] = \
             security_service.create_resource()
         mapper.resource("security-service", "security-services",
-                        controller=self.resources['security_services'])
+                        controller=self.resources['security_services'],
+                        collection={'detail': 'GET'})
 
         self.resources['share_networks'] = share_networks.create_resource()
         mapper.resource(share_networks.RESOURCE_NAME,
