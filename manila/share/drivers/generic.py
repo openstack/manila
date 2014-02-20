@@ -457,8 +457,12 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if not self.configuration.path_to_public_key or \
                 not self.configuration.path_to_private_key:
             return
-        if not os.path.exists(self.configuration.path_to_public_key) or \
-                not os.path.exists(self.configuration.path_to_private_key):
+        path_to_public_key = \
+                os.path.expanduser(self.configuration.path_to_public_key)
+        path_to_private_key = \
+                os.path.expanduser(self.configuration.path_to_private_key)
+        if not os.path.exists(path_to_public_key) or \
+                                      not os.path.exists(path_to_private_key):
             return
         keypair_name = self.configuration.manila_service_keypair_name
         keypairs = [k for k in self.compute_api.keypair_list(context)
@@ -467,7 +471,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.ManilaException(_('Ambiguous keypairs'))
 
         public_key, _ = self._execute('cat',
-                                      self.configuration.path_to_public_key,
+                                      path_to_public_key,
                                       run_as_root=True)
         if not keypairs:
             keypair = self.compute_api.keypair_import(context, keypair_name,
