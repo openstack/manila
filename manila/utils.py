@@ -25,6 +25,7 @@ import errno
 import functools
 import hashlib
 import inspect
+import netaddr
 import os
 import paramiko
 import pyclbr
@@ -1214,14 +1215,9 @@ def to_bytes(text, default=0):
 
 
 def cidr_to_netmask(cidr):
-    """
-    Convert cidr notation to the netmask string
-
-    :param cidr: integer which represents cidr notation
-    :rtype: string
-    """
-    cidr = int(cidr)
-    bits = 0
-    for i in xrange(32 - cidr, 32):
-        bits |= (1 << i)
-    return socket.inet_ntoa(struct.pack('>I', bits))
+    """Convert cidr to netmask."""
+    try:
+        network = netaddr.IPNetwork(cidr)
+        return str(network.netmask)
+    except netaddr.AddrFormatError:
+        raise exception.InvalidInput(_("Invalid cidr supplied %s") % cidr)
