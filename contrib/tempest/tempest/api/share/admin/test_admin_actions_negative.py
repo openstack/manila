@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -15,28 +13,27 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.shares import base
-from tempest import clients_shares as clients
-from tempest import config_shares as config
+from tempest.api.share import base
+from tempest import clients_share as clients
+from tempest import config_share as config
 from tempest import exceptions
 from tempest import test
-
-import testtools
 
 CONF = config.CONF
 
 
-class AdminActionsNegativeTestJSON(base.BaseSharesAdminTest):
+class AdminActionsNegativeTest(base.BaseSharesAdminTest):
 
     @classmethod
     def setUpClass(cls):
-        super(AdminActionsNegativeTestJSON, cls).setUpClass()
+        super(AdminActionsNegativeTest, cls).setUpClass()
 
         # create share (available or error)
         __, cls.sh = cls.create_share_wait_for_active()
 
         # create snapshot (available or error)
         __, cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
+
         cls.member_shares_client = clients.Manager().shares_client
 
     @test.attr(type=['negative', ])
@@ -61,8 +58,6 @@ class AdminActionsNegativeTestJSON(base.BaseSharesAdminTest):
                           self.shares_client.reset_state,
                           self.sn["id"], s_type="snapshots", status="fake")
 
-    @testtools.skipIf(not CONF.shares.only_admin_or_owner_for_action,
-                      "Skipped, because not only admin allowed")
     @test.attr(type=['negative', ])
     def test_try_reset_share_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
@@ -70,15 +65,9 @@ class AdminActionsNegativeTestJSON(base.BaseSharesAdminTest):
                           self.member_shares_client.reset_state,
                           self.sh["id"])
 
-    @testtools.skipIf(not CONF.shares.only_admin_or_owner_for_action,
-                      "Skipped, because not only admin allowed")
     @test.attr(type=['negative', ])
     def test_try_reset_snapshot_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
         self.assertRaises(exceptions.Unauthorized,
                           self.member_shares_client.reset_state,
                           self.sn["id"], s_type="snapshots")
-
-
-class AdminActionsNegativeTestXML(AdminActionsNegativeTestJSON):
-    _interface = 'xml'

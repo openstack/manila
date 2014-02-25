@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -16,10 +14,9 @@
 #    under the License.
 
 from tempest import clients
-from tempest import config_shares as config
-from tempest import exceptions
-from tempest.services.shares.json import shares_client as j_shares_client
-from tempest.services.shares.xml import shares_client as x_shares_client
+from tempest import config_share as config
+from tempest.services.share.json import shares_client
+
 
 CONF = config.CONF
 
@@ -31,28 +28,15 @@ class Manager(clients.Manager):
     """
 
     def __init__(self, username=None, password=None, tenant_name=None,
-                 interface='json'):
+                 interface='json', service=None):
         super(Manager, self).__init__(username, password, tenant_name,
-                                      interface)
-
-        client_args = (CONF, self.username, self.password,
-                       self.auth_url, self.tenant_name)
-        if interface == 'xml':
-            self.shares_client = x_shares_client.SharesClientXML(*client_args)
-        elif interface == 'json':
-            self.shares_client = j_shares_client.SharesClientJSON(*client_args)
-        else:
-            msg = "Unsupported interface type `%s'" % interface
-            raise exceptions.InvalidConfiguration(msg)
+                                      interface, service)
+        auth_provider = self.get_auth_provider(self.credentials)
+        if interface == 'json':
+            self.shares_client = shares_client.SharesClient(auth_provider)
 
 
 class AltManager(Manager):
-
-    """
-    Manager object that uses the alt_XXX credentials for its
-    managed client objects
-    """
-
     def __init__(self, interface='json'):
         super(AltManager, self).__init__(CONF.identity.alt_username,
                                          CONF.identity.alt_password,
@@ -61,12 +45,6 @@ class AltManager(Manager):
 
 
 class AdminManager(Manager):
-
-    """
-    Manager object that uses the admin credentials for its
-    managed client objects
-    """
-
     def __init__(self, interface='json'):
         super(AdminManager, self).__init__(CONF.identity.admin_username,
                                            CONF.identity.admin_password,

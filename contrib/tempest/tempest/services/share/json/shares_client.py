@@ -1,4 +1,5 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
+# Copyright 2014 Mirantis Inc.
+# All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,46 +17,47 @@ import json
 
 from tempest.common import rest_client
 from tempest.common.utils.data_utils import rand_name
+from tempest import config_share as config
 from tempest import exceptions
-from tempest import exceptions_shares
+from tempest import exceptions_share
 
 import time
 import urllib
 
+CONF = config.CONF
 
-class SharesClientJSON(rest_client.RestClient):
 
+class SharesClient(rest_client.RestClient):
+    """Tempest REST client for Manila.
+
+    It handles shares and access to it in OpenStack.
     """
-    Tempest REST client for Manila.
-    It handles shares and access to it in openstack.
-    """
 
-    def __init__(self, config, username, password, auth_url, tenant_name=None):
-        super(SharesClientJSON, self).__init__(config, username, password,
-                                               auth_url, tenant_name)
-        self.service = self.config.shares.catalog_type  # share
-        self.share_protocol = self.config.shares.share_protocol
-        self.build_interval = self.config.shares.build_interval
-        self.build_timeout = self.config.shares.build_timeout
+    def __init__(self, auth_provider):
+        super(SharesClient, self).__init__(auth_provider)
+        self.service = CONF.share.catalog_type
+        self.share_protocol = None
+        if CONF.share.enable_protocols:
+            self.share_protocol = CONF.share.enable_protocols[0]
+        self.share_network_id = CONF.share.share_network_id
+        self.build_interval = CONF.share.build_interval
+        self.build_timeout = CONF.share.build_timeout
+        self.auth_params = auth_provider._auth_params()
 
-        self.tenant_name = tenant_name
-        self.username = username
-
-    def _parse_resp(self, body):
-        if len(body) > 0:
-            body = json.loads(body)
-            if len(body) is 1 and isinstance(body.items()[0][1], (dict, list)):
-                return body[body.items()[0][0]]
-        return body
+    def _get_endpoint_type(self, service):
+        # This is workaround for rest_client, that uses main config
+        return CONF.share.endpoint_type
 
     def create_share(self, share_protocol=None, size=1,
                      name=None, snapshot_id=None,
                      description="tempest created share",
-                     metadata={}):
+                     metadata={}, share_network_id=None):
         if name is None:
-            name = rand_name("tempest-created-share-")
+            name = rand_name("tempest-created-share")
         if share_protocol is None:
             share_protocol = self.share_protocol
+        if share_protocol is None:
+            raise exceptions.ShareProtocolNotSpecified()
         post_body = {
             "share": {
                 "share_proto": share_protocol,
@@ -66,29 +68,31 @@ class SharesClientJSON(rest_client.RestClient):
                 "metadata": metadata
             }
         }
+        if share_network_id is not None:
+            post_body["share"]["share_network_id"] = share_network_id
+        elif self.share_network_id:
+            post_body["share"]["share_network_id"] = self.share_network_id
         body = json.dumps(post_body)
-        resp, body = self.post("shares", body, self.headers)
+        resp, body = self.post("shares", body)
         return resp, self._parse_resp(body)
 
     def delete_share(self, share_id):
-        resp, body = self.delete("shares/%s" % share_id, self.headers)
-        return resp, self._parse_resp(body)
+        return self.delete("shares/%s" % share_id)
 
     def list_shares(self):
-        resp, body = self.get("shares", self.headers)
+        resp, body = self.get("shares")
         return resp, self._parse_resp(body)
 
     def list_shares_with_detail(self, params=None):
         """List the details of all shares."""
-        url = 'shares/detail'
+        uri = 'shares/detail'
         if params:
-                url += '?%s' % urllib.urlencode(params)
-        resp, body = self.get(url, self.headers)
+                uri += '?%s' % urllib.urlencode(params)
+        resp, body = self.get(uri)
         return resp, self._parse_resp(body)
 
     def get_share(self, share_id):
-        uri = "shares/%s" % share_id
-        resp, body = self.get(uri, self.headers)
+        resp, body = self.get("shares/%s" % share_id)
         return resp, self._parse_resp(body)
 
     def create_access_rule(self, share_id,
@@ -100,14 +104,12 @@ class SharesClientJSON(rest_client.RestClient):
             }
         }
         body = json.dumps(post_body)
-        uri = "shares/%s/action" % share_id
-        resp, body = self.post(uri, body, self.headers)
+        resp, body = self.post("shares/%s/action" % share_id, body)
         return resp, self._parse_resp(body)
 
     def list_access_rules(self, share_id):
-        uri = "shares/%s/action" % share_id
         body = {"os-access_list": None}
-        resp, body = self.post(uri, json.dumps(body), self.headers)
+        resp, body = self.post("shares/%s/action" % share_id, json.dumps(body))
         return resp, self._parse_resp(body)
 
     def delete_access_rule(self, share_id, rule_id):
@@ -117,14 +119,13 @@ class SharesClientJSON(rest_client.RestClient):
             }
         }
         body = json.dumps(post_body)
-        uri = "shares/%s/action" % share_id
-        return self.post(uri, body, self.headers)
+        return self.post("shares/%s/action" % share_id, body)
 
     def create_snapshot(self, share_id, name=None,
                         description="tempest created share-ss",
                         force=False):
         if name is None:
-            name = rand_name("tempest-created-share-snap-")
+            name = rand_name("tempest-created-share-snap")
         post_body = {
             "snapshot": {
                 "name": name,
@@ -134,30 +135,27 @@ class SharesClientJSON(rest_client.RestClient):
             }
         }
         body = json.dumps(post_body)
-        resp, body = self.post("snapshots", body, self.headers)
+        resp, body = self.post("snapshots", body)
         return resp, self._parse_resp(body)
 
     def get_snapshot(self, snapshot_id):
-        uri = "snapshots/%s" % snapshot_id
-        resp, body = self.get(uri, self.headers)
+        resp, body = self.get("snapshots/%s" % snapshot_id)
         return resp, self._parse_resp(body)
 
     def list_snapshots(self):
-        resp, body = self.get("snapshots", self.headers)
+        resp, body = self.get("snapshots")
         return resp, self._parse_resp(body)
 
     def list_snapshots_with_detail(self, params=None):
         """List the details of all shares."""
-        url = 'snapshots/detail'
+        uri = 'snapshots/detail'
         if params:
-                url += '?%s' % urllib.urlencode(params)
-        resp, body = self.get(url, self.headers)
+            uri += '?%s' % urllib.urlencode(params)
+        resp, body = self.get(uri)
         return resp, self._parse_resp(body)
 
     def delete_snapshot(self, snap_id):
-        uri = "snapshots/%s" % snap_id
-        resp, body = self.delete(uri, self.headers)
-        return resp, self._parse_resp(body)
+        return self.delete("snapshots/%s" % snap_id)
 
     def wait_for_share_status(self, share_id, status):
         """Waits for a Share to reach a given status."""
@@ -171,7 +169,7 @@ class SharesClientJSON(rest_client.RestClient):
             resp, body = self.get_share(share_id)
             share_status = body['status']
             if 'error' in share_status:
-                raise exceptions_shares.\
+                raise exceptions_share.\
                     ShareBuildErrorException(share_id=share_id)
 
             if int(time.time()) - start >= self.build_timeout:
@@ -213,7 +211,7 @@ class SharesClientJSON(rest_client.RestClient):
                     rule_status = rule['state']
                     break
             if 'error' in rule_status:
-                raise exceptions_shares.\
+                raise exceptions_share.\
                     AccessRuleBuildErrorException(rule_id=rule_id)
 
             if int(time.time()) - start >= self.build_timeout:
@@ -223,23 +221,21 @@ class SharesClientJSON(rest_client.RestClient):
                 raise exceptions.TimeoutException(message)
 
     def default_quotas(self, tenant_id):
-        uri = "os-quota-sets/%s/defaults" % tenant_id
-        resp, body = self.get(uri, self.headers)
+        resp, body = self.get("os-quota-sets/%s/defaults" % tenant_id)
         return resp, self._parse_resp(body)
 
     def show_quotas(self, tenant_id, user_id=None):
         uri = "os-quota-sets/%s" % tenant_id
         if user_id is not None:
-            uri += "?user_id=%s" % (user_id)
-        resp, body = self.get(uri, self.headers)
+            uri += "?user_id=%s" % user_id
+        resp, body = self.get(uri)
         return resp, self._parse_resp(body)
 
     def reset_quotas(self, tenant_id, user_id=None):
         uri = "os-quota-sets/%s" % tenant_id
         if user_id is not None:
             uri += "?user_id=%s" % user_id
-        resp, body = self.delete(uri, self.headers)
-        return resp, self._parse_resp(body)
+        return self.delete(uri)
 
     def update_quotas(self, tenant_id, user_id=None,
                       shares=None, snapshots=None,
@@ -258,11 +254,11 @@ class SharesClientJSON(rest_client.RestClient):
         uri = "os-quota-sets/%s" % tenant_id
         if user_id is not None:
             uri += "?user_id=%s" % user_id
-        resp, body = self.put(uri, put_body, self.headers)
+        resp, body = self.put(uri, put_body)
         return resp, self._parse_resp(body)
 
     def get_limits(self):
-        resp, body = self.get("limits", self.headers)
+        resp, body = self.get("limits")
         return resp, self._parse_resp(body)
 
     def is_resource_deleted(self, s_id, rule_id=None):
@@ -283,25 +279,23 @@ class SharesClientJSON(rest_client.RestClient):
             return True
 
     def list_extensions(self):
-        resp, extensions = self.get("extensions", self.headers)
+        resp, extensions = self.get("extensions")
         return resp, self._parse_resp(extensions)
 
     def rename(self, share_id, name, desc=None):
-        uri = "shares/%s" % share_id
         body = {"share": {"display_name": name}}
         if desc is not None:
             body["share"].update({"display_description": desc})
         body = json.dumps(body)
-        resp, body = self.put(uri, body, self.headers)
+        resp, body = self.put("shares/%s" % share_id, body)
         return resp, self._parse_resp(body)
 
     def rename_snapshot(self, snapshot_id, name, desc=None):
-        uri = "snapshots/%s" % snapshot_id
         body = {"snapshot": {"display_name": name}}
         if desc is not None:
             body["snapshot"].update({"display_description": desc})
         body = json.dumps(body)
-        resp, body = self.put(uri, body, self.headers)
+        resp, body = self.put("snapshots/%s" % snapshot_id, body)
         return resp, self._parse_resp(body)
 
     def reset_state(self, s_id, status="error", s_type="shares"):
@@ -310,11 +304,9 @@ class SharesClientJSON(rest_client.RestClient):
         status: available, error, creating, deleting, error_deleting
         s_type: shares, snapshots
         """
-        uri = "%s/%s/action" % (s_type, s_id)
         body = {"os-reset_status": {"status": status}}
         body = json.dumps(body)
-        resp, body = self.post(uri, body, self.headers)
-        return resp, self._parse_resp(body)
+        return self.post("%s/%s/action" % (s_type, s_id), body)
 
 ###############
 
@@ -323,9 +315,9 @@ class SharesClientJSON(rest_client.RestClient):
         post_body = {"metadata": metadata}
         body = json.dumps(post_body)
         if method is "post":
-            resp, metadata = self.post(uri, body, self.headers)
+            resp, metadata = self.post(uri, body)
         if method is "put":
-            resp, metadata = self.put(uri, body, self.headers)
+            resp, metadata = self.put(uri, body)
         return resp, self._parse_resp(metadata)
 
     def set_metadata(self, share_id, metadata={}):
@@ -335,11 +327,93 @@ class SharesClientJSON(rest_client.RestClient):
         return self._update_metadata(share_id, metadata, method="put")
 
     def delete_metadata(self, share_id, key):
-        uri = "shares/%s/metadata/%s" % (share_id, key)
-        resp, body = self.delete(uri, self.headers)
-        return resp, self._parse_resp(body)
+        return self.delete("shares/%s/metadata/%s" % (share_id, key))
 
     def get_metadata(self, share_id):
-        uri = "shares/%s/metadata" % share_id
-        resp, body = self.get(uri, self.headers)
+        resp, body = self.get("shares/%s/metadata" % share_id)
+        return resp, self._parse_resp(body)
+
+###############
+
+    def create_security_service(self, ss_type="ldap", **kwargs):
+        # ss_type: ldap, kerberos, active_directory
+        # kwargs: name, description, dns_ip, server, domain, sid, password
+        post_body = {"type": ss_type}
+        post_body.update(kwargs)
+        body = json.dumps({"security_service": post_body})
+        resp, body = self.post("security-services", body)
+        return resp, self._parse_resp(body)
+
+    def update_security_service(self, ss_id, **kwargs):
+        # ss_id - id of security-service entity
+        # kwargs: dns_ip, server, domain, sid, password, name, description
+        # for 'active' status can be changed
+        # only 'name' and 'description' fields
+        body = json.dumps({"security_service": kwargs})
+        resp, body = self.put("security-services/%s" % ss_id, body)
+        return resp, self._parse_resp(body)
+
+    def get_security_service(self, ss_id):
+        resp, body = self.get("security-services/%s" % ss_id)
+        return resp, self._parse_resp(body)
+
+    def list_security_services(self):
+        resp, body = self.get("security-services")
+        return resp, self._parse_resp(body)
+
+    def delete_security_service(self, ss_id):
+        return self.delete("security-services/%s" % ss_id)
+
+###############
+
+    def create_share_network(self, **kwargs):
+        # kwargs: name, description
+        #+ for neutron: neutron_net_id, neutron_subnet_id
+        body = json.dumps({"share_network": kwargs})
+        resp, body = self.post("share-networks", body)
+        return resp, self._parse_resp(body)
+
+    def update_share_network(self, sn_id, **kwargs):
+        # kwargs: name, description
+        #+ for neutron: neutron_net_id, neutron_subnet_id
+        body = json.dumps({"share_network": kwargs})
+        resp, body = self.put("share-networks/%s" % sn_id, body)
+        return resp, self._parse_resp(body)
+
+    def get_share_network(self, sn_id):
+        resp, body = self.get("share-networks/%s" % sn_id)
+        return resp, self._parse_resp(body)
+
+    def list_share_networks(self):
+        resp, body = self.get("share-networks")
+        return resp, self._parse_resp(body)
+
+    def delete_share_network(self, sn_id):
+        return self.delete("share-networks/%s" % sn_id)
+
+###############
+
+    def _map_security_service_and_share_network(self, sn_id, ss_id,
+                                                action="add"):
+        # sn_id: id of share_network_entity
+        # ss_id: id of security service entity
+        # action: add, remove
+        data = {
+            "%s_security_service" % action: {
+                "security_service_id": ss_id
+            }
+        }
+        body = json.dumps(data)
+        resp, body = self.post("share-networks/%s/action" % sn_id, body)
+        return resp, self._parse_resp(body)
+
+    def add_sec_service_to_share_network(self, sn_id, ss_id):
+        return self._map_security_service_and_share_network(sn_id, ss_id)
+
+    def remove_sec_service_from_share_network(self, sn_id, ss_id):
+        return self._map_security_service_and_share_network(sn_id, ss_id,
+                                                            "remove")
+
+    def list_sec_services_for_share_network(self, sn_id):
+        resp, body = self.get("security-services?share_network_id=%s" % sn_id)
         return resp, self._parse_resp(body)

@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -24,3 +22,7 @@ class ShareBuildErrorException(exceptions.TempestException):
 
 class AccessRuleBuildErrorException(exceptions.TempestException):
     message = "Share's rule with id %(rule_id) is in ERROR status"
+
+
+class ShareProtocolNotSpecified(exceptions.TempestException):
+    message = "Share can not be created, share protocol is not specified"

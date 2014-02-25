@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -15,32 +13,40 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.shares import base
+from tempest.api.share import base
+from tempest import clients_share as clients
+from tempest.common import isolated_creds
+from tempest import config_share as config
 from tempest import test
 
+CONF = config.CONF
 
-class SharesQuotasTestJSON(base.BaseSharesAdminTest):
 
-    # Tests should be used without unlimited quotas (-1).
-    # It is recommended to delete all entities in Manila before test run.
+class SharesQuotasTest(base.BaseSharesAdminTest):
 
     @classmethod
     def setUpClass(cls):
-        super(SharesQuotasTestJSON, cls).setUpClass()
+        super(SharesQuotasTest, cls).setUpClass()
+
+        # Use isolated creds
+        cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__)
+        creds = cls.isolated_creds.get_admin_creds()
+        username, tenant_name, password = creds
+        cls.os = clients.Manager(username=username,
+                                 password=password,
+                                 tenant_name=tenant_name,
+                                 interface=cls._interface)
+        cls.shares_client = cls.os.shares_client
+
+        # Get tenant and user
         cls.identity_client = cls._get_identity_admin_client()
-        cls.tenant = cls.identity_client\
-                        .get_tenant_by_name(cls.shares_client.tenant_name)
-        cls.user = cls.identity_client\
-                      .get_user_by_username(cls.tenant["id"],
-                                            cls.shares_client.username)
+        cls.tenant = cls.identity_client.get_tenant_by_name(
+            cls.shares_client.auth_params["tenant"])
+        cls.user = cls.identity_client.get_user_by_username(
+            cls.tenant["id"], cls.shares_client.auth_params["user"])
 
-        # save quotas before tests
-        __, cls.t_q = cls.shares_client.show_quotas(cls.tenant["id"])
-        __, cls.u_q = cls.shares_client.show_quotas(cls.tenant["id"],
-                                                    cls.user["id"])
-
-        value = 1000
         # set quotas before tests
+        value = 1000
         cls.shares_client.update_quotas(cls.tenant["id"], shares=value,
                                         snapshots=value, gigabytes=value)
         cls.shares_client.update_quotas(cls.tenant["id"], cls.user["id"],
@@ -49,17 +55,8 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
 
     @classmethod
     def tearDownClass(cls):
-        super(SharesQuotasTestJSON, cls).tearDownClass()
-        # back up quota values
-        cls.shares_client.update_quotas(cls.tenant["id"],
-                                        shares=cls.t_q["shares"],
-                                        snapshots=cls.t_q["snapshots"],
-                                        gigabytes=cls.t_q["gigabytes"])
-        cls.shares_client.update_quotas(cls.tenant["id"],
-                                        cls.user["id"],
-                                        shares=cls.u_q["shares"],
-                                        snapshots=cls.u_q["snapshots"],
-                                        gigabytes=cls.u_q["gigabytes"])
+        super(SharesQuotasTest, cls).tearDownClass()
+        cls.isolated_creds.clear_isolated_creds()
 
     @test.attr(type=['positive', 'smoke'])
     def test_limits_keys(self):
@@ -93,7 +90,7 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
         self.assertGreater(int(limits["absolute"]["maxTotalShares"]), -2)
         self.assertGreater(int(limits["absolute"]["maxTotalSnapshots"]), -2)
 
-    @test.attr(type='positive')
+    @test.attr(type=['positive', ])
     def test_default_quotas(self):
         resp, quotas = self.shares_client.default_quotas(self.tenant["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
@@ -118,14 +115,14 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
 
-    @test.attr(type='positive')
+    @test.attr(type=['positive', ])
     def test_default_quotas_with_empty_tenant_id(self):
         # it should return default quotas without any tenant-id
         resp, body = self.shares_client.default_quotas("")
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertTrue(len(body) > 0)
 
-    @test.attr(type='positive')
+    @test.attr(type=['positive', ])
     def test_update_tenant_quota_shares(self):
 
         # get current quotas
@@ -139,7 +136,7 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["shares"]), new_quota)
 
-    @test.attr(type='positive')
+    @test.attr(type=['positive', ])
     def test_update_user_quota_shares(self):
 
         # get current quotas
@@ -154,7 +151,7 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["shares"]), new_quota)
 
-    @test.attr(type='positive')
+    @test.attr(type=['positive', ])
     def test_update_tenant_quota_snapshots(self):
 
         # get current quotas
@@ -168,7 +165,7 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["snapshots"]), new_quota)
 
-    @test.attr(type='positive')
+    @test.attr(type=['positive', ])
     def test_update_user_quota_snapshots(self):
 
         # get current quotas
@@ -183,7 +180,7 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["snapshots"]), new_quota)
 
-    @test.attr(type='positive')
+    @test.attr(type=['positive', ])
     def test_update_tenant_quota_gigabytes(self):
 
         # get current quotas
@@ -199,7 +196,7 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["gigabytes"]), gigabytes)
 
-    @test.attr(type='positive')
+    @test.attr(type=['positive', ])
     def test_update_user_quota_gigabytes(self):
 
         # get current quotas
@@ -217,7 +214,7 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["gigabytes"]), gigabytes)
 
-    @test.attr(type='positive')
+    @test.attr(type=['positive', ])
     def test_reset_tenant_quotas(self):
 
         # get default_quotas
@@ -244,7 +241,7 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
         self.assertEqual(int(updated["gigabytes"]), gigabytes)
 
         # reset customized quotas
-        resp, reseted = self.shares_client.reset_quotas(self.tenant["id"])
+        resp, reset = self.shares_client.reset_quotas(self.tenant["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
         # verify quotas
@@ -255,7 +252,3 @@ class SharesQuotasTestJSON(base.BaseSharesAdminTest):
                          int(default["snapshots"]))
         self.assertEqual(int(after_delete["gigabytes"]),
                          int(default["gigabytes"]))
-
-
-class SharesQuotasTestXML(SharesQuotasTestJSON):
-    _interface = 'xml'

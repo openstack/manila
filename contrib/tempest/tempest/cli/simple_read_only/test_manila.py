@@ -19,7 +19,7 @@ import re
 import subprocess
 
 from tempest.cli import manilaclient
-from tempest import config_shares as config
+from tempest import config_share as config
 
 CONF = config.CONF
 
@@ -69,16 +69,12 @@ class SimpleReadOnlyManilaClientTest(manilaclient.ClientTestBase):
 
     def test_manila_quota_defaults(self):
         """This CLI can accept and string as param."""
-        roles = self.parser.listing(self.manila('quota-defaults',
-                                                params=self.identity.
-                                                admin_tenant_name))
+        roles = self.parser.listing(self.manila('quota-defaults'))
         self.assertTableStruct(roles, ['Property', 'Value'])
 
     def test_manila_quota_show(self):
         """This CLI can accept and string as param."""
-        roles = self.parser.listing(self.manila('quota-show',
-                                                params=self.identity.
-                                                admin_tenant_name))
+        roles = self.parser.listing(self.manila('quota-show'))
         self.assertTableStruct(roles, ['Property', 'Value'])
 
     def test_manila_rate_limits(self):
@@ -122,7 +118,7 @@ class SimpleReadOnlyManilaClientTest(manilaclient.ClientTestBase):
         commands = set(commands)
         wanted_commands = set(('absolute-limits', 'list', 'help',
                                'quota-show', 'access-list', 'snapshot-list',
-                               'allow-access', 'deny-access'))
+                               'access-allow', 'access-deny'))
         self.assertFalse(wanted_commands - commands)
 
     # Optional arguments:
@@ -137,4 +133,4 @@ class SimpleReadOnlyManilaClientTest(manilaclient.ClientTestBase):
         self.manila('list', flags='--retries 3')
 
     def test_manila_region_list(self):
-        self.manila('list', flags='--os-region-name ' + self.identity.region)
+        self.manila('list', flags='--os-region-name ' + CONF.identity.region)

@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2014 mirantis Inc.
 # All Rights Reserved.
 #
@@ -15,23 +13,35 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.shares import base
-from tempest.common.utils.data_utils import rand_name
+from tempest.api.share import base
+from tempest.common.utils import data_utils
+from tempest import config_share as config
 from tempest import exceptions
 from tempest import test
 
+CONF = config.CONF
 
-class SharesTestJSON(base.BaseSharesTest):
+
+class SharesNFSTest(base.BaseSharesTest):
+    """Covers share functionality, that is related to NFS share type."""
+    protocol = "nfs"
+
+    @classmethod
+    def setUpClass(cls):
+        super(SharesNFSTest, cls).setUpClass()
+        if cls.protocol not in CONF.share.enable_protocols:
+            message = "%s tests are disabled" % cls.protocol
+            raise cls.skipException(message)
 
     def tearDown(self):
-        super(SharesTestJSON, self).tearDown()
+        super(SharesNFSTest, self).tearDown()
         self.clear_resources()
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", ])
     def test_create_delete_share(self):
 
         # create share
-        resp, share = self.create_share_wait_for_active()
+        resp, share = self.create_share_wait_for_active(self.protocol)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
         # delete share
@@ -42,18 +52,70 @@ class SharesTestJSON(base.BaseSharesTest):
                           self.shares_client.get_share,
                           share['id'])
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", ])
+    def test_create_delete_snapshot(self):
+
+        # create share
+        __, share = self.create_share_wait_for_active(self.protocol)
+
+        # create snapshot
+        resp, snap = self.create_snapshot_wait_for_active(share["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        # delete snapshot
+        resp, __ = self.shares_client.delete_snapshot(snap["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.shares_client.wait_for_resource_deletion(snap["id"])
+        self.assertRaises(exceptions.NotFound,
+                          self.shares_client.get_snapshot, snap['id'])
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_create_share_from_snapshot(self):
+
+        # create share
+        __, share = self.create_share_wait_for_active(
+                share_protocol=self.protocol)
+
+        # create snapshot
+        __, snap = self.create_snapshot_wait_for_active(share["id"])
+
+        # crate share from snapshot
+        resp, s2 = self.create_share_wait_for_active(self.protocol,
+                                                     snapshot_id=snap["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        # verify share, created from snapshot
+        resp, get = self.shares_client.get_share(s2["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        msg = "Expected snapshot_id %s as "\
+              "source of share %s" % (snap["id"], get["snapshot_id"])
+        self.assertEqual(get["snapshot_id"], snap["id"], msg)
+
+
+class SharesCIFSTest(SharesNFSTest):
+    """Covers share functionality, that is related to CIFS share type."""
+    protocol = "cifs"
+
+
+class SharesTest(base.BaseSharesTest):
+    """Covers share functionality, that doesn't related to share type."""
+
+    def tearDown(self):
+        super(SharesTest, self).tearDown()
+        self.clear_resources()
+
+    @test.attr(type=["gate", ])
     def test_get_share(self):
 
         # test data
-        name = rand_name("rand-share-name-")
-        desc = rand_name("rand-share-description-")
+        name = data_utils.rand_name("tempest-share-name")
+        desc = data_utils.rand_name("tempest-share-description")
         size = 1
 
         # create share
-        resp, share = self.create_share_wait_for_active(name=name,
-                                                        description=desc,
-                                                        size=size)
+        __, share = self.create_share_wait_for_active(name=name,
+                                                      description=desc,
+                                                      size=size)
 
         # get share
         resp, share = self.shares_client.get_share(share['id'])
@@ -79,11 +141,11 @@ class SharesTestJSON(base.BaseSharesTest):
         msg = "Expected size: '%s', actual size: '%s'" % (size, share["size"])
         self.assertEqual(size, int(share["size"]), msg)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", ])
     def test_list_shares(self):
 
         # create share
-        resp, share = self.create_share_wait_for_active()
+        __, share = self.create_share_wait_for_active()
 
         # list shares
         resp, shares = self.shares_client.list_shares()
@@ -100,11 +162,11 @@ class SharesTestJSON(base.BaseSharesTest):
         msg = "expected id lists %s times in share list" % (len(gen))
         self.assertEqual(len(gen), 1, msg)
 
-    @test.attr(type=['positive', 'gate'])
+    @test.attr(type=["gate", ])
     def test_list_shares_with_detail(self):
 
         # create share
-        resp, share = self.create_share_wait_for_active()
+        __, share = self.create_share_wait_for_active()
 
         # list shares
         resp, shares = self.shares_client.list_shares_with_detail()
@@ -123,32 +185,17 @@ class SharesTestJSON(base.BaseSharesTest):
         msg = "expected id lists %s times in share list" % (len(gen))
         self.assertEqual(len(gen), 1, msg)
 
-    @test.attr(type=['positive', ])
-    def test_create_delete_snapshot(self):
-
-        # create share
-        resp, share = self.create_share_wait_for_active()
-
-        # create snapshot
-        resp, snap = self.create_snapshot_wait_for_active(share["id"])
-
-        # delete snapshot
-        self.shares_client.delete_snapshot(snap["id"])
-        self.shares_client.wait_for_resource_deletion(snap["id"])
-        self.assertRaises(exceptions.NotFound,
-                          self.shares_client.get_snapshot, snap['id'])
-
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", ])
     def test_get_snapshot(self):
 
         # create share
-        resp, share = self.create_share_wait_for_active()
+        __, share = self.create_share_wait_for_active()
 
         #create snapshot
-        name = rand_name("tempest-snap-")
-        desc = rand_name("tempest-snap-description-")
-        resp, snap = self.create_snapshot_wait_for_active(share["id"],
-                                                          name, desc)
+        name = data_utils.rand_name("tempest-snap-")
+        desc = data_utils.rand_name("tempest-snap-description-")
+        __, snap = self.create_snapshot_wait_for_active(share["id"],
+                                                        name, desc)
 
         # get snapshot
         resp, get = self.shares_client.get_snapshot(snap["id"])
@@ -175,14 +222,14 @@ class SharesTestJSON(base.BaseSharesTest):
               "actual share_id: '%s'" % (name, get["share_id"])
         self.assertEqual(share["id"], get["share_id"], msg)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", ])
     def test_list_snapshots(self):
 
         # create share
-        resp, share = self.create_share_wait_for_active()
+        __, share = self.create_share_wait_for_active()
 
         #create snapshot
-        resp, snap = self.create_snapshot_wait_for_active(share["id"])
+        __, snap = self.create_snapshot_wait_for_active(share["id"])
 
         # list share snapshots
         resp, snaps = self.shares_client.list_snapshots()
@@ -197,16 +244,16 @@ class SharesTestJSON(base.BaseSharesTest):
         # our share id in list and have no duplicates
         gen = [sid["id"] for sid in snaps if sid["id"] in snap["id"]]
         msg = "expected id lists %s times in share list" % (len(gen))
-        self.assertEquals(1, len(gen), msg)
+        self.assertEqual(1, len(gen), msg)
 
-    @test.attr(type=['positive', 'gate'])
+    @test.attr(type=["gate", ])
     def test_list_snapshots_with_detail(self):
 
         # create share
-        resp, share = self.create_share_wait_for_active()
+        __, share = self.create_share_wait_for_active()
 
         # create snapshot
-        resp, snap = self.create_snapshot_wait_for_active(share["id"])
+        __, snap = self.create_snapshot_wait_for_active(share["id"])
 
         # list share snapshots
         resp, snaps = self.shares_client.list_snapshots_with_detail()
@@ -225,45 +272,15 @@ class SharesTestJSON(base.BaseSharesTest):
         msg = "expected id lists %s times in share list" % (len(gen))
         self.assertEqual(len(gen), 1, msg)
 
-    @test.attr(type=['positive', 'smoke', 'gate'])
-    def test_create_share_from_snapshot(self):
-
-        # create share
-        resp, share = self.create_share_wait_for_active()
-
-        # create snapshot
-        resp, snap = self.create_snapshot_wait_for_active(share["id"])
-
-        # crate share from snapshot
-        resp, s2 = self.create_share_wait_for_active(snapshot_id=snap["id"])
-
-        # verify share, created from snapshot
-        resp, get = self.shares_client.get_share(s2["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        msg = "Expected snapshot_id %s as "\
-              "source of share %s" % (snap["id"], get["snapshot_id"])
-        self.assertEqual(get["snapshot_id"], snap["id"], msg)
-
-    @test.attr(type=['positive', 'smoke', 'gate'])
-    def test_extensions(self):
-
-        # get extensions
-        resp, extensions = self.shares_client.list_extensions()
-
-        # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        keys = ['alias', 'updated', 'namespace', 'name', 'description']
-        [self.assertIn(key, ext.keys()) for ext in extensions for key in keys]
-
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", ])
     def test_rename_share(self):
 
         # create share
-        _, share = self.create_share_wait_for_active()
+        __, share = self.create_share_wait_for_active()
 
         # rename share
-        new_name = rand_name("new_name_")
-        new_desc = rand_name("new_desc_")
+        new_name = data_utils.rand_name("tempest-new-name")
+        new_desc = data_utils.rand_name("tempest-new-description")
         resp, renamed = self.shares_client.rename(share["id"],
                                                   new_name,
                                                   new_desc)
@@ -271,25 +288,21 @@ class SharesTestJSON(base.BaseSharesTest):
         self.assertEqual(new_name, renamed["name"])
         self.assertEqual(new_desc, renamed["description"])
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", ])
     def test_rename_snapshot(self):
 
         # create share
-        _, share = self.create_share_wait_for_active()
+        __, share = self.create_share_wait_for_active()
 
         # create snapshot
-        _, snap = self.create_snapshot_wait_for_active(share["id"])
+        __, snap = self.create_snapshot_wait_for_active(share["id"])
 
         # rename snapshot
-        new_name = rand_name("new_name_for_snap_")
-        new_desc = rand_name("new_desc_for_snap_")
+        new_name = data_utils.rand_name("tempest-new-name-for-snapshot")
+        new_desc = data_utils.rand_name("tempest-new-description-for-snapshot")
         resp, renamed = self.shares_client.rename_snapshot(snap["id"],
                                                            new_name,
                                                            new_desc)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(new_name, renamed["name"])
         self.assertEqual(new_desc, renamed["description"])
-
-
-class SharesTestXML(SharesTestJSON):
-    _interface = 'xml'

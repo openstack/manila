@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -15,16 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.shares import base
+from tempest.api.share import base
 from tempest import exceptions
 from tempest import test
 
 
-class SharesMetadataNegativeTestJSON(base.BaseSharesTest):
+class SharesMetadataNegativeTest(base.BaseSharesTest):
 
     @classmethod
     def setUpClass(cls):
-        super(SharesMetadataNegativeTestJSON, cls).setUpClass()
+        super(SharesMetadataNegativeTest, cls).setUpClass()
         _, cls.share = cls.create_share_wait_for_active()
 
     @test.attr(type=['negative', ])
@@ -90,7 +88,3 @@ class SharesMetadataNegativeTestJSON(base.BaseSharesTest):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.delete_metadata,
                           self.share["id"], "wrong_key")
-
-
-class SharesMetadataNegativeTestXML(SharesMetadataNegativeTestJSON):
-    _interface = 'xml'

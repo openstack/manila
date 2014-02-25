@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -15,35 +13,43 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.shares import base
+from tempest.api.share import base
+from tempest import clients_share as clients
+from tempest.common import isolated_creds
+from tempest import config_share as config
 from tempest import exceptions
-from tempest import exceptions_shares
 from tempest import test
-import unittest
+
+import testtools
+
+CONF = config.CONF
 
 
-class SharesQuotasNegativeTestJSON(base.BaseSharesAdminTest):
-
-    # Tests should be used without unlimited quotas (-1).
-    # It is recommended to delete all entities in Manila before test run.
+class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @classmethod
     def setUpClass(cls):
-        super(SharesQuotasNegativeTestJSON, cls).setUpClass()
+        super(SharesQuotasNegativeTest, cls).setUpClass()
+
+        # Use isolated creds
+        cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__)
+        creds = cls.isolated_creds.get_admin_creds()
+        username, tenant_name, password = creds
+        cls.os = clients.Manager(username=username,
+                                 password=password,
+                                 tenant_name=tenant_name,
+                                 interface=cls._interface)
+        cls.shares_client = cls.os.shares_client
+
+        # Get tenant and user
         cls.identity_client = cls._get_identity_admin_client()
-        cls.tenant = cls.identity_client\
-                        .get_tenant_by_name(cls.shares_client.tenant_name)
-        cls.user = cls.identity_client\
-                      .get_user_by_username(cls.tenant["id"],
-                                            cls.shares_client.username)
+        cls.tenant = cls.identity_client.get_tenant_by_name(
+            cls.shares_client.auth_params["tenant"])
+        cls.user = cls.identity_client.get_user_by_username(
+            cls.tenant["id"], cls.shares_client.auth_params["user"])
 
-        # save quotas before tests
-        __, cls.t_q = cls.shares_client.show_quotas(cls.tenant["id"])
-        __, cls.u_q = cls.shares_client.show_quotas(cls.tenant["id"],
-                                                    cls.user["id"])
-
-        value = 1000
         # set quotas before tests
+        value = 1000
         cls.shares_client.update_quotas(cls.tenant["id"], shares=value,
                                         snapshots=value, gigabytes=value)
         cls.shares_client.update_quotas(cls.tenant["id"], cls.user["id"],
@@ -52,49 +58,40 @@ class SharesQuotasNegativeTestJSON(base.BaseSharesAdminTest):
 
     @classmethod
     def tearDownClass(cls):
-        super(SharesQuotasNegativeTestJSON, cls).tearDownClass()
-        # back up quota values
-        cls.shares_client.update_quotas(cls.tenant["id"],
-                                        shares=cls.t_q["shares"],
-                                        snapshots=cls.t_q["snapshots"],
-                                        gigabytes=cls.t_q["gigabytes"])
-        cls.shares_client.update_quotas(cls.tenant["id"],
-                                        cls.user["id"],
-                                        shares=cls.u_q["shares"],
-                                        snapshots=cls.u_q["snapshots"],
-                                        gigabytes=cls.u_q["gigabytes"])
+        super(SharesQuotasNegativeTest, cls).tearDownClass()
+        cls.isolated_creds.clear_isolated_creds()
 
-    @test.attr(type='negative')
-    @unittest.skip("Skip until Bug #1234244 is fixed")
+    @test.attr(type=['negative', ])
+    @testtools.skip("Skip until Bug #1234244 is fixed")
     def test_quotas_with_wrong_tenant_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_quotas, "wrong_tenant_id")
 
-    @test.attr(type='negative')
-    @unittest.skip("Skip until Bug #1234244 is fixed")
+    @test.attr(type=['negative', ])
+    @testtools.skip("Skip until Bug #1234244 is fixed")
     def test_quotas_with_wrong_user_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_quotas,
                           self.tenant["id"],
                           "wrong_user_id")
 
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_quotas_with_empty_tenant_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.show_quotas, "")
 
-    @test.attr(type='negative')
-    @unittest.skip("Skip until Bug #1233170 is fixed")
+    @test.attr(type=['negative', ])
+    @testtools.skip("Skip until Bug #1233170 is fixed")
     def test_default_quotas_with_wrong_tenant_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.default_quotas, "wrong_tenant_id")
 
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_reset_quotas_with_empty_tenant_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.reset_quotas, "")
 
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_update_shares_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         self.assertRaises(exceptions.BadRequest,
@@ -102,7 +99,7 @@ class SharesQuotasNegativeTestJSON(base.BaseSharesAdminTest):
                           self.tenant["id"],
                           shares=-2)
 
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_update_snapshots_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         self.assertRaises(exceptions.BadRequest,
@@ -110,7 +107,7 @@ class SharesQuotasNegativeTestJSON(base.BaseSharesAdminTest):
                           self.tenant["id"],
                           snapshots=-2)
 
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_update_gigabytes_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         self.assertRaises(exceptions.BadRequest,
@@ -118,7 +115,7 @@ class SharesQuotasNegativeTestJSON(base.BaseSharesAdminTest):
                           self.tenant["id"],
                           gigabytes=-2)
 
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_create_share_with_size_bigger_than_quota(self):
 
         new_quota = 25
@@ -134,33 +131,21 @@ class SharesQuotasNegativeTestJSON(base.BaseSharesAdminTest):
                           self.create_share_wait_for_active,
                           size=overquota)
 
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_unlimited_quota_for_gigabytes(self):
-
-        # get current quota
-        _, quotas = self.shares_client.show_quotas(self.tenant["id"])
-
         # set unlimited quota for gigabytes
         resp, __ = self.shares_client.update_quotas(self.tenant["id"],
                                                     gigabytes=-1)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+    @test.attr(type=['negative', ])
+    def test_unlimited_user_quota_for_gigabytes(self):
         resp, __ = self.shares_client.update_quotas(self.tenant["id"],
                                                     self.user["id"],
                                                     gigabytes=-1)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
-        # share should be scheduled
-        self.assertRaises(exceptions_shares.ShareBuildErrorException,
-                          self.create_share_wait_for_active, size=987654)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-
-        # return quotas as it was
-        self.shares_client.update_quotas(self.tenant["id"],
-                                         gigabytes=quotas["gigabytes"])
-        self.shares_client.update_quotas(self.tenant["id"], self.user["id"],
-                                         gigabytes=quotas["gigabytes"])
-
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_try_set_user_quota_gigabytes_bigger_than_tenant_quota(self):
 
         # get current quotas for tenant
@@ -174,7 +159,7 @@ class SharesQuotasNegativeTestJSON(base.BaseSharesAdminTest):
                           self.user["id"],
                           gigabytes=bigger_value)
 
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_try_set_user_quota_shares_bigger_than_tenant_quota(self):
 
         # get current quotas for tenant
@@ -188,7 +173,7 @@ class SharesQuotasNegativeTestJSON(base.BaseSharesAdminTest):
                           self.user["id"],
                           shares=bigger_value)
 
-    @test.attr(type='negative')
+    @test.attr(type=['negative', ])
     def test_try_set_user_quota_snaps_bigger_than_tenant_quota(self):
 
         # get current quotas for tenant
@@ -201,7 +186,3 @@ class SharesQuotasNegativeTestJSON(base.BaseSharesAdminTest):
                           self.tenant["id"],
                           self.user["id"],
                           snapshots=bigger_value)
-
-
-class SharesQuotasNegativeTestXML(SharesQuotasNegativeTestJSON):
-    _interface = 'xml'

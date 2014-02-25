@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -15,15 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.shares import base
+from tempest.api.share import base
 from tempest import test
 
 
-class AdminActionsTestJSON(base.BaseSharesAdminTest):
+class AdminActionsTest(base.BaseSharesAdminTest):
 
     @classmethod
     def setUpClass(cls):
-        super(AdminActionsTestJSON, cls).setUpClass()
+        super(AdminActionsTest, cls).setUpClass()
 
         # create share (available or error)
         cls.share_states = ["error", "available"]
@@ -49,7 +47,3 @@ class AdminActionsTestJSON(base.BaseSharesAdminTest):
                                                       status=status)
             self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
             self.shares_client.wait_for_snapshot_status(self.sn["id"], status)
-
-
-class AdminActionsTestXML(AdminActionsTestJSON):
-    _interface = 'xml'
