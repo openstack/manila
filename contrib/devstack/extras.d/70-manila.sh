@@ -17,6 +17,10 @@ if is_service_enabled manila; then
         start_manila
         echo_summary "Creating Manila entities for auth service"
         create_manila_accounts
+        echo_summary "Creating Manila service flavor"
+        create_manila_service_flavor
+        echo_summary "Creating Manila service image"
+        create_manila_service_image
     fi
 
     if [[ "$1" == "unstack" ]]; then
