@@ -40,7 +40,6 @@ from manila.db.sqlalchemy.session import get_session
 from manila import exception
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
-from manila.openstack.common import uuidutils
 
 
 CONF = cfg.CONF
@@ -1433,7 +1432,7 @@ def _share_metadata_get_item(context, share_id, key, session=None):
 @require_context
 def security_service_create(context, values):
     if not values.get('id'):
-        values['id'] = uuidutils.generate_uuid()
+        values['id'] = str(uuid.uuid4())
 
     security_service_ref = models.SecurityService()
     security_service_ref.update(values)
@@ -1509,7 +1508,7 @@ def _network_get_query(context, session=None):
 @require_context
 def share_network_create(context, values):
     if not values.get('id'):
-        values['id'] = uuidutils.generate_uuid()
+        values['id'] = str(uuid.uuid4())
 
     network_ref = models.ShareNetwork()
     network_ref.update(values)

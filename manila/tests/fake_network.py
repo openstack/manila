@@ -15,11 +15,11 @@
 #
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
+import uuid
 
 from oslo.config import cfg
 
 from manila.openstack.common import log as logging
-from manila.openstack.common import uuidutils
 
 
 CONF = cfg.CONF
@@ -112,11 +112,11 @@ class API(object):
     def get_all_tenant_networks(self, tenant_id):
         net1 = self.network.copy()
         net1['tenant_id'] = tenant_id
-        net1['id'] = uuidutils.generate_uuid()
+        net1['id'] = str(uuid.uuid4())
 
         net2 = self.network.copy()
         net2['tenant_id'] = tenant_id
-        net2['id'] = uuidutils.generate_uuid()
+        net2['id'] = str(uuid.uuid4())
         return [net1, net2]
 
     def create_port(self, tenant_id, network_id, subnet_id=None,
@@ -142,7 +142,7 @@ class API(object):
         for i in range(2):
             ports.append(self.port.copy())
         for port in ports:
-            port['id'] = uuidutils.generate_uuid()
+            port['id'] = str(uuid.uuid4())
             for key, val in search_opts.items():
                 port[key] = val
             if 'id' in search_opts:
@@ -177,8 +177,8 @@ class API(object):
         """Get all networks for client."""
         net1 = self.network.copy()
         net2 = self.network.copy()
-        net1['id'] = uuidutils.generate_uuid()
-        net2['id'] = uuidutils.generate_uuid()
+        net1['id'] = str(uuid.uuid4())
+        net2['id'] = str(uuid.uuid4())
         return [net1, net2]
 
     def get_network(self, network_uuid):
