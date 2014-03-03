@@ -270,7 +270,6 @@ SEE ALSO
 ========
 
 * `OpenStack Manila <http://manila.openstack.org>`__
-* `OpenStack Swift <http://swift.openstack.org>`__
 
 BUGS
 ====

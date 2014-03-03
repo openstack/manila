@@ -489,10 +489,6 @@ class InvalidShareSnapshot(ManilaException):
     message = _("Invalid share snapshot: %(reason)s")
 
 
-class SwiftConnectionFailed(ManilaException):
-    message = _("Connection to swift failed") + ": %(reason)s"
-
-
 class ShareMetadataNotFound(NotFound):
     message = _("Metadata item is not found")
 
