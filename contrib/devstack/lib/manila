@@ -304,10 +304,8 @@ function init_manila() {
 
 # install_manila() - Collect source and prepare
 function install_manila() {
-    if [[ "$RECLONE" = "True" ]]; then
-        git_clone $MANILA_REPO $MANILA_DIR $MANILA_BRANCH
-        git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
-    fi
+    git_clone $MANILA_REPO $MANILA_DIR $MANILA_BRANCH
+    git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
 
     if is_service_enabled m-shr; then
         if is_ubuntu; then
