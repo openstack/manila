@@ -910,8 +910,8 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_service_net = fake_network.FakeNetwork(subnets=[])
         self.stubs.Set(self._driver.neutron_api, 'list_ports',
                        mock.Mock(return_value=[]))
-        self.stubs.Set(self._driver.db, 'service_get_all_by_topic',
-                mock.Mock(return_value=[{'host': 'fake_host'}]))
+        self.stubs.Set(self._driver, '_execute',
+                       mock.Mock(return_value=('fake_host', '')))
         self.stubs.Set(self._driver.neutron_api, 'create_port',
                        mock.Mock(return_value=fake_service_port))
         self.stubs.Set(self._driver.neutron_api, 'get_network',

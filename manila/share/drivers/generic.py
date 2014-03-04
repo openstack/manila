@@ -674,11 +674,12 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.\
                         ManilaException(_('Error. Ambiguous service ports'))
         elif not ports:
-            services = self.db.service_get_all_by_topic(self.admin_context,
-                                                        'manila-share')
-            host = services[0]['host'] if services else None
-            if host is None:
-                raise exception.ManilaException('Unable to get host')
+            try:
+                stdout, stderr = self._execute('hostname')
+                host = stdout.strip()
+            except exception.ProcessExecutionError as e:
+                msg = _('Unable to get host. %s') % e.stderr
+                raise exception.ManilaException(msg)
             port = self.neutron_api.create_port(self.service_tenant_id,
                                        self.service_network_id,
                                        device_id='manila-share',
