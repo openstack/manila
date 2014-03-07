@@ -60,7 +60,7 @@ MANILA_SERVICE_PROTOCOL=${MANILA_SERVICE_PROTOCOL:-$SERVICE_PROTOCOL}
 if [[ -d $MANILA_DIR/bin ]]; then
     MANILA_BIN_DIR=$MANILA_DIR/bin
 else
-    MANILA_BIN_DIR=/usr/local/bin
+    MANILA_BIN_DIR=$(get_python_exec_prefix)
 fi
 
 SHARE_GROUP=${SHARE_GROUP:-stack-shares}
