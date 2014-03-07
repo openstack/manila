@@ -88,7 +88,7 @@ MANILA_SERVICE_VM_FLAVOR_RAM=${MANILA_SERVICE_VM_FLAVOR_RAM:-64}
 MANILA_SERVICE_VM_FLAVOR_DISK=${MANILA_SERVICE_VM_FLAVOR_DISK:-0}
 MANILA_SERVICE_VM_FLAVOR_VCPUS=${MANILA_SERVICE_VM_FLAVOR_VCPUS:-1}
 
-function _clean_share_group() {
+function _clean_share_group {
    local vg=$1
    local vg_prefix=$2
    # Clean out existing shares
@@ -105,7 +105,7 @@ function _clean_share_group() {
 # _clean_share_group removes all manila shares from the specified shares group
 _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
 
-function _clean_lvm_backing_file() {
+function _clean_lvm_backing_file {
     local vg=$1
 
     # if there is no logical volume left, it's safe to attempt a cleanup
@@ -120,9 +120,9 @@ function _clean_lvm_backing_file() {
     fi
 }
 
-# cleanup_manila() - Remove residual data files, anything left over from previous
+# cleanup_manila - Remove residual data files, anything left over from previous
 # runs that a clean run would need to clean up
-function cleanup_manila() {
+function cleanup_manila {
     # ensure the volume group is cleared up because fails might
     # leave dead volumes in the group
 
@@ -134,8 +134,8 @@ function cleanup_manila() {
 
 }
 
-# configure_manila() - Set config files, create data dirs, etc
-function configure_manila() {
+# configure_manila - Set config files, create data dirs, etc
+function configure_manila {
     setup_develop $MANILA_DIR
     setup_develop $MANILACLIENT_DIR
 
@@ -260,14 +260,14 @@ function create_manila_service_image {
     iniset $MANILA_CONF DEFAULT service_image_name $MANILA_SERVICE_IMAGE_NAME
 }
 
-# create_manila_accounts() - Set up common required manila accounts
+# create_manila_accounts - Set up common required manila accounts
 
 # Tenant               User       Roles
 # ------------------------------------------------------------------
 # service              manila     admin        # if enabled
 
 # Migrated from keystone_data.sh
-function create_manila_accounts() {
+function create_manila_accounts {
 
     SERVICE_TENANT=$(keystone tenant-list | awk "/ $SERVICE_TENANT_NAME / { print \$2 }")
     ADMIN_ROLE=$(keystone role-list | awk "/ admin / { print \$2 }")
@@ -300,8 +300,8 @@ function create_manila_accounts() {
     fi
 }
 
-# init_manila() - Initialize database and volume group
-function init_manila() {
+# init_manila - Initialize database and volume group
+function init_manila {
     # Force nova volumes off 
     # NOVA_ENABLED_APIS=$(echo $NOVA_ENABLED_APIS | sed "s/osapi_volume,//")
 
@@ -343,8 +343,8 @@ function init_manila() {
     rm -f $MANILA_AUTH_CACHE_DIR/*
 }
 
-# install_manila() - Collect source and prepare
-function install_manila() {
+# install_manila - Collect source and prepare
+function install_manila {
     git_clone $MANILA_REPO $MANILA_DIR $MANILA_BRANCH
     git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
 
@@ -358,15 +358,15 @@ function install_manila() {
 }
 
 # apply config.d approach (e.g. Oneiric does not have this)
-function _configure_tgt_for_config_d() {
+function _configure_tgt_for_config_d {
     if [[ ! -d /etc/tgt/conf.d/ ]]; then
         sudo mkdir -p /etc/tgt/conf.d
         echo "include /etc/tgt/conf.d/*.conf" | sudo tee -a /etc/tgt/targets.conf
     fi
 }
 
-# start_manila() - Start running processes, including screen
-function start_manila() {
+# start_manila - Start running processes, including screen
+function start_manila {
     samba_daemon_name=smbd
     if is_service_enabled m-shr; then
         if is_fedora; then
@@ -385,8 +385,8 @@ function start_manila() {
     fi
 }
 
-# stop_manila() - Stop running processes
-function stop_manila() {
+# stop_manila - Stop running processes
+function stop_manila {
     # Kill the manila screen windows
     for serv in m-api m-sch m-shr; do
         screen -S $SCREEN_NAME -p $serv -X kill
