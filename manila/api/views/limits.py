@@ -46,7 +46,8 @@ class ViewBuilder(object):
         limit_names = {
             "gigabytes": ["maxTotalShareGigabytes"],
             "shares": ["maxTotalShares"],
-            "snapshots": ["maxTotalSnapshots"]
+            "snapshots": ["maxTotalSnapshots"],
+            "share_networks": ["maxTotalShareNetworks"],
         }
         limits = {}
         for name, value in absolute_limits.iteritems():

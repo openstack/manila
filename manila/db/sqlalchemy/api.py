@@ -248,10 +248,19 @@ def _sync_gigabytes(context, project_id, user_id, session):
     return {'gigabytes': share_gigs + snap_gigs}
 
 
+def _sync_share_networks(context, project_id, user_id, session):
+    share_networks = share_network_get_all_by_project(context,
+                                                      project_id,
+                                                      user_id,
+                                                      session=session)
+    return {'share_networks': len(share_networks)}
+
+
 QUOTA_SYNC_FUNCTIONS = {
     '_sync_shares': _sync_shares,
     '_sync_snapshots': _sync_snapshots,
     '_sync_gigabytes': _sync_gigabytes,
+    '_sync_share_networks': _sync_share_networks,
 }
 
 
@@ -1550,8 +1559,13 @@ def share_network_get_all(context):
 
 
 @require_context
-def share_network_get_all_by_project(context, project_id):
-    return _network_get_query(context).filter_by(project_id=project_id).all()
+def share_network_get_all_by_project(context, project_id, user_id=None,
+                                     session=None):
+    query = _network_get_query(context, session)
+    query = query.filter_by(project_id=project_id)
+    if user_id is not None:
+        query = query.filter_by(user_id=user_id)
+    return query.all()
 
 
 @require_context

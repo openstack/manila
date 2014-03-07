@@ -275,6 +275,22 @@ class ShareManager(manager.SchedulerDependentManager):
         self.driver.teardown_network(share_network)
         self.network_api.deallocate_network(context, share_network)
 
+        if (hasattr(share_network, 'project_id') and
+            context.project_id != share_network['project_id']):
+            project_id = share_network['project_id']
+        else:
+            project_id = context.project_id
+
+        try:
+            reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
+                                          share_networks=-1)
+        except Exception:
+            msg = _("Failed to update usages deactivating share-network.")
+            LOG.exception(msg)
+        else:
+            QUOTAS.commit(context, reservations, project_id=project_id)
+
     def _activate_share_network(self, context, share_network, metadata=None):
         allocation_number = self.driver.get_network_allocations_number()
         if allocation_number:

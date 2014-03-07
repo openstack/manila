@@ -383,6 +383,11 @@ class SnapshotLimitExceeded(QuotaError):
     message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
 
 
+class ActivatedShareNetworksLimitExceeded(QuotaError):
+    message = _("Maximum number of activated share-networks "
+                "allowed (%(allowed)d) exceeded")
+
+
 class Duplicate3PARHost(ManilaException):
     message = _("3PAR Host already exists: %(err)s.  %(info)s")
 

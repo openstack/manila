@@ -287,6 +287,7 @@ def upgrade(migrate_engine):
         Column('deleted', String(length=36), default='False'),
         Column('id', String(length=36), primary_key=True, nullable=False),
         Column('project_id', String(length=36), nullable=False),
+        Column('user_id', String(length=36)),
         Column('neutron_net_id', String(length=36), nullable=True),
         Column('neutron_subnet_id', String(length=36), nullable=True),
         Column('network_type', String(length=32), nullable=True),

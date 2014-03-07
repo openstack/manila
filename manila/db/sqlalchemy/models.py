@@ -352,6 +352,7 @@ class ShareNetwork(BASE, ManilaBase):
     id = Column(String(36), primary_key=True, nullable=False)
     deleted = Column(String(36), default='False')
     project_id = Column(String(36), nullable=False)
+    user_id = Column(String(36), nullable=False)
     neutron_net_id = Column(String(36), nullable=True)
     neutron_subnet_id = Column(String(36), nullable=True)
     network_type = Column(String(32), nullable=True)
