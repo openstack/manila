@@ -18,41 +18,41 @@ from tempest import exceptions
 from tempest import test
 
 
-class ShareNetworksNegativeTest(base.BaseSharesAdminTest):
+class ShareNetworksNegativeTest(base.BaseSharesTest):
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_share_network_without_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_share_network, "")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_share_network_with_wrong_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_share_network, "wrong_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_delete_share_network_without_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.delete_share_network, "")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_delete_share_network_with_wrong_type(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.delete_share_network, "wrong_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_update_nonexistant_share_network(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.update_share_network,
                           "wrong_id", name="name")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_update_share_network_with_empty_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.update_share_network,
                           "", name="name")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_deleted_share_network(self):
         data = self.generate_share_network_data()
         resp, sn = self.create_share_network(**data)
@@ -67,7 +67,7 @@ class ShareNetworksNegativeTest(base.BaseSharesAdminTest):
                           self.shares_client.get_security_service,
                           sn["id"])
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_create_duplicate_of_share_network(self):
         data = self.generate_share_network_data()
         resp, sn = self.create_share_network(**data)
@@ -79,7 +79,7 @@ class ShareNetworksNegativeTest(base.BaseSharesAdminTest):
                           self.shares_client.create_share_network,
                           **data)
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_create_duplicate_of_share_network_via_update(self):
         data1 = self.generate_share_network_data()
         resp, sn1 = self.create_share_network(**data1)

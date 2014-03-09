@@ -19,7 +19,7 @@ from tempest.common import rest_client
 from tempest.common.utils.data_utils import rand_name
 from tempest import config_share as config
 from tempest import exceptions
-from tempest import exceptions_share
+from tempest.exceptions import share_exceptions
 
 import time
 import urllib
@@ -68,10 +68,13 @@ class SharesClient(rest_client.RestClient):
                 "metadata": metadata
             }
         }
-        if share_network_id is not None:
-            post_body["share"]["share_network_id"] = share_network_id
-        elif self.share_network_id:
-            post_body["share"]["share_network_id"] = self.share_network_id
+        if CONF.share.multitenancy_enabled:
+            if share_network_id:
+                post_body["share"]["share_network_id"] = share_network_id
+            elif self.share_network_id:
+                post_body["share"]["share_network_id"] = self.share_network_id
+            else:
+                raise share_exceptions.ShareNetworkNotSpecified()
         body = json.dumps(post_body)
         resp, body = self.post("shares", body)
         return resp, self._parse_resp(body)
@@ -169,7 +172,7 @@ class SharesClient(rest_client.RestClient):
             resp, body = self.get_share(share_id)
             share_status = body['status']
             if 'error' in share_status:
-                raise exceptions_share.\
+                raise share_exceptions.\
                     ShareBuildErrorException(share_id=share_id)
 
             if int(time.time()) - start >= self.build_timeout:
@@ -211,7 +214,7 @@ class SharesClient(rest_client.RestClient):
                     rule_status = rule['state']
                     break
             if 'error' in rule_status:
-                raise exceptions_share.\
+                raise share_exceptions.\
                     AccessRuleBuildErrorException(rule_id=rule_id)
 
             if int(time.time()) - start >= self.build_timeout:
@@ -361,6 +364,14 @@ class SharesClient(rest_client.RestClient):
         resp, body = self.get("security-services")
         return resp, self._parse_resp(body)
 
+    def list_security_services_with_detail(self, params=None):
+        """List the details of all shares."""
+        uri = "security-services/detail"
+        if params:
+            uri += "?%s" % urllib.urlencode(params)
+        resp, body = self.get(uri)
+        return resp, self._parse_resp(body)
+
     def delete_security_service(self, ss_id):
         return self.delete("security-services/%s" % ss_id)
 
@@ -386,6 +397,14 @@ class SharesClient(rest_client.RestClient):
 
     def list_share_networks(self):
         resp, body = self.get("share-networks")
+        return resp, self._parse_resp(body)
+
+    def list_share_networks_with_detail(self, params=None):
+        """List the details of all shares."""
+        uri = "share-networks/detail"
+        if params:
+            uri += "?%s" % urllib.urlencode(params)
+        resp, body = self.get(uri)
         return resp, self._parse_resp(body)
 
     def delete_share_network(self, sn_id):

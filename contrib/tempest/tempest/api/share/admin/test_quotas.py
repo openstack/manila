@@ -23,11 +23,10 @@ CONF = config.CONF
 
 
 class SharesQuotasTest(base.BaseSharesAdminTest):
+    force_tenant_isolation = True
 
     @classmethod
     def setUpClass(cls):
-        super(SharesQuotasTest, cls).setUpClass()
-
         # Use isolated creds
         cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__)
         creds = cls.isolated_creds.get_admin_creds()
@@ -36,7 +35,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
                                  password=password,
                                  tenant_name=tenant_name,
                                  interface=cls._interface)
-        cls.shares_client = cls.os.shares_client
+        super(SharesQuotasTest, cls).setUpClass()
 
         # Get tenant and user
         cls.identity_client = cls._get_identity_admin_client()
@@ -56,9 +55,9 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
     @classmethod
     def tearDownClass(cls):
         super(SharesQuotasTest, cls).tearDownClass()
-        cls.isolated_creds.clear_isolated_creds()
+        cls.clear_isolated_creds()
 
-    @test.attr(type=['positive', 'smoke'])
+    @test.attr(type=["gate", "smoke", ])
     def test_limits_keys(self):
 
         # list limits
@@ -75,7 +74,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
                     "maxTotalSnapshots"]
         [self.assertIn(key, limits["absolute"].keys()) for key in abs_keys]
 
-    @test.attr(type=['positive', 'smoke'])
+    @test.attr(type=["gate", "smoke", ])
     def test_limits_values(self):
 
         # list limits
@@ -90,7 +89,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertGreater(int(limits["absolute"]["maxTotalShares"]), -2)
         self.assertGreater(int(limits["absolute"]["maxTotalSnapshots"]), -2)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_default_quotas(self):
         resp, quotas = self.shares_client.default_quotas(self.tenant["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
@@ -98,7 +97,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
 
-    @test.attr(type=['positive', 'smoke'])
+    @test.attr(type=["gate", "smoke", ])
     def test_show_quotas(self):
         resp, quotas = self.shares_client.show_quotas(self.tenant["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
@@ -106,7 +105,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
 
-    @test.attr(type=['positive', 'smoke'])
+    @test.attr(type=["gate", "smoke", ])
     def test_show_quotas_for_user(self):
         resp, quotas = self.shares_client.show_quotas(self.tenant["id"],
                                                       self.user["id"])
@@ -115,14 +114,14 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_default_quotas_with_empty_tenant_id(self):
         # it should return default quotas without any tenant-id
         resp, body = self.shares_client.default_quotas("")
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertTrue(len(body) > 0)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_update_tenant_quota_shares(self):
 
         # get current quotas
@@ -136,7 +135,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["shares"]), new_quota)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_update_user_quota_shares(self):
 
         # get current quotas
@@ -151,7 +150,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["shares"]), new_quota)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_update_tenant_quota_snapshots(self):
 
         # get current quotas
@@ -165,7 +164,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["snapshots"]), new_quota)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_update_user_quota_snapshots(self):
 
         # get current quotas
@@ -180,7 +179,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["snapshots"]), new_quota)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_update_tenant_quota_gigabytes(self):
 
         # get current quotas
@@ -196,7 +195,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["gigabytes"]), gigabytes)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_update_user_quota_gigabytes(self):
 
         # get current quotas
@@ -214,7 +213,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(int(updated["gigabytes"]), gigabytes)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_reset_tenant_quotas(self):
 
         # get default_quotas

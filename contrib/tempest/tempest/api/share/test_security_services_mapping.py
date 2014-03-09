@@ -17,7 +17,7 @@ from tempest.api.share import base
 from tempest import test
 
 
-class SecurityServicesMappingTest(base.BaseSharesAdminTest):
+class SecurityServicesMappingTest(base.BaseSharesTest):
 
     @classmethod
     def setUpClass(cls):
@@ -46,7 +46,7 @@ class SecurityServicesMappingTest(base.BaseSharesAdminTest):
                                                             self.ss["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
-    @test.attr(type=["gate", "positive", "smoke"])
+    @test.attr(type=["gate", "smoke"])
     def test_map_ss_to_sn_and_list(self):
 
         # List security services for share network
@@ -56,7 +56,7 @@ class SecurityServicesMappingTest(base.BaseSharesAdminTest):
         for key in ["status", "id", "name"]:
             self.assertIn(self.ss[key], ls[0][key])
 
-    @test.attr(type=["gate", "positive", "smoke"])
+    @test.attr(type=["gate", "smoke"])
     def test_map_ss_to_sn_and_delete(self):
 
         # Remove security service from share network
@@ -64,7 +64,7 @@ class SecurityServicesMappingTest(base.BaseSharesAdminTest):
                                                                  self.ss["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
-    @test.attr(type=["gate", "positive", "smoke"])
+    @test.attr(type=["gate", "smoke"])
     def test_remap_ss_to_sn(self):
 
         # Remove security service from share network

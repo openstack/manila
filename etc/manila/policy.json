@@ -28,5 +28,5 @@
     "share_network:delete": [],
     "share_network:update": [],
     "share_network:add_security_service": [],
-    "share_network:remove_security_service": [],
+    "share_network:remove_security_service": []
 }

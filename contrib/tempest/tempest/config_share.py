@@ -39,6 +39,11 @@ ShareGroup = [
                choices=['public', 'admin', 'internal',
                         'publicURL', 'adminURL', 'internalURL'],
                help="The endpoint type to use for the share service."),
+    cfg.BoolOpt("multitenancy_enabled",
+                default=True,
+                help="This option used to determine backend driver type, "
+                     "multitenant driver uses share-networks, but "
+                     "single-tenant doesn't."),
     cfg.ListOpt("enable_protocols",
                 default=["nfs", "cifs"],
                 help="First value of list is protocol by default, "

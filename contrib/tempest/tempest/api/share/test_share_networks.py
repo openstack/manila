@@ -17,7 +17,7 @@ from tempest.api.share import base
 from tempest import test
 
 
-class ShareNetworksTest(base.BaseSharesAdminTest):
+class ShareNetworksTest(base.BaseSharesTest):
 
     @classmethod
     def setUpClass(cls):
@@ -25,7 +25,7 @@ class ShareNetworksTest(base.BaseSharesAdminTest):
         cls.data = cls.generate_share_network_data()
         _, cls.sn = cls.create_share_network(**cls.data)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_create_delete_share_network(self):
         # generate data for share network
         data = self.generate_share_network_data()
@@ -39,13 +39,13 @@ class ShareNetworksTest(base.BaseSharesAdminTest):
         resp, __ = self.shares_client.delete_share_network(created["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_get_share_network(self):
         resp, get = self.shares_client.get_share_network(self.sn["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertDictContainsSubset(self.data, get)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_update_share_network(self):
         update_data = self.generate_share_network_data()
         resp, updated = self.shares_client.update_share_network(self.sn["id"],
@@ -53,7 +53,7 @@ class ShareNetworksTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertDictContainsSubset(update_data, updated)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
     def test_list_share_networks(self):
         resp, listed = self.shares_client.list_share_networks()
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
@@ -63,7 +63,22 @@ class ShareNetworksTest(base.BaseSharesAdminTest):
         keys = ["name", "id", "status"]
         [self.assertIn(key, sn.keys()) for sn in listed for key in keys]
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", "smoke", ])
+    def test_list_share_networks_with_detail(self):
+        resp, listed = self.shares_client.list_share_networks_with_detail()
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        any(self.sn["id"] in sn["id"] for sn in listed)
+
+        # verify keys
+        keys = [
+            "name", "id", "status", "description", "network_type",
+            "project_id", "cidr", "ip_version",
+            "neutron_net_id", "neutron_subnet_id",
+            "created_at", "updated_at", "segmentation_id",
+        ]
+        [self.assertIn(key, sn.keys()) for sn in listed for key in keys]
+
+    @test.attr(type=["gate", "smoke", ])
     def test_recreate_share_network(self):
         # generate data for share network
         data = self.generate_share_network_data()

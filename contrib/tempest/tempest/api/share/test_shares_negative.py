@@ -15,7 +15,7 @@
 
 from tempest.api.share import base
 from tempest import exceptions
-from tempest import exceptions_share
+from tempest.exceptions import share_exceptions
 from tempest import test
 
 
@@ -98,12 +98,12 @@ class SharesNegativeTest(base.BaseSharesTest):
 
         try:  # create share
             _, share = self.create_share_wait_for_active(size=2)
-        except exceptions_share.ShareBuildErrorException:
+        except share_exceptions.ShareBuildErrorException:
             self.skip(skip_msg)
 
         try:  # create snapshot
             _, snap = self.create_snapshot_wait_for_active(share["id"])
-        except exceptions.SnapshotBuildErrorException:
+        except share_exceptions.SnapshotBuildErrorException:
             self.skip(skip_msg)
 
         # try create share from snapshot with less size

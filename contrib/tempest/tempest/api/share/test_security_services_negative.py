@@ -18,54 +18,54 @@ from tempest import exceptions
 from tempest import test
 
 
-class SecurityServicesNegativeTest(base.BaseSharesAdminTest):
+class SecurityServicesNegativeTest(base.BaseSharesTest):
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_create_security_service_with_empty_type(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.create_security_service, "")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_create_security_service_with_wrong_type(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.create_security_service,
                           "wrong_type")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_security_service_without_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_security_service, "")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_security_service_with_wrong_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_security_service,
                           "wrong_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_delete_security_service_without_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.delete_security_service, "")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_delete_security_service_with_wrong_type(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.delete_security_service,
                           "wrong_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_update_nonexistant_security_service(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.update_security_service,
                           "wrong_id", name="name")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_update_security_service_with_empty_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.update_security_service,
                           "", name="name")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_get_deleted_security_service(self):
         data = self.generate_security_service_data()
         resp, ss = self.create_security_service(**data)

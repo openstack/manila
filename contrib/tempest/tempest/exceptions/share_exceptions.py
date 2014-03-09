@@ -13,16 +13,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import exceptions
+from tempest.exceptions import base
 
 
-class ShareBuildErrorException(exceptions.TempestException):
+class ShareBuildErrorException(base.TempestException):
     message = "Share %(share_id)s failed to build and is in ERROR status"
 
 
-class AccessRuleBuildErrorException(exceptions.TempestException):
+class AccessRuleBuildErrorException(base.TempestException):
     message = "Share's rule with id %(rule_id) is in ERROR status"
 
 
-class ShareProtocolNotSpecified(exceptions.TempestException):
+class ShareProtocolNotSpecified(base.TempestException):
     message = "Share can not be created, share protocol is not specified"
+
+
+class ShareNetworkNotSpecified(base.TempestException):
+    message = "Share can not be created, share network not specified"
+
+
+class NoAvailableNetwork(base.TempestException):
+    message = "No available network for service VM"

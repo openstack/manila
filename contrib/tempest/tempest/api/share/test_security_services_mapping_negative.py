@@ -18,7 +18,7 @@ from tempest import exceptions
 from tempest import test
 
 
-class SecServicesMappingNegativeTest(base.BaseSharesAdminTest):
+class SecServicesMappingNegativeTest(base.BaseSharesTest):
 
     @classmethod
     def setUpClass(cls):
@@ -27,7 +27,7 @@ class SecServicesMappingNegativeTest(base.BaseSharesAdminTest):
         __, cls.ss = cls.create_security_service()
         cls.cl = cls.shares_client
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_add_sec_service_twice_to_share_network(self):
         resp, __ = self.cl.add_sec_service_to_share_network(self.sn["id"],
                                                             self.ss["id"])
@@ -36,55 +36,55 @@ class SecServicesMappingNegativeTest(base.BaseSharesAdminTest):
                           self.cl.add_sec_service_to_share_network,
                           self.sn["id"], self.ss["id"])
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_add_nonexistant_sec_service_to_share_network(self):
         self.assertRaises(exceptions.NotFound,
                           self.cl.add_sec_service_to_share_network,
                           self.sn["id"], "wrong_ss_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_add_empty_sec_service_id_to_share_network(self):
         self.assertRaises(exceptions.NotFound,
                           self.cl.add_sec_service_to_share_network,
                           self.sn["id"], "")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_add_sec_service_to_nonexistant_share_network(self):
         self.assertRaises(exceptions.NotFound,
                           self.cl.add_sec_service_to_share_network,
                           "wrong_sn_id", self.ss["id"])
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_add_sec_service_to_share_network_with_empty_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.cl.add_sec_service_to_share_network,
                           "", self.ss["id"])
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_list_sec_services_for_nonexistant_share_network(self):
         self.assertRaises(exceptions.NotFound,
                           self.cl.list_sec_services_for_share_network,
                           "wrong_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_delete_nonexistant_sec_service_from_share_network(self):
         self.assertRaises(exceptions.NotFound,
                           self.cl.remove_sec_service_from_share_network,
                           self.sn["id"], "wrong_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_delete_sec_service_from_nonexistant_share_network(self):
         self.assertRaises(exceptions.NotFound,
                           self.cl.remove_sec_service_from_share_network,
                           "wrong_id", self.ss["id"])
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_delete_nonexistant_ss_from_nonexistant_sn(self):
         self.assertRaises(exceptions.NotFound,
                           self.cl.remove_sec_service_from_share_network,
                           "wrong_id", "wrong_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_map_same_ss_to_sn_twice(self):
         # create share network
         data = self.generate_share_network_data()

@@ -29,8 +29,6 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @classmethod
     def setUpClass(cls):
-        super(SharesQuotasNegativeTest, cls).setUpClass()
-
         # Use isolated creds
         cls.isolated_creds = isolated_creds.IsolatedCreds(cls.__name__)
         creds = cls.isolated_creds.get_admin_creds()
@@ -39,7 +37,7 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
                                  password=password,
                                  tenant_name=tenant_name,
                                  interface=cls._interface)
-        cls.shares_client = cls.os.shares_client
+        super(SharesQuotasNegativeTest, cls).setUpClass()
 
         # Get tenant and user
         cls.identity_client = cls._get_identity_admin_client()
@@ -59,15 +57,15 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
     @classmethod
     def tearDownClass(cls):
         super(SharesQuotasNegativeTest, cls).tearDownClass()
-        cls.isolated_creds.clear_isolated_creds()
+        cls.clear_isolated_creds()
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     @testtools.skip("Skip until Bug #1234244 is fixed")
     def test_quotas_with_wrong_tenant_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_quotas, "wrong_tenant_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     @testtools.skip("Skip until Bug #1234244 is fixed")
     def test_quotas_with_wrong_user_id(self):
         self.assertRaises(exceptions.NotFound,
@@ -75,23 +73,23 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
                           self.tenant["id"],
                           "wrong_user_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_quotas_with_empty_tenant_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.show_quotas, "")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     @testtools.skip("Skip until Bug #1233170 is fixed")
     def test_default_quotas_with_wrong_tenant_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.default_quotas, "wrong_tenant_id")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_reset_quotas_with_empty_tenant_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.reset_quotas, "")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_update_shares_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         self.assertRaises(exceptions.BadRequest,
@@ -99,7 +97,7 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
                           self.tenant["id"],
                           shares=-2)
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_update_snapshots_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         self.assertRaises(exceptions.BadRequest,
@@ -107,7 +105,7 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
                           self.tenant["id"],
                           snapshots=-2)
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_update_gigabytes_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         self.assertRaises(exceptions.BadRequest,
@@ -115,7 +113,7 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
                           self.tenant["id"],
                           gigabytes=-2)
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_create_share_with_size_bigger_than_quota(self):
 
         new_quota = 25
@@ -129,23 +127,24 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
         # try schedule share with size, bigger than gigabytes quota
         self.assertRaises(exceptions.OverLimit,
                           self.create_share_wait_for_active,
-                          size=overquota)
+                          size=overquota,
+                          share_network_id=self.shares_client.share_network_id)
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_unlimited_quota_for_gigabytes(self):
         # set unlimited quota for gigabytes
         resp, __ = self.shares_client.update_quotas(self.tenant["id"],
                                                     gigabytes=-1)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_unlimited_user_quota_for_gigabytes(self):
         resp, __ = self.shares_client.update_quotas(self.tenant["id"],
                                                     self.user["id"],
                                                     gigabytes=-1)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_set_user_quota_gigabytes_bigger_than_tenant_quota(self):
 
         # get current quotas for tenant
@@ -159,7 +158,7 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
                           self.user["id"],
                           gigabytes=bigger_value)
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_set_user_quota_shares_bigger_than_tenant_quota(self):
 
         # get current quotas for tenant
@@ -173,7 +172,7 @@ class SharesQuotasNegativeTest(base.BaseSharesAdminTest):
                           self.user["id"],
                           shares=bigger_value)
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_set_user_quota_snaps_bigger_than_tenant_quota(self):
 
         # get current quotas for tenant
