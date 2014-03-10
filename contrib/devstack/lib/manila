@@ -105,7 +105,7 @@ function _clean_share_group {
 # _clean_share_group removes all manila shares from the specified shares group
 _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
 
-function _clean_lvm_backing_file {
+function _clean_manila_lvm_backing_file {
     local vg=$1
 
     # if there is no logical volume left, it's safe to attempt a cleanup
@@ -129,9 +129,7 @@ function cleanup_manila {
     # Campsite rule: leave behind a share volume group at least as clean as we found it
     # _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
     _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
-    _clean_lvm_backing_file $SHARE_GROUP
-
-
+    _clean_manila_lvm_backing_file $SHARE_GROUP
 }
 
 # configure_manila - Set config files, create data dirs, etc
