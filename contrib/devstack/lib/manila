@@ -357,14 +357,6 @@ function install_manila {
     fi
 }
 
-# apply config.d approach (e.g. Oneiric does not have this)
-function _configure_tgt_for_config_d {
-    if [[ ! -d /etc/tgt/conf.d/ ]]; then
-        sudo mkdir -p /etc/tgt/conf.d
-        echo "include /etc/tgt/conf.d/*.conf" | sudo tee -a /etc/tgt/targets.conf
-    fi
-}
-
 # start_manila - Start running processes, including screen
 function start_manila {
     samba_daemon_name=smbd
