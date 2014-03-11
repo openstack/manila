@@ -24,6 +24,10 @@ class AccessRuleBuildErrorException(base.TempestException):
     message = "Share's rule with id %(rule_id) is in ERROR status"
 
 
+class SnapshotBuildErrorException(base.TempestException):
+    message = "Snapshot %(snapshot_id)s failed to build and is in ERROR status"
+
+
 class ShareProtocolNotSpecified(base.TempestException):
     message = "Share can not be created, share protocol is not specified"
 
