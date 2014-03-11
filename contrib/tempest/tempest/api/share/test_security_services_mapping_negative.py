@@ -23,8 +23,8 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
     @classmethod
     def setUpClass(cls):
         super(SecServicesMappingNegativeTest, cls).setUpClass()
-        __, cls.sn = cls.create_share_network()
-        __, cls.ss = cls.create_security_service()
+        __, cls.sn = cls.create_share_network(cleanup_in_class=True)
+        __, cls.ss = cls.create_security_service(cleanup_in_class=True)
         cls.cl = cls.shares_client
 
     @test.attr(type=["gate", "smoke", "negative"])

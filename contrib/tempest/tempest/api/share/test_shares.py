@@ -43,7 +43,7 @@ class SharesNFSTest(base.BaseSharesTest):
         # delete share
         resp, __ = self.shares_client.delete_share(share['id'])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.shares_client.wait_for_resource_deletion(share['id'])
+        self.shares_client.wait_for_resource_deletion(share_id=share['id'])
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_share,
                           share['id'])
@@ -58,7 +58,7 @@ class SharesNFSTest(base.BaseSharesTest):
         # delete snapshot
         resp, __ = self.shares_client.delete_snapshot(snap["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.shares_client.wait_for_resource_deletion(snap["id"])
+        self.shares_client.wait_for_resource_deletion(snapshot_id=snap["id"])
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_snapshot, snap['id'])
 
@@ -66,11 +66,13 @@ class SharesNFSTest(base.BaseSharesTest):
     def test_create_share_from_snapshot(self):
 
         # create snapshot
-        __, snap = self.create_snapshot_wait_for_active(self.share["id"])
+        __, snap = self.create_snapshot_wait_for_active(self.share["id"],
+                                                        cleanup_in_class=False)
 
         # crate share from snapshot
         resp, s2 = self.create_share_wait_for_active(self.protocol,
-                                                     snapshot_id=snap["id"])
+                                                     snapshot_id=snap["id"],
+                                                     cleanup_in_class=False)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
         # verify share, created from snapshot

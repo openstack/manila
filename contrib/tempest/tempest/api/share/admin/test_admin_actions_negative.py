@@ -27,45 +27,40 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     @classmethod
     def setUpClass(cls):
         super(AdminActionsNegativeTest, cls).setUpClass()
-
-        # create share (available or error)
         __, cls.sh = cls.create_share_wait_for_active()
-
-        # create snapshot (available or error)
         __, cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
-
         cls.member_shares_client = clients.Manager().shares_client
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "negative", ])
     def test_reset_unexistant_share_state(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.reset_state, "fake")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "negative", ])
     def test_reset_unexistant_snapshot_state(self):
         self.assertRaises(exceptions.NotFound, self.shares_client.reset_state,
                           "fake", s_type="snapshots")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "negative", ])
     def test_reset_share_state_to_unacceptable_state(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.reset_state,
                           self.sh["id"], status="fake")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "negative", ])
     def test_reset_snapshot_state_to_unacceptable_state(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.reset_state,
                           self.sn["id"], s_type="snapshots", status="fake")
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "negative", ])
     def test_try_reset_share_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
         self.assertRaises(exceptions.Unauthorized,
                           self.member_shares_client.reset_state,
                           self.sh["id"])
 
-    @test.attr(type=['negative', ])
+    @test.attr(type=["gate", "negative", ])
     def test_try_reset_snapshot_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
         self.assertRaises(exceptions.Unauthorized,

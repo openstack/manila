@@ -58,8 +58,7 @@ ShareGroup = [
                      "be covered with sid rule tests"),
     cfg.StrOpt("username_for_sid_rules",
                default="Administrator",
-               help="Username, that will be used in sid tests. "
-                    "In case of active directory it should be existed"),
+               help="Username, that will be used in sid tests."),
     cfg.StrOpt("share_network_id",
                default="",
                help="Some backend drivers requires share network "
@@ -74,11 +73,11 @@ ShareGroup = [
                help="Share network id, that will be used for shares"
                     " in admin tenant. If not set, it won't be used"),
     cfg.IntOpt("build_interval",
-               default=10,
-               help="Time in seconds between volume availability checks."),
+               default=3,
+               help="Time in seconds between share availability checks."),
     cfg.IntOpt("build_timeout",
-               default=300,
-               help="Timeout in seconds to wait for a volume to become"
+               default=500,
+               help="Timeout in seconds to wait for a share to become"
                     "available."),
 ]
 

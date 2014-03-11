@@ -97,19 +97,22 @@ class SharesNegativeTest(base.BaseSharesTest):
         skip_msg = "Check disc space for this test"
 
         try:  # create share
-            _, share = self.create_share_wait_for_active(size=2)
+            __, share = self.create_share_wait_for_active(
+                size=2, cleanup_in_class=False)
         except share_exceptions.ShareBuildErrorException:
             self.skip(skip_msg)
 
         try:  # create snapshot
-            _, snap = self.create_snapshot_wait_for_active(share["id"])
+            __, snap = self.create_snapshot_wait_for_active(
+                share["id"], cleanup_in_class=False)
         except share_exceptions.SnapshotBuildErrorException:
             self.skip(skip_msg)
 
         # try create share from snapshot with less size
         self.assertRaises(exceptions.BadRequest,
                           self.create_share_wait_for_active,
-                          size=1, snapshot_id=snap["id"])
+                          size=1, snapshot_id=snap["id"],
+                          cleanup_in_class=False)
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_create_share_with_nonexistant_share_network(self):

@@ -23,7 +23,8 @@ class ShareNetworksTest(base.BaseSharesTest):
     def setUpClass(cls):
         super(ShareNetworksTest, cls).setUpClass()
         cls.data = cls.generate_share_network_data()
-        _, cls.sn = cls.create_share_network(**cls.data)
+        __, cls.sn = cls.create_share_network(cleanup_in_class=True,
+                                              **cls.data)
 
     @test.attr(type=["gate", "smoke", ])
     def test_create_delete_share_network(self):

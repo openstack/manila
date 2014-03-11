@@ -22,26 +22,21 @@ class AdminActionsTest(base.BaseSharesAdminTest):
     @classmethod
     def setUpClass(cls):
         super(AdminActionsTest, cls).setUpClass()
-
-        # create share (available or error)
-        cls.share_states = ["error", "available"]
+        cls.states = ["error", "available"]
         __, cls.sh = cls.create_share_wait_for_active()
-
-        # create snapshot (available or error)
-        cls.snapshot_states = ["error", "available"]
         __, cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", ])
     def test_reset_share_state(self):
-        for status in self.share_states:
+        for status in self.states:
             resp, __ = self.shares_client.reset_state(self.sh["id"],
                                                       status=status)
             self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
             self.shares_client.wait_for_share_status(self.sh["id"], status)
 
-    @test.attr(type=['positive', ])
+    @test.attr(type=["gate", ])
     def test_reset_snapshot_state_to_error(self):
-        for status in self.snapshot_states:
+        for status in self.states:
             resp, __ = self.shares_client.reset_state(self.sn["id"],
                                                       s_type="snapshots",
                                                       status=status)

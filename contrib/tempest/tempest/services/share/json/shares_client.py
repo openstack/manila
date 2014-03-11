@@ -14,15 +14,14 @@
 #    under the License.
 
 import json
+import time
+import urllib
 
 from tempest.common import rest_client
 from tempest.common.utils.data_utils import rand_name
 from tempest import config_share as config
 from tempest import exceptions
 from tempest.exceptions import share_exceptions
-
-import time
-import urllib
 
 CONF = config.CONF
 
@@ -57,7 +56,7 @@ class SharesClient(rest_client.RestClient):
         if share_protocol is None:
             share_protocol = self.share_protocol
         if share_protocol is None:
-            raise exceptions.ShareProtocolNotSpecified()
+            raise share_exceptions.ShareProtocolNotSpecified()
         post_body = {
             "share": {
                 "share_proto": share_protocol,
@@ -264,22 +263,63 @@ class SharesClient(rest_client.RestClient):
         resp, body = self.get("limits")
         return resp, self._parse_resp(body)
 
-    def is_resource_deleted(self, s_id, rule_id=None):
-        if rule_id is None:
-            try:
-                self.get_snapshot(s_id)
-            except exceptions.NotFound:
+    def is_resource_deleted(self, *args, **kwargs):
+        """Verifies deleted resource or not.
+
+        :param kwargs: expected keys are 'share_id', 'rule_id',
+        :param kwargs: 'snapshot_id', 'sn_id', 'ss_id'
+        :raises share_exceptions.InvalidResource
+        """
+
+        if "share_id" in kwargs:
+            share_id = kwargs.get("share_id")
+            if "rule_id" in kwargs:
+                __, rules = self.list_share_access_rules(share_id)
+                for rule in rules:
+                    if rule["id"] in kwargs.get("rule_id"):
+                        return False
+                return True
+            else:
                 try:
-                    self.get_share(s_id)
+                    self.get_share(share_id)
                 except exceptions.NotFound:
                     return True
-            return False
+        elif "snapshot_id" in kwargs:
+            try:
+                self.get_snapshot(kwargs.get("snapshot_id"))
+            except exceptions.NotFound:
+                return True
+        elif "sn_id" in kwargs:
+            sn_id = kwargs.get("sn_id")
+            if "ss_id" in kwargs:
+                __, ss_list = self.list_sec_services_for_share_network(sn_id)
+                for ss in ss_list:
+                    if ss["id"] in kwargs.get("ss_id"):
+                        return False
+                return True
+            else:
+                try:
+                    self.get_share_network(sn_id)
+                except exceptions.NotFound:
+                    return True
+        elif "ss_id" in kwargs:
+            try:
+                self.get_security_service(kwargs.get("sn_id"))
+            except exceptions.NotFound:
+                return True
         else:
-            _, rules = self.list_share_access_rules(s_id)
-            for rule in rules:
-                if rule["id"] in rule_id:
-                    return False
-            return True
+            raise share_exceptions.InvalidResource(message=str(kwargs))
+        return False
+
+    def wait_for_resource_deletion(self, *args, **kwargs):
+        """Waits for a resource to be deleted."""
+        start_time = int(time.time())
+        while True:
+            if self.is_resource_deleted(*args, **kwargs):
+                return
+            if int(time.time()) - start_time >= self.build_timeout:
+                raise exceptions.TimeoutException
+            time.sleep(self.build_interval)
 
     def list_extensions(self):
         resp, extensions = self.get("extensions")

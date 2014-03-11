@@ -196,7 +196,7 @@ class ShareRulesTest(base.BaseSharesTest):
         # delete share
         resp, _ = self.shares_client.delete_share(share['id'])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.shares_client.wait_for_resource_deletion(share['id'])
+        self.shares_client.wait_for_resource_deletion(share_id=share['id'])
 
         # verify absence of rules for nonexistent share id
         self.assertRaises(exceptions.NotFound,

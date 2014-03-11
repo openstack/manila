@@ -38,3 +38,7 @@ class ShareNetworkNotSpecified(base.TempestException):
 
 class NoAvailableNetwork(base.TempestException):
     message = "No available network for service VM"
+
+
+class InvalidResource(base.TempestException):
+    message = "Provided invalid resource: %(message)s"

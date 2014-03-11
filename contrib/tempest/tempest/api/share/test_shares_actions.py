@@ -203,7 +203,7 @@ class SharesRenameTest(base.BaseSharesTest):
     def test_rename_share(self):
 
         # get share
-        resp, share = self.shares_client.get_share(self.share['id'])
+        __, share = self.shares_client.get_share(self.share['id'])
         self.assertEqual(self.share_name, share["name"])
         self.assertEqual(self.share_desc, share["description"])
 
@@ -226,7 +226,7 @@ class SharesRenameTest(base.BaseSharesTest):
     def test_rename_snapshot(self):
 
         # get snapshot
-        resp, get = self.shares_client.get_snapshot(self.snap["id"])
+        __, get = self.shares_client.get_snapshot(self.snap["id"])
         self.assertEqual(self.snap_name, get["name"])
         self.assertEqual(self.snap_desc, get["description"])
 
