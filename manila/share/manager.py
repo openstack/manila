@@ -93,19 +93,6 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.publish_service_capabilities(ctxt)
 
-    def _setup_share_network(self, context, network_ref):
-        allocation_number = self.driver.get_network_allocations_number()
-        if allocation_number:
-            network_info = self.network_api.allocate_network(
-                context, network_ref, count=allocation_number)
-            try:
-                self.driver.setup_network(network_info)
-                return network_info
-            except exception.ManilaException as e:
-                with excutils.save_and_reraise_exception():
-                    self.db.share_network_update(context, network_ref['id'],
-                                                 {'status': 'error'})
-
     def create_share(self, context, share_id, request_spec=None,
                      filter_properties=None, snapshot_id=None):
         """Creates a share."""
@@ -119,23 +106,18 @@ class ShareManager(manager.SchedulerDependentManager):
         else:
             snapshot_ref = None
 
-        network_id = share_ref.get('share_network_id', None)
-        if network_id:
-            network_ref = self.db.share_network_get(
-                context, share_ref['share_network_id'])
-            if network_ref['status'] != constants.STATUS_ACTIVE:
-                if network_ref['status'] in [constants.STATUS_INACTIVE,
-                                             constants.STATUS_NEW]:
-                    network_ref = self._setup_share_network(context,
-                                                            network_ref)
-                else:
-                    msg = _("Network status should be ACTIVE, INACTIVE or NEW")
-                    LOG.error(msg)
-                    raise exception.InvalidShareNetwork(reason=msg)
+        share_network_id = share_ref.get('share_network_id', None)
+        if share_network_id:
+            share_network = self.db.share_network_get(context,
+                                                      share_network_id)
+            if share_network['status'] == constants.STATUS_INACTIVE:
+                share_network = self._activate_share_network(
+                                    context,
+                                    share_network)
         else:
-            network_ref = {}
+            share_network = {}
 
-        share_ref['network_info'] = network_ref
+        share_ref['network_info'] = share_network
 
         try:
             if snapshot_ref:
@@ -283,3 +265,28 @@ class ShareManager(manager.SchedulerDependentManager):
         """Collect driver status and then publish it."""
         self._report_driver_status(context)
         self._publish_service_capabilities(context)
+
+    def activate_network(self, context, share_network_id, metadata=None):
+        share_network = self.db.share_network_get(context, share_network_id)
+        self._activate_share_network(context, share_network, metadata)
+
+    def deactivate_network(self, context, share_network_id):
+        share_network = self.db.share_network_get(context, share_network_id)
+        self.driver.teardown_network(share_network)
+        self.network_api.deallocate_network(context, share_network)
+
+    def _activate_share_network(self, context, share_network, metadata=None):
+        allocation_number = self.driver.get_network_allocations_number()
+        if allocation_number:
+            share_network = self.network_api.allocate_network(
+                                context,
+                                share_network,
+                                count=allocation_number)
+            try:
+                self.driver.setup_network(share_network, metadata=metadata)
+            except exception.ManilaException:
+                with excutils.save_and_reraise_exception():
+                    self.network_api.deallocate_network(context,
+                                                        share_network)
+            else:
+                return share_network

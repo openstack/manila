@@ -141,11 +141,15 @@ class ShareDriver(object):
         return self._stats
 
     def get_network_allocations_number(self):
-        """Returns number of network allocations for creating VIFs"""
+        """Returns number of network allocations for creating VIFs."""
         pass
 
-    def setup_network(self, network_info):
-        """Set up and configures VIFs with given network parameters"""
+    def setup_network(self, network_info, metadata=None):
+        """Set up and configures VIFs with given network parameters."""
+        pass
+
+    def teardown_network(self, network_info):
+        """Teardown previously configured VIFs for given network parameters."""
         pass
 
     def _update_share_status(self):

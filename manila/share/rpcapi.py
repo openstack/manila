@@ -91,3 +91,16 @@ class ShareAPI(manila.openstack.common.rpc.proxy.RpcProxy):
     def publish_service_capabilities(self, ctxt):
         self.fanout_cast(ctxt, self.make_msg('publish_service_capabilities'),
                          version='1.0')
+
+    def activate_network(self, context, share_network_id, metadata):
+        self.fanout_cast(context,
+                         self.make_msg('activate_network',
+                                       share_network_id=share_network_id,
+                                       metadata=metadata),
+                         version='1.0')
+
+    def deactivate_network(self, context, share_network_id):
+        self.fanout_cast(context,
+                         self.make_msg('deactivate_network',
+                                       share_network_id=share_network_id),
+                         version='1.0')
