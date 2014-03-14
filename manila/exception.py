@@ -537,3 +537,7 @@ class InstanceNotFound(NotFound):
 
 class BridgeDoesNotExist(ManilaException):
     message = _("Bridge %(bridge)s does not exist.")
+
+
+class ServiceInstanceException(ManilaException):
+    message = _("Exception in service instance manager occurred.")

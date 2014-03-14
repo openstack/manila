@@ -1,4 +1,4 @@
-# Copyright 2014 Mirantis Inc.
+# Copyright (c) 2014 NetApp, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,29 +12,26 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 """Unit tests for the Generic driver module."""
 
-import copy
 import mock
 import os
 
-from manila import context
+from oslo.config import cfg
 
 from manila import compute
+from manila import context
 from manila import exception
-from manila.network.neutron import api as neutron
-from manila import volume
-
 from manila.share.configuration import Configuration
 from manila.share.drivers import generic
 from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_compute
-from manila.tests import fake_network
 from manila.tests import fake_utils
 from manila.tests import fake_volume
+from manila import volume
 
-from oslo.config import cfg
 
 CONF = cfg.CONF
 
@@ -94,13 +91,13 @@ class GenericShareDriverTestCase(test.TestCase):
                                                   configuration=self.fake_conf)
         self._driver.service_tenant_id = 'service tenant id'
         self._driver.service_network_id = 'service network id'
-        self._driver.neutron_api = fake_network.API()
         self._driver.compute_api = fake_compute.API()
         self._driver.volume_api = fake_volume.API()
         self._driver.share_networks_locks = {}
+        self._driver.get_service_instance = mock.Mock()
         self._driver.share_networks_servers = {}
         self._driver.admin_context = self._context
-        self._driver.vif_driver = mock.Mock()
+        self._driver.instance_manager = mock.Mock()
         self.stubs.Set(generic, '_ssh_exec', mock.Mock())
         self.stubs.Set(generic, 'synchronized', mock.Mock(side_effect=
                                                           lambda f: f))
@@ -114,62 +111,17 @@ class GenericShareDriverTestCase(test.TestCase):
         self.snapshot = fake_snapshot()
 
     def test_do_setup(self):
-        self.stubs.Set(neutron, 'API', mock.Mock())
         self.stubs.Set(volume, 'API', mock.Mock())
         self.stubs.Set(compute, 'API', mock.Mock())
-        self.stubs.Set(self._driver,
-                       '_setup_connectivity_with_service_instances',
-                       mock.Mock())
-        self.stubs.Set(self._driver,
-                       '_get_service_network',
-                       mock.Mock(return_value='fake network id'))
+        self.stubs.Set(generic, 'service_instance', mock.Mock())
         self.stubs.Set(self._driver, '_setup_helpers', mock.Mock())
         self._driver.do_setup(self._context)
-        neutron.API.assert_called_once()
         volume.API.assert_called_once()
         compute.API.assert_called_once()
         self._driver._setup_helpers.assert_called_once()
-        self._driver._setup_connectivity_with_service_instances.\
-                                                        assert_called_once()
-        self.assertEqual(self._driver.service_network_id, 'fake network id')
-
-    def test_do_setup_exception(self):
-        self.stubs.Set(neutron, 'API', mock.Mock())
-        neutron.API.return_value = fake_network.API()
-        self.stubs.Set(volume, 'API', mock.Mock())
-        self.stubs.Set(compute, 'API', mock.Mock())
-        self.stubs.Set(neutron.API, 'admin_tenant_id', mock.Mock())
-        neutron.API.admin_tenant_id.side_effect = Exception
-        self.assertRaises(exception.ManilaException,
-                          self._driver.do_setup, self._context)
-
-    def test_get_service_network_net_exists(self):
-        net1 = copy.copy(fake_network.API.network)
-        net2 = copy.copy(fake_network.API.network)
-        net1['name'] = CONF.service_network_name
-        net1['id'] = 'fake service network id'
-        self.stubs.Set(self._driver.neutron_api, 'get_all_tenant_networks',
-                mock.Mock(return_value=[net1, net2]))
-        result = self._driver._get_service_network()
-        self.assertEqual(result, net1['id'])
-
-    def test_get_service_network_net_does_not_exists(self):
-        net = fake_network.FakeNetwork()
-        self.stubs.Set(self._driver.neutron_api, 'get_all_tenant_networks',
-                mock.Mock(return_value=[]))
-        self.stubs.Set(self._driver.neutron_api, 'network_create',
-                mock.Mock(return_value=net))
-        result = self._driver._get_service_network()
-        self.assertEqual(result, net['id'])
-
-    def test_get_service_network_ambiguos(self):
-        net = fake_network.FakeNetwork(name=CONF.service_network_name)
-        self.stubs.Set(self._driver.neutron_api, 'get_all_tenant_networks',
-                mock.Mock(return_value=[net, net]))
-        self.assertRaises(exception.ManilaException,
-                          self._driver._get_service_network)
 
     def test_setup_helpers(self):
+        self._driver._helpers = {}
         CONF.set_default('share_helpers', ['NFS=fakenfs'])
         self.stubs.Set(generic.importutils, 'import_class',
                        mock.Mock(return_value=self._helper_nfs))
@@ -184,7 +136,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_create_share(self):
         self._helper_nfs.create_export.return_value = 'fakelocation'
-        methods = ('_get_service_instance', '_allocate_container',
+        methods = ('get_service_instance', '_allocate_container',
                 '_attach_volume', '_format_device', '_mount_device')
         for method in methods:
             self.stubs.Set(self._driver, method, mock.Mock())
@@ -444,541 +396,6 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self.assertEqual(result, '/dev/vdc')
 
-    def test_get_service_instance_name(self):
-        result = self._driver._get_service_instance_name(self.share)
-        self.assertEqual(result, CONF.service_instance_name_template %
-                self.share['share_network_id'])
-
-    def test_get_server_ip(self):
-        fake_server = fake_compute.FakeServer(networks=
-                {CONF.service_network_name: '10.254.0.1'})
-
-        result = self._driver._get_server_ip(fake_server)
-
-        self.assertEqual(result,
-                fake_server['networks'][CONF.service_network_name][0])
-
-    def test_get_server_ip_exception(self):
-        fake_server = fake_compute.FakeServer(networks={})
-        self.assertRaises(exception.ManilaException,
-                          self._driver._get_server_ip, fake_server)
-
-    def test_get_service_instance(self):
-        fake_server = fake_compute.FakeServer()
-        self.stubs.Set(self._driver, '_ensure_or_delete_server',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(self._driver, '_get_server_ip',
-                       mock.Mock(return_value='fake_ip'))
-        self.stubs.Set(self._driver.compute_api, 'server_list',
-                       mock.Mock(return_value=[]))
-        self.stubs.Set(self._driver, '_create_service_instance',
-                       mock.Mock(return_value=fake_server))
-        self.stubs.Set(self._driver, '_get_ssh_pool',
-                       mock.Mock(return_value=mock.Mock()))
-
-        result = self._driver._get_service_instance(self._context, self.share)
-
-        self.assertFalse(self._driver._ensure_or_delete_server.called)
-        self._driver._get_ssh_pool.assert_called_once_with(fake_server)
-        self._driver.compute_api.server_list.assert_called_once()
-        self._driver._get_server_ip.assert_called_once()
-        self._driver._create_service_instance.assert_called_once()
-        self.assertEqual(result, fake_server)
-
-    def test_get_service_instance_existed_in_memory(self):
-        fake_server = fake_compute.FakeServer()
-        self._driver.share_networks_servers = {self.share['share_network_id']:
-                                               fake_server}
-        self.stubs.Set(self._driver, '_ensure_or_delete_server',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(self._driver.compute_api, 'server_list',
-                       mock.Mock(return_value=[fake_server]))
-        self.stubs.Set(self._driver, '_get_ssh_pool',
-                       mock.Mock(return_value=mock.Mock()))
-        self.stubs.Set(self._driver, '_create_service_instance',
-                       mock.Mock(return_value=fake_server))
-
-        result = self._driver._get_service_instance(self._context, self.share)
-
-        self._driver._ensure_or_delete_server.assert_called_once()
-        self.assertFalse(self._driver._get_ssh_pool.called)
-        self.assertFalse(self._driver.compute_api.server_list.called)
-        self.assertFalse(self._driver._create_service_instance.called)
-
-        self.assertEqual(result, fake_server)
-
-    def test_get_service_instance_existed_in_memory_non_active(self):
-        old_fake_server = fake_compute.FakeServer(status='ERROR')
-        new_fake_server = fake_compute.FakeServer()
-        self._driver.share_networks_servers = {self.share['share_network_id']:
-                                               old_fake_server}
-        self.stubs.Set(self._driver, '_ensure_or_delete_server',
-                mock.Mock(return_value=False))
-        self.stubs.Set(self._driver, '_get_server_ip',
-                       mock.Mock(return_value='fake_ip'))
-        self.stubs.Set(self._driver.compute_api, 'server_list',
-                       mock.Mock(return_value=[]))
-        self.stubs.Set(self._driver, '_create_service_instance',
-                       mock.Mock(return_value=new_fake_server))
-        self.stubs.Set(self._driver, '_get_ssh_pool',
-                       mock.Mock(return_value=mock.Mock()))
-
-        result = self._driver._get_service_instance(self._context, self.share)
-
-        self._driver._ensure_or_delete_server.assert_has_calls(
-                [mock.call(self._context, old_fake_server, update=True)])
-        self._driver._get_ssh_pool.assert_called_once_with(new_fake_server)
-        self._driver.compute_api.server_list.assert_called_once()
-        self._driver._get_server_ip.assert_called_once()
-        self._driver._create_service_instance.assert_called_once()
-
-        self.assertEqual(result, new_fake_server)
-
-    def test_get_service_instance_existed(self):
-        fake_server = fake_compute.FakeServer()
-        self.stubs.Set(self._driver, '_ensure_or_delete_server',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(self._driver, '_get_server_ip',
-                       mock.Mock(return_value='fake_ip'))
-        self.stubs.Set(self._driver.compute_api, 'server_list',
-                       mock.Mock(return_value=[fake_server]))
-        self.stubs.Set(self._driver, '_create_service_instance',
-                       mock.Mock())
-        self.stubs.Set(self._driver, '_get_ssh_pool',
-                       mock.Mock(return_value=mock.Mock()))
-
-        result = self._driver._get_service_instance(self._context, self.share)
-
-        self._driver._ensure_or_delete_server.assert_called_once()
-        self._driver._get_ssh_pool.assert_called_once_with(fake_server)
-        self._driver.compute_api.server_list.assert_called_once()
-        self._driver._get_server_ip.assert_called_once()
-        self.assertFalse(self._driver._create_service_instance.called)
-        self.assertEqual(result, fake_server)
-
-    def test_ensure_or_delete_server(self):
-        fake_server = fake_compute.FakeServer()
-        self.stubs.Set(self._driver, '_check_server_availability',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(self._driver.compute_api, 'server_get',
-                       mock.Mock(return_value=fake_server))
-        result = self._driver._ensure_or_delete_server(self._context,
-                                                       fake_server,
-                                                       update=True)
-        self._driver.compute_api.server_get.\
-                    assert_called_once_with(self._context, fake_server['id'])
-        self._driver._check_server_availability.\
-                                assert_called_once_with(fake_server)
-        self.assertTrue(result)
-
-    def test_ensure_or_delete_server_not_exists(self):
-        fake_server = fake_compute.FakeServer()
-        self.stubs.Set(self._driver, '_check_server_availability',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(self._driver.compute_api, 'server_get',
-                       mock.Mock(side_effect=exception.InstanceNotFound(
-                                               instance_id=fake_server['id'])))
-        result = self._driver._ensure_or_delete_server(self._context,
-                                                       fake_server,
-                                                       update=True)
-        self._driver.compute_api.server_get.\
-                    assert_called_once_with(self._context, fake_server['id'])
-        self.assertFalse(self._driver._check_server_availability.called)
-        self.assertFalse(result)
-
-    def test_ensure_or_delete_server_exception(self):
-        fake_server = fake_compute.FakeServer()
-        self.stubs.Set(self._driver, '_check_server_availability',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(self._driver.compute_api, 'server_get',
-                       mock.Mock(side_effect=exception.ManilaException))
-        self.assertRaises(exception.ManilaException,
-                          self._driver._ensure_or_delete_server,
-                          self._context,
-                          fake_server,
-                          update=True)
-        self._driver.compute_api.server_get.\
-                    assert_called_once_with(self._context, fake_server['id'])
-        self.assertFalse(self._driver._check_server_availability.called)
-
-    def test_ensure_or_delete_server_non_active(self):
-        fake_server = fake_compute.FakeServer(status='ERROR')
-        self.stubs.Set(self._driver, '_delete_server', mock.Mock())
-        self.stubs.Set(self._driver, '_check_server_availability',
-                       mock.Mock(return_value=True))
-        result = self._driver._ensure_or_delete_server(self._context,
-                                                       fake_server)
-        self.assertFalse(self._driver._check_server_availability.called)
-        self._driver._delete_server.assert_called_once_with(self._context,
-                                                            fake_server)
-        self.assertFalse(result)
-
-    def test_get_key_create_new(self):
-        fake_keypair = fake_compute.FakeKeypair(name=
-                                            CONF.manila_service_keypair_name)
-        self.stubs.Set(self._driver.compute_api, 'keypair_list',
-                       mock.Mock(return_value=[]))
-        self.stubs.Set(self._driver.compute_api, 'keypair_import',
-                       mock.Mock(return_value=fake_keypair))
-
-        result = self._driver._get_key(self._context)
-
-        self.assertEqual(result, fake_keypair.name)
-        self._driver.compute_api.keypair_list.assert_called_once()
-        self._driver.compute_api.keypair_import.assert_called_once()
-
-    def test_get_key_exists(self):
-        fake_keypair = fake_compute.FakeKeypair(
-                                name=CONF.manila_service_keypair_name,
-                                public_key='fake_public_key')
-        self.stubs.Set(self._driver.compute_api, 'keypair_list',
-                       mock.Mock(return_value=[fake_keypair]))
-        self.stubs.Set(self._driver.compute_api, 'keypair_import',
-                       mock.Mock(return_value=fake_keypair))
-        self.stubs.Set(self._driver, '_execute',
-                       mock.Mock(return_value=('fake_public_key', '')))
-
-        result = self._driver._get_key(self._context)
-
-        self._driver.compute_api.keypair_list.assert_called_once()
-        self.assertFalse(self._driver.compute_api.keypair_import.called)
-        self.assertEqual(result, fake_keypair.name)
-
-    def test_get_key_exists_recreate(self):
-        fake_keypair = fake_compute.FakeKeypair(
-                                name=CONF.manila_service_keypair_name,
-                                public_key='fake_public_key1')
-        self.stubs.Set(self._driver.compute_api, 'keypair_list',
-                       mock.Mock(return_value=[fake_keypair]))
-        self.stubs.Set(self._driver.compute_api, 'keypair_import',
-                       mock.Mock(return_value=fake_keypair))
-        self.stubs.Set(self._driver.compute_api, 'keypair_delete', mock.Mock())
-        self.stubs.Set(self._driver, '_execute',
-                       mock.Mock(return_value=('fake_public_key2', '')))
-
-        result = self._driver._get_key(self._context)
-
-        self._driver.compute_api.keypair_list.assert_called_once()
-        self._driver.compute_api.keypair_delete.assert_called_once()
-        self._driver.compute_api.keypair_import.\
-                assert_called_once_with(self._context, fake_keypair.name,
-                                        'fake_public_key2')
-        self.assertEqual(result, fake_keypair.name)
-
-    def test_get_service_image(self):
-        fake_image1 = fake_compute.FakeImage(name=CONF.service_image_name)
-        fake_image2 = fake_compute.FakeImage(name='another-image')
-        self.stubs.Set(self._driver.compute_api, 'image_list',
-                       mock.Mock(return_value=[fake_image1, fake_image2]))
-
-        result = self._driver._get_service_image(self._context)
-
-        self.assertEqual(result, fake_image1.id)
-
-    def test_get_service_image_not_found(self):
-        self.stubs.Set(self._driver.compute_api, 'image_list',
-                       mock.Mock(return_value=[]))
-
-        self.assertRaises(exception.ManilaException,
-                          self._driver._get_service_image,
-                          self._context)
-
-    def test_get_service_image_ambiguous(self):
-        fake_image = fake_compute.FakeImage(name=CONF.service_image_name)
-        self.stubs.Set(self._driver.compute_api, 'image_list',
-                       mock.Mock(return_value=[fake_image, fake_image]))
-
-        self.assertRaises(exception.ManilaException,
-                          self._driver._get_service_image,
-                          self._context)
-
-    def test_create_service_instance(self):
-        fake_server = fake_compute.FakeServer()
-        fake_port = fake_network.FakePort()
-        self.stubs.Set(self._driver, '_get_service_image',
-                       mock.Mock(return_value='fake_image_id'))
-        self.stubs.Set(self._driver, '_get_key',
-                       mock.Mock(return_value='fake_key_name'))
-        self.stubs.Set(self._driver, '_setup_network_for_instance',
-                       mock.Mock(return_value=fake_port))
-        self.stubs.Set(self._driver,
-                       '_setup_connectivity_with_service_instances',
-                       mock.Mock())
-        self.stubs.Set(self._driver.compute_api, 'server_create',
-                       mock.Mock(return_value=fake_server))
-        self.stubs.Set(self._driver, '_get_server_ip',
-                       mock.Mock(return_value='fake_ip'))
-        self.stubs.Set(generic.socket, 'socket', mock.Mock())
-
-        result = self._driver._create_service_instance(self._context,
-                                        'instance_name', self.share, None)
-
-        self._driver._get_service_image.assert_called_once()
-        self._driver._get_key.assert_called_once()
-        self._driver._setup_network_for_instance.assert_called_once()
-        self._driver._setup_connectivity_with_service_instances.\
-                assert_called_once()
-        self._driver.compute_api.server_create.assert_called_once_with(
-                self._context, 'instance_name', 'fake_image_id',
-                CONF.service_instance_flavor_id, 'fake_key_name', None, None,
-                nics=[{'port-id': fake_port['id']}])
-        generic.socket.socket.assert_called_once()
-        self.assertEqual(result, fake_server)
-
-    def test_create_service_instance_error(self):
-        fake_server = fake_compute.FakeServer(status='ERROR')
-        fake_port = fake_network.FakePort()
-        self.stubs.Set(self._driver, '_get_service_image',
-                       mock.Mock(return_value='fake_image_id'))
-        self.stubs.Set(self._driver, '_get_key',
-                       mock.Mock(return_value='fake_key_name'))
-        self.stubs.Set(self._driver, '_setup_network_for_instance',
-                       mock.Mock(return_value=fake_port))
-        self.stubs.Set(self._driver,
-                       '_setup_connectivity_with_service_instances',
-                       mock.Mock())
-        self.stubs.Set(self._driver.compute_api, 'server_create',
-                       mock.Mock(return_value=fake_server))
-        self.stubs.Set(self._driver.compute_api, 'server_get',
-                       mock.Mock(return_value=fake_server))
-        self.stubs.Set(generic.socket, 'socket', mock.Mock())
-
-        self.assertRaises(exception.ManilaException,
-                self._driver._create_service_instance, self._context,
-                'instance_name', self.share, None)
-
-        self._driver.compute_api.server_create.assert_called_once()
-        self.assertFalse(self._driver.compute_api.server_get.called)
-        self.assertFalse(generic.socket.socket.called)
-
-    def test_create_service_instance_failed_setup_connectivity(self):
-        fake_server = fake_compute.FakeServer(status='ERROR')
-        fake_port = fake_network.FakePort()
-        self.stubs.Set(self._driver, '_get_service_image',
-                       mock.Mock(return_value='fake_image_id'))
-        self.stubs.Set(self._driver, '_get_key',
-                       mock.Mock(return_value='fake_key_name'))
-        self.stubs.Set(self._driver, '_setup_network_for_instance',
-                       mock.Mock(return_value=fake_port))
-        self.stubs.Set(self._driver,
-                       '_setup_connectivity_with_service_instances',
-                       mock.Mock(side_effect=exception.ManilaException))
-        self.stubs.Set(self._driver.neutron_api, 'delete_port', mock.Mock())
-        self.stubs.Set(self._driver.compute_api, 'server_create',
-                       mock.Mock(return_value=fake_server))
-        self.stubs.Set(self._driver.compute_api, 'server_get',
-                       mock.Mock(return_value=fake_server))
-        self.stubs.Set(generic.socket, 'socket', mock.Mock())
-
-        self.assertRaises(exception.ManilaException,
-                self._driver._create_service_instance,
-                self._context, 'instance_name', self.share, None)
-
-        self._driver.neutron_api.delete_port.\
-                assert_called_once_with(fake_port['id'])
-        self.assertFalse(self._driver.compute_api.server_create.called)
-        self.assertFalse(self._driver.compute_api.server_get.called)
-        self.assertFalse(generic.socket.socket.called)
-
-    def test_create_service_instance_no_key_and_password(self):
-        self.stubs.Set(self._driver, '_get_service_image',
-                       mock.Mock(return_value='fake_image_id'))
-        self.stubs.Set(self._driver, '_get_key',
-                       mock.Mock(return_value=None))
-        self.assertRaises(exception.ManilaException,
-                self._driver._create_service_instance, self._context,
-                'instance_name', self.share, None)
-
-    def test_setup_network_for_instance(self):
-        fake_service_net = fake_network.FakeNetwork(subnets=[])
-        fake_service_subnet = fake_network.\
-                FakeSubnet(name=self.share['share_network_id'])
-        fake_router = fake_network.FakeRouter()
-        fake_port = fake_network.FakePort()
-        self.stubs.Set(self._driver.neutron_api, 'get_network',
-                mock.Mock(return_value=fake_service_net))
-        self.stubs.Set(self._driver.neutron_api, 'subnet_create',
-                mock.Mock(return_value=fake_service_subnet))
-        self.stubs.Set(self._driver.db, 'share_network_get',
-                mock.Mock(return_value='fake_share_network'))
-        self.stubs.Set(self._driver, '_get_private_router',
-                mock.Mock(return_value=fake_router))
-        self.stubs.Set(self._driver.neutron_api, 'router_add_interface',
-                mock.Mock())
-        self.stubs.Set(self._driver.neutron_api, 'create_port',
-                mock.Mock(return_value=fake_port))
-        self.stubs.Set(self._driver, '_get_cidr_for_subnet',
-                mock.Mock(return_value='fake_cidr'))
-
-        result = self._driver._setup_network_for_instance(self._context,
-                self.share, None)
-
-        self._driver.neutron_api.get_network.\
-                assert_called_once_with(self._driver.service_network_id)
-        self._driver._get_private_router.\
-                assert_called_once_with('fake_share_network')
-        self._driver.neutron_api.router_add_interface.\
-                assert_called_once_with('fake_router_id', 'fake_subnet_id')
-        self._driver.neutron_api.subnet_create.assert_called_once_with(
-                                         self._driver.service_tenant_id,
-                                         self._driver.service_network_id,
-                                         self.share['share_network_id'],
-                                         'fake_cidr')
-        self._driver.neutron_api.create_port.assert_called_once_with(
-                                         self._driver.service_tenant_id,
-                                         self._driver.service_network_id,
-                                         subnet_id='fake_subnet_id',
-                                         fixed_ip=None,
-                                         device_owner='manila')
-        self._driver._get_cidr_for_subnet.assert_called_once_with([])
-        self.assertEqual(result, fake_port)
-
-    def test_get_private_router(self):
-        fake_net = fake_network.FakeNetwork()
-        fake_subnet = fake_network.FakeSubnet(gateway_ip='fake_ip')
-        fake_port = fake_network.FakePort(fixed_ips=[
-                        {'subnet_id': fake_subnet['id'],
-                         'ip_address': fake_subnet['gateway_ip']}],
-                        device_id='fake_router_id')
-        fake_router = fake_network.FakeRouter(id='fake_router_id')
-        self.stubs.Set(self._driver.neutron_api, 'get_subnet',
-                mock.Mock(return_value=fake_subnet))
-        self.stubs.Set(self._driver.neutron_api, 'list_ports',
-                mock.Mock(return_value=[fake_port]))
-        self.stubs.Set(self._driver.neutron_api, 'show_router',
-                mock.Mock(return_value=fake_router))
-
-        result = self._driver._get_private_router(
-                    {'neutron_subnet_id': fake_subnet['id'],
-                     'neutron_net_id': fake_net['id']})
-
-        self._driver.neutron_api.get_subnet.\
-                assert_called_once_with(fake_subnet['id'])
-        self._driver.neutron_api.list_ports.\
-                assert_called_once_with(network_id=fake_net['id'])
-        self._driver.neutron_api.show_router.\
-                assert_called_once_with(fake_router['id'])
-        self.assertEqual(result, fake_router)
-
-    def test_get_private_router_exception(self):
-        fake_net = fake_network.FakeNetwork()
-        fake_subnet = fake_network.FakeSubnet(gateway_ip='fake_ip')
-        self.stubs.Set(self._driver.neutron_api, 'get_subnet',
-                mock.Mock(return_value=fake_subnet))
-        self.stubs.Set(self._driver.neutron_api, 'list_ports',
-                mock.Mock(return_value=[]))
-
-        self.assertRaises(exception.ManilaException,
-                self._driver._get_private_router,
-                {'neutron_subnet_id': fake_subnet['id'],
-                 'neutron_net_id': fake_net['id']})
-
-    def test_setup_connectivity_with_service_instances(self):
-        fake_subnet = fake_network.FakeSubnet(cidr='10.254.0.1/29')
-        fake_port = fake_network.FakePort(fixed_ips=[
-            {'subnet_id': fake_subnet['id'], 'ip_address': '10.254.0.2'}],
-            mac_address='fake_mac_address')
-
-        self.stubs.Set(self._driver, '_setup_service_port',
-                mock.Mock(return_value=fake_port))
-        self.stubs.Set(self._driver.vif_driver, 'get_device_name',
-                mock.Mock(return_value='fake_interface_name'))
-        self.stubs.Set(self._driver.neutron_api, 'get_subnet',
-                mock.Mock(return_value=fake_subnet))
-        self.stubs.Set(self._driver, '_clean_garbage', mock.Mock())
-        self.stubs.Set(self._driver.vif_driver, 'plug', mock.Mock())
-        device_mock = mock.Mock()
-        self.stubs.Set(generic.ip_lib, 'IPDevice',
-                mock.Mock(return_value=device_mock))
-
-        self._driver._setup_connectivity_with_service_instances()
-
-        self._driver._setup_service_port.assert_called_once()
-        self._driver.vif_driver.get_device_name.\
-                                            assert_called_once_with(fake_port)
-        self._driver.vif_driver.plug.assert_called_once_with(fake_port['id'],
-                'fake_interface_name', fake_port['mac_address'])
-        self._driver.neutron_api.get_subnet.\
-                        assert_called_once_with(fake_subnet['id'])
-        self._driver.vif_driver.init_l3.assert_called_once()
-        generic.ip_lib.IPDevice.assert_called_once()
-        device_mock.route.pullup_route.assert_called_once()
-        self._driver._clean_garbage.assert_called_once_with(device_mock)
-
-    def test_setup_service_port(self):
-        fake_service_port = fake_network.FakePort(device_id='manila-share')
-        fake_service_net = fake_network.FakeNetwork(subnets=[])
-        self.stubs.Set(self._driver.neutron_api, 'list_ports',
-                       mock.Mock(return_value=[]))
-        self.stubs.Set(self._driver, '_execute',
-                       mock.Mock(return_value=('fake_host', '')))
-        self.stubs.Set(self._driver.neutron_api, 'create_port',
-                       mock.Mock(return_value=fake_service_port))
-        self.stubs.Set(self._driver.neutron_api, 'get_network',
-                       mock.Mock(return_value=fake_service_net))
-        self.stubs.Set(self._driver.neutron_api, 'update_port_fixed_ips',
-                       mock.Mock(return_value=fake_service_port))
-
-        result = self._driver._setup_service_port()
-
-        self._driver.neutron_api.list_ports.\
-                            assert_called_once_with(device_id='manila-share')
-        self._driver.db.service_get_all_by_topic.assert_called_once()
-        self._driver.neutron_api.create_port.assert_called_once_with(
-                                    self._driver.service_tenant_id,
-                                    self._driver.service_network_id,
-                                    device_id='manila-share',
-                                    device_owner='manila:generic_driver',
-                                    host_id='fake_host'
-                                    )
-        self._driver.neutron_api.get_network.assert_called_once()
-        self.assertFalse(self._driver.neutron_api.update_port_fixed_ips.called)
-        self.assertEqual(result, fake_service_port)
-
-    def test_setup_service_port_ambigious_ports(self):
-        fake_service_port = fake_network.FakePort(device_id='manila-share')
-        self.stubs.Set(self._driver.neutron_api, 'list_ports',
-                mock.Mock(return_value=[fake_service_port, fake_service_port]))
-        self.assertRaises(exception.ManilaException,
-                          self._driver._setup_service_port)
-
-    def test_setup_service_port_exists(self):
-        fake_service_port = fake_network.FakePort(device_id='manila-share')
-        fake_service_net = fake_network.FakeNetwork(subnets=[])
-        self.stubs.Set(self._driver.neutron_api, 'list_ports',
-                       mock.Mock(return_value=[fake_service_port]))
-        self.stubs.Set(self._driver.db, 'service_get_all_by_topic',
-                mock.Mock(return_value=[{'host': 'fake_host'}]))
-        self.stubs.Set(self._driver.neutron_api, 'create_port',
-                       mock.Mock(return_value=fake_service_port))
-        self.stubs.Set(self._driver.neutron_api, 'get_network',
-                       mock.Mock(return_value=fake_service_net))
-        self.stubs.Set(self._driver.neutron_api, 'update_port_fixed_ips',
-                       mock.Mock(return_value=fake_service_port))
-
-        result = self._driver._setup_service_port()
-
-        self._driver.neutron_api.list_ports.\
-                            assert_called_once_with(device_id='manila-share')
-        self.assertFalse(self._driver.db.service_get_all_by_topic.called)
-        self.assertFalse(self._driver.neutron_api.create_port.called)
-        self._driver.neutron_api.get_network.assert_called_once()
-        self.assertFalse(self._driver.neutron_api.update_port_fixed_ips.called)
-        self.assertEqual(result, fake_service_port)
-
-    def test_get_cidr_for_subnet(self):
-        serv_cidr = generic.netaddr.IPNetwork(CONF.service_network_cidr)
-        cidrs = serv_cidr.subnet(29)
-        cidr1 = str(cidrs.next())
-        cidr2 = str(cidrs.next())
-
-        result = self._driver._get_cidr_for_subnet([])
-        self.assertEqual(result, cidr1)
-
-        fake_subnet = fake_network.FakeSubnet(cidr=cidr1)
-        result = self._driver._get_cidr_for_subnet([fake_subnet])
-        self.assertEqual(result, cidr2)
-
     def test_allocate_container(self):
         fake_vol = fake_volume.FakeVolume()
         self.stubs.Set(self._driver.volume_api, 'create',
@@ -1036,7 +453,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_create_share_from_snapshot(self):
         self._helper_nfs.create_export.return_value = 'fakelocation'
-        methods = ('_get_service_instance', '_allocate_container',
+        methods = ('get_service_instance', '_allocate_container',
                 '_attach_volume', '_mount_device')
         for method in methods:
             self.stubs.Set(self._driver, method, mock.Mock())
@@ -1049,7 +466,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_delete_share(self):
         fake_server = fake_compute.FakeServer()
-        self.stubs.Set(self._driver, '_get_service_instance',
+        self.stubs.Set(self._driver, 'get_service_instance',
                        mock.Mock(return_value=fake_server))
         self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
         self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
@@ -1057,7 +474,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver.delete_share(self._context, self.share)
 
-        self._driver._get_service_instance.assert_called_once()
+        self._driver.get_service_instance.assert_called_once()
         self._driver._unmount_device.assert_called_once()
         self._driver._detach_volume.assert_called_once()
         self._driver._deallocate_container.assert_called_once()
@@ -1097,7 +514,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_ensure_share(self):
         self._helper_nfs.create_export.return_value = 'fakelocation'
-        methods = ('_get_service_instance', '_get_volume',
+        methods = ('get_service_instance', '_get_volume',
                 '_attach_volume', '_mount_device')
         for method in methods:
             self.stubs.Set(self._driver, method, mock.Mock())
@@ -1108,11 +525,11 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_allow_access(self):
         fake_server = fake_compute.FakeServer()
         access = {'access_type': 'ip', 'access_to': 'fake_dest'}
-        self.stubs.Set(self._driver, '_get_service_instance',
+        self.stubs.Set(self._driver, 'get_service_instance',
                        mock.Mock(return_value=fake_server))
         self._driver.allow_access(self._context, self.share, access)
 
-        self._driver._get_service_instance.assert_called_once()
+        self._driver.get_service_instance.assert_called_once()
         self._driver._helpers[self.share['share_proto']].\
                 allow_access.assert_called_once_with(fake_server,
                                                      self.share['name'],
@@ -1122,11 +539,11 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_deny_access(self):
         fake_server = fake_compute.FakeServer()
         access = {'access_type': 'ip', 'access_to': 'fake_dest'}
-        self.stubs.Set(self._driver, '_get_service_instance',
+        self.stubs.Set(self._driver, 'get_service_instance',
                        mock.Mock(return_value=fake_server))
         self._driver.deny_access(self._context, self.share, access)
 
-        self._driver._get_service_instance.assert_called_once()
+        self._driver.get_service_instance.assert_called_once()
         self._driver._helpers[self.share['share_proto']].\
                 deny_access.assert_called_once_with(fake_server,
                                                     self.share['name'],

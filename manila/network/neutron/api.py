@@ -144,6 +144,13 @@ class API(base.Base):
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
 
+    def delete_subnet(self, subnet_id):
+        try:
+            self.client.delete_subnet(subnet_id)
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
     def list_ports(self, **search_opts):
         """List ports for the client based on search options."""
         return self.client.list_ports(**search_opts).get('ports')
@@ -229,6 +236,18 @@ class API(base.Base):
             body['port_id'] = port_id
         try:
             self.client.add_interface_router(router_id, body)
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)
+
+    def router_remove_interface(self, router_id, subnet_id, port_id=None):
+        body = {}
+        if subnet_id:
+            body['subnet_id'] = subnet_id
+        if port_id:
+            body['port_id'] = port_id
+        try:
+            self.client.remove_interface_router(router_id, body)
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
