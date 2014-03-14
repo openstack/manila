@@ -79,6 +79,8 @@ server_opts = [
 CONF = cfg.CONF
 CONF.register_opts(server_opts)
 
+lock = threading.Lock()
+
 
 def synchronized(f):
     """Decorates function with unique locks for each share network.
@@ -310,7 +312,8 @@ class ServiceInstanceManager(object):
                                  share_network_id, old_server_ip):
         """Creates service vm and sets up networking for it."""
         service_image_id = self._get_service_image(context)
-        key_name = self._get_key(context)
+        with lock:
+            key_name = self._get_key(context)
         if not CONF.service_instance_password and not key_name:
             raise exception.ServiceInstanceException(
                 _('Neither service instance password nor key are available.'))
