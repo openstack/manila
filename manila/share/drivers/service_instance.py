@@ -312,21 +312,23 @@ class ServiceInstanceManager(object):
                                  share_network_id, old_server_ip):
         """Creates service vm and sets up networking for it."""
         service_image_id = self._get_service_image(context)
+
         with lock:
             key_name = self._get_key(context)
-        if not CONF.service_instance_password and not key_name:
-            raise exception.ServiceInstanceException(
-                _('Neither service instance password nor key are available.'))
+            if not CONF.service_instance_password and not key_name:
+                raise exception.ServiceInstanceException(_('Neither service '
+                    'instance password nor key are available.'))
 
-        port = self._setup_network_for_instance(context,
-                                                share_network_id,
-                                                old_server_ip)
-        try:
-            self._setup_connectivity_with_service_instances()
-        except Exception as e:
-            LOG.debug(e)
-            self.neutron_api.delete_port(port['id'])
-            raise
+            port = self._setup_network_for_instance(context,
+                                                    share_network_id,
+                                                    old_server_ip)
+            try:
+                self._setup_connectivity_with_service_instances()
+            except Exception as e:
+                LOG.debug(e)
+                self.neutron_api.delete_port(port['id'])
+                raise
+
         service_instance = self.compute_api.server_create(context,
                                               instance_name,
                                               service_image_id,
