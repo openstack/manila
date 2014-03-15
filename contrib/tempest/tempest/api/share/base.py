@@ -14,6 +14,7 @@
 #    under the License.
 
 import inspect
+import time
 
 from tempest import clients_share as clients
 from tempest.common import isolated_creds
@@ -172,6 +173,36 @@ class BaseSharesTest(test.BaseTestCase):
 
     @classmethod
     def provide_share_network(cls, shares_client, network_client):
+        """This is retry-wrapper for method "_provide_share_network".
+
+        There is unique constraint for share-networks, it contains
+        'tenant_id', 'neutron_net_id' and 'neutron_subnet_id'.
+        Running tests with tempest in several threads can cause
+        race condition, when we can get "http 400 bad request".
+        """
+
+        share_network_id = None
+        timeout = int(time.time()) + 10
+        while (share_network_id is None and (int(time.time()) < timeout)):
+            try:
+                share_network_id = cls._provide_share_network(shares_client,
+                                                              network_client)
+                break
+            except exceptions.BadRequest:
+                # Appears when suitable network and subnet exist, but no
+                # share-network yet. More than one attempt to create
+                # share-network were sent and unique constraint faced.
+                time.sleep(1)
+            except exceptions.Unauthorized:
+                time.sleep(1)
+        else:
+            # Last attempt
+            share_network_id = cls._provide_share_network(shares_client,
+                                                          network_client)
+        return share_network_id
+
+    @classmethod
+    def _provide_share_network(cls, shares_client, network_client):
         """Used for finding/creating share network for multitenant driver.
 
         This method creates/gets entity share-network for one tenant. This
