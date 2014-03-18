@@ -541,3 +541,7 @@ class BridgeDoesNotExist(ManilaException):
 
 class ServiceInstanceException(ManilaException):
     message = _("Exception in service instance manager occurred.")
+
+
+class NetAppException(ManilaException):
+    message = _("Exception due to NetApp failure.")

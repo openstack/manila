@@ -32,7 +32,6 @@ import nose.plugins.skip
 from oslo.config import cfg
 import stubout
 
-from manila.common import config
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils

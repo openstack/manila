@@ -1097,7 +1097,7 @@ def share_data_get_for_project(context, project_id, user_id, session=None):
     else:
         result = query.first()
 
-    return (result[0] or 0, result[1] or 0)
+    return (result[1] or 0, result[2] or 0)
 
 
 @require_context
@@ -1259,7 +1259,7 @@ def snapshot_data_get_for_project(context, project_id, user_id, session=None):
     else:
         result = query.first()
 
-    return (result[0] or 0, result[1] or 0)
+    return (result[1] or 0, result[2] or 0)
 
 
 @require_context
