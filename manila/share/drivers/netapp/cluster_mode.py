@@ -161,17 +161,6 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         return int(self._client.send_request(
             'system-node-get-iter').get_child_content('num-records'))
 
-    def _delete_vserver(self, vserver_name, vserver_client):
-        """Deletes vserver."""
-        vserver_client.send_request(
-            'volume-offline',
-            {'name': self.configuration.netapp_root_volume_name})
-        vserver_client.send_request(
-            'volume-destroy',
-            {'name': self.configuration.netapp_root_volume_name})
-        args = {'vserver-name': vserver_name}
-        self._client.send_request('vserver-destroy', args)
-
     def _create_net_iface(self, ip, netmask, vlan, node, port, vserver_name,
                           allocation_id):
         """Creates lif on vlan port."""
@@ -228,17 +217,23 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         return self.configuration.netapp_vserver_name_template \
                % {'net_id': net_id}
 
+    def _vserver_exists(self, vserver_name):
+        args = {'query': {'vserver-info': {'vserver-name': vserver_name}}}
+
+        LOG.debug(_('Checking if vserver exists'))
+        vserver_info = self._client.send_request('vserver-get-iter', args)
+        if int(vserver_info.get_child_content('num-records')):
+            return True
+        else:
+            return False
+
     def _vserver_create_if_not_exists(self, network_info):
         """Creates vserver if not exists with given parameters."""
         vserver_name = self._get_vserver_name(network_info['id'])
         vserver_client = driver.NetAppApiClient(
             self.api_version, vserver=vserver_name,
             configuration=self.configuration)
-        args = {'query': {'vserver-info': {'vserver-name': vserver_name}}}
-
-        LOG.debug(_('Checking if vserver is configured'))
-        vserver_info = self._client.send_request('vserver-get-iter', args)
-        if not int(vserver_info.get_child_content('num-records')):
+        if not self._vserver_exists(vserver_name):
             LOG.debug(_('Vserver %s does not exist, creating') % vserver_name)
             self._create_vserver(vserver_name)
         nodes = self._get_cluster_nodes()
@@ -625,6 +620,65 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
         return helper.deny_access(context, share, access)
+
+    def _delete_vserver(self, vserver_name, vserver_client,
+                        network_info=None):
+        """
+        Delete vserver.
+
+        Checks if vserver exists and does not have active shares.
+        Offlines and destroys root volumes.
+        Deletes vserver.
+        """
+        if not self._vserver_exists(vserver_name):
+            LOG.error(_("Vserver %s does not exists.") % vserver_name)
+            return
+        volumes_data = vserver_client.send_request('volume-get-iter')
+        volumes_count = int(volumes_data.get_child_content('num-records'))
+        if volumes_count == 1:
+            try:
+                vserver_client.send_request(
+                    'volume-offline',
+                    {'name': self.configuration.netapp_root_volume_name})
+            except naapi.NaApiError as e:
+                if e.code == '13042':
+                    LOG.error(_("Volume %s is already offline.")
+                              % self.configuration.netapp_root_volume_name)
+                else:
+                    raise e
+            vserver_client.send_request(
+                'volume-destroy',
+                {'name': self.configuration.netapp_root_volume_name})
+        elif volumes_count > 1:
+            msg = _("Error deleting vserver. "
+                    "Vserver %s has shares.") % vserver_name
+            LOG.error(msg)
+            raise exception.NetAppException(msg)
+        if network_info and network_info.get('security_services'):
+            for service in network_info['security_services']:
+                if service['type'] == 'active_directory':
+                    args = {'admin-password': service['password'],
+                            'admin-username': service['sid']}
+                    try:
+                        vserver_client.send_request('cifs-server-delete',
+                                                    args)
+                    except naapi.NaApiError as e:
+                        if e.code == "15661":
+                            LOG.error(_("Cifs server does not exists for"
+                                      " vserver %s") % vserver_name)
+                        else:
+                            vserver_client.send_request('cifs-server-delete')
+        self._client.send_request('vserver-destroy',
+                                  {'vserver-name': vserver_name})
+
+    def teardown_network(self, network_info):
+        """Teardown share network."""
+        vserver_name = self._get_vserver_name(network_info['id'])
+        vserver_client = driver.NetAppApiClient(
+            self.api_version, vserver=vserver_name,
+            configuration=self.configuration)
+        self._delete_vserver(vserver_name, vserver_client,
+                             network_info=network_info)
 
 
 class NetAppClusteredNFSHelper(driver.NetAppNFSHelper):
