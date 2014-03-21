@@ -110,10 +110,6 @@ class ShareManager(manager.SchedulerDependentManager):
         if share_network_id:
             share_network = self.db.share_network_get(context,
                                                       share_network_id)
-            if share_network['status'] == constants.STATUS_INACTIVE:
-                share_network = self._activate_share_network(
-                                    context,
-                                    share_network)
         else:
             share_network = {}
 
@@ -272,7 +268,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def deactivate_network(self, context, share_network_id):
         share_network = self.db.share_network_get(context, share_network_id)
-        self.driver.teardown_network(share_network)
+        self._deactivate_network(context, share_network)
         self.network_api.deallocate_network(context, share_network)
 
     def _activate_share_network(self, context, share_network, metadata=None):
@@ -282,11 +278,29 @@ class ShareManager(manager.SchedulerDependentManager):
                                 context,
                                 share_network,
                                 count=allocation_number)
-            try:
-                self.driver.setup_network(share_network, metadata=metadata)
-            except exception.ManilaException:
-                with excutils.save_and_reraise_exception():
-                    self.network_api.deallocate_network(context,
-                                                        share_network)
-            else:
-                return share_network
+        try:
+            self.db.share_network_update(context, share_network['id'],
+                {'status': constants.STATUS_ACTIVATING})
+            self.driver.setup_network(share_network, metadata=metadata)
+            self.db.share_network_update(context, share_network['id'],
+                {'status': constants.STATUS_ACTIVE})
+        except exception.ManilaException:
+            with excutils.save_and_reraise_exception():
+                self.db.share_network_update(context, share_network['id'],
+                    {'status': constants.STATUS_ERROR})
+                self.network_api.deallocate_network(context, share_network)
+        else:
+            return share_network
+
+    def _deactivate_network(self, context, share_network):
+        self.db.share_network_update(context, share_network['id'],
+            {'status': constants.STATUS_DEACTIVATING})
+        try:
+            self.driver.teardown_network(share_network)
+        except Exception as e:
+            with excutils.save_and_reraise_exception():
+                self.db.share_network_update(context, share_network['id'],
+                    {'status': constants.STATUS_ERROR})
+        else:
+            self.db.share_network_update(context, share_network['id'],
+                {'status': constants.STATUS_INACTIVE})

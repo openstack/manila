@@ -23,6 +23,7 @@ import time
 
 from oslo.config import cfg
 
+from manila.common import constants
 from manila import compute
 from manila import context
 from manila import exception
@@ -99,7 +100,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.service_instance_manager = service_instance.\
                                 ServiceInstanceManager(self.db, self._helpers)
         self.get_service_instance = self.service_instance_manager.\
-                                                          get_service_instance
+                get_service_instance
+        self.delete_service_instance = self.service_instance_manager.\
+                delete_service_instance
         self.share_networks_locks = self.service_instance_manager.\
                                                           share_networks_locks
         self.share_networks_servers = self.service_instance_manager.\
@@ -350,11 +353,12 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if not share['share_network_id']:
             return
         server = self.get_service_instance(self.admin_context,
-                                    share_network_id=share['share_network_id'],
-                                    create=False)
+                                share_network_id=share['share_network_id'],
+                                return_inactive=True)
         if server:
-            self._get_helper(share).remove_export(server, share['name'])
-            self._unmount_device(context, share, server)
+            if server['status'] == 'ACTIVE':
+                self._get_helper(share).remove_export(server, share['name'])
+                self._unmount_device(context, share, server)
             self._detach_volume(context, share, server)
         self._deallocate_container(context, share)
 
@@ -405,7 +409,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def ensure_share(self, context, share):
         """Ensure that storage are mounted and exported."""
         server = self.get_service_instance(context,
-               share_network_id=share['share_network_id'])
+               share_network_id=share['share_network_id'], create=True)
         volume = self._get_volume(context, share['id'])
         volume = self._attach_volume(context, share, server, volume)
         self._mount_device(context, share, server, volume)
@@ -428,8 +432,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if not share['share_network_id']:
             return
         server = self.get_service_instance(self.admin_context,
-                                    share_network_id=share['share_network_id'],
-                                    create=False)
+                                    share_network_id=share['share_network_id'])
         if server:
             self._get_helper(share).deny_access(server, share['name'],
                                                 access['access_type'],
@@ -444,10 +447,28 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.InvalidShare(reason='Wrong share type')
 
     def get_network_allocations_number(self):
+        """Get number of network interfaces to be created."""
+        # NOTE(vponomaryov): Generic driver does not need allocations, because
+        # Nova will handle it. It is valid for all multitenant drivers, that
+        # use service instance provided by Nova.
         return 0
 
-    def setup_network(self, network_info):
-        pass
+    def setup_network(self, share_network, metadata=None):
+        sn_id = share_network["id"]
+        msg = _("Creating share infrastructure for share network '%s'.")
+        LOG.debug(msg % sn_id)
+        self.get_service_instance(context=self.admin_context,
+                                  share_network_id=sn_id,
+                                  create=True)
+
+    def teardown_network(self, share_network):
+        sn_id = share_network["id"]
+        msg = _("Removing share infrastructure for share network '%s'.")
+        LOG.debug(msg % sn_id)
+        try:
+            self.delete_service_instance(self.admin_context, sn_id)
+        except Exception as e:
+            LOG.debug(e)
 
 
 class NASHelperBase(object):

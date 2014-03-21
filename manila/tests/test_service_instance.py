@@ -137,7 +137,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        mock.Mock(return_value=mock.Mock()))
 
         result = self._manager.get_service_instance(self._context,
-                                     share_network_id='fake_share_network_id')
+                                     share_network_id='fake_share_network_id',
+                                     create=True)
 
         self._manager._ensure_server.assert_called_once()
         self._manager._get_ssh_pool.assert_called_once_with(fake_server)
@@ -186,7 +187,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        mock.Mock(return_value=mock.Mock()))
 
         result = self._manager.get_service_instance(self._context,
-                                     share_network_id='fake_share_network_id')
+                                     share_network_id='fake_share_network_id',
+                                     create=True)
 
         self._manager._ensure_server.assert_has_calls(
                 [mock.call(self._context, old_fake_server, update=True)])
@@ -356,6 +358,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_create_service_instance(self):
         fake_server = fake_compute.FakeServer()
         fake_port = fake_network.FakePort()
+        fake_instance_name = 'fake_instance_name'
+        sn_id = 'fake_sn_id'
         self.stubs.Set(self._manager, '_get_service_image',
                        mock.Mock(return_value='fake_image_id'))
         self.stubs.Set(self._manager, '_get_key',
@@ -370,9 +374,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager, '_get_server_ip',
                        mock.Mock(return_value='fake_ip'))
         self.stubs.Set(service_instance.socket, 'socket', mock.Mock())
-
+        self.stubs.Set(self._manager, '_get_service_instance_name',
+                       mock.Mock(return_value=fake_instance_name))
         result = self._manager._create_service_instance(self._context,
-                                        'instance_name', self.share, None)
+                                                        sn_id, None)
 
         self._manager._get_service_image.assert_called_once()
         self._manager._get_key.assert_called_once()
@@ -380,7 +385,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager._setup_connectivity_with_service_instances.\
                 assert_called_once()
         self._manager.compute_api.server_create.assert_called_once_with(
-                self._context, 'instance_name', 'fake_image_id',
+                self._context, fake_instance_name, 'fake_image_id',
                 CONF.service_instance_flavor_id, 'fake_key_name', None, None,
                 nics=[{'port-id': fake_port['id']}])
         service_instance.socket.socket.assert_called_once()
@@ -405,8 +410,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(service_instance.socket, 'socket', mock.Mock())
 
         self.assertRaises(exception.ManilaException,
-                self._manager._create_service_instance, self._context,
-                'instance_name', self.share, None)
+                          self._manager._create_service_instance,
+                          self._context, self.share, None)
 
         self._manager.compute_api.server_create.assert_called_once()
         self.assertFalse(self._manager.compute_api.server_get.called)
@@ -432,8 +437,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(service_instance.socket, 'socket', mock.Mock())
 
         self.assertRaises(exception.ManilaException,
-                self._manager._create_service_instance,
-                self._context, 'instance_name', self.share, None)
+                          self._manager._create_service_instance,
+                          self._context, self.share, None)
 
         self._manager.neutron_api.delete_port.\
                 assert_called_once_with(fake_port['id'])
@@ -447,8 +452,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager, '_get_key',
                        mock.Mock(return_value=None))
         self.assertRaises(exception.ManilaException,
-                self._manager._create_service_instance, self._context,
-                'instance_name', self.share, None)
+                          self._manager._create_service_instance,
+                          self._context, self.share, None)
 
     def test_setup_network_for_instance(self):
         fake_service_net = fake_network.FakeNetwork(subnets=[])

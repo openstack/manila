@@ -13,12 +13,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
+from oslo.config import cfg
+
 from manila.common import constants
 from manila.db import base as db_base
 from manila import exception
 from manila import network as manila_network
 from manila.network.neutron import api as neutron_api
 from manila.network.neutron import constants as neutron_constants
+from manila.openstack.common import log as logging
+
+CONF = cfg.CONF
+LOG = logging.getLogger(__name__)
 
 
 class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
@@ -53,10 +61,7 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
         for _ in range(0, allocation_count):
             self._create_port(context, share_network, device_owner)
 
-        return self.db.share_network_update(
-                context,
-                share_network['id'],
-                {'status': constants.STATUS_ACTIVE})
+        return self.db.share_network_get(context, share_network['id'])
 
     def deallocate_network(self, context, share_network):
         """Deallocate neutron network resources for the given network info:
@@ -72,30 +77,20 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
         for port in ports:
             self._delete_port(context, port)
 
-        self.db.share_network_update(context,
-                                     share_network['id'],
-                                     {'status': constants.STATUS_INACTIVE})
-
     def _create_port(self, context, share_network, device_owner):
-        try:
-            port = self.neutron_api.create_port(
-                            share_network['project_id'],
-                            network_id=share_network['neutron_net_id'],
-                            subnet_id=share_network['neutron_subnet_id'],
-                            device_owner='manila:' + device_owner)
-        except exception.NetworkException:
-            self.db.share_network_update(context,
-                                         share_network['id'],
-                                         {'status': constants.STATUS_ERROR})
-            raise
-        else:
-            port_dict = {'id': port['id'],
-                         'share_network_id': share_network['id'],
-                         'ip_address': port['fixed_ips'][0]['ip_address'],
-                         'mac_address': port['mac_address'],
-                         'status': constants.STATUS_ACTIVE}
-            self.db.network_allocation_create(context, port_dict)
-            return port_dict
+        port = self.neutron_api.create_port(share_network['project_id'],
+            network_id=share_network['neutron_net_id'],
+            subnet_id=share_network['neutron_subnet_id'],
+            device_owner='manila:' + device_owner)
+        port_dict = {
+            'id': port['id'],
+            'share_network_id': share_network['id'],
+            'ip_address': port['fixed_ips'][0]['ip_address'],
+            'mac_address': port['mac_address'],
+            'status': constants.STATUS_ACTIVE,
+        }
+        self.db.network_allocation_create(context, port_dict)
+        return port_dict
 
     def _delete_port(self, context, port):
         try:
@@ -104,9 +99,6 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
             self.db.network_allocation_update(context,
                                         port['id'],
                                         {'status': constants.STATUS_ERROR})
-            self.db.share_network_update(context,
-                                          port['share_network_id'],
-                                          {'status': constants.STATUS_ERROR})
             raise
         else:
             self.db.network_allocation_delete(context, port['id'])
