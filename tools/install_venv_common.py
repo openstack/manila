@@ -109,22 +109,9 @@ class InstallVenv(object):
 
     def install_dependencies(self):
         print 'Installing dependencies with pip (this can take a while)...'
-
-        # First things first, make sure our venv has the latest pip and
-        # distribute.
-        # NOTE: we keep pip at version 1.1 since the most recent version causes
-        # the .venv creation to fail. See:
-        # https://bugs.launchpad.net/nova/+bug/1047120
-        self.pip_install('pip==1.1')
-        self.pip_install('distribute')
-
-        # Install greenlet by hand - just listing it in the requires file does
-        # not
-        # get it installed in the right order
-        self.pip_install('greenlet')
-
-        self.pip_install('-r', self.pip_requires)
-        self.pip_install('-r', self.test_requires)
+        self.pip_install('pip>=1.3')
+        self.pip_install('setuptools')
+        self.pip_install('-r', self.pip_requires, '-r', self.test_requires)
 
     def parse_args(self, argv):
         """Parses command-line arguments."""
