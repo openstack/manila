@@ -59,6 +59,8 @@ class ViewBuilder(common.ViewBuilder):
                 'status': share.get('status'),
                 'name': share.get('display_name'),
                 'description': share.get('display_description'),
+                'project_id': share.get('project_id'),
+                'host': share.get('host'),
                 'snapshot_id': share.get('snapshot_id'),
                 'share_network_id': share.get('share_network_id'),
                 'share_proto': share.get('share_proto'),
