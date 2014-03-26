@@ -278,6 +278,14 @@ class BaseSharesTest(test.BaseTestCase):
             client = cls.shares_client
         if description is None:
             description = "Tempest's share"
+        if (share_network_id or client.share_network_id):
+            share_network_id = share_network_id or client.share_network_id
+            __, body = client.get_share_network(share_network_id)
+            if body["status"].lower() == "inactive":
+                resp, __ = client.activate_share_network(share_network_id)
+                assert (int(resp["status"]) in test.HTTP_SUCCESS)
+            client.wait_for_share_network_status(share_network_id,
+                                                 "active")
         r, s = client.create_share(share_protocol=share_protocol, size=size,
                                    name=name, snapshot_id=snapshot_id,
                                    description=description,
@@ -391,6 +399,11 @@ class BaseSharesTest(test.BaseTestCase):
                         client.delete_snapshot(res_id)
                         client.wait_for_resource_deletion(snapshot_id=res_id)
                     elif res["type"] is "share_network":
+                        __, body = client.get_share_network(res_id)
+                        if body["status"].lower() == "active":
+                            client.deactivate_share_network(res_id)
+                            client.wait_for_share_network_status(res_id,
+                                                                 "inactive")
                         client.delete_share_network(res_id)
                         client.wait_for_resource_deletion(sn_id=res_id)
                     elif res["type"] is "security_service":

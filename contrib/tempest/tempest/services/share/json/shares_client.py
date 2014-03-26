@@ -450,6 +450,47 @@ class SharesClient(rest_client.RestClient):
     def delete_share_network(self, sn_id):
         return self.delete("share-networks/%s" % sn_id)
 
+    def action_with_share_network(self, sn_id, action="activate"):
+        """Activates or deactivates share networks.
+
+        param: sn_id: id of share-network
+        param: action: available values are "activate" and "deactivate"
+        returns: tuple with resp and body of response
+        """
+
+        body = json.dumps({action: {}})
+        uri = "share-networks/%s/action" % sn_id
+        resp, body = self.post(uri, body=body)
+        return resp, self._parse_resp(body)
+
+    def activate_share_network(self, sn_id):
+        return self.action_with_share_network(sn_id, "activate")
+
+    def deactivate_share_network(self, sn_id):
+        return self.action_with_share_network(sn_id, "deactivate")
+
+    def wait_for_share_network_status(self, sn_id, status="active"):
+        """Waits for a Share network to reach a given status."""
+        __, body = self.get_share_network(sn_id)
+        sn_name = body['name']
+        sn_status = body['status'].lower()
+        start = int(time.time())
+
+        while sn_status != status:
+            time.sleep(self.build_interval)
+            __, body = self.get_share_network(sn_id)
+            sn_status = body['status'].lower()
+            if 'error' in sn_status:
+                # Error can be set only on attempt to activate
+                raise share_exceptions.\
+                    ShareNetworkActivationFailed(sn_id=sn_id)
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('Share-network %s failed to reach %s status within '
+                           'the required time (%s s).' %
+                           (sn_name, status, self.build_timeout))
+                raise exceptions.TimeoutException(message)
+
 ###############
 
     def _map_security_service_and_share_network(self, sn_id, ss_id,

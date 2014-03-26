@@ -73,7 +73,7 @@ class NeutronNetworkPluginTest(unittest.TestCase):
 
     @mock.patch.object(db_api, 'network_allocation_create',
                        mock.Mock(return_values=fake_network_allocation))
-    @mock.patch.object(db_api, 'share_network_update',
+    @mock.patch.object(db_api, 'share_network_get',
                        mock.Mock(return_value=fake_share_network))
     def test_allocate_network_one_allocation(self):
         has_provider_nw_ext = mock.patch.object(self.plugin,
@@ -105,10 +105,6 @@ class NeutronNetworkPluginTest(unittest.TestCase):
             db_api.network_allocation_create.assert_called_once_with(
                 self.fake_context,
                 fake_network_allocation)
-            db_api.share_network_update.assert_called_once_with(
-                self.fake_context,
-                fake_share_network['id'],
-                {'status': constants.STATUS_ACTIVE})
 
             has_provider_nw_ext.stop()
             save_nw_data.stop()
@@ -116,7 +112,7 @@ class NeutronNetworkPluginTest(unittest.TestCase):
 
     @mock.patch.object(db_api, 'network_allocation_create',
                        mock.Mock(return_values=fake_network_allocation))
-    @mock.patch.object(db_api, 'share_network_update',
+    @mock.patch.object(db_api, 'share_network_get',
                        mock.Mock(return_value=fake_share_network))
     def test_allocate_network_two_allocation(self):
         has_provider_nw_ext = mock.patch.object(self.plugin,
@@ -152,10 +148,6 @@ class NeutronNetworkPluginTest(unittest.TestCase):
             self.plugin.neutron_api.create_port.assert_has_calls(
                 neutron_api_calls)
             db_api.network_allocation_create.assert_has_calls(db_api_calls)
-            db_api.share_network_update.assert_called_once_with(
-                self.fake_context,
-                fake_share_network['id'],
-                {'status': constants.STATUS_ACTIVE})
 
             has_provider_nw_ext.stop()
             save_nw_data.stop()
@@ -179,10 +171,6 @@ class NeutronNetworkPluginTest(unittest.TestCase):
                           self.plugin.allocate_network,
                           self.fake_context,
                           fake_share_network)
-        db_api.share_network_update.assert_called_once_with(
-           self.fake_context,
-           fake_share_network['id'],
-           {'status': constants.STATUS_ERROR})
 
         has_provider_nw_ext.stop()
         save_nw_data.stop()
@@ -223,11 +211,6 @@ class NeutronNetworkPluginTest(unittest.TestCase):
                                 self.fake_context,
                                 fake_network_allocation['id'],
                                 {'status': constants.STATUS_ERROR})
-        db_api.share_network_update.assert_called_once_with(
-                                self.fake_context,
-                                share_nw['id'],
-                                {'status': constants.STATUS_ERROR})
-
         delete_port.stop()
 
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())

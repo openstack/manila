@@ -37,6 +37,12 @@ class FakeShareDriver(object):
     def __init__(self, db, **kwargs):
         self.db = db
 
+        def share_network_update(*args, **kwargs):
+            pass
+
+        self.db.share_network_update = mock.Mock(
+            side_effect=share_network_update)
+
     def create_snapshot(self, context, snapshot):
         pass
 
@@ -366,17 +372,19 @@ class ShareTestCase(test.TestCase):
                           metadata=test_meta)
 
     def test_setup_share_network(self):
-        network_info = {'fake': 'fake'}
+        share_network = {'id': 'fake_sn_id', 'share_network': 'share_network'}
+        allocation_number = 555
         self.share.driver.get_network_allocations_number = mock.Mock(
-            return_value=555)
+            return_value=allocation_number)
         self.share.network_api.allocate_network = mock.Mock(
-            return_value={'network_info': 'network_info'})
+            return_value=share_network)
         self.share.driver.setup_network = mock.Mock()
-        self.share._activate_share_network(self.context, network_info)
+        self.share._activate_share_network(context=self.context,
+                                           share_network=share_network)
         self.share.network_api.allocate_network.assert_called_once_with(
-            self.context, network_info, count=555)
+            self.context, share_network, count=allocation_number)
         self.share.driver.setup_network.assert_called_once_with(
-            {'network_info': 'network_info'}, metadata=None)
+            share_network, metadata=None)
 
     def test_setup_share_network_error(self):
         network_info = {'fake': 'fake', 'id': 'fakeid'}
@@ -403,8 +411,7 @@ class ShareTestCase(test.TestCase):
         nw_api_deallocate_nw.stop()
 
     def test_activate_network(self):
-        share_network_id = 'fake network id'
-        share_network = {}
+        share_network = {'id': 'fake network id'}
         db_share_nw_get = mock.patch.object(self.share.db,
                                             'share_network_get').start()
         db_share_nw_get.return_value = share_network
@@ -418,9 +425,9 @@ class ShareTestCase(test.TestCase):
 
         with mock.patch.object(self.share.driver, 'setup_network',
                                mock.Mock()):
-            self.share.activate_network(self.context, share_network_id)
+            self.share.activate_network(self.context, share_network['id'])
             db_share_nw_get.assert_called_once_with(self.context,
-                                                    share_network_id)
+                                                    share_network['id'])
             drv_get_alloc_cnt.assert_any_call()
             nw_api_allocate_nw.assert_called_once_with(self.context,
                                                        share_network,
@@ -434,8 +441,7 @@ class ShareTestCase(test.TestCase):
         nw_api_allocate_nw.stop()
 
     def test_deactivate_network(self):
-        share_network_id = 'fake network id'
-        share_network = {}
+        share_network = {'id': 'fake network id'}
         db_share_nw_get = mock.patch.object(self.share.db,
                                             'share_network_get').start()
         db_share_nw_get.return_value = share_network
@@ -444,9 +450,9 @@ class ShareTestCase(test.TestCase):
 
         with mock.patch.object(self.share.driver, 'teardown_network',
                                mock.Mock()):
-            self.share.deactivate_network(self.context, share_network_id)
+            self.share.deactivate_network(self.context, share_network['id'])
             db_share_nw_get.assert_called_once_with(self.context,
-                                                    share_network_id)
+                                                    share_network['id'])
             nw_api_deallocate_nw.assert_called_once_with(self.context,
                                                          share_network)
             self.share.driver.teardown_network.assert_called_once_with(

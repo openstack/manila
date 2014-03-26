@@ -42,3 +42,11 @@ class NoAvailableNetwork(base.TempestException):
 
 class InvalidResource(base.TempestException):
     message = "Provided invalid resource: %(message)s"
+
+
+class ShareNetworkActivationFailed(base.TempestException):
+    message = "Share-network with id %(sn_id) failed to activate"
+
+
+class ShareNetworkDeactivationFailed(base.TempestException):
+    message = "Share-network with id %(sn_id) failed to deactivate"

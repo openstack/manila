@@ -28,6 +28,7 @@ from manila.share.drivers import generic
 from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_compute
+from manila.tests import fake_service_instance
 from manila.tests import fake_utils
 from manila.tests import fake_volume
 from manila import volume
@@ -97,7 +98,16 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver.get_service_instance = mock.Mock()
         self._driver.share_networks_servers = {}
         self._driver.admin_context = self._context
-        self._driver.instance_manager = mock.Mock()
+
+        self.fake_sn = {"id": "fake_sn_id"}
+        fsim = fake_service_instance.FakeServiceInstanceManager()
+        sim = mock.Mock(return_value=fsim)
+        self._driver.instance_manager = sim
+        self._driver.service_instance_manager = sim
+        self.fake_server = sim._create_service_instance(
+            context="fake", instance_name="fake",
+            share_network_id=self.fake_sn["id"], old_server_ip="fake")
+
         self.stubs.Set(generic, '_ssh_exec', mock.Mock())
         self.stubs.Set(generic, 'synchronized', mock.Mock(side_effect=
                                                           lambda f: f))
@@ -549,6 +559,28 @@ class GenericShareDriverTestCase(test.TestCase):
                                                     self.share['name'],
                                                     access['access_type'],
                                                     access['access_to'])
+
+    def test_setup_network(self):
+        sim = self._driver.instance_manager
+        self._driver.setup_network(self.fake_sn)
+        sim.get_service_instance.assert_called_once()
+
+    def test_setup_network_revert(self):
+
+        def raise_exception(*args, **kwargs):
+            raise exception.ServiceInstanceException
+
+        self.stubs.Set(self._driver, 'get_service_instance',
+                       mock.Mock(side_effect=raise_exception))
+        self.assertRaises(exception.ServiceInstanceException,
+                          self._driver.setup_network,
+                          self.fake_sn)
+
+    def test_teardown_network(self):
+        sim = self._driver.instance_manager
+        self._driver.service_instance_manager = sim
+        self._driver.teardown_network(self.fake_sn)
+        sim.delete_service_instance.assert_called_once()
 
 
 class NFSHelperTestCase(test.TestCase):
