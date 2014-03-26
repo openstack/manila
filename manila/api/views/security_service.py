@@ -56,7 +56,8 @@ class ViewBuilder(common.ViewBuilder):
                 'domain': security_service.get('domain'),
                 'sid': security_service.get('sid'),
                 'password': security_service.get('password'),
-                'type': security_service.get('type')
+                'type': security_service.get('type'),
+                'project_id': security_service.get('project_id'),
             }
         }
 
