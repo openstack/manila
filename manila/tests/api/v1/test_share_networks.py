@@ -22,6 +22,7 @@ from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
 from manila import policy
+from manila import quota
 from manila.tests.api import fakes
 
 
@@ -48,6 +49,8 @@ fake_share_network_shortened = {
     'name': 'fake name',
     'status': constants.STATUS_INACTIVE,
 }
+
+QUOTAS = quota.QUOTAS
 
 
 class ShareNetworkAPITest(unittest.TestCase):
@@ -308,6 +311,23 @@ class ShareNetworkAPITest(unittest.TestCase):
             self.controller.action(self.req, share_network_id, body)
             self.controller._activate.assert_called_once_with(
                 self.req, share_network_id, body['activate'])
+
+    def test_action_activate_with_overquota(self):
+        share_network_id = 'fake network id'
+        body = {'activate': {}}
+
+        def raise_overquota(*args, **kwargs):
+            usages = {'share_networks': {'reserved': 0, 'in_use': 1, }}
+            quotas = overs = {'share_networks': 1}
+            raise exception.OverQuota(overs=overs,
+                                      usages=usages,
+                                      quotas=quotas)
+
+        with mock.patch.object(QUOTAS, 'reserve',
+                               mock.Mock(side_effect=raise_overquota)):
+            self.assertRaises(exception.ActivatedShareNetworksLimitExceeded,
+                              self.controller.action,
+                              self.req, share_network_id, body)
 
     def test_action_deactivate(self):
         share_network_id = 'fake network id'

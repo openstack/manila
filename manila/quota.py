@@ -41,6 +41,9 @@ quota_opts = [
                default=1000,
                help='number of share gigabytes (snapshots are also included) '
                     'allowed per project'),
+    cfg.IntOpt('quota_share_networks',
+               default=3,
+               help='number of activated share-networks allowed per project'),
     cfg.IntOpt('reservation_expire',
                default=86400,
                help='number of seconds until a reservation expires'),
@@ -1061,7 +1064,10 @@ QUOTAS = QuotaEngine()
 resources = [
     ReservableResource('shares', '_sync_shares', 'quota_shares'),
     ReservableResource('snapshots', '_sync_snapshots', 'quota_snapshots'),
-    ReservableResource('gigabytes', '_sync_gigabytes', 'quota_gigabytes'), ]
+    ReservableResource('gigabytes', '_sync_gigabytes', 'quota_gigabytes'),
+    ReservableResource('share_networks', '_sync_share_networks',
+                       'quota_share_networks'),
+]
 
 
 QUOTAS.register_resources(resources)

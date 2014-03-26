@@ -28,24 +28,29 @@ from manila import network
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila import policy
+from manila import quota
 from manila.share import rpcapi as share_rpcapi
 
 RESOURCE_NAME = 'share_network'
 RESOURCES_NAME = 'share_networks'
 LOG = logging.getLogger(__name__)
-SHARE_NETWORK_ATTRS = ('id',
-                       'project_id',
-                       'created_at',
-                       'updated_at',
-                       'neutron_net_id',
-                       'neutron_subnet_id',
-                       'network_type',
-                       'segmentation_id',
-                       'cidr',
-                       'ip_version',
-                       'name',
-                       'description',
-                       'status')
+QUOTAS = quota.QUOTAS
+SHARE_NETWORK_ATTRS = (
+    'id',
+    'project_id',
+    'user_id',
+    'created_at',
+    'updated_at',
+    'neutron_net_id',
+    'neutron_subnet_id',
+    'network_type',
+    'segmentation_id',
+    'cidr',
+    'ip_version',
+    'name',
+    'description',
+    'status',
+)
 
 
 def _make_share_network(elem):
@@ -257,18 +262,38 @@ class ShareNetworkController(wsgi.Controller):
         policy.check_policy(context, RESOURCE_NAME, 'activate')
 
         try:
-            share_network = db_api.share_network_get(context, id)
-        except exception.ShareNetworkNotFound as e:
-            msg = _("Share-network was not found. %s") % e
-            raise exc.HTTPNotFound(explanation=msg)
+            reservations = QUOTAS.reserve(context, share_networks=1)
+        except exception.OverQuota as e:
+            overs = e.kwargs['overs']
+            usages = e.kwargs['usages']
+            quotas = e.kwargs['quotas']
 
-        if share_network['status'] != constants.STATUS_INACTIVE:
-            msg = _("Share network should be 'INACTIVE'.")
-            raise exc.HTTPBadRequest(explanation=msg)
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
 
-        self.share_rpcapi.activate_network(context, id, data)
+            if 'share_networks' in overs:
+                msg = _("Quota exceeded for %(s_pid)s, tried to activate"
+                " share-network (%(d_consumed)d of %(d_quota)d "
+                "already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                         'd_consumed': _consumed('share_networks'),
+                         'd_quota': quotas['share_networks']})
+                raise exception.ActivatedShareNetworksLimitExceeded(
+                    allowed=quotas['share_networks'])
+        else:
+            try:
+                share_network = db_api.share_network_get(context, id)
+            except exception.ShareNetworkNotFound as e:
+                msg = _("Share-network was not found. %s") % e
+                raise exc.HTTPNotFound(explanation=msg)
 
-        return self._view_builder.build_share_network(share_network)
+            if share_network['status'] != constants.STATUS_INACTIVE:
+                msg = _("Share network should be 'INACTIVE'.")
+                raise exc.HTTPBadRequest(explanation=msg)
+
+            self.share_rpcapi.activate_network(context, id, data)
+            QUOTAS.commit(context, reservations)
+            return self._view_builder.build_share_network(share_network)
 
     def _deactivate(self, req, id, data):
         context = req.environ['manila.context']
