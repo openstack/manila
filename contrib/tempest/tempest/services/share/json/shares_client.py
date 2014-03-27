@@ -48,11 +48,12 @@ class SharesClient(rest_client.RestClient):
         return CONF.share.endpoint_type
 
     def create_share(self, share_protocol=None, size=1,
-                     name=None, snapshot_id=None,
-                     description="tempest created share",
+                     name=None, snapshot_id=None, description=None,
                      metadata={}, share_network_id=None):
         if name is None:
             name = rand_name("tempest-created-share")
+        if description is None:
+            description = rand_name("tempest-created-share-desc")
         if share_protocol is None:
             share_protocol = self.share_protocol
         if share_protocol is None:
@@ -64,16 +65,11 @@ class SharesClient(rest_client.RestClient):
                 "snapshot_id": snapshot_id,
                 "name": name,
                 "size": size,
-                "metadata": metadata
+                "metadata": metadata,
             }
         }
-        if CONF.share.multitenancy_enabled:
-            if share_network_id:
-                post_body["share"]["share_network_id"] = share_network_id
-            elif self.share_network_id:
-                post_body["share"]["share_network_id"] = self.share_network_id
-            else:
-                raise share_exceptions.ShareNetworkNotSpecified()
+        if share_network_id:
+            post_body["share"]["share_network_id"] = share_network_id
         body = json.dumps(post_body)
         resp, body = self.post("shares", body)
         return resp, self._parse_resp(body)
@@ -102,7 +98,7 @@ class SharesClient(rest_client.RestClient):
         post_body = {
             "os-allow_access": {
                 "access_type": access_type,
-                "access_to": access_to
+                "access_to": access_to,
             }
         }
         body = json.dumps(post_body)
@@ -117,23 +113,24 @@ class SharesClient(rest_client.RestClient):
     def delete_access_rule(self, share_id, rule_id):
         post_body = {
             "os-deny_access": {
-                "access_id": rule_id
+                "access_id": rule_id,
             }
         }
         body = json.dumps(post_body)
         return self.post("shares/%s/action" % share_id, body)
 
-    def create_snapshot(self, share_id, name=None,
-                        description="tempest created share-ss",
+    def create_snapshot(self, share_id, name=None, description=None,
                         force=False):
         if name is None:
             name = rand_name("tempest-created-share-snap")
+        if description is None:
+            description = rand_name("tempest-created-share-snap-desc")
         post_body = {
             "snapshot": {
                 "name": name,
                 "force": force,
                 "description": description,
-                "share_id": share_id
+                "share_id": share_id,
             }
         }
         body = json.dumps(post_body)
@@ -161,14 +158,14 @@ class SharesClient(rest_client.RestClient):
 
     def wait_for_share_status(self, share_id, status):
         """Waits for a Share to reach a given status."""
-        resp, body = self.get_share(share_id)
+        __, body = self.get_share(share_id)
         share_name = body['name']
         share_status = body['status']
         start = int(time.time())
 
         while share_status != status:
             time.sleep(self.build_interval)
-            resp, body = self.get_share(share_id)
+            __, body = self.get_share(share_id)
             share_status = body['status']
             if 'error' in share_status:
                 raise share_exceptions.\
@@ -182,14 +179,14 @@ class SharesClient(rest_client.RestClient):
 
     def wait_for_snapshot_status(self, snapshot_id, status):
         """Waits for a Share to reach a given status."""
-        resp, body = self.get_snapshot(snapshot_id)
+        __, body = self.get_snapshot(snapshot_id)
         snapshot_name = body['name']
         snapshot_status = body['status']
         start = int(time.time())
 
         while snapshot_status != status:
             time.sleep(self.build_interval)
-            resp, body = self.get_snapshot(snapshot_id)
+            __, body = self.get_snapshot(snapshot_id)
             snapshot_status = body['status']
             if 'error' in snapshot_status:
                 raise exceptions.\
@@ -207,7 +204,7 @@ class SharesClient(rest_client.RestClient):
         start = int(time.time())
         while rule_status != status:
             time.sleep(self.build_interval)
-            resp, rules = self.list_access_rules(share_id)
+            __, rules = self.list_access_rules(share_id)
             for rule in rules:
                 if rule["id"] in rule_id:
                     rule_status = rule['state']
@@ -239,23 +236,26 @@ class SharesClient(rest_client.RestClient):
             uri += "?user_id=%s" % user_id
         return self.delete(uri)
 
-    def update_quotas(self, tenant_id, user_id=None,
-                      shares=None, snapshots=None,
-                      gigabytes=None, force=True):
-        put_body = {"quota_set": {}}
-        put_body["quota_set"]["tenant_id"] = tenant_id
-        if force:
-            put_body["quota_set"]["force"] = "true"
-        if shares is not None:
-            put_body["quota_set"]["shares"] = shares
-        if snapshots is not None:
-            put_body["quota_set"]["snapshots"] = snapshots
-        if gigabytes is not None:
-            put_body["quota_set"]["gigabytes"] = gigabytes
-        put_body = json.dumps(put_body)
+    def update_quotas(self, tenant_id, user_id=None, shares=None,
+                      snapshots=None, gigabytes=None, share_networks=None,
+                      force=True):
         uri = "os-quota-sets/%s" % tenant_id
         if user_id is not None:
             uri += "?user_id=%s" % user_id
+
+        put_body = {"tenant_id": tenant_id}
+        if force:
+            put_body["force"] = "true"
+        if shares is not None:
+            put_body["shares"] = shares
+        if snapshots is not None:
+            put_body["snapshots"] = snapshots
+        if gigabytes is not None:
+            put_body["gigabytes"] = gigabytes
+        if share_networks is not None:
+            put_body["share_networks"] = share_networks
+        put_body = json.dumps({"quota_set": put_body})
+
         resp, body = self.put(uri, put_body)
         return resp, self._parse_resp(body)
 
@@ -353,8 +353,10 @@ class SharesClient(rest_client.RestClient):
 
 ###############
 
-    def _update_metadata(self, share_id, metadata={}, method="post"):
+    def _update_metadata(self, share_id, metadata=None, method="post"):
         uri = "shares/%s/metadata" % share_id
+        if metadata is None:
+            metadata = {}
         post_body = {"metadata": metadata}
         body = json.dumps(post_body)
         if method is "post":
@@ -363,10 +365,10 @@ class SharesClient(rest_client.RestClient):
             resp, metadata = self.put(uri, body)
         return resp, self._parse_resp(metadata)
 
-    def set_metadata(self, share_id, metadata={}):
+    def set_metadata(self, share_id, metadata=None):
         return self._update_metadata(share_id, metadata)
 
-    def update_all_metadata(self, share_id, metadata={}):
+    def update_all_metadata(self, share_id, metadata=None):
         return self._update_metadata(share_id, metadata, method="put")
 
     def delete_metadata(self, share_id, key):
@@ -500,7 +502,7 @@ class SharesClient(rest_client.RestClient):
         # action: add, remove
         data = {
             "%s_security_service" % action: {
-                "security_service_id": ss_id
+                "security_service_id": ss_id,
             }
         }
         body = json.dumps(data)

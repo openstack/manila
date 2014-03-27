@@ -100,9 +100,11 @@ class SharesTest(base.BaseSharesTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
         # verify keys
-        keys = ["status", "description", "links", "availability_zone",
-                "created_at", "export_location", "share_proto",
-                "name", "snapshot_id", "id", "size"]
+        keys = [
+            "status", "description", "links", "availability_zone",
+            "created_at", "export_location", "share_proto", "host",
+            "name", "snapshot_id", "id", "size", "project_id",
+        ]
         [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
 
         # our share id in list and have no duplicates
