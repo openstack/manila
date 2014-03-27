@@ -17,6 +17,7 @@ import hashlib
 import mock
 
 from manila import context
+from manila import exception
 from manila.share import configuration
 from manila.share.drivers.netapp import api as naapi
 from manila.share.drivers.netapp import cluster_mode as driver
@@ -102,7 +103,11 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.driver._client.send_request = mock.Mock(return_value=res)
         self.assertEqual(self.driver.get_network_allocations_number(), 5)
 
-    def test_delete_vserver(self):
+    def test_delete_vserver_without_net_info(self):
+        el = naapi.NaElement('fake')
+        el['num-records'] = 1
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self._vserver_client.send_request = mock.Mock(return_value=el)
         self.driver._delete_vserver('fake', self._vserver_client)
         self._vserver_client.send_request.assert_has_calls([
             mock.call('volume-offline', {'name': 'root'}),
@@ -110,6 +115,81 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         ])
         self.driver._client.send_request.assert_called_once_with(
             'vserver-destroy', {'vserver-name': 'fake'})
+
+    def test_delete_vserver_with_net_info(self):
+        el = naapi.NaElement('fake')
+        el['num-records'] = 1
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self._vserver_client.send_request = mock.Mock(return_value=el)
+        net_info = {
+            'security_services': [
+                {'sid': 'admin',
+                 'password': 'pass',
+                 'type': 'active_directory'}
+            ]
+        }
+        self.driver._delete_vserver('fake', self._vserver_client,
+                                    network_info=net_info)
+        self._vserver_client.send_request.assert_has_calls([
+            mock.call('volume-get-iter'),
+            mock.call('volume-offline', {'name': 'root'}),
+            mock.call('volume-destroy', {'name': 'root'}),
+            mock.call('cifs-server-delete', {'admin-username': 'admin',
+                                             'admin-password': 'pass'})
+        ])
+        self.driver._client.send_request.assert_called_once_with(
+            'vserver-destroy', {'vserver-name': 'fake'})
+
+    def test_delete_vserver_has_shares(self):
+        el = naapi.NaElement('fake')
+        el['num-records'] = 3
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self._vserver_client.send_request = mock.Mock(return_value=el)
+        self.assertRaises(exception.NetAppException,
+                          self.driver._delete_vserver, 'fake',
+                          self._vserver_client)
+
+    def test_delete_vserver_without_root_volume(self):
+        el = naapi.NaElement('fake')
+        el['num-records'] = '0'
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self._vserver_client.send_request = mock.Mock(return_value=el)
+        self.driver._delete_vserver('fake', self._vserver_client)
+        self.driver._client.send_request.assert_called_once_with(
+            'vserver-destroy', {'vserver-name': 'fake'})
+
+    def test_delete_vserver_does_not_exists(self):
+        self.driver._vserver_exists = mock.Mock(return_value=False)
+        self.driver._delete_vserver('fake', self._vserver_client)
+        self.assertEqual(self.driver._client.send_request.called, False)
+
+    def test_vserver_exists_true(self):
+        el = naapi.NaElement('fake')
+        el['num-records'] = '0'
+        self.driver._client.send_request = mock.Mock(return_value=el)
+        self.assertEqual(self.driver._vserver_exists('fake_vserver'), False)
+        self.driver._client.send_request.assert_called_once_with(
+            'vserver-get-iter', {'query': {
+                'vserver-info': {
+                    'vserver-name': 'fake_vserver'
+                }
+            }
+            }
+        )
+
+    def test_vserver_exists_false(self):
+        el = naapi.NaElement('fake')
+        el['num-records'] = '1'
+        self.driver._client.send_request = mock.Mock(return_value=el)
+        self.assertEqual(self.driver._vserver_exists('fake_vserver'), True)
+        self.driver._client.send_request.assert_called_once_with(
+            'vserver-get-iter', {'query': {
+                'vserver-info': {
+                    'vserver-name': 'fake_vserver'
+                }
+            }
+            }
+        )
 
     def test_create_net_iface(self):
         self.driver._create_net_iface('1.1.1.1', '255.255.255.0', '200',
@@ -296,6 +376,13 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.driver.deny_access(self._context, self.share, access)
         self.helper.deny_access.assert_called_ince_with(self._context,
                                                         self.share, access)
+
+    def test_teardown_network(self):
+        fake_net_info = {'id': 'fakeid'}
+        self.driver._delete_vserver = mock.Mock()
+        self.driver.teardown_network(fake_net_info)
+        self.driver._delete_vserver.assert_called_once_with(
+            'os_fakeid', self._vserver_client, network_info=fake_net_info)
 
 
 class NetAppNFSHelperTestCase(test.TestCase):
