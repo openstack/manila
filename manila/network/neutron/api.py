@@ -285,3 +285,13 @@ class API(base.Base):
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
+
+    def update_subnet(self, subnet_uuid, name):
+        """Update specific subnet for client."""
+        subnet_req_body = {'subnet': {'name': name}}
+        try:
+            return self.client.update_subnet(subnet_uuid, subnet_req_body).\
+                                                            get('subnet', {})
+        except neutron_client_exc.NeutronClientException as e:
+            raise exception.NetworkException(code=e.status_code,
+                                             message=e.message)

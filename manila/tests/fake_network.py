@@ -173,6 +173,12 @@ class API(object):
     def update_port_fixed_ips(self, *args, **kwargs):
         pass
 
+    def router_remove_interface(self, *args, **kwargs):
+        pass
+
+    def update_subnet(self, *args, **kwargs):
+        pass
+
     def get_all_networks(self):
         """Get all networks for client."""
         net1 = self.network.copy()

@@ -548,7 +548,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                  'neutron_net_id': fake_net['id']})
 
     def test_setup_connectivity_with_service_instances(self):
-        fake_subnet = fake_network.FakeSubnet(cidr='10.254.0.1/29')
+        fake_subnet = fake_network.FakeSubnet(cidr='10.254.0.0/29')
         fake_port = fake_network.FakePort(fixed_ips=[
             {'subnet_id': fake_subnet['id'], 'ip_address': '10.254.0.2'}],
             mac_address='fake_mac_address')
@@ -660,3 +660,37 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        mock.Mock(return_value=[fake_subnet]))
         result = self._manager._get_cidr_for_subnet()
         self.assertEqual(result, cidr2)
+
+    def test_discover_service_instance(self):
+        fake_server = fake_compute.FakeServer()
+        self.stubs.Set(self._manager, '_get_service_instance_name',
+                       mock.Mock(return_value='fake_service_instance_name'))
+        self.stubs.Set(self._manager.compute_api, 'server_list',
+                mock.Mock(return_value=[fake_server]))
+        result = self._manager._discover_service_instance(self._context,
+                                                      'fake_share_network_id')
+        self.assertEqual(result, fake_server)
+
+    def test_delete_service_instance(self):
+        fake_server = fake_compute.FakeServer()
+        fake_router = fake_network.FakeRouter()
+        fake_subnet = fake_network.FakeSubnet(cidr='10.254.0.0/29')
+        self.stubs.Set(self._manager, '_discover_service_instance',
+                       mock.Mock(return_value=fake_server))
+        self.stubs.Set(self._manager, '_delete_server', mock.Mock())
+        self.stubs.Set(self._manager, '_get_service_subnet',
+                mock.Mock(return_value=fake_subnet))
+        self.stubs.Set(self._manager, '_get_private_router',
+                mock.Mock(return_value=fake_router))
+        self.stubs.Set(self._manager.neutron_api, 'router_remove_interface',
+                mock.Mock())
+        self.stubs.Set(self._manager.neutron_api, 'update_subnet',
+                mock.Mock())
+        self._manager._discover_service_instance(self._context,
+                                                 'fake_share_network_id')
+        self._manager._discover_service_instance.assert_called_once()
+        self._manager._delete_server.assert_called_once()
+        self._manager._get_service_subnet.assert_called_once()
+        self._manager._get_private_router.assert_called_once()
+        self._manager.neutron_api.router_remove_interface.assert_called_once()
+        self._manager.neutron_api.update_subnet.assert_called_once()

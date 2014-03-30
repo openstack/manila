@@ -545,20 +545,6 @@ class ServiceInstanceManager(object):
 
         return port
 
-    def _remove_fixed_ip_from_service_port(self, port, subnet_id):
-        port_fixed_ips = []
-        for fixed_ip in port['fixed_ips']:
-            if fixed_ip['subnet_id'] == subnet_id:
-                continue
-            port_fixed_ips.append({'subnet_id': fixed_ip['subnet_id'],
-                                   'ip_address': fixed_ip['ip_address']})
-
-        if port_fixed_ips != port['fixed_ips']:
-            port = self.neutron_api.update_port_fixed_ips(
-                   port['id'], {'fixed_ips': port_fixed_ips})
-
-        return port
-
     def _get_cidr_for_subnet(self):
         """Returns not used cidr for service subnet creating."""
         subnets = self._get_all_service_subnets()
@@ -583,7 +569,6 @@ class ServiceInstanceManager(object):
         if subnet:
             subnet_id = subnet['id']
             router = self._get_private_router(share_network_id)
-            port = self._get_service_port()
             try:
                 self.neutron_api.router_remove_interface(router['id'],
                                                          subnet_id)
@@ -594,9 +579,7 @@ class ServiceInstanceManager(object):
                             'router %(router_id)s.') %
                                         {'subnet_id': subnet_id,
                                          'router_id': router['id']})
-            self._remove_fixed_ip_from_service_port(port, subnet_id)
-            self.neutron_api.delete_subnet(subnet_id)
-            self._setup_connectivity_with_service_instances()
+            self.neutron_api.update_subnet(subnet_id, '')
 
     def _get_all_service_subnets(self):
         service_network = self.neutron_api.get_network(self.service_network_id)
@@ -610,6 +593,13 @@ class ServiceInstanceManager(object):
         if len(service_subnets) == 1:
             return service_subnets[0]
         elif not service_subnets:
+            unused_service_subnets = [subnet for subnet in all_service_subnets
+                                      if subnet['name'] == '']
+            if unused_service_subnets:
+                service_subnet = unused_service_subnets[0]
+                self.neutron_api.update_subnet(service_subnet['id'],
+                                               share_network_id)
+                return service_subnet
             return None
         else:
             raise exception.ServiceInstanceException(_('Ambiguous service '
