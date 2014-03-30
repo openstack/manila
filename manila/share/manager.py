@@ -264,7 +264,22 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def activate_network(self, context, share_network_id, metadata=None):
         share_network = self.db.share_network_get(context, share_network_id)
-        self._activate_share_network(context, share_network, metadata)
+        if (hasattr(share_network, 'project_id') and
+            context.project_id != share_network['project_id']):
+            project_id = share_network['project_id']
+        else:
+            project_id = context.project_id
+
+        reservations = None
+        try:
+            reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
+                                          share_networks=-1)
+            self._activate_share_network(context, share_network, metadata)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                if reservations:
+                    QUOTAS.commit(context, reservations, project_id=project_id)
 
     def deactivate_network(self, context, share_network_id):
         share_network = self.db.share_network_get(context, share_network_id)
