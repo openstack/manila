@@ -40,9 +40,9 @@ class UsedLimitsTestCase(test.TestCase):
         res = wsgi.ResponseObject(obj)
         quota_map = {
             'totalSharesUsed': 'shares',
-            'totalSnapshotsUsed': 'snapshots',
+            'totalShareSnapshotsUsed': 'snapshots',
             'totalShareNetworksUsed': 'share_networks',
-            'totalGigabytesUsed': 'gigabytes',
+            'totalShareGigabytesUsed': 'gigabytes',
         }
         limits = {}
         for display_name, q in quota_map.iteritems():
