@@ -162,7 +162,7 @@ class LimitsControllerTest(BaseLimitTestSuite):
                 ],
                 "absolute": {"maxTotalShareGigabytes": 512,
                              "maxTotalShares": 5,
-                             "maxTotalSnapshots": 5,
+                             "maxTotalShareSnapshots": 5,
                              },
             },
         }
@@ -795,7 +795,7 @@ class LimitsViewBuilderTest(test.TestCase):
                                              "next-available": tdate}]}],
                         "absolute": {"maxTotalShareGigabytes": 5,
                                      "maxTotalShares": 1,
-                                     "maxTotalSnapshots": 5}}}
+                                     "maxTotalShareSnapshots": 5}}}
 
         output = self.view_builder.build(self.rate_limits,
                                          self.absolute_limits)

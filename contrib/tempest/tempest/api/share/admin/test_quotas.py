@@ -49,7 +49,7 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
 
         abs_keys = ["maxTotalShareGigabytes",
                     "maxTotalShares",
-                    "maxTotalSnapshots"]
+                    "maxTotalShareSnapshots"]
         [self.assertIn(key, limits["absolute"].keys()) for key in abs_keys]
 
     @test.attr(type=["gate", "smoke", ])
@@ -65,7 +65,8 @@ class SharesQuotasTest(base.BaseSharesAdminTest):
         self.assertGreater(int(limits["absolute"]["maxTotalShareGigabytes"]),
                            -2)
         self.assertGreater(int(limits["absolute"]["maxTotalShares"]), -2)
-        self.assertGreater(int(limits["absolute"]["maxTotalSnapshots"]), -2)
+        self.assertGreater(int(limits["absolute"]["maxTotalShareSnapshots"]),
+                           -2)
 
     @test.attr(type=["gate", "smoke", ])
     def test_default_quotas(self):
