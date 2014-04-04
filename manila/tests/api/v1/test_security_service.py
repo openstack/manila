@@ -134,6 +134,7 @@ class ShareApiTest(test.TestCase):
         expected = {'security_services': [
             {'id': self.security_service['id'],
              'name': self.security_service['name'],
+             'type': self.security_service['type'],
              'status': self.security_service['status']
              }
         ]}

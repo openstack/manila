@@ -154,7 +154,7 @@ class SecurityServiceController(wsgi.Controller):
         return security_services
 
     def _get_security_services_search_options(self):
-        return ('status', 'name', 'id')
+        return ('status', 'name', 'id', 'type', )
 
     @wsgi.serializers(xml=SecurityServiceTemplate)
     def update(self, req, id, body):

@@ -37,6 +37,7 @@ class ViewBuilder(common.ViewBuilder):
             'security_service': {
                 'id': security_service.get('id'),
                 'name': security_service.get('name'),
+                'type': security_service.get('type'),
                 'status': security_service.get('status')
             }
         }

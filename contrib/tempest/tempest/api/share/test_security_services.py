@@ -71,7 +71,7 @@ class SecurityServicesTest(base.BaseSharesTest):
         any(ss["id"] in ss["id"] for ss in listed)
 
         # verify keys
-        keys = ["name", "id", "status"]
+        keys = ["name", "id", "status", "type", ]
         [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
 
     @test.attr(type=["gate", "smoke"])
