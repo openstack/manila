@@ -90,7 +90,9 @@ class ShareApiTest(test.TestCase):
     def test_security_service_delete(self):
         db.security_service_delete = mock.Mock()
         db.security_service_get = mock.Mock()
-        req = fakes.HTTPRequest.blank('/shares/1')
+        db.share_network_get_all_by_security_service = mock.Mock(
+            return_value=[])
+        req = fakes.HTTPRequest.blank('/security_services/1')
         resp = self.controller.delete(req, 1)
         db.security_service_delete.assert_called_once_with(
             req.environ['manila.context'], 1)
@@ -103,6 +105,14 @@ class ShareApiTest(test.TestCase):
                           self.controller.delete,
                           req,
                           1)
+
+    def test_security_service_delete_has_share_networks(self):
+        db.security_service_get = mock.Mock()
+        db.share_network_get_all_by_security_service = mock.Mock(
+            return_value=[{'share_network': 'fake_share_network'}])
+        req = fakes.HTTPRequest.blank('/security_services/1')
+        self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete,
+                          req, 1)
 
     def test_security_service_update_name(self):
         new = self.security_service.copy()

@@ -1569,6 +1569,16 @@ def share_network_get_all_by_project(context, project_id, user_id=None,
 
 
 @require_context
+def share_network_get_all_by_security_service(context, share_network_id):
+    session = get_session()
+    return model_query(context, models.ShareNetwork, session=session).\
+        join(models.ShareNetworkSecurityServiceAssociation,
+             models.ShareNetwork.id ==
+             models.ShareNetworkSecurityServiceAssociation.share_network_id).\
+        filter_by(security_service_id=share_network_id, deleted=False).all()
+
+
+@require_context
 def share_network_add_security_service(context, id, security_service_id):
     session = get_session()
 

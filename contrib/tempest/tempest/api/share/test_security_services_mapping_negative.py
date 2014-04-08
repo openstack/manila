@@ -109,3 +109,34 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         self.assertRaises(exceptions.BadRequest,
                           self.cl.add_sec_service_to_share_network,
                           sn["id"], ss["id"])
+
+    @test.attr(type=["gate", "smoke", "negative"])
+    def test_try_delete_ss_that_assigned_to_sn(self):
+        # create share network
+        data = self.generate_share_network_data()
+
+        resp, sn = self.create_share_network(client=self.cl, **data)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertDictContainsSubset(data, sn)
+
+        # create security service
+        data = self.generate_security_service_data()
+
+        resp, ss = self.create_security_service(client=self.cl, **data)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertDictContainsSubset(data, ss)
+
+        # Add security service to share network
+        resp, __ = self.cl.add_sec_service_to_share_network(sn["id"],
+                                                            ss["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        # Try delete ss, that has been assigned to some sn
+        self.assertRaises(exceptions.Unauthorized,
+                          self.cl.delete_security_service,
+                          ss["id"], )
+
+        # remove seurity service from share-network
+        resp, __ = self.cl.remove_sec_service_from_share_network(sn["id"],
+                                                                 ss["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
