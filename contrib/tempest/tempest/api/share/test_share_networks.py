@@ -101,3 +101,18 @@ class ShareNetworksTest(base.BaseSharesTest):
         # Delete second share network
         resp, __ = self.shares_client.delete_share_network(sn2["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_create_two_share_networks_with_same_net_and_subnet(self):
+        # generate data for share network
+        data = self.generate_share_network_data()
+
+        # create first share network
+        resp, sn1 = self.create_share_network(**data)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertDictContainsSubset(data, sn1)
+
+        # create second share network
+        resp, sn2 = self.create_share_network(**data)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertDictContainsSubset(data, sn2)

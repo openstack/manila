@@ -61,7 +61,7 @@ class ShareNetworkDBTest(test.TestCase):
         self.assertEqual(len(result['security_services']), 0)
         self.assertEqual(len(result['network_allocations']), 0)
 
-    def test_create_two_networks(self):
+    def test_create_two_networks_in_different_tenants(self):
         share_nw_dict2 = self.share_nw_dict.copy()
         share_nw_dict2['id'] = None
         share_nw_dict2['project_id'] = 'fake project 2'
@@ -73,15 +73,15 @@ class ShareNetworkDBTest(test.TestCase):
         self._check_fields(expected=self.share_nw_dict, actual=result1)
         self._check_fields(expected=share_nw_dict2, actual=result2)
 
-    def test_create_same_project_netid_and_subnetid(self):
+    def test_create_two_networks_in_one_tenant(self):
         share_nw_dict2 = self.share_nw_dict.copy()
-        share_nw_dict2['id'] = None
-        db_api.share_network_create(self.fake_context, self.share_nw_dict)
-
-        self.assertRaises(exception.DBError,
-                          db_api.share_network_create,
-                          self.fake_context,
-                          share_nw_dict2)
+        share_nw_dict2['id'] = share_nw_dict2['id'] + "suffix"
+        result1 = db_api.share_network_create(self.fake_context,
+                                              self.share_nw_dict)
+        result2 = db_api.share_network_create(self.fake_context,
+                                              share_nw_dict2)
+        self._check_fields(expected=self.share_nw_dict, actual=result1)
+        self._check_fields(expected=share_nw_dict2, actual=result2)
 
     def test_create_with_duplicated_id(self):
         db_api.share_network_create(self.fake_context, self.share_nw_dict)

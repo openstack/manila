@@ -66,32 +66,3 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_security_service,
                           sn["id"])
-
-    @test.attr(type=["gate", "smoke", "negative"])
-    def test_try_create_duplicate_of_share_network(self):
-        data = self.generate_share_network_data()
-        resp, sn = self.create_share_network(**data)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertDictContainsSubset(data, sn)
-
-        # try create duplicate of share network entity
-        self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.create_share_network,
-                          **data)
-
-    @test.attr(type=["gate", "smoke", "negative"])
-    def test_try_create_duplicate_of_share_network_via_update(self):
-        data1 = self.generate_share_network_data()
-        resp, sn1 = self.create_share_network(**data1)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertDictContainsSubset(data1, sn1)
-
-        data2 = self.generate_share_network_data()
-        resp, sn2 = self.create_share_network(**data2)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertDictContainsSubset(data2, sn2)
-
-        # try create duplicate of share network entity via update
-        self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.update_share_network,
-                          sn2["id"], **data1)

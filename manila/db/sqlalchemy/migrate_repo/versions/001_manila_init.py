@@ -297,8 +297,6 @@ def upgrade(migrate_engine):
         Column('name', String(length=255), nullable=True),
         Column('description', String(length=255), nullable=True),
         Column('status', String(length=32)),
-        UniqueConstraint('neutron_net_id', 'neutron_subnet_id', 'project_id',
-                         'deleted', name='net_subnet_uc'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
