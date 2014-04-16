@@ -258,6 +258,48 @@ function create_manila_service_image {
     iniset $MANILA_CONF DEFAULT service_image_name $MANILA_SERVICE_IMAGE_NAME
 }
 
+function create_manila_service_secgroup {
+    MANILA_SERVICE_SECGROUP="manila-service-secgroup"
+
+    # Create a secgroup
+    if ! nova secgroup-list | grep -q $MANILA_SERVICE_SECGROUP; then
+        nova secgroup-create $MANILA_SERVICE_SECGROUP "$MANILA_SERVICE_SECGROUP description"
+        if ! timeout 30 sh -c "while ! nova secgroup-list | grep -q $MANILA_SERVICE_SECGROUP; do sleep 1; done"; then
+            echo "Security group not created"
+            exit 1
+        fi
+    fi
+
+    # Configure Security Group Rules
+    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q icmp; then
+        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP icmp -1 -1 0.0.0.0/0
+    fi
+    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 22 "; then
+        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP tcp 22 22 0.0.0.0/0
+    fi
+    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 2049 "; then
+        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP tcp 2049 2049 0.0.0.0/0
+    fi
+    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " udp .* 2049 "; then
+        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP udp 2049 2049 0.0.0.0/0
+    fi
+    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " udp .* 445 "; then
+        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP udp 445 445 0.0.0.0/0
+    fi
+    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 445 "; then
+        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP tcp 445 445 0.0.0.0/0
+    fi
+    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " tcp .* 139 "; then
+        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP tcp 137 139 0.0.0.0/0
+    fi
+    if ! nova secgroup-list-rules $MANILA_SERVICE_SECGROUP | grep -q " udp .* 139 "; then
+        nova secgroup-add-rule $MANILA_SERVICE_SECGROUP udp 137 139 0.0.0.0/0
+    fi
+
+    # List secgroup rules
+    nova secgroup-list-rules $MANILA_SERVICE_SECGROUP
+}
+
 # create_manila_accounts - Set up common required manila accounts
 
 # Tenant               User       Roles

@@ -17,6 +17,8 @@ if is_service_enabled manila; then
         create_manila_accounts
         echo_summary "Creating Manila service flavor"
         create_manila_service_flavor
+        echo_summary "Creating Manila service security group"
+        create_manila_service_secgroup
         echo_summary "Creating Manila service image"
         create_manila_service_image
         echo_summary "Starting Manila"
