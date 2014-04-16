@@ -158,7 +158,7 @@ def model_query(context, model, *args, **kwargs):
 
     query = session.query(model, *args)
 
-    default_deleted_value = model.__mapper__.c.deleted.default.arg
+    default_deleted_value = str(model.__mapper__.c.deleted.default.arg)
     if read_deleted == 'no':
         query = query.filter(model.deleted == default_deleted_value)
     elif read_deleted == 'yes':
@@ -1064,7 +1064,8 @@ def _share_get_query(context, session=None):
     if session is None:
         session = get_session()
     return model_query(context, models.Share, session=session).\
-            options(joinedload('share_metadata'))
+            options(joinedload('share_metadata')).\
+            options(joinedload('volume_type'))
 
 
 def _metadata_refs(metadata_dict, meta_class):
@@ -1682,3 +1683,221 @@ def network_allocation_update(context, id, values):
         alloc_ref.update(values)
         alloc_ref.save(session=session)
         return alloc_ref
+
+
+###################
+
+
+def _dict_with_extra_specs(inst_type_query):
+    """Convert type query result to dict with extra_spec and rate_limit.
+
+Takes a volume type query returned by sqlalchemy and returns it
+as a dictionary, converting the extra_specs entry from a list
+of dicts:
+
+'extra_specs' : [{'key': 'k1', 'value': 'v1', ...}, ...]
+to a single dict:
+'extra_specs' : {'k1': 'v1'}
+"""
+    inst_type_dict = dict(inst_type_query)
+    extra_specs = dict([(x['key'], x['value'])
+                        for x in inst_type_query['extra_specs']])
+    inst_type_dict['extra_specs'] = extra_specs
+    return inst_type_dict
+
+
+@require_admin_context
+def volume_type_create(context, values):
+    """Create a new instance type.
+
+    In order to pass in extra specs, the values dict should contain a
+    'extra_specs' key/value pair:
+    {'extra_specs' : {'k1': 'v1', 'k2': 'v2', ...}}
+    """
+    if not values.get('id'):
+        values['id'] = str(uuid.uuid4())
+
+    session = get_session()
+    with session.begin():
+        try:
+            values['extra_specs'] = _metadata_refs(values.get('extra_specs'),
+                                                   models.VolumeTypeExtraSpecs)
+            volume_type_ref = models.VolumeTypes()
+            volume_type_ref.update(values)
+            volume_type_ref.save(session=session)
+        except exception.Duplicate:
+            raise exception.VolumeTypeExists(id=values['name'])
+        except Exception as e:
+            raise exception.DBError(e)
+        return volume_type_ref
+
+
+@require_context
+def volume_type_get_all(context, inactive=False, filters=None):
+    """Returns a dict describing all volume_types with name as key."""
+    filters = filters or {}
+
+    read_deleted = "yes" if inactive else "no"
+    rows = model_query(context, models.VolumeTypes,
+                       read_deleted=read_deleted).\
+        options(joinedload('extra_specs')).\
+        order_by("name").\
+        all()
+
+    result = {}
+    for row in rows:
+        result[row['name']] = _dict_with_extra_specs(row)
+
+    return result
+
+
+@require_context
+def _volume_type_get(context, id, session=None, inactive=False):
+    read_deleted = "yes" if inactive else "no"
+    result = model_query(context,
+                         models.VolumeTypes,
+                         session=session,
+                         read_deleted=read_deleted).\
+        options(joinedload('extra_specs')).\
+        filter_by(id=id).\
+        first()
+
+    if not result:
+        raise exception.VolumeTypeNotFound(volume_type_id=id)
+
+    return _dict_with_extra_specs(result)
+
+
+@require_context
+def volume_type_get(context, id, inactive=False):
+    """Return a dict describing specific volume_type."""
+    return _volume_type_get(context, id, None, inactive)
+
+
+@require_context
+def _volume_type_get_by_name(context, name, session=None):
+    result = model_query(context, models.VolumeTypes, session=session).\
+        options(joinedload('extra_specs')).\
+        filter_by(name=name).\
+        first()
+
+    if not result:
+        raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
+    else:
+        return _dict_with_extra_specs(result)
+
+
+@require_context
+def volume_type_get_by_name(context, name):
+    """Return a dict describing specific volume_type."""
+
+    return _volume_type_get_by_name(context, name)
+
+
+@require_admin_context
+def volume_type_destroy(context, id):
+    session = get_session()
+    with session.begin():
+        _volume_type_get(context, id, session)
+        results = model_query(context, models.Share, session=session). \
+            filter_by(volume_type_id=id).all()
+        if results:
+            msg = _('VolumeType %s deletion failed, VolumeType in use.') % id
+            LOG.error(msg)
+            raise exception.VolumeTypeInUse(volume_type_id=id)
+        model_query(context, models.VolumeTypeExtraSpecs, session=session).\
+            filter_by(volume_type_id=id).update(
+                {'deleted': True,
+                 'deleted_at': timeutils.utcnow(),
+                 'updated_at': literal_column('updated_at')})
+        model_query(context, models.VolumeTypes, session=session).\
+            filter_by(id=id).update(
+                {'deleted': id,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': literal_column('updated_at')})
+
+
+@require_context
+def volume_get_active_by_window(context,
+                                begin,
+                                end=None,
+                                project_id=None):
+    """Return volumes that were active during window."""
+    query = model_query(context, models.Share, read_deleted="yes")
+    query = query.filter(or_(models.Share.deleted_at == None,
+                             models.Share.deleted_at > begin))
+    if end:
+        query = query.filter(models.Share.created_at < end)
+    if project_id:
+        query = query.filter_by(project_id=project_id)
+
+    return query.all()
+
+####################
+
+
+def _volume_type_extra_specs_query(context, volume_type_id, session=None):
+    return model_query(context, models.VolumeTypeExtraSpecs, session=session,
+                       read_deleted="no").\
+        filter_by(volume_type_id=volume_type_id)
+
+
+@require_context
+def volume_type_extra_specs_get(context, volume_type_id):
+    rows = _volume_type_extra_specs_query(context, volume_type_id).\
+        all()
+
+    result = {}
+    for row in rows:
+        result[row['key']] = row['value']
+
+    return result
+
+
+@require_context
+def volume_type_extra_specs_delete(context, volume_type_id, key):
+    session = get_session()
+    with session.begin():
+        _volume_type_extra_specs_get_item(context, volume_type_id, key,
+                                          session)
+        _volume_type_extra_specs_query(context, volume_type_id, session).\
+            filter_by(key=key).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+
+
+@require_context
+def _volume_type_extra_specs_get_item(context, volume_type_id, key,
+                                      session=None):
+    result = _volume_type_extra_specs_query(
+        context, volume_type_id, session=session).\
+        filter_by(key=key).\
+        first()
+
+    if not result:
+        raise exception.VolumeTypeExtraSpecsNotFound(
+            extra_specs_key=key,
+            volume_type_id=volume_type_id)
+
+    return result
+
+
+@require_context
+def volume_type_extra_specs_update_or_create(context, volume_type_id,
+                                             specs):
+    session = get_session()
+    with session.begin():
+        spec_ref = None
+        for key, value in specs.iteritems():
+            try:
+                spec_ref = _volume_type_extra_specs_get_item(
+                    context, volume_type_id, key, session)
+            except exception.VolumeTypeExtraSpecsNotFound:
+                spec_ref = models.VolumeTypeExtraSpecs()
+            spec_ref.update({"key": key, "value": value,
+                             "volume_type_id": volume_type_id,
+                             "deleted": False})
+            spec_ref.save(session=session)
+
+        return specs

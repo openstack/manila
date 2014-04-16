@@ -545,3 +545,68 @@ def network_allocation_delete(context, id):
 def network_allocation_update(context, id, values):
     """Update a network allocation DB record."""
     return IMPL.network_allocation_update(context, id, values)
+
+
+##################
+
+
+def volume_type_create(context, values):
+    """Create a new volume type."""
+    return IMPL.volume_type_create(context, values)
+
+
+def volume_type_get_all(context, inactive=False):
+    """Get all volume types."""
+    return IMPL.volume_type_get_all(context, inactive)
+
+
+def volume_type_get(context, id, inactive=False):
+    """Get volume type by id."""
+    return IMPL.volume_type_get(context, id, inactive)
+
+
+def volume_type_get_by_name(context, name):
+    """Get volume type by name."""
+    return IMPL.volume_type_get_by_name(context, name)
+
+
+def volume_type_qos_specs_get(context, type_id):
+    """Get all qos specs for given volume type."""
+    return IMPL.volume_type_qos_specs_get(context, type_id)
+
+
+def volume_type_destroy(context, id):
+    """Delete a volume type."""
+    return IMPL.volume_type_destroy(context, id)
+
+
+def volume_get_active_by_window(context, begin, end=None, project_id=None):
+    """Get all the volumes inside the window.
+
+    Specifying a project_id will filter for a certain project.
+    """
+    return IMPL.volume_get_active_by_window(context, begin, end, project_id)
+
+
+####################
+
+
+def volume_type_extra_specs_get(context, volume_type_id):
+    """Get all extra specs for a volume type."""
+    return IMPL.volume_type_extra_specs_get(context, volume_type_id)
+
+
+def volume_type_extra_specs_delete(context, volume_type_id, key):
+    """Delete the given extra specs item."""
+    return IMPL.volume_type_extra_specs_delete(context, volume_type_id, key)
+
+
+def volume_type_extra_specs_update_or_create(context,
+                                             volume_type_id,
+                                             extra_specs):
+    """Create or update volume type extra specs. This adds or modifies the
+    key/value pairs specified in the extra specs dict argument
+    """
+    return IMPL.volume_type_extra_specs_update_or_create(context,
+                                                         volume_type_id,
+                                                         extra_specs)

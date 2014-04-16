@@ -528,12 +528,57 @@ class InvalidVolume(Invalid):
     message = _("Invalid volume.")
 
 
+class InvalidVolumeType(Invalid):
+    message = _("Invalid volume type: %(reason)s")
+
+
 class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
 
 
 class VolumeSnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
+
+
+class VolumeTypeNotFound(NotFound):
+    message = _("Volume type %(volume_type_id)s could not be found.")
+
+
+class VolumeTypeNotFoundByName(VolumeTypeNotFound):
+    message = _("Volume type with name %(volume_type_name)s "
+                "could not be found.")
+
+
+class VolumeTypeExtraSpecsNotFound(NotFound):
+    message = _("Volume Type %(volume_type_id)s has no extra specs with "
+                "key %(extra_specs_key)s.")
+
+
+class VolumeTypeInUse(ManilaException):
+    message = _("Volume Type %(volume_type_id)s deletion is not allowed with "
+                "volumes present with the type.")
+
+
+class VolumeTypeExists(ManilaException):
+    message = _("Volume Type %(id)s already exists.")
+
+
+class VolumeTypeEncryptionExists(Invalid):
+    message = _("Volume type encryption for type %(type_id)s already exists.")
+
+
+class VolumeTypeEncryptionNotFound(NotFound):
+    message = _("Volume type encryption for type %(type_id)s does not exist.")
+
+
+class VolumeTypeCreateFailed(ManilaException):
+    message = _("Cannot create volume_type with "
+                "name %(name)s and specs %(extra_specs)s")
+
+
+class ManageExistingVolumeTypeMismatch(ManilaException):
+    message = _("Manage existing volume failed due to volume type mismatch: "
+                "%(reason)s")
 
 
 class InstanceNotFound(NotFound):

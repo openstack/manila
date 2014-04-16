@@ -259,6 +259,40 @@ class Share(BASE, ManilaBase):
     export_location = Column(String(255))
     share_network_id = Column(String(36), ForeignKey('share_networks.id'),
                               nullable=True)
+    volume_type_id = Column(String(36), ForeignKey('volume_types.id'),
+                            nullable=True)
+
+
+class VolumeTypes(BASE, ManilaBase):
+    """Represent possible volume_types of volumes offered."""
+    __tablename__ = "volume_types"
+    id = Column(String(36), primary_key=True)
+    name = Column(String(255))
+    shares = relationship(Share,
+                          backref=backref('volume_type', uselist=False),
+                          foreign_keys=id,
+                          primaryjoin='and_('
+                          'Share.volume_type_id == VolumeTypes.id, '
+                          'VolumeTypes.deleted == False)')
+
+
+class VolumeTypeExtraSpecs(BASE, ManilaBase):
+    """Represents additional specs as key/value pairs for a volume_type."""
+    __tablename__ = 'volume_type_extra_specs'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255))
+    value = Column(String(255))
+    volume_type_id = Column(String(36),
+                            ForeignKey('volume_types.id'),
+                            nullable=False)
+    volume_type = relationship(
+        VolumeTypes,
+        backref="extra_specs",
+        foreign_keys=volume_type_id,
+        primaryjoin='and_('
+        'VolumeTypeExtraSpecs.volume_type_id == VolumeTypes.id,'
+        'VolumeTypeExtraSpecs.deleted == False)'
+    )
 
 
 class ShareMetadata(BASE, ManilaBase):

@@ -200,6 +200,7 @@ def upgrade(migrate_engine):
                nullable=True),
         Column('share_proto', String(255)),
         Column('export_location', String(255)),
+        Column('volume_type_id', String(length=36)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
         )
@@ -331,12 +332,40 @@ def upgrade(migrate_engine):
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
+
+    volume_types = Table(
+        'volume_types', meta,
+        Column('created_at', DateTime),
+        Column('updated_at', DateTime),
+        Column('deleted_at', DateTime),
+        Column('deleted', String(length=36), default='False'),
+        Column('id', String(length=36), primary_key=True, nullable=False),
+        Column('name', String(length=255)),
+        UniqueConstraint('name', 'deleted', name='vt_name_uc'),
+        mysql_engine='InnoDB'
+    )
+
+    volume_type_extra_specs = Table(
+        'volume_type_extra_specs', meta,
+        Column('created_at', DateTime),
+        Column('updated_at', DateTime),
+        Column('deleted_at', DateTime),
+        Column('deleted', Boolean),
+        Column('id', Integer, primary_key=True, nullable=False),
+        Column('volume_type_id', String(length=36),
+               ForeignKey('volume_types.id'), nullable=False),
+        Column('key', String(length=255)),
+        Column('value', String(length=255)),
+        mysql_engine='InnoDB'
+    )
+
     # create all tables
     # Take care on create order for those with FK dependencies
     tables = [migrations, quotas, services, quota_classes, quota_usages,
               reservations, project_user_quotas, security_services,
               share_networks, network_allocations, ss_nw_association,
-              shares, access_map, share_snapshots, share_metadata]
+              shares, access_map, share_snapshots, share_metadata,
+              volume_types, volume_type_extra_specs]
 
     for table in tables:
         try:
