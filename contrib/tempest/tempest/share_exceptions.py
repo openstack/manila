@@ -13,40 +13,40 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.exceptions import base
+from tempest import exceptions
 
 
-class ShareBuildErrorException(base.TempestException):
+class ShareBuildErrorException(exceptions.TempestException):
     message = "Share %(share_id)s failed to build and is in ERROR status"
 
 
-class AccessRuleBuildErrorException(base.TempestException):
+class AccessRuleBuildErrorException(exceptions.TempestException):
     message = "Share's rule with id %(rule_id) is in ERROR status"
 
 
-class SnapshotBuildErrorException(base.TempestException):
+class SnapshotBuildErrorException(exceptions.TempestException):
     message = "Snapshot %(snapshot_id)s failed to build and is in ERROR status"
 
 
-class ShareProtocolNotSpecified(base.TempestException):
+class ShareProtocolNotSpecified(exceptions.TempestException):
     message = "Share can not be created, share protocol is not specified"
 
 
-class ShareNetworkNotSpecified(base.TempestException):
+class ShareNetworkNotSpecified(exceptions.TempestException):
     message = "Share can not be created, share network not specified"
 
 
-class NoAvailableNetwork(base.TempestException):
+class NoAvailableNetwork(exceptions.TempestException):
     message = "No available network for service VM"
 
 
-class InvalidResource(base.TempestException):
+class InvalidResource(exceptions.TempestException):
     message = "Provided invalid resource: %(message)s"
 
 
-class ShareNetworkActivationFailed(base.TempestException):
+class ShareNetworkActivationFailed(exceptions.TempestException):
     message = "Share-network with id %(sn_id)s failed to activate"
 
 
-class ShareNetworkDeactivationFailed(base.TempestException):
+class ShareNetworkDeactivationFailed(exceptions.TempestException):
     message = "Share-network with id %(sn_id)s failed to deactivate"

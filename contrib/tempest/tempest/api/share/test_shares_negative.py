@@ -18,7 +18,7 @@ import testtools
 from tempest.api.share import base
 from tempest import config_share as config
 from tempest import exceptions
-from tempest.exceptions import share_exceptions
+from tempest import share_exceptions
 from tempest import test
 
 CONF = config.CONF
