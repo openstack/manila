@@ -18,6 +18,8 @@
     "share:update_share_metadata": [],
     "share_extension:share_admin_actions:reset_status": [["rule:admin_api"]],
     "share_extension:snapshot_admin_actions:reset_status": [["rule:admin_api"]],
+    "share_extension:types_manage": [],
+    "share_extension:types_extra_specs": [],
 
     "limits_extension:used_limits": []
 }

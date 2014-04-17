@@ -44,6 +44,7 @@ def fake_share(id, **kwargs):
         'project_id': 'fakeproject',
         'snapshot_id': None,
         'share_network_id': None,
+        'volume_type_id': None,
         'availability_zone': 'fakeaz',
         'status': 'fakestatus',
         'display_name': 'fakename',
@@ -136,6 +137,7 @@ class ShareAPITestCase(test.TestCase):
                         'share_proto': share['share_proto'],
                         'share_id': share['id'],
                         'snapshot_id': share['snapshot_id'],
+                        'volume_type': None
                         }
 
         self.mox.StubOutWithMock(db_driver, 'share_create')
@@ -243,6 +245,7 @@ class ShareAPITestCase(test.TestCase):
         request_spec = {'share_properties': options,
                         'share_proto': share['share_proto'],
                         'share_id': share['id'],
+                        'volume_type': None,
                         'snapshot_id': share['snapshot_id'],
                         }
 

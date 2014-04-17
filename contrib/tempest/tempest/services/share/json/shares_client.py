@@ -49,7 +49,8 @@ class SharesClient(rest_client.RestClient):
 
     def create_share(self, share_protocol=None, size=1,
                      name=None, snapshot_id=None, description=None,
-                     metadata={}, share_network_id=None):
+                     metadata={}, share_network_id=None,
+                     volume_type_id=None, ):
         if name is None:
             name = rand_name("tempest-created-share")
         if description is None:
@@ -70,6 +71,8 @@ class SharesClient(rest_client.RestClient):
         }
         if share_network_id:
             post_body["share"]["share_network_id"] = share_network_id
+        if volume_type_id:
+            post_body["share"]["volume_type"] = volume_type_id
         body = json.dumps(post_body)
         resp, body = self.post("shares", body)
         return resp, self._parse_resp(body)
@@ -267,7 +270,7 @@ class SharesClient(rest_client.RestClient):
         """Verifies deleted resource or not.
 
         :param kwargs: expected keys are 'share_id', 'rule_id',
-        :param kwargs: 'snapshot_id', 'sn_id', 'ss_id'
+        :param kwargs: 'snapshot_id', 'sn_id', 'ss_id' and 'vt_id'
         :raises share_exceptions.InvalidResource
         """
 
@@ -305,6 +308,11 @@ class SharesClient(rest_client.RestClient):
         elif "ss_id" in kwargs:
             try:
                 self.get_security_service(kwargs.get("sn_id"))
+            except exceptions.NotFound:
+                return True
+        elif "vt_id" in kwargs:
+            try:
+                self.get_volume_type(kwargs.get("vt_id"))
             except exceptions.NotFound:
                 return True
         else:
@@ -529,3 +537,72 @@ class SharesClient(rest_client.RestClient):
     def list_sec_services_for_share_network(self, sn_id):
         resp, body = self.get("security-services?share_network_id=%s" % sn_id)
         return resp, self._parse_resp(body)
+
+###############
+
+    def list_volume_types(self, params=None):
+        uri = 'types'
+        if params is not None:
+            uri += '?%s' % urllib.urlencode(params)
+        resp, body = self.get(uri)
+        return resp, self._parse_resp(body)
+
+    def create_volume_type(self, name, **kwargs):
+        post_body = {
+            'name': name,
+            'extra_specs': kwargs.get('extra_specs'),
+        }
+        post_body = json.dumps({'volume_type': post_body})
+        resp, body = self.post('types', post_body)
+        return resp, self._parse_resp(body)
+
+    def delete_volume_type(self, vol_type_id):
+        return self.delete("types/%s" % vol_type_id)
+
+    def get_volume_type(self, vol_type_id):
+        resp, body = self.get("types/%s" % vol_type_id)
+        return resp, self._parse_resp(body)
+
+###############
+
+    def list_volume_types_extra_specs(self, vol_type_id, params=None):
+        uri = 'types/%s/extra_specs' % vol_type_id
+        if params is not None:
+            uri += '?%s' % urllib.urlencode(params)
+        resp, body = self.get(uri)
+        return resp, self._parse_resp(body)
+
+    def create_volume_type_extra_specs(self, vol_type_id, extra_specs):
+        url = "types/%s/extra_specs" % vol_type_id
+        post_body = json.dumps({'extra_specs': extra_specs})
+        resp, body = self.post(url, post_body)
+        return resp, self._parse_resp(body)
+
+    def get_volume_type_extra_spec(self, vol_type_id, extra_spec_name):
+        uri = "types/%s/extra_specs/%s" % (vol_type_id, extra_spec_name)
+        resp, body = self.get(uri)
+        return resp, self._parse_resp(body)
+
+    def get_volume_type_extra_specs(self, vol_type_id):
+        uri = "types/%s/extra_specs" % vol_type_id
+        resp, body = self.get(uri)
+        return resp, self._parse_resp(body)
+
+    def update_volume_type_extra_spec(self, vol_type_id, spec_name,
+                                      spec_value):
+        uri = "types/%s/extra_specs/%s" % (vol_type_id, spec_name)
+        extra_spec = {spec_name: spec_value}
+        post_body = json.dumps(extra_spec)
+        resp, body = self.put(uri, post_body)
+        return resp, self._parse_resp(body)
+
+    def update_volume_type_extra_specs(self, vol_type_id, extra_specs):
+        uri = "types/%s/extra_specs" % vol_type_id
+        extra_specs = {"extra_specs": extra_specs}
+        post_body = json.dumps(extra_specs)
+        resp, body = self.post(uri, post_body)
+        return resp, self._parse_resp(body)
+
+    def delete_volume_type_extra_spec(self, vol_type_id, extra_spec_name):
+        uri = "types/%s/extra_specs/%s" % (vol_type_id, extra_spec_name)
+        return self.delete(uri)

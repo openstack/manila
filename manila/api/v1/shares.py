@@ -25,7 +25,9 @@ from manila.api import xmlutil
 from manila.common import constants
 from manila import exception
 from manila.openstack.common import log as logging
+from manila.openstack.common import uuidutils
 from manila import share
+from manila.share import volume_types
 
 
 LOG = logging.getLogger(__name__)
@@ -217,6 +219,21 @@ class ShareController(wsgi.Controller):
 
         display_name = share.get('display_name')
         display_description = share.get('display_description')
+
+        req_volume_type = share.get('volume_type', None)
+        if req_volume_type:
+            try:
+                if not uuidutils.is_uuid_like(req_volume_type):
+                    kwargs['volume_type'] = \
+                        volume_types.get_volume_type_by_name(
+                            context, req_volume_type)
+                else:
+                    kwargs['volume_type'] = volume_types.get_volume_type(
+                        context, req_volume_type)
+            except exception.VolumeTypeNotFound:
+                msg = _("Volume type not found.")
+                raise exc.HTTPNotFound(explanation=msg)
+
         new_share = self.share_api.create(context,
                                           share_proto,
                                           size,
