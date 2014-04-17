@@ -21,7 +21,7 @@ from tempest.common import rest_client
 from tempest.common.utils.data_utils import rand_name
 from tempest import config_share as config
 from tempest import exceptions
-from tempest.exceptions import share_exceptions
+from tempest import share_exceptions
 
 CONF = config.CONF
 
