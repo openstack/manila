@@ -353,6 +353,16 @@ class SharesClient(rest_client.RestClient):
 
 ###############
 
+    def list_services(self, params=None):
+        """List services."""
+        uri = 'os-services'
+        if params:
+            uri += '?%s' % urllib.urlencode(params)
+        resp, body = self.get(uri)
+        return resp, self._parse_resp(body)
+
+###############
+
     def _update_metadata(self, share_id, metadata=None, method="post"):
         uri = "shares/%s/metadata" % share_id
         if metadata is None:

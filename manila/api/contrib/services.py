@@ -15,7 +15,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import webob.exc
 
 from manila.api import extensions
@@ -50,8 +49,9 @@ class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
     def construct(self):
         root = xmlutil.TemplateElement('host')
         root.set('host')
-        root.set('service')
         root.set('disabled')
+        root.set('binary')
+        root.set('status')
 
         return xmlutil.MasterTemplate(root, 1)
 
@@ -59,38 +59,40 @@ class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
 class ServiceController(object):
     @wsgi.serializers(xml=ServicesIndexTemplate)
     def index(self, req):
-        """
-        Return a list of all running services. Filter by host & service name.
-        """
+        """Return a list of all running services. """
         context = req.environ['manila.context']
         authorize(context)
         now = timeutils.utcnow()
-        services = db.service_get_all(context)
+        all_services = db.service_get_all(context)
 
-        host = ''
-        if 'host' in req.GET:
-            host = req.GET['host']
-        service = ''
-        if 'service' in req.GET:
-            service = req.GET['service']
-        if host:
-            services = [s for s in services if s['host'] == host]
-        if service:
-            services = [s for s in services if s['binary'] == service]
+        services = []
+        for service in all_services:
+            service = {
+                'binary': service['binary'],
+                'host': service['host'],
+                'zone': service['availability_zone'],
+                'status': 'disabled' if service['disabled'] else 'enabled',
+                'state': 'up' if utils.service_is_up(service) else 'down',
+                'updated_at': service['updated_at'],
+            }
+            services.append(service)
 
-        svcs = []
-        for svc in services:
-            delta = now - (svc['updated_at'] or svc['created_at'])
-            alive = abs(utils.total_seconds(delta))
-            art = (alive and "up") or "down"
-            active = 'enabled'
-            if svc['disabled']:
-                active = 'disabled'
-            svcs.append({"binary": svc['binary'], 'host': svc['host'],
-                         'zone': svc['availability_zone'],
-                         'status': active, 'state': art,
-                         'updated_at': svc['updated_at']})
-        return {'services': svcs}
+        search_opts = [
+            'host',
+            'binary',
+            'zone',
+            'state',
+            'status',
+        ]
+        for search_opt in search_opts:
+            value = ''
+            if search_opt in req.GET:
+                value = req.GET[search_opt]
+                services = [s for s in services if s[search_opt] == value]
+            if len(services) == 0:
+                break
+
+        return {'services': services}
 
     @wsgi.serializers(xml=ServicesUpdateTemplate)
     def update(self, req, id, body):
@@ -107,12 +109,12 @@ class ServiceController(object):
 
         try:
             host = body['host']
-            service = body['service']
+            binary = body['binary']
         except (TypeError, KeyError):
             raise webob.exc.HTTPBadRequest()
 
         try:
-            svc = db.service_get_by_args(context, host, service)
+            svc = db.service_get_by_args(context, host, binary)
             if not svc:
                 raise webob.exc.HTTPNotFound('Unknown service')
 
@@ -120,7 +122,7 @@ class ServiceController(object):
         except exception.ServiceNotFound:
             raise webob.exc.HTTPNotFound("service not found")
 
-        return {'host': host, 'service': service, 'disabled': disabled}
+        return {'host': host, 'binary': binary, 'disabled': disabled}
 
 
 class Services(extensions.ExtensionDescriptor):
