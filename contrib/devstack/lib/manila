@@ -242,10 +242,8 @@ function configure_manila {
 }
 
 function create_manila_service_flavor {
-    TOKEN=$(keystone token-get | grep ' id ' | get_field 2)
-
     # Create flavor for Manila's service VM
-    nova --os-auth-token $TOKEN flavor-create $MANILA_SERVICE_VM_FLAVOR_NAME $MANILA_SERVICE_VM_FLAVOR_REF $MANILA_SERVICE_VM_FLAVOR_RAM $MANILA_SERVICE_VM_FLAVOR_DISK $MANILA_SERVICE_VM_FLAVOR_VCPUS
+    nova flavor-create $MANILA_SERVICE_VM_FLAVOR_NAME $MANILA_SERVICE_VM_FLAVOR_REF $MANILA_SERVICE_VM_FLAVOR_RAM $MANILA_SERVICE_VM_FLAVOR_DISK $MANILA_SERVICE_VM_FLAVOR_VCPUS
 }
 
 function create_manila_service_image {
