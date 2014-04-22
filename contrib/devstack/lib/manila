@@ -404,7 +404,7 @@ function start_manila {
         if is_fedora; then
             samba_daemon_name=smb
         fi
-        stop_service $samba_daemon_name
+        stop_service $samba_daemon_name || echo "Couldn't stop '$samba_daemon_name' service"
     fi
 
     screen_it m-api "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
