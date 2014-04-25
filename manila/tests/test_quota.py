@@ -31,7 +31,6 @@ from manila.openstack.common import timeutils
 from manila import quota
 from manila import share
 from manila import test
-import manila.tests.image.fake
 
 
 CONF = cfg.CONF
@@ -55,10 +54,6 @@ class QuotaIntegrationTestCase(test.TestCase):
             return orig_rpc_call(context, topic, msg)
 
         self.stubs.Set(rpc, 'call', rpc_call_wrapper)
-
-    def tearDown(self):
-        super(QuotaIntegrationTestCase, self).tearDown()
-        manila.tests.image.fake.FakeImageService_reset()
 
     def _create_share(self, size=10):
         """Create a test share."""
