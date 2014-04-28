@@ -25,6 +25,7 @@ SHOULD include dedicated exception logging.
 """
 
 from oslo.config import cfg
+from sqlalchemy import exc as sqa_exc
 import webob.exc
 
 
@@ -86,6 +87,10 @@ def wrap_db_error(f):
             return f(*args, **kwargs)
         except UnicodeEncodeError:
             raise InvalidUnicodeParameter()
+        except sqa_exc.IntegrityError as e:
+            raise Duplicate(message=str(e))
+        except Duplicate:
+            raise
         except Exception, e:
             LOG.exception(_('DB exception wrapped.'))
             raise DBError(e)
@@ -328,7 +333,7 @@ class NotAllowed(ManilaException):
 
 #TODO(bcwaldon): EOL this exception!
 class Duplicate(ManilaException):
-    pass
+    message = _("Duplicate entry: %(message)s")
 
 
 class KeyPairExists(Duplicate):
