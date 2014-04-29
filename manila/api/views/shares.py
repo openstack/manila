@@ -49,6 +49,10 @@ class ViewBuilder(common.ViewBuilder):
             metadata = dict((item['key'], item['value']) for item in metadata)
         else:
             metadata = {}
+        if share['volume_type_id'] and share.get('volume_type'):
+            volume_type = share['volume_type']['name']
+        else:
+            volume_type = share['volume_type_id']
 
         return {
             'share': {
@@ -66,6 +70,7 @@ class ViewBuilder(common.ViewBuilder):
                 'share_proto': share.get('share_proto'),
                 'export_location': share.get('export_location'),
                 'metadata': metadata,
+                'volume_type': volume_type,
                 'links': self._get_links(request, share['id'])
             }
         }

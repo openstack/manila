@@ -149,6 +149,7 @@ class ShareApiTest(test.TestCase):
                       'snapshot_id': '2',
                       'share_network_id': None,
                       'status': 'fakestatus',
+                      'volume_type': '1',
                       'links': [{'href': 'http://localhost/v1/fake/shares/1',
                                  'rel': 'self'},
                                 {'href': 'http://localhost/fake/shares/1',
@@ -254,6 +255,7 @@ class ShareApiTest(test.TestCase):
                     'share_network_id': None,
                     'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                     'size': 1,
+                    'volume_type': '1',
                     'links': [
                         {
                             'href': 'http://localhost/v1/fake/shares/1',

@@ -231,7 +231,9 @@ class BaseSharesTest(test.BaseTestCase):
     def create_share_wait_for_active(cls, share_protocol=None, size=1,
                                      name=None, snapshot_id=None,
                                      description=None, metadata={},
-                                     share_network_id=None, client=None,
+                                     share_network_id=None,
+                                     volume_type_id=None,
+                                     client=None,
                                      cleanup_in_class=True):
         if client is None:
             client = cls.shares_client
@@ -249,7 +251,8 @@ class BaseSharesTest(test.BaseTestCase):
                                    name=name, snapshot_id=snapshot_id,
                                    description=description,
                                    metadata=metadata,
-                                   share_network_id=share_network_id)
+                                   share_network_id=share_network_id,
+                                   volume_type_id=volume_type_id, )
         resource = {
             "type": "share",
             "id": s["id"],
@@ -318,6 +321,23 @@ class BaseSharesTest(test.BaseTestCase):
         return resp, ss
 
     @classmethod
+    def create_volume_type(cls, name, client=None, cleanup_in_class=True,
+                           **kwargs):
+        if client is None:
+            client = cls.shares_client
+        resp, vt = client.create_volume_type(name, **kwargs)
+        resource = {
+            "type": "volume_type",
+            "id": vt["id"],
+            "client": client,
+        }
+        if cleanup_in_class:
+            cls.class_resources.insert(0, resource)
+        else:
+            cls.method_resources.insert(0, resource)
+        return resp, vt
+
+    @classmethod
     def clear_isolated_creds(cls, creds=None):
         if creds is None:
             creds = cls.method_isolated_creds
@@ -368,6 +388,9 @@ class BaseSharesTest(test.BaseTestCase):
                     elif res["type"] is "security_service":
                         client.delete_security_service(res_id)
                         client.wait_for_resource_deletion(ss_id=res_id)
+                    elif res["type"] is "volume_type":
+                        client.delete_volume_type(res_id)
+                        client.wait_for_resource_deletion(vt_id=res_id)
                 except exceptions.NotFound:
                     pass
                 except exceptions.Unauthorized:

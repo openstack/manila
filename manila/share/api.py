@@ -50,7 +50,7 @@ class API(base.Base):
 
     def create(self, context, share_proto, size, name, description,
                snapshot=None, availability_zone=None, metadata=None,
-               share_network_id=None):
+               share_network_id=None, volume_type=None):
         """Create new share."""
         policy.check_policy(context, 'share', 'create')
 
@@ -85,6 +85,13 @@ class API(base.Base):
             msg = (_("Share size '%s' must be equal or greater "
                      "than snapshot size") % size)
             raise exception.InvalidInput(reason=msg)
+
+        if snapshot and volume_type:
+            if volume_type['id'] != snapshot['volume_type_id']:
+                msg = _("Invalid volume_type provided (requested type "
+                        "must match source snapshot, or be omitted). "
+                        "You should omit the argument.")
+                raise exception.InvalidInput(reason=msg)
 
         #TODO(rushiagr): Find a suitable place to keep all the allowed
         #                share types so that it becomes easier to add one
@@ -134,6 +141,7 @@ class API(base.Base):
                    'display_name': name,
                    'display_description': description,
                    'share_proto': share_proto,
+                   'volume_type_id': volume_type['id'] if volume_type else None
                    }
 
         try:
@@ -150,6 +158,7 @@ class API(base.Base):
                         'share_proto': share_proto,
                         'share_id': share['id'],
                         'snapshot_id': share['snapshot_id'],
+                        'volume_type': volume_type
                         }
 
         filter_properties = {}
