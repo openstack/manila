@@ -56,7 +56,7 @@ class SecurityServiceDBTest(test.TestCase):
         db_api.security_service_create(self.fake_context,
                                        security_service_dict)
 
-        self.assertRaises(exception.DBError,
+        self.assertRaises(exception.Duplicate,
                           db_api.security_service_create,
                           self.fake_context,
                           security_service_dict)
