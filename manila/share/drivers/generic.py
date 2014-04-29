@@ -86,6 +86,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.admin_context = context.get_admin_context()
         self.db = db
         self.configuration.append_config_values(share_opts)
+        self.configuration.append_config_values(service_instance.server_opts)
         self._helpers = {}
 
     def check_for_setup_error(self):
