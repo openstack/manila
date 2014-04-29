@@ -41,7 +41,7 @@ server_opts = [
                help="Name of image in glance, that will be used to create "
                "service instance."),
     cfg.StrOpt('service_instance_name_template',
-               default='manila_service_instance-%s',
+               default='manila_service_instance_%s',
                help="Name of service instance."),
     cfg.StrOpt('service_instance_user',
                help="User in service instance."),
@@ -126,6 +126,10 @@ class ServiceInstanceManager(object):
 
     def __init__(self, db, _helpers, *args, **kwargs):
         """Do initialization."""
+        self.backend_name = ""
+        if "backend_name" in kwargs:
+            self.backend_name = kwargs.get("backend_name")
+            del kwargs["backend_name"]
         super(ServiceInstanceManager, self).__init__(*args, **kwargs)
         if not CONF.service_instance_user:
             raise exception.ServiceInstanceException(_('Service instance user '
@@ -171,7 +175,11 @@ class ServiceInstanceManager(object):
 
     def _get_service_instance_name(self, share_network_id):
         """Returns service vms name."""
-        return CONF.service_instance_name_template % share_network_id
+        if self.backend_name:
+            name = "%s_%s" % (self.backend_name, share_network_id)
+        else:
+            name = share_network_id
+        return CONF.service_instance_name_template % name
 
     def _get_server_ip(self, server):
         """Returns service vms ip address."""

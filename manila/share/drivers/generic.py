@@ -40,9 +40,6 @@ share_opts = [
     cfg.StrOpt('smb_template_config_path',
                default='$state_path/smb.conf',
                help="Path to smb config."),
-    cfg.StrOpt('service_instance_name_template',
-               default='manila_service_instance-%s',
-               help="Name of service instance."),
     cfg.StrOpt('volume_name_template',
                default='manila-share-%s',
                help="Volume name template."),
@@ -87,6 +84,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.db = db
         self.configuration.append_config_values(share_opts)
         self._helpers = {}
+        self.backend_name = self.configuration.safe_get(
+            'share_backend_name') or "Cinder_Volumes"
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -98,7 +97,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.compute_api = compute.API()
         self.volume_api = volume.API()
         self.service_instance_manager = service_instance.\
-                                ServiceInstanceManager(self.db, self._helpers)
+            ServiceInstanceManager(self.db, self._helpers,
+                                   backend_name=self.backend_name)
         self.get_service_instance = self.service_instance_manager.\
                 get_service_instance
         self.delete_service_instance = self.service_instance_manager.\
@@ -324,7 +324,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # Note(zhiteng): These information are driver/backend specific,
         # each driver may define these values in its own config options
         # or fetch from driver specific configuration file.
-        data["share_backend_name"] = 'Cinder Volumes'
+        data["share_backend_name"] = self.backend_name
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS_CIFS'

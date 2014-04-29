@@ -200,6 +200,7 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.openstack.share.contrib.standard_extensions
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
     iniset $MANILA_CONF DEFAULT share_driver $SHARE_DRIVER
+    iniset $MANILA_CONF DEFAULT share_backend_name generic_driver
     iniset $MANILA_CONF DEFAULT share_lvm_helpers CIFS=$CIFS_HELPER,NFS=manila.share.drivers.lvm.NFSHelper
 
     iniset $MANILA_CONF DEFAULT nova_admin_password $SERVICE_PASSWORD
