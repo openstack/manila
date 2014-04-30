@@ -73,6 +73,8 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.db = db
         self.configuration.append_config_values(share_opts)
         self._helpers = None
+        self.backend_name = self.configuration.safe_get(
+            'share_backend_name') or 'LVM'
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -162,7 +164,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # Note(zhiteng): These information are driver/backend specific,
         # each driver may define these values in its own config options
         # or fetch from driver specific configuration file.
-        data["share_backend_name"] = 'LVM'
+        data["share_backend_name"] = self.backend_name
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
         #TODO(rushiagr): Pick storage_protocol from the helper used.

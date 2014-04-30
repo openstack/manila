@@ -62,6 +62,8 @@ class NetAppApiClient(object):
         self.configuration = kwargs.get('configuration', None)
         if not self.configuration:
             raise exception.NetAppException(_("NetApp configuration missing."))
+        self.backend_name = self.configuration.safe_get(
+            'share_backend_name') or "NetApp_7_Mode"
         self._client = naapi.NaServer(
             host=self.configuration.netapp_nas_server_hostname,
             username=self.configuration.netapp_nas_login,
@@ -345,7 +347,7 @@ class NetAppShareDriver(driver.ShareDriver):
         # Note(zhiteng): These information are driver/backend specific,
         # each driver may define these values in its own config options
         # or fetch from driver specific configuration file.
-        data["share_backend_name"] = 'NetApp_7_mode'
+        data["share_backend_name"] = self.backend_name
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         #TODO(rushiagr): Pick storage_protocol from the helper used.
