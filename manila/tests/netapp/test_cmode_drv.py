@@ -345,6 +345,13 @@ class NetAppClusteredDrvTestCase(test.TestCase):
 
     def test_create_export(self):
         self.helper.create_share = mock.Mock(return_value="fake-location")
+        net_info = {
+            'attributes-list': {
+                'net-interface-info': {'address': 'ip'}},
+            'num-records': '1'}
+        ifaces = naapi.NaElement('root')
+        ifaces.translate_struct(net_info)
+        self._vserver_client.send_request = mock.Mock(return_value=ifaces)
         export_location = self.driver._create_export(
             self.share, 'vserver', self._vserver_client)
         self.helper.create_share.assert_called_once_with(

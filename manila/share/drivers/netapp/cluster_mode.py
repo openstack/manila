@@ -541,8 +541,18 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
         share_name = self._get_valid_share_name(share['id'])
-        network_allocations = share['network_info']['network_allocations']
-        ip_address = network_allocations[0]['ip_address']
+        args = {
+            'query': {
+                'net-interface-info': {'vserver': vserver}
+            }
+        }
+        ifaces = vserver_client.send_request('net-interface-get-iter', args)
+        if not int(ifaces.get_child_content('num-records')):
+            raise exception.NetAppException(
+                _("Cannot find network interfaces for vserver %s.") % vserver)
+        ifaces_list = ifaces.get_child_by_name('attributes-list')\
+            .get_children()
+        ip_address = ifaces_list[0].get_child_content('address')
         export_location = helper.create_share(share_name, ip_address)
         return export_location
 
