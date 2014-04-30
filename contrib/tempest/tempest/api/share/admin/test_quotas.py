@@ -63,13 +63,6 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
 
-    @test.attr(type=["gate", "smoke", ])
-    def test_default_quotas_with_empty_tenant_id(self):
-        # it should return default quotas without any tenant-id
-        resp, body = self.shares_client.default_quotas("")
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertTrue(len(body) > 0)
-
 
 class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
 

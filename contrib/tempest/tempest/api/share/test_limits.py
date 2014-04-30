@@ -17,7 +17,7 @@ from tempest.api.share import base
 from tempest import test
 
 
-class SharesQuotasTest(base.BaseSharesTest):
+class ShareLimitsTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_limits_keys(self):

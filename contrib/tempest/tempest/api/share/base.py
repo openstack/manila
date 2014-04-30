@@ -206,8 +206,8 @@ class BaseSharesTest(test.BaseTestCase):
             # Try get suitable share-network
             __, share_networks = sc.list_share_networks_with_detail()
             for share_network in share_networks:
-                if (net_id in share_network["neutron_net_id"] and
-                    subnet_id in share_network["neutron_subnet_id"]):
+                if (net_id == share_network["neutron_net_id"] and
+                    subnet_id == share_network["neutron_subnet_id"]):
                     share_network_id = share_network["id"]
                     break
 

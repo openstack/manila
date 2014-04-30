@@ -44,6 +44,12 @@ class SimpleReadOnlyManilaClientTest(manilaclient.ClientTestBase):
         roles = self.parser.listing(self.manila('absolute-limits'))
         self.assertTableStruct(roles, ['Name', 'Value'])
 
+    def test_manila_volume_types_list(self):
+        self.manila('type-list')
+
+    def test_manila_extra_specs_list(self):
+        self.manila('extra-specs-list')
+
     def test_manila_shares_list(self):
         self.manila('list')
 
