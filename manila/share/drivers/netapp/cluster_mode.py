@@ -76,6 +76,8 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         if self.configuration:
             self.configuration.append_config_values(NETAPP_NAS_OPTS)
         self.api_version = (1, 15)
+        self.backend_name = self.configuration.safe_get(
+            'share_backend_name') or "NetApp_Cluster_Mode"
 
     def do_setup(self, context):
         """Prepare once the driver.
@@ -91,6 +93,21 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     def check_for_setup_error(self):
         """Raises error if prerequisites are not met."""
         self._check_licenses()
+
+    def _update_share_status(self):
+        """Retrieve status info from share volume group."""
+        # TODO(yportnova): Retrieve capacity info from backend
+        LOG.debug(_("Updating share status"))
+        data = {}
+        data["share_backend_name"] = self.backend_name
+        data["vendor_name"] = 'NetApp'
+        data["driver_version"] = '1.0'
+        data["storage_protocol"] = 'NFS_CIFS'
+        data['total_capacity_gb'] = 'infinite'
+        data['free_capacity_gb'] = 'infinite'
+        data['reserved_percentage'] = 0
+        data['QoS_support'] = False
+        self._stats = data
 
     def setup_network(self, network_info, metadata=None):
         """Creates and configures new vserver."""
