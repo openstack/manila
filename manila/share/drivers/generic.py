@@ -83,6 +83,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.admin_context = context.get_admin_context()
         self.db = db
         self.configuration.append_config_values(share_opts)
+        self.configuration.append_config_values(service_instance.server_opts)
         self._helpers = {}
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "Cinder_Volumes"
