@@ -185,7 +185,9 @@ function configure_manila {
     iniset $MANILA_API_PASTE_INI filter:authtoken admin_password $SERVICE_PASSWORD
     iniset $MANILA_API_PASTE_INI filter:authtoken signing_dir $MANILA_AUTH_CACHE_DIR
 
-    cp $MANILA_DIR/etc/manila/manila.conf.sample $MANILA_CONF
+    # Remove old conf file if exists
+    rm -f $MANILA_CONF
+
     iniset $MANILA_CONF DEFAULT auth_strategy keystone
     iniset $MANILA_CONF DEFAULT debug True
     iniset $MANILA_CONF DEFAULT verbose True
