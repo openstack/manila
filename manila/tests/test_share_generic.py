@@ -230,8 +230,6 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_server = fake_compute.FakeServer()
         availiable_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
-        self.stubs.Set(self._driver, '_get_device_path',
-                       mock.Mock(return_value='fake_device_path'))
         self.stubs.Set(self._driver.compute_api, 'instance_volume_attach',
                        mock.Mock())
         self.stubs.Set(self._driver.volume_api, 'get',
@@ -240,11 +238,9 @@ class GenericShareDriverTestCase(test.TestCase):
         result = self._driver._attach_volume(self._context, self.share,
                                              fake_server, availiable_volume)
 
-        self._driver._get_device_path.assert_called_once_with(self._context,
-                                                              fake_server)
         self._driver.compute_api.instance_volume_attach.\
                 assert_called_once_with(self._context, fake_server['id'],
-                        availiable_volume['id'], 'fake_device_path')
+                        availiable_volume['id'])
         self._driver.volume_api.get.\
                 assert_called_once_with(self._context, attached_volume['id'])
         self.assertEqual(result, attached_volume)
@@ -273,8 +269,6 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_attach_volume_failed_attach(self):
         fake_server = fake_compute.FakeServer()
         availiable_volume = fake_volume.FakeVolume()
-        self.stubs.Set(self._driver, '_get_device_path',
-                       mock.Mock(return_value='fake_device_path'))
         self.stubs.Set(self._driver.compute_api, 'instance_volume_attach',
                 mock.Mock(side_effect=exception.ManilaException))
         self.assertRaises(exception.ManilaException,
@@ -286,8 +280,6 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_server = fake_compute.FakeServer()
         availiable_volume = fake_volume.FakeVolume()
         error_volume = fake_volume.FakeVolume(status='error')
-        self.stubs.Set(self._driver, '_get_device_path',
-                       mock.Mock(return_value='fake_device_path'))
         self.stubs.Set(self._driver.compute_api, 'instance_volume_attach',
                        mock.Mock())
         self.stubs.Set(self._driver.volume_api, 'get',
@@ -382,29 +374,6 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertFalse(self._driver.volume_api.get.called)
         self.assertFalse(self._driver.compute_api.
                                         instance_volume_detach.called)
-
-    def test_get_device_path_01(self):
-        fake_server = fake_compute.FakeServer()
-        vol_list = [[], [fake_volume.FakeVolume(device='/dev/vdc')],
-                [fake_volume.FakeVolume(device='/dev/vdd')]]
-        self.stubs.Set(self._driver.compute_api, 'instance_volumes_list',
-                mock.Mock(side_effect=lambda x, y: vol_list.pop()))
-
-        result = self._driver._get_device_path(self._context, fake_server)
-
-        self.assertEqual(result, '/dev/vdb')
-
-    def test_get_device_path_02(self):
-        fake_server = fake_compute.FakeServer()
-        vol_list = [[fake_volume.FakeVolume(device='/dev/vdb')],
-                [fake_volume.FakeVolume(device='/dev/vdb'),
-                    fake_volume.FakeVolume(device='/dev/vdd')]]
-        self.stubs.Set(self._driver.compute_api, 'instance_volumes_list',
-                mock.Mock(side_effect=lambda x, y: vol_list.pop()))
-
-        result = self._driver._get_device_path(self._context, fake_server)
-
-        self.assertEqual(result, '/dev/vdc')
 
     def test_allocate_container(self):
         fake_vol = fake_volume.FakeVolume()

@@ -181,11 +181,10 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             else:
                 raise exception.ManilaException(_('Volume %s is already '
                         'attached to another instance') % volume['id'])
-        device_path = self._get_device_path(self.admin_context, server)
         self.compute_api.instance_volume_attach(self.admin_context,
                                                 server['id'],
                                                 volume['id'],
-                                                device_path)
+                                                )
 
         t = time.time()
         while time.time() - t < self.configuration.max_time_to_attach:
@@ -252,17 +251,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 raise exception.ManilaException(_('Volume have not been '
                                                   'detached in %ss. Giving up')
                                        % self.configuration.max_time_to_attach)
-
-    def _get_device_path(self, context, server):
-        """Returns device path for cinder volume attaching."""
-        volumes = self.compute_api.instance_volumes_list(context, server['id'])
-        used_literals = set(volume.device[-1] for volume in volumes
-                            if '/dev/vd' in volume.device)
-        lit = 'b'
-        while lit in used_literals:
-            lit = chr(ord(lit) + 1)
-        device_name = '/dev/vd%s' % lit
-        return device_name
 
     def _allocate_container(self, context, share, snapshot=None):
         """Creates cinder volume, associated to share by name."""

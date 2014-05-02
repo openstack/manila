@@ -221,7 +221,10 @@ class API(base.Base):
                 )
 
     @translate_server_exception
-    def instance_volume_attach(self, context, instance_id, volume_id, device):
+    def instance_volume_attach(self, context, instance_id, volume_id,
+                               device=None):
+        if device == 'auto':
+            device = None
         return novaclient(context).volumes.create_server_volume(instance_id,
                                                                 volume_id,
                                                                 device)
