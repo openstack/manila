@@ -75,11 +75,7 @@ class BaseSharesTest(test.BaseTestCase):
             creds = ic.get_primary_creds()
 
         # create client with isolated creds
-        username, tenant_name, password = creds
-        os = clients.Manager(username=username,
-                             password=password,
-                             tenant_name=tenant_name,
-                             interface=cls._interface)
+        os = clients.Manager(credentials=creds, interface=cls._interface)
         client = os.shares_client
 
         # Get tenant and user

@@ -22,31 +22,25 @@ CONF = config.CONF
 
 
 class Manager(clients.Manager):
-
-    """
-    Top level manager for OpenStack Compute clients
-    """
-
-    def __init__(self, username=None, password=None, tenant_name=None,
-                 interface='json', service=None):
-        super(Manager, self).__init__(username, password, tenant_name,
-                                      interface, service)
+    def __init__(self, credentials=None, interface='json', service=None):
+        super(Manager, self).__init__(credentials, interface, service)
         auth_provider = self.get_auth_provider(self.credentials)
         if interface == 'json':
             self.shares_client = shares_client.SharesClient(auth_provider)
 
 
-class AltManager(Manager):
-    def __init__(self, interface='json'):
-        super(AltManager, self).__init__(CONF.identity.alt_username,
-                                         CONF.identity.alt_password,
-                                         CONF.identity.alt_tenant_name,
-                                         interface=interface)
+class AltManager(clients.AltManager):
+    def __init__(self, interface='json', service=None):
+        super(AltManager, self).__init__(interface=interface, service=service)
+        auth_provider = self.get_auth_provider(self.credentials)
+        if interface == 'json':
+            self.shares_client = shares_client.SharesClient(auth_provider)
 
 
-class AdminManager(Manager):
-    def __init__(self, interface='json'):
-        super(AdminManager, self).__init__(CONF.identity.admin_username,
-                                           CONF.identity.admin_password,
-                                           CONF.identity.admin_tenant_name,
-                                           interface=interface)
+class AdminManager(clients.AdminManager):
+    def __init__(self, interface='json', service=None):
+        super(AdminManager, self).__init__(interface=interface,
+                                           service=service)
+        auth_provider = self.get_auth_provider(self.credentials)
+        if interface == 'json':
+            self.shares_client = shares_client.SharesClient(auth_provider)
