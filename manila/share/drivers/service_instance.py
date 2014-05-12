@@ -146,7 +146,7 @@ class ServiceInstanceManager(object):
                 self.service_tenant_id = self.neutron_api.admin_tenant_id
                 break
             except exception.NetworkException:
-                LOG.debug(_('Connection to neutron failed.'))
+                LOG.debug('Connection to neutron failed.')
                 attempts -= 1
                 time.sleep(3)
         else:
@@ -220,7 +220,7 @@ class ServiceInstanceManager(object):
             try:
                 server = self.compute_api.server_get(context, server['id'])
             except exception.InstanceNotFound:
-                LOG.debug(_('Service instance was deleted succesfully.'))
+                LOG.debug('Service instance was deleted succesfully.')
                 break
             time.sleep(1)
         else:
@@ -319,8 +319,8 @@ class ServiceInstanceManager(object):
         else:
             keypair = keypairs[0]
             if keypair.public_key != public_key:
-                LOG.debug(_('Public key differs from existing keypair. '
-                          'Creating new keypair.'))
+                LOG.debug('Public key differs from existing keypair. '
+                          'Creating new keypair.')
                 self.compute_api.keypair_delete(context, keypair.id)
                 keypair = self.compute_api.keypair_import(context,
                                                           keypair_name,
@@ -400,14 +400,14 @@ class ServiceInstanceManager(object):
     def _check_server_availability(self, server):
         t = time.time()
         while time.time() - t < CONF.max_time_to_build_instance:
-            LOG.debug(_('Checking service vm availablity.'))
+            LOG.debug('Checking service vm availablity.')
             try:
                 socket.socket().connect((server['ip'], 22))
-                LOG.debug(_('Service vm is available via ssh.'))
+                LOG.debug('Service vm is available via ssh.')
                 return True
             except socket.error as e:
                 LOG.debug(e)
-                LOG.debug(_('Server is not available through ssh. Waiting...'))
+                LOG.debug('Server is not available through ssh. Waiting...')
                 time.sleep(5)
         return False
 
@@ -429,10 +429,10 @@ class ServiceInstanceManager(object):
         except exception.NetworkException as e:
             if e.kwargs['code'] != 400:
                 raise
-            LOG.debug(_('Subnet %(subnet_id)s is already attached to the '
-                        'router %(router_id)s.') %
-                                    {'subnet_id': service_subnet['id'],
-                                     'router_id': private_router['id']})
+            LOG.debug('Subnet %(subnet_id)s is already attached to the '
+                      'router %(router_id)s.' %
+                                  {'subnet_id': service_subnet['id'],
+                                   'router_id': private_router['id']})
 
         return self.neutron_api.create_port(self.service_tenant_id,
                                             self.service_network_id,
@@ -583,10 +583,10 @@ class ServiceInstanceManager(object):
             except exception.NetworkException as e:
                 if e.kwargs['code'] != 404:
                     raise
-                LOG.debug(_('Subnet %(subnet_id)s is not attached to the '
-                            'router %(router_id)s.') %
-                                        {'subnet_id': subnet_id,
-                                         'router_id': router['id']})
+                LOG.debug('Subnet %(subnet_id)s is not attached to the '
+                          'router %(router_id)s.' %
+                                      {'subnet_id': subnet_id,
+                                       'router_id': router['id']})
             self.neutron_api.update_subnet(subnet_id, '')
 
     def _get_all_service_subnets(self):

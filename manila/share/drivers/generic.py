@@ -148,7 +148,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.ProcessExecutionError as e:
             if 'already mounted' not in e.stderr:
                 raise
-            LOG.debug(_('Share %s is already mounted') % share['name'])
+            LOG.debug('Share %s is already mounted' % share['name'])
         command = ['sudo', 'chmod', '777', mount_path]
         _ssh_exec(server, command)
 
@@ -161,7 +161,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             _ssh_exec(server, command)
         except exception.ProcessExecutionError as e:
             if 'not found' in e.stderr:
-                LOG.debug(_('%s is not mounted') % share['name'])
+                LOG.debug('%s is not mounted' % share['name'])
 
     def _get_mount_path(self, share):
         """
@@ -288,7 +288,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 try:
                     volume = self.volume_api.get(context, volume['id'])
                 except exception.VolumeNotFound:
-                    LOG.debug(_('Volume was deleted succesfully'))
+                    LOG.debug('Volume was deleted succesfully')
                     break
                 time.sleep(1)
             else:
@@ -307,7 +307,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def _update_share_status(self):
         """Retrieve status info from share volume group."""
 
-        LOG.debug(_("Updating share status"))
+        LOG.debug("Updating share status")
         data = {}
 
         # Note(zhiteng): These information are driver/backend specific,
@@ -387,7 +387,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 snapshot = self.volume_api.get_snapshot(self.admin_context,
                                                         volume_snapshot['id'])
             except exception.VolumeSnapshotNotFound:
-                LOG.debug(_('Volume snapshot was deleted succesfully'))
+                LOG.debug('Volume snapshot was deleted succesfully')
                 break
             time.sleep(1)
         else:
@@ -444,7 +444,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def setup_network(self, share_network, metadata=None):
         sn_id = share_network["id"]
-        msg = _("Creating share infrastructure for share network '%s'.")
+        msg = "Creating share infrastructure for share network '%s'."
         LOG.debug(msg % sn_id)
         self.get_service_instance(context=self.admin_context,
                                   share_network_id=sn_id,
@@ -452,7 +452,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def teardown_network(self, share_network):
         sn_id = share_network["id"]
-        msg = _("Removing share infrastructure for share network '%s'.")
+        msg = "Removing share infrastructure for share network '%s'."
         LOG.debug(msg % sn_id)
         try:
             self.delete_service_instance(self.admin_context, sn_id)
@@ -569,7 +569,7 @@ class CIFSHelper(NASHelperBase):
         except exception.ProcessExecutionError as e:
             if 'File exists' not in e.stderr:
                 raise
-            LOG.debug(_('Directory %s already exists') % config_dir)
+            LOG.debug('Directory %s already exists' % config_dir)
         _ssh_exec(server, ['sudo', 'chown',
                            self.configuration.service_instance_user,
                            config_dir])
@@ -579,7 +579,7 @@ class CIFSHelper(NASHelperBase):
         except exception.ProcessExecutionError as e:
             if 'Unknown instance' not in e.stderr:
                 raise
-            LOG.debug(_('Samba service is not running'))
+            LOG.debug('Samba service is not running')
         self._write_remote_config(local_config, server)
         _ssh_exec(server, ['sudo', 'smbd', '-s', self.config_path])
         self._restart_service(server)

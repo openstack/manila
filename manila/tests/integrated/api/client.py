@@ -121,7 +121,7 @@ class TestOpenStackClient(object):
                                 headers=headers)
 
         http_status = response.status
-        LOG.debug(_("%(auth_uri)s => code %(http_status)s") % locals())
+        LOG.debug("%(auth_uri)s => code %(http_status)s" % locals())
 
         if http_status == 401:
             raise OpenStackApiAuthenticationException(response=response)
@@ -147,7 +147,7 @@ class TestOpenStackClient(object):
         response = self.request(full_uri, **kwargs)
 
         http_status = response.status
-        LOG.debug(_("%(relative_uri)s => code %(http_status)s") % locals())
+        LOG.debug("%(relative_uri)s => code %(http_status)s" % locals())
 
         if check_response_status:
             if http_status not in check_response_status:
@@ -164,7 +164,7 @@ class TestOpenStackClient(object):
 
     def _decode_json(self, response):
         body = response.read()
-        LOG.debug(_("Decoding JSON: %s") % (body))
+        LOG.debug("Decoding JSON: %s" % (body))
         if body:
             return jsonutils.loads(body)
         else:

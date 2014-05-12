@@ -156,13 +156,13 @@ class Manager(base.Base):
 
             ticks_to_skip = self._ticks_to_skip[task_name]
             if ticks_to_skip > 0:
-                LOG.debug(_("Skipping %(full_task_name)s, %(ticks_to_skip)s"
-                            " ticks left until next run"), locals())
+                LOG.debug("Skipping %(full_task_name)s, %(ticks_to_skip)s"
+                          " ticks left until next run", locals())
                 self._ticks_to_skip[task_name] -= 1
                 continue
 
             self._ticks_to_skip[task_name] = task._ticks_between_runs
-            LOG.debug(_("Running periodic task %(full_task_name)s"), locals())
+            LOG.debug("Running periodic task %(full_task_name)s", locals())
 
             try:
                 task(self, context)
@@ -214,7 +214,7 @@ class SchedulerDependentManager(Manager):
     def _publish_service_capabilities(self, context):
         """Pass data back to the scheduler at a periodic interval."""
         if self.last_capabilities:
-            LOG.debug(_('Notifying Schedulers of capabilities ...'))
+            LOG.debug('Notifying Schedulers of capabilities ...')
             self.scheduler_rpcapi.update_service_capabilities(
                 context,
                 self.service_name,

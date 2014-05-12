@@ -312,7 +312,7 @@ class API(base.Base):
                                                       context.project_id)
 
         if search_opts:
-            LOG.debug(_("Searching by: %s") % str(search_opts))
+            LOG.debug("Searching by: %s" % str(search_opts))
 
             results = []
             not_found = object()
@@ -344,7 +344,7 @@ class API(base.Base):
                 context, context.project_id)
 
         if search_opts:
-            LOG.debug(_("Searching by: %s") % str(search_opts))
+            LOG.debug("Searching by: %s" % str(search_opts))
 
             results = []
             not_found = object()

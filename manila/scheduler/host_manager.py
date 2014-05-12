@@ -233,12 +233,12 @@ class HostManager(object):
     def update_service_capabilities(self, service_name, host, capabilities):
         """Update the per-service capabilities based on this notification."""
         if service_name not in ('share'):
-            LOG.debug(_('Ignoring %(service_name)s service update '
-                        'from %(host)s'), locals())
+            LOG.debug('Ignoring %(service_name)s service update '
+                      'from %(host)s', locals())
             return
 
-        LOG.debug(_("Received %(service_name)s service update from "
-                    "%(host)s.") % locals())
+        LOG.debug("Received %(service_name)s service update from "
+                  "%(host)s." % locals())
 
         # Copy the capabilities, so we don't modify the original dict
         capab_copy = dict(capabilities)

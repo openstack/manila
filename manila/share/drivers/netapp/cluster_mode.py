@@ -97,7 +97,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     def _update_share_status(self):
         """Retrieve status info from share volume group."""
         # TODO(yportnova): Retrieve capacity info from backend
-        LOG.debug(_("Updating share status"))
+        LOG.debug("Updating share status")
         data = {}
         data["share_backend_name"] = self.backend_name
         data["vendor_name"] = 'NetApp'
@@ -111,7 +111,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
 
     def setup_network(self, network_info, metadata=None):
         """Creates and configures new vserver."""
-        LOG.debug(_('Configuring network %s') % network_info['id'])
+        LOG.debug('Configuring network %s' % network_info['id'])
         self._vserver_create_if_not_exists(network_info)
 
     def _get_cluster_nodes(self):
@@ -193,7 +193,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
             self._client.send_request('net-vlan-create', args)
         except naapi.NaApiError as e:
             if e.code == '13130':
-                LOG.debug(_("Vlan %(vlan)s already exists on port %(port)s") %
+                LOG.debug("Vlan %(vlan)s already exists on port %(port)s" %
                           {'vlan': vlan, 'port': port})
             else:
                 raise exception.NetAppException(
@@ -202,8 +202,8 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
                     {'vlan': vlan, 'port': port, 'err_msg': e.message})
         iface_name = self.configuration.netapp_lif_name_template % \
                      {'node': node, 'net_allocation_id': allocation_id}
-        LOG.debug(_('Creating LIF %(lif)r for vserver %(vserver)s ')
-                          % {'lif': iface_name, 'vserver': vserver_name})
+        LOG.debug('Creating LIF %(lif)r for vserver %(vserver)s '
+                        % {'lif': iface_name, 'vserver': vserver_name})
         args = {'address': ip,
                 'administrative-status': 'up',
                 'data-protocols': [
@@ -237,7 +237,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     def _vserver_exists(self, vserver_name):
         args = {'query': {'vserver-info': {'vserver-name': vserver_name}}}
 
-        LOG.debug(_('Checking if vserver exists'))
+        LOG.debug('Checking if vserver exists')
         vserver_info = self._client.send_request('vserver-get-iter', args)
         if int(vserver_info.get_child_content('num-records')):
             return True
@@ -251,7 +251,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
             self.api_version, vserver=vserver_name,
             configuration=self.configuration)
         if not self._vserver_exists(vserver_name):
-            LOG.debug(_('Vserver %s does not exist, creating') % vserver_name)
+            LOG.debug('Vserver %s does not exist, creating' % vserver_name)
             self._create_vserver(vserver_name)
         nodes = self._get_cluster_nodes()
 
@@ -355,7 +355,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
             self._client.send_request('kerberos-realm-create', args)
         except naapi.NaApiError as e:
             if e.code == '13130':
-                LOG.debug(_("Kerberos realm config already exists"))
+                LOG.debug("Kerberos realm config already exists")
             else:
                 raise exception.NetAppException(
                     _("Failed to configure Kerberos. %s") % e.message)
@@ -389,7 +389,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
             vserver_client.send_request('cifs-server-create', args)
         except naapi.NaApiError as e:
             if e.code == '13001':
-                LOG.debug(_("CIFS server entry already exists"))
+                LOG.debug("CIFS server entry already exists")
             else:
                 raise exception.NetAppException(
                     _("Failed to create CIFS server entry. %s") % e.message)
@@ -426,7 +426,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
 
     def get_available_aggregates_for_vserver(self, vserver, vserver_client):
         """Returns aggregate list for the vserver."""
-        LOG.debug(_('Finding available aggreagates for vserver %s') % vserver)
+        LOG.debug('Finding available aggreagates for vserver %s' % vserver)
         response = vserver_client.send_request('vserver-get')
         vserver_info = response.get_child_by_name('attributes')\
             .get_child_by_name('vserver-info')
@@ -444,7 +444,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
             aggr_name = aggr_elem.get_child_content('aggr-name')
             aggr_size = int(aggr_elem.get_child_content('aggr-availsize'))
             aggr_dict[aggr_name] = aggr_size
-        LOG.debug(_("Found available aggregates: %r") % aggr_dict)
+        LOG.debug("Found available aggregates: %r" % aggr_dict)
         return aggr_dict
 
     def create_share(self, context, share):
@@ -480,8 +480,8 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
                                                                vserver_client)
         aggregate = max(aggregates, key=lambda m: aggregates[m])
 
-        LOG.debug(_('Creating volume %(share_name)s on '
-                    'aggregate %(aggregate)s')
+        LOG.debug('Creating volume %(share_name)s on '
+                  'aggregate %(aggregate)s'
                   % {'share_name': share_name, 'aggregate': aggregate})
         args = {'containing-aggr-name': aggregate,
                 'size': str(share['size']) + 'g',
@@ -497,7 +497,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         parent_share_name = self._get_valid_share_name(snapshot['share_id'])
         parent_snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
 
-        LOG.debug(_('Creating volume from snapshot %s') % snapshot['id'])
+        LOG.debug('Creating volume from snapshot %s' % snapshot['id'])
         args = {'volume': share_name,
                 'parent-volume': parent_share_name,
                 'parent-snapshot': parent_snapshot_name,
@@ -530,14 +530,14 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         """Sends share offline. Required before deleting a share."""
         share_name = self._get_valid_share_name(share['id'])
         args = {'name': share_name}
-        LOG.debug(_('Offline volume %s') % share_name)
+        LOG.debug('Offline volume %s' % share_name)
         vserver_client.send_request('volume-offline', args)
 
     def _delete_share(self, share, vserver_client):
         """Destroys share on a target OnTap device."""
         share_name = self._get_valid_share_name(share['id'])
         args = {'name': share_name}
-        LOG.debug(_('Deleting share %s') % share_name)
+        LOG.debug('Deleting share %s' % share_name)
         vserver_client.send_request('volume-destroy', args)
 
     def delete_share(self, context, share):
@@ -583,7 +583,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
         args = {'volume': share_name,
                 'snapshot': snapshot_name}
-        LOG.debug(_('Creating snapshot %s') % snapshot_name)
+        LOG.debug('Creating snapshot %s' % snapshot_name)
         vserver_client.send_request('snapshot-create', args)
 
     def _remove_export(self, share, vserver_client):
@@ -607,7 +607,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         self._is_snapshot_busy(share_name, snapshot_name, vserver_client)
         args = {'snapshot': snapshot_name,
                 'volume': share_name}
-        LOG.debug(_('Deleting snapshot %s') % snapshot_name)
+        LOG.debug('Deleting snapshot %s' % snapshot_name)
         vserver_client.send_request('snapshot-delete', args)
 
     def _is_snapshot_busy(self, share_name, snapshot_name, vserver_client):
@@ -625,7 +625,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         """Unmounts share (required before deleting)."""
         share_name = self._get_valid_share_name(share['id'])
         args = {'volume-name': share_name}
-        LOG.debug(_('Unmounting volume %s') % share_name)
+        LOG.debug('Unmounting volume %s' % share_name)
         vserver_client.send_request('volume-unmount', args)
 
     def allow_access(self, context, share, access):

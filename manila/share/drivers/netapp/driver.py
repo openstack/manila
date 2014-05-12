@@ -80,7 +80,7 @@ class NetAppApiClient(object):
         elem = naapi.NaElement(api_name)
         if args:
             elem.translate_struct(args)
-        LOG.debug(_("NaElement: %s") % elem.to_string(pretty=True))
+        LOG.debug("NaElement: %s" % elem.to_string(pretty=True))
         return self._client.invoke_successfully(elem, enable_tunneling=True)
 
 
@@ -145,7 +145,7 @@ class NetAppShareDriver(driver.ShareDriver):
         parent_share_name = self._get_valid_share_name(snapshot['share_id'])
         parent_snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
 
-        LOG.debug(_('Creating volume from snapshot %s') % snapshot['id'])
+        LOG.debug('Creating volume from snapshot %s' % snapshot['id'])
         args = {'volume': share_name,
                 'parent-volume': parent_share_name,
                 'parent-snapshot': parent_snapshot_name}
@@ -168,7 +168,7 @@ class NetAppShareDriver(driver.ShareDriver):
             return True
         except naapi.NaApiError as e:
             if e.code == "13040":
-                LOG.debug(_("Share %s does not exists") % share_name)
+                LOG.debug("Share %s does not exists" % share_name)
                 return False
 
     def _deallocate_container(self, share):
@@ -190,7 +190,7 @@ class NetAppShareDriver(driver.ShareDriver):
         snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
         args = {'volume': share_name,
                 'snapshot': snapshot_name}
-        LOG.debug(_('Creating snapshot %s') % snapshot_name)
+        LOG.debug('Creating snapshot %s' % snapshot_name)
         self._client.send_request('snapshot-create', args)
 
     def _remove_export(self, share):
@@ -211,7 +211,7 @@ class NetAppShareDriver(driver.ShareDriver):
         args = {'snapshot': snapshot_name,
                 'volume': share_name}
 
-        LOG.debug(_('Deleting snapshot %s') % snapshot_name)
+        LOG.debug('Deleting snapshot %s' % snapshot_name)
         self._client.send_request('snapshot-delete', args)
 
     def allow_access(self, context, share, access):
@@ -247,14 +247,14 @@ class NetAppShareDriver(driver.ShareDriver):
         """Sends share offline. Required before deleting a share."""
         share_name = self._get_valid_share_name(share['id'])
         args = {'name': share_name}
-        LOG.debug(_('Offline volume %s') % share_name)
+        LOG.debug('Offline volume %s' % share_name)
         self._client.send_request('volume-offline', args)
 
     def _delete_share(self, share):
         """Destroys share on a target OnTap device."""
         share_name = self._get_valid_share_name(share['id'])
         args = {'name': share_name}
-        LOG.debug(_('Deleting share %s') % share_name)
+        LOG.debug('Deleting share %s' % share_name)
         self._client.send_request('volume-destroy', args)
 
     def _setup_helpers(self):
@@ -284,7 +284,7 @@ class NetAppShareDriver(driver.ShareDriver):
 
     def get_available_aggregates(self):
         """Returns aggregate list for the vfiler."""
-        LOG.debug(_('Finding available aggreagates for vfiler'))
+        LOG.debug('Finding available aggreagates for vfiler')
         response = self._client.send_request('aggr-list-info')
         aggr_list_elements = response.get_child_by_name('aggregates')\
             .get_children()
@@ -302,7 +302,7 @@ class NetAppShareDriver(driver.ShareDriver):
             aggr_name = aggr_elem.get_child_content('name')
             aggr_size = int(aggr_elem.get_child_content('size-available'))
             aggr_dict[aggr_name] = aggr_size
-        LOG.debug(_("Found available aggregates: %r") % aggr_dict)
+        LOG.debug("Found available aggregates: %r" % aggr_dict)
         return aggr_dict
 
     def _allocate_share_space(self, share):
@@ -310,7 +310,7 @@ class NetAppShareDriver(driver.ShareDriver):
         share_name = self._get_valid_share_name(share['id'])
         aggregates = self.get_available_aggregates()
         aggregate = max(aggregates, key=lambda m: aggregates[m])
-        LOG.debug(_('Creating volume %(share)s on aggregate %(aggr)s')
+        LOG.debug('Creating volume %(share)s on aggregate %(aggr)s'
                   % {'share': share_name, 'aggr': aggregate})
         args = {'containing-aggr-name': aggregate,
                 'size': str(share['size']) + 'g',
@@ -341,7 +341,7 @@ class NetAppShareDriver(driver.ShareDriver):
     def _update_share_status(self):
         """Retrieve status info from share volume group."""
 
-        LOG.debug(_("Updating share status"))
+        LOG.debug("Updating share status")
         data = {}
 
         # Note(zhiteng): These information are driver/backend specific,
@@ -456,7 +456,7 @@ class NetAppNFSHelper(NetAppNASHelperBase):
 
         args['rules']['exports-rule-info-2']['security-rules'] = security_rule
 
-        LOG.debug(_('Appending nfs rules %r') % rules)
+        LOG.debug('Appending nfs rules %r' % rules)
         self._client.send_request('nfs-exportfs-append-rules-2',
                                                args)
 
@@ -479,7 +479,7 @@ class NetAppNFSHelper(NetAppNASHelperBase):
                 }
             }
         }
-        LOG.debug(_('Deleting NFS rules for share %s') % share['id'])
+        LOG.debug('Deleting NFS rules for share %s' % share['id'])
         self._client.send_request('nfs-exportfs-delete-rules', args)
 
     def allow_access(self, context, share, access):
@@ -546,7 +546,7 @@ class NetAppNFSHelper(NetAppNASHelperBase):
         for allowed_host in allowed_hosts:
             if 'exports-hostname-info' in allowed_host.get_name():
                 existing_rules.append(allowed_host.get_child_content('name'))
-        LOG.debug(_('Found existing rules %(rules)r for share %(share)s')
+        LOG.debug('Found existing rules %(rules)r for share %(share)s'
                   % {'rules': existing_rules, 'share': share['id']})
 
         return existing_rules

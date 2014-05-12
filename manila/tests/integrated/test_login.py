@@ -27,4 +27,4 @@ class LoginTest(integrated_helpers._IntegratedTestBase):
         """Simple check - we list shares - so we know we're logged in."""
         shares = self.api.get_shares()
         for share in shares:
-            LOG.debug(_("share: %s") % share)
+            LOG.debug("share: %s" % share)
