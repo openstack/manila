@@ -123,6 +123,65 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertRaises(exception.ManilaException,
                           self._manager._get_server_ip, fake_server)
 
+    def test_get_security_group_name_is_unique(self):
+        fake_secgroup = fake_compute.FakeSecurityGroup()
+        self.stubs.Set(self._manager.compute_api, 'security_group_list',
+                       mock.Mock(return_value=[fake_secgroup, ]))
+        result = self._manager._get_service_instance_security_group(
+            self._context, fake_secgroup.name)
+        self.assertEqual(result, fake_secgroup)
+
+    def test_get_security_group_name_is_absent(self):
+        self.stubs.Set(self._manager.compute_api, 'security_group_list',
+                       mock.Mock(return_value=[]))
+        result = self._manager._get_service_instance_security_group(
+            self._context, "fake_absent_name")
+        self.assertEqual(result, None)
+
+    def test_get_security_group_name_not_unique(self):
+        fake_secgroup1 = fake_compute.FakeSecurityGroup()
+        fake_secgroup2 = fake_compute.FakeSecurityGroup()
+        self.stubs.Set(self._manager.compute_api, 'security_group_list',
+                       mock.Mock(return_value=[fake_secgroup1,
+                                               fake_secgroup2, ]))
+        self.assertRaises(exception.ServiceInstanceException,
+                          self._manager._get_service_instance_security_group,
+                          self._context,
+                          fake_secgroup1.name)
+
+    def test_get_security_group_name_not_provided_at_all(self):
+        fake_secgroup = fake_compute.FakeSecurityGroup(
+            name=CONF.service_instance_security_group)
+        self.stubs.Set(self._manager.compute_api, 'security_group_list',
+                       mock.Mock(return_value=[fake_secgroup, ]))
+        default_option = CONF.service_instance_security_group
+        try:
+            CONF.service_instance_security_group = ""
+            result = self._manager._get_service_instance_security_group(
+                context=self._context, name="")
+            self.assertEqual(result, None)
+        finally:
+            CONF.service_instance_security_group = default_option
+
+    def test_get_security_group_name_not_provided(self):
+        fake_secgroup = fake_compute.FakeSecurityGroup(
+            name=CONF.service_instance_security_group)
+        self.stubs.Set(self._manager.compute_api, 'security_group_list',
+                       mock.Mock(return_value=[fake_secgroup, ]))
+        result = self._manager._get_service_instance_security_group(
+            context=self._context, name=None)
+        self.assertEqual(result, fake_secgroup)
+
+    def test_create_security_group(self):
+        self.stubs.Set(self._manager.compute_api, 'security_group_create',
+                       mock.Mock(return_value=mock.Mock()))
+        self.stubs.Set(self._manager.compute_api, 'security_group_rule_create',
+                       mock.Mock(return_value=mock.Mock()))
+        result = self._manager._create_service_instance_security_group(
+            context=self._context, name="fake_name",
+            description="fake_description")
+        self._manager.compute_api.security_group_create.assert_called_once()
+
     def test_get_service_instance(self):
         fake_server = fake_compute.FakeServer()
         self.stubs.Set(self._manager, '_ensure_server',
@@ -358,6 +417,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_create_service_instance(self):
         fake_server = fake_compute.FakeServer()
         fake_port = fake_network.FakePort()
+        fake_security_group = fake_compute.FakeSecurityGroup()
         fake_instance_name = 'fake_instance_name'
         sn_id = 'fake_sn_id'
         self.stubs.Set(self._manager, '_get_service_image',
@@ -373,6 +433,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        mock.Mock(return_value=fake_server))
         self.stubs.Set(self._manager, '_get_server_ip',
                        mock.Mock(return_value='fake_ip'))
+        self.stubs.Set(self._manager, '_get_service_instance_security_group',
+                       mock.Mock(return_value=fake_security_group))
         self.stubs.Set(service_instance.socket, 'socket', mock.Mock())
         self.stubs.Set(self._manager, '_get_service_instance_name',
                        mock.Mock(return_value=fake_instance_name))
@@ -385,19 +447,22 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager._setup_connectivity_with_service_instances.\
                 assert_called_once()
         self._manager.compute_api.server_create.assert_called_once_with(
-                self._context, fake_instance_name, 'fake_image_id',
-                CONF.service_instance_flavor_id, 'fake_key_name', None, None,
-                nics=[{'port-id': fake_port['id']}])
+                self._context, name=fake_instance_name, image='fake_image_id',
+                flavor=CONF.service_instance_flavor_id,
+                key_name='fake_key_name', nics=[{'port-id': fake_port['id']}])
         service_instance.socket.socket.assert_called_once()
         self.assertEqual(result, fake_server)
 
     def test_create_service_instance_error(self):
         fake_server = fake_compute.FakeServer(status='ERROR')
         fake_port = fake_network.FakePort()
+        fake_security_group = fake_compute.FakeSecurityGroup()
         self.stubs.Set(self._manager, '_get_service_image',
                        mock.Mock(return_value='fake_image_id'))
         self.stubs.Set(self._manager, '_get_key',
                        mock.Mock(return_value='fake_key_name'))
+        self.stubs.Set(self._manager, '_get_service_instance_security_group',
+                       mock.Mock(return_value=fake_security_group))
         self.stubs.Set(self._manager, '_setup_network_for_instance',
                        mock.Mock(return_value=fake_port))
         self.stubs.Set(self._manager,
@@ -420,10 +485,13 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_create_service_instance_failed_setup_connectivity(self):
         fake_server = fake_compute.FakeServer(status='ERROR')
         fake_port = fake_network.FakePort()
+        fake_security_group = fake_compute.FakeSecurityGroup()
         self.stubs.Set(self._manager, '_get_service_image',
                        mock.Mock(return_value='fake_image_id'))
         self.stubs.Set(self._manager, '_get_key',
                        mock.Mock(return_value='fake_key_name'))
+        self.stubs.Set(self._manager, '_get_service_instance_security_group',
+                       mock.Mock(return_value=fake_security_group))
         self.stubs.Set(self._manager, '_setup_network_for_instance',
                        mock.Mock(return_value=fake_port))
         self.stubs.Set(self._manager,

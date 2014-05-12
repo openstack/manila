@@ -23,6 +23,7 @@ import time
 
 from oslo.config import cfg
 
+from manila.common import constants
 from manila import compute
 from manila import context
 from manila import exception
@@ -61,6 +62,10 @@ server_opts = [
     cfg.IntOpt('max_time_to_build_instance',
                default=300,
                help="Maximum time to wait for creating service instance."),
+    cfg.StrOpt('service_instance_security_group',
+               default="manila-service",
+               help="Name of security group, that will be used for "
+               "service instance creation."),
     cfg.IntOpt('service_instance_flavor_id',
                default=100,
                help="ID of flavor, that will be used for service instance "
@@ -194,6 +199,43 @@ class ServiceInstanceManager(object):
         msg = msg % CONF.service_network_name
         LOG.error(msg)
         raise exception.ServiceInstanceException(msg)
+
+    def _get_service_instance_security_group(self, context, name=None):
+        """Searches for security group by name."""
+        if not (name or CONF.service_instance_security_group):
+            return None
+        if not name:
+            name = CONF.service_instance_security_group
+        s_groups = [s for s in self.compute_api.security_group_list(context)
+                    if s.name == name]
+        if not s_groups:
+            return None
+        elif len(s_groups) > 1:
+            msg = _("Ambiguous security_groups.")
+            raise exception.ServiceInstanceException(msg)
+        else:
+            sg = s_groups[0]
+        return sg
+
+    def _create_service_instance_security_group(self, context,
+                                                name=None, description=None):
+        """Creates and returns security_group for service vm."""
+        if not name:
+            name = CONF.service_instance_security_group
+        if not description:
+            description = "This security group is intended to "\
+                          "be used by share service."
+        LOG.debug("Creating security group with name '%s'." % name)
+        sg = self.compute_api.security_group_create(context, name, description)
+        for protocol, ports in constants.SERVICE_INSTANCE_SECGROUP_DATA:
+            self.compute_api.security_group_rule_create(context,
+                parent_group_id=sg.id,
+                ip_protocol=protocol,
+                from_port=ports[0],
+                to_port=ports[1],
+                cidr="0.0.0.0/0",
+            )
+        return sg
 
     def _ensure_server(self, context, server, update=False):
         """Ensures that server exists and active, otherwise deletes it."""
@@ -352,6 +394,10 @@ class ServiceInstanceManager(object):
                 raise exception.ServiceInstanceException(_('Neither service '
                     'instance password nor key are available.'))
 
+            security_group = self._get_service_instance_security_group(context)
+            if not security_group and CONF.service_instance_security_group:
+                security_group = self._create_service_instance_security_group(
+                    context)
             port = self._setup_network_for_instance(context,
                                                     share_network_id,
                                                     old_server_ip)
@@ -363,13 +409,11 @@ class ServiceInstanceManager(object):
                 raise
 
         service_instance = self.compute_api.server_create(context,
-                                              instance_name,
-                                              service_image_id,
-                                              CONF.service_instance_flavor_id,
-                                              key_name,
-                                              None,
-                                              None,
-                                              nics=[{'port-id': port['id']}])
+            name=instance_name,
+            image=service_image_id,
+            flavor=CONF.service_instance_flavor_id,
+            key_name=key_name,
+            nics=[{'port-id': port['id']}])
 
         t = time.time()
         while time.time() - t < CONF.max_time_to_build_instance:
@@ -389,6 +433,12 @@ class ServiceInstanceManager(object):
                     _('Instance have not been spawned in %ss. Giving up.') %
                     CONF.max_time_to_build_instance)
 
+        if security_group:
+            LOG.debug("Adding security group "
+                      "'%s' to server '%s'." % (security_group.id,
+                                                service_instance["id"]))
+            self.compute_api.add_security_group_to_server(context,
+                service_instance["id"], security_group.id)
         service_instance['ip'] = self._get_server_ip(service_instance)
         if not self._check_server_availability(service_instance):
             raise exception.ServiceInstanceException(

@@ -260,7 +260,7 @@ function create_manila_service_image {
 }
 
 function create_manila_service_secgroup {
-    MANILA_SERVICE_SECGROUP="manila-service-secgroup"
+    MANILA_SERVICE_SECGROUP="manila-service"
 
     # Create a secgroup
     if ! nova secgroup-list | grep -q $MANILA_SERVICE_SECGROUP; then

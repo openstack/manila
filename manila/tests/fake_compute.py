@@ -60,6 +60,14 @@ class FakeImage(object):
             setattr(self, key, value)
 
 
+class FakeSecurityGroup(object):
+    def __init__(self, **kwargs):
+        self.id = kwargs.pop('id', 'fake_security_group_id')
+        self.name = kwargs.pop('name', 'fake_security_group_name')
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
 class API(object):
     """Fake Compute API"""
     def instance_volume_attach(self, ctx, server_id, volume_id, mount_path):
@@ -93,4 +101,16 @@ class API(object):
         pass
 
     def image_list(self, *args, **kwargs):
+        pass
+
+    def security_group_create(self, *args, **kwargs):
+        pass
+
+    def security_group_list(self, *args, **kwargs):
+        pass
+
+    def add_security_group_to_server(self, *args, **kwargs):
+        pass
+
+    def security_group_rule_create(self, *args, **kwargs):
         pass

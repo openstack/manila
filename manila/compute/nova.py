@@ -129,6 +129,7 @@ def _untranslate_server_summary_view(server):
     d['networks'] = server.networks
     d['tenant_id'] = server.tenant_id
     d['user_id'] = server.user_id
+    d['security_groups'] = server.security_groups
 
     return d
 
@@ -154,8 +155,9 @@ def translate_server_exception(method):
 class API(base.Base):
     """API for interacting with novaclient."""
 
-    def server_create(self, context, name, image, flavor, key_name, user_data,
-                      security_groups, block_device_mapping=None,
+    def server_create(self, context, name, image, flavor, key_name=None,
+                      user_data=None, security_groups=None,
+                      block_device_mapping=None,
                       block_device_mapping_v2=None, nics=None,
                       availability_zone=None, instance_count=1,
                       admin_pass=None):
@@ -272,3 +274,25 @@ class API(base.Base):
 
     def image_list(self, context):
         return novaclient(context).images.list()
+
+    def add_security_group_to_server(self, context, server, security_group):
+        return novaclient(context).servers.add_security_group(server,
+                                                              security_group)
+
+    def security_group_create(self, context, name, description=""):
+        return novaclient(context).security_groups.create(name, description)
+
+    def security_group_get(self, context, group_id):
+        return novaclient(context).security_groups.get(group_id)
+
+    def security_group_list(self, context, search_opts=None):
+        return novaclient(context).security_groups.list(search_opts)
+
+    def security_group_rule_create(self, context, parent_group_id,
+                                   ip_protocol=None, from_port=None,
+                                   to_port=None, cidr=None, group_id=None):
+        return novaclient(context).security_group_rules.create(
+            parent_group_id, ip_protocol, from_port, to_port, cidr, group_id)
+
+    def security_group_rule_delete(self, context, rule):
+        return novaclient(context).security_group_rules.delete(rule)

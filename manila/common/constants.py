@@ -24,3 +24,26 @@ STATUS_ACTIVATING = 'ACTIVATING'
 STATUS_DEACTIVATING = 'DEACTIVATING'
 
 SECURITY_SERVICES_ALLOWED_TYPES = ['active_directory', 'ldap', 'kerberos']
+
+# Below represented ports are ranges (from, to)
+CIFS_PORTS = (
+    ("tcp", (445, 445)),
+    ("tcp", (137, 139)),
+    ("udp", (137, 139)),
+    ("udp", (445, 445)),
+)
+NFS_PORTS = (
+    ("tcp", (2049, 2049)),
+    ("udp", (2049, 2049)),
+)
+SSH_PORTS = (
+    ("tcp", (22, 22)),
+)
+PING_PORTS = (
+    ("icmp", (-1, -1)),
+)
+
+SERVICE_INSTANCE_SECGROUP_DATA = CIFS_PORTS + \
+                                 NFS_PORTS + \
+                                 SSH_PORTS + \
+                                 PING_PORTS
