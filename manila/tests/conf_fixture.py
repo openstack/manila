@@ -37,3 +37,4 @@ def set_defaults(conf):
     conf.set_default('service_instance_user', 'fake_user')
     conf.set_default('share_driver',
                      'manila.tests.fake_driver.FakeShareDriver')
+    conf.set_default('auth_strategy', 'noauth')

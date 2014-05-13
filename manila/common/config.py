@@ -202,7 +202,7 @@ global_opts = [
                default='manila.share.api.API',
                help='The full class name of the share API class to use'),
     cfg.StrOpt('auth_strategy',
-               default='noauth',
+               default='keystone',
                help='The strategy to use for auth. Supports noauth, keystone, '
                     'and deprecated.'),
     cfg.ListOpt('enabled_backends',
