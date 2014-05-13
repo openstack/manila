@@ -626,7 +626,7 @@ class DbQuotaDriverTestCase(test.TestCase):
         "shares": {"limit": 10, "in_use": 2, "reserved": 0, },
         "gigabytes": {"limit": 50, "in_use": 10, "reserved": 0, },
         "snapshots": {"limit": 10, "in_use": 0, "reserved": 0, },
-        "share_networks": {"limit": 3, "in_use": 0, "reserved": 0, },
+        "share_networks": {"limit": 5, "in_use": 0, "reserved": 0, },
     }
 
     def setUp(self):
@@ -659,7 +659,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             "shares": 10,
             "gigabytes": 1000,
             "snapshots": 10,
-            "share_networks": 3,
+            "share_networks": 5,
         }
         self.assertEqual(result, expected)
 
@@ -681,7 +681,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             "shares": 10,
             "gigabytes": 500,
             "snapshots": 10,
-            "share_networks": 3,
+            "share_networks": 5,
         }
         self.assertEqual(result, expected)
 
@@ -860,7 +860,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             "shares": {"limit": 10, },
             "gigabytes": {"limit": 50, },
             "snapshots": {"limit": 10, },
-            "share_networks": {"limit": 3, },
+            "share_networks": {"limit": 5, },
         }
         self.assertEqual(result, expected)
 
@@ -876,7 +876,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             "shares": {"limit": 10, },
             "gigabytes": {"limit": 50, },
             "snapshots": {"limit": 10, },
-            "share_networks": {"limit": 3, },
+            "share_networks": {"limit": 5, },
         }
         self.assertEqual(result, expected)
 
@@ -930,7 +930,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             "shares": {"minimum": 0, "maximum": 12, },
             "gigabytes": {"minimum": 0, "maximum": 1000, },
             "snapshots": {"minimum": 0, "maximum": 10, },
-            "share_networks": {"minimum": 0, "maximum": 3, },
+            "share_networks": {"minimum": 0, "maximum": 5, },
         }
         self.assertEqual(result, expected)
 
