@@ -158,7 +158,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def _update_share_status(self):
         """Retrieve status info from share volume group."""
 
-        LOG.debug(_("Updating share status"))
+        LOG.debug("Updating share status")
         data = {}
 
         # Note(zhiteng): These information are driver/backend specific,

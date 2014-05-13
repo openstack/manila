@@ -91,7 +91,7 @@ def find_config(config_path):
 
 
 def fetchfile(url, target):
-    LOG.debug(_('Fetching %s') % url)
+    LOG.debug('Fetching %s' % url)
     execute('curl', '--fail', url, '-o', target)
 
 
@@ -164,7 +164,7 @@ def execute(*cmd, **kwargs):
     while attempts > 0:
         attempts -= 1
         try:
-            LOG.debug(_('Running cmd (subprocess): %s'), ' '.join(cmd))
+            LOG.debug('Running cmd (subprocess): %s', ' '.join(cmd))
             _PIPE = subprocess.PIPE  # pylint: disable=E1101
             obj = subprocess.Popen(cmd,
                                    stdin=_PIPE,
@@ -181,7 +181,7 @@ def execute(*cmd, **kwargs):
             obj.stdin.close()  # pylint: disable=E1101
             _returncode = obj.returncode  # pylint: disable=E1101
             if _returncode:
-                LOG.debug(_('Result was %s') % _returncode)
+                LOG.debug('Result was %s' % _returncode)
                 if not ignore_exit_code and _returncode not in check_exit_code:
                     (stdout, stderr) = result
                     raise exception.ProcessExecutionError(
@@ -194,7 +194,7 @@ def execute(*cmd, **kwargs):
             if not attempts:
                 raise
             else:
-                LOG.debug(_('%r failed. Retrying.'), cmd)
+                LOG.debug('%r failed. Retrying.', cmd)
                 if delay_on_retry:
                     greenthread.sleep(random.randint(20, 200) / 100.0)
         finally:
@@ -236,7 +236,7 @@ def trycmd(*args, **kwargs):
 
 def ssh_execute(ssh, cmd, process_input=None,
                 addl_env=None, check_exit_code=True):
-    LOG.debug(_('Running cmd (SSH): %s'), cmd)
+    LOG.debug('Running cmd (SSH): %s', cmd)
     if addl_env:
         raise exception.Error(_('Environment not supported over SSH'))
 
@@ -262,7 +262,7 @@ def ssh_execute(ssh, cmd, process_input=None,
 
     # exit_status == -1 if no exit code was returned
     if exit_status != -1:
-        LOG.debug(_('Result was %s') % exit_status)
+        LOG.debug('Result was %s' % exit_status)
         if check_exit_code and exit_status != 0:
             raise exception.ProcessExecutionError(exit_code=exit_status,
                                                   stdout=stdout,
@@ -368,7 +368,7 @@ def maniladir():
 
 
 def debug(arg):
-    LOG.debug(_('debug in callback: %s'), arg)
+    LOG.debug('debug in callback: %s', arg)
     return arg
 
 
@@ -575,7 +575,7 @@ class LazyPluggable(object):
                 fromlist = backend
 
             self.__backend = __import__(name, None, None, fromlist)
-            LOG.debug(_('backend %s'), self.__backend)
+            LOG.debug('backend %s', self.__backend)
         return self.__backend
 
     def __getattr__(self, key):
@@ -898,7 +898,7 @@ def timefunc(func):
             return func(*args, **kwargs)
         finally:
             total_time = time.time() - start_time
-            LOG.debug(_("timefunc: '%(name)s' took %(total_time).2f secs") %
+            LOG.debug("timefunc: '%(name)s' took %(total_time).2f secs" %
                       dict(name=func.__name__, total_time=total_time))
     return inner
 
@@ -1100,7 +1100,7 @@ def tempdir(**kwargs):
         try:
             shutil.rmtree(tmpdir)
         except OSError, e:
-            LOG.debug(_('Could not remove tmpdir: %s'), str(e))
+            LOG.debug('Could not remove tmpdir: %s', str(e))
 
 
 def strcmp_const_time(s1, s2):

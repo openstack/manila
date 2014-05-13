@@ -155,7 +155,7 @@ class ShareDriver(object):
     def _update_share_status(self):
         """Retrieve status info from share group."""
 
-        LOG.debug(_("Updating share status"))
+        LOG.debug("Updating share status")
         data = {}
         backend_name = self.configuration.safe_get('share_backend_name')
         data["share_backend_name"] = backend_name or 'Generic_NFS'

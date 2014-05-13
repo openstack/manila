@@ -31,5 +31,5 @@ class FakeShareDriver(lvm.LVMShareDriver):
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
         """Execute that simply logs the command."""
-        LOG.debug(_("FAKE EXECUTE: %s"), cmd)
+        LOG.debug("FAKE EXECUTE: %s", cmd)
         return (None, None)

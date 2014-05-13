@@ -75,7 +75,7 @@ class ShareManager(manager.SchedulerDependentManager):
         self.driver.check_for_setup_error()
 
         shares = self.db.share_get_all_by_host(ctxt, self.host)
-        LOG.debug(_("Re-exporting %s shares"), len(shares))
+        LOG.debug("Re-exporting %s shares", len(shares))
         for share in shares:
             if share['status'] in ['available', 'in-use']:
                 self.driver.ensure_share(ctxt, share)

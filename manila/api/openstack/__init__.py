@@ -82,7 +82,7 @@ class APIRouter(base_wsgi.Router):
 
     def _setup_ext_routes(self, mapper, ext_mgr):
         for resource in ext_mgr.get_resources():
-            LOG.debug(_('Extended resource: %s'),
+            LOG.debug('Extended resource: %s',
                       resource.collection)
 
             wsgi_resource = wsgi.Resource(resource.controller)
@@ -112,8 +112,8 @@ class APIRouter(base_wsgi.Router):
                             locals())
                 continue
 
-            LOG.debug(_('Extension %(ext_name)s extending resource: '
-                        '%(collection)s') % locals())
+            LOG.debug('Extension %(ext_name)s extending resource: '
+                      '%(collection)s' % locals())
 
             resource = self.resources[collection]
             resource.register_actions(controller)

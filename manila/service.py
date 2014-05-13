@@ -364,7 +364,7 @@ class Service(object):
             self._create_service_ref(ctxt)
 
         self.conn = rpc.create_connection(new=True)
-        LOG.debug(_("Creating Consumer connection for Service %s") %
+        LOG.debug("Creating Consumer connection for Service %s" %
                   self.topic)
 
         rpc_dispatcher = self.manager.create_rpc_dispatcher()
@@ -492,8 +492,8 @@ class Service(object):
             try:
                 service_ref = db.service_get(ctxt, self.service_id)
             except exception.NotFound:
-                LOG.debug(_('The service database object disappeared, '
-                            'Recreating it.'))
+                LOG.debug('The service database object disappeared, '
+                          'Recreating it.')
                 self._create_service_ref(ctxt)
                 service_ref = db.service_get(ctxt, self.service_id)
 
@@ -605,14 +605,14 @@ def serve(*servers):
 
 
 def wait():
-    LOG.debug(_('Full set of CONF:'))
+    LOG.debug('Full set of CONF:')
     for flag in CONF:
         flag_get = CONF.get(flag, None)
         # hide flag contents from log if contains a password
         # should use secret flag when switch over to openstack-common
         if ("_password" in flag or "_key" in flag or
                 (flag == "sql_connection" and "mysql:" in flag_get)):
-            LOG.debug(_('%(flag)s : FLAG SET ') % locals())
+            LOG.debug('%(flag)s : FLAG SET ' % locals())
         else:
             LOG.debug('%(flag)s : %(flag_get)s' % locals())
     try:

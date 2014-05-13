@@ -188,7 +188,7 @@ class BridgeInterfaceDriver(LinuxInterfaceDriver):
         device = ip_lib.IPDevice(device_name, namespace)
         try:
             device.link.delete()
-            LOG.debug(_("Unplugged interface '%s'"), device_name)
+            LOG.debug("Unplugged interface '%s'", device_name)
         except RuntimeError:
             LOG.error(_("Failed unplugging interface '%s'"),
                       device_name)
