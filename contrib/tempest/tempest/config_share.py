@@ -49,7 +49,7 @@ ShareGroup = [
                 help="First value of list is protocol by default, "
                      "items of list show enabled protocols at all."),
     cfg.ListOpt("enable_ip_rules_for_protocols",
-                default=["nfs", ],
+                default=["nfs", "cifs", ],
                 help="Selection of protocols, that should "
                      "be covered with ip rule tests"),
     cfg.ListOpt("enable_sid_rules_for_protocols",
