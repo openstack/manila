@@ -202,8 +202,8 @@ class TestGlanceImageService(test.TestCase):
         image_id = self.service.create(self.context, fixture)['id']
 
         self.assertNotEquals(None, image_id)
-        self.assertEquals(num_images + 1,
-                          len(self.service.detail(self.context)))
+        self.assertEqual(num_images + 1,
+                         len(self.service.detail(self.context)))
 
     def test_create_and_show_non_existing_image(self):
         fixture = self._make_fixture(name='test image')
@@ -243,7 +243,7 @@ class TestGlanceImageService(test.TestCase):
             ids.append(self.service.create(self.context, fixture)['id'])
 
         image_metas = self.service.detail(self.context, marker=ids[1])
-        self.assertEquals(len(image_metas), 8)
+        self.assertEqual(len(image_metas), 8)
         i = 2
         for meta in image_metas:
             expected = {
@@ -277,7 +277,7 @@ class TestGlanceImageService(test.TestCase):
             ids.append(self.service.create(self.context, fixture)['id'])
 
         image_metas = self.service.detail(self.context, limit=5)
-        self.assertEquals(len(image_metas), 5)
+        self.assertEqual(len(image_metas), 5)
 
     def test_detail_default_limit(self):
         fixtures = []
@@ -300,7 +300,7 @@ class TestGlanceImageService(test.TestCase):
             ids.append(self.service.create(self.context, fixture)['id'])
 
         image_metas = self.service.detail(self.context, marker=ids[3], limit=5)
-        self.assertEquals(len(image_metas), 5)
+        self.assertEqual(len(image_metas), 5)
         i = 4
         for meta in image_metas:
             expected = {
@@ -344,7 +344,7 @@ class TestGlanceImageService(test.TestCase):
         self.service.update(self.context, image_id, fixture)
 
         new_image_data = self.service.show(self.context, image_id)
-        self.assertEquals('new image name', new_image_data['name'])
+        self.assertEqual('new image name', new_image_data['name'])
 
     def test_delete(self):
         fixture1 = self._make_fixture(name='test image 1')
@@ -352,7 +352,7 @@ class TestGlanceImageService(test.TestCase):
         fixtures = [fixture1, fixture2]
 
         num_images = len(self.service.detail(self.context))
-        self.assertEquals(0, num_images)
+        self.assertEqual(0, num_images)
 
         ids = []
         for fixture in fixtures:
@@ -360,12 +360,12 @@ class TestGlanceImageService(test.TestCase):
             ids.append(new_id)
 
         num_images = len(self.service.detail(self.context))
-        self.assertEquals(2, num_images)
+        self.assertEqual(2, num_images)
 
         self.service.delete(self.context, ids[0])
 
         num_images = len(self.service.detail(self.context))
-        self.assertEquals(1, num_images)
+        self.assertEqual(1, num_images)
 
     def test_show_passes_through_to_client(self):
         fixture = self._make_fixture(name='image1', is_public=True)
@@ -530,7 +530,7 @@ class TestGlanceImageService(test.TestCase):
         image_id = self.service.create(self.context, fixture)['id']
         (service, same_id) = glance.get_remote_image_service(self.context,
                                                              image_id)
-        self.assertEquals(same_id, image_id)
+        self.assertEqual(same_id, image_id)
 
     def test_glance_client_image_ref(self):
         fixture = self._make_fixture(name='test image')
@@ -538,9 +538,9 @@ class TestGlanceImageService(test.TestCase):
         image_url = 'http://something-less-likely/%s' % image_id
         (service, same_id) = glance.get_remote_image_service(self.context,
                                                              image_url)
-        self.assertEquals(same_id, image_id)
-        self.assertEquals(service._client.host,
-                          'something-less-likely')
+        self.assertEqual(same_id, image_id)
+        self.assertEqual(service._client.host,
+                         'something-less-likely')
 
 
 class TestGlanceClientVersion(test.TestCase):
@@ -560,25 +560,25 @@ class TestGlanceClientVersion(test.TestCase):
         """Test glance version set by flag is honoured"""
         client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
                                                        9292)
-        self.assertEquals(client_wrapper_v1.client.__module__,
-                          'glanceclient.v1.client')
+        self.assertEqual(client_wrapper_v1.client.__module__,
+                         'glanceclient.v1.client')
         self.flags(glance_api_version=2)
         client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
                                                        9292)
-        self.assertEquals(client_wrapper_v2.client.__module__,
-                          'glanceclient.v2.client')
+        self.assertEqual(client_wrapper_v2.client.__module__,
+                         'glanceclient.v2.client')
         CONF.reset()
 
     def test_glance_version_by_arg(self):
         """Test glance version set by arg to GlanceClientWrapper"""
         client_wrapper_v1 = glance.GlanceClientWrapper('fake', 'fake_host',
                                                        9292, version=1)
-        self.assertEquals(client_wrapper_v1.client.__module__,
-                          'glanceclient.v1.client')
+        self.assertEqual(client_wrapper_v1.client.__module__,
+                         'glanceclient.v1.client')
         client_wrapper_v2 = glance.GlanceClientWrapper('fake', 'fake_host',
                                                        9292, version=2)
-        self.assertEquals(client_wrapper_v2.client.__module__,
-                          'glanceclient.v2.client')
+        self.assertEqual(client_wrapper_v2.client.__module__,
+                         'glanceclient.v2.client')
 
 
 def _create_failing_glance_client(info):

@@ -168,7 +168,7 @@ class ShareTestCase(test.TestCase):
                          share_id).id)
 
         shr = db.share_get(self.context, share_id)
-        self.assertEquals(shr['status'], 'available')
+        self.assertEqual(shr['status'], 'available')
 
     def test_create_delete_share_snapshot(self):
         """Test share's snapshot can be created and deleted."""
@@ -191,7 +191,7 @@ class ShareTestCase(test.TestCase):
                          snapshot_id).share_id)
 
         snap = db.share_snapshot_get(self.context, snapshot_id)
-        self.assertEquals(snap['status'], 'available')
+        self.assertEqual(snap['status'], 'available')
 
         self.share.delete_snapshot(self.context, snapshot_id)
         self.assertRaises(exception.NotFound,
@@ -219,12 +219,12 @@ class ShareTestCase(test.TestCase):
                           self.context, share_id, snapshot_id)
 
         snap = db.share_snapshot_get(self.context, snapshot_id)
-        self.assertEquals(snap['status'], 'error')
+        self.assertEqual(snap['status'], 'error')
 
         self.assertRaises(exception.NotFound, self.share.delete_snapshot,
                           self.context, snapshot_id)
 
-        self.assertEquals('error_deleting', db.share_snapshot_get(
+        self.assertEqual('error_deleting', db.share_snapshot_get(
             self.context, snapshot_id).status)
 
     def test_delete_share_if_busy(self):
@@ -242,7 +242,7 @@ class ShareTestCase(test.TestCase):
         self.share.delete_snapshot(self.context, snapshot_id)
 
         snap = db.share_snapshot_get(self.context, snapshot_id)
-        self.assertEquals(snap['status'], 'available')
+        self.assertEqual(snap['status'], 'available')
 
     def test_create_delete_share(self):
         """Test share can be created and deleted."""
@@ -255,7 +255,7 @@ class ShareTestCase(test.TestCase):
                          share_id).id)
 
         shr = db.share_get(self.context, share_id)
-        self.assertEquals(shr['status'], 'available')
+        self.assertEqual(shr['status'], 'available')
 
         self.share.delete_share(self.context, share_id)
         self.assertRaises(exception.NotFound,
@@ -284,14 +284,14 @@ class ShareTestCase(test.TestCase):
                           share_id)
 
         shr = db.share_get(self.context, share_id)
-        self.assertEquals(shr['status'], 'error')
+        self.assertEqual(shr['status'], 'error')
         self.assertRaises(exception.NotFound,
                           self.share.delete_share,
                           self.context,
                           share_id)
 
         shr = db.share_get(self.context, share_id)
-        self.assertEquals(shr['status'], 'error_deleting')
+        self.assertEqual(shr['status'], 'error_deleting')
 
     def test_allow_deny_access(self):
         """Test access rules to share can be created and deleted."""
@@ -332,7 +332,7 @@ class ShareTestCase(test.TestCase):
                           access_id)
 
         acs = db.share_access_get(self.context, access_id)
-        self.assertEquals(acs['state'], 'error')
+        self.assertEqual(acs['state'], 'error')
 
         self.assertRaises(exception.NotFound,
                           self.share.deny_access,
@@ -340,7 +340,7 @@ class ShareTestCase(test.TestCase):
                           access_id)
 
         acs = db.share_access_get(self.context, access_id)
-        self.assertEquals(acs['state'], 'error')
+        self.assertEqual(acs['state'], 'error')
 
     def test_create_delete_share_with_metadata(self):
         """Test share can be created with metadata and deleted."""

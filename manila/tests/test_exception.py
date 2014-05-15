@@ -56,10 +56,10 @@ class ManilaExceptionTestCase(test.TestCase):
             message = "default message"
 
         exc = FakeManilaException()
-        self.assertEquals(unicode(exc), 'default message')
+        self.assertEqual(unicode(exc), 'default message')
 
     def test_error_msg(self):
-        self.assertEquals(unicode(exception.ManilaException('test')),
+        self.assertEqual(unicode(exception.ManilaException('test')),
                           'test')
 
     def test_default_error_msg_with_kwargs(self):
@@ -67,7 +67,7 @@ class ManilaExceptionTestCase(test.TestCase):
             message = "default message: %(code)s"
 
         exc = FakeManilaException(code=500)
-        self.assertEquals(unicode(exc), 'default message: 500')
+        self.assertEqual(unicode(exc), 'default message: 500')
 
     def test_error_msg_exception_with_kwargs(self):
         # NOTE(dprince): disable format errors for this test
@@ -77,18 +77,18 @@ class ManilaExceptionTestCase(test.TestCase):
             message = "default message: %(mispelled_code)s"
 
         exc = FakeManilaException(code=500)
-        self.assertEquals(unicode(exc), 'default message: %(mispelled_code)s')
+        self.assertEqual(unicode(exc), 'default message: %(mispelled_code)s')
 
     def test_default_error_code(self):
         class FakeManilaException(exception.ManilaException):
             code = 404
 
         exc = FakeManilaException()
-        self.assertEquals(exc.kwargs['code'], 404)
+        self.assertEqual(exc.kwargs['code'], 404)
 
     def test_error_code_from_kwarg(self):
         class FakeManilaException(exception.ManilaException):
             code = 500
 
         exc = FakeManilaException(code=404)
-        self.assertEquals(exc.kwargs['code'], 404)
+        self.assertEqual(exc.kwargs['code'], 404)
