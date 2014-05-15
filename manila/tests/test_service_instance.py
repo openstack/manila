@@ -155,13 +155,11 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager.compute_api, 'security_group_list',
                        mock.Mock(return_value=[fake_secgroup, ]))
         default_option = CONF.service_instance_security_group
-        try:
-            CONF.service_instance_security_group = ""
+        with mock.patch.object(self._manager, 'get_config_option',
+                               mock.Mock(return_value="")):
             result = self._manager._get_service_instance_security_group(
                 context=self._context, name="")
             self.assertEqual(result, None)
-        finally:
-            CONF.service_instance_security_group = default_option
 
     def test_get_security_group_name_not_provided(self):
         fake_secgroup = fake_compute.FakeSecurityGroup(
