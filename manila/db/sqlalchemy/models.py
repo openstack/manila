@@ -267,6 +267,8 @@ class Share(BASE, ManilaBase):
                               nullable=True)
     volume_type_id = Column(String(36), ForeignKey('volume_types.id'),
                             nullable=True)
+    share_server_id = Column(String(36), ForeignKey('share_servers.id'),
+                             nullable=True)
 
 
 class VolumeTypes(BASE, ManilaBase):
@@ -387,7 +389,7 @@ class SecurityService(BASE, ManilaBase):
 
 
 class ShareNetwork(BASE, ManilaBase):
-    "Represents network data used by share."
+    """Represents network data used by share."""
     __tablename__ = 'share_networks'
     id = Column(String(36), primary_key=True, nullable=False)
     deleted = Column(String(36), default='False')
@@ -401,9 +403,6 @@ class ShareNetwork(BASE, ManilaBase):
     ip_version = Column(Integer, nullable=True)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
-    status = Column(Enum(constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
-                         constants.STATUS_ERROR),
-                    default=constants.STATUS_INACTIVE)
     security_services = relationship("SecurityService",
                     secondary="share_network_security_service_association",
                     backref="share_networks",
@@ -416,14 +415,36 @@ class ShareNetwork(BASE, ManilaBase):
         'SecurityService.id == '
         'ShareNetworkSecurityServiceAssociation.security_service_id,'
         'SecurityService.deleted == "False")')
-    network_allocations = relationship("NetworkAllocation",
-                                        primaryjoin='and_('
-                    'ShareNetwork.id == NetworkAllocation.share_network_id,'
-                    'NetworkAllocation.deleted == "False")')
     shares = relationship("Share",
                           backref='share_network',
                           primaryjoin='and_('
                           'ShareNetwork.id == Share.share_network_id,'
+                          'Share.deleted == "False")')
+    share_servers = relationship(
+        "ShareServer", backref='share_network',
+        primaryjoin='and_(ShareNetwork.id == ShareServer.share_network_id,'
+                    'ShareServer.deleted == "False")')
+
+
+class ShareServer(BASE, ManilaBase):
+    """Represents share server used by share."""
+    __tablename__ = 'share_servers'
+    id = Column(String(36), primary_key=True, nullable=False)
+    deleted = Column(String(36), default='False')
+    share_network_id = Column(String(36), ForeignKey('share_networks.id'),
+                              nullable=True)
+    host = Column(String(255), nullable=False)
+    status = Column(Enum(constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
+                         constants.STATUS_ERROR),
+                    default=constants.STATUS_INACTIVE)
+    network_allocations = relationship("NetworkAllocation",
+                                        primaryjoin='and_('
+                    'ShareServer.id == NetworkAllocation.share_server_id,'
+                    'NetworkAllocation.deleted == "False")')
+    shares = relationship("Share",
+                          backref='share_server',
+                          primaryjoin='and_('
+                          'ShareServer.id == Share.share_server_id,'
                           'Share.deleted == "False")')
 
 
@@ -442,14 +463,14 @@ class ShareNetworkSecurityServiceAssociation(BASE, ManilaBase):
 
 
 class NetworkAllocation(BASE, ManilaBase):
-    "Represents network allocation data."
+    """Represents network allocation data."""
     __tablename__ = 'network_allocations'
     id = Column(String(36), primary_key=True, nullable=False)
     deleted = Column(String(36), default='False')
     ip_address = Column(String(64), nullable=True)
     mac_address = Column(String(32), nullable=True)
-    share_network_id = Column(String(36), ForeignKey('share_networks.id'),
-                              nullable=False)
+    share_server_id = Column(String(36), ForeignKey('share_servers.id'),
+                             nullable=False)
     status = Column(Enum(constants.STATUS_NEW, constants.STATUS_ACTIVE,
                          constants.STATUS_ERROR),
                     default=constants.STATUS_NEW)

@@ -1511,8 +1511,8 @@ def _network_get_query(context, session=None):
         session = get_session()
     return model_query(context, models.ShareNetwork, session=session).\
             options(joinedload('shares'),
-                    joinedload('network_allocations'),
-                    joinedload('security_services'))
+                    joinedload('security_services'),
+                    joinedload('share_servers'))
 
 
 @require_context
@@ -1599,14 +1599,6 @@ def share_network_add_security_service(context, id, security_service_id):
                     reason=msg)
 
         share_nw_ref = share_network_get(context, id, session=session)
-
-        if share_nw_ref['status'] == constants.STATUS_ACTIVE:
-            msg = "Share network is active"
-            raise exception.ShareNetworkSecurityServiceAssociationError(
-                    share_network_id=id,
-                    security_service_id=security_service_id,
-                    reason=msg)
-
         security_service_ref = security_service_get(context,
                                                     security_service_id,
                                                     session=session)
@@ -1646,6 +1638,81 @@ def share_network_remove_security_service(context, id, security_service_id):
 ###################
 
 
+def _server_get_query(context, session=None):
+    if session is None:
+        session = get_session()
+    return model_query(context, models.ShareServer, session=session)
+
+
+@require_context
+def share_server_create(context, values):
+    if not values.get('id'):
+        values['id'] = str(uuid.uuid4())
+    server_ref = models.ShareServer()
+    server_ref.update(values)
+    session = get_session()
+    with session.begin():
+        server_ref.save(session=session)
+    return server_ref
+
+
+@require_context
+def share_server_delete(context, id):
+    session = get_session()
+    with session.begin():
+        server_ref = share_server_get(context, id, session=session)
+        server_ref.delete(session=session)
+
+
+@require_context
+def share_server_update(context, id, values):
+    session = get_session()
+    with session.begin():
+        server_ref = share_server_get(context, id, session=session)
+        server_ref.update(values)
+        server_ref.save(session=session)
+        return server_ref
+
+
+@require_context
+def share_server_get(context, server_id, session=None):
+    result = _server_get_query(context, session).filter_by(id=server_id)\
+        .first()
+    if result is None:
+        raise exception.ShareServerNotFound(share_server_id=server_id)
+    return result
+
+
+@require_context
+def share_server_get_by_host_and_share_net(context, host, share_net_id,
+                                           session=None):
+    result = _server_get_query(context, session).filter_by(host=host)\
+        .filter_by(share_network_id=share_net_id).all()
+    if result is None:
+        raise exception.ShareServerNotFound(share_server_id=id)
+    return result
+
+
+@require_context
+def share_server_get_by_host_and_share_net_valid(context, host, share_net_id,
+                                                 session=None):
+    result = _server_get_query(context, session).filter_by(host=host)\
+        .filter_by(share_network_id=share_net_id)\
+        .filter(models.ShareServer.status.in_(
+        (constants.STATUS_CREATING, constants.STATUS_ACTIVE))).first()
+    if result is None:
+        raise exception.ShareServerNotFound(share_server_id=id)
+    return result
+
+
+@require_context
+def share_server_get_all(context):
+    return _server_get_query(context).all()
+
+
+###################
+
+
 @require_context
 def network_allocation_create(context, values):
     alloc_ref = models.NetworkAllocation()
@@ -1672,6 +1739,16 @@ def network_allocation_get(context, id, session=None):
                         filter_by(id=id).first()
     if result is None:
         raise exception.NotFound()
+    return result
+
+
+@require_context
+def network_allocations_get_for_share_server(context, share_server_id,
+                                             session=None):
+    if session is None:
+        session = get_session()
+    result = model_query(context, models.NetworkAllocation, session=session).\
+                         filter_by(share_server_id=share_server_id).all()
     return result
 
 

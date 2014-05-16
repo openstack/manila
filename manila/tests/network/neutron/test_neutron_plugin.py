@@ -23,23 +23,23 @@ from manila.network.neutron import constants as neutron_constants
 from manila.network.neutron import neutron_network_plugin as plugin
 
 fake_neutron_port = {
-        "status": "test_port_status",
-        "allowed_address_pairs": [],
-        "admin_state_up": True,
-        "network_id": "test_net_id",
-        "tenant_id": "fake_tenant_id",
-        "extra_dhcp_opts": [],
-        "device_owner": "test",
-        "binding:capabilities": {"port_filter": True},
-        "mac_address": "test_mac",
-        "fixed_ips": [
-            {"subnet_id": "test_subnet_id",
-             "ip_address": "test_ip"}
-        ],
-        "id": "test_port_id",
-        "security_groups": ["fake_sec_group_id"],
-        "device_id": "fake_device_id"
-    }
+    "status": "test_port_status",
+    "allowed_address_pairs": [],
+    "admin_state_up": True,
+    "network_id": "test_net_id",
+    "tenant_id": "fake_tenant_id",
+    "extra_dhcp_opts": [],
+    "device_owner": "test",
+    "binding:capabilities": {"port_filter": True},
+    "mac_address": "test_mac",
+    "fixed_ips": [
+        {"subnet_id": "test_subnet_id",
+         "ip_address": "test_ip"}
+    ],
+    "id": "test_port_id",
+    "security_groups": ["fake_sec_group_id"],
+    "device_id": "fake_device_id"
+}
 
 fake_share_network = {'id': 'fake nw info id',
                       'neutron_subnet_id': 'fake subnet id',
@@ -48,20 +48,23 @@ fake_share_network = {'id': 'fake nw info id',
                       'status': 'test_subnet_status',
                       'name': 'fake name',
                       'description': 'fake description',
-                      'network_allocations': [],
-                      'security_services': [],
-                      'shares': []}
+                      'security_services': []}
+
+fake_share_server = {'id': 'fake nw info id',
+                     'status': 'test_server_status',
+                     'host': 'fake@host',
+                     'network_allocations': [],
+                     'shares': []}
 
 fake_network_allocation = \
     {'id': fake_neutron_port['id'],
-     'share_network_id': fake_share_network['id'],
+     'share_server_id': fake_share_server['id'],
      'ip_address': fake_neutron_port['fixed_ips'][0]['ip_address'],
      'mac_address': fake_neutron_port['mac_address'],
      'status': constants.STATUS_ACTIVE}
 
 
 class NeutronNetworkPluginTest(unittest.TestCase):
-
     def __init__(self, *args, **kwargs):
         super(NeutronNetworkPluginTest, self).__init__(*args, **kwargs)
 
@@ -75,20 +78,23 @@ class NeutronNetworkPluginTest(unittest.TestCase):
                        mock.Mock(return_values=fake_network_allocation))
     @mock.patch.object(db_api, 'share_network_get',
                        mock.Mock(return_value=fake_share_network))
+    @mock.patch.object(db_api, 'share_server_get',
+                       mock.Mock(return_value=fake_share_server))
     def test_allocate_network_one_allocation(self):
-        has_provider_nw_ext = mock.patch.object(self.plugin,
-                                '_has_provider_network_extension').start()
+        has_provider_nw_ext = mock.patch.object(
+            self.plugin, '_has_provider_network_extension').start()
         has_provider_nw_ext.return_value = True
         save_nw_data = mock.patch.object(self.plugin,
-                                        '_save_neutron_network_data').start()
+                                         '_save_neutron_network_data').start()
         save_subnet_data = mock.patch.object(
-                            self.plugin,
-                            '_save_neutron_subnet_data').start()
+            self.plugin,
+            '_save_neutron_subnet_data').start()
 
         with mock.patch.object(self.plugin.neutron_api, 'create_port',
                                mock.Mock(return_value=fake_neutron_port)):
             self.plugin.allocate_network(
                 self.fake_context,
+                fake_share_server,
                 fake_share_network,
                 allocation_info={'count': 1})
 
@@ -114,20 +120,23 @@ class NeutronNetworkPluginTest(unittest.TestCase):
                        mock.Mock(return_values=fake_network_allocation))
     @mock.patch.object(db_api, 'share_network_get',
                        mock.Mock(return_value=fake_share_network))
+    @mock.patch.object(db_api, 'share_server_get',
+                       mock.Mock(return_value=fake_share_server))
     def test_allocate_network_two_allocation(self):
-        has_provider_nw_ext = mock.patch.object(self.plugin,
-                                '_has_provider_network_extension').start()
+        has_provider_nw_ext = mock.patch.object(
+            self.plugin, '_has_provider_network_extension').start()
         has_provider_nw_ext.return_value = True
         save_nw_data = mock.patch.object(self.plugin,
-                                        '_save_neutron_network_data').start()
+                                         '_save_neutron_network_data').start()
         save_subnet_data = mock.patch.object(
-                            self.plugin,
-                            '_save_neutron_subnet_data').start()
+            self.plugin,
+            '_save_neutron_subnet_data').start()
 
         with mock.patch.object(self.plugin.neutron_api, 'create_port',
                                mock.Mock(return_value=fake_neutron_port)):
             self.plugin.allocate_network(
                 self.fake_context,
+                fake_share_server,
                 fake_share_network,
                 count=2)
 
@@ -142,8 +151,8 @@ class NeutronNetworkPluginTest(unittest.TestCase):
                           device_owner='manila:share'),
             ]
             db_api_calls = [
-               mock.call(self.fake_context, fake_network_allocation),
-               mock.call(self.fake_context, fake_network_allocation)
+                mock.call(self.fake_context, fake_network_allocation),
+                mock.call(self.fake_context, fake_network_allocation)
             ]
             self.plugin.neutron_api.create_port.assert_has_calls(
                 neutron_api_calls)
@@ -155,14 +164,14 @@ class NeutronNetworkPluginTest(unittest.TestCase):
 
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())
     def test_allocate_network_create_port_exception(self):
-        has_provider_nw_ext = mock.patch.object(self.plugin,
-                                '_has_provider_network_extension').start()
+        has_provider_nw_ext = mock.patch.object(
+            self.plugin, '_has_provider_network_extension').start()
         has_provider_nw_ext.return_value = True
         save_nw_data = mock.patch.object(self.plugin,
-                                        '_save_neutron_network_data').start()
+                                         '_save_neutron_network_data').start()
         save_subnet_data = mock.patch.object(
-                            self.plugin,
-                            '_save_neutron_subnet_data').start()
+            self.plugin,
+            '_save_neutron_subnet_data').start()
         create_port = mock.patch.object(self.plugin.neutron_api,
                                         'create_port').start()
         create_port.side_effect = exception.NetworkException
@@ -170,6 +179,7 @@ class NeutronNetworkPluginTest(unittest.TestCase):
         self.assertRaises(exception.NetworkException,
                           self.plugin.allocate_network,
                           self.fake_context,
+                          fake_share_server,
                           fake_share_network)
 
         has_provider_nw_ext.stop()
@@ -179,13 +189,15 @@ class NeutronNetworkPluginTest(unittest.TestCase):
 
     @mock.patch.object(db_api, 'network_allocation_delete', mock.Mock())
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())
+    @mock.patch.object(db_api, 'network_allocations_get_for_share_server',
+                       mock.Mock(return_value=[fake_network_allocation]))
     def test_deallocate_network_nominal(self):
-        share_nw = {'id': fake_share_network['id']}
-        share_nw['network_allocations'] = [fake_network_allocation]
+        share_srv = {'id': fake_share_server['id']}
+        share_srv['network_allocations'] = [fake_network_allocation]
 
         with mock.patch.object(self.plugin.neutron_api, 'delete_port',
                                mock.Mock()):
-            self.plugin.deallocate_network(self.fake_context, share_nw)
+            self.plugin.deallocate_network(self.fake_context, share_srv)
             self.plugin.neutron_api.delete_port.assert_called_once_with(
                 fake_network_allocation['id'])
             db_api.network_allocation_delete.assert_called_once_with(
@@ -195,9 +207,11 @@ class NeutronNetworkPluginTest(unittest.TestCase):
     @mock.patch.object(db_api, 'share_network_update',
                        mock.Mock(return_value=fake_share_network))
     @mock.patch.object(db_api, 'network_allocation_update', mock.Mock())
+    @mock.patch.object(db_api, 'network_allocations_get_for_share_server',
+                       mock.Mock(return_value=[fake_network_allocation]))
     def test_deallocate_network_neutron_api_exception(self):
-        share_nw = {'id': fake_share_network['id']}
-        share_nw['network_allocations'] = [fake_network_allocation]
+        share_srv = {'id': fake_share_server['id']}
+        share_srv['network_allocations'] = [fake_network_allocation]
 
         delete_port = mock.patch.object(self.plugin.neutron_api,
                                         'delete_port').start()
@@ -206,11 +220,11 @@ class NeutronNetworkPluginTest(unittest.TestCase):
         self.assertRaises(exception.NetworkException,
                           self.plugin.deallocate_network,
                           self.fake_context,
-                          share_nw)
+                          share_srv)
         db_api.network_allocation_update.assert_called_once_with(
-                                self.fake_context,
-                                fake_network_allocation['id'],
-                                {'status': constants.STATUS_ERROR})
+            self.fake_context,
+            fake_network_allocation['id'],
+            {'status': constants.STATUS_ERROR})
         delete_port.stop()
 
     @mock.patch.object(db_api, 'share_network_update', mock.Mock())

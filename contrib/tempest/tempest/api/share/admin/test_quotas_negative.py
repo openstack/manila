@@ -184,17 +184,3 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.creds["tenant"]["id"],
                           client.creds["user"]["id"],
                           share_networks=bigger_value)
-
-    @test.attr(type=["gate", "smoke", "negative"])
-    def test_try_activate_share_network_with_overlimit(self):
-        client = self.get_client_with_isolated_creads()
-
-        # set new quota for shares
-        resp, __ = client.update_quotas(client.creds["tenant"]["id"],
-                                        share_networks=0)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-
-        # Try activate share-network without enough quota
-        self.assertRaises(exceptions.OverLimit,
-                          client.activate_share_network,
-                          sn_id=client.share_network_id)

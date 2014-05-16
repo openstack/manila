@@ -30,6 +30,7 @@ from manila.db import base
 from manila import exception
 from manila.openstack.common import log as logging
 
+
 nova_opts = [
     cfg.StrOpt('nova_catalog_info',
                default='compute:nova:publicURL',

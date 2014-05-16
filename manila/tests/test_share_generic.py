@@ -44,6 +44,7 @@ def fake_share(**kwargs):
         'size': 1,
         'share_proto': 'NFS',
         'share_network_id': 'fake share network id',
+        'share_server_id': 'fake share server id',
         'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
     }
     share.update(kwargs)
@@ -100,6 +101,10 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver.admin_context = self._context
 
         self.fake_sn = {"id": "fake_sn_id"}
+        self.fake_net_info = {
+            "id": "fake_srv_id",
+            "share_network_id": "fake_sn_id"
+        }
         fsim = fake_service_instance.FakeServiceInstanceManager()
         sim = mock.Mock(return_value=fsim)
         self._driver.instance_manager = sim
@@ -531,7 +536,9 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_setup_network(self):
         sim = self._driver.instance_manager
-        self._driver.setup_network(self.fake_sn)
+        net_info = self.fake_sn.copy()
+        net_info['share_network_id'] = net_info['id']
+        self._driver.setup_network(net_info)
         sim.get_service_instance.assert_called_once()
 
     def test_setup_network_revert(self):
@@ -539,16 +546,18 @@ class GenericShareDriverTestCase(test.TestCase):
         def raise_exception(*args, **kwargs):
             raise exception.ServiceInstanceException
 
+        net_info = self.fake_sn.copy()
+        net_info['share_network_id'] = net_info['id']
         self.stubs.Set(self._driver, 'get_service_instance',
                        mock.Mock(side_effect=raise_exception))
         self.assertRaises(exception.ServiceInstanceException,
                           self._driver.setup_network,
-                          self.fake_sn)
+                          net_info)
 
     def test_teardown_network(self):
         sim = self._driver.instance_manager
         self._driver.service_instance_manager = sim
-        self._driver.teardown_network(self.fake_sn)
+        self._driver.teardown_network(self.fake_net_info)
         sim.delete_service_instance.assert_called_once()
 
 

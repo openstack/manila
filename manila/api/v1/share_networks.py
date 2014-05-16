@@ -49,7 +49,6 @@ SHARE_NETWORK_ATTRS = (
     'ip_version',
     'name',
     'description',
-    'status',
 )
 
 
@@ -107,13 +106,22 @@ class ShareNetworkController(wsgi.Controller):
         except exception.ShareNetworkNotFound as e:
             msg = "%s" % e
             raise exc.HTTPNotFound(explanation=msg)
-
-        if share_network['status'] == constants.STATUS_ACTIVE:
-            msg = "Network %s is in use" % id
-            raise exc.HTTPBadRequest(explanation=msg)
-
+        if share_network['share_servers']:
+            msg = _("Cannot delete share network %s. "
+                    "There are share servers using it") % id
+            raise exc.HTTPForbidden(explanation=msg)
         db_api.share_network_delete(context, id)
 
+        try:
+            reservations = QUOTAS.reserve(
+                context, project_id=share_network['project_id'],
+                share_networks=-1)
+        except Exception:
+            msg = _("Failed to update usages deleting share-network.")
+            LOG.exception(msg)
+        else:
+            QUOTAS.commit(context, reservations,
+                          project_id=share_network['project_id'])
         return webob.Response(status_int=202)
 
     @wsgi.serializers(xml=ShareNetworksTemplate)
@@ -163,9 +171,10 @@ class ShareNetworkController(wsgi.Controller):
             msg = "%s" % e
             raise exc.HTTPNotFound(explanation=msg)
 
-        if share_network['status'] == constants.STATUS_ACTIVE:
-            msg = "Network %s is in use" % id
-            raise exc.HTTPBadRequest(explanation=msg)
+        if share_network['share_servers']:
+            msg = _("Cannot update share network %s."
+                    " It is used by share servers") % share_network['id']
+            raise exc.HTTPForbidden(explanation=msg)
 
         update_values = body[RESOURCE_NAME]
 
@@ -192,20 +201,39 @@ class ShareNetworkController(wsgi.Controller):
         values['project_id'] = context.project_id
 
         try:
-            share_network = db_api.share_network_create(context, values)
-        except exception.DBError:
-            msg = "Could not save supplied data due to database error"
-            raise exc.HTTPBadRequest(explanation=msg)
+            reservations = QUOTAS.reserve(context, share_networks=1)
+        except exception.OverQuota as e:
+            overs = e.kwargs['overs']
+            usages = e.kwargs['usages']
+            quotas = e.kwargs['quotas']
 
-        return self._view_builder.build_share_network(share_network)
+            def _consumed(name):
+                return (usages[name]['reserved'] + usages[name]['in_use'])
+
+            if 'share_networks' in overs:
+                msg = _("Quota exceeded for %(s_pid)s, tried to create"
+                " share-network (%(d_consumed)d of %(d_quota)d "
+                "already consumed)")
+                LOG.warn(msg % {'s_pid': context.project_id,
+                         'd_consumed': _consumed('share_networks'),
+                         'd_quota': quotas['share_networks']})
+                raise exception.ShareNetworksLimitExceeded(
+                    allowed=quotas['share_networks'])
+        else:
+            try:
+                share_network = db_api.share_network_create(context, values)
+            except exception.DBError:
+                msg = "Could not save supplied data due to database error"
+                raise exc.HTTPBadRequest(explanation=msg)
+
+            QUOTAS.commit(context, reservations)
+            return self._view_builder.build_share_network(share_network)
 
     @wsgi.serializers(xml=ShareNetworkTemplate)
     def action(self, req, id, body):
         _actions = {
             'add_security_service': self._add_security_service,
-            'remove_security_service': self._remove_security_service,
-            'activate': self._activate,
-            'deactivate': self._deactivate,
+            'remove_security_service': self._remove_security_service
         }
         for action, data in body.iteritems():
             try:
@@ -218,6 +246,10 @@ class ShareNetworkController(wsgi.Controller):
         """Associate share network with a given security service."""
         context = req.environ['manila.context']
         policy.check_policy(context, RESOURCE_NAME, 'add_security_service')
+        share_network = db_api.share_network_get(context, id)
+        if share_network['share_servers']:
+            msg = _("Cannot add security services. Share network is used.")
+            raise exc.HTTPForbidden(explanation=msg)
         try:
             share_network = db_api.share_network_add_security_service(
                                 context,
@@ -253,67 +285,6 @@ class ShareNetworkController(wsgi.Controller):
         except exception.ShareNetworkSecurityServiceDissociationError as e:
             msg = "%s" % e
             raise exc.HTTPBadRequest(explanation=msg)
-
-        return self._view_builder.build_share_network(share_network)
-
-    def _activate(self, req, id, data):
-        """Activate share network."""
-        context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'activate')
-
-        try:
-            reservations = QUOTAS.reserve(context, share_networks=1)
-        except exception.OverQuota as e:
-            overs = e.kwargs['overs']
-            usages = e.kwargs['usages']
-            quotas = e.kwargs['quotas']
-
-            def _consumed(name):
-                return (usages[name]['reserved'] + usages[name]['in_use'])
-
-            if 'share_networks' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to activate"
-                " share-network (%(d_consumed)d of %(d_quota)d "
-                "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                         'd_consumed': _consumed('share_networks'),
-                         'd_quota': quotas['share_networks']})
-                raise exception.ActivatedShareNetworksLimitExceeded(
-                    allowed=quotas['share_networks'])
-        else:
-            try:
-                share_network = db_api.share_network_get(context, id)
-            except exception.ShareNetworkNotFound as e:
-                msg = _("Share-network was not found. %s") % e
-                raise exc.HTTPNotFound(explanation=msg)
-
-            if share_network['status'] != constants.STATUS_INACTIVE:
-                msg = _("Share network should be 'INACTIVE'.")
-                raise exc.HTTPBadRequest(explanation=msg)
-
-            self.share_rpcapi.activate_network(context, id, data)
-            QUOTAS.commit(context, reservations)
-            return self._view_builder.build_share_network(share_network)
-
-    def _deactivate(self, req, id, data):
-        context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'deactivate')
-
-        try:
-            share_network = db_api.share_network_get(context, id)
-        except exception.ShareNetworkNotFound as e:
-            msg = _("Share-network was not found. %s") % e
-            raise exc.HTTPNotFound(explanation=msg)
-
-        if share_network['status'] != constants.STATUS_ACTIVE:
-            msg = _("Share network should be 'ACTIVE'.")
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        if len(share_network['shares']) > 0:
-            msg = _("Share network is in use.")
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        self.share_rpcapi.deactivate_network(context, id)
 
         return self._view_builder.build_share_network(share_network)
 

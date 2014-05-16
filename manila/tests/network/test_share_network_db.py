@@ -44,13 +44,7 @@ class ShareNetworkDBTest(test.TestCase):
                               'cidr': '10.0.0.0/24',
                               'ip_version': 4,
                               'name': 'whatever',
-                              'description': 'fake description',
-                              'status': constants.STATUS_INACTIVE}
-        self.allocation_dict = {'id': 'fake port id',
-                                'share_network_id': self.share_nw_dict['id'],
-                                'ip_address': 'fake ip address',
-                                'mac_address': 'fake mac address',
-                                'status': constants.STATUS_ACTIVE}
+                              'description': 'fake description'}
 
     def test_create_one_network(self):
         result = db_api.share_network_create(self.fake_context,
@@ -59,7 +53,6 @@ class ShareNetworkDBTest(test.TestCase):
         self._check_fields(expected=self.share_nw_dict, actual=result)
         self.assertEqual(len(result['shares']), 0)
         self.assertEqual(len(result['security_services']), 0)
-        self.assertEqual(len(result['network_allocations']), 0)
 
     def test_create_two_networks_in_different_tenants(self):
         share_nw_dict2 = self.share_nw_dict.copy()
@@ -99,7 +92,6 @@ class ShareNetworkDBTest(test.TestCase):
         self._check_fields(expected=self.share_nw_dict, actual=result)
         self.assertEqual(len(result['shares']), 0)
         self.assertEqual(len(result['security_services']), 0)
-        self.assertEqual(len(result['network_allocations']), 0)
 
     def test_get_with_one_share(self):
         share_dict1 = {'id': 'fake share id1',
@@ -169,31 +161,6 @@ class ShareNetworkDBTest(test.TestCase):
 
         self.assertEqual(len(result['security_services']), 2)
 
-    def test_get_with_one_allocation(self):
-        db_api.share_network_create(self.fake_context, self.share_nw_dict)
-        db_api.network_allocation_create(self.fake_context,
-                                         self.allocation_dict)
-
-        result = db_api.share_network_get(self.fake_context,
-                                          self.share_nw_dict['id'])
-
-        self.assertEqual(len(result['network_allocations']), 1)
-        self._check_fields(expected=self.allocation_dict,
-                           actual=result['network_allocations'][0])
-
-    def test_get_with_two_allocations(self):
-        allocation_dict2 = dict(self.allocation_dict)
-        allocation_dict2['id'] = 'fake port id2'
-        db_api.share_network_create(self.fake_context, self.share_nw_dict)
-        db_api.network_allocation_create(self.fake_context,
-                                         self.allocation_dict)
-        db_api.network_allocation_create(self.fake_context, allocation_dict2)
-
-        result = db_api.share_network_get(self.fake_context,
-                                          self.share_nw_dict['id'])
-
-        self.assertEqual(len(result['network_allocations']), 2)
-
     def test_get_not_found(self):
         self.assertRaises(exception.ShareNetworkNotFound,
                           db_api.share_network_get,
@@ -217,15 +184,15 @@ class ShareNetworkDBTest(test.TestCase):
                           'fake id')
 
     def test_update(self):
-        new_status = constants.STATUS_ERROR
+        new_name = 'fake_new_name'
         db_api.share_network_create(self.fake_context, self.share_nw_dict)
         result_update = db_api.share_network_update(self.fake_context,
                                                     self.share_nw_dict['id'],
-                                                    {'status': new_status})
+                                                    {'name': new_name})
         result_get = db_api.share_network_get(self.fake_context,
                                               self.share_nw_dict['id'])
 
-        self.assertEqual(result_update['status'], new_status)
+        self.assertEqual(result_update['name'], new_name)
         self._check_fields(expected=dict(result_update.iteritems()),
                            actual=dict(result_get.iteritems()))
 
@@ -329,32 +296,6 @@ class ShareNetworkDBTest(test.TestCase):
             self.share_nw_dict['id'],
             security_dict1['id'])
 
-    def test_add_security_service_association_error_status_active(self):
-        security_dict1 = {'id': 'fake security service id1',
-                          'project_id': self.fake_context.project_id,
-                          'type': 'fake type'}
-
-        db_api.share_network_create(self.fake_context, self.share_nw_dict)
-        db_api.share_network_update(self.fake_context,
-                                    self.share_nw_dict['id'],
-                                    {'status': constants.STATUS_ACTIVE})
-        db_api.security_service_create(self.fake_context, security_dict1)
-
-        self.assertRaises(
-            exception.ShareNetworkSecurityServiceAssociationError,
-            db_api.share_network_add_security_service,
-            self.fake_context,
-            self.share_nw_dict['id'],
-            security_dict1['id'])
-
-        assoc_ref = sqlalchemy_api.model_query(
-                self.fake_context,
-                models.ShareNetworkSecurityServiceAssociation).\
-                filter_by(security_service_id=security_dict1['id']).\
-                filter_by(share_network_id=self.share_nw_dict['id']).first()
-
-        self.assertTrue(assoc_ref is None)
-
     def test_remove_security_service(self):
         security_dict1 = {'id': 'fake security service id1',
                           'project_id': self.fake_context.project_id,
@@ -443,16 +384,3 @@ class ShareNetworkDBTest(test.TestCase):
                                           self.share_nw_dict['id'])
 
         self.assertEqual(len(result['shares']), 0)
-
-    def test_network_allocations_relation(self):
-        db_api.share_network_create(self.fake_context, self.share_nw_dict)
-
-        db_api.network_allocation_create(self.fake_context,
-                                         self.allocation_dict)
-        db_api.network_allocation_delete(self.fake_context,
-                                         self.allocation_dict['id'])
-
-        result = db_api.share_network_get(self.fake_context,
-                                          self.share_nw_dict['id'])
-
-        self.assertEqual(len(result['network_allocations']), 0)

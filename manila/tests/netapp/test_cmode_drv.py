@@ -47,6 +47,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
                       'size': 1,
                       'share_proto': 'fake',
                       'share_network_id': 'fake_net_id',
+                      'share_server_id': 'fake-share-srv-id',
                       'network_info': {
                           'network_allocations': [
                               {'ip_address': 'ip'}
@@ -406,6 +407,7 @@ class NetAppNFSHelperTestCase(test.TestCase):
                       'name': 'fake_name',
                       'size': 1,
                       'export_location': 'location:/path',
+                      'share_server_id': 'fake-share-srv-id',
                       'share_proto': 'fake'}
         self.helper = driver.NetAppClusteredNFSHelper()
         self.helper._client = mock.Mock()

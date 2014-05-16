@@ -78,7 +78,8 @@ def cinderclient(context):
         c = cinder_client.Client(CONF.cinder_admin_username,
                                  CONF.cinder_admin_password,
                                  CONF.cinder_admin_tenant_name,
-                                 CONF.cinder_admin_auth_url)
+                                 CONF.cinder_admin_auth_url,
+                                 retries=CONF.cinder_http_retries,)
         c.authenticate()
         return c
 

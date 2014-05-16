@@ -40,8 +40,7 @@ fake_share_network = {
     'name': 'fake name',
     'description': 'fake description',
     'status': constants.STATUS_INACTIVE,
-    'shares': [],
-    'network_allocations': [],
+    'share_servers': [],
     'security_services': []
 }
 fake_share_network_shortened = {
@@ -122,10 +121,11 @@ class ShareNetworkAPITest(unittest.TestCase):
                           self.req,
                           body)
 
-    @mock.patch.object(db_api, 'share_network_get',
-                       mock.Mock(return_value=fake_share_network))
+    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
     def test_delete_nominal(self):
-        share_nw = 'fake network id'
+        share_nw = fake_share_network.copy()
+        share_nw['share_servers'] = []
+        db_api.share_network_get.return_value = share_nw
 
         with mock.patch.object(db_api, 'share_network_delete'):
             self.controller.delete(self.req, share_nw)
@@ -147,11 +147,12 @@ class ShareNetworkAPITest(unittest.TestCase):
     @mock.patch.object(db_api, 'share_network_get', mock.Mock())
     def test_delete_in_use(self):
         share_nw = fake_share_network.copy()
-        share_nw['status'] = constants.STATUS_ACTIVE
+        share_servers = [{'id': 1}]
+        share_nw['share_servers'] = share_servers
 
         db_api.share_network_get.return_value = share_nw
 
-        self.assertRaises(webob_exc.HTTPBadRequest,
+        self.assertRaises(webob_exc.HTTPForbidden,
                           self.controller.delete,
                           self.req,
                           share_nw['id'])
@@ -252,11 +253,11 @@ class ShareNetworkAPITest(unittest.TestCase):
     @mock.patch.object(db_api, 'share_network_get', mock.Mock())
     def test_update_in_use(self):
         share_nw = fake_share_network.copy()
-        share_nw['status'] = constants.STATUS_ACTIVE
+        share_nw['share_servers'] = [{'id': 1}]
 
         db_api.share_network_get.return_value = share_nw
 
-        self.assertRaises(webob_exc.HTTPBadRequest,
+        self.assertRaises(webob_exc.HTTPForbidden,
                           self.controller.update,
                           self.req,
                           share_nw['id'],
@@ -303,41 +304,6 @@ class ShareNetworkAPITest(unittest.TestCase):
             self.controller._remove_security_service.assert_called_once_with(
                 self.req, share_network_id, body['remove_security_service'])
 
-    def test_action_activate(self):
-        share_network_id = 'fake network id'
-        body = {'activate': {}}
-
-        with mock.patch.object(self.controller, '_activate', mock.Mock()):
-            self.controller.action(self.req, share_network_id, body)
-            self.controller._activate.assert_called_once_with(
-                self.req, share_network_id, body['activate'])
-
-    def test_action_activate_with_overquota(self):
-        share_network_id = 'fake network id'
-        body = {'activate': {}}
-
-        def raise_overquota(*args, **kwargs):
-            usages = {'share_networks': {'reserved': 0, 'in_use': 1, }}
-            quotas = overs = {'share_networks': 1}
-            raise exception.OverQuota(overs=overs,
-                                      usages=usages,
-                                      quotas=quotas)
-
-        with mock.patch.object(QUOTAS, 'reserve',
-                               mock.Mock(side_effect=raise_overquota)):
-            self.assertRaises(exception.ActivatedShareNetworksLimitExceeded,
-                              self.controller.action,
-                              self.req, share_network_id, body)
-
-    def test_action_deactivate(self):
-        share_network_id = 'fake network id'
-        body = {'deactivate': {}}
-
-        with mock.patch.object(self.controller, '_deactivate', mock.Mock()):
-            self.controller.action(self.req, share_network_id, body)
-            self.controller._deactivate.assert_called_once_with(
-                self.req, share_network_id, body['deactivate'])
-
     def test_action_bad_request(self):
         share_network_id = 'fake network id'
         body = {'bad_action': {}}
@@ -347,107 +313,3 @@ class ShareNetworkAPITest(unittest.TestCase):
                           self.req,
                           share_network_id,
                           body)
-
-    @mock.patch.object(db_api, 'share_network_get',
-                       mock.Mock(return_value=fake_share_network))
-    @mock.patch.object(policy, 'check_policy', mock.Mock())
-    def test_activate(self):
-        share_network_id = 'fake network id'
-
-        with mock.patch.object(self.controller.share_rpcapi,
-                               'activate_network', mock.Mock()):
-            self.controller._activate(self.req, share_network_id, {})
-            policy.check_policy.assert_called_once_with(
-                    self.context,
-                    share_networks.RESOURCE_NAME,
-                    'activate')
-            db_api.share_network_get.assert_called_once_with(
-                self.context,
-                share_network_id)
-            self.controller.share_rpcapi.activate_network.\
-                assert_called_once_with(self.context, share_network_id, {})
-
-    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
-    def test_activate_not_found(self):
-        share_network_id = 'fake network id'
-        db_api.share_network_get.side_effect = \
-            exception.ShareNetworkNotFound(share_network_id=share_network_id)
-
-        self.assertRaises(webob_exc.HTTPNotFound,
-                          self.controller._activate,
-                          self.req,
-                          share_network_id,
-                          {})
-
-    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
-    def test_activate_not_inactive(self):
-        share_network_id = 'fake network id'
-        share_network = fake_share_network.copy()
-        share_network['status'] = constants.STATUS_ERROR
-
-        db_api.share_network_get.return_value = share_network
-
-        self.assertRaises(webob_exc.HTTPBadRequest,
-                          self.controller._activate,
-                          self.req,
-                          share_network_id,
-                          {})
-
-    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
-    @mock.patch.object(policy, 'check_policy', mock.Mock())
-    def test_deactivate(self):
-        share_network_id = 'fake network id'
-        share_network = fake_share_network.copy()
-        share_network['status'] = constants.STATUS_ACTIVE
-
-        db_api.share_network_get.return_value = share_network
-
-        with mock.patch.object(self.controller.share_rpcapi,
-                               'deactivate_network', mock.Mock()):
-            self.controller._deactivate(self.req, share_network_id, None)
-            policy.check_policy.assert_called_once_with(
-                    self.context,
-                    share_networks.RESOURCE_NAME,
-                    'deactivate')
-            db_api.share_network_get.assert_called_once_with(
-                self.context,
-                share_network_id)
-            self.controller.share_rpcapi.deactivate_network.\
-                assert_called_once_with(self.context, share_network_id)
-
-    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
-    def test_deactivate_not_found(self):
-        share_network_id = 'fake network id'
-        db_api.share_network_get.side_effect = \
-            exception.ShareNetworkNotFound(share_network_id=share_network_id)
-
-        self.assertRaises(webob_exc.HTTPNotFound,
-                          self.controller._deactivate,
-                          self.req,
-                          share_network_id,
-                          None)
-
-    @mock.patch.object(db_api, 'share_network_get',
-                       mock.Mock(return_value=fake_share_network))
-    def test_deactivate_not_active(self):
-        share_network_id = 'fake network id'
-
-        self.assertRaises(webob_exc.HTTPBadRequest,
-                          self.controller._deactivate,
-                          self.req,
-                          share_network_id,
-                          None)
-
-    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
-    def test_deactivate_in_use(self):
-        share_network_id = 'fake network id'
-        share_network = fake_share_network.copy()
-        share_network['shares'].append('fake share')
-
-        db_api.share_network_get.return_value = share_network
-
-        self.assertRaises(webob_exc.HTTPBadRequest,
-                          self.controller._deactivate,
-                          self.req,
-                          share_network_id,
-                          None)

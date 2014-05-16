@@ -35,7 +35,7 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
         super(NeutronNetworkPlugin, self).__init__()
         self.neutron_api = neutron_api.API()
 
-    def allocate_network(self, context, share_network, **kwargs):
+    def allocate_network(self, context, share_server, share_network, **kwargs):
         """Allocate network resources using given network information: create
         neutron ports for a given neutron network and subnet, create manila db
         records for allocated neutron ports.
@@ -58,12 +58,14 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
         allocation_count = kwargs.get('count', 1)
         device_owner = kwargs.get('device_owner', 'share')
 
-        for _ in range(0, allocation_count):
-            self._create_port(context, share_network, device_owner)
+        ports = []
+        for __ in range(0, allocation_count):
+            ports.append(self._create_port(context, share_server,
+                                           share_network, device_owner))
 
-        return self.db.share_network_get(context, share_network['id'])
+        return ports
 
-    def deallocate_network(self, context, share_network):
+    def deallocate_network(self, context, share_server):
         """Deallocate neutron network resources for the given network info:
         delete previously allocated neutron ports, delete manila db records for
         deleted ports.
@@ -72,25 +74,26 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
         :param share_network: share network data
         :rtype: None
         """
-        ports = share_network['network_allocations']
+        ports = self.db.network_allocations_get_for_share_server(
+            context, share_server['id'])
 
         for port in ports:
             self._delete_port(context, port)
 
-    def _create_port(self, context, share_network, device_owner):
-        port = self.neutron_api.create_port(share_network['project_id'],
+    def _create_port(self, context, share_server, share_network, device_owner):
+        port = self.neutron_api.create_port(
+            share_network['project_id'],
             network_id=share_network['neutron_net_id'],
             subnet_id=share_network['neutron_subnet_id'],
             device_owner='manila:' + device_owner)
         port_dict = {
             'id': port['id'],
-            'share_network_id': share_network['id'],
+            'share_server_id': share_server['id'],
             'ip_address': port['fixed_ips'][0]['ip_address'],
             'mac_address': port['mac_address'],
             'status': constants.STATUS_ACTIVE,
         }
-        self.db.network_allocation_create(context, port_dict)
-        return port_dict
+        return self.db.network_allocation_create(context, port_dict)
 
     def _delete_port(self, context, port):
         try:

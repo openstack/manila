@@ -449,12 +449,12 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
 
     def create_share(self, context, share):
         """Creates new share."""
-        if not share.get('network_info'):
+        if not share.get('share_server_id'):
             msg = _("Cannot create share %s. "
-                    "No share network provided") % share['id']
+                    "No share server provided") % share['id']
             LOG.error(msg)
             raise exception.NetAppException(message=msg)
-        vserver = self._get_vserver_name(share['share_network_id'])
+        vserver = self._get_vserver_name(share['share_server_id'])
         vserver_client = driver.NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)
@@ -464,7 +464,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     def create_share_from_snapshot(self, context, share, snapshot,
                                    net_details=None):
         """Creates new share form snapshot."""
-        vserver = self._get_vserver_name(share['share_network_id'])
+        vserver = self._get_vserver_name(share['share_server_id'])
         vserver_client = driver.NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)
@@ -543,7 +543,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     def delete_share(self, context, share):
         """Deletes share."""
         share_name = self._get_valid_share_name(share['id'])
-        vserver = self._get_vserver_name(share['share_network_id'])
+        vserver = self._get_vserver_name(share['share_server_id'])
         vserver_client = driver.NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)

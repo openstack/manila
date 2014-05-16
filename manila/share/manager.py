@@ -1,6 +1,4 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2012 NetApp
+# Copyright (c) 2014 NetApp Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,6 +19,7 @@
 :share_driver: Used by :class:`ShareManager`. Defaults to
                        :class:`manila.share.drivers.lvm.LVMShareDriver`.
 """
+import time
 
 from manila.common import constants
 from manila import context
@@ -29,6 +28,7 @@ from manila import manager
 from manila import network
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
+from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 from manila import quota
@@ -42,6 +42,10 @@ share_manager_opts = [
     cfg.StrOpt('share_driver',
                default='manila.share.drivers.lvm.LVMShareDriver',
                help='Driver to use for share creation'),
+    cfg.BoolOpt('delete_share_server_with_last_share',
+                default=False,
+                help='With this option is set to True share server will'
+                     'be deleted on deletion of last share'),
 ]
 
 CONF = cfg.CONF
@@ -61,6 +65,7 @@ class ShareManager(manager.SchedulerDependentManager):
                                            config_group=service_name)
         super(ShareManager, self).__init__(service_name='share',
                                            *args, **kwargs)
+
         if not share_driver:
             share_driver = self.configuration.share_driver
         self.driver = importutils.import_object(
@@ -93,6 +98,23 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.publish_service_capabilities(ctxt)
 
+    def _share_server_get_or_create(self, context, share_network_id):
+
+        @lockutils.synchronized(share_network_id)
+        def _get_or_create_server():
+            try:
+                share_server = \
+                    self.db.share_server_get_by_host_and_share_net_valid(
+                        context, self.host, share_network_id)
+            except exception.ShareServerNotFound:
+                share_network = self.db.share_network_get(
+                    context, share_network_id)
+                share_server = self._setup_server(context, share_network)
+                LOG.info(_("Share server created successfully."))
+            return share_server
+
+        return _get_or_create_server()
+
     def create_share(self, context, share_id, request_spec=None,
                      filter_properties=None, snapshot_id=None):
         """Creates a share."""
@@ -108,13 +130,19 @@ class ShareManager(manager.SchedulerDependentManager):
 
         share_network_id = share_ref.get('share_network_id', None)
         if share_network_id:
-            share_network = self.db.share_network_get(context,
-                                                      share_network_id)
-        else:
-            share_network = {}
+            try:
+                share_server = self._share_server_get_or_create(
+                    context, share_network_id)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_("Failed to get share server"
+                                " for share creation."))
+                    self.db.share_update(context, share_id,
+                                         {'status': 'error'})
 
-        share_ref['network_info'] = share_network
-
+            share_ref = self.db.share_update(
+                context, share_id, {'share_server_id': share_server['id']})
+            LOG.debug("Using share server %s" % share_server['id'])
         try:
             if snapshot_ref:
                 export_location = self.driver.create_share_from_snapshot(
@@ -125,8 +153,10 @@ class ShareManager(manager.SchedulerDependentManager):
                                  {'export_location': export_location})
         except Exception:
             with excutils.save_and_reraise_exception():
+                LOG.error(_("Share %s failed on creation.") % share_id)
                 self.db.share_update(context, share_id, {'status': 'error'})
         else:
+            LOG.info(_("Share created successfully."))
             self.db.share_update(context, share_id,
                                  {'status': 'available',
                                   'launched_at': timeutils.utcnow()})
@@ -159,10 +189,16 @@ class ShareManager(manager.SchedulerDependentManager):
             LOG.exception(_("Failed to update usages deleting share"))
 
         self.db.share_delete(context, share_id)
-        LOG.info(_("share %s: deleted successfully"), share_ref['name'])
+        LOG.info(_("Share %s: deleted successfully."), share_ref['name'])
 
         if reservations:
             QUOTAS.commit(context, reservations, project_id=project_id)
+
+        share_server = self.db.share_server_get(context,
+                                                share_ref['share_server_id'])
+        if CONF.delete_share_server_with_last_share:
+            if not share_server.shares:
+                self._teardown_server(context, share_server)
 
     def create_snapshot(self, context, share_id, snapshot_id):
         """Create snapshot for share."""
@@ -262,76 +298,74 @@ class ShareManager(manager.SchedulerDependentManager):
         self._report_driver_status(context)
         self._publish_service_capabilities(context)
 
-    def activate_network(self, context, share_network_id, metadata=None):
-        share_network = self.db.share_network_get(context, share_network_id)
-        if (hasattr(share_network, 'project_id') and
-            context.project_id != share_network['project_id']):
-            project_id = share_network['project_id']
-        else:
-            project_id = context.project_id
+    def _form_network_info(self, context, share_server, share_network):
+        # Network info is used by driver for setting up share server
+        # and getting server info on share creation.
+        network_allocations = self.db.network_allocations_get_for_share_server(
+            context, share_server['id'])
+        network_info = {
+            'id': share_server['id'],
+            'share_network_id': share_server['share_network_id'],
+            'segmentation_id': share_network['segmentation_id'],
+            'cidr': share_network['cidr'],
+            'security_services': share_network['security_services'],
+            'network_allocations': network_allocations,
+        }
+        return network_info
 
-        reservations = None
-        try:
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          share_networks=-1)
-            self._activate_share_network(context, share_network, metadata)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                if reservations:
-                    QUOTAS.commit(context, reservations, project_id=project_id)
-
-    def deactivate_network(self, context, share_network_id):
-        share_network = self.db.share_network_get(context, share_network_id)
-        self._deactivate_network(context, share_network)
-        self.network_api.deallocate_network(context, share_network)
-
-        if (hasattr(share_network, 'project_id') and
-            context.project_id != share_network['project_id']):
-            project_id = share_network['project_id']
-        else:
-            project_id = context.project_id
+    def _setup_server(self, context, share_network, metadata=None):
+        share_server_val = {
+            'host': self.host,
+            'share_network_id': share_network['id'],
+            'status': constants.STATUS_CREATING
+        }
+        share_server = self.db.share_server_create(context,
+                                                   share_server_val)
 
         try:
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          share_networks=-1)
-        except Exception:
-            msg = _("Failed to update usages deactivating share-network.")
-            LOG.exception(msg)
-        else:
-            QUOTAS.commit(context, reservations, project_id=project_id)
+            allocation_number = self.driver.get_network_allocations_number()
+            if allocation_number:
+                self.network_api.allocate_network(
+                    context, share_server, share_network,
+                    count=allocation_number)
 
-    def _activate_share_network(self, context, share_network, metadata=None):
-        allocation_number = self.driver.get_network_allocations_number()
-        if allocation_number:
-            share_network = self.network_api.allocate_network(
-                                context,
-                                share_network,
-                                count=allocation_number)
-        try:
-            self.db.share_network_update(context, share_network['id'],
-                {'status': constants.STATUS_ACTIVATING})
-            self.driver.setup_network(share_network, metadata=metadata)
-            self.db.share_network_update(context, share_network['id'],
+            share_network = self.db.share_network_get(context,
+                                                      share_network['id'])
+            network_info = self._form_network_info(context, share_server,
+                                                   share_network)
+            self.driver.setup_network(network_info, metadata=metadata)
+            return self.db.share_server_update(context, share_server['id'],
                 {'status': constants.STATUS_ACTIVE})
-        except exception.ManilaException:
+        except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_network_update(context, share_network['id'],
+                self.db.share_server_update(context, share_server['id'],
                     {'status': constants.STATUS_ERROR})
                 self.network_api.deallocate_network(context, share_network)
-        else:
-            return share_network
 
-    def _deactivate_network(self, context, share_network):
-        self.db.share_network_update(context, share_network['id'],
-            {'status': constants.STATUS_DEACTIVATING})
-        try:
-            self.driver.teardown_network(share_network)
-        except Exception as e:
-            with excutils.save_and_reraise_exception():
-                self.db.share_network_update(context, share_network['id'],
-                    {'status': constants.STATUS_ERROR})
-        else:
-            self.db.share_network_update(context, share_network['id'],
-                {'status': constants.STATUS_INACTIVE})
+    def _teardown_server(self, context, share_server):
+
+        @lockutils.synchronized(share_server['share_network_id'])
+        def _teardown_server():
+            share_network = self.db.share_network_get(
+                context, share_server['share_network_id'])
+
+            network_info = self._form_network_info(context, share_server,
+                                                   share_network)
+
+            self.db.share_server_update(context, share_server['id'],
+                                        {'status': constants.STATUS_DELETING})
+            try:
+                LOG.debug("Deleting share server")
+                self.driver.teardown_network(network_info)
+            except Exception as e:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_("Share server %s failed on deletion.")
+                              % share_server['id'])
+                    self.db.share_server_update(context, share_server['id'],
+                        {'status': constants.STATUS_ERROR})
+            else:
+                self.db.share_server_delete(context, share_server['id'])
+
+        _teardown_server()
+        LOG.info(_("Share server deleted successfully."))
+        self.network_api.deallocate_network(context, share_server)

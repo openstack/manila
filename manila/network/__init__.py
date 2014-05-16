@@ -39,9 +39,13 @@ def API():
 class NetworkBaseAPI(object):
 
     @abc.abstractmethod
-    def allocate_network(self, context, share_network, **kwargs):
+    def allocate_network(self, context, network_id, subnet_id, **kwargs):
         pass
 
     @abc.abstractmethod
     def deallocate_network(self, context, share_network):
+        pass
+
+    @abc.abstractmethod
+    def get_provider_info(self, context, network_id, subnet_id):
         pass

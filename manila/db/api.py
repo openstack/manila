@@ -547,6 +547,66 @@ def network_allocation_update(context, id, values):
     return IMPL.network_allocation_update(context, id, values)
 
 
+def network_allocations_get_for_share_server(context, share_server_id,
+                                            session=None):
+    """Get netwwork allocation for share server."""
+    return IMPL.network_allocations_get_for_share_server(context,
+                                                         share_server_id,
+                                                         session=session)
+
+
+##################
+
+
+def share_server_create(context, values):
+    """Create share server DB record."""
+    return IMPL.share_server_create(context, values)
+
+
+def share_server_delete(context, id):
+    """Delete share server DB record."""
+    return IMPL.share_server_delete(context, id)
+
+
+def share_server_update(context, id, values):
+    """Update share server DB record."""
+    return IMPL.share_server_update(context, id, values)
+
+
+def share_server_get(context, id, session=None):
+    """Get share server DB record by ID."""
+    return IMPL.share_server_get(context, id, session=session)
+
+
+def share_server_get_by_host(context, host, share_net_id, session=None):
+    """Get share server DB records by host"""
+    return IMPL.share_server_get_by_host(context, host, share_net_id,
+                                         session=session)
+
+
+def share_server_get_by_host_and_share_net(context, host, share_net_id,
+                                           session=None):
+    """Get share server DB records by host and share net"""
+    return IMPL.share_server_get_by_host_and_share_net(context, host,
+                                                       share_net_id,
+                                                       session=session)
+
+
+def share_server_get_by_host_and_share_net_valid(context, host,
+                                                 share_net_id,
+                                                 session=None):
+    """Get share server DB records by host and share net not error"""
+    return IMPL.share_server_get_by_host_and_share_net_valid(context,
+                                                             host,
+                                                             share_net_id,
+                                                             session=session)
+
+
+def share_server_get_all(context):
+    """Get all share server DB records."""
+    return IMPL.share_server_get_all(context)
+
+
 ##################
 
 

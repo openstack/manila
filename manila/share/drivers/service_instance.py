@@ -204,14 +204,14 @@ class ServiceInstanceManager(object):
         else:
             return networks[0]['id']
 
-    def _get_service_instance_name(self, share_network_id):
+    def _get_service_instance_name(self, share_server_id):
         """Returns service vms name."""
         if self.driver_config:
             # Make service instance name unique for multibackend installation
             name = "%s_%s" % (self.driver_config.config_group,
-                              share_network_id)
+                              share_server_id)
         else:
-            name = share_network_id
+            name = share_server_id
         return self.get_config_option("service_instance_name_template") % name
 
     def _get_server_ip(self, server):
@@ -300,23 +300,24 @@ class ServiceInstanceManager(object):
                 self.max_time_to_build_instance)
 
     @synchronized()
-    def get_service_instance(self, context, share_network_id, create=False,
-                             return_inactive=False):
+    def get_service_instance(self, context, share_server_id, share_network_id,
+                             create=False, return_inactive=False):
         """Finds or creates and sets up service vm.
 
         :param context: defines context, that should be used
         :param share_network_id: it provides network data for service VM
+        :param share_server_id: provides server id for service VM
         :param create: allow create service VM or not
         :param return_inactive: allows to return not active VM, without
                                 raise of exception
         :returns: dict with data for service VM
         :raises: exception.ServiceInstanceException
         """
-        server = self.share_networks_servers.get(share_network_id, {})
+        server = self.share_networks_servers.get(share_server_id, {})
         if self._ensure_server(context, server, update=True):
             return server
         else:
-            server = self._discover_service_instance(context, share_network_id)
+            server = self._discover_service_instance(context, share_server_id)
             old_server_ip = None
             is_active = False
             if server:
@@ -328,10 +329,11 @@ class ServiceInstanceManager(object):
                     self._delete_server(context, server)
                 server = self._create_service_instance(context,
                                                        share_network_id,
+                                                       share_server_id,
                                                        old_server_ip)
                 is_active = True
 
-        self.share_networks_servers[share_network_id] = server
+        self.share_networks_servers[share_server_id] = server
         if is_active:
             server['share_network_id'] = share_network_id
             server['ip'] = self._get_server_ip(server)
@@ -346,9 +348,9 @@ class ServiceInstanceManager(object):
 
         return server
 
-    def _discover_service_instance(self, context, share_network_id):
+    def _discover_service_instance(self, context, share_server_id):
         server = {}
-        instance_name = self._get_service_instance_name(share_network_id)
+        instance_name = self._get_service_instance_name(share_server_id)
         search_opts = {'name': instance_name}
         servers = self.compute_api.server_list(context, search_opts, True)
         if len(servers) == 1:
@@ -413,10 +415,10 @@ class ServiceInstanceManager(object):
                                     _('Ambiguous image name.'))
 
     def _create_service_instance(self, context, share_network_id,
-                                 old_server_ip):
+                                 share_server_id, old_server_ip):
         """Creates service vm and sets up networking for it."""
         service_image_id = self._get_service_image(context)
-        instance_name = self._get_service_instance_name(share_network_id)
+        instance_name = self._get_service_instance_name(share_server_id)
 
         with lock:
             key_name = self._get_key(context)
@@ -648,12 +650,13 @@ class ServiceInstanceManager(object):
         else:
             raise exception.ServiceInstanceException(_('No available cidrs.'))
 
-    def delete_service_instance(self, context, share_network_id):
+    def delete_service_instance(self, context, share_network_id,
+                                share_server_id):
         """Removes share infrastructure.
 
         Deletes service vm and subnet, associated to share network.
         """
-        server = self._discover_service_instance(context, share_network_id)
+        server = self._discover_service_instance(context, share_server_id)
         if server:
             self._delete_server(context, server)
         subnet = self._get_service_subnet(share_network_id)

@@ -198,6 +198,10 @@ def upgrade(migrate_engine):
                String(length=36),
                ForeignKey('share_networks.id'),
                nullable=True),
+        Column('share_server_id',
+               String(length=36),
+               ForeignKey('share_servers.id'),
+               nullable=True),
         Column('share_proto', String(255)),
         Column('export_location', String(255)),
         Column('volume_type_id', String(length=36)),
@@ -297,6 +301,20 @@ def upgrade(migrate_engine):
         Column('ip_version', Integer, nullable=True),
         Column('name', String(length=255), nullable=True),
         Column('description', String(length=255), nullable=True),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8',
+    )
+
+    share_servers = Table(
+        'share_servers', meta,
+        Column('created_at', DateTime),
+        Column('updated_at', DateTime),
+        Column('deleted_at', DateTime),
+        Column('deleted', String(length=36), default='False'),
+        Column('id', String(length=36), primary_key=True, nullable=False),
+        Column('share_network_id', String(length=36),
+               ForeignKey('share_networks.id'), nullable=True),
+        Column('host', String(length=255), nullable=True),
         Column('status', String(length=32)),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
@@ -311,8 +329,8 @@ def upgrade(migrate_engine):
         Column('id', String(length=36), primary_key=True, nullable=False),
         Column('ip_address', String(length=64), nullable=True),
         Column('mac_address', String(length=32), nullable=True),
-        Column('share_network_id', String(length=36),
-               ForeignKey('share_networks.id'), nullable=False),
+        Column('share_server_id', String(length=36),
+               ForeignKey('share_servers.id'), nullable=False),
         Column('status', String(length=32)),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
@@ -363,9 +381,10 @@ def upgrade(migrate_engine):
     # Take care on create order for those with FK dependencies
     tables = [migrations, quotas, services, quota_classes, quota_usages,
               reservations, project_user_quotas, security_services,
-              share_networks, network_allocations, ss_nw_association,
-              shares, access_map, share_snapshots, share_metadata,
-              volume_types, volume_type_extra_specs]
+              share_networks, ss_nw_association,
+              share_servers, network_allocations, shares, access_map,
+              share_snapshots,
+              share_metadata, volume_types, volume_type_extra_specs]
 
     for table in tables:
         try:
@@ -380,8 +399,9 @@ def upgrade(migrate_engine):
                   "quota_classes", "quota_usages", "reservations",
                   "project_user_quotas", "share_access_map", "share_snapshots",
                   "share_metadata", "security_services", "share_networks",
-                  "network_allocations", "shares",
-                  "share_network_security_service_association"]
+                  "network_allocations", "shares", "share_servers",
+                  "share_network_security_service_association", "volume_types",
+                  "volume_type_extra_specs"]
 
         sql = "SET foreign_key_checks = 0;"
         for table in tables:

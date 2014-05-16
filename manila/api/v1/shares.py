@@ -210,12 +210,7 @@ class ShareController(wsgi.Controller):
             except exception.ShareNetworkNotFound as e:
                 msg = "%s" % e
                 raise exc.HTTPNotFound(explanation=msg)
-            if share_network['status'] != constants.STATUS_ACTIVE:
-                msg = _("Share network '%s' is not in 'ACTIVE' state.")
-                msg = msg % share_network["id"]
-                raise exc.HTTPBadRequest(explanation=msg)
-            else:
-                kwargs['share_network_id'] = share_network_id
+            kwargs['share_network_id'] = share_network_id
 
         display_name = share.get('display_name')
         display_description = share.get('display_description')

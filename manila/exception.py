@@ -235,6 +235,18 @@ class ShareNetworkNotFound(NotFound):
     message = _("Network %(share_network_id)s could not be found.")
 
 
+class ShareServerNotFound(NotFound):
+    message = _("Share Server %(share_server_id)s could not be found.")
+
+
+class ShareServerInUse(InUse):
+    message = _("Share Server %(share_server_id)s is in use.")
+
+
+class ShareServerNotCreated(ManilaException):
+    message = _("Share Server %(share_server_id)s failed on creation.")
+
+
 class InvalidImageRef(Invalid):
     message = _("Invalid image href %(image_href)s.")
 
@@ -388,8 +400,8 @@ class SnapshotLimitExceeded(QuotaError):
     message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
 
 
-class ActivatedShareNetworksLimitExceeded(QuotaError):
-    message = _("Maximum number of activated share-networks "
+class ShareNetworksLimitExceeded(QuotaError):
+    message = _("Maximum number of share-networks "
                 "allowed (%(allowed)d) exceeded")
 
 
