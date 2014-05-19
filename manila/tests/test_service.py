@@ -93,7 +93,7 @@ class ServiceFlagsTestCase(test.TestCase):
         app.stop()
         ref = db.service_get(context.get_admin_context(), app.service_id)
         db.service_destroy(context.get_admin_context(), app.service_id)
-        self.assert_(not ref['disabled'])
+        self.assertTrue(not ref['disabled'])
 
     def test_service_disabled_on_create_based_on_flag(self):
         self.flags(enable_new_services=False)
@@ -104,7 +104,7 @@ class ServiceFlagsTestCase(test.TestCase):
         app.stop()
         ref = db.service_get(context.get_admin_context(), app.service_id)
         db.service_destroy(context.get_admin_context(), app.service_id)
-        self.assert_(ref['disabled'])
+        self.assertTrue(ref['disabled'])
 
 
 class ServiceTestCase(test.TestCase):
@@ -123,7 +123,7 @@ class ServiceTestCase(test.TestCase):
         #             the looping calls are created in StartService.
         app = service.Service.create(host=host, binary=binary, topic=topic)
 
-        self.assert_(app)
+        self.assertTrue(app)
 
     def test_report_state_newly_disconnected(self):
         host = 'foo'
@@ -156,7 +156,7 @@ class ServiceTestCase(test.TestCase):
                                'manila.tests.test_service.FakeManager')
         serv.start()
         serv.report_state()
-        self.assert_(serv.model_disconnected)
+        self.assertTrue(serv.model_disconnected)
 
     def test_report_state_newly_connected(self):
         host = 'foo'
@@ -193,7 +193,7 @@ class ServiceTestCase(test.TestCase):
         serv.model_disconnected = True
         serv.report_state()
 
-        self.assert_(not serv.model_disconnected)
+        self.assertTrue(not serv.model_disconnected)
 
 
 class TestWSGIService(test.TestCase):
