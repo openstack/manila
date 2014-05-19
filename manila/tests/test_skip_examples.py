@@ -43,5 +43,5 @@ class ExampleSkipTestCase(test.TestCase):
         ExampleSkipTestCase.test_counter += 1
 
     def test_003_verify_test_counter(self):
-        self.assertEquals(ExampleSkipTestCase.test_counter, 2,
-                          "Tests were not skipped appropriately")
+        self.assertEqual(ExampleSkipTestCase.test_counter, 2,
+                         "Tests were not skipped appropriately")

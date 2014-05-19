@@ -79,8 +79,8 @@ exit 1
                                                           'always get passed '
                                                           'correctly')
             runs = int(runs.strip())
-            self.assertEquals(runs, 10,
-                              'Ran %d times instead of 10.' % (runs,))
+            self.assertEqual(runs, 10,
+                             'Ran %d times instead of 10.' % (runs,))
         finally:
             os.unlink(tmpfilename)
             os.unlink(tmpfilename2)
@@ -126,104 +126,104 @@ class GetFromPathTestCase(test.TestCase):
         f = utils.get_from_path
 
         input = []
-        self.assertEquals([], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [None]
-        self.assertEquals([], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': None}]
-        self.assertEquals([], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': None}}]
-        self.assertEquals([{'b': None}], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': None}], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': None}}}]
-        self.assertEquals([{'b': {'c': None}}], f(input, "a"))
-        self.assertEquals([{'c': None}], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': None}}], f(input, "a"))
+        self.assertEqual([{'c': None}], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': None}}}, {'a': None}]
-        self.assertEquals([{'b': {'c': None}}], f(input, "a"))
-        self.assertEquals([{'c': None}], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': None}}], f(input, "a"))
+        self.assertEqual([{'c': None}], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': None}}}, {'a': {'b': None}}]
-        self.assertEquals([{'b': {'c': None}}, {'b': None}], f(input, "a"))
-        self.assertEquals([{'c': None}], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': None}}, {'b': None}], f(input, "a"))
+        self.assertEqual([{'c': None}], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
     def test_does_select(self):
         f = utils.get_from_path
 
         input = [{'a': 'a_1'}]
-        self.assertEquals(['a_1'], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual(['a_1'], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': 'b_1'}}]
-        self.assertEquals([{'b': 'b_1'}], f(input, "a"))
-        self.assertEquals(['b_1'], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': 'b_1'}], f(input, "a"))
+        self.assertEqual(['b_1'], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': 'c_1'}}}]
-        self.assertEquals([{'b': {'c': 'c_1'}}], f(input, "a"))
-        self.assertEquals([{'c': 'c_1'}], f(input, "a/b"))
-        self.assertEquals(['c_1'], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': 'c_1'}}], f(input, "a"))
+        self.assertEqual([{'c': 'c_1'}], f(input, "a/b"))
+        self.assertEqual(['c_1'], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': 'c_1'}}}, {'a': None}]
-        self.assertEquals([{'b': {'c': 'c_1'}}], f(input, "a"))
-        self.assertEquals([{'c': 'c_1'}], f(input, "a/b"))
-        self.assertEquals(['c_1'], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': 'c_1'}}], f(input, "a"))
+        self.assertEqual([{'c': 'c_1'}], f(input, "a/b"))
+        self.assertEqual(['c_1'], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': 'c_1'}}},
                  {'a': {'b': None}}]
-        self.assertEquals([{'b': {'c': 'c_1'}}, {'b': None}], f(input, "a"))
-        self.assertEquals([{'c': 'c_1'}], f(input, "a/b"))
-        self.assertEquals(['c_1'], f(input, "a/b/c"))
+        self.assertEqual([{'b': {'c': 'c_1'}}, {'b': None}], f(input, "a"))
+        self.assertEqual([{'c': 'c_1'}], f(input, "a/b"))
+        self.assertEqual(['c_1'], f(input, "a/b/c"))
 
         input = [{'a': {'b': {'c': 'c_1'}}},
                  {'a': {'b': {'c': 'c_2'}}}]
-        self.assertEquals([{'b': {'c': 'c_1'}}, {'b': {'c': 'c_2'}}],
+        self.assertEqual([{'b': {'c': 'c_1'}}, {'b': {'c': 'c_2'}}],
                           f(input, "a"))
-        self.assertEquals([{'c': 'c_1'}, {'c': 'c_2'}], f(input, "a/b"))
-        self.assertEquals(['c_1', 'c_2'], f(input, "a/b/c"))
+        self.assertEqual([{'c': 'c_1'}, {'c': 'c_2'}], f(input, "a/b"))
+        self.assertEqual(['c_1', 'c_2'], f(input, "a/b/c"))
 
-        self.assertEquals([], f(input, "a/b/c/d"))
-        self.assertEquals([], f(input, "c/a/b/d"))
-        self.assertEquals([], f(input, "i/r/t"))
+        self.assertEqual([], f(input, "a/b/c/d"))
+        self.assertEqual([], f(input, "c/a/b/d"))
+        self.assertEqual([], f(input, "i/r/t"))
 
     def test_flattens_lists(self):
         f = utils.get_from_path
 
         input = [{'a': [1, 2, 3]}]
-        self.assertEquals([1, 2, 3], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': [1, 2, 3]}}]
-        self.assertEquals([{'b': [1, 2, 3]}], f(input, "a"))
-        self.assertEquals([1, 2, 3], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': [1, 2, 3]}], f(input, "a"))
+        self.assertEqual([1, 2, 3], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': {'b': [1, 2, 3]}}, {'a': {'b': [4, 5, 6]}}]
-        self.assertEquals([1, 2, 3, 4, 5, 6], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3, 4, 5, 6], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': [{'b': [1, 2, 3]}, {'b': [4, 5, 6]}]}]
-        self.assertEquals([1, 2, 3, 4, 5, 6], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3, 4, 5, 6], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = [{'a': [1, 2, {'b': 'b_1'}]}]
-        self.assertEquals([1, 2, {'b': 'b_1'}], f(input, "a"))
-        self.assertEquals(['b_1'], f(input, "a/b"))
+        self.assertEqual([1, 2, {'b': 'b_1'}], f(input, "a"))
+        self.assertEqual(['b_1'], f(input, "a/b"))
 
     def test_bad_xpath(self):
         f = utils.get_from_path
@@ -251,29 +251,29 @@ class GetFromPathTestCase(test.TestCase):
 
         private_ips = f(inst, 'fixed_ip/address')
         public_ips = f(inst, 'fixed_ip/floating_ips/address')
-        self.assertEquals(['192.168.0.3'], private_ips)
-        self.assertEquals(['1.2.3.4'], public_ips)
+        self.assertEqual(['192.168.0.3'], private_ips)
+        self.assertEqual(['1.2.3.4'], public_ips)
 
     def test_accepts_dictionaries(self):
         f = utils.get_from_path
 
         input = {'a': [1, 2, 3]}
-        self.assertEquals([1, 2, 3], f(input, "a"))
-        self.assertEquals([], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3], f(input, "a"))
+        self.assertEqual([], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = {'a': {'b': [1, 2, 3]}}
-        self.assertEquals([{'b': [1, 2, 3]}], f(input, "a"))
-        self.assertEquals([1, 2, 3], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([{'b': [1, 2, 3]}], f(input, "a"))
+        self.assertEqual([1, 2, 3], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = {'a': [{'b': [1, 2, 3]}, {'b': [4, 5, 6]}]}
-        self.assertEquals([1, 2, 3, 4, 5, 6], f(input, "a/b"))
-        self.assertEquals([], f(input, "a/b/c"))
+        self.assertEqual([1, 2, 3, 4, 5, 6], f(input, "a/b"))
+        self.assertEqual([], f(input, "a/b/c"))
 
         input = {'a': [1, 2, {'b': 'b_1'}]}
-        self.assertEquals([1, 2, {'b': 'b_1'}], f(input, "a"))
-        self.assertEquals(['b_1'], f(input, "a/b"))
+        self.assertEqual([1, 2, {'b': 'b_1'}], f(input, "a"))
+        self.assertEqual(['b_1'], f(input, "a/b"))
 
 
 class GenericUtilsTestCase(test.TestCase):
@@ -454,7 +454,7 @@ class GenericUtilsTestCase(test.TestCase):
         flo = StringIO.StringIO(data)
         h1 = utils.hash_file(flo)
         h2 = hashlib.sha1(data).hexdigest()
-        self.assertEquals(h1, h2)
+        self.assertEqual(h1, h2)
 
 
 class MonkeyPatchTestCase(test.TestCase):
@@ -524,126 +524,126 @@ class AuditPeriodTest(test.TestCase):
 
     def test_hour(self):
         begin, end = utils.last_completed_audit_period(unit='hour')
-        self.assertEquals(begin,
-                          datetime.datetime(hour=7,
-                                            day=5,
-                                            month=3,
-                                            year=2012))
-        self.assertEquals(end, datetime.datetime(hour=8,
-                                                 day=5,
-                                                 month=3,
-                                                 year=2012))
+        self.assertEqual(begin,
+                         datetime.datetime(hour=7,
+                                           day=5,
+                                           month=3,
+                                           year=2012))
+        self.assertEqual(end, datetime.datetime(hour=8,
+                                                day=5,
+                                                month=3,
+                                                year=2012))
 
     def test_hour_with_offset_before_current(self):
         begin, end = utils.last_completed_audit_period(unit='hour@10')
-        self.assertEquals(begin, datetime.datetime(minute=10,
-                                                   hour=7,
-                                                   day=5,
-                                                   month=3,
-                                                   year=2012))
-        self.assertEquals(end, datetime.datetime(minute=10,
-                                                 hour=8,
-                                                 day=5,
-                                                 month=3,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(minute=10,
+                                                  hour=7,
+                                                  day=5,
+                                                  month=3,
+                                                  year=2012))
+        self.assertEqual(end, datetime.datetime(minute=10,
+                                                hour=8,
+                                                day=5,
+                                                month=3,
+                                                year=2012))
 
     def test_hour_with_offset_after_current(self):
         begin, end = utils.last_completed_audit_period(unit='hour@30')
-        self.assertEquals(begin, datetime.datetime(minute=30,
-                                                   hour=6,
-                                                   day=5,
-                                                   month=3,
-                                                   year=2012))
-        self.assertEquals(end, datetime.datetime(minute=30,
-                                                 hour=7,
-                                                 day=5,
-                                                 month=3,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(minute=30,
+                                                  hour=6,
+                                                  day=5,
+                                                  month=3,
+                                                  year=2012))
+        self.assertEqual(end, datetime.datetime(minute=30,
+                                                hour=7,
+                                                day=5,
+                                                month=3,
+                                                year=2012))
 
     def test_day(self):
         begin, end = utils.last_completed_audit_period(unit='day')
-        self.assertEquals(begin, datetime.datetime(day=4,
-                                                   month=3,
-                                                   year=2012))
-        self.assertEquals(end, datetime.datetime(day=5,
-                                                 month=3,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(day=4,
+                                                  month=3,
+                                                  year=2012))
+        self.assertEqual(end, datetime.datetime(day=5,
+                                                month=3,
+                                                year=2012))
 
     def test_day_with_offset_before_current(self):
         begin, end = utils.last_completed_audit_period(unit='day@6')
-        self.assertEquals(begin, datetime.datetime(hour=6,
-                                                   day=4,
-                                                   month=3,
-                                                   year=2012))
-        self.assertEquals(end, datetime.datetime(hour=6,
-                                                 day=5,
-                                                 month=3,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(hour=6,
+                                                  day=4,
+                                                  month=3,
+                                                  year=2012))
+        self.assertEqual(end, datetime.datetime(hour=6,
+                                                day=5,
+                                                month=3,
+                                                year=2012))
 
     def test_day_with_offset_after_current(self):
         begin, end = utils.last_completed_audit_period(unit='day@10')
-        self.assertEquals(begin, datetime.datetime(hour=10,
-                                                   day=3,
-                                                   month=3,
-                                                   year=2012))
-        self.assertEquals(end, datetime.datetime(hour=10,
-                                                 day=4,
-                                                 month=3,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(hour=10,
+                                                  day=3,
+                                                  month=3,
+                                                  year=2012))
+        self.assertEqual(end, datetime.datetime(hour=10,
+                                                day=4,
+                                                month=3,
+                                                year=2012))
 
     def test_month(self):
         begin, end = utils.last_completed_audit_period(unit='month')
-        self.assertEquals(begin, datetime.datetime(day=1,
-                                                   month=2,
-                                                   year=2012))
-        self.assertEquals(end, datetime.datetime(day=1,
-                                                 month=3,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(day=1,
+                                                  month=2,
+                                                  year=2012))
+        self.assertEqual(end, datetime.datetime(day=1,
+                                                month=3,
+                                                year=2012))
 
     def test_month_with_offset_before_current(self):
         begin, end = utils.last_completed_audit_period(unit='month@2')
-        self.assertEquals(begin, datetime.datetime(day=2,
-                                                   month=2,
-                                                   year=2012))
-        self.assertEquals(end, datetime.datetime(day=2,
-                                                 month=3,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(day=2,
+                                                  month=2,
+                                                  year=2012))
+        self.assertEqual(end, datetime.datetime(day=2,
+                                                month=3,
+                                                year=2012))
 
     def test_month_with_offset_after_current(self):
         begin, end = utils.last_completed_audit_period(unit='month@15')
-        self.assertEquals(begin, datetime.datetime(day=15,
-                                                   month=1,
-                                                   year=2012))
-        self.assertEquals(end, datetime.datetime(day=15,
-                                                 month=2,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(day=15,
+                                                  month=1,
+                                                  year=2012))
+        self.assertEqual(end, datetime.datetime(day=15,
+                                                month=2,
+                                                year=2012))
 
     def test_year(self):
         begin, end = utils.last_completed_audit_period(unit='year')
-        self.assertEquals(begin, datetime.datetime(day=1,
-                                                   month=1,
-                                                   year=2011))
-        self.assertEquals(end, datetime.datetime(day=1,
-                                                 month=1,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(day=1,
+                                                  month=1,
+                                                  year=2011))
+        self.assertEqual(end, datetime.datetime(day=1,
+                                                month=1,
+                                                year=2012))
 
     def test_year_with_offset_before_current(self):
         begin, end = utils.last_completed_audit_period(unit='year@2')
-        self.assertEquals(begin, datetime.datetime(day=1,
-                                                   month=2,
-                                                   year=2011))
-        self.assertEquals(end, datetime.datetime(day=1,
-                                                 month=2,
-                                                 year=2012))
+        self.assertEqual(begin, datetime.datetime(day=1,
+                                                  month=2,
+                                                  year=2011))
+        self.assertEqual(end, datetime.datetime(day=1,
+                                                month=2,
+                                                year=2012))
 
     def test_year_with_offset_after_current(self):
         begin, end = utils.last_completed_audit_period(unit='year@6')
-        self.assertEquals(begin, datetime.datetime(day=1,
-                                                   month=6,
-                                                   year=2010))
-        self.assertEquals(end, datetime.datetime(day=1,
-                                                 month=6,
-                                                 year=2011))
+        self.assertEqual(begin, datetime.datetime(day=1,
+                                                  month=6,
+                                                  year=2010))
+        self.assertEqual(end, datetime.datetime(day=1,
+                                                month=6,
+                                                year=2011))
 
 
 class FakeSSHClient(object):
