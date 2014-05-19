@@ -19,6 +19,7 @@ import ConfigParser
 import os
 import re
 import shutil
+import threading
 import time
 
 from oslo.config import cfg
@@ -169,7 +170,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """
         return os.path.join(self.configuration.share_mount_path, share['name'])
 
-    @synchronized
+    @synchronized()
     def _attach_volume(self, context, share, server, volume):
         """Attaches cinder volume to service vm."""
         if volume['status'] == 'in-use':
@@ -230,7 +231,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     _('Error. Ambiguous volume snaphots'))
         return volume_snapshot
 
-    @synchronized
+    @synchronized()
     def _detach_volume(self, context, share, server):
         """Detaches cinder volume from service vm."""
         attached_volumes = [vol.id for vol in
@@ -560,6 +561,7 @@ class CIFSHelper(NASHelperBase):
             local_config = self._create_local_config(share_network_id)
         return local_config
 
+    @synchronized(lock_type=threading.Lock())
     def init_helper(self, server):
         self._recreate_template_config()
         local_config = self._create_local_config(server['share_network_id'])
@@ -584,6 +586,7 @@ class CIFSHelper(NASHelperBase):
         _ssh_exec(server, ['sudo', 'smbd', '-s', self.config_path])
         self._restart_service(server)
 
+    @synchronized(lock_type=threading.Lock())
     def create_export(self, server, share_name, recreate=False):
         """Create new export, delete old one if exists."""
         local_path = os.path.join(self.configuration.share_mount_path,
@@ -612,6 +615,7 @@ class CIFSHelper(NASHelperBase):
         self._restart_service(server)
         return '//%s/%s' % (server['ip'], share_name)
 
+    @synchronized(lock_type=threading.Lock())
     def remove_export(self, server, share_name):
         """Remove export."""
         config = self._get_local_config(server['share_network_id'])
@@ -625,12 +629,13 @@ class CIFSHelper(NASHelperBase):
         _ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
                   share_name])
 
-    @synchronized
+    @synchronized(lock_type=threading.Lock())
     def _write_remote_config(self, config, server):
         with open(config, 'r') as f:
             cfg = "'%s'" % f.read()
         _ssh_exec(server, ['echo %s > %s' % (cfg, self.config_path)])
 
+    @synchronized(lock_type=threading.Lock())
     def allow_access(self, server, share_name, access_type, access):
         """Allow access to the host."""
         if access_type != 'ip':
@@ -651,6 +656,7 @@ class CIFSHelper(NASHelperBase):
         self._write_remote_config(config, server)
         self._restart_service(server)
 
+    @synchronized(lock_type=threading.Lock())
     def deny_access(self, server, share_name, access_type, access,
                     force=False):
         """Deny access to the host."""
@@ -678,6 +684,7 @@ class CIFSHelper(NASHelperBase):
         parser.set('global', 'server string', '%h server (Samba, Openstack)')
         self._update_config(parser, self.smb_template_config)
 
+    @synchronized(lock_type=threading.Lock())
     def _restart_service(self, server):
         _ssh_exec(server, 'sudo pkill -HUP smbd'.split())
 
