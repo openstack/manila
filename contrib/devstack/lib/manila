@@ -34,8 +34,6 @@ MANILACLIENT_BRANCH=master
 
 SHARE_BACKING_FILE_SIZE=${SHARE_BACKING_FILE_SIZE:-8400M}
 
-MANILA_SECURE_DELETE=`trueorfalse True $MANILA_SECURE_DELETE`
-
 # set up default driver
 MANILA_DRIVER=${MANILA_DRIVER:-default}
 
@@ -192,7 +190,7 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT debug True
     iniset $MANILA_CONF DEFAULT verbose True
     iniset $MANILA_CONF DEFAULT scheduler_driver $MANILA_SCHEDULER_DRIVER
-    iniset $MANILA_CONF DEFAULT share_export_ip $SHARE_EXPORT_IP 
+    iniset $MANILA_CONF DEFAULT share_export_ip $SHARE_EXPORT_IP
     iniset $MANILA_CONF DEFAULT share_volume_group $SHARE_GROUP
     iniset $MANILA_CONF DEFAULT share_name_template ${SHARE_NAME_PREFIX}%s
     iniset $MANILA_CONF DEFAULT iscsi_helper tgtadm
@@ -228,11 +226,6 @@ function configure_manila {
     fi
 
     iniset_rpc_backend manila $MANILA_CONF DEFAULT
-
-    if [[ "$MANILA_SECURE_DELETE" == "False" ]]; then
-        iniset $MANILA_CONF DEFAULT secure_delete False
-        iniset $MANILA_CONF DEFAULT share_clear none
-    fi
 
     if [ "$LOG_COLOR" == "True" ] && [ "$SYSLOG" == "False" ]; then
         # Add color to logging output
@@ -343,14 +336,10 @@ function create_manila_accounts {
 
 # init_manila - Initialize database and volume group
 function init_manila {
-    # Force nova volumes off 
-    # NOVA_ENABLED_APIS=$(echo $NOVA_ENABLED_APIS | sed "s/osapi_volume,//")
 
     if is_service_enabled $DATABASE_BACKENDS; then
         # (re)create manila database
         recreate_database manila utf8
-
-        # (re)create manila database
         $MANILA_BIN_DIR/manila-manage db sync
     fi
 
