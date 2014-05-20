@@ -224,13 +224,11 @@ class BaseSharesTest(test.BaseTestCase):
         return share_network_id
 
     @classmethod
-    def create_share_wait_for_active(cls, share_protocol=None, size=1,
-                                     name=None, snapshot_id=None,
-                                     description=None, metadata={},
-                                     share_network_id=None,
-                                     volume_type_id=None,
-                                     client=None,
-                                     cleanup_in_class=True):
+    def create_share(cls, share_protocol=None, size=1, name=None,
+                     snapshot_id=None, description=None, metadata={},
+                     share_network_id=None, volume_type_id=None,
+                     client=None, cleanup_in_class=True,
+                     wait_for_active=True):
         if client is None:
             client = cls.shares_client
         if description is None:
@@ -251,7 +249,8 @@ class BaseSharesTest(test.BaseTestCase):
             cls.class_resources.insert(0, resource)
         else:
             cls.method_resources.insert(0, resource)
-        client.wait_for_share_status(s["id"], "available")
+        if wait_for_active:
+            client.wait_for_share_status(s["id"], "available")
         return r, s
 
     @classmethod

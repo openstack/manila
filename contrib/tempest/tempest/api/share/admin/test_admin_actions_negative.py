@@ -27,7 +27,7 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     @classmethod
     def setUpClass(cls):
         super(AdminActionsNegativeTest, cls).setUpClass()
-        __, cls.sh = cls.create_share_wait_for_active()
+        __, cls.sh = cls.create_share()
         __, cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
         cls.member_shares_client = clients.Manager().shares_client
 

@@ -50,7 +50,7 @@ class VolumeTypesAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_create_share_with_nonexistent_volume_type(self):
         self.assertRaises(exceptions.NotFound,
-                          self.create_share_wait_for_active,
+                          self.create_share,
                           volume_type_id=data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])

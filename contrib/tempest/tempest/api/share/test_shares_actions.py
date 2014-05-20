@@ -31,8 +31,7 @@ class SharesTest(base.BaseSharesTest):
         cls.share_name = data_utils.rand_name("tempest-share-name")
         cls.share_desc = data_utils.rand_name("tempest-share-description")
         cls.share_size = 1
-        __, cls.share = cls.\
-            create_share_wait_for_active(name=cls.share_name,
+        __, cls.share = cls.create_share(name=cls.share_name,
                                          description=cls.share_desc,
                                          size=cls.share_size)
         # create snapshot
@@ -190,8 +189,7 @@ class SharesRenameTest(base.BaseSharesTest):
         cls.share_name = data_utils.rand_name("tempest-share-name")
         cls.share_desc = data_utils.rand_name("tempest-share-description")
         cls.share_size = 1
-        __, cls.share = cls.\
-            create_share_wait_for_active(name=cls.share_name,
+        __, cls.share = cls.create_share(name=cls.share_name,
                                          description=cls.share_desc,
                                          size=cls.share_size)
         # create snapshot

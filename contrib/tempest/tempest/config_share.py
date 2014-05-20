@@ -75,6 +75,13 @@ ShareGroup = [
                default="",
                help="Share network id, that will be used for shares"
                     " in admin tenant. If not set, it won't be used"),
+    cfg.BoolOpt("multi_backend",
+               default=False,
+               help="Runs Manila multi-backend tests."),
+    cfg.ListOpt("backend_names",
+                default=[],
+                help="Names of share backends, that will be used with "
+                     "multibackend tests. Tempest will use first two values."),
     cfg.IntOpt("build_interval",
                default=3,
                help="Time in seconds between share availability checks."),

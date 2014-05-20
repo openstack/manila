@@ -23,7 +23,7 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
     @classmethod
     def setUpClass(cls):
         super(SharesMetadataNegativeTest, cls).setUpClass()
-        __, cls.share = cls.create_share_wait_for_active()
+        __, cls.share = cls.create_share()
 
     @test.attr(type=["gate", "negative", ])
     def test_try_set_metadata_to_unexisting_share(self):

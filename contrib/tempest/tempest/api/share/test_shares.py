@@ -31,13 +31,13 @@ class SharesNFSTest(base.BaseSharesTest):
         if cls.protocol not in CONF.share.enable_protocols:
             message = "%s tests are disabled" % cls.protocol
             raise cls.skipException(message)
-        __, cls.share = cls.create_share_wait_for_active(cls.protocol)
+        __, cls.share = cls.create_share(cls.protocol)
 
     @test.attr(type=["gate", ])
     def test_create_delete_share(self):
 
         # create share
-        resp, share = self.create_share_wait_for_active(self.protocol)
+        resp, share = self.create_share(self.protocol)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
         # delete share
@@ -70,9 +70,8 @@ class SharesNFSTest(base.BaseSharesTest):
                                                         cleanup_in_class=False)
 
         # crate share from snapshot
-        resp, s2 = self.create_share_wait_for_active(self.protocol,
-                                                     snapshot_id=snap["id"],
-                                                     cleanup_in_class=False)
+        resp, s2 = self.create_share(self.protocol, snapshot_id=snap["id"],
+                                     cleanup_in_class=False)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
         # verify share, created from snapshot

@@ -86,7 +86,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         # share can not be deleted while snapshot exists
 
         # create share
-        __, share = self.create_share_wait_for_active()
+        __, share = self.create_share()
 
         # create snapshot
         self.create_snapshot_wait_for_active(share["id"])
@@ -102,7 +102,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         skip_msg = "Check disc space for this test"
 
         try:  # create share
-            __, share = self.create_share_wait_for_active(
+            __, share = self.create_share(
                 size=2, cleanup_in_class=False)
         except share_exceptions.ShareBuildErrorException:
             self.skip(skip_msg)
@@ -115,7 +115,7 @@ class SharesNegativeTest(base.BaseSharesTest):
 
         # try create share from snapshot with less size
         self.assertRaises(exceptions.BadRequest,
-                          self.create_share_wait_for_active,
+                          self.create_share,
                           size=1, snapshot_id=snap["id"],
                           cleanup_in_class=False)
 

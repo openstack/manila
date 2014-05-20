@@ -91,7 +91,7 @@ class VolumeTypesAdminTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
         # Create share with volume type
-        resp, share = self.create_share_wait_for_active(
+        resp, share = self.create_share(
             name=share_name, volume_type_id=vt_create["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(share["name"], share_name)

@@ -32,7 +32,7 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
             msg = "IP rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
         # create share
-        __, cls.share = cls.create_share_wait_for_active(cls.protocol)
+        __, cls.share = cls.create_share(cls.protocol)
         # create snapshot
         __, cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
@@ -120,7 +120,7 @@ class ShareSidRulesForNFSNegativeTest(base.BaseSharesTest):
             msg = "SID rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
         # create share
-        __, cls.share = cls.create_share_wait_for_active(cls.protocol)
+        __, cls.share = cls.create_share(cls.protocol)
         # create snapshot
         __, cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
@@ -190,7 +190,7 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
             cls.message = "Rule tests are disabled"
             raise cls.skipException(cls.message)
         # create share
-        __, cls.share = cls.create_share_wait_for_active()
+        __, cls.share = cls.create_share()
         # create snapshot
         __, cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 

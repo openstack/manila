@@ -22,7 +22,7 @@ class SharesMetadataTest(base.BaseSharesTest):
     @classmethod
     def setUpClass(cls):
         super(SharesMetadataTest, cls).setUpClass()
-        __, cls.share = cls.create_share_wait_for_active()
+        __, cls.share = cls.create_share()
 
     @test.attr(type=["gate", ])
     def test_set_metadata_in_share_creation(self):
@@ -30,8 +30,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         md = {u"key1": u"value1", u"key2": u"value2", }
 
         # create share with metadata
-        __, share = self.create_share_wait_for_active(metadata=md,
-                                                      cleanup_in_class=False)
+        __, share = self.create_share(metadata=md, cleanup_in_class=False)
 
         # get metadata of share
         resp, metadata = self.shares_client.get_metadata(share["id"])
@@ -46,7 +45,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         md = {u"key3": u"value3", u"key4": u"value4", }
 
         # create share
-        __, share = self.create_share_wait_for_active(cleanup_in_class=False)
+        __, share = self.create_share(cleanup_in_class=False)
 
         # set metadata
         resp, __ = self.shares_client.set_metadata(share["id"], md)
@@ -76,7 +75,7 @@ class SharesMetadataTest(base.BaseSharesTest):
         md2 = {u"key7": u"value7", u"key8": u"value8", }
 
         # create share
-        __, share = self.create_share_wait_for_active(cleanup_in_class=False)
+        __, share = self.create_share(cleanup_in_class=False)
 
         # set metadata
         resp, __ = self.shares_client.set_metadata(share["id"], md1)

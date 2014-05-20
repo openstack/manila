@@ -23,7 +23,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
     def setUpClass(cls):
         super(AdminActionsTest, cls).setUpClass()
         cls.states = ["error", "available"]
-        __, cls.sh = cls.create_share_wait_for_active()
+        __, cls.sh = cls.create_share()
         __, cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
 
     @test.attr(type=["gate", ])

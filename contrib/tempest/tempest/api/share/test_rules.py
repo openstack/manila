@@ -31,7 +31,7 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
             cls.protocol not in CONF.share.enable_ip_rules_for_protocols):
             msg = "IP rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
-        __, cls.share = cls.create_share_wait_for_active(cls.protocol)
+        __, cls.share = cls.create_share(cls.protocol)
 
     @test.attr(type=["gate", ])
     def test_create_delete_access_rules_with_one_ip(self):
@@ -88,7 +88,7 @@ class ShareSidRulesForNFSTest(base.BaseSharesTest):
             cls.protocol not in CONF.share.enable_sid_rules_for_protocols):
             msg = "SID rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
-        __, cls.share = cls.create_share_wait_for_active(cls.protocol)
+        __, cls.share = cls.create_share(cls.protocol)
 
     @test.attr(type=["gate", ])
     def test_create_delete_sid_rule(self):
@@ -126,7 +126,7 @@ class ShareRulesTest(base.BaseSharesTest):
                     for p in cls.protocols)):
             cls.message = "Rule tests are disabled"
             raise cls.skipException(cls.message)
-        __, cls.share = cls.create_share_wait_for_active()
+        __, cls.share = cls.create_share()
 
     def setUp(self):
         # Here we choose protocol and rule type for
@@ -183,7 +183,7 @@ class ShareRulesTest(base.BaseSharesTest):
     def test_access_rules_deleted_if_share_deleted(self):
 
         # create share
-        __, share = self.create_share_wait_for_active()
+        __, share = self.create_share()
 
         # create rule
         resp, rule = self.shares_client.create_access_rule(share["id"],
