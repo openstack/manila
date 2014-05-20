@@ -87,34 +87,29 @@ CONF.register_opts(server_opts)
 lock = threading.Lock()
 
 
-def synchronized(lock_type=None):
+def synchronized(f):
     """Decorates function with unique locks for each share network.
 
     Share network id must be provided either as value/attribute
     of one of args or as named argument.
     """
 
-    if lock_type is None:
-        lock_type = threading.RLock()
-
-    def set_lock_type(f):
-        def wrapped_func(self, *args, **kwargs):
-            share_network_id = kwargs.get('share_network_id', None)
-            if not share_network_id:
-                for arg in args:
-                    share_network_id = getattr(arg, 'share_network_id', None)
-                    if isinstance(arg, dict):
-                        share_network_id = arg.get('share_network_id', None)
-                    if share_network_id:
-                        break
-                else:
-                    msg = _("Could not get share network id.")
-                    raise exception.ServiceInstanceException(msg)
-            with self.share_networks_locks.setdefault(share_network_id,
-                                                      lock_type):
-                return f(self, *args, **kwargs)
-        return wrapped_func
-    return set_lock_type
+    def wrapped_func(self, *args, **kwargs):
+        share_network_id = kwargs.get('share_network_id', None)
+        if not share_network_id:
+            for arg in args:
+                share_network_id = getattr(arg, 'share_network_id', None)
+                if isinstance(arg, dict):
+                    share_network_id = arg.get('share_network_id', None)
+                if share_network_id:
+                    break
+            else:
+                msg = _("Could not get share network id.")
+                raise exception.ServiceInstanceException(msg)
+        with self.share_networks_locks.setdefault(share_network_id,
+                                                  threading.Lock()):
+            return f(self, *args, **kwargs)
+    return wrapped_func
 
 
 def _ssh_exec(server, command):
@@ -299,7 +294,7 @@ class ServiceInstanceManager(object):
                 'been deleted in %ss. Giving up.') %
                 self.max_time_to_build_instance)
 
-    @synchronized()
+    @synchronized
     def get_service_instance(self, context, share_server_id, share_network_id,
                              create=False, return_inactive=False):
         """Finds or creates and sets up service vm.
