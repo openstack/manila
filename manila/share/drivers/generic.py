@@ -100,7 +100,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.volume_api = volume.API()
         self.service_instance_manager = service_instance.\
             ServiceInstanceManager(self.db, self._helpers,
-                                   backend_name=self.backend_name)
+                                   driver_config=self.configuration)
         self.get_service_instance = self.service_instance_manager.\
                 get_service_instance
         self.delete_service_instance = self.service_instance_manager.\

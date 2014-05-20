@@ -135,14 +135,28 @@ class ServiceInstanceManager(object):
                                 infrastructure.
     """
 
+    def get_config_option(self, key):
+        """Returns value of config option.
+
+        :param key: key of config' option.
+        :returns: str -- value of config's option.
+                  first priority is driver's config,
+                  second priority is global config.
+        """
+        value = None
+        if self.driver_config:
+            value = self.driver_config.safe_get(key)
+        else:
+            value = CONF.get(key)
+        return value
+
     def __init__(self, db, _helpers, *args, **kwargs):
         """Do initialization."""
-        self.backend_name = ""
-        if "backend_name" in kwargs:
-            self.backend_name = kwargs.get("backend_name")
-            del kwargs["backend_name"]
-        super(ServiceInstanceManager, self).__init__(*args, **kwargs)
-        if not CONF.service_instance_user:
+        super(ServiceInstanceManager, self).__init__()
+        self.driver_config = None
+        if "driver_config" in kwargs:
+            self.driver_config = kwargs["driver_config"]
+        if not self.get_config_option("service_instance_user"):
             raise exception.ServiceInstanceException(_('Service instance user '
                                                        'is not specified'))
         self.admin_context = context.get_admin_context()
@@ -166,12 +180,18 @@ class ServiceInstanceManager(object):
         self.share_networks_locks = {}
         self.share_networks_servers = {}
         self.service_network_id = self._get_service_network()
-        self.vif_driver = importutils.import_class(CONF.interface_driver)()
+        self.vif_driver = importutils.import_class(
+            self.get_config_option("interface_driver"))()
         self._setup_connectivity_with_service_instances()
+        self.max_time_to_build_instance = self.get_config_option(
+            "max_time_to_build_instance")
+        self.path_to_private_key = self.get_config_option(
+            "path_to_private_key")
+        self.path_to_public_key = self.get_config_option("path_to_public_key")
 
     def _get_service_network(self):
         """Finds existing or creates new service network."""
-        service_network_name = CONF.service_network_name
+        service_network_name = self.get_config_option("service_network_name")
         networks = [network for network in self.neutron_api.
                     get_all_tenant_networks(self.service_tenant_id)
                     if network['name'] == service_network_name]
@@ -186,32 +206,35 @@ class ServiceInstanceManager(object):
 
     def _get_service_instance_name(self, share_network_id):
         """Returns service vms name."""
-        if self.backend_name:
-            name = "%s_%s" % (self.backend_name, share_network_id)
+        if self.driver_config:
+            # Make service instance name unique for multibackend installation
+            name = "%s_%s" % (self.driver_config.config_group,
+                              share_network_id)
         else:
             name = share_network_id
-        return CONF.service_instance_name_template % name
+        return self.get_config_option("service_instance_name_template") % name
 
     def _get_server_ip(self, server):
         """Returns service vms ip address."""
         net = server['networks']
         try:
-            net_ips = net[CONF.service_network_name]
+            net_ips = net[self.get_config_option("service_network_name")]
             return net_ips[0]
         except KeyError:
             msg = _('Service vm is not attached to %s network.')
         except IndexError:
             msg = _('Service vm has no ips on %s network.')
-        msg = msg % CONF.service_network_name
+        msg = msg % self.get_config_option("service_network_name")
         LOG.error(msg)
         raise exception.ServiceInstanceException(msg)
 
     def _get_service_instance_security_group(self, context, name=None):
         """Searches for security group by name."""
-        if not (name or CONF.service_instance_security_group):
+        if not (name or self.get_config_option(
+                "service_instance_security_group")):
             return None
         if not name:
-            name = CONF.service_instance_security_group
+            name = self.get_config_option("service_instance_security_group")
         s_groups = [s for s in self.compute_api.security_group_list(context)
                     if s.name == name]
         if not s_groups:
@@ -227,7 +250,7 @@ class ServiceInstanceManager(object):
                                                 name=None, description=None):
         """Creates and returns security_group for service vm."""
         if not name:
-            name = CONF.service_instance_security_group
+            name = self.get_config_option("service_instance_security_group")
         if not description:
             description = "This security group is intended to "\
                           "be used by share service."
@@ -264,7 +287,7 @@ class ServiceInstanceManager(object):
         """Deletes the server."""
         self.compute_api.server_delete(context, server['id'])
         t = time.time()
-        while time.time() - t < CONF.max_time_to_build_instance:
+        while time.time() - t < self.max_time_to_build_instance:
             try:
                 server = self.compute_api.server_get(context, server['id'])
             except exception.InstanceNotFound:
@@ -274,7 +297,7 @@ class ServiceInstanceManager(object):
         else:
             raise exception.ServiceInstanceException(_('Instance have not '
                 'been deleted in %ss. Giving up.') %
-                CONF.max_time_to_build_instance)
+                self.max_time_to_build_instance)
 
     @synchronized()
     def get_service_instance(self, context, share_network_id, create=False,
@@ -338,22 +361,22 @@ class ServiceInstanceManager(object):
     def _get_ssh_pool(self, server):
         """Returns ssh connection pool for service vm."""
         ssh_pool = utils.SSHPool(server['ip'], 22, None,
-                                 CONF.service_instance_user,
-                                 password=CONF.service_instance_password,
-                                 privatekey=CONF.path_to_private_key,
-                                 max_size=1)
+            self.get_config_option("service_instance_user"),
+            password=self.get_config_option("service_instance_password"),
+            privatekey=self.path_to_private_key,
+            max_size=1)
         return ssh_pool
 
     def _get_key(self, context):
         """Returns name of key, that will be injected to service vm."""
-        if not CONF.path_to_public_key or not CONF.path_to_private_key:
+        if not (self.path_to_public_key or self.path_to_private_key):
             return
-        path_to_public_key = os.path.expanduser(CONF.path_to_public_key)
-        path_to_private_key = os.path.expanduser(CONF.path_to_private_key)
+        path_to_public_key = os.path.expanduser(self.path_to_public_key)
+        path_to_private_key = os.path.expanduser(self.path_to_private_key)
         if (not os.path.exists(path_to_public_key) or
                                     not os.path.exists(path_to_private_key)):
             return
-        keypair_name = CONF.manila_service_keypair_name
+        keypair_name = self.get_config_option("manila_service_keypair_name")
         keypairs = [k for k in self.compute_api.keypair_list(context)
                     if k.name == keypair_name]
         if len(keypairs) > 1:
@@ -377,8 +400,9 @@ class ServiceInstanceManager(object):
 
     def _get_service_image(self, context):
         """Returns ID of service image for service vm creating."""
+        service_image_name = self.get_config_option("service_image_name")
         images = [image.id for image in self.compute_api.image_list(context)
-                  if image.name == CONF.service_image_name]
+                  if image.name == service_image_name]
         if len(images) == 1:
             return images[0]
         elif not images:
@@ -396,12 +420,14 @@ class ServiceInstanceManager(object):
 
         with lock:
             key_name = self._get_key(context)
-            if not CONF.service_instance_password and not key_name:
+            if not (self.get_config_option("service_instance_password") or
+                    key_name):
                 raise exception.ServiceInstanceException(_('Neither service '
                     'instance password nor key are available.'))
 
             security_group = self._get_service_instance_security_group(context)
-            if not security_group and CONF.service_instance_security_group:
+            if not security_group and \
+                self.get_config_option("service_instance_security_group"):
                 security_group = self._create_service_instance_security_group(
                     context)
             port = self._setup_network_for_instance(context,
@@ -417,12 +443,12 @@ class ServiceInstanceManager(object):
         service_instance = self.compute_api.server_create(context,
             name=instance_name,
             image=service_image_id,
-            flavor=CONF.service_instance_flavor_id,
+            flavor=self.get_config_option("service_instance_flavor_id"),
             key_name=key_name,
             nics=[{'port-id': port['id']}])
 
         t = time.time()
-        while time.time() - t < CONF.max_time_to_build_instance:
+        while time.time() - t < self.max_time_to_build_instance:
             if service_instance['status'] == 'ACTIVE':
                 break
             if service_instance['status'] == 'ERROR':
@@ -437,7 +463,7 @@ class ServiceInstanceManager(object):
         else:
             raise exception.ServiceInstanceException(
                     _('Instance have not been spawned in %ss. Giving up.') %
-                    CONF.max_time_to_build_instance)
+                    self.max_time_to_build_instance)
 
         if security_group:
             LOG.debug("Adding security group "
@@ -448,14 +474,14 @@ class ServiceInstanceManager(object):
         service_instance['ip'] = self._get_server_ip(service_instance)
         if not self._check_server_availability(service_instance):
             raise exception.ServiceInstanceException(
-                            _('SSH connection have not been '
-                              'established in %ss. Giving up.') %
-                              CONF.max_time_to_build_instance)
+                _('SSH connection have not been '
+                  'established in %ss. Giving up.') %
+                  self.max_time_to_build_instance)
         return service_instance
 
     def _check_server_availability(self, server):
         t = time.time()
-        while time.time() - t < CONF.max_time_to_build_instance:
+        while time.time() - t < self.max_time_to_build_instance:
             LOG.debug('Checking service vm availablity.')
             try:
                 socket.socket().connect((server['ip'], 22))
@@ -613,7 +639,8 @@ class ServiceInstanceManager(object):
         """Returns not used cidr for service subnet creating."""
         subnets = self._get_all_service_subnets()
         used_cidrs = set(subnet['cidr'] for subnet in subnets)
-        serv_cidr = netaddr.IPNetwork(CONF.service_network_cidr)
+        serv_cidr = netaddr.IPNetwork(
+            self.get_config_option("service_network_cidr"))
         for subnet in serv_cidr.subnet(29):
             cidr = str(subnet.cidr)
             if cidr not in used_cidrs:
