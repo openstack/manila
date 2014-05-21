@@ -63,13 +63,24 @@ else
     MANILA_BIN_DIR=$(get_python_exec_prefix)
 fi
 
+# Support for multi backend configuration (default is no support)
+MANILA_MULTI_BACKEND=$(trueorfalse False $MANILA_MULTI_BACKEND)
+
+# First share backend data, that will be used in any installation
+MANILA_BACKEND1_CONFIG_GROUP_NAME=${MANILA_BACKEND1_CONFIG_GROUP_NAME:-backend1}
+MANILA_SHARE_BACKEND1_NAME=${MANILA_SHARE_BACKEND1_NAME:-BACKEND1}
+
+# Second share backend data, that will be used only with MANILA_MULTI_BACKEND=True
+MANILA_BACKEND2_CONFIG_GROUP_NAME=${MANILA_BACKEND2_CONFIG_GROUP_NAME:-backend2}
+MANILA_SHARE_BACKEND2_NAME=${MANILA_SHARE_BACKEND2_NAME:-BACKEND2}
+
 SHARE_GROUP=${SHARE_GROUP:-stack-shares}
 SHARE_NAME_PREFIX=${SHARE_NAME_PREFIX:-share-}
 SHARE_EXPORT_IP=${SHARE_EXPORT_IP:-$HOST_IP}
 #SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.lvm.LVMShareDriver}
 SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.generic.GenericShareDriver}
 
-MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.simple.SimpleScheduler}
+MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.filter_scheduler.FilterScheduler}
 
 CIFS_HELPER=${CIFS_HELPER:-manila.share.drivers.lvm.CIFSNetConfHelper}
 
@@ -130,6 +141,19 @@ function cleanup_manila {
     # _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
     _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
     _clean_manila_lvm_backing_file $SHARE_GROUP
+}
+
+function add_share_backend {
+    # Expects two args:
+    # 1: config group name
+    # 2: share_backend_name
+    iniset $MANILA_CONF $1 share_driver $SHARE_DRIVER
+    iniset $MANILA_CONF $1 share_backend_name $2
+    iniset $MANILA_CONF $1 path_to_public_key $MANILA_PATH_TO_PUBLIC_KEY
+    iniset $MANILA_CONF $1 path_to_private_key $MANILA_PATH_TO_PRIVATE_KEY
+    iniset $MANILA_CONF $1 service_image_name $MANILA_SERVICE_IMAGE_NAME
+    iniset $MANILA_CONF $1 service_instance_user $MANILA_SERVICE_INSTANCE_USER
+    iniset $MANILA_CONF $1 service_instance_password $MANILA_SERVICE_INSTANCE_PASSWORD
 }
 
 # configure_manila - Set config files, create data dirs, etc
@@ -201,18 +225,20 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT rootwrap_config $MANILA_CONF_DIR/rootwrap.conf
     iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.openstack.share.contrib.standard_extensions
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
-    iniset $MANILA_CONF DEFAULT share_driver $SHARE_DRIVER
-    iniset $MANILA_CONF DEFAULT share_backend_name generic_driver
     iniset $MANILA_CONF DEFAULT share_lvm_helpers CIFS=$CIFS_HELPER,NFS=manila.share.drivers.lvm.NFSHelper
 
     iniset $MANILA_CONF DEFAULT nova_admin_password $SERVICE_PASSWORD
     iniset $MANILA_CONF DEFAULT cinder_admin_password $SERVICE_PASSWORD
     iniset $MANILA_CONF DEFAULT neutron_admin_password $SERVICE_PASSWORD
 
-    iniset $MANILA_CONF DEFAULT path_to_public_key $MANILA_PATH_TO_PUBLIC_KEY
-    iniset $MANILA_CONF DEFAULT path_to_private_key $MANILA_PATH_TO_PRIVATE_KEY
-    iniset $MANILA_CONF DEFAULT service_instance_user $MANILA_SERVICE_INSTANCE_USER
-    iniset $MANILA_CONF DEFAULT service_instance_password $MANILA_SERVICE_INSTANCE_PASSWORD
+    add_share_backend $MANILA_BACKEND1_CONFIG_GROUP_NAME $MANILA_SHARE_BACKEND1_NAME
+    enabled_backends=$MANILA_BACKEND1_CONFIG_GROUP_NAME
+
+    if [ "$MANILA_MULTI_BACKEND" = "True" ]; then
+        add_share_backend $MANILA_BACKEND2_CONFIG_GROUP_NAME $MANILA_SHARE_BACKEND2_NAME
+        enabled_backends+=,$MANILA_BACKEND2_CONFIG_GROUP_NAME
+    fi
+    iniset $MANILA_CONF DEFAULT enabled_share_backends $enabled_backends
 
     if [ ! -f $MANILA_PATH_TO_PRIVATE_KEY ];
         then ssh-keygen -N "" -t rsa -f $MANILA_PATH_TO_PRIVATE_KEY;
@@ -256,7 +282,6 @@ function create_manila_service_image {
     if is_service_enabled g-reg; then
         upload_image $MANILA_SERVICE_IMAGE_URL $TOKEN
     fi
-    iniset $MANILA_CONF DEFAULT service_image_name $MANILA_SERVICE_IMAGE_NAME
 }
 
 function create_manila_service_secgroup {

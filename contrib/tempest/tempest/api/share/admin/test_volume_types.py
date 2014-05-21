@@ -15,8 +15,11 @@
 
 from tempest.api.share import base
 from tempest.common.utils import data_utils
+from tempest import config_share as config
 from tempest import exceptions
 from tempest import test
+
+CONF = config.CONF
 
 
 class VolumeTypesAdminTest(base.BaseSharesAdminTest):
@@ -78,7 +81,9 @@ class VolumeTypesAdminTest(base.BaseSharesAdminTest):
         # Data
         share_name = data_utils.rand_name("share")
         vol_type_name = data_utils.rand_name("volume-type")
-        extra_specs = {"key": "value", }
+        extra_specs = {
+            "storage_protocol": CONF.share.storage_protocol,
+        }
 
         # Create volume type
         resp, vt_create = self.create_volume_type(vol_type_name,
