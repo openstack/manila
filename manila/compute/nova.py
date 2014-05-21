@@ -130,7 +130,7 @@ def _untranslate_server_summary_view(server):
     d['networks'] = server.networks
     d['tenant_id'] = server.tenant_id
     d['user_id'] = server.user_id
-    d['security_groups'] = server.security_groups
+    d['security_groups'] = getattr(server, 'security_groups', [])
 
     return d
 
