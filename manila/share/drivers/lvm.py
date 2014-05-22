@@ -228,7 +228,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             #umount, may be busy
             try:
                 self._execute('umount', '-f', mount_path, run_as_root=True)
-            except exception.ProcessExecutionError, exc:
+            except exception.ProcessExecutionError as exc:
                 if 'device is busy' in str(exc):
                     raise exception.ShareIsBusy(share_name=share['name'])
                 else:
@@ -261,7 +261,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self._get_helper(share).remove_export(location, share['name'])
         except exception.ProcessExecutionError:
             LOG.info("Can't remove share %r" % share['id'])
-        except exception.InvalidShare, exc:
+        except exception.InvalidShare as exc:
             LOG.info(exc.message)
 
     def delete_snapshot(self, context, snapshot):

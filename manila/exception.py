@@ -91,7 +91,7 @@ def wrap_db_error(f):
             raise Duplicate(message=str(e))
         except Duplicate:
             raise
-        except Exception, e:
+        except Exception as e:
             LOG.exception(_('DB exception wrapped.'))
             raise DBError(e)
     _wrap.func_name = f.func_name

@@ -136,7 +136,7 @@ class ShareActionsController(wsgi.Controller):
             if access.share_id != id:
                 raise exception.NotFound()
             share = self.share_api.get(context, id)
-        except exception.NotFound, error:
+        except exception.NotFound as error:
             raise webob.exc.HTTPNotFound(explanation=unicode(error))
         self.share_api.deny_access(context, share, access)
         return webob.Response(status_int=202)

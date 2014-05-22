@@ -66,7 +66,7 @@ def ping_listener(dbapi_conn, connection_rec, connection_proxy):
     """
     try:
         dbapi_conn.cursor().execute('select 1')
-    except dbapi_conn.OperationalError, ex:
+    except dbapi_conn.OperationalError as ex:
         if ex.args[0] in (2006, 2013, 2014, 2045, 2055):
             LOG.warn(_('Got mysql server has gone away: %s'), ex)
             raise DisconnectionError("Database server went away")
@@ -121,7 +121,7 @@ def get_engine():
 
         try:
             _ENGINE.connect()
-        except OperationalError, e:
+        except OperationalError as e:
             if not is_db_connection_error(e.args[0]):
                 raise
 
@@ -137,7 +137,7 @@ def get_engine():
                 try:
                     _ENGINE.connect()
                     break
-                except OperationalError, e:
+                except OperationalError as e:
                     if ((remaining != 'infinite' and remaining == 0) or
                             not is_db_connection_error(e.args[0])):
                         raise
