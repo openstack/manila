@@ -91,35 +91,36 @@ class ShareDriver(object):
         if self.configuration:
             self.configuration.append_config_values(share_opts)
 
-    def create_share(self, context, share):
+    def create_share(self, context, share, share_server=None):
         """Is called to create share."""
         raise NotImplementedError()
 
-    def create_share_from_snapshot(self, context, share, snapshot):
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
         """Is called to create share from snapshot."""
         raise NotImplementedError()
 
-    def create_snapshot(self, context, snapshot):
+    def create_snapshot(self, context, snapshot, share_server=None):
         """Is called to create snapshot."""
         raise NotImplementedError()
 
-    def delete_share(self, context, share):
+    def delete_share(self, context, share, share_server=None):
         """Is called to remove share."""
         raise NotImplementedError()
 
-    def delete_snapshot(self, context, snapshot):
+    def delete_snapshot(self, context, snapshot, share_server=None):
         """Is called to remove snapshot."""
         raise NotImplementedError()
 
-    def ensure_share(self, context, share):
+    def ensure_share(self, context, share, share_server=None):
         """Invoked to sure that share is exported."""
         raise NotImplementedError()
 
-    def allow_access(self, context, share, access):
+    def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
         raise NotImplementedError()
 
-    def deny_access(self, context, share, access):
+    def deny_access(self, context, share, access, share_server=None):
         """Deny access to the share."""
         raise NotImplementedError()
 

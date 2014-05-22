@@ -122,16 +122,17 @@ class NetAppShareDriver(driver.ShareDriver):
         self._check_licenses()
         self._check_vfiler_exists()
 
-    def create_share(self, context, share):
+    def create_share(self, context, share, share_server=None):
         """Creates container for new share and exports it."""
         self._allocate_container(share)
         return self._create_export(share)
 
-    def create_share_from_snapshot(self, context, share, snapshot):
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
         self._allocate_container_from_snapshot(share, snapshot)
         return self._create_export(share)
 
-    def ensure_share(self, context, share):
+    def ensure_share(self, context, share, share_server=None):
         """"""
         pass
 
@@ -152,7 +153,7 @@ class NetAppShareDriver(driver.ShareDriver):
 
         self._client.send_request('volume-clone-create', args)
 
-    def delete_share(self, context, share):
+    def delete_share(self, context, share, share_server=None):
         """Deletes share."""
         share_name = self._get_valid_share_name(share['id'])
         if self._share_exists(share_name):
@@ -184,7 +185,7 @@ class NetAppShareDriver(driver.ShareDriver):
             share_name, self.configuration.netapp_nas_server_hostname)
         return export_location
 
-    def create_snapshot(self, context, snapshot):
+    def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot of a share."""
         share_name = self._get_valid_share_name(snapshot['share_id'])
         snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
@@ -201,7 +202,7 @@ class NetAppShareDriver(driver.ShareDriver):
         if target:
             helper.delete_share(share)
 
-    def delete_snapshot(self, context, snapshot):
+    def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot of a share."""
         share_name = self._get_valid_share_name(snapshot['share_id'])
         snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
@@ -214,12 +215,12 @@ class NetAppShareDriver(driver.ShareDriver):
         LOG.debug('Deleting snapshot %s' % snapshot_name)
         self._client.send_request('snapshot-delete', args)
 
-    def allow_access(self, context, share, access):
+    def allow_access(self, context, share, access, share_server=None):
         """Allows access to a given NAS storage for IPs in access."""
         helper = self._get_helper(share)
         return helper.allow_access(context, share, access)
 
-    def deny_access(self, context, share, access):
+    def deny_access(self, context, share, access, share_server=None):
         """Denies access to a given NAS storage for IPs in access."""
         helper = self._get_helper(share)
         return helper.deny_access(context, share, access)

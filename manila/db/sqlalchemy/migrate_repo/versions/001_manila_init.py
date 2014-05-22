@@ -320,6 +320,22 @@ def upgrade(migrate_engine):
         mysql_charset='utf8',
     )
 
+    share_server_backend_details = Table(
+        'share_server_backend_details', meta,
+        Column('created_at', DateTime),
+        Column('updated_at', DateTime),
+        Column('deleted_at', DateTime),
+        Column('deleted', String(length=36), default=0),
+        Column('id', Integer, primary_key=True, nullable=False),
+        Column('share_server_id', String(length=36),
+               ForeignKey('share_servers.id'),
+               nullable=False),
+        Column('key', String(length=255), nullable=False),
+        Column('value', String(length=1023), nullable=False),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
+    )
+
     network_allocations = Table(
         'network_allocations', meta,
         Column('created_at', DateTime),
@@ -383,7 +399,7 @@ def upgrade(migrate_engine):
               reservations, project_user_quotas, security_services,
               share_networks, ss_nw_association,
               share_servers, network_allocations, shares, access_map,
-              share_snapshots,
+              share_snapshots, share_server_backend_details,
               share_metadata, volume_types, volume_type_extra_specs]
 
     for table in tables:
@@ -401,7 +417,7 @@ def upgrade(migrate_engine):
                   "share_metadata", "security_services", "share_networks",
                   "network_allocations", "shares", "share_servers",
                   "share_network_security_service_association", "volume_types",
-                  "volume_type_extra_specs"]
+                  "volume_type_extra_specs", "share_server_backend_details"]
 
         sql = "SET foreign_key_checks = 0;"
         for table in tables:

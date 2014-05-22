@@ -119,7 +119,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                                     self.configuration,
                                                     self.share_networks_locks)
 
-    def create_share(self, context, share):
+    def create_share(self, context, share, share_server=None):
         """Creates share."""
         if share['share_network_id'] is None:
             raise exception.ManilaException(
@@ -327,7 +327,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         self._stats = data
 
-    def create_share_from_snapshot(self, context, share, snapshot):
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
         """Is called to create share from snapshot."""
         server = self.get_service_instance(
             self.admin_context, share_server_id=share['share_server_id'],
@@ -339,7 +340,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                                          share['name'])
         return location
 
-    def delete_share(self, context, share):
+    def delete_share(self, context, share, share_server=None):
         """Deletes share."""
         if not share['share_network_id']:
             return
@@ -354,7 +355,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self._detach_volume(self.admin_context, share, server)
         self._deallocate_container(self.admin_context, share)
 
-    def create_snapshot(self, context, snapshot):
+    def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""
         volume = self._get_volume(self.admin_context, snapshot['share_id'])
         volume_snapshot_name = (self.configuration.
@@ -376,7 +377,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                               'created in %ss. Giving up') %
                                   self.configuration.max_time_to_create_volume)
 
-    def delete_snapshot(self, context, snapshot):
+    def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot."""
         volume_snapshot = self._get_volume_snapshot(self.admin_context,
                                                     snapshot['id'])
@@ -398,7 +399,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                               'deleted in %ss. Giving up') %
                                   self.configuration.max_time_to_create_volume)
 
-    def ensure_share(self, context, share):
+    def ensure_share(self, context, share, share_server=None):
         """Ensure that storage are mounted and exported."""
         server = self.get_service_instance(
             context, share_server_id=share['share_server_id'],
@@ -408,7 +409,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._mount_device(context, share, server, volume)
         self._get_helper(share).create_export(server, share['name'])
 
-    def allow_access(self, context, share, access):
+    def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
         server = self.get_service_instance(
             self.admin_context, share_server_id=share['share_server_id'],
@@ -420,7 +421,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                              access['access_type'],
                                              access['access_to'])
 
-    def deny_access(self, context, share, access):
+    def deny_access(self, context, share, access, share_server=None):
         """Deny access to the share."""
         if not share['share_network_id']:
             return
@@ -456,6 +457,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                   share_server_id=srv_id,
                                   share_network_id=sn_id,
                                   create=True)
+
+        return {}
 
     def teardown_network(self, network_info):
         sn_id = network_info["share_network_id"]

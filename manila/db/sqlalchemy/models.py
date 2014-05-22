@@ -448,6 +448,17 @@ class ShareServer(BASE, ManilaBase):
                           'Share.deleted == "False")')
 
 
+class ShareServerBackendDetails(BASE, ManilaBase):
+    """Represents a metadata key/value pair for a share server."""
+    __tablename__ = 'share_server_backend_details'
+    deleted = Column(String(36), default='False')
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255), nullable=False)
+    value = Column(String(1023), nullable=False)
+    share_server_id = Column(String(36), ForeignKey('share_servers.id'),
+                             nullable=False)
+
+
 class ShareNetworkSecurityServiceAssociation(BASE, ManilaBase):
     """" Association table between compute_zones and compute_nodes tables.
     """
