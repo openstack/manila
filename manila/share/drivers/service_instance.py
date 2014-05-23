@@ -30,6 +30,7 @@ from manila import exception
 from manila.network.linux import ip_lib
 from manila.network.neutron import api as neutron
 from manila.openstack.common import importutils
+from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila import utils
 
@@ -189,6 +190,8 @@ class ServiceInstanceManager(object):
             "path_to_private_key")
         self.path_to_public_key = self.get_config_option("path_to_public_key")
 
+    @lockutils.synchronized("_get_service_network", external=True,
+                            lock_path="service_instance_locks")
     def _get_service_network(self):
         """Finds existing or creates new service network."""
         service_network_name = self.get_config_option("service_network_name")
@@ -228,6 +231,8 @@ class ServiceInstanceManager(object):
         LOG.error(msg)
         raise exception.ServiceInstanceException(msg)
 
+    @lockutils.synchronized("_get_service_instance_security_group",
+                            external=True, lock_path="service_instance_locks")
     def _get_service_instance_security_group(self, context, name=None):
         """Searches for security group by name."""
         if not (name or self.get_config_option(
@@ -369,6 +374,8 @@ class ServiceInstanceManager(object):
             max_size=1)
         return ssh_pool
 
+    @lockutils.synchronized("_get_key", external=True,
+                            lock_path="service_instance_locks")
     def _get_key(self, context):
         """Returns name of key, that will be injected to service vm."""
         if not (self.path_to_public_key or self.path_to_private_key):
@@ -495,6 +502,8 @@ class ServiceInstanceManager(object):
                 time.sleep(5)
         return False
 
+    @lockutils.synchronized("_setup_network_for_instance", external=True,
+                            lock_path="service_instance_locks")
     def _setup_network_for_instance(self, context, share_network_id,
                                     old_server_ip):
         """Sets up network for service vm."""
@@ -524,6 +533,8 @@ class ServiceInstanceManager(object):
                                             fixed_ip=old_server_ip,
                                             device_owner='manila')
 
+    @lockutils.synchronized("_get_private_router", external=True,
+                            lock_path="service_instance_locks")
     def _get_private_router(self, share_network_id):
         """Returns router attached to private subnet gateway."""
         share_network = self.db.share_network_get(self.admin_context,
@@ -574,6 +585,8 @@ class ServiceInstanceManager(object):
         # here we are checking for garbage devices from removed service port
         self._remove_outdated_interfaces(device)
 
+    @lockutils.synchronized("_remove_outdated_interfaces", external=True,
+                            lock_path="service_instance_locks")
     def _remove_outdated_interfaces(self, device):
         """Finds and removes unused network device."""
         list_dev = []
@@ -592,6 +605,8 @@ class ServiceInstanceManager(object):
             if device_cidr_set & cidr_set:
                 self.vif_driver.unplug(dev_name)
 
+    @lockutils.synchronized("_get_service_port", external=True,
+                            lock_path="service_instance_locks")
     def _get_service_port(self):
         """Find or creates service neutron port.
 
@@ -618,6 +633,8 @@ class ServiceInstanceManager(object):
             port = ports[0]
         return port
 
+    @lockutils.synchronized("_add_fixed_ips_to_service_port", external=True,
+                            lock_path="service_instance_locks")
     def _add_fixed_ips_to_service_port(self, port):
         network = self.neutron_api.get_network(self.service_network_id)
         subnets = set(network['subnets'])
@@ -675,11 +692,15 @@ class ServiceInstanceManager(object):
                                        'router_id': router['id']})
             self.neutron_api.update_subnet(subnet_id, '')
 
+    @lockutils.synchronized("_get_all_service_subnets", external=True,
+                            lock_path="service_instance_locks")
     def _get_all_service_subnets(self):
         service_network = self.neutron_api.get_network(self.service_network_id)
         return [self.neutron_api.get_subnet(subnet_id)
                 for subnet_id in service_network['subnets']]
 
+    @lockutils.synchronized("_get_service_subnet", external=True,
+                            lock_path="service_instance_locks")
     def _get_service_subnet(self, share_network_id):
         all_service_subnets = self._get_all_service_subnets()
         service_subnets = [subnet for subnet in all_service_subnets
