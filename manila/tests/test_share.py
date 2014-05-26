@@ -43,28 +43,29 @@ class FakeShareDriver(object):
         self.db.share_network_update = mock.Mock(
             side_effect=share_network_update)
 
-    def create_snapshot(self, context, snapshot):
+    def create_snapshot(self, context, snapshot, share_server=None):
         pass
 
-    def delete_snapshot(self, context, snapshot):
+    def delete_snapshot(self, context, snapshot, share_server=None):
         pass
 
-    def create_share(self, context, share):
+    def create_share(self, context, share, share_server=None):
         pass
 
-    def create_share_from_snapshot(self, context, share, snapshot):
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
         pass
 
-    def delete_share(self, context, share):
+    def delete_share(self, context, share, share_server=None):
         pass
 
-    def ensure_share(self, context, share):
+    def ensure_share(self, context, share, share_server=None):
         pass
 
-    def allow_access(self, context, share, access):
+    def allow_access(self, context, share, access, share_server=None):
         pass
 
-    def deny_access(self, context, share, access):
+    def deny_access(self, context, share, access, share_server=None):
         pass
 
     def check_for_setup_error(self):
@@ -142,7 +143,13 @@ class ShareTestCase(test.TestCase):
         srv['host'] = host
         srv['share_network_id'] = share_network_id
         srv['status'] = state
-        return db.share_server_create(context.get_admin_context(), srv)
+        share_srv = db.share_server_create(context.get_admin_context(), srv)
+        backend_details = {'fake': 'fake'}
+        db.share_server_backend_details_set(context.get_admin_context(),
+                                            share_srv['id'],
+                                            backend_details)
+        return db.share_server_get(context.get_admin_context(),
+                                   share_srv['id'])
 
     @staticmethod
     def _create_share_network(state='new'):
@@ -195,7 +202,7 @@ class ShareTestCase(test.TestCase):
     def test_create_delete_share_snapshot(self):
         """Test share's snapshot can be created and deleted."""
 
-        def _fake_create_snapshot(self, context, snapshot):
+        def _fake_create_snapshot(self, *args, **kwargs):
             snapshot['progress'] = '99%'
             return snapshot
 
@@ -224,7 +231,7 @@ class ShareTestCase(test.TestCase):
     def test_create_delete_share_snapshot_error(self):
         """Test snapshot can be created and deleted with error."""
 
-        def _fake_create_delete_snapshot(self, context, snapshot):
+        def _fake_create_delete_snapshot(self, *args, **kwargs):
             raise exception.NotFound()
 
         self.stubs.Set(FakeShareDriver, "create_snapshot",
@@ -254,13 +261,13 @@ class ShareTestCase(test.TestCase):
     def test_delete_share_if_busy(self):
         """Test snapshot could not be deleted if busy."""
 
-        def _fake_delete_snapshot(self, context, snapshot):
+        def _fake_delete_snapshot(self, *args, **kwargs):
             raise exception.ShareSnapshotIsBusy(snapshot_name='fakename')
 
         self.stubs.Set(FakeShareDriver, "delete_snapshot",
                        _fake_delete_snapshot)
-
-        snapshot = self._create_snapshot(share_id='fake_id')
+        share = self._create_share(status='ACTIVE')
+        snapshot = self._create_snapshot(share_id=share['id'])
         snapshot_id = snapshot['id']
 
         self.share_manager.delete_snapshot(self.context, snapshot_id)
@@ -315,10 +322,10 @@ class ShareTestCase(test.TestCase):
     def test_create_delete_share_error(self):
         """Test share can be created and deleted with error."""
 
-        def _fake_create_share(self, context, share):
+        def _fake_create_share(self, *args, **kwargs):
             raise exception.NotFound()
 
-        def _fake_delete_share(self, context, share):
+        def _fake_delete_share(self, *args, **kwargs):
             raise exception.NotFound()
 
         self.stubs.Set(FakeShareDriver, "create_share", _fake_create_share)
@@ -361,10 +368,10 @@ class ShareTestCase(test.TestCase):
     def test_allow_deny_access_error(self):
         """Test access rules to share can be created and deleted with error."""
 
-        def _fake_allow_access(self, context, share, access):
+        def _fake_allow_access(self, *args, **kwargs):
             raise exception.NotFound()
 
-        def _fake_deny_access(self, context, share, access):
+        def _fake_deny_access(self, *args, **kwargs):
             raise exception.NotFound()
 
         self.stubs.Set(FakeShareDriver, "allow_access", _fake_allow_access)

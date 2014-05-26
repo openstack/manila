@@ -113,6 +113,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         """Creates and configures new vserver."""
         LOG.debug('Configuring network %s' % network_info['id'])
         self._vserver_create_if_not_exists(network_info)
+        return {}
 
     def _get_cluster_nodes(self):
         """Get all available cluster nodes."""
@@ -447,7 +448,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         LOG.debug("Found available aggregates: %r" % aggr_dict)
         return aggr_dict
 
-    def create_share(self, context, share):
+    def create_share(self, context, share, share_server=None):
         """Creates new share."""
         if not share.get('share_server_id'):
             msg = _("Cannot create share %s. "
@@ -462,7 +463,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         return self._create_export(share, vserver, vserver_client)
 
     def create_share_from_snapshot(self, context, share, snapshot,
-                                   net_details=None):
+                                   share_server=None):
         """Creates new share form snapshot."""
         vserver = self._get_vserver_name(share['share_server_id'])
         vserver_client = driver.NetAppApiClient(
@@ -540,7 +541,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         LOG.debug('Deleting share %s' % share_name)
         vserver_client.send_request('volume-destroy', args)
 
-    def delete_share(self, context, share):
+    def delete_share(self, context, share, share_server=None):
         """Deletes share."""
         share_name = self._get_valid_share_name(share['id'])
         vserver = self._get_vserver_name(share['share_server_id'])
@@ -573,7 +574,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         export_location = helper.create_share(share_name, ip_address)
         return export_location
 
-    def create_snapshot(self, context, snapshot):
+    def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot of a share."""
         vserver = self._get_vserver_name(snapshot['share']['share_network_id'])
         vserver_client = driver.NetAppApiClient(
@@ -595,7 +596,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         if target:
             helper.delete_share(share)
 
-    def delete_snapshot(self, context, snapshot):
+    def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot of a share."""
         vserver = self._get_vserver_name(snapshot['share']['share_network_id'])
         vserver_client = driver.NetAppApiClient(
@@ -628,7 +629,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         LOG.debug('Unmounting volume %s' % share_name)
         vserver_client.send_request('volume-unmount', args)
 
-    def allow_access(self, context, share, access):
+    def allow_access(self, context, share, access, share_server=None):
         """Allows access to a given NAS storage for IPs in access."""
         vserver = self._get_vserver_name(share['share_network_id'])
         vserver_client = driver.NetAppApiClient(
@@ -638,7 +639,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         helper.set_client(vserver_client)
         return helper.allow_access(context, share, access)
 
-    def deny_access(self, context, share, access):
+    def deny_access(self, context, share, access, share_server=None):
         """Denies access to a given NAS storage for IPs in access."""
         vserver = self._get_vserver_name(share['share_network_id'])
         vserver_client = driver.NetAppApiClient(
