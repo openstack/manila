@@ -309,8 +309,8 @@ class ShareTestCase(test.TestCase):
                          share_id).id)
 
         shr = db.share_get(self.context, share_id)
-        self.assertEquals(shr['status'], 'available')
-        self.assertEquals(shr['share_server_id'], share_srv['id'])
+        self.assertEqual(shr['status'], 'available')
+        self.assertEqual(shr['share_server_id'], share_srv['id'])
 
     def test_create_delete_share_error(self):
         """Test share can be created and deleted with error."""
