@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -xe
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,13 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-# This script is executed before of all exports of env vars in devstack gate.
-
-export PYTHONUNBUFFERED=true
-export DEVSTACK_GATE_TIMEOUT=60
-export ENABLED_SERVICES=manila,m-api,m-shr,m-sch,tempest
-export PROJECTS="stackforge/manila $PROJECTS"
-export PROJECTS="stackforge/python-manilaclient $PROJECTS"
 export DEVSTACK_GATE_TEMPEST_ALLOW_TENANT_ISOLATION=1
 export DEVSTACK_GATE_NEUTRON=1
 export TEMPEST_CONCURRENCY=2
@@ -36,5 +29,5 @@ export MANILA_BACKEND2_CONFIG_GROUP_NAME=paris
 export MANILA_SHARE_BACKEND2_NAME=PARIS
 
 export API_RATE_LIMIT=False
-export SHARE_BACKING_FILE_SIZE=30G
-export VOLUME_BACKING_FILE_SIZE=30G
+export SHARE_BACKING_FILE_SIZE=20G
+export VOLUME_BACKING_FILE_SIZE=20G

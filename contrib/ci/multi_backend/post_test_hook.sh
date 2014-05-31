@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -xe
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -14,4 +14,4 @@
 
 # This script is executed inside post_test_hook function in devstack gate.
 
-../post_test_hook.sh 1
+source $BASE/new/manila/contrib/ci/post_test_hook.sh 1
