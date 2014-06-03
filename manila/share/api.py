@@ -174,7 +174,7 @@ class API(base.Base):
         return share
 
     @policy.wrap_check_policy('share')
-    def delete(self, context, share):
+    def delete(self, context, share, force=False):
         """Delete share."""
         if context.is_admin and context.project_id != share['project_id']:
             project_id = share['project_id']
@@ -197,7 +197,7 @@ class API(base.Base):
                 QUOTAS.commit(context, reservations, project_id=project_id)
             return
 
-        if share['status'] not in ["available", "error"]:
+        if not (force or share['status'] in ["available", "error"]):
             msg = _("Share status must be available or error")
             raise exception.InvalidShare(reason=msg)
 
@@ -276,8 +276,8 @@ class API(base.Base):
 
     @policy.wrap_check_policy('share')
     def delete_snapshot(self, context, snapshot, force=False):
-        if not force and snapshot['status'] not in ["available", "error"]:
-            msg = _("Share Snapshot status must be available or ")
+        if not (force or snapshot['status'] in ["available", "error"]):
+            msg = _("Share Snapshot status must be 'available' or 'error'.")
             raise exception.InvalidShareSnapshot(reason=msg)
 
         self.db.share_snapshot_update(context, snapshot['id'],
