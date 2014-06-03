@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -xe
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -13,6 +13,8 @@
 # under the License.
 
 # This script is executed inside pre_test_hook function in devstack gate.
+
+source $BASE/new/manila/contrib/ci/setup.sh
 
 # Install manila devstack integration
 cp -r $BASE/new/manila/contrib/devstack/* $BASE/new/devstack

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -xe
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -15,4 +15,7 @@
 # This script is executed inside pre_test_hook function in devstack gate.
 
 # Call common pre_test_hook
-../pre_test_hook.sh
+source $BASE/new/manila/contrib/ci/pre_test_hook.sh
+
+# Redefine exports
+source $BASE/new/manila/contrib/ci/multi_backend/setup.sh

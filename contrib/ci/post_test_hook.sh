@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -xe
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -14,15 +14,19 @@
 
 # This script is executed inside post_test_hook function in devstack gate.
 
+sudo chown -R jenkins:stack $BASE/new/tempest
+sudo chown -R jenkins:stack $BASE/data/tempest
+sudo chmod -R o+rx $BASE/new/devstack/files
+
+if [[ "$1" == "1" ]]; then
+    # if arg $1 is equal to "1", we assume multibackend installation
+    source $BASE/new/devstack/functions
+    iniset $BASE/new/tempest/etc/tempest.conf share multi_backend True
+    iniset $BASE/new/tempest/etc/tempest.conf share backend_names "$MANILA_SHARE_BACKEND1_NAME,$MANILA_SHARE_BACKEND2_NAME"
+fi
+
 # let us control if we die or not
 set +o errexit
 cd $BASE/new/tempest
-sudo chown -R tempest:stack $BASE/new/tempest
-
-if [[ "$1" == "1" ]]
-    # if arg $1 is equal to "1", we assume multibackend installation
-    echo "\n[share]\nmulti_backend=True\nbackend_names=$MANILA_SHARE_BACKEND1_NAME,$MANILA_SHARE_BACKEND2_NAME\n" >> $BASE/new/tempest/etc/tempest.conf
-fi
-
 echo "Running tempest manila test suites"
-sudo -H -u tempest tox -evenv bash tools/pretty_tox.sh \"$MANILA_TESTS -- --concurrency=$TEMPEST_CONCURRENCY\"
+sudo -H -u jenkins tox -evenv bash tools/pretty_tox.sh \"$MANILA_TESTS -- --concurrency=$TEMPEST_CONCURRENCY\"
