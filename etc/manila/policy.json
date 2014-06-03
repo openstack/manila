@@ -27,6 +27,10 @@
     "security_service:delete": [],
     "security_service:update": [],
 
+    "share_server:index": [["rule:admin_api"]],
+    "share_server:show": [["rule:admin_api"]],
+    "share_server:details": [["rule:admin_api"]],
+
     "share_network:create": [],
     "share_network:delete": [],
     "share_network:update": [],

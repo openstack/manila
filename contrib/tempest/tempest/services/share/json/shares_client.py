@@ -606,3 +606,25 @@ class SharesClient(rest_client.RestClient):
     def delete_volume_type_extra_spec(self, vol_type_id, extra_spec_name):
         uri = "types/%s/extra_specs/%s" % (vol_type_id, extra_spec_name)
         return self.delete(uri)
+
+###############
+
+    def list_share_servers(self, search_opts=None):
+        """Get list of share servers."""
+        uri = "share-servers"
+        if search_opts:
+            uri += "?%s" % urllib.urlencode(search_opts)
+        resp, body = self.get(uri)
+        return resp, self._parse_resp(body)
+
+    def show_share_server(self, share_server_id):
+        """Get share server info."""
+        uri = "share-servers/%s" % share_server_id
+        resp, body = self.get(uri)
+        return resp, self._parse_resp(body)
+
+    def show_share_server_details(self, share_server_id):
+        """Get share server details only."""
+        uri = "share-servers/%s/details" % share_server_id
+        resp, body = self.get(uri)
+        return resp, self._parse_resp(body)

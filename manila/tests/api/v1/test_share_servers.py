@@ -1,0 +1,256 @@
+# Copyright 2014 Openstack Foundation
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import mock
+
+from manila.api.v1 import share_servers
+from manila.common import constants
+from manila import context
+from manila.db import api as db_api
+from manila import policy
+from manila import test
+
+
+class FakeBackendDetails(object):
+    key = 'fake_key_1'
+    value = 'fake_value_1'
+
+
+class FakeBackendDetails2(object):
+    key = 'fake_key_2'
+    value = 'fake_value_2'
+
+
+class FakeShareServer(object):
+
+    def __init__(self, *args, **kwargs):
+        super(FakeShareServer, self).__init__()
+        self.id = kwargs.get('id', 'fake_server_id')
+        if 'created_at' in kwargs:
+            self.created_at = kwargs.get('created_at', None)
+        self.updated_at = kwargs.get('updated_at', None)
+        self.host = kwargs.get('host', 'fake_host')
+        self.share_network = kwargs.get('share_network', {
+            'name': 'fake_sn_name', 'id': 'fake_sn_id',
+            'project_id': 'fake_project_id'})
+        self.share_network_id = kwargs.get('share_network_id',
+                                           self.share_network['id'])
+        self.status = kwargs.get('status', constants.STATUS_ACTIVE)
+        self.project_id = self.share_network['project_id']
+        self.backend_details = [
+            FakeBackendDetails(),
+            FakeBackendDetails2(),
+        ]
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+
+def fake_share_server_get_all():
+    fake_share_servers = [
+        FakeShareServer(),
+        FakeShareServer(id='fake_server_id_2',
+                        host='fake_host_2',
+                        share_network={
+                            'name': None,
+                            'id': 'fake_sn_id_2',
+                            'project_id': 'fake_project_id_2'},
+                        status=constants.STATUS_ERROR)
+    ]
+    return fake_share_servers
+
+
+def fake_share_server_get():
+    return FakeShareServer(created_at=None)
+
+
+def fake_share_server_backend_details_get():
+    return [FakeBackendDetails(), FakeBackendDetails2(), ]
+
+
+fake_share_server_list = {
+    'share_servers': [
+        {
+            'status': constants.STATUS_ACTIVE,
+            'updated_at': None,
+            'host': 'fake_host',
+            'share_network_name': 'fake_sn_name',
+            'project_id': 'fake_project_id',
+            'id': 'fake_server_id',
+        },
+        {
+            'status': constants.STATUS_ERROR,
+            'updated_at': None,
+            'host': 'fake_host_2',
+            'share_network_name': 'fake_sn_id_2',
+            'project_id': 'fake_project_id_2',
+            'id': 'fake_server_id_2',
+        },
+    ]
+}
+
+
+fake_share_server_get_result = {
+    'share_server': {
+        'status': constants.STATUS_ACTIVE,
+        'created_at': None,
+        'updated_at': None,
+        'host': 'fake_host',
+        'share_network_name': 'fake_sn_name',
+        'project_id': 'fake_project_id',
+        'id': 'fake_server_id',
+        'backend_details': {
+            'fake_key_1': 'fake_value_1',
+            'fake_key_2': 'fake_value_2',
+        }
+    }
+}
+
+
+fake_share_server_backend_details_get_result = {
+    'details': {
+        'fake_key_1': 'fake_value_1',
+        'fake_key_2': 'fake_value_2',
+    }
+}
+
+
+CONTEXT = context.get_admin_context()
+
+
+class FakeRequestAdmin(object):
+    environ = {"manila.context": CONTEXT}
+    GET = {}
+
+
+class FakeRequestWithHost(FakeRequestAdmin):
+    GET = {'host': fake_share_server_list['share_servers'][0]['host']}
+
+
+class FakeRequestWithStatus(FakeRequestAdmin):
+    GET = {'status': constants.STATUS_ERROR}
+
+
+class FakeRequestWithProjectId(FakeRequestAdmin):
+    GET = {'project_id': fake_share_server_get_all()[0].project_id}
+
+
+class FakeRequestWithShareNetworkName(FakeRequestAdmin):
+    GET = {
+        'share_network': fake_share_server_get_all()[0].share_network['name'],
+    }
+
+
+class FakeRequestWithShareNetworkId(FakeRequestAdmin):
+    GET = {
+        'share_network': fake_share_server_get_all()[0].share_network['id'],
+    }
+
+
+class FakeRequestWithFakeFilter(FakeRequestAdmin):
+    GET = {'fake_key': 'fake_value'}
+
+
+class ShareServerAPITest(test.TestCase):
+
+    def setUp(self):
+        super(ShareServerAPITest, self).setUp()
+        self.controller = share_servers.ShareServerController()
+        self.stubs.Set(policy, 'check_policy',
+                       mock.Mock(return_value=True))
+        self.stubs.Set(db_api, 'share_server_get_all',
+                       mock.Mock(return_value=fake_share_server_get_all()))
+
+    def test_index_no_filters(self):
+        result = self.controller.index(FakeRequestAdmin)
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'index')
+        db_api.share_server_get_all.assert_called_once_with(CONTEXT)
+        self.assertEqual(result, fake_share_server_list)
+
+    def test_index_host_filter(self):
+        result = self.controller.index(FakeRequestWithHost)
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'index')
+        db_api.share_server_get_all.assert_called_once_with(CONTEXT)
+        self.assertEqual(result['share_servers'],
+                         [fake_share_server_list['share_servers'][0]])
+
+    def test_index_status_filter(self):
+        result = self.controller.index(FakeRequestWithStatus)
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'index')
+        db_api.share_server_get_all.assert_called_once_with(CONTEXT)
+        self.assertEqual(result['share_servers'],
+                         [fake_share_server_list['share_servers'][1]])
+
+    def test_index_project_id_filter(self):
+        result = self.controller.index(FakeRequestWithProjectId)
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'index')
+        db_api.share_server_get_all.assert_called_once_with(CONTEXT)
+        self.assertEqual(result['share_servers'],
+                         [fake_share_server_list['share_servers'][0]])
+
+    def test_index_share_network_filter_by_name(self):
+        result = self.controller.index(FakeRequestWithShareNetworkName)
+        policy.check_policy.assert_called_once_with(CONTEXT,
+                share_servers.RESOURCE_NAME, 'index')
+        db_api.share_server_get_all.assert_called_once_with(CONTEXT)
+        self.assertEqual(result['share_servers'],
+                         [fake_share_server_list['share_servers'][0]])
+
+    def test_index_share_network_filter_by_id(self):
+        result = self.controller.index(FakeRequestWithShareNetworkId)
+        policy.check_policy.assert_called_once_with(CONTEXT,
+                share_servers.RESOURCE_NAME, 'index')
+        db_api.share_server_get_all.assert_called_once_with(CONTEXT)
+        self.assertEqual(result['share_servers'],
+                         [fake_share_server_list['share_servers'][0]])
+
+    def test_index_fake_filter(self):
+        result = self.controller.index(FakeRequestWithFakeFilter)
+        policy.check_policy.assert_called_once_with(CONTEXT,
+                share_servers.RESOURCE_NAME, 'index')
+        db_api.share_server_get_all.assert_called_once_with(CONTEXT)
+        self.assertEqual(len(result['share_servers']), 0)
+
+    def test_show(self):
+        self.stubs.Set(db_api, 'share_server_get',
+                       mock.Mock(return_value=fake_share_server_get()))
+        result = self.controller.show(FakeRequestAdmin,
+            fake_share_server_get_result['share_server']['id'])
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'show')
+        db_api.share_server_get.assert_called_once_with(CONTEXT,
+            fake_share_server_get_result['share_server']['id'])
+        self.assertEqual(result['share_server'],
+                         fake_share_server_get_result['share_server'])
+
+    def test_details(self):
+        self.stubs.Set(db_api, 'share_server_get',
+                       mock.Mock(return_value=fake_share_server_get()))
+        self.stubs.Set(db_api, 'share_server_backend_details_get',
+            mock.Mock(return_value=fake_share_server_backend_details_get()))
+        result = self.controller.details(FakeRequestAdmin,
+            fake_share_server_get_result['share_server']['id'])
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'details')
+        db_api.share_server_get.assert_called_once_with(CONTEXT,
+            fake_share_server_get_result['share_server']['id'])
+        db_api.share_server_backend_details_get.assert_called_once_with(
+            CONTEXT, fake_share_server_get_result['share_server']['id'])
+        self.assertEqual(result,
+                         fake_share_server_backend_details_get_result)
