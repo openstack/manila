@@ -14,12 +14,7 @@
 
 export DEVSTACK_GATE_TEMPEST_ALLOW_TENANT_ISOLATION=1
 export DEVSTACK_GATE_NEUTRON=1
-export TEMPEST_CONCURRENCY=2
 export KEEP_LOCALRC=1
-export MANILA_TESTS='tempest.cli.*manila*'
-if [[ ! "$ZUUL_PROJECT" =~ python-manilaclient ]]; then
-    MANILA_TESTS+=' tempest.api.share*';
-fi
 export TEMPEST_SERVICES+=,manila
 
 export MANILA_MULTI_BACKEND=False

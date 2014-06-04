@@ -28,5 +28,12 @@ fi
 # let us control if we die or not
 set +o errexit
 cd $BASE/new/tempest
+
+export TEMPEST_CONCURRENCY=2
+export MANILA_TESTS='tempest.cli.*manila*'
+if [[ ! "$ZUUL_PROJECT" =~ python-manilaclient ]]; then
+    MANILA_TESTS+=' tempest.api.share*';
+fi
+
 echo "Running tempest manila test suites"
 sudo -H -u jenkins tox -evenv bash tools/pretty_tox.sh \"$MANILA_TESTS -- --concurrency=$TEMPEST_CONCURRENCY\"
