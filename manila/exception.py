@@ -169,10 +169,6 @@ class PolicyNotAuthorized(NotAuthorized):
     message = _("Policy doesn't allow %(action)s to be performed.")
 
 
-class ImageNotAuthorized(ManilaException):
-    message = _("Not authorized for image %(image_id)s.")
-
-
 class Invalid(ManilaException):
     message = _("Unacceptable parameters.")
     code = 400
@@ -213,10 +209,6 @@ class ServiceUnavailable(Invalid):
     message = _("Service is unavailable at this time.")
 
 
-class ImageUnacceptable(Invalid):
-    message = _("Image %(image_id)s is unacceptable: %(reason)s")
-
-
 class InvalidUUID(Invalid):
     message = _("Expected a uuid but received %(uuid).")
 
@@ -245,14 +237,6 @@ class ShareServerInUse(InUse):
 
 class ShareServerNotCreated(ManilaException):
     message = _("Share Server %(share_server_id)s failed on creation.")
-
-
-class InvalidImageRef(Invalid):
-    message = _("Invalid image href %(image_href)s.")
-
-
-class ImageNotFound(NotFound):
-    message = _("Image %(image_id)s could not be found.")
 
 
 class ServiceNotFound(NotFound):
@@ -464,10 +448,6 @@ class GlusterfsNoSharesMounted(NotFound):
 
 class GlusterfsNoSuitableShareFound(NotFound):
     message = _("There is no share which can host %(share_size)sG")
-
-
-class ImageCopyFailure(Invalid):
-    message = _("Failed to copy image to share")
 
 
 class InvalidShare(ManilaException):

@@ -14,7 +14,6 @@ Paste
 PasteDeploy>=1.5.0
 posix_ipc
 python-neutronclient>=2.3.0,<3
-python-glanceclient>=0.9.0
 python-keystoneclient>=0.3.2
 Routes>=1.12.3
 six>=1.6.0
