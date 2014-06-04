@@ -16,7 +16,7 @@
 from oslo.config import cfg
 
 from manila.openstack.common import context as req_context
-from manila.openstack.common.gettextutils import _
+from manila.openstack.common.gettextutils import _LE
 from manila.openstack.common import log as logging
 from manila.openstack.common import rpc
 
@@ -24,14 +24,14 @@ LOG = logging.getLogger(__name__)
 
 notification_topic_opt = cfg.ListOpt(
     'notification_topics', default=['notifications', ],
-    help='AMQP topic used for openstack notifications')
+    help='AMQP topic used for OpenStack notifications')
 
 CONF = cfg.CONF
 CONF.register_opt(notification_topic_opt)
 
 
 def notify(context, message):
-    """Sends a notification via RPC"""
+    """Sends a notification via RPC."""
     if not context:
         context = req_context.get_admin_context()
     priority = message.get('priority',
@@ -42,5 +42,6 @@ def notify(context, message):
         try:
             rpc.notify(context, topic, message)
         except Exception:
-            LOG.exception(_("Could not send notification to %(topic)s. "
-                            "Payload=%(message)s"), locals())
+            LOG.exception(_LE("Could not send notification to %(topic)s. "
+                              "Payload=%(message)s"),
+                          {"topic": topic, "message": message})

@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2011 Piston Cloud Computing, Inc.
 # All Rights Reserved.
 
@@ -17,19 +15,19 @@
 
 """Test of Policy Engine For Manila."""
 
+import mock
 import os.path
-import StringIO
-import urllib2
+import six
+from six.moves.urllib import request as urlrequest
+
+from oslo.config import cfg
 
 from manila import context
 from manila import exception
-
-import manila.openstack.common.policy
 from manila.openstack.common import policy as common_policy
 from manila import policy
 from manila import test
 from manila import utils
-from oslo.config import cfg
 
 CONF = cfg.CONF
 
@@ -68,9 +66,8 @@ class PolicyTestCase(test.TestCase):
     def setUp(self):
         super(PolicyTestCase, self).setUp()
         policy.reset()
-        # NOTE(vish): preload rules to circumvent reloading from file
         policy.init()
-        rules = {
+        self.rules = {
             "true": [],
             "example:allowed": [],
             "example:denied": [["false:false"]],
@@ -82,14 +79,19 @@ class PolicyTestCase(test.TestCase):
             "example:lowercase_admin": [["role:admin"], ["role:sysadmin"]],
             "example:uppercase_admin": [["role:ADMIN"], ["role:sysadmin"]],
         }
-        # NOTE(vish): then overload underlying brain
-        common_policy.set_brain(common_policy.HttpBrain(rules))
+        self._set_rules()
         self.context = context.RequestContext('fake', 'fake', roles=['member'])
         self.target = {}
 
     def tearDown(self):
         policy.reset()
         super(PolicyTestCase, self).tearDown()
+
+    def _set_rules(self):
+        these_rules = common_policy.Rules(
+            dict((k, common_policy.parse_rule(v))
+                 for k, v in self.rules.items()))
+        policy._ENFORCER.set_rules(these_rules)
 
     def test_enforce_nonexistent_action_throws(self):
         action = "example:noexist"
@@ -108,22 +110,24 @@ class PolicyTestCase(test.TestCase):
     def test_enforce_http_true(self):
 
         def fakeurlopen(url, post_data):
-            return StringIO.StringIO("True")
-        self.stubs.Set(urllib2, 'urlopen', fakeurlopen)
+            return six.StringIO("True")
+
         action = "example:get_http"
         target = {}
-        result = policy.enforce(self.context, action, target)
-        self.assertEqual(result, None)
+        with mock.patch.object(urlrequest, 'urlopen', fakeurlopen):
+            result = policy.enforce(self.context, action, target)
+        self.assertTrue(result)
 
     def test_enforce_http_false(self):
 
         def fakeurlopen(url, post_data):
-            return StringIO.StringIO("False")
-        self.stubs.Set(urllib2, 'urlopen', fakeurlopen)
+            return six.StringIO("False")
+
         action = "example:get_http"
         target = {}
-        self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
-                          self.context, action, target)
+        with mock.patch.object(urlrequest, 'urlopen', fakeurlopen):
+            self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
+                              self.context, action, target)
 
     def test_templatized_enforcement(self):
         target_mine = {'project_id': 'fake'}
@@ -165,19 +169,18 @@ class DefaultPolicyTestCase(test.TestCase):
             "default": [],
             "example:exist": [["false:false"]]
         }
-
-        self._set_brain('default')
-
+        self._set_rules('default')
         self.context = context.RequestContext('fake', 'fake')
-
-    def _set_brain(self, default_rule):
-        brain = manila.openstack.common.policy.HttpBrain(self.rules,
-                                                         default_rule)
-        manila.openstack.common.policy.set_brain(brain)
 
     def tearDown(self):
         super(DefaultPolicyTestCase, self).tearDown()
         policy.reset()
+
+    def _set_rules(self, default_rule):
+        these_rules = common_policy.Rules(
+            dict((k, common_policy.parse_rule(v))
+                 for k, v in self.rules.items()), default_rule)
+        policy._ENFORCER.set_rules(these_rules)
 
     def test_policy_called(self):
         self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
@@ -187,7 +190,13 @@ class DefaultPolicyTestCase(test.TestCase):
         policy.enforce(self.context, "example:noexist", {})
 
     def test_default_not_found(self):
-        self._set_brain("default_noexist")
+        new_default_rule = "default_noexist"
+        # FIXME(gyee): need to overwrite the Enforcer's default_rule first
+        # as it is recreating the rules with its own default_rule instead
+        # of the default_rule passed in from set_rules(). I think this is a
+        # bug in Oslo policy.
+        policy._ENFORCER.default_rule = new_default_rule
+        self._set_rules(new_default_rule)
         self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
                           self.context, "example:noexist", {})
 
@@ -198,6 +207,12 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
         super(ContextIsAdminPolicyTestCase, self).setUp()
         policy.reset()
         policy.init()
+
+    def _set_rules(self, rules, default_rule):
+        these_rules = common_policy.Rules(
+            dict((k, common_policy.parse_rule(v))
+                 for k, v in rules.items()), default_rule)
+        policy._ENFORCER.set_rules(these_rules)
 
     def test_default_admin_role_is_admin(self):
         ctx = context.RequestContext('fake', 'fake', roles=['johnny-admin'])
@@ -210,8 +225,7 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
         rules = {
             'context_is_admin': [["role:administrator"], ["role:johnny-admin"]]
         }
-        brain = common_policy.Brain(rules, CONF.policy_default_rule)
-        common_policy.set_brain(brain)
+        self._set_rules(rules, CONF.policy_default_rule)
         ctx = context.RequestContext('fake', 'fake', roles=['johnny-admin'])
         self.assertTrue(ctx.is_admin)
         ctx = context.RequestContext('fake', 'fake', roles=['administrator'])
@@ -225,8 +239,7 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
             "admin_or_owner": [["role:admin"], ["project_id:%(project_id)s"]],
             "default": [["rule:admin_or_owner"]],
         }
-        brain = common_policy.Brain(rules, CONF.policy_default_rule)
-        common_policy.set_brain(brain)
+        self._set_rules(rules, CONF.policy_default_rule)
         ctx = context.RequestContext('fake', 'fake')
         self.assertFalse(ctx.is_admin)
         ctx = context.RequestContext('fake', 'fake', roles=['admin'])

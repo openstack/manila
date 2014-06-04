@@ -26,7 +26,6 @@ from manila.api.openstack import wsgi
 from manila.api import xmlutil
 from manila import exception
 
-from manila.openstack.common import exception as common_exception
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 import manila.policy
@@ -373,7 +372,7 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                         (package, relpkg, dname))
             try:
                 ext = importutils.import_class(ext_name)
-            except common_exception.NotFound:
+            except ImportError:
                 # extension() doesn't exist on it, so we'll explore
                 # the directory for ourselves
                 subdirs.append(dname)
