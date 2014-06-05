@@ -192,7 +192,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         self._stats = data
 
-    def create_share(self, context, share):
+    def create_share(self, context, share, share_server=None):
         self._allocate_container(share)
         #create file system
         device_name = self._local_path(share)
@@ -203,7 +203,8 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         #TODO(rushiagr): what is the provider_location? realy needed?
         return location
 
-    def create_share_from_snapshot(self, context, share, snapshot):
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
         """Is called to create share from snapshot."""
         self._allocate_container(share)
         device_name = self._local_path(snapshot)
@@ -216,7 +217,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         #TODO(rushiagr): what is the provider_location? realy needed?
         return location
 
-    def delete_share(self, context, share):
+    def delete_share(self, context, share, share_server=None):
         self._remove_export(context, share)
         self._delete_share(context, share)
         self._deallocate_container(share['name'])
@@ -239,7 +240,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             except OSError:
                 LOG.info('Unable to delete %s', mount_path)
 
-    def create_snapshot(self, context, snapshot):
+    def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""
         orig_lv_name = "%s/%s" % (self.configuration.share_volume_group,
                                   snapshot['share_name'])
@@ -247,7 +248,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                           '--name', snapshot['name'],
                           '--snapshot', orig_lv_name, run_as_root=True)
 
-    def ensure_share(self, ctx, share):
+    def ensure_share(self, ctx, share, share_server=None):
         """Ensure that storage are mounted and exported."""
         device_name = self._local_path(share)
         location = self._mount_device(share, device_name)
@@ -264,18 +265,18 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.InvalidShare as exc:
             LOG.info(exc.message)
 
-    def delete_snapshot(self, context, snapshot):
+    def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot."""
         self._deallocate_container(snapshot['name'])
 
-    def allow_access(self, ctx, share, access):
+    def allow_access(self, ctx, share, access, share_server=None):
         """Allow access to the share."""
         location = self._get_mount_path(share)
         self._get_helper(share).allow_access(location, share['name'],
                                              access['access_type'],
                                              access['access_to'])
 
-    def deny_access(self, ctx, share, access):
+    def deny_access(self, ctx, share, access, share_server=None):
         """Allow access to the share."""
         location = self._get_mount_path(share)
         self._get_helper(share).deny_access(location, share['name'],
