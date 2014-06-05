@@ -47,7 +47,8 @@ GlusterfsManilaShare_opts = [
 CONF = cfg.CONF
 CONF.register_opts(GlusterfsManilaShare_opts)
 
-_nfs_export_dir = 'nfs.export-dir'
+NFS_EXPORT_DIR = 'nfs.export-dir'
+NFS_EXPORT_VOL = 'nfs.export-volumes'
 
 
 class GlusterAddress(object):
@@ -107,6 +108,17 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         self._ensure_gluster_vol_mounted()
 
+        # exporting the whole volume must be prohibited
+        # to not to defeat access control
+        args, kw = self.gluster_address.make_gluster_args(
+                    'volume', 'set', self.gluster_address.volume,
+                    NFS_EXPORT_VOL, 'off')
+        try:
+            self._execute(*args, **kw)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_("Error in gluster volume set: %s") % exc.stderr)
+            raise
+
     def check_for_setup_error(self):
         """Is called after do_setup method. Nothing to do."""
         pass
@@ -152,7 +164,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         with open(config_file) as f:
             return f.readline().strip()
 
-    def _get_export_dir_list(self):
+    def _get_export_dir_dict(self):
         try:
             args, kw = self.gluster_address.make_gluster_args(
                            '--xml',
@@ -177,13 +189,23 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         for o, v in \
             ((e.find(a).text for a in ('name', 'value'))
              for e in vix.findall(".//option")):
-            if o == _nfs_export_dir:
+            if o == NFS_EXPORT_DIR:
                 export_dir = v
                 break
+        edh = {}
         if export_dir:
-            return export_dir.split(',')
-        else:
-            return []
+            # see
+            # https://github.com/gluster/glusterfs
+            #  /blob/aa19909/xlators/nfs/server/src/nfs.c#L1582
+            # regarding the format of nfs.export-dir
+            edl = export_dir.split(',')
+            # parsing export_dir into a dict of {dir: [hostpec,..]..}
+            # format
+            r = re.compile('\A/(.*)\((.*)\)\Z')
+            for ed in edl:
+                d, e = r.match(ed).groups()
+                edh[d] = e.split('|')
+        return edh
 
     def _ensure_gluster_vol_mounted(self):
         """Ensure that a Gluster volume is native-mounted on Manila host.
@@ -247,42 +269,63 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         pass
 
     def _manage_access(self, context, share, access, cbk):
-        """Manage share access by adjusting the export list with cbk
+        """Manage share access with cbk.
 
-        cbk is a callable of args (dl, acc), where dl is a list of strings
-        and acc is a string. It should return True (or a value of Boolean
-        reduct True) if it leaves dl intact, and False (or a value of Boolean
-        reduct False) if it makes a change on dl
+        Adjust the exports of the Gluster-NFS server using cbk.
 
-        cbk will be called with dl being  list of currently exported dirs and
-        acc being a textual specification derived from access.
+        :param share: share object
+        :param access: access object
+        :param cbk: callback to adjust the exports of NFS server
+
+        Following is the description of cbk(ddict, edir, host).
+
+        :param ddict: association of shares with ips that have access to them
+        :type ddict: dict
+        :param edir: name of share i.e. export directory
+        :type edir: string
+        :param host: ip address derived from the access object
+        :type host: string
+        :returns: bool (cbk leaves ddict intact) or None (cbk modifies ddict)
         """
 
         if access['access_type'] != 'ip':
             raise exception.InvalidShareAccess('only ip access type allowed')
-        export_dir_list = self._get_export_dir_list()
-        access_spec = "/%s(%s)" % (share['name'], access['access_to'])
-        if cbk(export_dir_list, access_spec):
+        export_dir_dict = self._get_export_dir_dict()
+        if cbk(export_dir_dict, share['name'], access['access_to']):
             return
 
-        export_dir_new = ",".join(export_dir_list)
-        try:
+        if export_dir_dict:
+            export_dir_new = ",".join("/%s(%s)" % (d, "|".join(v))
+                                      for d, v in export_dir_dict.items())
             args, kw = self.gluster_address.make_gluster_args(
-                         'volume', 'set', self.gluster_address.volume,
-                          _nfs_export_dir, export_dir_new)
+                        'volume', 'set', self.gluster_address.volume,
+                        NFS_EXPORT_DIR, export_dir_new)
+        else:
+            args, kw = self.gluster_address.make_gluster_args(
+                        'volume', 'reset', self.gluster_address.volume,
+                        NFS_EXPORT_DIR)
+        try:
             self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
             LOG.error(_("Error in gluster volume set: %s") % exc.stderr)
             raise
 
     def allow_access(self, context, share, access):
-        """NFS export a dir to a volume"""
-        self._manage_access(context, share, access,
-                            lambda dl, acc:
-                                True if acc in dl else dl.append(acc))
+        """Allow access to a share."""
+        def cbk(ddict, edir, host):
+            if edir not in ddict:
+                ddict[edir] = []
+            if host in ddict[edir]:
+                return True
+            ddict[edir].append(host)
+        self._manage_access(context, share, access, cbk)
 
     def deny_access(self, context, share, access):
-        """Deny access to the share."""
-        self._manage_access(context, share, access,
-                            lambda dl, acc:
-                                True if acc not in dl else dl.remove(acc))
+        """Deny access to a share."""
+        def cbk(ddict, edir, host):
+            if edir not in ddict or host not in ddict[edir]:
+                return True
+            ddict[edir].remove(host)
+            if not ddict[edir]:
+                ddict.pop(edir)
+        self._manage_access(context, share, access, cbk)
