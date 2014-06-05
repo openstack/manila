@@ -14,8 +14,6 @@
 
 # This script is executed inside pre_test_hook function in devstack gate.
 
-source $BASE/new/manila/contrib/ci/setup.sh
-
 # Install manila devstack integration
 cp -r $BASE/new/manila/contrib/devstack/* $BASE/new/devstack
 # Install manila tempest integration
