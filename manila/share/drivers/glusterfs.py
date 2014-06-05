@@ -90,6 +90,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._helpers = None
         self.gluster_address = None
         self.configuration.append_config_values(GlusterfsManilaShare_opts)
+        self.backend_name = self.configuration.safe_get(
+            'share_backend_name') or 'GlusterFS'
 
     def do_setup(self, context):
         """Native mount the Gluster volume."""
@@ -227,6 +229,45 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.GlusterfsException('share path %s does not exist' %
                                                local_vol_path)
         return os.path.join(local_vol_path, share['name'])
+
+    def get_share_stats(self, refresh=False):
+        """Get share stats.
+
+        If 'refresh' is True, run update the stats first.
+        """
+        if refresh:
+            self._update_share_stats()
+
+        return self._stats
+
+    def _update_share_stats(self):
+        """Retrieve stats info from the GlusterFS volume."""
+
+        # sanity check for gluster ctl mount
+        smpb = os.stat(self.configuration.glusterfs_mount_point_base)
+        smp = os.stat(self._get_mount_point_for_gluster_vol())
+        if smpb.st_dev == smp.st_dev:
+            raise exception.GlusterfsException(
+                     _("GlusterFS control mount is not available")
+                  )
+        smpv = os.statvfs(self._get_mount_point_for_gluster_vol())
+
+        LOG.debug("Updating share stats")
+
+        data = {}
+
+        data["share_backend_name"] = self.backend_name
+        data["vendor_name"] = 'Red Hat'
+        data["driver_version"] = '1.0'
+        data["storage_protocol"] = 'NFS'
+
+        data['reserved_percentage'] = \
+            self.configuration.reserved_share_percentage
+        data['QoS_support'] = False
+
+        data['total_capacity_gb'] = (smpv.f_blocks * smpv.f_frsize) >> 30
+        data['free_capacity_gb'] = (smpv.f_bavail * smpv.f_frsize) >> 30
+        self._stats = data
 
     def create_share(self, ctx, share):
         """Create a directory that'd serve as a share in a Gluster volume."""

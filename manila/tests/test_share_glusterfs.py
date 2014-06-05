@@ -117,6 +117,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._context = context.get_admin_context()
 
         CONF.set_default('glusterfs_mount_point_base', '/mnt/nfs')
+        CONF.set_default('reserved_share_percentage', 50)
 
         self.fake_conf = config.Configuration(None)
         self._db = Mock()
@@ -349,6 +350,49 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             self.assertRaises(exception.GlusterfsException,
                               self._driver._get_local_share_path,
                               self.share)
+
+    def test_get_share_stats_refresh_false(self):
+        self._driver._stats = Mock()
+        ret = self._driver.get_share_stats()
+        self.assertEqual(ret, self._driver._stats)
+
+    def test_get_share_stats_refresh_true(self):
+        def foo():
+            self._driver._stats = {'key': 'value'}
+        self._driver._update_share_stats = Mock(side_effect=foo)
+        ret = self._driver.get_share_stats(refresh=True)
+        self.assertEqual(ret, {'key': 'value'})
+
+    def test_update_share_stats(self):
+        test_data = {
+            'share_backend_name': 'GlusterFS',
+            'vendor_name': 'Red Hat',
+            'driver_version': '1.0',
+            'storage_protocol': 'NFS',
+            'reserved_percentage': 50,
+            'QoS_support': False,
+            'total_capacity_gb': 2,
+            'free_capacity_gb': 2,
+        }
+        test_statvfs = Mock(f_frsize=4096, f_blocks=524288, f_bavail=524288)
+        self._driver._get_mount_point_for_gluster_vol = \
+            Mock(return_value='/mnt/nfs/testvol')
+        some_no = 42
+        not_some_no = some_no + 1
+        os_stat = lambda path: Mock(st_dev=some_no) if path == '/mnt/nfs' \
+                    else Mock(st_dev=not_some_no)
+        with patch.object(os, 'statvfs', return_value=test_statvfs):
+            with patch.object(os, 'stat', os_stat):
+                ret = self._driver._update_share_stats()
+                self.assertEqual(self._driver._stats, test_data)
+
+    def test_update_share_stats_gluster_mnt_unavailable(self):
+        self._driver._get_mount_point_for_gluster_vol = \
+            Mock(return_value='/mnt/nfs/testvol')
+        some_no = 42
+        with patch.object(os, 'stat', return_value=Mock(st_dev=some_no)):
+            self.assertRaises(exception.GlusterfsException,
+                              self._driver._update_share_stats)
 
     def test_create_share(self):
         self._driver._get_local_share_path =\
