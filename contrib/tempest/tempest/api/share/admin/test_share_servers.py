@@ -61,8 +61,9 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             # All expected keys are present
             for key in keys:
                 self.assertIn(key, server.keys())
-            # 'Updated at' is valid date
-            self.assertTrue(self.date_re.match(server["updated_at"]))
+            # 'Updated at' is valid date if set
+            if server["updated_at"]:
+                self.assertTrue(self.date_re.match(server["updated_at"]))
             # Host is not empty
             self.assertTrue(len(server["host"]) > 0)
             # Id is not empty
@@ -71,8 +72,11 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             self.assertTrue(len(server["project_id"]) > 0)
 
         # Server we used is present
+        # allow 'creating' status too, because there can be
+        # another server with same requirements.
         any((s["share_network_name"] in self.sn_name_and_id and
-             self.assertEqual(s["status"].lower(), "active")) for s in servers)
+             self.assertIn(s["status"].lower(),
+                           ["active", "creating"])) for s in servers)
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_servers_with_host_filter(self):
@@ -176,8 +180,9 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             self.assertIn(key, server.keys())
         # 'created_at' is valid date
         self.assertTrue(self.date_re.match(server["created_at"]))
-        # 'updated_at' is valid date
-        self.assertTrue(self.date_re.match(server["updated_at"]))
+        # 'updated_at' is valid date if set
+        if server["updated_at"]:
+            self.assertTrue(self.date_re.match(server["updated_at"]))
         # Host is not empty
         self.assertTrue(len(server["host"]) > 0)
         # Id is not empty

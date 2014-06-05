@@ -21,7 +21,7 @@ class ShareBuildErrorException(exceptions.TempestException):
 
 
 class AccessRuleBuildErrorException(exceptions.TempestException):
-    message = "Share's rule with id %(rule_id) is in ERROR status"
+    message = "Share's rule with id %(rule_id)s is in ERROR status"
 
 
 class SnapshotBuildErrorException(exceptions.TempestException):
@@ -42,11 +42,3 @@ class NoAvailableNetwork(exceptions.TempestException):
 
 class InvalidResource(exceptions.TempestException):
     message = "Provided invalid resource: %(message)s"
-
-
-class ShareNetworkActivationFailed(exceptions.TempestException):
-    message = "Share-network with id %(sn_id)s failed to activate"
-
-
-class ShareNetworkDeactivationFailed(exceptions.TempestException):
-    message = "Share-network with id %(sn_id)s failed to deactivate"
