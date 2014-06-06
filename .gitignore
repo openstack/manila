@@ -35,3 +35,6 @@ doc/build
 # Development environment files
 .project
 .pydevproject
+
+# Lock dirs and files
+service_instance_locks
