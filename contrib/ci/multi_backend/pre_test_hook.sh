@@ -16,6 +16,3 @@
 
 # Call common pre_test_hook
 source $BASE/new/manila/contrib/ci/pre_test_hook.sh
-
-# Redefine exports
-source $BASE/new/manila/contrib/ci/multi_backend/setup.sh
