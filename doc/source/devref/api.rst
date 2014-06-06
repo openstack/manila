@@ -19,148 +19,57 @@ API Endpoint
 ============
 
 Manila has a system for managing multiple APIs on different subdomains.
-Currently there is support for the OpenStack API, as well as the Amazon EC2
-API.
+Currently there is support for the OpenStack API.
 
 Common Components
 -----------------
 
 The :mod:`manila.api` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. automodule:: manila.api
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-The :mod:`manila.api.cloud` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.api.cloud
+The :mod:`manila.api.v1` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: manila.api
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
+
+The :mod:`manila.api.contrib` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: manila.api
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 OpenStack API
 -------------
 
 The :mod:`openstack` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. automodule:: manila.api.openstack
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
-The :mod:`auth` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: manila.api.openstack.auth
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-EC2 API
--------
-
-The :mod:`manila.api.ec2` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.api.ec2
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`cloud` Module
-~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.api.ec2.cloud
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`metadatarequesthandler` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.api.ec2.metadatarequesthandler
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 Tests
 -----
 
-The :mod:`api_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`api` Module
+~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.tests.api_unittest
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`api_integration` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.api_integration
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`cloud_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.cloud_unittest
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`api.fakes` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.api.fakes
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`api.test_wsgi` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.api.test_wsgi
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`test_api` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.api.openstack.test_api
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`test_auth` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.api.openstack.test_auth
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`test_faults` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.api.openstack.test_faults
+.. automodule:: manila.tests.api
     :noindex:
     :members:
     :undoc-members:

@@ -1,6 +1,7 @@
 ..
       Copyright 2010-2011 United States Government as represented by the
       Administrator of the National Aeronautics and Space Administration.
+      Copyright 2014 Mirantis, Inc.
       All Rights Reserved.
 
       Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,11 +17,11 @@
       under the License.
 
 Manila System Architecture
-========================
+==========================
 
 The Manila Shared Filesystem Management Service is intended to be ran on one or more nodes.
 
-Manila uses a sql-based central database that is shared by all Manila services in the system.  The amount and depth of the data fits into a sql database quite well.  For small deployments this seems like an optimal solution.  For larger deployments, and especially if security is a concern, manila will be moving towards multiple data stores with some kind of aggregation system.
+Manila uses a sql-based central database that is shared by all Manila services in the system.  The amount and depth of the data fits into a sql database quite well.  For small deployments this seems like an optimal solution.  For larger deployments, and especially if security is a concern, Manila will be moving towards multiple data stores with some kind of aggregation system.
 
 Components
 ----------
@@ -46,8 +47,17 @@ Below you will a brief explanation of the different components.
 
 
 * DB: sql database for data storage. Used by all components (LINKS NOT SHOWN)
-* Web Dashboard: potential external component that talks to the api
+* Web Dashboard: external component that talks to the api. Beta extended Horizon available here: https://github.com/NetApp/horizon/tree/manila
 * api: component that receives http requests, converts commands and communicates with other components via the queue or http
 * Auth Manager: component responsible for users/projects/and roles.  Can backend to DB or LDAP.  This is not a separate binary, but rather a python class that is used by most components in the system.
-* scheduler: decides which host gets each volume
+* scheduler: decides which host will handle create share request.
 * share: manages shared filesystems.
+
+Further Challenges
+------------------
+
+*   More efficient share/snapshot size calculation
+*   Integration with Nova for share automounts
+*   Non-vlan multitenancy
+*   Gateway mediated networking model with NFS-Ganesha
+*   Add support for bigger amount of backends

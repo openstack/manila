@@ -32,7 +32,7 @@ Programming HowTos and Tutorials
 
 
 Background Concepts for Manila
-----------------------------
+------------------------------
 .. toctree::
    :maxdepth: 3
 
@@ -55,7 +55,7 @@ API Reference
 .. toctree::
    :maxdepth: 3
 
-   ../api/autoindex
+   api
 
 Module Reference
 ----------------

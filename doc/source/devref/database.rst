@@ -19,7 +19,7 @@ The Database Layer
 ==================
 
 The :mod:`manila.db.api` Module
------------------------------
+-------------------------------
 
 .. automodule:: manila.db.api
     :noindex:
@@ -32,13 +32,13 @@ The Sqlalchemy Driver
 ---------------------
 
 The :mod:`manila.db.sqlalchemy.api` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: manila.db.sqlalchemy.api
     :noindex:
 
 The :mod:`manila.db.sqlalchemy.models` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: manila.db.sqlalchemy.models
     :noindex:
@@ -47,7 +47,7 @@ The :mod:`manila.db.sqlalchemy.models` Module
     :show-inheritance:
 
 The :mod:`manila.db.sqlalchemy.session` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: manila.db.sqlalchemy.session
     :noindex:

@@ -19,7 +19,7 @@ Scheduler
 =========
 
 The :mod:`manila.scheduler.manager` Module
-----------------------------------------
+------------------------------------------
 
 .. automodule:: manila.scheduler.manager
     :noindex:
@@ -29,7 +29,7 @@ The :mod:`manila.scheduler.manager` Module
 
 
 The :mod:`manila.scheduler.driver` Module
----------------------------------------
+-----------------------------------------
 
 .. automodule:: manila.scheduler.driver
     :noindex:
@@ -39,7 +39,7 @@ The :mod:`manila.scheduler.driver` Module
 
 
 The :mod:`manila.scheduler.simple` Driver
----------------------------------------
+-----------------------------------------
 
 .. automodule:: manila.scheduler.simple
     :noindex:
@@ -51,10 +51,10 @@ The :mod:`manila.scheduler.simple` Driver
 Tests
 -----
 
-The :mod:`scheduler_unittest` Module
+The :mod:`scheduler` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.tests.scheduler_unittest
+.. automodule:: manila.tests.scheduler
     :noindex:
     :members:
     :undoc-members:
