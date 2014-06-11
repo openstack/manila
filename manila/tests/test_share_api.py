@@ -1,4 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
 # Copyright 2012 NetApp
 # All Rights Reserved.
 #
@@ -20,7 +19,6 @@ import random
 import uuid
 
 import mock
-import mox
 import suds
 
 from manila import context
@@ -34,6 +32,7 @@ from manila.share import api as share_api
 from manila.share import rpcapi as share_rpcapi
 from manila import test
 from manila.tests.db import fakes as db_fakes
+from manila import utils
 
 
 def fake_share(id, **kwargs):
@@ -102,14 +101,13 @@ def fake_access(id, **kwargs):
 
 
 class ShareAPITestCase(test.TestCase):
+
     def setUp(self):
         super(ShareAPITestCase, self).setUp()
         self.context = context.get_admin_context()
-        self.scheduler_rpcapi = self.mox.CreateMock(
-                                    scheduler_rpcapi.SchedulerAPI)
-        self.share_rpcapi = self.mox.CreateMock(share_rpcapi.ShareAPI)
+        self.scheduler_rpcapi = mock.Mock()
+        self.share_rpcapi = mock.Mock()
         self.api = share.API()
-
         self.stubs.Set(self.api, 'scheduler_rpcapi', self.scheduler_rpcapi)
         self.stubs.Set(self.api, 'share_rpcapi', self.share_rpcapi)
         self.stubs.Set(quota.QUOTAS, 'reserve', lambda *args, **kwargs: None)
@@ -117,10 +115,12 @@ class ShareAPITestCase(test.TestCase):
         self.patcher = mock.patch.object(timeutils, 'utcnow')
         self.mock_utcnow = self.patcher.start()
         self.mock_utcnow.return_value = datetime.datetime.utcnow()
+        self.addCleanup(self.patcher.stop)
 
-    def tearDown(self):
-        self.patcher.stop()
-        super(ShareAPITestCase, self).tearDown()
+        self.policy_patcher = mock.patch.object(share_api.policy,
+                                                'check_policy')
+        self.policy_patcher.start()
+        self.addCleanup(self.policy_patcher.stop)
 
     def test_create(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
@@ -133,100 +133,103 @@ class ShareAPITestCase(test.TestCase):
         for name in ('id', 'export_location', 'host', 'launched_at',
                      'terminated_at'):
             options.pop(name, None)
-        request_spec = {'share_properties': options,
-                        'share_proto': share['share_proto'],
-                        'share_id': share['id'],
-                        'snapshot_id': share['snapshot_id'],
-                        'volume_type': None
-                        }
+        request_spec = {
+            'share_properties': options,
+            'share_proto': share['share_proto'],
+            'share_id': share['id'],
+            'snapshot_id': share['snapshot_id'],
+            'volume_type': None,
+        }
+        with mock.patch.object(db_driver, 'share_create',
+                               mock.Mock(return_value=share)):
+            self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
+                            availability_zone='fakeaz')
+            db_driver.share_create.assert_called_once_with(
+                self.context, options)
 
-        self.mox.StubOutWithMock(db_driver, 'share_create')
-        db_driver.share_create(self.context, options).AndReturn(share)
-        self.scheduler_rpcapi.create_share(self.context, mox.IgnoreArg(),
-                                           share['id'], share['snapshot_id'],
-                                           request_spec=request_spec,
-                                           filter_properties={})
-        self.mox.ReplayAll()
-        self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
-                        availability_zone='fakeaz')
-
+    @mock.patch.object(quota.QUOTAS, 'reserve',
+                       mock.Mock(return_value='reservation'))
+    @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
     def test_create_snapshot(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
         self.mock_utcnow.return_value = date
-        share = fake_share('fakeid',
-                           status='available')
+        share = fake_share('fakeid', status='available')
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id=share['id'],
                                  status='creating')
         fake_name = 'fakename'
         fake_desc = 'fakedesc'
-        options = {'share_id': share['id'],
-                   'user_id': self.context.user_id,
-                   'project_id': self.context.project_id,
-                   'status': "creating",
-                   'progress': '0%',
-                   'share_size': share['size'],
-                   'size': 1,
-                   'display_name': fake_name,
-                   'display_description': fake_desc,
-                   'share_proto': share['share_proto'],
-                   'export_location': share['export_location']}
+        options = {
+            'share_id': share['id'],
+            'user_id': self.context.user_id,
+            'project_id': self.context.project_id,
+            'status': "creating",
+            'progress': '0%',
+            'share_size': share['size'],
+            'size': 1,
+            'display_name': fake_name,
+            'display_description': fake_desc,
+            'share_proto': share['share_proto'],
+            'export_location': share['export_location'],
+        }
+        with mock.patch.object(db_driver, 'share_snapshot_create',
+                               mock.Mock(return_value=snapshot)):
+            self.api.create_snapshot(self.context, share, fake_name,
+                                     fake_desc)
+            share_api.policy.check_policy.assert_called_once_with(
+                self.context, 'share', 'create_snapshot', share)
+            quota.QUOTAS.reserve.assert_called_once_with(
+                self.context, snapshots=1, gigabytes=1)
+            quota.QUOTAS.commit.assert_called_once_with(
+                self.context, 'reservation')
+            db_driver.share_snapshot_create.assert_called_once_with(
+                self.context, options)
 
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share',
-                                      'create_snapshot', share)
-        self.mox.StubOutWithMock(quota.QUOTAS, 'reserve')
-        quota.QUOTAS.reserve(self.context, snapshots=1, gigabytes=1).\
-            AndReturn('reservation')
-        self.mox.StubOutWithMock(db_driver, 'share_snapshot_create')
-        db_driver.share_snapshot_create(self.context,
-                                        options).AndReturn(snapshot)
-        self.mox.StubOutWithMock(quota.QUOTAS, 'commit')
-        quota.QUOTAS.commit(self.context, 'reservation')
-        self.share_rpcapi.create_snapshot(self.context, share, snapshot)
-        self.mox.ReplayAll()
-        self.api.create_snapshot(self.context, share, fake_name, fake_desc)
-
+    @mock.patch.object(db_driver, 'share_snapshot_update', mock.Mock())
     def test_delete_snapshot(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
         self.mock_utcnow.return_value = date
         share = fake_share('fakeid')
-        snapshot = fake_snapshot('fakesnapshotid', share_id=share['id'],
+        snapshot = fake_snapshot('fakesnapshotid',
+                                 share_id=share['id'],
                                  status='available')
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(
-            self.context, 'share', 'delete_snapshot', snapshot)
-        self.mox.StubOutWithMock(db_driver, 'share_snapshot_update')
-        db_driver.share_snapshot_update(self.context, snapshot['id'],
-                                        {'status': 'deleting'})
-        self.mox.StubOutWithMock(db_driver, 'share_get')
-        db_driver.share_get(self.context,
-                            snapshot['share_id']).AndReturn(share)
-        self.share_rpcapi.delete_snapshot(self.context, snapshot,
-                                          share['host'])
-        self.mox.ReplayAll()
-        self.api.delete_snapshot(self.context, snapshot)
+        with mock.patch.object(db_driver, 'share_get',
+                               mock.Mock(return_value=share)):
+            self.api.delete_snapshot(self.context, snapshot)
+            self.share_rpcapi.delete_snapshot.assert_called_once_with(
+                self.context, snapshot, share['host'])
+            share_api.policy.check_policy.assert_called_once_with(
+                self.context, 'share', 'delete_snapshot', snapshot)
+            db_driver.share_snapshot_update.assert_called_once_with(
+                self.context, snapshot['id'], {'status': 'deleting'})
+            db_driver.share_get.assert_called_once_with(
+                self.context, snapshot['share_id'])
 
     def test_delete_snapshot_wrong_status(self):
-        snapshot = fake_snapshot('fakesnapshotid', share_id='fakeshareid',
+        snapshot = fake_snapshot('fakesnapshotid',
+                                 share_id='fakeshareid',
                                  status='creating')
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(
-            self.context, 'share', 'delete_snapshot', snapshot)
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShareSnapshot,
-                          self.api.delete_snapshot, self.context, snapshot)
+                          self.api.delete_snapshot,
+                          self.context,
+                          snapshot)
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'delete_snapshot', snapshot)
 
     def test_create_snapshot_if_share_not_available(self):
-        share = fake_share('fakeid',
-                           status='error')
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share',
-                                      'create_snapshot', share)
-        self.mox.ReplayAll()
-        self.assertRaises(exception.InvalidShare, self.api.create_snapshot,
-                          self.context, share, 'fakename', 'fakedesc')
+        share = fake_share('fakeid', status='error')
+        self.assertRaises(exception.InvalidShare,
+                          self.api.create_snapshot,
+                          self.context,
+                          share,
+                          'fakename',
+                          'fakedesc')
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'create_snapshot', share)
 
+    @mock.patch.object(quota.QUOTAS, 'reserve',
+                       mock.Mock(return_value='reservation'))
+    @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
     def test_create_from_snapshot_available(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
         self.mock_utcnow.return_value = date
@@ -242,39 +245,45 @@ class ShareAPITestCase(test.TestCase):
         for name in ('id', 'export_location', 'host', 'launched_at',
                      'terminated_at'):
             options.pop(name, None)
-        request_spec = {'share_properties': options,
-                        'share_proto': share['share_proto'],
-                        'share_id': share['id'],
-                        'volume_type': None,
-                        'snapshot_id': share['snapshot_id'],
-                        }
-
-        self.mox.StubOutWithMock(db_driver, 'share_create')
-        db_driver.share_create(self.context, options).AndReturn(share)
-        self.scheduler_rpcapi.create_share(self.context, mox.IgnoreArg(),
-                                           share['id'], share['snapshot_id'],
-                                           request_spec=request_spec,
-                                           filter_properties={})
-        self.mox.ReplayAll()
-        self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
-                        snapshot=snapshot, availability_zone='fakeaz')
+        request_spec = {
+            'share_properties': options,
+            'share_proto': share['share_proto'],
+            'share_id': share['id'],
+            'volume_type': None,
+            'snapshot_id': share['snapshot_id'],
+        }
+        with mock.patch.object(db_driver, 'share_create',
+            mock.Mock(return_value=share)):
+            self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
+                            snapshot=snapshot, availability_zone='fakeaz')
+            self.scheduler_rpcapi.create_share.assert_called_once_with(
+                self.context, 'manila-share', share['id'],
+                share['snapshot_id'], request_spec=request_spec,
+                filter_properties={})
+            db_driver.share_create.assert_called_once_with(
+                self.context, options)
+            share_api.policy.check_policy.assert_called_once_with(
+                self.context, 'share', 'create')
+            quota.QUOTAS.reserve.assert_called_once_with(
+                self.context, gigabytes=1, shares=1)
+            quota.QUOTAS.commit.assert_called_once_with(
+                self.context, 'reservation')
 
     def test_get_snapshot(self):
         fake_get_snap = {'fake_key': 'fake_val'}
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'get_snapshot')
-        self.mox.StubOutWithMock(db_driver, 'share_snapshot_get')
-        db_driver.share_snapshot_get(self.context,
-                                     'fakeid').AndReturn(fake_get_snap)
-        self.mox.ReplayAll()
-        rule = self.api.get_snapshot(self.context, 'fakeid')
-        self.assertEqual(rule, fake_get_snap)
+        with mock.patch.object(db_driver, 'share_snapshot_get',
+                               mock.Mock(return_value=fake_get_snap)):
+            rule = self.api.get_snapshot(self.context, 'fakeid')
+            self.assertEqual(rule, fake_get_snap)
+            share_api.policy.check_policy.assert_called_once_with(
+                self.context, 'share', 'get_snapshot')
+            db_driver.share_snapshot_get.assert_called_once_with(
+                self.context, 'fakeid')
 
     def test_create_from_snapshot_not_available(self):
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id='fakeshare_id',
                                  status='error')
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShareSnapshot, self.api.create,
                           self.context, 'nfs', '1', 'fakename',
                           'fakedesc', snapshot=snapshot,
@@ -282,19 +291,16 @@ class ShareAPITestCase(test.TestCase):
 
     def test_create_from_snapshot_larger_size(self):
         snapshot = fake_snapshot(1, size=100, status='available')
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidInput, self.api.create,
                           self.context, 'nfs', 1, 'fakename', 'fakedesc',
                           availability_zone='fakeaz', snapshot=snapshot)
 
     def test_create_wrong_size_0(self):
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidInput, self.api.create,
                           self.context, 'nfs', 0, 'fakename', 'fakedesc',
                           availability_zone='fakeaz')
 
     def test_create_wrong_size_some(self):
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidInput, self.api.create,
                           self.context, 'nfs', 'some', 'fakename',
                           'fakedesc', availability_zone='fakeaz')
@@ -303,255 +309,251 @@ class ShareAPITestCase(test.TestCase):
         date = datetime.datetime(2, 2, 2, 2, 2, 2)
         self.mock_utcnow.return_value = date
         share = fake_share('fakeid', status='available')
-        options = {'status': 'deleting',
-                   'terminated_at': date}
+        options = {'status': 'deleting', 'terminated_at': date}
         deleting_share = share.copy()
         deleting_share.update(options)
-
-        self.mox.StubOutWithMock(db_driver, 'share_update')
-        db_driver.share_update(self.context, share['id'], options).\
-            AndReturn(deleting_share)
-        self.share_rpcapi.delete_share(self.context, deleting_share)
-        self.mox.ReplayAll()
-        self.api.delete(self.context, share)
-        self.mox.UnsetStubs()
-        self.mox.VerifyAll()
+        with mock.patch.object(db_driver, 'share_update',
+                               mock.Mock(return_value=deleting_share)):
+            self.api.delete(self.context, share)
+            db_driver.share_update.assert_called_once_with(
+                self.context, share['id'], options)
+            self.share_rpcapi.delete_share.assert_called_once_with(
+                self.context, deleting_share)
 
     def test_delete_error(self):
         date = datetime.datetime(2, 2, 2, 2, 2, 2)
         self.mock_utcnow.return_value = date
         share = fake_share('fakeid', status='error')
-        options = {'status': 'deleting',
-                   'terminated_at': date}
+        options = {'status': 'deleting', 'terminated_at': date}
         deleting_share = share.copy()
         deleting_share.update(options)
-
-        self.mox.StubOutWithMock(db_driver, 'share_update')
-        db_driver.share_update(self.context, share['id'], options).\
-            AndReturn(deleting_share)
-        self.share_rpcapi.delete_share(self.context, deleting_share)
-        self.mox.ReplayAll()
-        self.api.delete(self.context, share)
-        self.mox.UnsetStubs()
-        self.mox.VerifyAll()
+        with mock.patch.object(db_driver, 'share_update',
+                               mock.Mock(return_value=deleting_share)):
+            self.api.delete(self.context, share)
+            db_driver.share_update.assert_called_once_with(
+                self.context, share['id'], options)
+            self.share_rpcapi.delete_share.assert_called_once_with(
+                self.context, deleting_share)
 
     def test_delete_wrong_status(self):
         share = fake_share('fakeid')
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShare, self.api.delete,
                           self.context, share)
 
+    @mock.patch.object(db_driver, 'share_delete', mock.Mock())
     def test_delete_no_host(self):
         share = fake_share('fakeid')
         share['host'] = None
-
-        self.mox.StubOutWithMock(db_driver, 'share_delete')
-        db_driver.share_delete(mox.IsA(context.RequestContext), 'fakeid')
-        self.mox.ReplayAll()
         self.api.delete(self.context, share)
+        db_driver.share_delete.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), 'fakeid')
 
     def test_get(self):
-        self.mox.StubOutWithMock(db_driver, 'share_get')
-        db_driver.share_get(self.context, 'fakeid').AndReturn('fakeshare')
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'get',
-                                      'fakeshare')
-        self.mox.ReplayAll()
-        result = self.api.get(self.context, 'fakeid')
-        self.assertEqual(result, 'fakeshare')
+        with mock.patch.object(db_driver, 'share_get',
+                               mock.Mock(return_value='fakeshare')):
+            result = self.api.get(self.context, 'fakeid')
+            self.assertEqual(result, 'fakeshare')
+            share_api.policy.check_policy.assert_called_once_with(
+                self.context, 'share', 'get', 'fakeshare')
+            db_driver.share_get.assert_called_once_with(
+                self.context, 'fakeid')
 
+    @mock.patch.object(db_driver, 'share_get_all_by_project', mock.Mock())
     def test_get_all_admin_not_all_tenants(self):
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=True)
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'share', 'get_all')
-        self.mox.StubOutWithMock(db_driver, 'share_get_all_by_project')
-        db_driver.share_get_all_by_project(ctx, 'fakepid')
-        self.mox.ReplayAll()
         self.api.get_all(ctx)
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all')
+        db_driver.share_get_all_by_project.assert_called_once_with(
+            ctx, 'fakepid')
 
+    @mock.patch.object(db_driver, 'share_get_all', mock.Mock())
     def test_get_all_admin_all_tenants(self):
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'get_all')
-        self.mox.StubOutWithMock(db_driver, 'share_get_all')
-        db_driver.share_get_all(self.context)
-        self.mox.ReplayAll()
         self.api.get_all(self.context, search_opts={'all_tenants': 1})
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'get_all')
+        db_driver.share_get_all.assert_called_once_with(self.context)
 
+    @mock.patch.object(db_driver, 'share_get_all_by_project', mock.Mock())
     def test_get_all_not_admin(self):
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=False)
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'share', 'get_all')
-        self.mox.StubOutWithMock(db_driver, 'share_get_all_by_project')
-        db_driver.share_get_all_by_project(ctx, 'fakepid')
-        self.mox.ReplayAll()
         self.api.get_all(ctx)
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all')
+        db_driver.share_get_all_by_project.assert_called_once_with(
+            ctx, 'fakepid')
 
     def test_get_all_not_admin_search_opts(self):
         search_opts = {'size': 'fakesize'}
         fake_objs = [{'name': 'fakename1'}, search_opts]
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=False)
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'share', 'get_all')
-        self.mox.StubOutWithMock(db_driver, 'share_get_all_by_project')
-        db_driver.share_get_all_by_project(ctx,
-                                           'fakepid').AndReturn(fake_objs)
-        self.mox.ReplayAll()
-        result = self.api.get_all(ctx, search_opts)
-        self.assertEqual([search_opts], result)
+        with mock.patch.object(db_driver, 'share_get_all_by_project',
+                               mock.Mock(return_value=fake_objs)):
+            result = self.api.get_all(ctx, search_opts)
+            self.assertEqual([search_opts], result)
+            share_api.policy.check_policy.assert_called_once_with(
+                ctx, 'share', 'get_all')
+            db_driver.share_get_all_by_project.assert_called_once_with(
+                ctx, 'fakepid')
 
+    @mock.patch.object(db_driver, 'share_snapshot_get_all_by_project',
+                       mock.Mock())
     def test_get_all_snapshots_admin_not_all_tenants(self):
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=True)
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'share', 'get_all_snapshots')
-        self.mox.StubOutWithMock(db_driver,
-                                 'share_snapshot_get_all_by_project')
-        db_driver.share_snapshot_get_all_by_project(ctx, 'fakepid')
-        self.mox.ReplayAll()
         self.api.get_all_snapshots(ctx)
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all_snapshots')
+        db_driver.share_snapshot_get_all_by_project.assert_called_once_with(
+            ctx, 'fakepid')
 
+    @mock.patch.object(db_driver, 'share_snapshot_get_all', mock.Mock())
     def test_get_all_snapshots_admin_all_tenants(self):
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share',
-                                      'get_all_snapshots')
-        self.mox.StubOutWithMock(db_driver, 'share_snapshot_get_all')
-        db_driver.share_snapshot_get_all(self.context)
-        self.mox.ReplayAll()
         self.api.get_all_snapshots(self.context,
                                    search_opts={'all_tenants': 1})
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'get_all_snapshots')
+        db_driver.share_snapshot_get_all.assert_called_once_with(self.context)
 
+    @mock.patch.object(db_driver, 'share_snapshot_get_all_by_project',
+                       mock.Mock())
     def test_get_all_snapshots_not_admin(self):
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=False)
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'share', 'get_all_snapshots')
-        self.mox.StubOutWithMock(db_driver,
-                                 'share_snapshot_get_all_by_project')
-        db_driver.share_snapshot_get_all_by_project(ctx, 'fakepid')
-        self.mox.ReplayAll()
         self.api.get_all_snapshots(ctx)
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all_snapshots')
+        db_driver.share_snapshot_get_all_by_project.assert_called_once_with(
+            ctx, 'fakepid')
 
     def test_get_all_snapshots_not_admin_search_opts(self):
         search_opts = {'size': 'fakesize'}
         fake_objs = [{'name': 'fakename1'}, search_opts]
         ctx = context.RequestContext('fakeuid', 'fakepid', id_admin=False)
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(ctx, 'share', 'get_all_snapshots')
-        self.mox.StubOutWithMock(db_driver,
-                                 'share_snapshot_get_all_by_project')
-        db_driver.share_snapshot_get_all_by_project(ctx, 'fakepid').\
-            AndReturn(fake_objs)
-        self.mox.ReplayAll()
-        result = self.api.get_all_snapshots(ctx, search_opts)
-        self.assertEqual([search_opts], result)
+        with mock.patch.object(db_driver,
+                               'share_snapshot_get_all_by_project',
+                               mock.Mock(return_value=fake_objs)):
+            result = self.api.get_all_snapshots(ctx, search_opts)
+            self.assertEqual([search_opts], result)
+            share_api.policy.check_policy.assert_called_once_with(
+                ctx, 'share', 'get_all_snapshots')
+            db_driver.share_snapshot_get_all_by_project.\
+                assert_called_once_with(ctx, 'fakepid')
 
     def test_allow_access(self):
         share = fake_share('fakeid', status='available')
-        values = {'share_id': share['id'],
-                  'access_type': 'fakeacctype',
-                  'access_to': 'fakeaccto'}
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'allow_access')
-        self.mox.StubOutWithMock(db_driver, 'share_access_create')
-        db_driver.share_access_create(self.context, values).\
-            AndReturn('fakeacc')
-        self.share_rpcapi.allow_access(self.context, share, 'fakeacc')
-        self.mox.ReplayAll()
-        access = self.api.allow_access(self.context, share, 'fakeacctype',
-                                       'fakeaccto')
-        self.assertEqual(access, 'fakeacc')
+        values = {
+            'share_id': share['id'],
+            'access_type': 'fakeacctype',
+            'access_to': 'fakeaccto',
+        }
+        with mock.patch.object(db_driver, 'share_access_create',
+                               mock.Mock(return_value='fakeacc')):
+            self.share_rpcapi.allow_access(self.context, share, 'fakeacc')
+            access = self.api.allow_access(self.context, share, 'fakeacctype',
+                                           'fakeaccto')
+            self.assertEqual(access, 'fakeacc')
+            db_driver.share_access_create.assert_called_once_with(
+                self.context, values)
+            share_api.policy.check_policy.assert_called_once_with(
+                self.context, 'share', 'allow_access')
 
     def test_allow_access_status_not_available(self):
         share = fake_share('fakeid', status='error')
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShare, self.api.allow_access,
                           self.context, share, 'fakeacctype', 'fakeaccto')
 
     def test_allow_access_no_host(self):
         share = fake_share('fakeid', host=None)
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShare, self.api.allow_access,
                           self.context, share, 'fakeacctype', 'fakeaccto')
 
+    @mock.patch.object(db_driver, 'share_access_delete', mock.Mock())
     def test_deny_access_error(self):
         share = fake_share('fakeid', status='available')
         access = fake_access('fakaccid', state='fakeerror')
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'deny_access')
-        self.mox.StubOutWithMock(db_driver, 'share_access_delete')
-        db_driver.share_access_delete(self.context, access['id'])
-        self.mox.ReplayAll()
         self.api.deny_access(self.context, share, access)
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'deny_access')
+        db_driver.share_access_delete.assert_called_once_with(
+            self.context, access['id'])
 
+    @mock.patch.object(db_driver, 'share_access_update', mock.Mock())
     def test_deny_access_active(self):
         share = fake_share('fakeid', status='available')
         access = fake_access('fakaccid', state='fakeactive')
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'deny_access')
-        self.mox.StubOutWithMock(db_driver, 'share_access_update')
-        db_driver.share_access_update(self.context, access['id'],
-                                      {'state': 'fakedeleting'})
-        self.share_rpcapi.deny_access(self.context, share, access)
-        self.mox.ReplayAll()
         self.api.deny_access(self.context, share, access)
+        db_driver.share_access_update.assert_called_once_with(
+            self.context, access['id'], {'state': 'fakedeleting'})
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'deny_access')
+        self.share_rpcapi.deny_access.assert_called_once_with(
+            self.context, share, access)
 
     def test_deny_access_not_active_not_error(self):
         share = fake_share('fakeid', status='available')
         access = fake_access('fakaccid', state='fakenew')
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'deny_access')
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShareAccess, self.api.deny_access,
                           self.context, share, access)
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'deny_access')
 
     def test_deny_access_status_not_available(self):
         share = fake_share('fakeid', status='error')
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'deny_access')
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShare, self.api.deny_access,
                           self.context, share, 'fakeacc')
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'deny_access')
 
     def test_deny_access_no_host(self):
         share = fake_share('fakeid', host=None)
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'deny_access')
-        self.mox.ReplayAll()
         self.assertRaises(exception.InvalidShare, self.api.deny_access,
                           self.context, share, 'fakeacc')
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'deny_access')
 
     def test_access_get(self):
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'access_get')
-        self.mox.StubOutWithMock(db_driver, 'share_access_get')
-        db_driver.share_access_get(self.context, 'fakeid').AndReturn('fake')
-        self.mox.ReplayAll()
-        rule = self.api.access_get(self.context, 'fakeid')
-        self.assertEqual(rule, 'fake')
+        with mock.patch.object(db_driver, 'share_access_get',
+                               mock.Mock(return_value='fake')):
+            rule = self.api.access_get(self.context, 'fakeid')
+            self.assertEqual(rule, 'fake')
+            share_api.policy.check_policy.assert_called_once_with(
+                self.context, 'share', 'access_get')
+            db_driver.share_access_get.assert_called_once_with(
+                self.context, 'fakeid')
 
     def test_access_get_all(self):
         share = fake_share('fakeid')
-        self.mox.StubOutWithMock(share_api.policy, 'check_policy')
-        share_api.policy.check_policy(self.context, 'share', 'access_get_all')
-        self.mox.StubOutWithMock(db_driver, 'share_access_get_all_for_share')
-        db_driver.share_access_get_all_for_share(self.context, 'fakeid').\
-            AndReturn([fake_access('fakeacc0id', state='fakenew'),
-                       fake_access('fakeacc1id', state='fakeerror')])
-        self.mox.ReplayAll()
-        rules = self.api.access_get_all(self.context, share)
-        self.assertEqual(rules, [{'id': 'fakeacc0id',
-                                  'access_type': 'fakeacctype',
-                                  'access_to': 'fakeaccto',
-                                  'state': 'fakenew'},
-                                 {'id': 'fakeacc1id',
-                                  'access_type': 'fakeacctype',
-                                  'access_to': 'fakeaccto',
-                                  'state': 'fakeerror'}])
+        rules = [
+            fake_access('fakeacc0id', state='fakenew'),
+            fake_access('fakeacc1id', state='fakeerror'),
+        ]
+        expected = [
+            {
+                'id': 'fakeacc0id',
+                'access_type': 'fakeacctype',
+                'access_to': 'fakeaccto',
+                'state': 'fakenew',
+            },
+            {
+                'id': 'fakeacc1id',
+                'access_type': 'fakeacctype',
+                'access_to': 'fakeaccto',
+                'state': 'fakeerror',
+            },
+        ]
+        with mock.patch.object(db_driver, 'share_access_get_all_for_share',
+                               mock.Mock(return_value=rules)):
+            actual = self.api.access_get_all(self.context, share)
+            self.assertEqual(actual, expected)
+            share_api.policy.check_policy.assert_called_once_with(
+                self.context, 'share', 'access_get_all')
+            db_driver.share_access_get_all_for_share.assert_called_once_with(
+                self.context, 'fakeid')
 
     def test_share_metadata_get(self):
         metadata = {'a': 'b', 'c': 'd'}
         share_id = str(uuid.uuid4())
-        db_driver.share_create(self.context, {'id': share_id,
-                                              'metadata': metadata})
-
+        db_driver.share_create(self.context,
+                               {'id': share_id, 'metadata': metadata})
         self.assertEqual(metadata,
                          db_driver.share_metadata_get(self.context, share_id))
 
@@ -559,13 +561,11 @@ class ShareAPITestCase(test.TestCase):
         metadata1 = {'a': '1', 'c': '2'}
         metadata2 = {'a': '3', 'd': '5'}
         should_be = {'a': '3', 'c': '2', 'd': '5'}
-
         share_id = str(uuid.uuid4())
-        db_driver.share_create(self.context, {'id': share_id,
-                                              'metadata': metadata1})
+        db_driver.share_create(self.context,
+                               {'id': share_id, 'metadata': metadata1})
         db_driver.share_metadata_update(self.context, share_id,
                                         metadata2, False)
-
         self.assertEqual(should_be,
                          db_driver.share_metadata_get(self.context, share_id))
 
@@ -573,12 +573,10 @@ class ShareAPITestCase(test.TestCase):
         metadata1 = {'a': '1', 'c': '2'}
         metadata2 = {'a': '3', 'd': '4'}
         should_be = metadata2
-
         share_id = str(uuid.uuid4())
-        db_driver.share_create(self.context, {'id': share_id,
-                                              'metadata': metadata1})
+        db_driver.share_create(self.context,
+                               {'id': share_id, 'metadata': metadata1})
         db_driver.share_metadata_update(self.context, share_id,
                                         metadata2, True)
-
         self.assertEqual(should_be,
                          db_driver.share_metadata_get(self.context, share_id))

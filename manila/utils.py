@@ -1221,3 +1221,11 @@ def cidr_to_netmask(cidr):
         return str(network.netmask)
     except netaddr.AddrFormatError:
         raise exception.InvalidInput(_("Invalid cidr supplied %s") % cidr)
+
+
+class IsAMatcher(object):
+    def __init__(self, expected_value=None):
+        self.expected_value = expected_value
+
+    def __eq__(self, actual_value):
+        return isinstance(actual_value, self.expected_value)
