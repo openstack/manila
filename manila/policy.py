@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright (c) 2011 OpenStack, LLC.
 # All Rights Reserved.
 #
@@ -16,26 +14,19 @@
 #    under the License.
 
 """Policy Engine For Manila"""
+
 import functools
+import os.path
 
 from oslo.config import cfg
 
 from manila import exception
-
 from manila.openstack.common import policy
 from manila import utils
 
-policy_opts = [
-    cfg.StrOpt('policy_file',
-               default='policy.json',
-               help=_('JSON file representing policy')),
-    cfg.StrOpt('policy_default_rule',
-               default='default',
-               help=_('Rule checked when requested rule is not found')), ]
-
 CONF = cfg.CONF
-CONF.register_opts(policy_opts)
 
+_ENFORCER = None
 _POLICY_PATH = None
 _POLICY_CACHE = {}
 
@@ -43,26 +34,33 @@ _POLICY_CACHE = {}
 def reset():
     global _POLICY_PATH
     global _POLICY_CACHE
+    global _ENFORCER
     _POLICY_PATH = None
     _POLICY_CACHE = {}
-    policy.reset()
+    _ENFORCER = None
 
 
 def init():
     global _POLICY_PATH
     global _POLICY_CACHE
+    global _ENFORCER
     if not _POLICY_PATH:
-        _POLICY_PATH = utils.find_config(CONF.policy_file)
-    utils.read_cached_file(_POLICY_PATH, _POLICY_CACHE,
-                           reload_func=_set_brain)
+        _POLICY_PATH = CONF.policy_file
+        if not os.path.exists(_POLICY_PATH):
+            _POLICY_PATH = utils.find_config(_POLICY_PATH)
+    if not _ENFORCER:
+        _ENFORCER = policy.Enforcer(policy_file=_POLICY_PATH)
+    utils.read_cached_file(_POLICY_PATH, _POLICY_CACHE, reload_func=_set_rules)
 
 
-def _set_brain(data):
+def _set_rules(data):
+    global _ENFORCER
     default_rule = CONF.policy_default_rule
-    policy.set_brain(policy.HttpBrain.load_json(data, default_rule))
+    _ENFORCER.set_rules(policy.Rules.load_json(
+        data, default_rule))
 
 
-def enforce(context, action, target):
+def enforce(context, action, target, do_raise=True):
     """Verifies that the action is valid on the target in this context.
 
        :param context: manila context
@@ -80,12 +78,15 @@ def enforce(context, action, target):
 
     """
     init()
+    if not isinstance(context, dict):
+        context = context.to_dict()
 
-    match_list = ('rule:%s' % action,)
-    credentials = context.to_dict()
-
-    policy.enforce(match_list, target, credentials,
-                   exception.PolicyNotAuthorized, action=action)
+    # Add the exception arguments if asked to do a raise
+    extra = {}
+    if do_raise:
+        extra.update(exc=exception.PolicyNotAuthorized, action=action,
+                     do_raise=do_raise)
+    return _ENFORCER.enforce(action, target, context, **extra)
 
 
 def check_is_admin(roles):
@@ -94,16 +95,13 @@ def check_is_admin(roles):
     """
     init()
 
-    action = 'context_is_admin'
-    match_list = ('rule:%s' % action,)
     # include project_id on target to avoid KeyError if context_is_admin
     # policy definition is missing, and default admin_or_owner rule
     # attempts to apply.  Since our credentials dict does not include a
     # project_id, this target can never match as a generic rule.
     target = {'project_id': ''}
     credentials = {'roles': roles}
-
-    return policy.enforce(match_list, target, credentials)
+    return _ENFORCER.enforce("context_is_admin", target, credentials)
 
 
 def wrap_check_policy(resource):

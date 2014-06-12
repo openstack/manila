@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import operator
+
+import six
 
 from manila.openstack.common import jsonutils
 from manila.openstack.common.scheduler import filters
@@ -51,7 +52,7 @@ class JsonFilter(filters.BaseHostFilter):
         return self._op_compare(args, operator.gt)
 
     def _in(self, args):
-        """First term is in set of remaining terms"""
+        """First term is in set of remaining terms."""
         return self._op_compare(args, operator.contains)
 
     def _less_than_equal(self, args):
@@ -102,7 +103,7 @@ class JsonFilter(filters.BaseHostFilter):
         if obj is None:
             return None
         for item in path[1:]:
-            obj = obj.get(item, None)
+            obj = obj.get(item)
             if obj is None:
                 return None
         return obj
@@ -117,7 +118,7 @@ class JsonFilter(filters.BaseHostFilter):
         for arg in query[1:]:
             if isinstance(arg, list):
                 arg = self._process_filter(arg, host_state)
-            elif isinstance(arg, basestring):
+            elif isinstance(arg, six.string_types):
                 arg = self._parse_string(arg, host_state)
             if arg is not None:
                 cooked_args.append(arg)
