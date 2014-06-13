@@ -25,6 +25,7 @@ CONF = config.CONF
 class AdminActionsNegativeTest(base.BaseSharesAdminTest):
 
     @classmethod
+    @test.safe_setup
     def setUpClass(cls):
         super(AdminActionsNegativeTest, cls).setUpClass()
         __, cls.sh = cls.create_share()

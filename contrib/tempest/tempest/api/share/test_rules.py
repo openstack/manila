@@ -25,6 +25,7 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
     protocol = "nfs"
 
     @classmethod
+    @test.safe_setup
     def setUpClass(cls):
         super(ShareIpRulesForNFSTest, cls).setUpClass()
         if (cls.protocol not in CONF.share.enable_protocols or
@@ -82,6 +83,7 @@ class ShareSidRulesForNFSTest(base.BaseSharesTest):
     protocol = "nfs"
 
     @classmethod
+    @test.safe_setup
     def setUpClass(cls):
         super(ShareSidRulesForNFSTest, cls).setUpClass()
         if (cls.protocol not in CONF.share.enable_protocols or
@@ -118,6 +120,7 @@ class ShareSidRulesForCIFSTest(ShareSidRulesForNFSTest):
 class ShareRulesTest(base.BaseSharesTest):
 
     @classmethod
+    @test.safe_setup
     def setUpClass(cls):
         super(ShareRulesTest, cls).setUpClass()
         if not (any(p in CONF.share.enable_ip_rules_for_protocols

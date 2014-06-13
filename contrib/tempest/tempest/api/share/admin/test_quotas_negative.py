@@ -29,6 +29,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
     force_tenant_isolation = True
 
     @classmethod
+    @test.safe_setup
     def setUpClass(cls):
         cls.os = clients.AdminManager(interface=cls._interface)
         super(SharesAdminQuotasNegativeTest, cls).setUpClass()

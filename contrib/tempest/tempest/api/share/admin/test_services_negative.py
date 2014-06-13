@@ -22,6 +22,7 @@ from tempest import test
 class ServicesAdminNegativeTest(base.BaseSharesAdminTest):
 
     @classmethod
+    @test.safe_setup
     def setUpClass(cls):
         super(ServicesAdminNegativeTest, cls).setUpClass()
         user_clients = clients.Manager(interface=cls._interface)
