@@ -14,10 +14,17 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-GlusterFS Driver for shares.
 
+"""Single tenant GlusterFS Driver for shares.
+
+Manila shares are subdirectories within a GlusterFS volume. The access to the
+shares is currently mediated by the Gluster-NFS server running in the GlusterFS
+backend storage pool. The Gluster-NFS server supports only NFSv3 protocol so
+it's the only protocol that can be used to access the shares.
+
+TODO(rraja): support SMB protocol.
 """
+
 import errno
 import os
 import pdb
@@ -80,9 +87,7 @@ class GlusterAddress(object):
 
 
 class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
-    """
-    Glusterfs Specific driver
-    """
+    """Execute commands relating to Shares."""
 
     def __init__(self, db, *args, **kwargs):
         super(GlusterfsShareDriver, self).__init__(*args, **kwargs)
@@ -94,7 +99,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             'share_backend_name') or 'GlusterFS'
 
     def do_setup(self, context):
-        """Native mount the Gluster volume."""
+        """Native mount the GlusterFS volume and tune it."""
         super(GlusterfsShareDriver, self).do_setup(context)
         self.gluster_address = GlusterAddress(
                                    self._read_gluster_vol_from_config()
@@ -122,20 +127,18 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise
 
     def check_for_setup_error(self):
-        """Is called after do_setup method. Nothing to do."""
         pass
 
     def _get_mount_point_for_gluster_vol(self):
-        """Return mount point for gluster volume."""
+        """Return mount point for the GlusterFS volume."""
         return os.path.join(self.configuration.glusterfs_mount_point_base,
                             self.gluster_address.volume)
 
     def _do_mount(self, cmd, ensure):
-        """Finalize mount command.
+        """Execute the mount command based on 'ensure' parameter.
 
         :param cmd: command to do the actual mount
         :param ensure: boolean to allow remounting a volume with a warning
-        :param glusterfs_export: gluster volume that is mounted
         """
         try:
             self._execute(*cmd, run_as_root=True)
@@ -149,7 +152,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 )
 
     def _mount_gluster_vol(self, mount_path, ensure=False):
-        """Mount Gluster volume at the specified mount path."""
+        """Mount GlusterFS volume at the specified mount path."""
         self._execute('mkdir', '-p', mount_path)
         command = ['mount', '-t', 'glusterfs', self.gluster_address.export,
                    mount_path]
@@ -167,6 +170,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             return f.readline().strip()
 
     def _get_export_dir_dict(self):
+        """Get the export entries of shares in the GlusterFS volume."""
         try:
             args, kw = self.gluster_address.make_gluster_args(
                            '--xml',
@@ -210,8 +214,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         return edh
 
     def _ensure_gluster_vol_mounted(self):
-        """Ensure that a Gluster volume is native-mounted on Manila host.
-        """
+        """Ensure GlusterFS volume is native-mounted on Manila host."""
         mount_path = self._get_mount_point_for_gluster_vol()
         try:
             self._mount_gluster_vol(mount_path, ensure=True)
@@ -221,9 +224,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise
 
     def _get_local_share_path(self, share):
-        """Determine the locally mounted path of the share
-        (in Manila host).
-        """
+        """Determine mount path of the GlusterFS volume in the Manila host."""
         local_vol_path = self._get_mount_point_for_gluster_vol()
         if not os.access(local_vol_path, os.R_OK):
             raise exception.GlusterfsException('share path %s does not exist' %
@@ -270,7 +271,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._stats = data
 
     def create_share(self, ctx, share, share_server=None):
-        """Create a directory that'd serve as a share in a Gluster volume."""
+        """Create a sub-directory/share in the GlusterFS volume."""
         local_share_path = self._get_local_share_path(share)
         cmd = ['mkdir', local_share_path]
         try:
@@ -284,7 +285,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         return export_location
 
     def delete_share(self, context, share, share_server=None):
-        """Remove a directory that served as a share in a Gluster volume."""
+        """Remove a sub-directory/share from the GlusterFS volume."""
         local_share_path = self._get_local_share_path(share)
         cmd = ['rm', '-rf', local_share_path]
         try:
