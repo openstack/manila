@@ -16,27 +16,10 @@
 Fakes For Scheduler tests.
 """
 
-import mox
-
-from manila import db
 from manila.openstack.common import timeutils
 from manila.scheduler import filter_scheduler
 from manila.scheduler import host_manager
 
-
-VOLUME_SERVICES = [
-    dict(id=1, host='host1', topic='volume', disabled=False,
-         availability_zone='zone1', updated_at=timeutils.utcnow()),
-    dict(id=2, host='host2', topic='volume', disabled=False,
-         availability_zone='zone1', updated_at=timeutils.utcnow()),
-    dict(id=3, host='host3', topic='volume', disabled=False,
-         availability_zone='zone2', updated_at=timeutils.utcnow()),
-    dict(id=4, host='host4', topic='volume', disabled=False,
-         availability_zone='zone3', updated_at=timeutils.utcnow()),
-    # service on host5 is disabled
-    dict(id=5, host='host5', topic='volume', disabled=True,
-         availability_zone='zone4', updated_at=timeutils.utcnow()),
-]
 
 SHARE_SERVICES = [
     dict(id=1, host='host1', topic='share', disabled=False,
@@ -90,15 +73,22 @@ class FakeHostState(host_manager.HostState):
             setattr(self, key, val)
 
 
-def mox_host_manager_db_calls(mock, context):
-    mock.StubOutWithMock(db, 'service_get_all_by_topic')
-
-    db.service_get_all_by_topic(mox.IgnoreArg(),
-                                mox.IgnoreArg()).AndReturn(VOLUME_SERVICES)
-
-
-def mox_host_manager_db_calls_share(mock, context):
-    mock.StubOutWithMock(db, 'service_get_all_by_topic')
-
-    db.service_get_all_by_topic(mox.IgnoreArg(),
-                                mox.IgnoreArg()).AndReturn(SHARE_SERVICES)
+def mock_host_manager_db_calls(mock_obj, disabled=None):
+    services = [
+        dict(id=1, host='host1', topic='share', disabled=False,
+             availability_zone='zone1', updated_at=timeutils.utcnow()),
+        dict(id=2, host='host2', topic='share', disabled=False,
+             availability_zone='zone1', updated_at=timeutils.utcnow()),
+        dict(id=3, host='host3', topic='share', disabled=False,
+             availability_zone='zone2', updated_at=timeutils.utcnow()),
+        dict(id=4, host='host4', topic='share', disabled=False,
+             availability_zone='zone3', updated_at=timeutils.utcnow()),
+        # service on host5 is disabled
+        dict(id=5, host='host5', topic='share', disabled=True,
+             availability_zone='zone4', updated_at=timeutils.utcnow()),
+    ]
+    if disabled is None:
+        mock_obj.return_value = services
+    else:
+        mock_obj.return_value = [service for service in services
+                                 if service['disabled'] == disabled]

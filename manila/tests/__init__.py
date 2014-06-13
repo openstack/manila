@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -42,7 +40,9 @@ setattr(__builtin__, '_', lambda x: x)
 import os
 import shutil
 
+from manila.db import migration
 from manila.db.sqlalchemy.session import get_engine
+from manila.tests import conf_fixture
 
 
 CONF = cfg.CONF
@@ -62,13 +62,7 @@ def reset_db():
 
 
 def setup():
-    import mox  # Fail fast if you don't have mox. Workaround for bug 810424
-
-    from manila.db import migration
-    from manila.tests import conf_fixture
-
     conf_fixture.set_defaults(CONF)
-
     if CONF.sql_connection == "sqlite://":
         if migration.db_version() > 1:
             return
