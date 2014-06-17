@@ -23,63 +23,6 @@ from manila import policy
 from manila import test
 
 
-class FakeBackendDetails(object):
-    key = 'fake_key_1'
-    value = 'fake_value_1'
-
-
-class FakeBackendDetails2(object):
-    key = 'fake_key_2'
-    value = 'fake_value_2'
-
-
-class FakeShareServer(object):
-
-    def __init__(self, *args, **kwargs):
-        super(FakeShareServer, self).__init__()
-        self.id = kwargs.get('id', 'fake_server_id')
-        if 'created_at' in kwargs:
-            self.created_at = kwargs.get('created_at', None)
-        self.updated_at = kwargs.get('updated_at', None)
-        self.host = kwargs.get('host', 'fake_host')
-        self.share_network = kwargs.get('share_network', {
-            'name': 'fake_sn_name', 'id': 'fake_sn_id',
-            'project_id': 'fake_project_id'})
-        self.share_network_id = kwargs.get('share_network_id',
-                                           self.share_network['id'])
-        self.status = kwargs.get('status', constants.STATUS_ACTIVE)
-        self.project_id = self.share_network['project_id']
-        self.backend_details = [
-            FakeBackendDetails(),
-            FakeBackendDetails2(),
-        ]
-
-    def __getitem__(self, item):
-        return getattr(self, item)
-
-
-def fake_share_server_get_all():
-    fake_share_servers = [
-        FakeShareServer(),
-        FakeShareServer(id='fake_server_id_2',
-                        host='fake_host_2',
-                        share_network={
-                            'name': None,
-                            'id': 'fake_sn_id_2',
-                            'project_id': 'fake_project_id_2'},
-                        status=constants.STATUS_ERROR)
-    ]
-    return fake_share_servers
-
-
-def fake_share_server_get():
-    return FakeShareServer(created_at=None)
-
-
-def fake_share_server_backend_details_get():
-    return [FakeBackendDetails(), FakeBackendDetails2(), ]
-
-
 fake_share_server_list = {
     'share_servers': [
         {
@@ -118,16 +61,61 @@ fake_share_server_get_result = {
     }
 }
 
+share_server_backend_details = {
+    'fake_key_1': 'fake_value_1',
+    'fake_key_2': 'fake_value_2',
+}
 
 fake_share_server_backend_details_get_result = {
-    'details': {
-        'fake_key_1': 'fake_value_1',
-        'fake_key_2': 'fake_value_2',
-    }
+    'details': share_server_backend_details
 }
 
 
 CONTEXT = context.get_admin_context()
+
+
+class FakeShareServer(object):
+
+    def __init__(self, *args, **kwargs):
+        super(FakeShareServer, self).__init__()
+        self.id = kwargs.get('id', 'fake_server_id')
+        if 'created_at' in kwargs:
+            self.created_at = kwargs.get('created_at', None)
+        self.updated_at = kwargs.get('updated_at', None)
+        self.host = kwargs.get('host', 'fake_host')
+        self.share_network = kwargs.get('share_network', {
+            'name': 'fake_sn_name', 'id': 'fake_sn_id',
+            'project_id': 'fake_project_id'})
+        self.share_network_id = kwargs.get('share_network_id',
+                                           self.share_network['id'])
+        self.status = kwargs.get('status', constants.STATUS_ACTIVE)
+        self.project_id = self.share_network['project_id']
+        self.backend_details = share_server_backend_details
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+
+def fake_share_server_get_all():
+    fake_share_servers = [
+        FakeShareServer(),
+        FakeShareServer(id='fake_server_id_2',
+                        host='fake_host_2',
+                        share_network={
+                            'name': None,
+                            'id': 'fake_sn_id_2',
+                            'project_id': 'fake_project_id_2'},
+                        status=constants.STATUS_ERROR)
+    ]
+    return fake_share_servers
+
+
+def fake_share_server_get():
+    return FakeShareServer(created_at=None)
+
+
+def fake_share_server_backend_details_get():
+    return share_server_backend_details
 
 
 class FakeRequestAdmin(object):

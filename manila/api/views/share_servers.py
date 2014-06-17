@@ -34,10 +34,7 @@ class ViewBuilder(common.ViewBuilder):
         }
 
     def build_share_server_details(self, details):
-        details_dict = {}
-        for pair in details:
-            details_dict[pair.key] = pair.value
-        return {'details': details_dict}
+        return {'details': details}
 
     def _build_share_server_view(self, share_server, detailed=False):
         share_server_dict = {
@@ -50,7 +47,5 @@ class ViewBuilder(common.ViewBuilder):
         }
         if detailed:
             share_server_dict['created_at'] = share_server.created_at
-            share_server_dict['backend_details'] = {}
-            for pair in share_server.backend_details:
-                share_server_dict['backend_details'][pair.key] = pair.value
+            share_server_dict['backend_details'] = share_server.backend_details
         return share_server_dict
