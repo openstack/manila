@@ -20,6 +20,7 @@ import datetime
 
 import mock
 from oslo.config import cfg
+import testtools
 
 from manila import context
 from manila import db
@@ -73,7 +74,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         snapshot['status'] = 'available'
         return db.share_snapshot_create(self.context, snapshot)
 
-    @test.skip_test("SQLAlchemy sqlite insert bug")
+    @testtools.skip("SQLAlchemy sqlite insert bug")
     def test_too_many_shares(self):
         share_ids = []
         for i in range(CONF.quota_shares):
@@ -85,7 +86,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         for share_id in share_ids:
             db.share_delete(self.context, share_id)
 
-    @test.skip_test("SQLAlchemy sqlite insert bug")
+    @testtools.skip("SQLAlchemy sqlite insert bug")
     def test_too_many_gigabytes(self):
         share_ids = []
         share_ref = self._create_share(size=20)

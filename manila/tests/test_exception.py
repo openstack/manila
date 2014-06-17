@@ -38,18 +38,6 @@ class FakeNotifier(object):
         self.provided_payload = payload
 
 
-def good_function():
-    return 99
-
-
-def bad_function_error():
-    raise exception.Error()
-
-
-def bad_function_exception():
-    raise test.TestingException()
-
-
 class ManilaExceptionTestCase(test.TestCase):
     def test_default_error_msg(self):
         class FakeManilaException(exception.ManilaException):

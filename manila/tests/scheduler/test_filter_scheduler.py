@@ -15,14 +15,14 @@
 """
 Tests For Filter Scheduler.
 """
+import testtools
 
 from manila import context
 from manila import exception
-from manila import test
-
 from manila.openstack.common.scheduler import weights
 from manila.scheduler import filter_scheduler
 from manila.scheduler import host_manager
+from manila import test
 from manila.tests.scheduler import fakes
 from manila.tests.scheduler import test_scheduler
 from manila.tests import utils as test_utils
@@ -37,8 +37,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
 
     driver_cls = filter_scheduler.FilterScheduler
 
-    @test.skip_if(not test_utils.is_manila_installed(),
-                  'Test requires Manila installed (try setup.py develop')
+    @testtools.skipIf(not test_utils.is_manila_installed(),
+                      'Test requires Manila installed (try setup.py develop')
     def test_create_share_no_hosts(self):
         """
         Ensure empty hosts & child_zones result in NoValidHosts exception.
@@ -56,8 +56,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.NoValidHost, sched.schedule_create_share,
                           fake_context, request_spec, {})
 
-    @test.skip_if(not test_utils.is_manila_installed(),
-                  'Test requires Manila installed (try setup.py develop')
+    @testtools.skipIf(not test_utils.is_manila_installed(),
+                      'Test requires Manila installed (try setup.py develop')
     def test_create_share_non_admin(self):
         """Test creating share passing a non-admin context.
 
@@ -85,8 +85,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           fake_context, request_spec, {})
         self.assertTrue(self.was_admin)
 
-    @test.skip_if(not test_utils.is_manila_installed(),
-                  'Test requires Manila installed (try setup.py develop')
+    @testtools.skipIf(not test_utils.is_manila_installed(),
+                      'Test requires Manila installed (try setup.py develop')
     def test_schedule_happy_day_share(self):
         """Make sure there's nothing glaringly wrong with _schedule_share()
         by doing a happy day pass through."""
