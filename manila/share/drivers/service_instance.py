@@ -113,21 +113,14 @@ def synchronized(f):
     return wrapped_func
 
 
-def _ssh_exec(server, command):
-    """Executes ssh commands and checks/restores ssh connection."""
-    if not server['ssh'].get_transport().is_active():
-        server['ssh_pool'].remove(server['ssh'])
-        server['ssh'] = server['ssh_pool'].create()
-    return utils.ssh_execute(server['ssh'], ' '.join(command))
-
-
 class ServiceInstanceManager(object):
     """Manages nova instances for various share drivers.
 
     This class provides two external methods:
-    1. get_service_instance: creates or discovers service instance and network
-                             infrastructure for provided share network.
-    2. delete_service_instance: removes service instance and network
+    1. set_up_service_instance: creates instance and sets up share
+                                infrastructure
+    2. ensure_service_instance: ensure service instance is available.
+    3. delete_service_instance: removes service instance and network
                                 infrastructure.
     """
 
@@ -266,30 +259,26 @@ class ServiceInstanceManager(object):
             )
         return sg
 
-    def _ensure_server(self, context, server, update=False):
-        """Ensures that server exists and active, otherwise deletes it."""
-        if not server:
+    def ensure_service_instance(self, context, server):
+        """Ensures that server exists and active."""
+        try:
+            inst = self.compute_api.server_get(self.admin_context,
+                                               server['instance_id'])
+        except exception.InstanceNotFound:
+            LOG.warning(_("Service instance %s does not exists")
+                        % server['instance_id'])
             return False
-        if update:
-            try:
-                server.update(self.compute_api.server_get(context,
-                                                          server['id']))
-            except exception.InstanceNotFound as e:
-                LOG.debug(e)
-                return False
-        if server['status'] == 'ACTIVE':
-            if self._check_server_availability(server):
-                return True
-
+        if inst['status'] == 'ACTIVE':
+            return self._check_server_availability(server)
         return False
 
-    def _delete_server(self, context, server):
+    def _delete_server(self, context, server_id):
         """Deletes the server."""
-        self.compute_api.server_delete(context, server['id'])
+        self.compute_api.server_delete(context, server_id)
         t = time.time()
         while time.time() - t < self.max_time_to_build_instance:
             try:
-                server = self.compute_api.server_get(context, server['id'])
+                server = self.compute_api.server_get(context, server_id)
             except exception.InstanceNotFound:
                 LOG.debug('Service instance was deleted succesfully.')
                 break
@@ -300,8 +289,9 @@ class ServiceInstanceManager(object):
                 self.max_time_to_build_instance)
 
     @synchronized
-    def get_service_instance(self, context, share_server_id, share_network_id,
-                             create=False, return_inactive=False):
+    def set_up_service_instance(self, context, share_server_id,
+                                share_network_id, create=False,
+                                return_inactive=False):
         """Finds or creates and sets up service vm.
 
         :param context: defines context, that should be used
@@ -313,66 +303,25 @@ class ServiceInstanceManager(object):
         :returns: dict with data for service VM
         :raises: exception.ServiceInstanceException
         """
-        server = self.share_networks_servers.get(share_server_id, {})
-        if self._ensure_server(context, server, update=True):
-            return server
-        else:
-            server = self._discover_service_instance(context, share_server_id)
-            old_server_ip = None
-            is_active = False
-            if server:
-                server['ip'] = self._get_server_ip(server)
-                old_server_ip = server['ip']
-                is_active = self._ensure_server(context, server)
-            if not is_active and create:
-                if server:
-                    self._delete_server(context, server)
-                server = self._create_service_instance(context,
-                                                       share_network_id,
-                                                       share_server_id,
-                                                       old_server_ip)
-                is_active = True
+        server = self._create_service_instance(context,
+                                               share_network_id,
+                                               share_server_id)
 
-        self.share_networks_servers[share_server_id] = server
-        if is_active:
-            server['share_network_id'] = share_network_id
-            server['ip'] = self._get_server_ip(server)
-            server['ssh_pool'] = self._get_ssh_pool(server)
-            server['ssh'] = server['ssh_pool'].create()
-            for helper in self._helpers.values():
-                helper.init_helper(server)
-        elif not return_inactive:
-            msg = _('Service instance for share network %s is not active or '
-                     'does not exist') % share_network_id
-            raise exception.ServiceInstanceException(msg)
-
-        return server
-
-    def _discover_service_instance(self, context, share_server_id):
-        server = {}
-        instance_name = self._get_service_instance_name(share_server_id)
-        search_opts = {'name': instance_name}
-        servers = self.compute_api.server_list(context, search_opts, True)
-        if len(servers) == 1:
-            return servers[0]
-        elif len(servers) > 1:
-            raise exception.ServiceInstanceException(
-                    _('Error. Ambiguous service instances.'))
-        return server
-
-    def _get_ssh_pool(self, server):
-        """Returns ssh connection pool for service vm."""
-        ssh_pool = utils.SSHPool(server['ip'], 22, None,
-            self.get_config_option("service_instance_user"),
-            password=self.get_config_option("service_instance_password"),
-            privatekey=self.path_to_private_key,
-            max_size=1)
-        return ssh_pool
+        return {'instance_id': server['id'],
+                'ip': server['ip'],
+                'pk_path': server['pk_path'],
+                'password': self.get_config_option(
+                    'service_instance_password'),
+                'username': self.get_config_option('service_instance_user')}
 
     @lockutils.synchronized("_get_key", external=True,
                             lock_path="service_instance_locks")
     def _get_key(self, context):
-        """Returns name of key, that will be injected to service vm."""
+        """Get ssh key.
+
+        :param context: defines context, that should be used
+        :returns: tuple with keypair name and path to private key.
+        """
         if not (self.path_to_public_key or self.path_to_private_key):
             return
         path_to_public_key = os.path.expanduser(self.path_to_public_key)
@@ -400,7 +349,7 @@ class ServiceInstanceManager(object):
                 keypair = self.compute_api.keypair_import(context,
                                                           keypair_name,
                                                           public_key)
-        return keypair.name
+        return keypair.name, path_to_private_key
 
     def _get_service_image(self, context):
         """Returns ID of service image for service vm creating."""
@@ -417,13 +366,13 @@ class ServiceInstanceManager(object):
                                     _('Ambiguous image name.'))
 
     def _create_service_instance(self, context, share_network_id,
-                                 share_server_id, old_server_ip):
+                                 share_server_id):
         """Creates service vm and sets up networking for it."""
         service_image_id = self._get_service_image(context)
         instance_name = self._get_service_instance_name(share_server_id)
 
         with lock:
-            key_name = self._get_key(context)
+            key_name, key_path = self._get_key(context)
             if not (self.get_config_option("service_instance_password") or
                     key_name):
                 raise exception.ServiceInstanceException(_('Neither service '
@@ -434,9 +383,7 @@ class ServiceInstanceManager(object):
                 self.get_config_option("service_instance_security_group"):
                 security_group = self._create_service_instance_security_group(
                     context)
-            port = self._setup_network_for_instance(context,
-                                                    share_network_id,
-                                                    old_server_ip)
+            port = self._setup_network_for_instance(share_network_id)
             try:
                 self._setup_connectivity_with_service_instances()
             except Exception as e:
@@ -475,7 +422,10 @@ class ServiceInstanceManager(object):
                                                 service_instance["id"]))
             self.compute_api.add_security_group_to_server(context,
                 service_instance["id"], security_group.id)
+
         service_instance['ip'] = self._get_server_ip(service_instance)
+        service_instance['pk_path'] = key_path
+
         if not self._check_server_availability(service_instance):
             raise exception.ServiceInstanceException(
                 _('SSH connection have not been '
@@ -499,8 +449,7 @@ class ServiceInstanceManager(object):
 
     @lockutils.synchronized("_setup_network_for_instance", external=True,
                             lock_path="service_instance_locks")
-    def _setup_network_for_instance(self, context, share_network_id,
-                                    old_server_ip):
+    def _setup_network_for_instance(self, share_network_id):
         """Sets up network for service vm."""
         service_subnet = self._get_service_subnet(share_network_id)
         if not service_subnet:
@@ -525,7 +474,6 @@ class ServiceInstanceManager(object):
         return self.neutron_api.create_port(self.service_tenant_id,
                                             self.service_network_id,
                                             subnet_id=service_subnet['id'],
-                                            fixed_ip=old_server_ip,
                                             device_owner='manila')
 
     @lockutils.synchronized("_get_private_router", external=True,
@@ -663,14 +611,12 @@ class ServiceInstanceManager(object):
             raise exception.ServiceInstanceException(_('No available cidrs.'))
 
     def delete_service_instance(self, context, share_network_id,
-                                share_server_id):
+                                instance_id):
         """Removes share infrastructure.
 
         Deletes service vm and subnet, associated to share network.
         """
-        server = self._discover_service_instance(context, share_server_id)
-        if server:
-            self._delete_server(context, server)
+        self._delete_server(context, instance_id)
         subnet = self._get_service_subnet(share_network_id)
         if subnet:
             subnet_id = subnet['id']

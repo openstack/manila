@@ -113,7 +113,7 @@ class GenericShareDriverTestCase(test.TestCase):
             context="fake", instance_name="fake",
             share_network_id=self.fake_sn["id"], old_server_ip="fake")
 
-        self.stubs.Set(generic, '_ssh_exec', mock.Mock())
+        self._driver._ssh_exec = mock.Mock(return_value=('', ''))
         self.stubs.Set(generic, 'synchronized', mock.Mock(side_effect=
                                                           lambda f: f))
         self.stubs.Set(generic.os.path, 'exists', mock.Mock(return_value=True))
@@ -122,6 +122,12 @@ class GenericShareDriverTestCase(test.TestCase):
             'NFS': self._helper_nfs,
         }
         self.share = fake_share()
+        self.server = {
+            'backend_details': {
+                'ip': '1.2.3.4',
+                'instance_id': 'fake'
+            }
+        }
         self.access = fake_access()
         self.snapshot = fake_snapshot()
 
@@ -144,9 +150,11 @@ class GenericShareDriverTestCase(test.TestCase):
         generic.importutils.import_class.assert_has_calls([
             mock.call('fakenfs')
         ])
-        self._helper_nfs.assert_called_once_with(self._execute,
-                                             self.fake_conf,
-                                             self._driver.share_networks_locks)
+        self._helper_nfs.assert_called_once_with(
+            self._execute,
+            self._driver._ssh_exec,
+            self.fake_conf,
+            self._driver.share_networks_locks)
         self.assertEqual(len(self._driver._helpers), 1)
 
     def test_create_share(self):
@@ -155,7 +163,8 @@ class GenericShareDriverTestCase(test.TestCase):
                 '_attach_volume', '_format_device', '_mount_device')
         for method in methods:
             self.stubs.Set(self._driver, method, mock.Mock())
-        result = self._driver.create_share(self._context, self.share)
+        result = self._driver.create_share(self._context, self.share,
+                                           share_server=self.server)
         for method in methods:
             getattr(self._driver, method).assert_called_once()
         self.assertEqual(result, 'fakelocation')
@@ -168,7 +177,7 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_format_device(self):
         volume = {'mountpoint': 'fake_mount_point'}
         self._driver._format_device('fake_server', volume)
-        generic._ssh_exec.assert_called_once_with('fake_server',
+        self._driver._ssh_exec.assert_called_once_with('fake_server',
                 ['sudo', 'mkfs.ext4', volume['mountpoint']])
 
     def _test_mount_device(self):
@@ -179,7 +188,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._mount_device(self._context, self.share, 'fake_server',
                                    volume)
 
-        generic._ssh_exec.assert_has_calls([
+        self._driver._ssh_exec.assert_has_calls([
             mock.call('fake_server', ['sudo', 'mkdir', '-p',
                                       'fake_mount_path',
                                       ';', 'sudo', 'mount',
@@ -191,7 +200,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_mount_device_exception_01(self):
         volume = {'mountpoint': 'fake_mount_point'}
-        generic._ssh_exec.side_effect = [
+        self._driver._ssh_exec.side_effect = [
                exception.ProcessExecutionError(stderr='already mounted'), None]
         self.stubs.Set(self._driver, '_get_mount_path',
                 mock.Mock(return_value='fake_mount_path'))
@@ -199,7 +208,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._mount_device(self._context, self.share, 'fake_server',
                                    volume)
 
-        generic._ssh_exec.assert_has_calls([
+        self._driver._ssh_exec.assert_has_calls([
             mock.call('fake_server', ['sudo', 'mkdir', '-p',
                                       'fake_mount_path',
                                       ';', 'sudo', 'mount',
@@ -211,7 +220,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_mount_device_exception_02(self):
         volume = {'mountpoint': 'fake_mount_point'}
-        generic._ssh_exec.side_effect = exception.ManilaException
+        self._driver._ssh_exec.side_effect = exception.ManilaException
         self.stubs.Set(self._driver, '_get_mount_path',
                 mock.Mock(return_value='fake_mount_path'))
         self.assertRaises(exception.ManilaException,
@@ -221,8 +230,8 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_umount_device(self):
         self.stubs.Set(self._driver, '_get_mount_path',
                 mock.Mock(return_value='fake_mount_path'))
-        self._driver._unmount_device(self._context, self.share, 'fake_server')
-        generic._ssh_exec.assert_called_once_with('fake_server',
+        self._driver._unmount_device(self.share, 'fake_server')
+        self._driver._ssh_exec.assert_called_once_with('fake_server',
             ['sudo', 'umount', 'fake_mount_path', ';', 'sudo', 'rmdir',
              'fake_mount_path'])
 
@@ -241,10 +250,10 @@ class GenericShareDriverTestCase(test.TestCase):
                        mock.Mock(return_value=attached_volume))
 
         result = self._driver._attach_volume(self._context, self.share,
-                                             fake_server, availiable_volume)
+                                             'fake_inst_id', availiable_volume)
 
         self._driver.compute_api.instance_volume_attach.\
-                assert_called_once_with(self._context, fake_server['id'],
+                assert_called_once_with(self._context, 'fake_inst_id',
                         availiable_volume['id'])
         self._driver.volume_api.get.\
                 assert_called_once_with(self._context, attached_volume['id'])
@@ -353,11 +362,14 @@ class GenericShareDriverTestCase(test.TestCase):
         self.stubs.Set(self._driver.volume_api, 'get',
                        mock.Mock(return_value=availiable_volume))
 
-        self._driver._detach_volume(self._context, self.share, fake_server)
+        self._driver._detach_volume(self._context, self.share,
+                                    self.server['backend_details'])
 
         self._driver.compute_api.instance_volume_detach.\
-                assert_called_once_with(self._context, fake_server['id'],
-                                        availiable_volume['id'])
+                assert_called_once_with(
+            self._context,
+            self.server['backend_details']['instance_id'],
+            availiable_volume['id'])
         self._driver.volume_api.get.\
                 assert_called_once_with(self._context, availiable_volume['id'])
 
@@ -374,11 +386,12 @@ class GenericShareDriverTestCase(test.TestCase):
         self.stubs.Set(self._driver.compute_api, 'instance_volume_detach',
                        mock.Mock())
 
-        self._driver._detach_volume(self._context, self.share, fake_server)
+        self._driver._detach_volume(self._context, self.share,
+                                    self.server['backend_details'])
 
         self.assertFalse(self._driver.volume_api.get.called)
-        self.assertFalse(self._driver.compute_api.
-                                        instance_volume_detach.called)
+        self.assertFalse(
+            self._driver.compute_api.instance_volume_detach.called)
 
     def test_allocate_container(self):
         fake_vol = fake_volume.FakeVolume()
@@ -441,9 +454,11 @@ class GenericShareDriverTestCase(test.TestCase):
                 '_attach_volume', '_mount_device')
         for method in methods:
             self.stubs.Set(self._driver, method, mock.Mock())
-        result = self._driver.create_share_from_snapshot(self._context,
-                                           self.share,
-                                           self.snapshot)
+        result = self._driver.create_share_from_snapshot(
+            self._context,
+            self.share,
+            self.snapshot,
+            share_server=self.server)
         for method in methods:
             getattr(self._driver, method).assert_called_once()
         self.assertEqual(result, 'fakelocation')
@@ -456,7 +471,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
         self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
 
-        self._driver.delete_share(self._context, self.share)
+        self._driver.delete_share(self._context, self.share,
+                                  share_server=self.server)
 
         self._driver.get_service_instance.assert_called_once()
         self._driver._unmount_device.assert_called_once()
@@ -471,7 +487,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self.stubs.Set(self._driver.volume_api, 'create_snapshot_force',
                        mock.Mock(return_value=fake_vol_snap))
 
-        self._driver.create_snapshot(self._context, self.snapshot)
+        self._driver.create_snapshot(self._context, self.snapshot,
+                                     share_server=self.server)
 
         self._driver._get_volume.assert_called_once()
         self._driver.volume_api.create_snapshot_force.assert_called_once_with(
@@ -490,7 +507,8 @@ class GenericShareDriverTestCase(test.TestCase):
                 mock.Mock(side_effect=exception.VolumeSnapshotNotFound(
                     snapshot_id=fake_vol_snap['id'])))
 
-        self._driver.delete_snapshot(self._context, fake_vol_snap)
+        self._driver.delete_snapshot(self._context, fake_vol_snap,
+                                     share_server=self.server)
 
         self._driver._get_volume_snapshot.assert_called_once()
         self._driver.volume_api.delete_snapshot.assert_called_once()
@@ -502,7 +520,8 @@ class GenericShareDriverTestCase(test.TestCase):
                 '_attach_volume', '_mount_device')
         for method in methods:
             self.stubs.Set(self._driver, method, mock.Mock())
-        self._driver.ensure_share(self._context, self.share)
+        self._driver.ensure_share(self._context, self.share,
+                                  share_server=self.server)
         for method in methods:
             getattr(self._driver, method).assert_called_once()
 
@@ -511,28 +530,25 @@ class GenericShareDriverTestCase(test.TestCase):
         access = {'access_type': 'ip', 'access_to': 'fake_dest'}
         self.stubs.Set(self._driver, 'get_service_instance',
                        mock.Mock(return_value=fake_server))
-        self._driver.allow_access(self._context, self.share, access)
-
+        self._driver.allow_access(self._context, self.share, access,
+                                  share_server=self.server)
         self._driver.get_service_instance.assert_called_once()
         self._driver._helpers[self.share['share_proto']].\
-                allow_access.assert_called_once_with(fake_server,
-                                                     self.share['name'],
-                                                     access['access_type'],
-                                                     access['access_to'])
+            allow_access.assert_called_once_with(
+                self.server['backend_details'],
+                self.share['name'],
+                access['access_type'],
+                access['access_to'])
 
     def test_deny_access(self):
-        fake_server = fake_compute.FakeServer()
         access = {'access_type': 'ip', 'access_to': 'fake_dest'}
-        self.stubs.Set(self._driver, 'get_service_instance',
-                       mock.Mock(return_value=fake_server))
-        self._driver.deny_access(self._context, self.share, access)
-
-        self._driver.get_service_instance.assert_called_once()
-        self._driver._helpers[self.share['share_proto']].\
-                deny_access.assert_called_once_with(fake_server,
-                                                    self.share['name'],
-                                                    access['access_type'],
-                                                    access['access_to'])
+        self._driver.deny_access(self._context, self.share, access,
+                                 share_server=self.server)
+        self._driver._helpers[self.share['share_proto']]. \
+            deny_access.assert_called_once_with(self.server['backend_details'],
+                                                self.share['name'],
+                                                access['access_type'],
+                                                access['access_to'])
 
     def test_setup_network(self):
         sim = self._driver.instance_manager
@@ -548,7 +564,8 @@ class GenericShareDriverTestCase(test.TestCase):
 
         net_info = self.fake_sn.copy()
         net_info['share_network_id'] = net_info['id']
-        self.stubs.Set(self._driver, 'get_service_instance',
+        self.stubs.Set(self._driver.service_instance_manager,
+                       'set_up_service_instance',
                        mock.Mock(side_effect=raise_exception))
         self.assertRaises(exception.ServiceInstanceException,
                           self._driver.setup_network,
@@ -568,9 +585,10 @@ class NFSHelperTestCase(test.TestCase):
         super(NFSHelperTestCase, self).setUp()
         fake_utils.stub_out_utils_execute(self.stubs)
         self.fake_conf = Configuration(None)
-        self.stubs.Set(generic, '_ssh_exec', mock.Mock(return_value=('', '')))
+        self._ssh_exec = mock.Mock(return_value=('', ''))
         self._execute = mock.Mock(return_value=('', ''))
-        self._helper = generic.NFSHelper(self._execute, self.fake_conf, {})
+        self._helper = generic.NFSHelper(self._execute, self._ssh_exec,
+                                         self.fake_conf, {})
 
     def test_create_export(self):
         fake_server = fake_compute.FakeServer(ip='10.254.0.3')
@@ -584,7 +602,7 @@ class NFSHelperTestCase(test.TestCase):
         self._helper.allow_access(fake_server, 'volume-00001',
                                   'ip', '10.0.0.2')
         local_path = os.path.join(CONF.share_mount_path, 'volume-00001')
-        generic._ssh_exec.assert_has_calls([
+        self._ssh_exec.assert_has_calls([
             mock.call(fake_server, ['sudo', 'exportfs']),
             mock.call(fake_server, ['sudo', 'exportfs', '-o',
                                     'rw,no_subtree_check',
@@ -602,7 +620,7 @@ class NFSHelperTestCase(test.TestCase):
         self._helper.deny_access(fake_server, 'volume-00001', 'ip', '10.0.0.2')
         export_string = ':'.join(['10.0.0.2', local_path])
         expected_exec = ['sudo', 'exportfs', '-u', export_string]
-        generic._ssh_exec.assert_called_once_with(fake_server, expected_exec)
+        self._ssh_exec.assert_called_once_with(fake_server, expected_exec)
 
 
 class CIFSHelperTestCase(test.TestCase):
@@ -611,41 +629,46 @@ class CIFSHelperTestCase(test.TestCase):
     def setUp(self):
         super(CIFSHelperTestCase, self).setUp()
         self.fake_conf = Configuration(None)
-        self.stubs.Set(generic, '_ssh_exec', mock.Mock(return_value=('', '')))
+        self._ssh_exec = mock.Mock(return_value=('', ''))
         self._execute = mock.Mock(return_value=('', ''))
-        self._helper = generic.CIFSHelper(self._execute, self.fake_conf, {})
+        self._helper = generic.CIFSHelper(self._execute, self._ssh_exec,
+                                          self.fake_conf, {})
 
     def test_create_export(self):
-        fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-                                    share_network_id='fake_share_network_id')
+        #fake_server = fake_compute.FakeServer(ip='10.254.0.3',
+        #                            share_network_id='fake_share_network_id')
+        server_details = {'instance_id': 'fake',
+                          'ip': '1.2.3.4'}
         self.stubs.Set(self._helper, '_update_config', mock.Mock())
         self.stubs.Set(self._helper, '_write_remote_config', mock.Mock())
         self.stubs.Set(self._helper, '_restart_service', mock.Mock())
         self.stubs.Set(self._helper, '_get_local_config', mock.Mock())
         self.stubs.Set(generic.ConfigParser, 'ConfigParser', mock.Mock())
 
-        ret = self._helper.create_export(fake_server, 'volume-00001',
+        ret = self._helper.create_export(server_details, 'volume-00001',
                                          recreate=True)
         self._helper._get_local_config.\
-                assert_called_once_with(fake_server['share_network_id'])
+                assert_called_once_with(server_details['instance_id'])
         self._helper._update_config.assert_called_once()
         self._helper._write_remote_config.assert_called_once()
         self._helper._restart_service.assert_called_once()
-        expected_location = '//%s/%s' % (fake_server['ip'], 'volume-00001')
+        expected_location = '//%s/%s' % (server_details['ip'], 'volume-00001')
         self.assertEqual(ret, expected_location)
 
     def test_remove_export(self):
-        fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-                                    share_network_id='fake_share_network_id')
+        #fake_server = fake_compute.FakeServer(ip='10.254.0.3',
+        #                            share_network_id='fake_share_network_id')
+        server_details = {'instance_id': 'fake',
+                          'ip': '1.2.3.4'}
         self.stubs.Set(generic.ConfigParser, 'ConfigParser', mock.Mock())
         self.stubs.Set(self._helper, '_get_local_config', mock.Mock())
         self.stubs.Set(self._helper, '_update_config', mock.Mock())
         self.stubs.Set(self._helper, '_write_remote_config', mock.Mock())
-        self._helper.remove_export(fake_server, 'volume-00001')
+        self._helper.remove_export(server_details, 'volume-00001')
         self._helper._get_local_config.assert_called_once()
         self._helper._update_config.assert_called_once()
         self._helper._write_remote_config.assert_called_once()
-        generic._ssh_exec.assert_called_once_with(fake_server,
+        self._helper._ssh_exec.assert_called_once_with(server_details,
                 ['sudo', 'smbcontrol', 'all', 'close-share', 'volume-00001'])
 
     def test_allow_access(self):
@@ -659,15 +682,17 @@ class CIFSHelperTestCase(test.TestCase):
             def set(self, *args, **kwargs):
                 pass
 
-        fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-                                    share_network_id='fake_share_network_id')
+        #fake_server = fake_compute.FakeServer(ip='10.254.0.3',
+        #                            share_network_id='fake_share_network_id')
+        server_details = {'instance_id': 'fake',
+                          'ip': '1.2.3.4'}
         self.stubs.Set(generic.ConfigParser, 'ConfigParser', FakeParser)
         self.stubs.Set(self._helper, '_get_local_config', mock.Mock())
         self.stubs.Set(self._helper, '_update_config', mock.Mock())
         self.stubs.Set(self._helper, '_write_remote_config', mock.Mock())
         self.stubs.Set(self._helper, '_restart_service', mock.Mock())
 
-        self._helper.allow_access(fake_server, 'volume-00001',
+        self._helper.allow_access(server_details, 'volume-00001',
                                   'ip', '10.0.0.2')
         self._helper._get_local_config.assert_called_once()
         self._helper._update_config.assert_called_once()
@@ -675,15 +700,17 @@ class CIFSHelperTestCase(test.TestCase):
         self._helper._restart_service.assert_called_once()
 
     def test_deny_access(self):
-        fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-                                    share_network_id='fake_share_network_id')
+        #fake_server = fake_compute.FakeServer(ip='10.254.0.3',
+        #                            share_network_id='fake_share_network_id')
+        server_details = {'instance_id': 'fake',
+                          'ip': '1.2.3.4'}
         self.stubs.Set(generic.ConfigParser, 'ConfigParser', mock.Mock())
         self.stubs.Set(self._helper, '_get_local_config', mock.Mock())
         self.stubs.Set(self._helper, '_update_config', mock.Mock())
         self.stubs.Set(self._helper, '_write_remote_config', mock.Mock())
         self.stubs.Set(self._helper, '_restart_service', mock.Mock())
 
-        self._helper.deny_access(fake_server, 'volume-00001',
+        self._helper.deny_access(server_details, 'volume-00001',
                                   'ip', '10.0.0.2')
         self._helper._get_local_config.assert_called_once()
         self._helper._update_config.assert_called_once()
