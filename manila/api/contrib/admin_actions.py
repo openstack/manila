@@ -85,6 +85,18 @@ class AdminController(wsgi.Controller):
             raise exc.HTTPNotFound(e)
         return webob.Response(status_int=202)
 
+    @wsgi.action('os-force_delete')
+    def _force_delete(self, req, id, body):
+        """Delete a resource, bypassing the check that it must be available."""
+        context = req.environ['manila.context']
+        self.authorize(context, 'force_delete')
+        try:
+            resource = self._get(context, id)
+        except exception.NotFound as e:
+            raise exc.HTTPNotFound(e)
+        self._delete(context, resource, force=True)
+        return webob.Response(status_int=202)
+
 
 class ShareAdminController(AdminController):
     """AdminController for Shares."""

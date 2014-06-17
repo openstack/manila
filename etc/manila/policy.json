@@ -15,7 +15,9 @@
     "share_extension:quotas:update_for_user": [["rule:admin_or_projectadmin"]],
     "share_extension:quota_classes": [],
 
+    "share_extension:share_admin_actions:force_delete": [["rule:admin_api"]],
     "share_extension:share_admin_actions:reset_status": [["rule:admin_api"]],
+    "share_extension:snapshot_admin_actions:force_delete": [["rule:admin_api"]],
     "share_extension:snapshot_admin_actions:reset_status": [["rule:admin_api"]],
 
     "share_extension:services": [["rule:admin_api"]],
