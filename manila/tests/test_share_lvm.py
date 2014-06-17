@@ -1,4 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
 # Copyright 2012 NetApp
 # All Rights Reserved.
 #
@@ -15,13 +14,14 @@
 #    under the License.
 """Unit tests for the NFS driver module."""
 
-import mock
 import os
+
+import mock
+from oslo.config import cfg
 
 from manila import context
 from manila.db.sqlalchemy import models
 from manila import exception
-
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.share.configuration import Configuration
@@ -29,7 +29,6 @@ from manila.share.drivers import lvm
 from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_utils
-from oslo.config import cfg
 
 
 CONF = cfg.CONF
@@ -313,14 +312,16 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_ensure_share(self):
-        mount_path = self._get_mount_path(self.share)
-        self.mox.StubOutWithMock(self._driver, '_mount_device')
-        self._driver._mount_device(self.share, '/dev/mapper/fakevg-fakename').\
-            AndReturn(mount_path)
-        self._helper_nfs.create_export(mount_path, self.share['name'],
-                                       recreate=True).AndReturn('fakelocation')
-        self.mox.ReplayAll()
-        self._driver.ensure_share(self._context, self.share)
+        device_name = '/dev/mapper/fakevg-fakename'
+        location = 'fake_location'
+        with mock.patch.object(self._driver,
+                               '_mount_device',
+                               mock.Mock(return_value=location)):
+            self._driver.ensure_share(self._context, self.share)
+            self._driver._mount_device.assert_called_with(self.share,
+                                                          device_name)
+            self._helper_nfs.create_export.assert_called_once_with(
+                location, self.share['name'], recreate=True)
 
     def test_delete_share(self):
         mount_path = self._get_mount_path(self.share)

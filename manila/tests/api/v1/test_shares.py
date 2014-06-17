@@ -32,7 +32,6 @@ class ShareApiTest(test.TestCase):
     def setUp(self):
         super(ShareApiTest, self).setUp()
         self.controller = shares.ShareController()
-
         self.stubs.Set(share_api.API, 'get_all',
                        stubs.stub_get_all_shares)
         self.stubs.Set(share_api.API, 'get',
@@ -276,7 +275,6 @@ class ShareApiTest(test.TestCase):
         search_opts = {'a': 'a', 'b': 'b', 'c': 'c', 'd': 'd'}
         expected_opts = {'a': 'a', 'c': 'c'}
         allowed_opts = ['a', 'c']
-        self.mox.ReplayAll()
         common.remove_invalid_options(ctx, search_opts, allowed_opts)
         self.assertEqual(search_opts, expected_opts)
 
@@ -285,6 +283,5 @@ class ShareApiTest(test.TestCase):
         search_opts = {'a': 'a', 'b': 'b', 'c': 'c', 'd': 'd'}
         expected_opts = {'a': 'a', 'b': 'b', 'c': 'c', 'd': 'd'}
         allowed_opts = ['a', 'c']
-        self.mox.ReplayAll()
         common.remove_invalid_options(ctx, search_opts, allowed_opts)
         self.assertEqual(search_opts, expected_opts)

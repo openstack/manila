@@ -1,6 +1,6 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #    Copyright 2011 Justin Santa Barbara
+#    Copyright 2014 NetApp, Inc.
+#    Copyright 2014 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -24,7 +24,6 @@ import tempfile
 import uuid
 
 import mock
-import mox
 from oslo.config import cfg
 import paramiko
 
@@ -307,43 +306,38 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertEqual(generated_url, actual_url)
 
     def test_read_cached_file(self):
-        self.mox.StubOutWithMock(os.path, "getmtime")
-        os.path.getmtime(mox.IgnoreArg()).AndReturn(1)
-        self.mox.ReplayAll()
-
         cache_data = {"data": 1123, "mtime": 1}
-        data = utils.read_cached_file("/this/is/a/fake", cache_data)
-        self.assertEqual(cache_data["data"], data)
+        with mock.patch.object(os.path, "getmtime", mock.Mock(return_value=1)):
+            data = utils.read_cached_file("/this/is/a/fake", cache_data)
+            self.assertEqual(cache_data["data"], data)
+            os.path.getmtime.assert_called_once_with("/this/is/a/fake")
 
     def test_read_modified_cached_file(self):
-        self.mox.StubOutWithMock(os.path, "getmtime")
-        self.mox.StubOutWithMock(__builtin__, 'open')
-        os.path.getmtime(mox.IgnoreArg()).AndReturn(2)
+        with mock.patch.object(os.path, "getmtime", mock.Mock(return_value=2)):
+            fake_contents = "lorem ipsum"
+            fake_file = mock.Mock()
+            fake_file.read = mock.Mock(return_value=fake_contents)
+            fake_context_manager = mock.Mock()
+            fake_context_manager.__enter__ = mock.Mock(return_value=fake_file)
+            fake_context_manager.__exit__ = mock.Mock()
+            with mock.patch.object(__builtin__, 'open',
+                mock.Mock(return_value=fake_context_manager)):
+                cache_data = {"data": 1123, "mtime": 1}
+                self.reload_called = False
 
-        fake_contents = "lorem ipsum"
-        fake_file = self.mox.CreateMockAnything()
-        fake_file.read().AndReturn(fake_contents)
-        fake_context_manager = self.mox.CreateMockAnything()
-        fake_context_manager.__enter__().AndReturn(fake_file)
-        fake_context_manager.__exit__(mox.IgnoreArg(),
-                                      mox.IgnoreArg(),
-                                      mox.IgnoreArg())
+                def test_reload(reloaded_data):
+                    self.assertEqual(reloaded_data, fake_contents)
+                    self.reload_called = True
 
-        __builtin__.open(mox.IgnoreArg()).AndReturn(fake_context_manager)
-
-        self.mox.ReplayAll()
-        cache_data = {"data": 1123, "mtime": 1}
-        self.reload_called = False
-
-        def test_reload(reloaded_data):
-            self.assertEqual(reloaded_data, fake_contents)
-            self.reload_called = True
-
-        data = utils.read_cached_file("/this/is/a/fake",
-                                      cache_data,
-                                      reload_func=test_reload)
-        self.assertEqual(data, fake_contents)
-        self.assertTrue(self.reload_called)
+                data = utils.read_cached_file("/this/is/a/fake",
+                                              cache_data,
+                                              reload_func=test_reload)
+                self.assertEqual(data, fake_contents)
+                self.assertTrue(self.reload_called)
+                fake_file.read.assert_called_once_with()
+                fake_context_manager.__enter__.assert_any_call()
+                __builtin__.open.assert_called_once_with("/this/is/a/fake")
+                os.path.getmtime.assert_called_once_with("/this/is/a/fake")
 
     def test_generate_password(self):
         password = utils.generate_password()
@@ -385,35 +379,34 @@ class GenericUtilsTestCase(test.TestCase):
         fts_func = datetime.datetime.fromtimestamp
         fake_now = 1000
         down_time = 5
-
         self.flags(service_down_time=down_time)
-        self.mox.StubOutWithMock(timeutils, 'utcnow')
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=fts_func(fake_now))):
 
-        # Up (equal)
-        timeutils.utcnow().AndReturn(fts_func(fake_now))
-        service = {'updated_at': fts_func(fake_now - down_time),
-                   'created_at': fts_func(fake_now - down_time)}
-        self.mox.ReplayAll()
-        result = utils.service_is_up(service)
-        self.assertTrue(result)
+            # Up (equal)
+            service = {'updated_at': fts_func(fake_now - down_time),
+                       'created_at': fts_func(fake_now - down_time)}
+            result = utils.service_is_up(service)
+            self.assertTrue(result)
+            timeutils.utcnow.assert_called_once_with()
 
-        self.mox.ResetAll()
-        # Up
-        timeutils.utcnow().AndReturn(fts_func(fake_now))
-        service = {'updated_at': fts_func(fake_now - down_time + 1),
-                   'created_at': fts_func(fake_now - down_time + 1)}
-        self.mox.ReplayAll()
-        result = utils.service_is_up(service)
-        self.assertTrue(result)
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=fts_func(fake_now))):
+            # Up
+            service = {'updated_at': fts_func(fake_now - down_time + 1),
+                       'created_at': fts_func(fake_now - down_time + 1)}
+            result = utils.service_is_up(service)
+            self.assertTrue(result)
+            timeutils.utcnow.assert_called_once_with()
 
-        self.mox.ResetAll()
-        # Down
-        timeutils.utcnow().AndReturn(fts_func(fake_now))
-        service = {'updated_at': fts_func(fake_now - down_time - 1),
-                   'created_at': fts_func(fake_now - down_time - 1)}
-        self.mox.ReplayAll()
-        result = utils.service_is_up(service)
-        self.assertFalse(result)
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=fts_func(fake_now))):
+            # Down
+            service = {'updated_at': fts_func(fake_now - down_time - 1),
+                       'created_at': fts_func(fake_now - down_time - 1)}
+            result = utils.service_is_up(service)
+            self.assertFalse(result)
+            timeutils.utcnow.assert_called_once_with()
 
     def test_safe_parse_xml(self):
 
@@ -690,45 +683,41 @@ class FakeTransport(object):
 class SSHPoolTestCase(test.TestCase):
     """Unit test for SSH Connection Pool."""
 
-    def setup(self):
-        self.mox.StubOutWithMock(paramiko, "SSHClient")
-        paramiko.SSHClient().AndReturn(FakeSSHClient())
-        self.mox.ReplayAll()
-
     def test_single_ssh_connect(self):
-        self.setup()
-        sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test", password="test",
-                                min_size=1, max_size=1)
-        with sshpool.item() as ssh:
-            first_id = ssh.id
+        with mock.patch.object(paramiko, "SSHClient",
+                               mock.Mock(return_value=FakeSSHClient())):
+            sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test",
+                                    password="test", min_size=1, max_size=1)
+            with sshpool.item() as ssh:
+                first_id = ssh.id
 
-        with sshpool.item() as ssh:
-            second_id = ssh.id
+            with sshpool.item() as ssh:
+                second_id = ssh.id
 
-        self.assertEqual(first_id, second_id)
+            self.assertEqual(first_id, second_id)
+            paramiko.SSHClient.assert_called_once_with()
 
     def test_closed_reopend_ssh_connections(self):
-        self.setup()
-        sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test", password="test",
-                                min_size=1, max_size=2)
-        with sshpool.item() as ssh:
-            first_id = ssh.id
-        with sshpool.item() as ssh:
-            second_id = ssh.id
-            # Close the connection and test for a new connection
-            ssh.get_transport().active = False
+        with mock.patch.object(paramiko, "SSHClient",
+                               mock.Mock(return_value=FakeSSHClient())):
+            sshpool = utils.SSHPool("127.0.0.1", 22, 10, "test",
+                                    password="test", min_size=1, max_size=2)
+            with sshpool.item() as ssh:
+                first_id = ssh.id
+            with sshpool.item() as ssh:
+                second_id = ssh.id
+                # Close the connection and test for a new connection
+                ssh.get_transport().active = False
+            self.assertEqual(first_id, second_id)
+            paramiko.SSHClient.assert_called_once_with()
 
-        self.assertEqual(first_id, second_id)
-
-        # The mox items are not getting setup in a new pool connection,
-        # so had to reset and set again.
-        self.mox.UnsetStubs()
-        self.setup()
-
-        with sshpool.item() as ssh:
-            third_id = ssh.id
-
-        self.assertNotEqual(first_id, third_id)
+        # Expected new ssh pool
+        with mock.patch.object(paramiko, "SSHClient",
+                               mock.Mock(return_value=FakeSSHClient())):
+            with sshpool.item() as ssh:
+                third_id = ssh.id
+            self.assertNotEqual(first_id, third_id)
+            paramiko.SSHClient.assert_called_once_with()
 
 
 class CidrToNetmaskTestCase(test.TestCase):

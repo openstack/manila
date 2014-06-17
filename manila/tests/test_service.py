@@ -1,7 +1,8 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
+# Copyright 2014 NetApp, Inc.
+# Copyright 2014 Mirantis, Inc.
+#
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,13 +21,12 @@
 Unit Tests for remote procedure calls using queue
 """
 
-import mox
+import mock
 from oslo.config import cfg
 
 from manila import context
 from manila import db
 from manila import exception
-
 from manila import manager
 from manila import service
 from manila import test
@@ -41,7 +41,8 @@ test_service_opts = [
                help="Host to bind test service to"),
     cfg.IntOpt("test_service_listen_port",
                default=0,
-               help="Port number to bind test service to"), ]
+               help="Port number to bind test service to"),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(test_service_opts)
@@ -49,10 +50,8 @@ CONF.register_opts(test_service_opts)
 
 class FakeManager(manager.Manager):
     """Fake manager for tests"""
-    def __init__(self, host=None,
-                 db_driver=None, service_name=None):
-        super(FakeManager, self).__init__(host=host,
-                                          db_driver=db_driver)
+    def __init__(self, host=None, db_driver=None, service_name=None):
+        super(FakeManager, self).__init__(host=host, db_driver=db_driver)
 
     def test_method(self):
         return 'manager'
@@ -67,18 +66,12 @@ class ServiceManagerTestCase(test.TestCase):
     """Test cases for Services"""
 
     def test_message_gets_to_manager(self):
-        serv = service.Service('test',
-                               'test',
-                               'test',
-                               'manila.tests.test_service.FakeManager')
+        serv = service.Service('test', 'test', 'test', CONF.fake_manager)
         serv.start()
         self.assertEqual(serv.test_method(), 'manager')
 
     def test_override_manager_method(self):
-        serv = ExtendedService('test',
-                               'test',
-                               'test',
-                               'manila.tests.test_service.FakeManager')
+        serv = ExtendedService('test', 'test', 'test', CONF.fake_manager)
         serv.start()
         self.assertEqual(serv.test_method(), 'service')
 
@@ -93,7 +86,7 @@ class ServiceFlagsTestCase(test.TestCase):
         app.stop()
         ref = db.service_get(context.get_admin_context(), app.service_id)
         db.service_destroy(context.get_admin_context(), app.service_id)
-        self.assertTrue(not ref['disabled'])
+        self.assertFalse(ref['disabled'])
 
     def test_service_disabled_on_create_based_on_flag(self):
         self.flags(enable_new_services=False)
@@ -107,119 +100,105 @@ class ServiceFlagsTestCase(test.TestCase):
         self.assertTrue(ref['disabled'])
 
 
+def fake_service_get_by_args(*args, **kwargs):
+    raise exception.NotFound()
+
+
+def fake_service_get(*args, **kwargs):
+    raise Exception()
+
+
+host = 'foo'
+binary = 'bar'
+topic = 'test'
+service_create = {
+    'host': host,
+    'binary': binary,
+    'topic': topic,
+    'report_count': 0,
+    'availability_zone': 'nova',
+}
+service_ref = {
+    'host': host,
+    'binary': binary,
+    'topic': topic,
+    'report_count': 0,
+    'availability_zone': 'nova',
+    'id': 1,
+}
+
+
 class ServiceTestCase(test.TestCase):
     """Test cases for Services"""
 
-    def setUp(self):
-        super(ServiceTestCase, self).setUp()
-        self.mox.StubOutWithMock(service, 'db')
-
     def test_create(self):
-        host = 'foo'
-        binary = 'manila-fake'
-        topic = 'fake'
-
-        # NOTE(vish): Create was moved out of mox replay to make sure that
-        #             the looping calls are created in StartService.
-        app = service.Service.create(host=host, binary=binary, topic=topic)
-
+        app = service.Service.create(host='foo',
+                                     binary='manila-fake',
+                                     topic='fake')
         self.assertTrue(app)
 
+    @mock.patch.object(service.db, 'service_get_by_args',
+                       mock.Mock(side_effect=fake_service_get_by_args))
+    @mock.patch.object(service.db, 'service_create',
+                       mock.Mock(return_value=service_ref))
+    @mock.patch.object(service.db, 'service_get',
+                       mock.Mock(side_effect=fake_service_get))
     def test_report_state_newly_disconnected(self):
-        host = 'foo'
-        binary = 'bar'
-        topic = 'test'
-        service_create = {'host': host,
-                          'binary': binary,
-                          'topic': topic,
-                          'report_count': 0,
-                          'availability_zone': 'nova'}
-        service_ref = {'host': host,
-                       'binary': binary,
-                       'topic': topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
-
-        service.db.service_get_by_args(mox.IgnoreArg(),
-                                       host,
-                                       binary).AndRaise(exception.NotFound())
-        service.db.service_create(mox.IgnoreArg(),
-                                  service_create).AndReturn(service_ref)
-        service.db.service_get(mox.IgnoreArg(),
-                               mox.IgnoreArg()).AndRaise(Exception())
-
-        self.mox.ReplayAll()
-        serv = service.Service(host,
-                               binary,
-                               topic,
-                               'manila.tests.test_service.FakeManager')
+        serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.start()
         serv.report_state()
         self.assertTrue(serv.model_disconnected)
+        service.db.service_get_by_args.assert_called_once_with(
+            mock.ANY, host, binary)
+        service.db.service_create.assert_called_once_with(
+            mock.ANY, service_create)
+        service.db.service_get.assert_called_once_with(mock.ANY, mock.ANY)
 
+    @mock.patch.object(service.db, 'service_get_by_args',
+                       mock.Mock(side_effect=fake_service_get_by_args))
+    @mock.patch.object(service.db, 'service_create',
+                       mock.Mock(return_value=service_ref))
+    @mock.patch.object(service.db, 'service_get',
+                       mock.Mock(return_value=service_ref))
+    @mock.patch.object(service.db, 'service_update',
+                       mock.Mock(return_value=service_ref.
+                           update({'report_count': 1})))
     def test_report_state_newly_connected(self):
-        host = 'foo'
-        binary = 'bar'
-        topic = 'test'
-        service_create = {'host': host,
-                          'binary': binary,
-                          'topic': topic,
-                          'report_count': 0,
-                          'availability_zone': 'nova'}
-        service_ref = {'host': host,
-                       'binary': binary,
-                       'topic': topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
-
-        service.db.service_get_by_args(mox.IgnoreArg(),
-                                       host,
-                                       binary).AndRaise(exception.NotFound())
-        service.db.service_create(mox.IgnoreArg(),
-                                  service_create).AndReturn(service_ref)
-        service.db.service_get(mox.IgnoreArg(),
-                               service_ref['id']).AndReturn(service_ref)
-        service.db.service_update(mox.IgnoreArg(), service_ref['id'],
-                                  mox.ContainsKeyValue('report_count', 1))
-
-        self.mox.ReplayAll()
-        serv = service.Service(host,
-                               binary,
-                               topic,
-                               'manila.tests.test_service.FakeManager')
+        serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.start()
         serv.model_disconnected = True
         serv.report_state()
-
-        self.assertTrue(not serv.model_disconnected)
+        self.assertFalse(serv.model_disconnected)
+        service.db.service_get_by_args.assert_called_once_with(
+            mock.ANY, host, binary)
+        service.db.service_create.assert_called_once_with(
+            mock.ANY, service_create)
+        service.db.service_get.assert_called_once_with(
+            mock.ANY, service_ref['id'])
+        service.db.service_update.assert_called_once_with(
+            mock.ANY, service_ref['id'], mock.ANY)
 
 
 class TestWSGIService(test.TestCase):
 
-    def setUp(self):
-        super(TestWSGIService, self).setUp()
-        self.stubs.Set(wsgi.Loader, "load_app", mox.MockAnything())
-
+    @mock.patch.object(wsgi.Loader, 'load_app', mock.Mock())
     def test_service_random_port(self):
         test_service = service.WSGIService("test_service")
         self.assertEqual(0, test_service.port)
         test_service.start()
         self.assertNotEqual(0, test_service.port)
         test_service.stop()
+        wsgi.Loader.load_app.assert_called_once_with("test_service")
 
 
 class TestLauncher(test.TestCase):
 
-    def setUp(self):
-        super(TestLauncher, self).setUp()
-        self.stubs.Set(wsgi.Loader, "load_app", mox.MockAnything())
-        self.service = service.WSGIService("test_service")
-
+    @mock.patch.object(wsgi.Loader, 'load_app', mock.Mock())
     def test_launch_app(self):
+        self.service = service.WSGIService("test_service")
         self.assertEqual(0, self.service.port)
         launcher = service.Launcher()
         launcher.launch_server(self.service)
         self.assertEqual(0, self.service.port)
         launcher.stop()
+        wsgi.Loader.load_app.assert_called_once_with("test_service")
