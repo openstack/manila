@@ -101,6 +101,9 @@ class LVMShareDriverTestCase(test.TestCase):
         self.access = fake_access()
         self.snapshot = fake_snapshot()
 
+        # Used only to test compatibility with share manager
+        self.share_server = "fake_share_server"
+
     def tearDown(self):
         super(LVMShareDriverTestCase, self).tearDown()
         fake_utils.fake_execute_set_repliers([])
@@ -160,7 +163,8 @@ class LVMShareDriverTestCase(test.TestCase):
     def test_create_share(self):
         self._helper_nfs.create_export.return_value = 'fakelocation'
         self._driver._mount_device = mock.Mock()
-        ret = self._driver.create_share(self._context, self.share)
+        ret = self._driver.create_share(self._context, self.share,
+                                        self.share_server)
         CONF.set_default('share_lvm_mirrors', 0)
         self._driver._mount_device.assert_called_with(
             self.share, '/dev/mapper/fakevg-fakename')
@@ -180,8 +184,9 @@ class LVMShareDriverTestCase(test.TestCase):
         mount_path = self._get_mount_path(self.share)
 
         ret = self._driver.create_share_from_snapshot(self._context,
-                                                            self.share,
-                                                            self.snapshot)
+                                                      self.share,
+                                                      self.snapshot,
+                                                      self.share_server)
 
         self._driver._mount_device.assert_called_with(self.share,
                                                      mount_snapshot)
@@ -201,7 +206,8 @@ class LVMShareDriverTestCase(test.TestCase):
         CONF.set_default('share_lvm_mirrors', 2)
         self._helper_nfs.create_export.return_value = 'fakelocation'
         self._driver._mount_device = mock.Mock()
-        ret = self._driver.create_share(self._context, share)
+        ret = self._driver.create_share(self._context, share,
+                                        self.share_server)
         self._driver._mount_device.assert_called_with(
             share, '/dev/mapper/fakevg-fakename')
         expected_exec = [
@@ -304,7 +310,8 @@ class LVMShareDriverTestCase(test.TestCase):
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_create_snapshot(self):
-        self._driver.create_snapshot(self._context, self.snapshot)
+        self._driver.create_snapshot(self._context, self.snapshot,
+                                     self.share_server)
         expected_exec = [
             ("lvcreate -L 1G --name fakesnapshotname --snapshot %s/fakename" %
              (CONF.share_volume_group,)),
@@ -317,7 +324,8 @@ class LVMShareDriverTestCase(test.TestCase):
         with mock.patch.object(self._driver,
                                '_mount_device',
                                mock.Mock(return_value=location)):
-            self._driver.ensure_share(self._context, self.share)
+            self._driver.ensure_share(self._context, self.share,
+                                      self.share_server)
             self._driver._mount_device.assert_called_with(self.share,
                                                           device_name)
             self._helper_nfs.create_export.assert_called_once_with(
@@ -330,13 +338,14 @@ class LVMShareDriverTestCase(test.TestCase):
 
     def test_delete_snapshot(self):
         expected_exec = ['lvremove -f fakevg/fakesnapshotname']
-        self._driver.delete_snapshot(self._context, self.snapshot)
+        self._driver.delete_snapshot(self._context, self.snapshot,
+                                     self.share_server)
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_delete_share_invalid_share(self):
         self._driver._get_helper = mock.Mock(
             side_effect=exception.InvalidShare(reason='fake'))
-        self._driver.delete_share(self._context, self.share)
+        self._driver.delete_share(self._context, self.share, self.share_server)
 
     def test_allow_access(self):
         mount_path = self._get_mount_path(self.share)
@@ -344,7 +353,8 @@ class LVMShareDriverTestCase(test.TestCase):
                                       self.share['name'],
                                       self.access['access_type'],
                                       self.access['access_to'])
-        self._driver.allow_access(self._context, self.share, self.access)
+        self._driver.allow_access(self._context, self.share, self.access,
+                                  self.share_server)
 
     def test_deny_access(self):
         mount_path = self._get_mount_path(self.share)
@@ -352,7 +362,8 @@ class LVMShareDriverTestCase(test.TestCase):
                                      self.share['name'],
                                      self.access['access_type'],
                                      self.access['access_to'])
-        self._driver.deny_access(self._context, self.share, self.access)
+        self._driver.deny_access(self._context, self.share, self.access,
+                                 self.share_server)
 
     def test_mount_device(self):
         mount_path = self._get_mount_path(self.share)
