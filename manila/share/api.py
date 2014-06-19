@@ -466,3 +466,6 @@ class API(base.Base):
                                       _metadata, delete)
 
         return _metadata
+
+    def get_share_network(self, context, share_net_id):
+        return self.db.share_network_get(context, share_net_id)

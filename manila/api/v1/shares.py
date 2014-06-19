@@ -196,17 +196,34 @@ class ShareController(wsgi.Controller):
 
         snapshot_id = share.get('snapshot_id')
         if snapshot_id:
-            kwargs['snapshot'] = self.share_api.get_snapshot(context,
-                                                             snapshot_id)
+            snapshot = self.share_api.get_snapshot(context, snapshot_id)
         else:
-            kwargs['snapshot'] = None
+            snapshot = None
+
+        kwargs['snapshot'] = snapshot
 
         share_network_id = share.get('share_network_id')
+
+        if snapshot:
+            # Need to check that share_network_id from snapshot's
+            # parents share equals to share_network_id from args.
+            # If share_network_id is empty than update it with
+            # share_network_id of parent share.
+            parent_share = self.share_api.get(context, snapshot['share_id'])
+            parent_share_net_id = parent_share['share_network_id']
+            if share_network_id:
+                if share_network_id != parent_share_net_id:
+                    msg = "Share network ID should be the same as snapshot's" \
+                          " parent share's or empty"
+                    raise exc.HTTPBadRequest(explanation=msg)
+            elif parent_share_net_id:
+                share_network_id = parent_share_net_id
+
         if share_network_id:
             try:
-                share_network = self.share_api.db.share_network_get(
-                                context,
-                                share_network_id)
+                self.share_api.get_share_network(
+                    context,
+                    share_network_id)
             except exception.ShareNetworkNotFound as e:
                 msg = "%s" % e
                 raise exc.HTTPNotFound(explanation=msg)

@@ -67,8 +67,8 @@ def stub_snapshot(id, **kwargs):
     return snapshot
 
 
-def stub_share_get(self, context, share_id):
-    return stub_share(share_id)
+def stub_share_get(self, context, share_id, **kwargs):
+    return stub_share(share_id, **kwargs)
 
 
 def stub_share_get_notfound(self, context, share_id):

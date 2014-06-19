@@ -15,6 +15,7 @@
 
 import datetime
 
+import mock
 import webob
 
 from manila.api import common
@@ -77,15 +78,21 @@ class ShareApiTest(test.TestCase):
         }
         self.assertEqual(res_dict, expected)
 
-    def test_share_create_from_snapshot(self):
-        self.stubs.Set(share_api.API, 'create', stubs.stub_share_create)
+    def test_share_create_with_share_net(self):
+        create_mock = mock.Mock(return_value={
+            'display_name': 'Share Test Name',
+            'id': '1'
+        })
+        self.stubs.Set(share_api.API, 'create', create_mock)
+        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
+            return_value={'id': 'fakenetid'}))
         shr = {
             "size": 100,
             "name": "Share Test Name",
             "description": "Share Test Desc",
             "share_proto": "fakeproto",
             "availability_zone": "zone1:host1",
-            "snapshot_id": 333,
+            "share_network_id": "fakenetid"
         }
         body = {"share": shr}
         req = fakes.HTTPRequest.blank('/shares')
@@ -107,6 +114,148 @@ class ShareApiTest(test.TestCase):
             }
         }
         self.assertEqual(res_dict, expected)
+        self.assertEqual(create_mock.call_args[1]['share_network_id'],
+                         "fakenetid")
+
+    def test_share_create_from_snapshot_without_share_net_no_parent(self):
+        self.stubs.Set(share_api.API, 'create', stubs.stub_share_create)
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "snapshot_id": 333,
+            "share_network_id": None,
+        }
+        body = {"share": shr}
+        req = fakes.HTTPRequest.blank('/shares')
+        res_dict = self.controller.create(req, body)
+        expected = {
+            'share': {
+                'name': 'Share Test Name',
+                'id': '1',
+                'links': [
+                    {
+                        'href': 'http://localhost/v1/fake/shares/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/shares/1',
+                        'rel': 'bookmark'
+                    }
+                ],
+            }
+        }
+        self.assertEqual(res_dict, expected)
+
+    def test_share_create_from_snapshot_without_share_net_parent_exists(self):
+        create_mock = mock.Mock(return_value={
+            'display_name': 'Share Test Name',
+            'id': '1'
+        })
+        parent_share_net = 444
+        self.stubs.Set(share_api.API, 'create', create_mock)
+        self.stubs.Set(share_api.API, 'get_snapshot', stubs.stub_snapshot_get)
+        self.stubs.Set(share_api.API, 'get', mock.Mock(
+            return_value={'share_network_id': parent_share_net}))
+        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
+            return_value={'id': parent_share_net}))
+
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "snapshot_id": 333,
+            "share_network_id": None,
+        }
+        body = {"share": shr}
+        req = fakes.HTTPRequest.blank('/shares')
+        res_dict = self.controller.create(req, body)
+        expected = {
+            'share': {
+                'name': 'Share Test Name',
+                'id': '1',
+                'links': [
+                    {
+                        'href': 'http://localhost/v1/fake/shares/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/shares/1',
+                        'rel': 'bookmark'
+                    }
+                ],
+            }
+        }
+        self.assertEqual(res_dict, expected)
+        self.assertEqual(create_mock.call_args[1]['share_network_id'],
+                         parent_share_net)
+
+    def test_share_create_from_snapshot_with_share_net_equals_parent(self):
+        create_mock = mock.Mock(return_value={
+            'display_name': 'Share Test Name',
+            'id': '1'
+        })
+        parent_share_net = 444
+        self.stubs.Set(share_api.API, 'create', create_mock)
+        self.stubs.Set(share_api.API, 'get_snapshot', stubs.stub_snapshot_get)
+        self.stubs.Set(share_api.API, 'get', mock.Mock(
+            return_value={'share_network_id': parent_share_net}))
+        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
+            return_value={'id': parent_share_net}))
+
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "snapshot_id": 333,
+            "share_network_id": parent_share_net
+        }
+        body = {"share": shr}
+        req = fakes.HTTPRequest.blank('/shares')
+        res_dict = self.controller.create(req, body)
+        expected = {
+            'share': {
+                'name': 'Share Test Name',
+                'id': '1',
+                'links': [
+                    {
+                        'href': 'http://localhost/v1/fake/shares/1',
+                        'rel': 'self'
+                    },
+                    {
+                        'href': 'http://localhost/fake/shares/1',
+                        'rel': 'bookmark'
+                    }
+                ],
+            }
+        }
+        self.assertEqual(res_dict, expected)
+        self.assertEqual(create_mock.call_args[1]['share_network_id'],
+                         parent_share_net)
+
+    def test_share_create_from_snapshot_invalid_share_net(self):
+        self.stubs.Set(share_api.API, 'create', stubs.stub_share_create)
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "snapshot_id": 333,
+            "share_network_id": 1234
+        }
+        body = {"share": shr}
+        req = fakes.HTTPRequest.blank('/shares')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body)
 
     def test_share_creation_fails_with_bad_size(self):
         shr = {"size": '',
