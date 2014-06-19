@@ -41,6 +41,11 @@ class ServicesAdminNegativeTest(base.BaseSharesAdminTest):
         resp, services_fake = self.shares_client.list_services(params)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(len(services), len(services_fake))
+
+        # "update_at" field could be updated before second request,
+        # so do not take it in account.
+        for service in services + services_fake:
+            service["updated_at"] = "removed_possible_difference"
         self.assertEqual(services, services_fake)
 
     @test.attr(type=["gate", "smoke", "negative", ])
