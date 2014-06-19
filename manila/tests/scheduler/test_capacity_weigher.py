@@ -16,13 +16,17 @@
 Tests For Capacity Weigher.
 """
 
+import mock
+from oslo.config import cfg
 import testtools
 
 from manila import context
 from manila.openstack.common.scheduler.weights import HostWeightHandler
+from manila.scheduler.weights.capacity import CapacityWeigher
 from manila import test
 from manila.tests.scheduler import fakes
-from manila.tests import utils as test_utils
+
+CONF = cfg.CONF
 
 
 class CapacityWeigherTestCase(test.TestCase):
@@ -30,26 +34,25 @@ class CapacityWeigherTestCase(test.TestCase):
         super(CapacityWeigherTestCase, self).setUp()
         self.host_manager = fakes.FakeHostManager()
         self.weight_handler = HostWeightHandler('manila.scheduler.weights')
-        self.weight_classes = self.weight_handler.get_all_classes()
 
     def _get_weighed_host(self, hosts, weight_properties=None):
         if weight_properties is None:
             weight_properties = {}
-        return self.weight_handler.get_weighed_objects(self.weight_classes,
+        return self.weight_handler.get_weighed_objects([CapacityWeigher],
                                                        hosts,
                                                        weight_properties)[0]
 
-    def _get_all_hosts(self):
+    @mock.patch('manila.db.sqlalchemy.api.service_get_all_by_topic')
+    def _get_all_hosts(self, _mock_service_get_all_by_topic, disabled=False):
         ctxt = context.get_admin_context()
-        fakes.mox_host_manager_db_calls(self.mox, ctxt)
-        self.mox.ReplayAll()
-        host_states = self.host_manager.get_all_host_states(ctxt)
-        self.mox.VerifyAll()
-        self.mox.ResetAll()
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic,
+                                         disabled=disabled)
+        host_states = self.host_manager.get_all_host_states_share(ctxt)
+        _mock_service_get_all_by_topic.assert_called_once_with(
+            ctxt, CONF.share_topic)
         return host_states
 
-    @testtools.skipIf(not test_utils.is_manila_installed(),
-                      'Test requires Manila installed')
+    @testtools.skip("LP bug #1329718")
     def test_default_of_spreading_first(self):
         hostinfo_list = self._get_all_hosts()
 
@@ -63,8 +66,7 @@ class CapacityWeigherTestCase(test.TestCase):
         self.assertEqual(weighed_host.weight, 921.0)
         self.assertEqual(weighed_host.obj.host, 'host1')
 
-    @testtools.skipIf(not test_utils.is_manila_installed(),
-                      'Test requires Manila installed')
+    @testtools.skip("LP bug #1329718")
     def test_capacity_weight_multiplier1(self):
         self.flags(capacity_weight_multiplier=-1.0)
         hostinfo_list = self._get_all_hosts()
@@ -79,8 +81,7 @@ class CapacityWeigherTestCase(test.TestCase):
         self.assertEqual(weighed_host.weight, -190.0)
         self.assertEqual(weighed_host.obj.host, 'host4')
 
-    @testtools.skipIf(not test_utils.is_manila_installed(),
-                      'Test requires Manila installed')
+    @testtools.skip("LP bug #1329718")
     def test_capacity_weight_multiplier2(self):
         self.flags(capacity_weight_multiplier=2.0)
         hostinfo_list = self._get_all_hosts()

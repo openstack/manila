@@ -2,7 +2,6 @@ hacking>=0.8.0,<0.9
 
 coverage>=3.6
 mock>=1.0
-mox>=0.5.3
 MySQL-python
 nose
 nosehtmloutput>=0.0.3

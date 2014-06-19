@@ -15,17 +15,16 @@
 """
 Tests For HostManager
 """
-
+import mock
+from oslo.config import cfg
 
 from manila import db
 from manila import exception
-
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common import timeutils
 from manila.scheduler import host_manager
 from manila import test
 from manila.tests.scheduler import fakes
-from oslo.config import cfg
 
 
 CONF = cfg.CONF
@@ -67,21 +66,6 @@ class HostManagerTestCase(test.TestCase):
         self.assertEqual(len(filter_classes), 1)
         self.assertEqual(filter_classes[0].__name__, 'FakeFilterClass2')
 
-    def _mock_get_filtered_hosts(self, info, specified_filters=None):
-        self.mox.StubOutWithMock(self.host_manager, '_choose_host_filters')
-
-        info['got_objs'] = []
-        info['got_fprops'] = []
-
-        def fake_filter_one(_self, obj, filter_props):
-            info['got_objs'].append(obj)
-            info['got_fprops'].append(filter_props)
-            return True
-
-        self.stubs.Set(FakeFilterClass1, '_filter_one', fake_filter_one)
-        self.host_manager._choose_host_filters(specified_filters).AndReturn(
-                [FakeFilterClass1])
-
     def _verify_result(self, info, result):
         for x in info['got_fprops']:
             self.assertEqual(x, info['expected_fprops'])
@@ -90,37 +74,49 @@ class HostManagerTestCase(test.TestCase):
 
     def test_get_filtered_hosts(self):
         fake_properties = {'moo': 1, 'cow': 2}
+        info = {
+            'expected_objs': self.fake_hosts,
+            'expected_fprops': fake_properties,
+        }
+        with mock.patch.object(self.host_manager, '_choose_host_filters',
+                               mock.Mock(return_value=[FakeFilterClass1])):
+            info['got_objs'] = []
+            info['got_fprops'] = []
 
-        info = {'expected_objs': self.fake_hosts,
-                'expected_fprops': fake_properties}
+            def fake_filter_one(_self, obj, filter_props):
+                info['got_objs'].append(obj)
+                info['got_fprops'].append(filter_props)
+                return True
 
-        self._mock_get_filtered_hosts(info)
-
-        self.mox.ReplayAll()
-        result = self.host_manager.get_filtered_hosts(self.fake_hosts,
-                                                      fake_properties)
-        self._verify_result(info, result)
+            self.stubs.Set(FakeFilterClass1, '_filter_one', fake_filter_one)
+            result = self.host_manager.get_filtered_hosts(self.fake_hosts,
+                                                          fake_properties)
+            self._verify_result(info, result)
+            self.host_manager._choose_host_filters.assert_called_once_with(
+                mock.ANY)
 
     def test_update_service_capabilities_for_shares(self):
         service_states = self.host_manager.service_states
         self.assertDictMatch(service_states, {})
-        self.mox.StubOutWithMock(timeutils, 'utcnow')
-        timeutils.utcnow().AndReturn(31337)
-        timeutils.utcnow().AndReturn(31338)
-        timeutils.utcnow().AndReturn(31339)
-
         host1_share_capabs = dict(free_capacity_gb=4321, timestamp=1)
         host2_share_capabs = dict(free_capacity_gb=5432, timestamp=1)
         host3_share_capabs = dict(free_capacity_gb=6543, timestamp=1)
-
-        self.mox.ReplayAll()
         service_name = 'share'
-        self.host_manager.update_service_capabilities(service_name, 'host1',
-                                                      host1_share_capabs)
-        self.host_manager.update_service_capabilities(service_name, 'host2',
-                                                      host2_share_capabs)
-        self.host_manager.update_service_capabilities(service_name, 'host3',
-                                                      host3_share_capabs)
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=31337)):
+            self.host_manager.update_service_capabilities(
+                service_name, 'host1', host1_share_capabs)
+            timeutils.utcnow.assert_called_once_with()
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=31338)):
+            self.host_manager.update_service_capabilities(
+                service_name, 'host2', host2_share_capabs)
+            timeutils.utcnow.assert_called_once_with()
+        with mock.patch.object(timeutils, 'utcnow',
+                               mock.Mock(return_value=31339)):
+            self.host_manager.update_service_capabilities(
+                service_name, 'host3', host3_share_capabs)
+            timeutils.utcnow.assert_called_once_with()
 
         # Make sure dictionary isn't re-assigned
         self.assertEqual(self.host_manager.service_states, service_states)
@@ -131,34 +127,30 @@ class HostManagerTestCase(test.TestCase):
         host2_share_capabs['timestamp'] = 31338
         host3_share_capabs['timestamp'] = 31339
 
-        expected = {'host1': host1_share_capabs,
-                    'host2': host2_share_capabs,
-                    'host3': host3_share_capabs}
+        expected = {
+            'host1': host1_share_capabs,
+            'host2': host2_share_capabs,
+            'host3': host3_share_capabs,
+        }
         self.assertDictMatch(service_states, expected)
 
     def test_get_all_host_states_share(self):
         context = 'fake_context'
         topic = CONF.share_topic
-
-        self.mox.StubOutWithMock(db, 'service_get_all_by_topic')
-        self.mox.StubOutWithMock(host_manager.LOG, 'warn')
-
         ret_services = fakes.SHARE_SERVICES
-        db.service_get_all_by_topic(context, topic).AndReturn(ret_services)
-        # Disabled service
-        host_manager.LOG.warn("service is down or disabled.")
+        with mock.patch.object(db, 'service_get_all_by_topic',
+                               mock.Mock(return_value=ret_services)):
+            # Disabled service
+            self.host_manager.get_all_host_states_share(context)
+            host_state_map = self.host_manager.host_state_map
 
-        self.mox.ReplayAll()
-        self.host_manager.get_all_host_states_share(context)
-        host_state_map = self.host_manager.host_state_map
-
-        self.assertEqual(len(host_state_map), 4)
-        # Check that service is up
-        for i in xrange(4):
-            share_node = fakes.SHARE_SERVICES[i]
-            host = share_node['host']
-            self.assertEqual(host_state_map[host].service,
-                             share_node)
+            self.assertEqual(len(host_state_map), 4)
+            # Check that service is up
+            for i in xrange(4):
+                share_node = fakes.SHARE_SERVICES[i]
+                host = share_node['host']
+                self.assertEqual(host_state_map[host].service, share_node)
+            db.service_get_all_by_topic.assert_called_once_with(context, topic)
 
 
 class HostStateTestCase(test.TestCase):

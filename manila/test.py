@@ -26,10 +26,8 @@ inline callbacks.
 import functools
 import uuid
 
-import mox
-import nose.plugins.skip
+import mock
 from oslo.config import cfg
-import stubout
 import testtools
 
 from manila.openstack.common import importutils
@@ -53,6 +51,16 @@ CONF.register_opts(test_opts)
 LOG = logging.getLogger(__name__)
 
 
+class StubOutForTesting(object):
+    def __init__(self, parent):
+        self.parent = parent
+
+    def Set(self, obj, attr_name, new_attr):
+        stub = mock.patch.object(obj, attr_name, new_attr)
+        stub.start()
+        self.parent.addCleanup(stub.stop)
+
+
 class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
 
@@ -69,45 +77,36 @@ class TestCase(testtools.TestCase):
         self.start = timeutils.utcnow()
         tests.reset_db()
 
-        # emulate some of the mox stuff, we can't use the metaclass
-        # because it screws with our generators
-        self.mox = mox.Mox()
-        self.stubs = stubout.StubOutForTesting()
+        self.stubs = StubOutForTesting(self)
         self.injected = []
         self._services = []
         CONF.set_override('fatal_exception_format_errors', True)
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""
-        try:
-            self.mox.UnsetStubs()
-            self.stubs.UnsetAll()
-            self.stubs.SmartUnsetAll()
-            self.mox.VerifyAll()
-            super(TestCase, self).tearDown()
-        finally:
-            # Reset any overridden flags
-            CONF.reset()
+        super(TestCase, self).tearDown()
+        # Reset any overridden flags
+        CONF.reset()
 
-            # Stop any timers
-            for x in self.injected:
-                try:
-                    x.stop()
-                except AssertionError:
-                    pass
+        # Stop any timers
+        for x in self.injected:
+            try:
+                x.stop()
+            except AssertionError:
+                pass
 
-            # Kill any services
-            for x in self._services:
-                try:
-                    x.kill()
-                except Exception:
-                    pass
+        # Kill any services
+        for x in self._services:
+            try:
+                x.kill()
+            except Exception:
+                pass
 
-            # Delete attributes that don't start with _ so they don't pin
-            # memory around unnecessarily for the duration of the test
-            # suite
-            for key in [k for k in self.__dict__.keys() if k[0] != '_']:
-                del self.__dict__[key]
+        # Delete attributes that don't start with _ so they don't pin
+        # memory around unnecessarily for the duration of the test
+        # suite
+        for key in [k for k in self.__dict__.keys() if k[0] != '_']:
+            del self.__dict__[key]
 
     def flags(self, **kw):
         """Override flag variables for a test."""
