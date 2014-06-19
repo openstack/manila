@@ -23,12 +23,11 @@ dynamic configuration.
 """
 
 import datetime
-import json
 import os
 
 from oslo.config import cfg
 
-
+from manila.openstack.common import jsonutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 
@@ -73,7 +72,7 @@ class SchedulerOptions(object):
     def _load_file(self, handle):
         """Decode the JSON file. Broken out for testing."""
         try:
-            return json.load(handle)
+            return jsonutils.load(handle)
         except ValueError as e:
             LOG.exception(_("Could not decode scheduler options: "
                             "'%(e)s'") % locals())
