@@ -82,7 +82,9 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.debug("Re-exporting %s shares", len(shares))
         for share in shares:
             if share['status'] in ['available', 'in-use']:
-                self.driver.ensure_share(ctxt, share)
+                share_server = self._get_share_server(ctxt, share)
+                self.driver.ensure_share(ctxt, share,
+                                         share_server=share_server)
                 rules = self.db.share_access_get_all_for_share(ctxt,
                                                                share['id'])
                 for access_ref in rules:
@@ -118,6 +120,8 @@ class ShareManager(manager.SchedulerDependentManager):
         if share['share_server_id']:
             return self.db.share_server_get(
                 context, share['share_server_id'])
+        else:
+            return None
 
     def create_share(self, context, share_id, request_spec=None,
                      filter_properties=None, snapshot_id=None):

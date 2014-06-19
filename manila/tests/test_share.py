@@ -99,13 +99,14 @@ class ShareTestCase(test.TestCase):
 
     @staticmethod
     def _create_share(status="creating", size=0, snapshot_id=None,
-                      share_network_id=None):
+                      share_network_id=None, share_server_id=None):
         """Create a share object."""
         share = {}
         share['share_proto'] = "NFS"
         share['size'] = size
         share['snapshot_id'] = snapshot_id
         share['share_network_id'] = share_network_id
+        share['share_server_id'] = share_server_id
         share['user_id'] = 'fake'
         share['project_id'] = 'fake'
         share['metadata'] = {'fake_key': 'fake_value'}
@@ -165,8 +166,10 @@ class ShareTestCase(test.TestCase):
     def test_init_host_ensuring_shares(self):
         """Test init_host for ensuring shares and access rules."""
 
-        share = self._create_share(status='available')
-        share_id = share['id']
+        share_with_server = self._create_share(
+            status='available',
+            share_server_id='fake_srv_id')
+        share_id = share_with_server['id']
 
         another_share = self._create_share(status='error')
 
@@ -174,14 +177,21 @@ class ShareTestCase(test.TestCase):
 
         context.get_admin_context = mock.Mock(return_value=self.context)
         db.share_get_all_by_host = mock.Mock(
-            return_value=[share, another_share])
+            return_value=[share_with_server, another_share])
+
+        server = {'ip': '1.2.3.4'}
+        db.share_server_get = mock.Mock(return_value=server)
         driver = mock.Mock()
         driver.get_share_stats.return_value = {}
         self.share_manager.driver = driver
         self.share_manager.init_host()
-        driver.ensure_share.assert_called_once_with(self.context, share)
+        db.share_server_get.assert_called_once_with(self.context,
+                                                    'fake_srv_id')
+        driver.ensure_share.assert_called_once_with(self.context,
+                                                    share_with_server,
+                                                    share_server=server)
         driver.allow_access.assert_called_once_with(
-            self.context, share, mock.ANY)
+            self.context, share_with_server, mock.ANY)
         driver.get_share_stats.assert_called_once_with(refresh=True)
 
     def test_create_share_from_snapshot(self):
