@@ -144,10 +144,10 @@ class BaseSharesTest(test.BaseTestCase):
             cls.os.shares_client.share_network_id = share_network_id
         cls.shares_client = cls.os.shares_client
 
-    def tearDown(self):
-        super(BaseSharesTest, self).tearDown()
-        self.clear_resources()
-        self.clear_isolated_creds()
+    def setUp(self):
+        super(BaseSharesTest, self).setUp()
+        self.addCleanup(self.clear_resources)
+        self.addCleanup(self.clear_isolated_creds)
 
     @classmethod
     def tearDownClass(cls):

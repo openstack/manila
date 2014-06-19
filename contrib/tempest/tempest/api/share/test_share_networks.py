@@ -20,6 +20,7 @@ from tempest import test
 class ShareNetworksTest(base.BaseSharesTest):
 
     @classmethod
+    @test.safe_setup
     def setUpClass(cls):
         super(ShareNetworksTest, cls).setUpClass()
         cls.data = cls.generate_share_network_data()

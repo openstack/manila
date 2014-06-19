@@ -20,6 +20,7 @@ from tempest import test
 class SharesQuotasTest(base.BaseSharesTest):
 
     @classmethod
+    @test.safe_setup
     def setUpClass(cls):
         super(SharesQuotasTest, cls).setUpClass()
 

@@ -24,6 +24,7 @@ CONF = config.CONF
 class ShareMultiBackendTest(base.BaseSharesAdminTest):
 
     @classmethod
+    @test.safe_setup
     def setUpClass(cls):
         super(ShareMultiBackendTest, cls).setUpClass()
         if not CONF.share.multi_backend:
