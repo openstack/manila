@@ -1662,8 +1662,7 @@ def share_server_delete(context, id):
     session = get_session()
     with session.begin():
         server_ref = share_server_get(context, id, session=session)
-        for item in server_ref['backend_details']:
-            item.delete(session=session)
+        share_server_backend_details_delete(context, id, session=session)
         server_ref.delete(session=session)
 
 
@@ -1689,16 +1688,6 @@ def share_server_get(context, server_id, session=None):
 
 
 @require_context
-def share_server_get_by_host_and_share_net(context, host, share_net_id,
-                                           session=None):
-    result = _server_get_query(context, session).filter_by(host=host)\
-        .filter_by(share_network_id=share_net_id).all()
-    if result is None:
-        raise exception.ShareServerNotFound(share_server_id=id)
-    return result
-
-
-@require_context
 def share_server_get_by_host_and_share_net_valid(context, host, share_net_id,
                                                  session=None):
     result = _server_get_query(context, session).filter_by(host=host)\
@@ -1707,6 +1696,8 @@ def share_server_get_by_host_and_share_net_valid(context, host, share_net_id,
         (constants.STATUS_CREATING, constants.STATUS_ACTIVE))).first()
     if result is None:
         raise exception.ShareServerNotFound(share_server_id=id)
+    result['backend_details'] = share_server_backend_details_get(
+        context, result['id'], session=session)
     return result
 
 
@@ -1735,8 +1726,10 @@ def share_server_backend_details_delete(context, share_server_id,
                                         session=None):
     if not session:
         session = get_session()
-    share_server_details = share_server_backend_details_get(
-        context, share_server_id, session=session)
+    share_server_details = model_query(context,
+                                       models.ShareServerBackendDetails,
+                                       session=session)\
+        .filter_by(share_server_id=share_server_id).all()
     for item in share_server_details:
         item.delete(session=session)
 
@@ -1744,9 +1737,10 @@ def share_server_backend_details_delete(context, share_server_id,
 @require_context
 def share_server_backend_details_get(context, share_server_id,
                                      session=None):
-    return model_query(context, models.ShareServerBackendDetails,
-                       session=session)\
+    query = model_query(context, models.ShareServerBackendDetails,
+                        session=session)\
         .filter_by(share_server_id=share_server_id).all()
+    return dict([(item.key, item.value) for item in query])
 
 
 ###################
