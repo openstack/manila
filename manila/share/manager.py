@@ -223,10 +223,9 @@ class ShareManager(manager.SchedulerDependentManager):
         if reservations:
             QUOTAS.commit(context, reservations, project_id=project_id)
 
-        share_server = self.db.share_server_get(context,
-                                                share_ref['share_server_id'])
         if CONF.delete_share_server_with_last_share:
-            if not share_server.shares:
+            share_server = self._get_share_server(context, share_ref)
+            if share_server and not share_server.shares:
                 self._teardown_server(context, share_server)
 
     def create_snapshot(self, context, share_id, snapshot_id):
@@ -350,6 +349,7 @@ class ShareManager(manager.SchedulerDependentManager):
             'cidr': share_network['cidr'],
             'security_services': share_network['security_services'],
             'network_allocations': network_allocations,
+            'backend_details': share_server.get('backend_details'),
         }
         return network_info
 
