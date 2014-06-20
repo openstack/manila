@@ -133,11 +133,24 @@ class ShareManager(manager.SchedulerDependentManager):
         share_ref = self.db.share_get(context, share_id)
         if snapshot_id is not None:
             snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
+            parent_share_server_id = snapshot_ref['share']['share_server_id']
         else:
             snapshot_ref = None
+            parent_share_server_id = None
 
         share_network_id = share_ref.get('share_network_id', None)
-        if share_network_id:
+
+        if parent_share_server_id:
+            try:
+                share_server = self.db.share_server_get(context,
+                                                        parent_share_server_id)
+            except exception.ShareServerNotFound:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_("Share server %s does not exist.")
+                              % parent_share_server_id)
+                    self.db.share_update(context, share_id,
+                                         {'status': 'error'})
+        elif share_network_id:
             try:
                 share_server = self._share_server_get_or_create(
                     context, share_network_id)
@@ -147,17 +160,19 @@ class ShareManager(manager.SchedulerDependentManager):
                                 " for share creation."))
                     self.db.share_update(context, share_id,
                                          {'status': 'error'})
-
-            share_ref = self.db.share_update(
-                context, share_id, {'share_server_id': share_server['id']})
-            LOG.debug("Using share server %s" % share_server['id'])
         else:
             share_server = None
+
+        if share_server:
+            LOG.debug("Using share server %s" % share_server['id'])
+            share_ref = self.db.share_update(
+                context, share_id, {'share_server_id': share_server['id']})
 
         try:
             if snapshot_ref:
                 export_location = self.driver.create_share_from_snapshot(
-                    context, share_ref, snapshot_ref)
+                    context, share_ref, snapshot_ref,
+                    share_server=share_server)
             else:
                 export_location = self.driver.create_share(
                     context, share_ref, share_server=share_server)
