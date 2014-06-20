@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -28,14 +26,17 @@ import uuid
 
 import mock
 from oslo.config import cfg
+from oslo.messaging import conffixture as messaging_conffixture
 import testtools
 
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
+from manila import rpc
 from manila import service
 from manila import tests
 from manila.tests import conf_fixture
+from manila.tests import fake_notifier
 
 test_opts = [
     cfg.StrOpt('sqlite_clean_db',
@@ -81,6 +82,19 @@ class TestCase(testtools.TestCase):
         self.injected = []
         self._services = []
         CONF.set_override('fatal_exception_format_errors', True)
+
+        rpc.add_extra_exmods('manila.tests')
+        self.addCleanup(rpc.clear_extra_exmods)
+        self.addCleanup(rpc.cleanup)
+
+        fs = '%(levelname)s [%(name)s] %(message)s'
+        self.messaging_conf = messaging_conffixture.ConfFixture(CONF)
+        self.messaging_conf.transport_driver = 'fake'
+        self.messaging_conf.response_timeout = 15
+        self.useFixture(self.messaging_conf)
+        rpc.init(CONF)
+
+        fake_notifier.stub_notifier(self.stubs)
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""

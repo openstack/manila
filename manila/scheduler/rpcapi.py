@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012, Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,49 +16,53 @@
 Client side of the scheduler manager RPC API.
 """
 
+from oslo.config import cfg
+from oslo import messaging
 
 from manila.openstack.common import jsonutils
-import manila.openstack.common.rpc.proxy
-from oslo.config import cfg
-
+from manila import rpc
 
 CONF = cfg.CONF
 
 
-class SchedulerAPI(manila.openstack.common.rpc.proxy.RpcProxy):
+class SchedulerAPI(object):
     '''Client side of the scheduler rpc API.
 
     API version history:
 
         1.0 - Initial version.
-        1.1 - Add create_volume() method
-        1.2 - Add request_spec, filter_properties arguments
-              to create_volume()
-        1.3 - Add create_share() method
     '''
 
     RPC_API_VERSION = '1.0'
 
     def __init__(self):
-        super(SchedulerAPI, self).__init__(
-            topic=CONF.scheduler_topic,
-            default_version=self.RPC_API_VERSION)
+        super(SchedulerAPI, self).__init__()
+        target = messaging.Target(topic=CONF.scheduler_topic,
+                                  version=self.RPC_API_VERSION)
+        self.client = rpc.get_client(target, version_cap='1.0')
 
     def create_share(self, ctxt, topic, share_id, snapshot_id=None,
                      request_spec=None, filter_properties=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return self.cast(ctxt, self.make_msg(
+        cctxt = self.client.prepare(version='1.0')
+        return cctxt.cast(
+            ctxt,
             'create_share',
             topic=topic,
             share_id=share_id,
             snapshot_id=snapshot_id,
             request_spec=request_spec_p,
-            filter_properties=filter_properties),
-            version='1.3')
+            filter_properties=filter_properties,
+        )
 
     def update_service_capabilities(self, ctxt,
                                     service_name, host,
                                     capabilities):
-        self.fanout_cast(ctxt, self.make_msg('update_service_capabilities',
-                         service_name=service_name, host=host,
-                         capabilities=capabilities))
+        cctxt = self.client.prepare(fanout=True, version='1.0')
+        cctxt.cast(
+            ctxt,
+            'update_service_capabilities',
+            service_name=service_name,
+            host=host,
+            capabilities=capabilities,
+        )

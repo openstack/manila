@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -18,7 +16,10 @@
 
 """Tests for the testing base code."""
 
-from manila.openstack.common import rpc
+from oslo.config import cfg
+from oslo import messaging
+
+from manila import rpc
 from manila import test
 
 
@@ -40,7 +41,6 @@ class IsolationTestCase(test.TestCase):
             def __getattribute__(*args):
                 assert False, "I should never get called."
 
-        connection = rpc.create_connection(new=True)
-        proxy = NeverCalled()
-        connection.create_consumer('share', proxy, fanout=False)
-        connection.consume_in_thread()
+        target = messaging.Target(topic='share', server=cfg.CONF.host)
+        server = rpc.get_server(target=target, endpoints=[NeverCalled()])
+        server.start()

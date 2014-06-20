@@ -82,7 +82,6 @@ from manila import db
 from manila.db import migration
 from manila import exception
 from manila.openstack.common import log as logging
-from manila.openstack.common import rpc
 from manila.openstack.common import uuidutils
 from manila import utils
 from manila import version

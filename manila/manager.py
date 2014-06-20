@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -54,13 +52,12 @@ This module provides Manager, a base class for managers.
 """
 
 from oslo.config import cfg
+from oslo import messaging
 
 from manila.db import base
 from manila.openstack.common import log as logging
-from manila.openstack.common.rpc import dispatcher as rpc_dispatcher
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import version
-
 
 CONF = cfg.CONF
 
@@ -132,22 +129,12 @@ class ManagerMeta(type):
 class Manager(base.Base):
     __metaclass__ = ManagerMeta
 
-    # Set RPC API version to 1.0 by default.
-    RPC_API_VERSION = '1.0'
-
     def __init__(self, host=None, db_driver=None):
         if not host:
             host = CONF.host
         self.host = host
+        self.additional_endpoints = []
         super(Manager, self).__init__(db_driver)
-
-    def create_rpc_dispatcher(self):
-        '''Get the rpc dispatcher for this manager.
-
-        If a manager would like to set an rpc API version, or support more than
-        one class as the target of rpc messages, override this method.
-        '''
-        return rpc_dispatcher.RpcDispatcher([self])
 
     def periodic_tasks(self, context, raise_on_error=False):
         """Tasks to be run at a periodic interval."""

@@ -22,7 +22,7 @@ from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila import db
 from manila import exception
-from manila.openstack.common.notifier import api as notifier_api
+from manila import rpc
 from manila.share import volume_types
 
 authorize = extensions.extension_authorizer('share', 'types_extra_specs')
@@ -87,9 +87,8 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
                                                     type_id,
                                                     specs)
         notifier_info = dict(type_id=type_id, specs=specs)
-        notifier_api.notify(context, 'volumeTypeExtraSpecs',
-                            'volume_type_extra_specs.create',
-                            notifier_api.INFO, notifier_info)
+        notifier = rpc.get_notifier('volumeTypeExtraSpecs')
+        notifier.info(context, 'volume_type_extra_specs.create', notifier_info)
         return body
 
     def update(self, req, type_id, id, body=None):
@@ -110,9 +109,8 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
                                                     type_id,
                                                     body)
         notifier_info = dict(type_id=type_id, id=id)
-        notifier_api.notify(context, 'volumeTypeExtraSpecs',
-                            'volume_type_extra_specs.update',
-                            notifier_api.INFO, notifier_info)
+        notifier = rpc.get_notifier('volumeTypeExtraSpecs')
+        notifier.info(context, 'volume_type_extra_specs.update', notifier_info)
         return body
 
     def show(self, req, type_id, id):
@@ -138,9 +136,8 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         notifier_info = dict(type_id=type_id, id=id)
-        notifier_api.notify(context, 'volumeTypeExtraSpecs',
-                            'volume_type_extra_specs.delete',
-                            notifier_api.INFO, notifier_info)
+        notifier = rpc.get_notifier('volumeTypeExtraSpecs')
+        notifier.info(context, 'volume_type_extra_specs.delete', notifier_info)
         return webob.Response(status_int=202)
 
     def _check_key_names(self, keys):

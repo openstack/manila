@@ -56,8 +56,6 @@ QUOTAS = quota.QUOTAS
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.1'
-
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
         self.configuration = Configuration(share_manager_opts,
