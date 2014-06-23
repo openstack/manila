@@ -126,3 +126,36 @@ class SharesNegativeTest(base.BaseSharesTest):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.create_share,
                           share_network_id="wrong_sn_id")
+
+    @test.attr(type=["negative", "smoke", "gate", ])
+    @testtools.skipIf(not CONF.share.multitenancy_enabled,
+                      "Only for multitenancy.")
+    def test_create_share_from_snap_with_different_share_network(self):
+        # create share
+        __, share = self.create_share(cleanup_in_class=False)
+
+        # get parent's share network
+        __, parent_share = self.shares_client.get_share(share["id"])
+        __, parent_sn = self.shares_client.get_share_network(
+            parent_share["share_network_id"])
+
+        # create new share-network - net duplicate of parent's share
+        __, new_duplicated_sn = self.create_share_network(
+            cleanup_in_class=False,
+            neutron_net_id=parent_sn["neutron_net_id"],
+            neutron_subnet_id=parent_sn["neutron_subnet_id"],
+        )
+
+        # create snapshot of parent share
+        __, snap = self.create_snapshot_wait_for_active(
+            share["id"], cleanup_in_class=False)
+
+        # try create share with snapshot using another share-network
+        # 400 bad request is expected
+        self.assertRaises(
+            exceptions.BadRequest,
+            self.create_share,
+            cleanup_in_class=False,
+            share_network_id=new_duplicated_sn["id"],
+            snapshot_id=snap["id"],
+        )
