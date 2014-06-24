@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -144,16 +142,8 @@ class NetworkException(ManilaException):
     message = _("Exception due to network failure")
 
 
-class NetworkAllocationException(NetworkException):
-    message = _("Failure during network allocation")
-
-
 class NetworkBadConfigurationException(NetworkException):
     message = _("Bad network configuration: %(reason)s")
-
-
-class GlanceConnectionFailed(ManilaException):
-    message = _("Connection to glance failed") + ": %(reason)s"
 
 
 class NotAuthorized(ManilaException):
@@ -172,10 +162,6 @@ class PolicyNotAuthorized(NotAuthorized):
 class Invalid(ManilaException):
     message = _("Unacceptable parameters.")
     code = 400
-
-
-class SfJsonEncodeFailure(ManilaException):
-    message = _("Failed to load data into json format")
 
 
 class InvalidRequest(Invalid):
@@ -205,12 +191,8 @@ class InvalidParameterValue(Invalid):
     message = _("%(err)s")
 
 
-class ServiceUnavailable(Invalid):
-    message = _("Service is unavailable at this time.")
-
-
 class InvalidUUID(Invalid):
-    message = _("Expected a uuid but received %(uuid).")
+    message = _("Expected a uuid but received %(uuid)s.")
 
 
 class NotFound(ManilaException):
@@ -319,21 +301,9 @@ class FileNotFound(NotFound):
     message = _("File %(file_path)s could not be found.")
 
 
-class ClassNotFound(NotFound):
-    message = _("Class %(class_name)s could not be found: %(exception)s")
-
-
-class NotAllowed(ManilaException):
-    message = _("Action not allowed.")
-
-
 #TODO(bcwaldon): EOL this exception!
 class Duplicate(ManilaException):
     message = _("Duplicate entry: %(message)s")
-
-
-class KeyPairExists(Duplicate):
-    message = _("Key pair %(key_name)s already exists.")
 
 
 class MigrationError(ManilaException):
@@ -372,10 +342,6 @@ class ShareSizeExceedsAvailableQuota(QuotaError):
                 "allowed Gigabytes quota")
 
 
-class ShareSizeExceedsQuota(QuotaError):
-    message = _("Maximum share/snapshot size exceeded")
-
-
 class ShareLimitExceeded(QuotaError):
     message = _("Maximum number of shares allowed (%(allowed)d) exceeded")
 
@@ -389,68 +355,11 @@ class ShareNetworksLimitExceeded(QuotaError):
                 "allowed (%(allowed)d) exceeded")
 
 
-class Duplicate3PARHost(ManilaException):
-    message = _("3PAR Host already exists: %(err)s.  %(info)s")
-
-
-class Invalid3PARDomain(ManilaException):
-    message = _("Invalid 3PAR Domain: %(err)s")
-
-
-class SolidFireAPIException(ManilaException):
-    message = _("Bad response from SolidFire API")
-
-
-class SolidFireAPIDataException(SolidFireAPIException):
-    message = _("Error in SolidFire API response: data=%(data)s")
-
-
-class UnknownCmd(Invalid):
-    message = _("Unknown or unsupported command %(cmd)s")
-
-
-class MalformedResponse(Invalid):
-    message = _("Malformed response to command %(cmd)s: %(reason)s")
-
-
-class BadHTTPResponseStatus(ManilaException):
-    message = _("Bad HTTP response status %(status)s")
-
-
-class FailedCmdWithDump(ManilaException):
-    message = _("Operation failed with status=%(status)s. Full dump: %(data)s")
-
-
-class ShareBackendAPIException(ManilaException):
-    message = _("Bad or unexpected response from the storage share "
-                "backend API: %(data)s")
-
-
-class NfsException(ManilaException):
-    message = _("Unknown NFS exception")
-
-
-class NfsNoSharesMounted(NotFound):
-    message = _("No mounted NFS shares found")
-
-
-class NfsNoSuitableShareFound(NotFound):
-    message = _("There is no share which can host %(share_size)sG")
-
-
 class GlusterfsException(ManilaException):
     message = _("Unknown Gluster exception")
 
 
-class GlusterfsNoSharesMounted(NotFound):
-    message = _("No mounted Gluster shares found")
-
-
-class GlusterfsNoSuitableShareFound(NotFound):
-    message = _("There is no share which can host %(share_size)sG")
-
-
-class InvalidShare(ManilaException):
+class InvalidShare(Invalid):
     message = _("Invalid share: %(reason)s")
 
 
@@ -458,15 +367,11 @@ class PortLimitExceeded(QuotaError):
     message = _("Maximum number of ports exceeded")
 
 
-class ShareAccessNotFound(NotFound):
-    message = _("Access_id %(access_id)s not found")
-
-
 class ShareAccessExists(Duplicate):
     message = _("Share access %(access_type)s:%(access)s exists")
 
 
-class InvalidShareAccess(ManilaException):
+class InvalidShareAccess(Invalid):
     message = _("Invalid access_rule: %(reason)s")
 
 
@@ -487,7 +392,7 @@ class ShareSnapshotIsBusy(ManilaException):
                 "dependent shares.")
 
 
-class InvalidShareSnapshot(ManilaException):
+class InvalidShareSnapshot(Invalid):
     message = _("Invalid share snapshot: %(reason)s")
 
 
@@ -515,10 +420,6 @@ class ShareNetworkSecurityServiceAssociationError(ManilaException):
 class ShareNetworkSecurityServiceDissociationError(ManilaException):
     message = _("Failed to dissociate share network %(share_network_id)s"
                 " and security service %(security_service_id)s: %(reason)s.")
-
-
-class InvalidShareNetwork(ManilaException):
-    message = _("Invalid share network: %(reason)s")
 
 
 class InvalidVolume(Invalid):
@@ -560,22 +461,9 @@ class VolumeTypeExists(ManilaException):
     message = _("Volume Type %(id)s already exists.")
 
 
-class VolumeTypeEncryptionExists(Invalid):
-    message = _("Volume type encryption for type %(type_id)s already exists.")
-
-
-class VolumeTypeEncryptionNotFound(NotFound):
-    message = _("Volume type encryption for type %(type_id)s does not exist.")
-
-
 class VolumeTypeCreateFailed(ManilaException):
     message = _("Cannot create volume_type with "
                 "name %(name)s and specs %(extra_specs)s")
-
-
-class ManageExistingVolumeTypeMismatch(ManilaException):
-    message = _("Manage existing volume failed due to volume type mismatch: "
-                "%(reason)s")
 
 
 class InstanceNotFound(NotFound):
