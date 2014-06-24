@@ -194,6 +194,44 @@ class ShareTestCase(test.TestCase):
             self.context, share_with_server, mock.ANY)
         driver.get_share_stats.assert_called_once_with(refresh=True)
 
+    def test_create_share_from_snapshot_with_server(self):
+        """Test share can be created from snapshot if server exists."""
+        server = self._create_share_server(share_network_id='net-id',)
+        parent_share = self._create_share(share_network_id='net-id',
+                                          share_server_id=server['id'])
+        share = self._create_share()
+        share_id = share['id']
+        snapshot = self._create_snapshot(share_id=parent_share['id'])
+        snapshot_id = snapshot['id']
+
+        self.share_manager.create_share(self.context, share_id,
+                                        snapshot_id=snapshot_id)
+        self.assertEqual(share_id, db.share_get(context.get_admin_context(),
+                         share_id).id)
+
+        shr = db.share_get(self.context, share_id)
+        self.assertEqual(shr['status'], 'available')
+        self.assertEqual(shr['share_server_id'], server['id'])
+
+    def test_create_share_from_snapshot_with_server_not_found(self):
+        """Test creation from snapshot fails if server not found."""
+        parent_share = self._create_share(share_network_id='net-id',
+                                          share_server_id='fake-id')
+        share = self._create_share()
+        share_id = share['id']
+        snapshot = self._create_snapshot(share_id=parent_share['id'])
+        snapshot_id = snapshot['id']
+
+        self.assertRaises(exception.ShareServerNotFound,
+                          self.share_manager.create_share,
+                          self.context,
+                          share_id,
+                          snapshot_id=snapshot_id
+                          )
+
+        shr = db.share_get(self.context, share_id)
+        self.assertEqual(shr['status'], 'error')
+
     def test_create_share_from_snapshot(self):
         """Test share can be created from snapshot."""
         share = self._create_share()
@@ -202,7 +240,7 @@ class ShareTestCase(test.TestCase):
         snapshot_id = snapshot['id']
 
         self.share_manager.create_share(self.context, share_id,
-                                snapshot_id=snapshot_id)
+                                        snapshot_id=snapshot_id)
         self.assertEqual(share_id, db.share_get(context.get_admin_context(),
                          share_id).id)
 
@@ -285,7 +323,7 @@ class ShareTestCase(test.TestCase):
         snap = db.share_snapshot_get(self.context, snapshot_id)
         self.assertEqual(snap['status'], 'available')
 
-    def test_create_share_without_server(self):
+    def test_create_share_with_share_network_server_not_exists(self):
         """Test share can be created without share server."""
 
         share_net = self._create_share_network()
@@ -304,12 +342,22 @@ class ShareTestCase(test.TestCase):
         self.assertEqual(share_id, db.share_get(context.get_admin_context(),
                          share_id).id)
 
-        shr = db.share_get(self.context, share_id)
-        self.assertEqual(shr['status'], 'available')
-        self.assertTrue(shr['share_server_id'])
+    def test_create_share_with_share_network_not_found(self):
+        """Test creation fails if share network not found."""
 
-    def test_create_share_with_server(self):
-        """Test share can be created with share server."""
+        share = self._create_share(share_network_id='fake-net-id')
+        share_id = share['id']
+        self.assertRaises(
+            exception.ShareNetworkNotFound,
+            self.share_manager.create_share,
+            self.context,
+            share_id
+        )
+        shr = db.share_get(self.context, share_id)
+        self.assertEqual(shr['status'], 'error')
+
+    def test_create_share_with_share_network_server_exists(self):
+        """Test share can be created with existing share server."""
         share_net = self._create_share_network()
         share = self._create_share(share_network_id=share_net['id'])
         share_srv = self._create_share_server(
@@ -328,6 +376,28 @@ class ShareTestCase(test.TestCase):
         shr = db.share_get(self.context, share_id)
         self.assertEqual(shr['status'], 'available')
         self.assertEqual(shr['share_server_id'], share_srv['id'])
+
+    def test_create_share_with_server_created(self):
+        """Test share can be created and share server is created."""
+        share_net = self._create_share_network()
+        share = self._create_share(share_network_id=share_net['id'])
+        self._create_share_server(
+            share_network_id=share_net['id'], host=self.share_manager.host,
+            state='ERROR')
+
+        share_id = share['id']
+
+        self.share_manager.driver = mock.Mock()
+        self.share_manager._setup_server = mock.Mock(
+            return_value={'id': 'fake_srv_id'})
+        self.share_manager.driver.create_share.return_value = "fake_location"
+        self.share_manager.create_share(self.context, share_id)
+        self.assertEqual(share_id, db.share_get(context.get_admin_context(),
+                         share_id).id)
+
+        shr = db.share_get(self.context, share_id)
+        self.assertEqual(shr['status'], 'available')
+        self.assertEqual(shr['share_server_id'], 'fake_srv_id')
 
     def test_create_delete_share_error(self):
         """Test share can be created and deleted with error."""
