@@ -39,7 +39,7 @@ CONF.register_opts(capacity_weight_opts)
 
 
 class CapacityWeigher(weights.BaseHostWeigher):
-    def _weight_multiplier(self):
+    def weight_multiplier(self):
         """Override the weight multiplier."""
         return CONF.capacity_weight_multiplier
 
