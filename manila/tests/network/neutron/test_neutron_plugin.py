@@ -12,8 +12,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import mock
-import unittest
 
 from manila.common import constants
 from manila import context
@@ -21,6 +21,7 @@ from manila.db import api as db_api
 from manila import exception
 from manila.network.neutron import constants as neutron_constants
 from manila.network.neutron import neutron_network_plugin as plugin
+from manila import test
 
 fake_neutron_port = {
     "status": "test_port_status",
@@ -64,10 +65,10 @@ fake_network_allocation = \
      'status': constants.STATUS_ACTIVE}
 
 
-class NeutronNetworkPluginTest(unittest.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(NeutronNetworkPluginTest, self).__init__(*args, **kwargs)
+class NeutronNetworkPluginTest(test.TestCase):
 
+    def setUp(self):
+        super(NeutronNetworkPluginTest, self).setUp()
         self.plugin = plugin.NeutronNetworkPlugin()
         self.plugin.db = db_api
         self.fake_context = context.RequestContext(user_id='fake user',

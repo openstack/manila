@@ -14,7 +14,6 @@
 #    under the License.
 
 import mock
-import unittest
 from webob import exc as webob_exc
 
 from manila.api.v1 import share_networks
@@ -23,6 +22,7 @@ from manila.db import api as db_api
 from manila import exception
 from manila import policy
 from manila import quota
+from manila import test
 from manila.tests.api import fakes
 
 
@@ -52,14 +52,14 @@ fake_share_network_shortened = {
 QUOTAS = quota.QUOTAS
 
 
-class ShareNetworkAPITest(unittest.TestCase):
+class ShareNetworkAPITest(test.TestCase):
 
-    def __init__(self, *args, **kwargs):
-        super(ShareNetworkAPITest, self).__init__(*args, **kwargs)
+    def setUp(self):
+        super(ShareNetworkAPITest, self).setUp()
         self.controller = share_networks.ShareNetworkController()
         self.req = fakes.HTTPRequest.blank('/share-networks')
-        self.context = self.req.environ['manila.context']
         self.body = {share_networks.RESOURCE_NAME: {'name': 'fake name'}}
+        self.context = self.req.environ['manila.context']
 
     def _check_share_network_view_shortened(self, view, share_nw):
         self.assertEqual(view['id'], share_nw['id'])
@@ -174,7 +174,8 @@ class ShareNetworkAPITest(unittest.TestCase):
 
     def test_show_not_found(self):
         share_nw = 'fake network id'
-        test_exception = exception.ShareNetworkNotFound()
+        test_exception = exception.ShareNetworkNotFound(
+            share_network_id=share_nw)
         with mock.patch.object(db_api,
                                'share_network_get',
                                mock.Mock(side_effect=test_exception)):

@@ -12,14 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-#
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
 
 import mock
 from neutronclient.common import exceptions as neutron_client_exc
 from neutronclient.v2_0 import client as clientv20
 from oslo.config import cfg
-import unittest
 
 from manila import context
 from manila.db import base
@@ -27,6 +24,7 @@ from manila import exception
 from manila.network import neutron
 from manila.network.neutron import api as neutron_api
 from manila.network.neutron import constants as neutron_constants
+from manila import test
 from manila.tests.db import fakes
 
 CONF = cfg.CONF
@@ -83,7 +81,7 @@ class FakeNeutronClient(object):
         pass
 
 
-class NeutronApiTest(unittest.TestCase):
+class NeutronApiTest(test.TestCase):
 
     def setUp(self):
         super(NeutronApiTest, self).setUp()
@@ -430,7 +428,7 @@ class NeutronApiTest(unittest.TestCase):
             neutron_api.LOG.exception.assert_called_once()
 
 
-class TestNeutronClient(unittest.TestCase):
+class TestNeutronClient(test.TestCase):
 
     @mock.patch.object(clientv20.Client, '__init__',
                        mock.Mock(return_value=None))
