@@ -265,23 +265,27 @@ class ServiceInstanceManager(object):
                 'been deleted in %ss. Giving up.') %
                 self.max_time_to_build_instance)
 
-    def set_up_service_instance(self, context, share_server_id,
-                                share_network_id):
+    def set_up_service_instance(self, context, instance_name, neutron_net_id,
+                                neutron_subnet_id):
         """Finds or creates and sets up service vm.
 
         :param context: defines context, that should be used
-        :param share_network_id: it provides network data for service VM
-        :param share_server_id: provides server id for service VM
-        :returns: dict with data for service VM
+        :param instance_name: provides name for service VM
+        :param neutron_net_id: provides network id for service VM
+        :param neutron_subnet_id: provides subnet id for service VM
+        :returns: dict with service instance details
         :raises: exception.ServiceInstanceException
         """
         server = self._create_service_instance(context,
-                                               share_network_id,
-                                               share_server_id)
+                                             instance_name,
+                                             neutron_net_id,
+                                             neutron_subnet_id)
 
         return {'instance_id': server['id'],
                 'ip': server['ip'],
                 'pk_path': server['pk_path'],
+                'subnet_id': server['subnet_id'],
+                'router_id': server['router_id'],
                 'password': self.get_config_option(
                     'service_instance_password'),
                 'username': self.get_config_option('service_instance_user')}
@@ -337,11 +341,10 @@ class ServiceInstanceManager(object):
             raise exception.ServiceInstanceException(
                                     _('Ambiguous image name.'))
 
-    def _create_service_instance(self, context, share_network_id,
-                                 share_server_id):
+    def _create_service_instance(self, context, instance_name, neutron_net_id,
+                                 neutron_subnet_id):
         """Creates service vm and sets up networking for it."""
         service_image_id = self._get_service_image(context)
-        instance_name = self._get_service_instance_name(share_server_id)
 
         with lock:
             key_name, key_path = self._get_key(context)
@@ -351,12 +354,14 @@ class ServiceInstanceManager(object):
                     'instance password nor key are available.'))
 
             security_group = self._get_or_create_security_group(context)
-            port = self._setup_network_for_instance(share_network_id)
+            subnet_id, router_id, port_id = \
+                self._setup_network_for_instance(neutron_net_id,
+                                                 neutron_subnet_id)
             try:
                 self._setup_connectivity_with_service_instances()
             except Exception as e:
                 LOG.debug(e)
-                self.neutron_api.delete_port(port['id'])
+                self.neutron_api.delete_port(port_id)
                 raise
 
         service_instance = self.compute_api.server_create(context,
@@ -364,7 +369,7 @@ class ServiceInstanceManager(object):
             image=service_image_id,
             flavor=self.get_config_option("service_instance_flavor_id"),
             key_name=key_name,
-            nics=[{'port-id': port['id']}])
+            nics=[{'port-id': port_id}])
 
         t = time.time()
         while time.time() - t < self.max_time_to_build_instance:
@@ -393,6 +398,9 @@ class ServiceInstanceManager(object):
 
         service_instance['ip'] = self._get_server_ip(service_instance)
         service_instance['pk_path'] = key_path
+        service_instance['router_id'] = router_id
+        service_instance['subnet_id'] = subnet_id
+        service_instance['port_id'] = port_id
 
         if not self._check_server_availability(service_instance):
             raise exception.ServiceInstanceException(
@@ -417,17 +425,23 @@ class ServiceInstanceManager(object):
 
     @lockutils.synchronized("_setup_network_for_instance", external=True,
                             lock_path="service_instance_locks")
-    def _setup_network_for_instance(self, share_network_id):
+    def _setup_network_for_instance(self, neutron_net_id, neutron_subnet_id):
         """Sets up network for service vm."""
-        service_subnet = self._get_service_subnet(share_network_id)
+
+        # We get/create subnet for service instance that is routed to
+        # subnet provided in args.
+        subnet_name = "routed_to_%s" % neutron_subnet_id
+        service_subnet = self._get_service_subnet(subnet_name)
         if not service_subnet:
             service_subnet = self.neutron_api.subnet_create(
-                        self.service_tenant_id,
-                        self.service_network_id,
-                        share_network_id,
-                        self._get_cidr_for_subnet())
+                self.service_tenant_id,
+                self.service_network_id,
+                subnet_name,
+                self._get_cidr_for_subnet()
+            )
 
-        private_router = self._get_private_router(share_network_id)
+        private_router = self._get_private_router(neutron_net_id,
+                                                  neutron_subnet_id)
         try:
             self.neutron_api.router_add_interface(private_router['id'],
                                                   service_subnet['id'])
@@ -439,24 +453,22 @@ class ServiceInstanceManager(object):
                                   {'subnet_id': service_subnet['id'],
                                    'router_id': private_router['id']})
 
-        return self.neutron_api.create_port(self.service_tenant_id,
+        port = self.neutron_api.create_port(self.service_tenant_id,
                                             self.service_network_id,
                                             subnet_id=service_subnet['id'],
                                             device_owner='manila')
+        return service_subnet['id'], private_router['id'], port['id']
 
     @lockutils.synchronized("_get_private_router", external=True,
                             lock_path="service_instance_locks")
-    def _get_private_router(self, share_network_id):
+    def _get_private_router(self, neutron_net_id, neutron_subnet_id):
         """Returns router attached to private subnet gateway."""
-        share_network = self.db.share_network_get(self.admin_context,
-                                                  share_network_id)
-        private_subnet = self.neutron_api.get_subnet(
-                                            share_network['neutron_subnet_id'])
+        private_subnet = self.neutron_api.get_subnet(neutron_subnet_id)
         if not private_subnet['gateway_ip']:
             raise exception.ServiceInstanceException(
                     _('Subnet must have gateway.'))
         private_network_ports = [p for p in self.neutron_api.list_ports(
-                                 network_id=share_network['neutron_net_id'])]
+                                 network_id=neutron_net_id)]
         for p in private_network_ports:
             fixed_ip = p['fixed_ips'][0]
             if (fixed_ip['subnet_id'] == private_subnet['id'] and
@@ -578,19 +590,16 @@ class ServiceInstanceManager(object):
         else:
             raise exception.ServiceInstanceException(_('No available cidrs.'))
 
-    def delete_service_instance(self, context, share_network_id,
-                                instance_id):
+    def delete_service_instance(self, context, instance_id, subnet_id,
+                                router_id):
         """Removes share infrastructure.
 
         Deletes service vm and subnet, associated to share network.
         """
         self._delete_server(context, instance_id)
-        subnet = self._get_service_subnet(share_network_id)
-        if subnet:
-            subnet_id = subnet['id']
-            router = self._get_private_router(share_network_id)
+        if router_id and subnet_id:
             try:
-                self.neutron_api.router_remove_interface(router['id'],
+                self.neutron_api.router_remove_interface(router_id,
                                                          subnet_id)
             except exception.NetworkException as e:
                 if e.kwargs['code'] != 404:
@@ -598,7 +607,7 @@ class ServiceInstanceManager(object):
                 LOG.debug('Subnet %(subnet_id)s is not attached to the '
                           'router %(router_id)s.' %
                                       {'subnet_id': subnet_id,
-                                       'router_id': router['id']})
+                                       'router_id': router_id})
             self.neutron_api.update_subnet(subnet_id, '')
 
     @lockutils.synchronized("_get_all_service_subnets", external=True,
@@ -610,10 +619,10 @@ class ServiceInstanceManager(object):
 
     @lockutils.synchronized("_get_service_subnet", external=True,
                             lock_path="service_instance_locks")
-    def _get_service_subnet(self, share_network_id):
+    def _get_service_subnet(self, subnet_name):
         all_service_subnets = self._get_all_service_subnets()
         service_subnets = [subnet for subnet in all_service_subnets
-                           if subnet['name'] == share_network_id]
+                           if subnet['name'] == subnet_name]
         if len(service_subnets) == 1:
             return service_subnets[0]
         elif not service_subnets:
@@ -622,7 +631,7 @@ class ServiceInstanceManager(object):
             if unused_service_subnets:
                 service_subnet = unused_service_subnets[0]
                 self.neutron_api.update_subnet(service_subnet['id'],
-                                               share_network_id)
+                                               subnet_name)
                 return service_subnet
             return None
         else:

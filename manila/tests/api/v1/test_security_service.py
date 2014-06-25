@@ -64,8 +64,10 @@ class ShareApiTest(test.TestCase):
 
     def test_security_service_create(self):
         sec_service = self.security_service.copy()
-        db.security_service_create = mock.Mock(
+        create_stub = mock.Mock(
             return_value=sec_service)
+        self.stubs.Set(db, 'security_service_create', create_stub)
+
         req = fakes.HTTPRequest.blank('/security-services')
         res_dict = self.controller.create(
             req, {"security_service": sec_service})
