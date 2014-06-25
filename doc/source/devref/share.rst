@@ -16,13 +16,13 @@
       under the License.
 
 Shared Filesystems
-======================
+==================
 
 .. todo:: rework
 
 
 The :mod:`manila.share.manager` Module
--------------------------------------
+--------------------------------------
 
 .. automodule:: manila.share.manager
     :noindex:
@@ -43,10 +43,10 @@ The :mod:`manila.share.driver` Module
 Tests
 -----
 
-The :mod:`share_unittest` Module
+The :mod:`test_share` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.tests.share_unittest
+.. automodule:: manila.tests.test_share
     :noindex:
     :members:
     :undoc-members:

@@ -19,21 +19,18 @@ Setting Up a Development Environment
 ====================================
 
 This page describes how to setup a working Python development
-environment that can be used in developing manila on Ubuntu, Fedora or
+environment that can be used in developing Manila on Ubuntu, Fedora or
 Mac OS X. These instructions assume you're already familiar with
 git. Refer to GettingTheCode_ for additional information.
 
 .. _GettingTheCode: http://wiki.openstack.org/GettingTheCode
 
-Following these instructions will allow you to run the manila unit
-tests. If you want to be able to run manila (i.e., launch VM instances),
-you will also need to install libvirt and at least one of the
-`supported hypervisors`_. Running manila is currently only supported on
-Linux, although you can run the unit tests on Mac OS X. See
-:doc:`../quickstart` for how to get a working version of OpenStack
-Compute running as quickly as possible.
+Following these instructions will allow you to run the Manila unit
+tests. If you want to be able to run Manila (i.e., create NFS/CIFS shares),
+you will also need to install dependent projects: Nova, Neutron, Cinder and Glance.
+For this purpose 'devstack' project can be used (A documented shell script to build complete OpenStack development environments).
 
-.. _supported hypervisors: http://wiki.openstack.org/HypervisorSupportMatrix
+.. _DeployOpenstack: http://devstack.org/
 
 Virtual environments
 --------------------
@@ -41,7 +38,7 @@ Virtual environments
 Manila development uses `virtualenv <http://pypi.python.org/pypi/virtualenv>`__ to track and manage Python
 dependencies while in development and testing. This allows you to
 install all of the Python package dependencies in a virtual
-environment or "virtualenv" (a special subdirectory of your manila
+environment or "virtualenv" (a special subdirectory of your Manila
 directory), instead of installing the packages at the system level.
 
 .. note::
@@ -85,14 +82,14 @@ MacPorts package for OpenSSL, you will see an error when running
 ``manila.tests.auth_unittest.AuthTestCase.test_209_can_generate_x509``.
 
 The stock version of OpenSSL that ships with Mac OS X 10.6 (OpenSSL 0.9.8l)
-or Mac OS X 10.7 (OpenSSL 0.9.8r) works fine with manila.
+or Mac OS X 10.7 (OpenSSL 0.9.8r) works fine with Manila.
 
 
 Getting the code
 ----------------
 Grab the code from GitHub::
 
-    git clone https://github.com/openstack/manila.git
+    git clone https://github.com/stackforge/manila.git
     cd manila
 
 

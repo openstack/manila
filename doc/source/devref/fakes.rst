@@ -24,62 +24,51 @@ When the real thing isn't available and you have some development to do these
 fake implementations of various drivers let you get on with your day.
 
 
-The :mod:`manila.virt.fake` Module
---------------------------------
+The :mod:`fake_compute` Module
+------------------------------
 
-.. automodule:: manila.virt.fake
+.. automodule:: manila.tests.fake_compute
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`manila.auth.fakeldap` Module
-------------------------------------
+The :mod:`fake_driver` Module
+-----------------------------
 
-.. automodule:: manila.auth.fakeldap
+.. automodule:: manila.tests.fake_driver
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
     
 
-The :mod:`manila.testing.fake.rabbit` Module
-------------------------------------------
+The :mod:`fake_network` Module
+------------------------------
 
-.. automodule:: manila.testing.fake.rabbit
+.. automodule:: manila.tests.fake_service_instance
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :class:`manila.volume.driver.FakeAOEDriver` Class
----------------------------------------------------
+The :mod:`fake_utils` Module
+----------------------------
 
-.. autoclass:: manila.volume.driver.FakeAOEDriver
+.. automodule:: manila.tests.fake_utils
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :class:`manila.tests.service_unittest.FakeManager` Class
-----------------------------------------------------------
+The :mod:`fake_volume` Module
+------------------------------
 
-.. autoclass:: manila.tests.service_unittest.FakeManager
+.. automodule:: manila.tests.fake_volume
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
-
-
-The :mod:`manila.tests.api.openstack.fakes` Module
-------------------------------------------------
-
-.. automodule:: manila.tests.api.openstack.fakes
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-

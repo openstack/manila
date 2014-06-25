@@ -26,7 +26,7 @@ Currently, Managers and Drivers are specified by flags and loaded using utils.lo
 
 
 The :mod:`manila.service` Module
-------------------------------
+--------------------------------
 
 .. automodule:: manila.service
     :noindex:
@@ -36,7 +36,7 @@ The :mod:`manila.service` Module
 
 
 The :mod:`manila.manager` Module
-------------------------------
+--------------------------------
 
 .. automodule:: manila.manager
     :noindex:

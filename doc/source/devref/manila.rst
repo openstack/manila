@@ -22,18 +22,8 @@ Libraries common throughout Manila or just ones that haven't been categorized
 very well yet.
 
 
-The :mod:`manila.adminclient` Module
-----------------------------------
-
-.. automodule:: manila.adminclient
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 The :mod:`manila.context` Module
-------------------------------
+--------------------------------
 
 .. automodule:: manila.context
     :noindex:
@@ -43,7 +33,7 @@ The :mod:`manila.context` Module
 
 
 The :mod:`manila.exception` Module
---------------------------------
+----------------------------------
 
 .. automodule:: manila.exception
     :noindex:
@@ -52,48 +42,8 @@ The :mod:`manila.exception` Module
     :show-inheritance:
 
 
-The :mod:`manila.flags` Module
-----------------------------
-
-.. automodule:: manila.flags
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`manila.process` Module
-------------------------------
-
-.. automodule:: manila.process
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`manila.rpc` Module
---------------------------
-
-.. automodule:: manila.rpc
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`manila.server` Module
------------------------------
-
-.. automodule:: manila.server
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 The :mod:`manila.test` Module
----------------------------
+-----------------------------
 
 .. automodule:: manila.test
     :noindex:
@@ -103,7 +53,7 @@ The :mod:`manila.test` Module
 
 
 The :mod:`manila.utils` Module
-----------------------------
+------------------------------
 
 .. automodule:: manila.utils
     :noindex:
@@ -112,18 +62,8 @@ The :mod:`manila.utils` Module
     :show-inheritance:
 
 
-The :mod:`manila.validate` Module
--------------------------------
-
-.. automodule:: manila.validate
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 The :mod:`manila.wsgi` Module
----------------------------
+-----------------------------
 
 .. automodule:: manila.wsgi
     :noindex:
@@ -135,80 +75,10 @@ The :mod:`manila.wsgi` Module
 Tests
 -----
 
-The :mod:`declare_conf` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.declare_conf
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`conf_fixture` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.conf_fixture
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`flags_unittest` Module
+The :mod:`test_exception` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.tests.flags_unittest
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`process_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.process_unittest
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`real_flags` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.real_flags
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`rpc_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.rpc_unittest
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`runtime_conf` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.runtime_conf
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`validator_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.validator_unittest
+.. automodule:: manila.tests.test_exception
     :noindex:
     :members:
     :undoc-members:

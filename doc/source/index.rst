@@ -16,9 +16,9 @@
       under the License.
 
 Welcome to Manila's developer documentation!
-==========================================
+============================================
 
-Manila is an OpenStack project to provide "block storage as a service".
+Manila is an OpenStack project to provide "Shared Filesystems as a service".
 
 * **Component based architecture**: Quickly add new behaviors
 * **Highly available**: Scale to very serious workloads
