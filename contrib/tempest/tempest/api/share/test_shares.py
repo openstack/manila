@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import testtools
+
 from tempest.api.share import base
 from tempest import config_share as config
 from tempest import exceptions
@@ -65,12 +67,13 @@ class SharesNFSTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_create_share_from_snapshot(self):
+        # If multitenant driver used, share_network will be provided by default
 
         # create snapshot
         __, snap = self.create_snapshot_wait_for_active(self.share["id"],
                                                         cleanup_in_class=False)
 
-        # crate share from snapshot
+        # create share from snapshot
         resp, s2 = self.create_share(self.protocol, snapshot_id=snap["id"],
                                      cleanup_in_class=False)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
@@ -81,6 +84,37 @@ class SharesNFSTest(base.BaseSharesTest):
         msg = "Expected snapshot_id %s as "\
               "source of share %s" % (snap["id"], get["snapshot_id"])
         self.assertEqual(get["snapshot_id"], snap["id"], msg)
+
+    @test.attr(type=["gate", "smoke", ])
+    @testtools.skipIf(not CONF.share.multitenancy_enabled,
+                      "Only for multitenancy.")
+    def test_create_share_from_snapshot_share_network_not_provided(self):
+        # We expect usage of share network from parent's share
+        # when creating share from snapshot using multitenant driver.
+
+        # get parent share
+        __, parent = self.shares_client.get_share(self.share["id"])
+
+        # create snapshot
+        __, snap = self.create_snapshot_wait_for_active(
+            self.share["id"], cleanup_in_class=False)
+
+        # create share from snapshot
+        resp, child = self.create_share(
+            self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        # verify share, created from snapshot
+        resp, get = self.shares_client.get_share(child["id"])
+        keys = {
+            "share": self.share["id"],
+            "actual_sn": get["share_network_id"],
+            "expected_sn": parent["share_network_id"],
+        }
+        msg = ("Expected share_network_id %(expected_sn)s for"
+               "share %(share)s, but %(actual_sn)s found." % keys)
+        self.assertEqual(
+            get["share_network_id"], parent["share_network_id"], msg)
 
 
 class SharesCIFSTest(SharesNFSTest):
