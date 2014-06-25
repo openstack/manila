@@ -478,5 +478,9 @@ class ServiceInstanceException(ManilaException):
     message = _("Exception in service instance manager occurred.")
 
 
+class ServiceInstanceUnavailable(ServiceInstanceException):
+    message = _("Service Instance is not available.")
+
+
 class NetAppException(ManilaException):
     message = _("Exception due to NetApp failure.")

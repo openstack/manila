@@ -14,12 +14,11 @@
 #    under the License.
 
 """Generic Driver for shares."""
-
 import ConfigParser
+
 import os
 import re
 import shutil
-import threading
 import time
 
 from oslo.config import cfg
@@ -32,6 +31,7 @@ from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila.share import driver
 from manila.share.drivers import service_instance
+from manila import utils
 from manila import volume
 
 
@@ -71,7 +71,27 @@ share_opts = [
 CONF = cfg.CONF
 CONF.register_opts(share_opts)
 
-_ssh_exec = service_instance._ssh_exec
+
+def ensure_server(f):
+    def wrap(self, *args, **kwargs):
+        server = kwargs.get('share_server')
+        context = args[0]
+        if not server:
+            # For now generic driver does not support flat networking.
+            # When we implement flat networking in generic driver
+            # we will not need share server to be passed and
+            # will change this logic.
+            raise exception.ManilaException(_('Share server not found.'))
+        if not server.get('backend_details'):
+            raise exception.ManilaException(_('Share server backend '
+                                              'details missing.'))
+        if not self.service_instance_manager.ensure_service_instance(
+                context, server['backend_details']):
+            raise exception.ServiceInstanceUnavailable()
+        return f(self, *args, **kwargs)
+    return wrap
+
+
 synchronized = service_instance.synchronized
 
 
@@ -88,6 +108,28 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._helpers = {}
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "Cinder_Volumes"
+        self.ssh_connections = {}
+
+    def _ssh_exec(self, server, command):
+        connection = self.ssh_connections.get(server['instance_id'])
+        if not connection:
+            ssh_pool = utils.SSHPool(server['ip'],
+                                     22,
+                                     None,
+                                     server['username'],
+                                     server['password'],
+                                     server['pk_path'],
+                                     max_size=1)
+            ssh = ssh_pool.create()
+            self.ssh_connections[server['instance_id']] = (ssh_pool, ssh)
+        else:
+            ssh_pool, ssh = connection
+
+        if not ssh.get_transport().is_active():
+            ssh_pool.remove(server['ssh'])
+            ssh = ssh_pool.create()
+            self.ssh_connections[server['instance_id']] = (ssh_pool, ssh)
+        return utils.ssh_execute(ssh, ' '.join(command))
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -101,10 +143,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.service_instance_manager = service_instance.\
             ServiceInstanceManager(self.db, self._helpers,
                                    driver_config=self.configuration)
-        self.get_service_instance = self.service_instance_manager.\
-                get_service_instance
-        self.delete_service_instance = self.service_instance_manager.\
-                delete_service_instance
         self.share_networks_locks = self.service_instance_manager.\
                                                           share_networks_locks
         self.share_networks_servers = self.service_instance_manager.\
@@ -116,51 +154,55 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         for helper_str in self.configuration.share_helpers:
             share_proto, __, import_str = helper_str.partition('=')
             helper = importutils.import_class(import_str)
-            self._helpers[share_proto.upper()] = helper(self._execute,
-                                                    self.configuration,
-                                                    self.share_networks_locks)
+            self._helpers[share_proto.upper()] = helper(
+                self._execute,
+                self._ssh_exec,
+                self.configuration,
+                self.share_networks_locks)
 
+    @ensure_server
     def create_share(self, context, share, share_server=None):
         """Creates share."""
-        if share['share_network_id'] is None:
-            raise exception.ManilaException(
-                    _('Share Network is not specified'))
-        server = self.get_service_instance(
-            self.admin_context, share_server_id=share['share_server_id'],
-            share_network_id=share['share_network_id'])
+        server_details = share_server['backend_details']
         volume = self._allocate_container(self.admin_context, share)
-        volume = self._attach_volume(self.admin_context, share, server, volume)
-        self._format_device(server, volume)
-        self._mount_device(context, share, server, volume)
-        location = self._get_helper(share).create_export(server, share['name'])
+        volume = self._attach_volume(
+            self.admin_context,
+            share,
+            server_details['instance_id'],
+            volume)
+        self._format_device(server_details, volume)
+        self._mount_device(context, share, server_details, volume)
+        location = self._get_helper(share).create_export(
+            server_details,
+            share['name'])
         return location
 
-    def _format_device(self, server, volume):
+    def _format_device(self, server_details, volume):
         """Formats device attached to the service vm."""
         command = ['sudo', 'mkfs.ext4', volume['mountpoint']]
-        _ssh_exec(server, command)
+        self._ssh_exec(server_details, command)
 
-    def _mount_device(self, context, share, server, volume):
+    def _mount_device(self, context, share, server_details, volume):
         """Mounts attached and formatted block device to the directory."""
         mount_path = self._get_mount_path(share)
         command = ['sudo', 'mkdir', '-p', mount_path, ';']
         command.extend(['sudo', 'mount', volume['mountpoint'], mount_path])
         try:
-            _ssh_exec(server, command)
+            self._ssh_exec(server_details, command)
         except exception.ProcessExecutionError as e:
             if 'already mounted' not in e.stderr:
                 raise
             LOG.debug('Share %s is already mounted' % share['name'])
         command = ['sudo', 'chmod', '777', mount_path]
-        _ssh_exec(server, command)
+        self._ssh_exec(server_details, command)
 
-    def _unmount_device(self, context, share, server):
+    def _unmount_device(self, share, server_details):
         """Unmounts device from directory on service vm."""
         mount_path = self._get_mount_path(share)
         command = ['sudo', 'umount', mount_path, ';']
         command.extend(['sudo', 'rmdir', mount_path])
         try:
-            _ssh_exec(server, command)
+            self._ssh_exec(server_details, command)
         except exception.ProcessExecutionError as e:
             if 'not found' in e.stderr:
                 LOG.debug('%s is not mounted' % share['name'])
@@ -172,19 +214,19 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         return os.path.join(self.configuration.share_mount_path, share['name'])
 
     @synchronized
-    def _attach_volume(self, context, share, server, volume):
+    def _attach_volume(self, context, share, instance_id, volume):
         """Attaches cinder volume to service vm."""
         if volume['status'] == 'in-use':
             attached_volumes = [vol.id for vol in
                 self.compute_api.instance_volumes_list(self.admin_context,
-                                                       server['id'])]
+                                                       instance_id)]
             if volume['id'] in attached_volumes:
                 return volume
             else:
                 raise exception.ManilaException(_('Volume %s is already '
                         'attached to another instance') % volume['id'])
         self.compute_api.instance_volume_attach(self.admin_context,
-                                                server['id'],
+                                                instance_id,
                                                 volume['id'],
                                                 )
 
@@ -233,16 +275,19 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         return volume_snapshot
 
     @synchronized
-    def _detach_volume(self, context, share, server):
+    def _detach_volume(self, context, share, server_details):
         """Detaches cinder volume from service vm."""
         attached_volumes = [vol.id for vol in
-                self.compute_api.instance_volumes_list(self.admin_context,
-                                                       server['id'])]
+                self.compute_api.instance_volumes_list(
+                    self.admin_context,
+                    server_details['instance_id'])]
         volume = self._get_volume(context, share['id'])
         if volume and volume['id'] in attached_volumes:
-            self.compute_api.instance_volume_detach(self.admin_context,
-                                                    server['id'],
-                                                    volume['id'])
+            self.compute_api.instance_volume_detach(
+                self.admin_context,
+                server_details['instance_id'],
+                volume['id']
+            )
             t = time.time()
             while time.time() - t < self.configuration.max_time_to_attach:
                 volume = self.volume_api.get(context, volume['id'])
@@ -328,34 +373,32 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         self._stats = data
 
+    @ensure_server
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Is called to create share from snapshot."""
-        server = self.get_service_instance(
-            self.admin_context, share_server_id=share['share_server_id'],
-            share_network_id=share['share_network_id'])
         volume = self._allocate_container(self.admin_context, share, snapshot)
-        volume = self._attach_volume(self.admin_context, share, server, volume)
-        self._mount_device(context, share, server, volume)
-        location = self._get_helper(share).create_export(server,
-                                                         share['name'])
+        volume = self._attach_volume(
+            self.admin_context, share,
+            share_server['backend_details']['instance_id'], volume)
+        self._mount_device(context, share, share_server['backend_details'],
+                           volume)
+        location = self._get_helper(share).create_export(
+            share_server['backend_details'],
+            share['name'])
         return location
 
+    @ensure_server
     def delete_share(self, context, share, share_server=None):
         """Deletes share."""
-        if not share['share_network_id']:
-            return
-        server = self.get_service_instance(self.admin_context,
-                                share_server_id=share['share_server_id'],
-                                share_network_id=share['share_network_id'],
-                                return_inactive=True)
-        if server:
-            if server['status'] == 'ACTIVE':
-                self._get_helper(share).remove_export(server, share['name'])
-                self._unmount_device(context, share, server)
-            self._detach_volume(self.admin_context, share, server)
+        self._get_helper(share).remove_export(share_server['backend_details'],
+                                              share['name'])
+        self._unmount_device(share, share_server['backend_details'])
+        self._detach_volume(self.admin_context, share,
+                            share_server['backend_details'])
         self._deallocate_container(self.admin_context, share)
 
+    @ensure_server
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""
         volume = self._get_volume(self.admin_context, snapshot['share_id'])
@@ -378,6 +421,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                               'created in %ss. Giving up') %
                                   self.configuration.max_time_to_create_volume)
 
+    @ensure_server
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot."""
         volume_snapshot = self._get_volume_snapshot(self.admin_context,
@@ -400,39 +444,36 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                               'deleted in %ss. Giving up') %
                                   self.configuration.max_time_to_create_volume)
 
+    @ensure_server
     def ensure_share(self, context, share, share_server=None):
         """Ensure that storage are mounted and exported."""
-        server = self.get_service_instance(
-            context, share_server_id=share['share_server_id'],
-            share_network_id=share['share_network_id'], create=True)
         volume = self._get_volume(context, share['id'])
-        volume = self._attach_volume(context, share, server, volume)
-        self._mount_device(context, share, server, volume)
-        self._get_helper(share).create_export(server, share['name'])
+        volume = self._attach_volume(
+            context,
+            share,
+            share_server['backend_details']['instance_id'],
+            volume)
+        self._mount_device(context, share, share_server['backend_details'],
+                           volume)
+        self._get_helper(share).create_export(share_server['backend_details'],
+                                              share['name'],
+                                              recreate=True)
 
+    @ensure_server
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
-        server = self.get_service_instance(
-            self.admin_context, share_server_id=share['share_server_id'],
-            share_network_id=share['share_network_id'], create=False)
-        if not server:
-            raise exception.ManilaException('Server not found. Try to '
-                                            'restart manila share service')
-        self._get_helper(share).allow_access(server, share['name'],
+        self._get_helper(share).allow_access(share_server['backend_details'],
+                                             share['name'],
                                              access['access_type'],
                                              access['access_to'])
 
+    @ensure_server
     def deny_access(self, context, share, access, share_server=None):
         """Deny access to the share."""
-        if not share['share_network_id']:
-            return
-        server = self.get_service_instance(
-            self.admin_context, share_server_id=share['share_server_id'],
-            share_network_id=share['share_network_id'])
-        if server:
-            self._get_helper(share).deny_access(server, share['name'],
-                                                access['access_type'],
-                                                access['access_to'])
+        self._get_helper(share).deny_access(share_server['backend_details'],
+                                            share['name'],
+                                            access['access_type'],
+                                            access['access_to'])
 
     def _get_helper(self, share):
         if share['share_proto'].startswith('NFS'):
@@ -454,30 +495,39 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         srv_id = network_info["id"]
         msg = "Creating share infrastructure for share network '%s'."
         LOG.debug(msg % sn_id)
-        self.get_service_instance(context=self.admin_context,
-                                  share_server_id=srv_id,
-                                  share_network_id=sn_id,
-                                  create=True)
-
-        return {}
+        server = self.service_instance_manager.set_up_service_instance(
+            context=self.admin_context,
+            share_server_id=srv_id,
+            share_network_id=sn_id,
+            create=True)
+        for helper in self._helpers.values():
+                helper.init_helper(server)
+        return server
 
     def teardown_network(self, network_info):
         sn_id = network_info["share_network_id"]
-        srv_id = network_info["id"]
-        msg = "Removing share infrastructure for share server '%s'."
-        LOG.debug(msg % srv_id)
+        server_details = network_info.get("backend_details")
+        if not server_details:
+            LOG.warning(_("No backend details provided for service instance. "
+                        "Passing"))
+            return
+        instance_id = server_details.get("instance_id")
+        msg = "Removing share infrastructure for service instance '%s'."
+        LOG.debug(msg % instance_id)
         try:
-            self.delete_service_instance(self.admin_context, sn_id, srv_id)
+            self.service_instance_manager.delete_service_instance(
+                self.admin_context, sn_id, instance_id)
         except Exception as e:
-            LOG.debug(e)
+            LOG.warning(e)
 
 
 class NASHelperBase(object):
     """Interface to work with share."""
 
-    def __init__(self, execute, config_object, locks):
+    def __init__(self, execute, ssh_execute, config_object, locks):
         self.configuration = config_object
         self._execute = execute
+        self._ssh_exec = ssh_execute
         self.share_networks_locks = locks
 
     def init_helper(self, server):
@@ -511,11 +561,12 @@ class NFSHelper(NASHelperBase):
 
     def init_helper(self, server):
         try:
-            _ssh_exec(server, ['sudo', 'exportfs'])
+            self._ssh_exec(server, ['sudo', 'exportfs'])
         except exception.ProcessExecutionError as e:
             if 'command not found' in e.stderr:
                 raise exception.ManilaException(
-                    _('NFS server is not installed on %s') % server['id'])
+                    _('NFS server is not installed on %s')
+                    % server['instance_id'])
             LOG.error(e.stderr)
 
     def remove_export(self, server, share_name):
@@ -530,28 +581,29 @@ class NFSHelper(NASHelperBase):
             reason = 'only ip access type allowed'
             raise exception.InvalidShareAccess(reason)
         #check if presents in export
-        out, _ = _ssh_exec(server, ['sudo', 'exportfs'])
+        out, _ = self._ssh_exec(server, ['sudo', 'exportfs'])
         out = re.search(re.escape(local_path) + '[\s\n]*' + re.escape(access),
                         out)
         if out is not None:
             raise exception.ShareAccessExists(access_type=access_type,
                                               access=access)
-        _ssh_exec(server, ['sudo', 'exportfs', '-o', 'rw,no_subtree_check',
-                  ':'.join([access, local_path])])
+        self._ssh_exec(server,
+                       ['sudo', 'exportfs', '-o', 'rw,no_subtree_check',
+                        ':'.join([access, local_path])])
 
     def deny_access(self, server, share_name, access_type, access,
                     force=False):
         """Deny access to the host."""
         local_path = os.path.join(self.configuration.share_mount_path,
                                   share_name)
-        _ssh_exec(server, ['sudo', 'exportfs', '-u',
-                           ':'.join([access, local_path])])
+        self._ssh_exec(server, ['sudo', 'exportfs', '-u',
+                                ':'.join([access, local_path])])
 
 
 def cifs_synchronized(f):
 
     def wrapped_func(self, *args, **kwargs):
-        key = "cifs-%s" % args[0]["id"]
+        key = "cifs-%s" % args[0]["instance_id"]
 
         @lockutils.synchronized(key)
         def source_func(self, *args, **kwargs):
@@ -589,26 +641,26 @@ class CIFSHelper(NASHelperBase):
     @cifs_synchronized
     def init_helper(self, server):
         self._recreate_template_config()
-        local_config = self._create_local_config(server['share_network_id'])
+        local_config = self._create_local_config(server['instance_id'])
         config_dir = os.path.dirname(self.config_path)
         try:
-            _ssh_exec(server, ['sudo', 'mkdir', config_dir])
+            self._ssh_exec(server, ['sudo', 'mkdir', config_dir])
         except exception.ProcessExecutionError as e:
             if 'File exists' not in e.stderr:
                 raise
             LOG.debug('Directory %s already exists' % config_dir)
-        _ssh_exec(server, ['sudo', 'chown',
-                           self.configuration.service_instance_user,
-                           config_dir])
-        _ssh_exec(server, ['touch', self.config_path])
+        self._ssh_exec(server, ['sudo', 'chown',
+                                self.configuration.service_instance_user,
+                                config_dir])
+        self._ssh_exec(server, ['touch', self.config_path])
         try:
-            _ssh_exec(server, ['sudo', 'stop', 'smbd'])
+            self._ssh_exec(server, ['sudo', 'stop', 'smbd'])
         except exception.ProcessExecutionError as e:
             if 'Unknown instance' not in e.stderr:
                 raise
             LOG.debug('Samba service is not running')
         self._write_remote_config(local_config, server)
-        _ssh_exec(server, ['sudo', 'smbd', '-s', self.config_path])
+        self._ssh_exec(server, ['sudo', 'smbd', '-s', self.config_path])
         self._restart_service(server)
 
     @cifs_synchronized
@@ -616,7 +668,7 @@ class CIFSHelper(NASHelperBase):
         """Create new export, delete old one if exists."""
         local_path = os.path.join(self.configuration.share_mount_path,
                                   share_name)
-        config = self._get_local_config(server['share_network_id'])
+        config = self._get_local_config(server['instance_id'])
         parser = ConfigParser.ConfigParser()
         parser.read(config)
         #delete old one
@@ -643,7 +695,7 @@ class CIFSHelper(NASHelperBase):
     @cifs_synchronized
     def remove_export(self, server, share_name):
         """Remove export."""
-        config = self._get_local_config(server['share_network_id'])
+        config = self._get_local_config(server['instance_id'])
         parser = ConfigParser.ConfigParser()
         parser.read(config)
         #delete old one
@@ -651,13 +703,13 @@ class CIFSHelper(NASHelperBase):
             parser.remove_section(share_name)
         self._update_config(parser, config)
         self._write_remote_config(config, server)
-        _ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
-                  share_name])
+        self._ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
+                                share_name])
 
     def _write_remote_config(self, config, server):
         with open(config, 'r') as f:
             cfg = "'%s'" % f.read()
-        _ssh_exec(server, ['echo %s > %s' % (cfg, self.config_path)])
+        self._ssh_exec(server, ['echo %s > %s' % (cfg, self.config_path)])
 
     @cifs_synchronized
     def allow_access(self, server, share_name, access_type, access):
@@ -665,7 +717,7 @@ class CIFSHelper(NASHelperBase):
         if access_type != 'ip':
             reason = 'only ip access type allowed'
             raise exception.InvalidShareAccess(reason)
-        config = self._get_local_config(server['share_network_id'])
+        config = self._get_local_config(server['instance_id'])
         parser = ConfigParser.ConfigParser()
         parser.read(config)
 
@@ -684,7 +736,7 @@ class CIFSHelper(NASHelperBase):
     def deny_access(self, server, share_name, access_type, access,
                     force=False):
         """Deny access to the host."""
-        config = self._get_local_config(server['share_network_id'])
+        config = self._get_local_config(server['instance_id'])
         parser = ConfigParser.ConfigParser()
         try:
             parser.read(config)
@@ -709,7 +761,7 @@ class CIFSHelper(NASHelperBase):
         self._update_config(parser, self.smb_template_config)
 
     def _restart_service(self, server):
-        _ssh_exec(server, 'sudo pkill -HUP smbd'.split())
+        self._ssh_exec(server, 'sudo pkill -HUP smbd'.split())
 
     def _update_config(self, parser, config):
         """Check if new configuration is correct and save it."""
