@@ -52,7 +52,6 @@ class CapacityWeigherTestCase(test.TestCase):
             ctxt, CONF.share_topic)
         return host_states
 
-    @testtools.skip("LP bug #1329718")
     def test_default_of_spreading_first(self):
         hostinfo_list = self._get_all_hosts()
 
@@ -63,10 +62,9 @@ class CapacityWeigherTestCase(test.TestCase):
 
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, 921.0)
+        self.assertEqual(weighed_host.weight, 1.0)
         self.assertEqual(weighed_host.obj.host, 'host1')
 
-    @testtools.skip("LP bug #1329718")
     def test_capacity_weight_multiplier1(self):
         self.flags(capacity_weight_multiplier=-1.0)
         hostinfo_list = self._get_all_hosts()
@@ -78,10 +76,9 @@ class CapacityWeigherTestCase(test.TestCase):
 
         # so, host4 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, -190.0)
+        self.assertEqual(weighed_host.weight, 0.0)
         self.assertEqual(weighed_host.obj.host, 'host4')
 
-    @testtools.skip("LP bug #1329718")
     def test_capacity_weight_multiplier2(self):
         self.flags(capacity_weight_multiplier=2.0)
         hostinfo_list = self._get_all_hosts()
@@ -93,5 +90,5 @@ class CapacityWeigherTestCase(test.TestCase):
 
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, 921.0 * 2)
+        self.assertEqual(weighed_host.weight, 2.0)
         self.assertEqual(weighed_host.obj.host, 'host1')
