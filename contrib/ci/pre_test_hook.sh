@@ -16,5 +16,25 @@
 
 # Install manila devstack integration
 cp -r $BASE/new/manila/contrib/devstack/* $BASE/new/devstack
+
+localrc_path=$BASE/new/devstack/localrc
+echo "DEVSTACK_GATE_TEMPEST_ALLOW_TENANT_ISOLATION=1" >> $localrc_path
+echo "API_RATE_LIMIT=False" >> $localrc_path
+echo "TEMPEST_SERVICES+=,manila" >> $localrc_path
+echo "VOLUME_BACKING_FILE_SIZE=22G" >> $localrc_path
+
+echo "MANILA_BACKEND1_CONFIG_GROUP_NAME=london" >> $localrc_path
+echo "MANILA_BACKEND2_CONFIG_GROUP_NAME=paris" >> $localrc_path
+echo "MANILA_SHARE_BACKEND1_NAME=LONDON" >> $localrc_path
+echo "MANILA_SHARE_BACKEND2_NAME=PARIS" >> $localrc_path
+
+# JOB_NAME is defined in openstack-infra/config project
+# used by CI/CD, where this script is intended to be used.
+if [[ "$JOB_NAME" =~ "multibackend" ]]; then
+    echo "MANILA_MULTI_BACKEND=True" >> $localrc_path
+else
+    echo "MANILA_MULTI_BACKEND=False" >> $localrc_path
+fi
+
 # Install manila tempest integration
 cp -r $BASE/new/manila/contrib/tempest/tempest/* $BASE/new/tempest/tempest

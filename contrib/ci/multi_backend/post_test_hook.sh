@@ -14,4 +14,4 @@
 
 # This script is executed inside post_test_hook function in devstack gate.
 
-source $BASE/new/manila/contrib/ci/post_test_hook.sh 1
+source $BASE/new/manila/contrib/ci/post_test_hook.sh $1

@@ -18,18 +18,20 @@ sudo chown -R jenkins:stack $BASE/new/tempest
 sudo chown -R jenkins:stack $BASE/data/tempest
 sudo chmod -R o+rx $BASE/new/devstack/files
 
-if [[ "$1" == "1" ]]; then
-    # if arg $1 is equal to "1", we assume multibackend installation
+if [[ "$1" =~ "multibackend" ]]; then
+    # if arg $1 has "multibackend", then we assume multibackend installation
     source $BASE/new/devstack/functions
     iniset $BASE/new/tempest/etc/tempest.conf share multi_backend True
-    iniset $BASE/new/tempest/etc/tempest.conf share backend_names "$MANILA_SHARE_BACKEND1_NAME,$MANILA_SHARE_BACKEND2_NAME"
+
+    # backend names are defined in pre_test_hook
+    iniset $BASE/new/tempest/etc/tempest.conf share backend_names "LONDON,PARIS"
 fi
 
 # let us control if we die or not
 set +o errexit
 cd $BASE/new/tempest
 
-export TEMPEST_CONCURRENCY=2
+export TEMPEST_CONCURRENCY=8
 export MANILA_TESTS='tempest.cli.*manila*'
 if [[ ! "$ZUUL_PROJECT" =~ python-manilaclient ]]; then
     MANILA_TESTS+=' tempest.api.share*';
