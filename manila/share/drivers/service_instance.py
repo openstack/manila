@@ -219,44 +219,47 @@ class ServiceInstanceManager(object):
         LOG.error(msg)
         raise exception.ServiceInstanceException(msg)
 
-    @lockutils.synchronized("_get_service_instance_security_group",
+    @lockutils.synchronized("_get_or_create_security_group",
                             external=True, lock_path="service_instance_locks")
-    def _get_service_instance_security_group(self, context, name=None):
-        """Searches for security group by name."""
-        if not (name or self.get_config_option(
-                "service_instance_security_group")):
-            return None
+    def _get_or_create_security_group(self, context, name=None,
+                                      description=None):
+        """Get or create security group for service_instance.
+
+        :param context: context, that should be used
+        :param name: this is used for selection/creation of sec.group
+        :param description: this is used on sec.group creation step only
+        :returns: SecurityGroup -- security group instance from Nova
+        :raises: exception.ServiceInstanceException.
+        """
+        name = name or self.get_config_option(
+            "service_instance_security_group")
         if not name:
-            name = self.get_config_option("service_instance_security_group")
+            LOG.warning(_("Name for service instance security group is not "
+                          "provided. Skipping security group step."))
+            return None
         s_groups = [s for s in self.compute_api.security_group_list(context)
                     if s.name == name]
         if not s_groups:
-            return None
+            # Creating security group
+            if not description:
+                description = "This security group is intended "\
+                              "to be used by share service."
+            LOG.debug("Creating security group with name '%s'." % name)
+            sg = self.compute_api.security_group_create(
+                context, name, description)
+            for protocol, ports in constants.SERVICE_INSTANCE_SECGROUP_DATA:
+                self.compute_api.security_group_rule_create(context,
+                    parent_group_id=sg.id,
+                    ip_protocol=protocol,
+                    from_port=ports[0],
+                    to_port=ports[1],
+                    cidr="0.0.0.0/0",
+                )
         elif len(s_groups) > 1:
             msg = _("Ambiguous security_groups.")
             raise exception.ServiceInstanceException(msg)
         else:
             sg = s_groups[0]
-        return sg
-
-    def _create_service_instance_security_group(self, context,
-                                                name=None, description=None):
-        """Creates and returns security_group for service vm."""
-        if not name:
-            name = self.get_config_option("service_instance_security_group")
-        if not description:
-            description = "This security group is intended to "\
-                          "be used by share service."
-        LOG.debug("Creating security group with name '%s'." % name)
-        sg = self.compute_api.security_group_create(context, name, description)
-        for protocol, ports in constants.SERVICE_INSTANCE_SECGROUP_DATA:
-            self.compute_api.security_group_rule_create(context,
-                parent_group_id=sg.id,
-                ip_protocol=protocol,
-                from_port=ports[0],
-                to_port=ports[1],
-                cidr="0.0.0.0/0",
-            )
         return sg
 
     def ensure_service_instance(self, context, server):
@@ -378,11 +381,7 @@ class ServiceInstanceManager(object):
                 raise exception.ServiceInstanceException(_('Neither service '
                     'instance password nor key are available.'))
 
-            security_group = self._get_service_instance_security_group(context)
-            if not security_group and \
-                self.get_config_option("service_instance_security_group"):
-                security_group = self._create_service_instance_security_group(
-                    context)
+            security_group = self._get_or_create_security_group(context)
             port = self._setup_network_for_instance(share_network_id)
             try:
                 self._setup_connectivity_with_service_instances()

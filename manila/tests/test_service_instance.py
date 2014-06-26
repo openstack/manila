@@ -123,62 +123,91 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertRaises(exception.ManilaException,
                           self._manager._get_server_ip, fake_server)
 
-    def test_get_security_group_name_is_unique(self):
-        fake_secgroup = fake_compute.FakeSecurityGroup()
+    def test_security_group_name_not_specified(self):
+        self.stubs.Set(self._manager, 'get_config_option',
+                       mock.Mock(return_value=None))
+        result = self._manager._get_or_create_security_group(self._context)
+        self.assertEqual(result, None)
+        self._manager.get_config_option.assert_called_once_with(
+            'service_instance_security_group')
+
+    def test_security_group_name_from_config_and_sg_exist(self):
+        fake_secgroup = fake_compute.FakeSecurityGroup(name="fake_sg_name")
+        self.stubs.Set(self._manager, 'get_config_option',
+                       mock.Mock(return_value="fake_sg_name"))
         self.stubs.Set(self._manager.compute_api, 'security_group_list',
                        mock.Mock(return_value=[fake_secgroup, ]))
-        result = self._manager._get_service_instance_security_group(
-            self._context, fake_secgroup.name)
+        result = self._manager._get_or_create_security_group(self._context)
         self.assertEqual(result, fake_secgroup)
+        self._manager.get_config_option.assert_has_calls([
+            mock.call('service_instance_security_group'),
+        ])
+        self._manager.compute_api.security_group_list.assert_called_once_with(
+            self._context)
 
-    def test_get_security_group_name_is_absent(self):
+    def test_security_group_creation_with_name_from_config(self):
+        name = "fake_sg_name"
+        desc = "fake_sg_description"
+        fake_secgroup = fake_compute.FakeSecurityGroup(name=name,
+                                                       description=desc)
+        self.stubs.Set(self._manager, 'get_config_option',
+                       mock.Mock(return_value=name))
         self.stubs.Set(self._manager.compute_api, 'security_group_list',
                        mock.Mock(return_value=[]))
-        result = self._manager._get_service_instance_security_group(
-            self._context, "fake_absent_name")
-        self.assertEqual(result, None)
+        self.stubs.Set(self._manager.compute_api, 'security_group_create',
+                       mock.Mock(return_value=fake_secgroup))
+        self.stubs.Set(self._manager.compute_api, 'security_group_rule_create',
+                       mock.Mock())
+        result = self._manager._get_or_create_security_group(
+            context=self._context,
+            name=None,
+            description=desc,
+        )
+        self.assertEqual(result, fake_secgroup)
+        self._manager.compute_api.security_group_list.assert_called_once_with(
+            self._context)
+        self._manager.compute_api.security_group_create.\
+            assert_called_once_with(self._context, name, desc)
+        self._manager.get_config_option.assert_has_calls([
+            mock.call('service_instance_security_group'),
+        ])
 
-    def test_get_security_group_name_not_unique(self):
-        fake_secgroup1 = fake_compute.FakeSecurityGroup()
-        fake_secgroup2 = fake_compute.FakeSecurityGroup()
+    def test_security_group_creation_with_provided_name(self):
+        name = "fake_sg_name"
+        desc = "fake_sg_description"
+        fake_secgroup = fake_compute.FakeSecurityGroup(name=name,
+                                                       description=desc)
         self.stubs.Set(self._manager.compute_api, 'security_group_list',
-                       mock.Mock(return_value=[fake_secgroup1,
-                                               fake_secgroup2, ]))
-        self.assertRaises(exception.ServiceInstanceException,
-                          self._manager._get_service_instance_security_group,
-                          self._context,
-                          fake_secgroup1.name)
-
-    def test_get_security_group_name_not_provided_at_all(self):
-        fake_secgroup = fake_compute.FakeSecurityGroup(
-            name=CONF.service_instance_security_group)
-        self.stubs.Set(self._manager.compute_api, 'security_group_list',
-                       mock.Mock(return_value=[fake_secgroup, ]))
-        default_option = CONF.service_instance_security_group
-        with mock.patch.object(self._manager, 'get_config_option',
-                               mock.Mock(return_value="")):
-            result = self._manager._get_service_instance_security_group(
-                context=self._context, name="")
-            self.assertEqual(result, None)
-
-    def test_get_security_group_name_not_provided(self):
-        fake_secgroup = fake_compute.FakeSecurityGroup(
-            name=CONF.service_instance_security_group)
-        self.stubs.Set(self._manager.compute_api, 'security_group_list',
-                       mock.Mock(return_value=[fake_secgroup, ]))
-        result = self._manager._get_service_instance_security_group(
-            context=self._context, name=None)
+                       mock.Mock(return_value=[]))
+        self.stubs.Set(self._manager.compute_api, 'security_group_create',
+                       mock.Mock(return_value=fake_secgroup))
+        self.stubs.Set(self._manager.compute_api, 'security_group_rule_create',
+                       mock.Mock())
+        result = self._manager._get_or_create_security_group(
+            context=self._context,
+            name=name,
+            description=desc,
+        )
+        self._manager.compute_api.security_group_list.assert_called_once_with(
+            self._context)
+        self._manager.compute_api.security_group_create.\
+            assert_called_once_with(self._context, name, desc)
         self.assertEqual(result, fake_secgroup)
 
-    def test_create_security_group(self):
-        self.stubs.Set(self._manager.compute_api, 'security_group_create',
-                       mock.Mock(return_value=mock.Mock()))
-        self.stubs.Set(self._manager.compute_api, 'security_group_rule_create',
-                       mock.Mock(return_value=mock.Mock()))
-        result = self._manager._create_service_instance_security_group(
-            context=self._context, name="fake_name",
-            description="fake_description")
-        self._manager.compute_api.security_group_create.assert_called_once()
+    def test_security_group_two_sg_in_list(self):
+        name = "fake_name"
+        fake_secgroup1 = fake_compute.FakeSecurityGroup(name=name)
+        fake_secgroup2 = fake_compute.FakeSecurityGroup(name=name)
+        self.stubs.Set(self._manager.compute_api, 'security_group_list',
+                       mock.Mock(return_value=[fake_secgroup1,
+                                               fake_secgroup2]))
+        self.assertRaises(exception.ServiceInstanceException,
+            self._manager._get_or_create_security_group,
+            self._context,
+            name,
+        )
+        self._manager.compute_api.security_group_list.assert_called_once_with(
+            self._context)
 
     def test_set_up_service_instance(self):
         fake_server = {'id': 'fake',
@@ -374,7 +403,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        mock.Mock(return_value=fake_server))
         self.stubs.Set(self._manager, '_get_server_ip',
                        mock.Mock(return_value='fake_ip'))
-        self.stubs.Set(self._manager, '_get_service_instance_security_group',
+        self.stubs.Set(self._manager, '_get_or_create_security_group',
                        mock.Mock(return_value=fake_security_group))
         self.stubs.Set(service_instance.socket, 'socket', mock.Mock())
         self.stubs.Set(self._manager, '_get_service_instance_name',
@@ -403,7 +432,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager, '_get_key',
                        mock.Mock(
                            return_value=('fake_key_name', 'fake_key_path')))
-        self.stubs.Set(self._manager, '_get_service_instance_security_group',
+        self.stubs.Set(self._manager, '_get_or_create_security_group',
                        mock.Mock(return_value=fake_security_group))
         self.stubs.Set(self._manager, '_setup_network_for_instance',
                        mock.Mock(return_value=fake_port))
@@ -433,7 +462,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager, '_get_key',
                        mock.Mock(
                            return_value=('fake_key_name', 'fake_key_path')))
-        self.stubs.Set(self._manager, '_get_service_instance_security_group',
+        self.stubs.Set(self._manager, '_get_or_create_security_group',
                        mock.Mock(return_value=fake_security_group))
         self.stubs.Set(self._manager, '_setup_network_for_instance',
                        mock.Mock(return_value=fake_port))
