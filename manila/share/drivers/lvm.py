@@ -328,14 +328,6 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                       'count=%d' % (size_in_g * 1024), 'bs=1M',
                       *extra_flags, run_as_root=True)
 
-    def get_network_allocations_number(self):
-        """LVM driver does not need to create VIFS"""
-        return 0
-
-    def setup_network(self, network_info):
-        """Nothing to set up"""
-        pass
-
 
 class NASHelperBase(object):
     """Interface to work with share."""

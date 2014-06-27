@@ -286,11 +286,3 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._manage_access(context, share, access,
                             lambda dl, acc:
                                 True if acc not in dl else dl.remove(acc))
-
-    def get_network_allocations_number(self):
-        """GlusterFS driver does not need to create VIFS"""
-        return 0
-
-    def setup_network(self, network_info):
-        """Nothing to set up"""
-        pass
