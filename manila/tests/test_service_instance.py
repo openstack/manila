@@ -21,6 +21,7 @@ import os
 
 from manila import context
 from manila import exception
+from manila.openstack.common import lockutils
 from manila.share.drivers import service_instance
 from manila import test
 from manila.tests.db import fakes as db_fakes
@@ -67,8 +68,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.admin_context = self._context
         self._manager._execute = mock.Mock(return_value=('', ''))
         self._manager.vif_driver = mock.Mock()
-        self.stubs.Set(service_instance, 'synchronized', mock.Mock(side_effect=
-                                                                  lambda f: f))
+        self.stubs.Set(lockutils, 'synchronized',
+                       mock.Mock(return_value=lambda f: f))
         self.stubs.Set(service_instance.os.path, 'exists',
                        mock.Mock(return_value=True))
         self._manager._helpers = {
@@ -221,12 +222,12 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        mock.Mock(return_value='fake_ip'))
         self.stubs.Set(self._manager.compute_api, 'server_list',
                        mock.Mock(return_value=[]))
+        create = mock.Mock(return_value=fake_server)
         self.stubs.Set(self._manager, '_create_service_instance',
-                       mock.Mock(return_value=fake_server))
-
+                       create)
         result = self._manager.set_up_service_instance(
             self._context, share_server_id='fake_share_srv_id',
-            share_network_id='fake_share_network_id', create=True)
+            share_network_id='fake_share_network_id')
 
         self._manager.compute_api.server_list.assert_called_once()
         self._manager._get_server_ip.assert_called_once()

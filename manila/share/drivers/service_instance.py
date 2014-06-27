@@ -88,31 +88,6 @@ CONF.register_opts(server_opts)
 lock = threading.Lock()
 
 
-def synchronized(f):
-    """Decorates function with unique locks for each share network.
-
-    Share network id must be provided either as value/attribute
-    of one of args or as named argument.
-    """
-
-    def wrapped_func(self, *args, **kwargs):
-        share_network_id = kwargs.get('share_network_id', None)
-        if not share_network_id:
-            for arg in args:
-                share_network_id = getattr(arg, 'share_network_id', None)
-                if isinstance(arg, dict):
-                    share_network_id = arg.get('share_network_id', None)
-                if share_network_id:
-                    break
-            else:
-                msg = _("Could not get share network id.")
-                raise exception.ServiceInstanceException(msg)
-        with self.share_networks_locks.setdefault(share_network_id,
-                                                  threading.Lock()):
-            return f(self, *args, **kwargs)
-    return wrapped_func
-
-
 class ServiceInstanceManager(object):
     """Manages nova instances for various share drivers.
 
@@ -166,7 +141,6 @@ class ServiceInstanceManager(object):
         else:
             raise exception.ServiceInstanceException(_('Can not receive '
                                                        'service tenant id.'))
-        self.share_networks_locks = {}
         self.share_networks_servers = {}
         self.service_network_id = self._get_service_network()
         self.vif_driver = importutils.import_class(
@@ -291,18 +265,13 @@ class ServiceInstanceManager(object):
                 'been deleted in %ss. Giving up.') %
                 self.max_time_to_build_instance)
 
-    @synchronized
     def set_up_service_instance(self, context, share_server_id,
-                                share_network_id, create=False,
-                                return_inactive=False):
+                                share_network_id):
         """Finds or creates and sets up service vm.
 
         :param context: defines context, that should be used
         :param share_network_id: it provides network data for service VM
         :param share_server_id: provides server id for service VM
-        :param create: allow create service VM or not
-        :param return_inactive: allows to return not active VM, without
-                                raise of exception
         :returns: dict with data for service VM
         :raises: exception.ServiceInstanceException
         """

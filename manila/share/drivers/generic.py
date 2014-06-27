@@ -92,9 +92,6 @@ def ensure_server(f):
     return wrap
 
 
-synchronized = service_instance.synchronized
-
-
 class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     """Executes commands relating to Shares."""
 
@@ -143,8 +140,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.service_instance_manager = service_instance.\
             ServiceInstanceManager(self.db, self._helpers,
                                    driver_config=self.configuration)
-        self.share_networks_locks = self.service_instance_manager.\
-                                                          share_networks_locks
         self.share_networks_servers = self.service_instance_manager.\
                                                         share_networks_servers
         self._setup_helpers()
@@ -157,8 +152,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self._helpers[share_proto.upper()] = helper(
                 self._execute,
                 self._ssh_exec,
-                self.configuration,
-                self.share_networks_locks)
+                self.configuration)
 
     @ensure_server
     def create_share(self, context, share, share_server=None):
@@ -213,38 +207,40 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """
         return os.path.join(self.configuration.share_mount_path, share['name'])
 
-    @synchronized
     def _attach_volume(self, context, share, instance_id, volume):
         """Attaches cinder volume to service vm."""
-        if volume['status'] == 'in-use':
-            attached_volumes = [vol.id for vol in
-                self.compute_api.instance_volumes_list(self.admin_context,
-                                                       instance_id)]
-            if volume['id'] in attached_volumes:
-                return volume
-            else:
-                raise exception.ManilaException(_('Volume %s is already '
-                        'attached to another instance') % volume['id'])
-        self.compute_api.instance_volume_attach(self.admin_context,
-                                                instance_id,
-                                                volume['id'],
-                                                )
-
-        t = time.time()
-        while time.time() - t < self.configuration.max_time_to_attach:
-            volume = self.volume_api.get(context, volume['id'])
+        @lockutils.synchronized(instance_id, external=True,
+                                lock_path="attach_detach_locks")
+        def do_attach(volume):
             if volume['status'] == 'in-use':
-                break
-            elif volume['status'] != 'attaching':
-                raise exception.ManilaException(_('Failed to attach volume %s')
-                                                % volume['id'])
-            time.sleep(1)
-        else:
-            raise exception.ManilaException(_('Volume have not been attached '
-                                              'in %ss. Giving up') %
-                                      self.configuration.max_time_to_attach)
+                attached_volumes = [vol.id for vol in
+                                    self.compute_api.instance_volumes_list(
+                                        self.admin_context, instance_id)]
+                if volume['id'] in attached_volumes:
+                    return volume
+                else:
+                    raise exception.ManilaException(
+                        _('Volume %s is already attached to another instance')
+                        % volume['id'])
+            self.compute_api.instance_volume_attach(self.admin_context,
+                                                    instance_id,
+                                                    volume['id'],
+                                                    )
 
-        return volume
+            t = time.time()
+            while time.time() - t < self.configuration.max_time_to_attach:
+                volume = self.volume_api.get(context, volume['id'])
+                if volume['status'] == 'in-use':
+                    return volume
+                elif volume['status'] != 'attaching':
+                    raise exception.ManilaException(
+                        _('Failed to attach volume %s') % volume['id'])
+                time.sleep(1)
+            else:
+                raise exception.ManilaException(
+                    _('Volume have not been attached in %ss. Giving up') %
+                    self.configuration.max_time_to_attach)
+        return do_attach(volume)
 
     def _get_volume(self, context, share_id):
         """Finds volume, associated to the specific share."""
@@ -274,30 +270,34 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     _('Error. Ambiguous volume snaphots'))
         return volume_snapshot
 
-    @synchronized
     def _detach_volume(self, context, share, server_details):
         """Detaches cinder volume from service vm."""
-        attached_volumes = [vol.id for vol in
-                self.compute_api.instance_volumes_list(
+        instance_id = server_details['instance_id']
+
+        @lockutils.synchronized(instance_id, external=True,
+                                lock_path="attach_detach_locks")
+        def do_detach():
+            attached_volumes = [vol.id for vol in
+                                self.compute_api.instance_volumes_list(
+                                    self.admin_context, instance_id)]
+            volume = self._get_volume(context, share['id'])
+            if volume and volume['id'] in attached_volumes:
+                self.compute_api.instance_volume_detach(
                     self.admin_context,
-                    server_details['instance_id'])]
-        volume = self._get_volume(context, share['id'])
-        if volume and volume['id'] in attached_volumes:
-            self.compute_api.instance_volume_detach(
-                self.admin_context,
-                server_details['instance_id'],
-                volume['id']
-            )
-            t = time.time()
-            while time.time() - t < self.configuration.max_time_to_attach:
-                volume = self.volume_api.get(context, volume['id'])
-                if volume['status'] in ('available', 'error'):
-                    break
-                time.sleep(1)
-            else:
-                raise exception.ManilaException(_('Volume have not been '
-                                                  'detached in %ss. Giving up')
-                                       % self.configuration.max_time_to_attach)
+                    instance_id,
+                    volume['id']
+                )
+                t = time.time()
+                while time.time() - t < self.configuration.max_time_to_attach:
+                    volume = self.volume_api.get(context, volume['id'])
+                    if volume['status'] in ('available', 'error'):
+                        break
+                    time.sleep(1)
+                else:
+                    raise exception.ManilaException(
+                        _('Volume have not been detached in %ss. Giving up')
+                        % self.configuration.max_time_to_attach)
+        do_detach()
 
     def _allocate_container(self, context, share, snapshot=None):
         """Creates cinder volume, associated to share by name."""
@@ -498,8 +498,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         server = self.service_instance_manager.set_up_service_instance(
             context=self.admin_context,
             share_server_id=srv_id,
-            share_network_id=sn_id,
-            create=True)
+            share_network_id=sn_id
+        )
         for helper in self._helpers.values():
                 helper.init_helper(server)
         return server
@@ -524,11 +524,10 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 class NASHelperBase(object):
     """Interface to work with share."""
 
-    def __init__(self, execute, ssh_execute, config_object, locks):
+    def __init__(self, execute, ssh_execute, config_object):
         self.configuration = config_object
         self._execute = execute
         self._ssh_exec = ssh_execute
-        self.share_networks_locks = locks
 
     def init_helper(self, server):
         pass

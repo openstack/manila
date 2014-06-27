@@ -23,6 +23,7 @@ from oslo.config import cfg
 from manila import compute
 from manila import context
 from manila import exception
+from manila.openstack.common import lockutils
 from manila.share.configuration import Configuration
 from manila.share.drivers import generic
 from manila import test
@@ -114,8 +115,8 @@ class GenericShareDriverTestCase(test.TestCase):
             share_network_id=self.fake_sn["id"], old_server_ip="fake")
 
         self._driver._ssh_exec = mock.Mock(return_value=('', ''))
-        self.stubs.Set(generic, 'synchronized', mock.Mock(side_effect=
-                                                          lambda f: f))
+        self.stubs.Set(lockutils, 'synchronized',
+                       mock.Mock(return_value=lambda f: f))
         self.stubs.Set(generic.os.path, 'exists', mock.Mock(return_value=True))
         self._driver._helpers = {
             'CIFS': self._helper_cifs,
@@ -153,8 +154,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self._helper_nfs.assert_called_once_with(
             self._execute,
             self._driver._ssh_exec,
-            self.fake_conf,
-            self._driver.share_networks_locks)
+            self.fake_conf
+        )
         self.assertEqual(len(self._driver._helpers), 1)
 
     def test_create_share(self):
@@ -588,7 +589,7 @@ class NFSHelperTestCase(test.TestCase):
         self._ssh_exec = mock.Mock(return_value=('', ''))
         self._execute = mock.Mock(return_value=('', ''))
         self._helper = generic.NFSHelper(self._execute, self._ssh_exec,
-                                         self.fake_conf, {})
+                                         self.fake_conf)
 
     def test_create_export(self):
         fake_server = fake_compute.FakeServer(ip='10.254.0.3')
@@ -632,7 +633,7 @@ class CIFSHelperTestCase(test.TestCase):
         self._ssh_exec = mock.Mock(return_value=('', ''))
         self._execute = mock.Mock(return_value=('', ''))
         self._helper = generic.CIFSHelper(self._execute, self._ssh_exec,
-                                          self.fake_conf, {})
+                                          self.fake_conf)
 
     def test_create_export(self):
         #fake_server = fake_compute.FakeServer(ip='10.254.0.3',
