@@ -182,7 +182,7 @@ class ExtensionManager(object):
     """
 
     def __init__(self):
-        LOG.audit(_('Initializing extension manager.'))
+        LOG.info(_('Initializing extension manager.'))
 
         self.cls_list = CONF.osapi_share_extension
 
@@ -198,7 +198,7 @@ class ExtensionManager(object):
             return
 
         alias = ext.alias
-        LOG.audit(_('Loaded extension: %s'), alias)
+        LOG.info(_('Loaded extension: %s'), alias)
 
         if alias in self.extensions:
             raise exception.Error("Found duplicate extension: %s" % alias)

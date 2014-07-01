@@ -81,7 +81,7 @@ class ShareController(wsgi.Controller):
         """Delete a share."""
         context = req.environ['manila.context']
 
-        LOG.audit(_("Delete share with id: %s"), id, context=context)
+        LOG.info(_("Delete share with id: %s"), id, context=context)
 
         try:
             share = self.share_api.get(context, id)
@@ -187,7 +187,7 @@ class ShareController(wsgi.Controller):
 
         msg = (_("Create %(share_proto)s share of %(size)s GB") %
                {'share_proto': share_proto, 'size': size})
-        LOG.audit(msg, context=context)
+        LOG.info(msg, context=context)
 
         kwargs = {}
         kwargs['availability_zone'] = share.get('availability_zone')

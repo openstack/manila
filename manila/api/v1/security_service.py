@@ -81,8 +81,8 @@ class SecurityServiceController(wsgi.Controller):
         """Delete a security service."""
         context = req.environ['manila.context']
 
-        LOG.audit(_("Delete security service with id: %s"),
-                  id, context=context)
+        LOG.info(_("Delete security service with id: %s"),
+                 id, context=context)
 
         try:
             security_service = db.security_service_get(context, id)

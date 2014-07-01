@@ -119,7 +119,7 @@ class Launcher(object):
 
         """
         def sigterm(sig, frame):
-            LOG.audit(_("SIGTERM received"))
+            LOG.info(_("SIGTERM received"))
             # NOTE(jk0): Raise a ^C which is caught by the caller and cleanly
             # shuts down the service. This does not yet handle eventlet
             # threads.
@@ -350,8 +350,8 @@ class Service(object):
 
     def start(self):
         version_string = version.version_string()
-        LOG.audit(_('Starting %(topic)s node (version %(version_string)s)'),
-                  {'topic': self.topic, 'version_string': version_string})
+        LOG.info(_('Starting %(topic)s node (version %(version_string)s)'),
+                 {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
         ctxt = context.get_admin_context()
         try:

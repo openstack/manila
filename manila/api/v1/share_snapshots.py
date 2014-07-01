@@ -80,7 +80,7 @@ class ShareSnapshotsController(wsgi.Controller):
         """Delete a snapshot."""
         context = req.environ['manila.context']
 
-        LOG.audit(_("Delete snapshot with id: %s"), id, context=context)
+        LOG.info(_("Delete snapshot with id: %s"), id, context=context)
 
         try:
             snapshot = self.share_api.get_snapshot(context, id)
@@ -169,7 +169,7 @@ class ShareSnapshotsController(wsgi.Controller):
         share_id = snapshot['share_id']
         share = self.share_api.get(context, share_id)
         msg = _("Create snapshot from share %s")
-        LOG.audit(msg, share_id, context=context)
+        LOG.info(msg, share_id, context=context)
 
         # NOTE(rushiagr): v2 API allows name instead of display_name
         if 'name' in snapshot:
