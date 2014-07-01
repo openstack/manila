@@ -270,7 +270,7 @@ class SharesClient(rest_client.RestClient):
         """Verifies deleted resource or not.
 
         :param kwargs: expected keys are 'share_id', 'rule_id',
-        :param kwargs: 'snapshot_id', 'sn_id', 'ss_id' and 'vt_id'
+        :param kwargs: 'snapshot_id', 'sn_id', 'ss_id', 'vt_id' and 'server_id'
         :raises share_exceptions.InvalidResource
         """
 
@@ -313,6 +313,12 @@ class SharesClient(rest_client.RestClient):
         elif "vt_id" in kwargs:
             try:
                 self.get_volume_type(kwargs.get("vt_id"))
+            except exceptions.NotFound:
+                return True
+        elif "server_id" in kwargs:
+            # Whether share server deleted or not
+            try:
+                self.show_share_server(kwargs.get("server_id"))
             except exceptions.NotFound:
                 return True
         else:
@@ -625,6 +631,11 @@ class SharesClient(rest_client.RestClient):
             uri += "?%s" % urllib.urlencode(search_opts)
         resp, body = self.get(uri)
         return resp, self._parse_resp(body)
+
+    def delete_share_server(self, share_server_id):
+        """Delete share server by its ID."""
+        uri = "share-servers/%s" % share_server_id
+        return self.delete(uri)
 
     def show_share_server(self, share_server_id):
         """Get share server info."""

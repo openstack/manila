@@ -209,6 +209,19 @@ class API(base.Base):
 
         self.share_rpcapi.delete_share(context, share)
 
+    def delete_share_server(self, context, server):
+        """Delete share server."""
+        policy.check_policy(context, 'share_server', 'delete', server)
+        shares = self.db.share_get_all_by_share_server(context, server['id'])
+        if shares:
+            raise exception.ShareServerInUse(share_server_id=server['id'])
+        # NOTE(vponomaryov): There is no share_server status update here,
+        # it is intentional.
+        # Status will be changed in manila.share.manager after verification
+        # for race condition between share creation on server
+        # and server deletion.
+        self.share_rpcapi.delete_share_server(context, server)
+
     def create_snapshot(self, context, share, name, description,
                         force=False):
         policy.check_policy(context, 'share', 'create_snapshot', share)

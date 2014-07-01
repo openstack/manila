@@ -59,6 +59,10 @@ class ShareAPI(object):
         cctxt = self.client.prepare(server=share['host'], version='1.0')
         cctxt.cast(ctxt, 'delete_share', share_id=share['id'])
 
+    def delete_share_server(self, ctxt, share_server):
+        cctxt = self.client.prepare(server=share_server['host'], version='1.0')
+        cctxt.cast(ctxt, 'delete_share_server', share_server=share_server)
+
     def create_snapshot(self, ctxt, share, snapshot):
         cctxt = self.client.prepare(server=share['host'])
         cctxt.cast(

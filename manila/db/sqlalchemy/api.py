@@ -1147,6 +1147,13 @@ def share_get_all_by_project(context, project_id):
 
 
 @require_context
+def share_get_all_by_share_server(context, share_server_id):
+    """Returns list of shares with given share server."""
+    return _share_get_query(context).filter_by(
+        share_server_id=share_server_id).all()
+
+
+@require_context
 def share_delete(context, share_id):
     session = get_session()
     share_ref = share_get(context, share_id, session)

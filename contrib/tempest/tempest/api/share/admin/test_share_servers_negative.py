@@ -92,3 +92,15 @@ class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
         }
         __, servers = self.shares_client.list_share_servers(search_opts)
         self.assertEqual(len(servers), 0)
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_delete_share_server_with_nonexistent_id(self):
+        self.assertRaises(exceptions.NotFound,
+                          self.shares_client.delete_share_server,
+                          "fake_nonexistent_share_server_id")
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_delete_share_server_with_member(self):
+        self.assertRaises(exceptions.Unauthorized,
+                          self.member_shares_client.delete_share_server,
+                          "fake_nonexistent_share_server_id")

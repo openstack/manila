@@ -47,27 +47,24 @@ class ShareRpcAPITestCase(test.TestCase):
         snap = {}
         snap['share_id'] = share['id']
         snapshot = db.share_snapshot_create(self.context, snap)
+        server = {'id': 'fake_share_server_id', 'host': 'fake_host'}
+        share_server = db.share_server_create(self.context, server)
         self.fake_share = jsonutils.to_primitive(share)
         self.fake_access = jsonutils.to_primitive(access)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
+        self.fake_share_server = jsonutils.to_primitive(share_server)
         super(ShareRpcAPITestCase, self).setUp()
+        self.ctxt = context.RequestContext('fake_user', 'fake_project')
+        self.rpcapi = share_rpcapi.ShareAPI()
 
     def test_serialized_share_has_id(self):
         self.assertTrue('id' in self.fake_share)
 
     def _test_share_api(self, method, rpc_method, **kwargs):
-        ctxt = context.RequestContext('fake_user', 'fake_project')
-
-        if 'rpcapi_class' in kwargs:
-            rpcapi_class = kwargs['rpcapi_class']
-            del kwargs['rpcapi_class']
-        else:
-            rpcapi_class = share_rpcapi.ShareAPI
-        rpcapi = rpcapi_class()
         expected_retval = 'foo' if method == 'call' else None
 
         target = {
-            "version": kwargs.pop('version', rpcapi.BASE_RPC_API_VERSION)
+            "version": kwargs.pop('version', self.rpcapi.BASE_RPC_API_VERSION)
         }
         expected_msg = copy.deepcopy(kwargs)
         if 'share' in expected_msg:
@@ -88,6 +85,8 @@ class ShareRpcAPITestCase(test.TestCase):
 
         if 'host' in kwargs:
             host = kwargs['host']
+        elif 'share_server' in kwargs:
+            host = kwargs['share_server']['host']
         else:
             host = kwargs['share']['host']
         target['server'] = host
@@ -96,12 +95,12 @@ class ShareRpcAPITestCase(test.TestCase):
         self.fake_args = None
         self.fake_kwargs = None
 
-        real_prepare = rpcapi.client.prepare
+        real_prepare = self.rpcapi.client.prepare
 
         def _fake_prepare_method(*args, **kwds):
             for kwd in kwds:
                 self.assertEqual(kwds[kwd], target[kwd])
-            return rpcapi.client
+            return self.rpcapi.client
 
         def _fake_rpc_method(*args, **kwargs):
             self.fake_args = args
@@ -109,13 +108,13 @@ class ShareRpcAPITestCase(test.TestCase):
             if expected_retval:
                 return expected_retval
 
-        self.stubs.Set(rpcapi.client, "prepare", _fake_prepare_method)
-        self.stubs.Set(rpcapi.client, rpc_method, _fake_rpc_method)
+        self.stubs.Set(self.rpcapi.client, "prepare", _fake_prepare_method)
+        self.stubs.Set(self.rpcapi.client, rpc_method, _fake_rpc_method)
 
-        retval = getattr(rpcapi, method)(ctxt, **kwargs)
+        retval = getattr(self.rpcapi, method)(self.ctxt, **kwargs)
 
         self.assertEqual(retval, expected_retval)
-        expected_args = [ctxt, method]
+        expected_args = [self.ctxt, method]
         for arg, expected_arg in zip(self.fake_args, expected_args):
             self.assertEqual(arg, expected_arg)
 
@@ -159,3 +158,8 @@ class ShareRpcAPITestCase(test.TestCase):
                              rpc_method='cast',
                              snapshot=self.fake_snapshot,
                              host='fake_host')
+
+    def test_delete_share_server(self):
+        self._test_share_api('delete_share_server',
+                             rpc_method='cast',
+                             share_server=self.fake_share_server)

@@ -98,10 +98,26 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.publish_service_capabilities(ctxt)
 
-    def _share_server_get_or_create(self, context, share_network_id):
+    def _provide_share_server_for_share(self, context, share_network_id,
+                                       share_id):
+        """Gets or creates share_server and updates share with its id.
+
+        Active share_server can be deleted if there are no dependent shares
+        on it.
+        So we need avoid possibility to delete share_server in time gap
+        between reaching active state for share_server and setting up
+        share_server_id for share. It is possible, for example, with first
+        share creation, which starts share_server creation.
+        For this purpose used shared lock between this method and the one
+        with deletion of share_server.
+
+        :returns: dict, dict -- first value is share_server, that
+                  has been choosen for share schedule. Second value is
+                  share updated with share_server_id.
+        """
 
         @lockutils.synchronized(share_network_id)
-        def _get_or_create_server():
+        def _provide_share_server_for_share():
             try:
                 share_server = \
                     self.db.share_server_get_by_host_and_share_net_valid(
@@ -111,9 +127,16 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_network_id)
                 share_server = self._setup_server(context, share_network)
                 LOG.info(_("Share server created successfully."))
-            return share_server
+            LOG.debug("Using share_server "
+                      "%s for share %s" % (share_server['id'], share_id))
+            share_ref = self.db.share_update(
+                context,
+                share_id,
+                {'share_server_id': share_server['id']},
+            )
+            return share_server, share_ref
 
-        return _get_or_create_server()
+        return _provide_share_server_for_share()
 
     def _get_share_server(self, context, share):
         if share['share_server_id']:
@@ -143,6 +166,10 @@ class ShareManager(manager.SchedulerDependentManager):
             try:
                 share_server = self.db.share_server_get(context,
                                                         parent_share_server_id)
+                LOG.debug("Using share_server "
+                          "%s for share %s" % (share_server['id'], share_id))
+                share_ref = self.db.share_update(
+                    context, share_id, {'share_server_id': share_server['id']})
             except exception.ShareServerNotFound:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_("Share server %s does not exist.")
@@ -151,8 +178,8 @@ class ShareManager(manager.SchedulerDependentManager):
                                          {'status': 'error'})
         elif share_network_id:
             try:
-                share_server = self._share_server_get_or_create(
-                    context, share_network_id)
+                share_server, share_ref = self._provide_share_server_for_share(
+                    context, share_network_id, share_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_("Failed to get share server"
@@ -161,11 +188,6 @@ class ShareManager(manager.SchedulerDependentManager):
                                          {'status': 'error'})
         else:
             share_server = None
-
-        if share_server:
-            LOG.debug("Using share server %s" % share_server['id'])
-            share_ref = self.db.share_update(
-                context, share_id, {'share_server_id': share_server['id']})
 
         try:
             if snapshot_ref:
@@ -225,7 +247,10 @@ class ShareManager(manager.SchedulerDependentManager):
         if CONF.delete_share_server_with_last_share:
             share_server = self._get_share_server(context, share_ref)
             if share_server and not share_server.shares:
-                self._teardown_server(context, share_server)
+                LOG.debug("Scheduled deletion of share-server "
+                          "with id '%s' automatically by "
+                          "deletion of last share." % share_server['id'])
+                self.delete_share_server(context, share_server)
 
     def create_snapshot(self, context, share_id, snapshot_id):
         """Create snapshot for share."""
@@ -388,10 +413,23 @@ class ShareManager(manager.SchedulerDependentManager):
                     {'status': constants.STATUS_ERROR})
                 self.network_api.deallocate_network(context, share_network)
 
-    def _teardown_server(self, context, share_server):
+    def delete_share_server(self, context, share_server):
 
         @lockutils.synchronized(share_server['share_network_id'])
         def _teardown_server():
+            # NOTE(vponomaryov): Verify that there are no dependent shares.
+            # Without this verification we can get here exception in next case:
+            # share-server-delete API was called after share creation scheduled
+            # and share_server reached ACTIVE status, but before update
+            # of share_server_id field for share. If so, after lock realese
+            # this method starts executing when amount of dependent shares
+            # has been changed.
+            shares = self.db.share_get_all_by_share_server(
+                context, share_server['id'])
+            if shares:
+                raise exception.ShareServerInUse(
+                    share_server_id=share_server['id'])
+
             self.db.share_server_update(context, share_server['id'],
                                         {'status': constants.STATUS_DELETING})
             sec_services = self.db.share_network_get(

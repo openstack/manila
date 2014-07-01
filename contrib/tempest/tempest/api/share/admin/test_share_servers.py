@@ -72,12 +72,13 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             # Project id is not empty
             self.assertTrue(len(server["project_id"]) > 0)
 
-        # Server we used is present
-        # allow 'creating' status too, because there can be
-        # another server with same requirements.
+        # Server we used is present.
+        # Use 'allowed_statuses' to cover possible statuses of share servers
+        # in general, because we get info for whole cluster.
+        allowed_statuses = ["active", "creating", "deleting"]
         any((s["share_network_name"] in self.sn_name_and_id and
              self.assertIn(s["status"].lower(),
-                           ["active", "creating"])) for s in servers)
+                           allowed_statuses)) for s in servers)
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_servers_with_host_filter(self):
@@ -207,3 +208,33 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         for k, v in details.iteritems():
             self.assertTrue(isinstance(k, basestring))
             self.assertTrue(isinstance(v, basestring))
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_delete_share_server(self):
+        # Get client with isolated creds
+        client = self.get_client_with_isolated_creds()
+
+        # Create server with share
+        __, share = self.create_share(client=client)
+
+        # Get share to be able to get its share_network_id
+        __, share = client.get_share(share["id"])
+
+        # Delete share, so we will have share server without shares
+        client.delete_share(share["id"])
+
+        # Wait for share deletion
+        client.wait_for_resource_deletion(share_id=share["id"])
+
+        # List share servers, filtered by share_network_id,
+        # list with only one item is expected - our share server.
+        search_opts = {"share_network": share["share_network_id"]}
+        __, servers = client.list_share_servers(search_opts)
+        self.assertEqual(len(servers), 1)
+
+        # Delete share server
+        resp, server = client.delete_share_server(servers[0]["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        # Wait for share server deletion
+        client.wait_for_resource_deletion(server_id=servers[0]["id"])

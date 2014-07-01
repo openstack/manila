@@ -32,6 +32,7 @@
     "share_server:index": [["rule:admin_api"]],
     "share_server:show": [["rule:admin_api"]],
     "share_server:details": [["rule:admin_api"]],
+    "share_server:delete": [["rule:admin_api"]],
 
     "share_network:create": [],
     "share_network:delete": [],

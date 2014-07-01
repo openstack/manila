@@ -341,6 +341,11 @@ def share_get_all_by_project(context, project_id):
     return IMPL.share_get_all_by_project(context, project_id)
 
 
+def share_get_all_by_share_server(context, share_server_id):
+    """Returns all shares with given share server."""
+    return IMPL.share_get_all_by_share_server(context, share_server_id)
+
+
 def share_delete(context, share_id):
     """Delete share."""
     return IMPL.share_delete(context, share_id)

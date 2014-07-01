@@ -14,11 +14,13 @@
 #    under the License.
 
 import mock
+from webob import exc
 
 from manila.api.v1 import share_servers
 from manila.common import constants
 from manila import context
 from manila.db import api as db_api
+from manila import exception
 from manila import policy
 from manila import test
 
@@ -242,3 +244,94 @@ class ShareServerAPITest(test.TestCase):
             CONTEXT, fake_share_server_get_result['share_server']['id'])
         self.assertEqual(result,
                          fake_share_server_backend_details_get_result)
+
+    def test_delete_active_server(self):
+        share_server = FakeShareServer(status=constants.STATUS_ACTIVE)
+        self.stubs.Set(db_api, 'share_server_get',
+                       mock.Mock(return_value=share_server))
+        self.stubs.Set(self.controller.share_api, 'delete_share_server',
+                       mock.Mock())
+        result = self.controller.delete(FakeRequestAdmin,
+            fake_share_server_get_result['share_server']['id'])
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'delete')
+        db_api.share_server_get.assert_called_once_with(CONTEXT,
+            fake_share_server_get_result['share_server']['id'])
+        self.controller.share_api.delete_share_server.assert_called_once_with(
+            CONTEXT, share_server)
+
+    def test_delete_error_server(self):
+        share_server = FakeShareServer(status=constants.STATUS_ERROR)
+        self.stubs.Set(db_api, 'share_server_get',
+                       mock.Mock(return_value=share_server))
+        self.stubs.Set(self.controller.share_api, 'delete_share_server',
+                       mock.Mock())
+        result = self.controller.delete(FakeRequestAdmin,
+            fake_share_server_get_result['share_server']['id'])
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'delete')
+        db_api.share_server_get.assert_called_once_with(CONTEXT,
+            fake_share_server_get_result['share_server']['id'])
+        self.controller.share_api.delete_share_server.assert_called_once_with(
+            CONTEXT, share_server)
+
+    def test_delete_used_server(self):
+        share_server_id = fake_share_server_get_result['share_server']['id']
+
+        def raise_not_share_server_in_use(*args, **kwargs):
+            raise exception.ShareServerInUse(share_server_id=share_server_id)
+
+        share_server = fake_share_server_get()
+        self.stubs.Set(db_api, 'share_server_get',
+                       mock.Mock(return_value=share_server))
+        self.stubs.Set(self.controller.share_api, 'delete_share_server',
+                       mock.Mock(side_effect=raise_not_share_server_in_use))
+        self.assertRaises(exc.HTTPConflict,
+                          self.controller.delete,
+                          FakeRequestAdmin,
+                          share_server_id)
+        db_api.share_server_get.assert_called_once_with(CONTEXT,
+            share_server_id)
+        self.controller.share_api.delete_share_server.assert_called_once_with(
+            CONTEXT, share_server)
+
+    def test_delete_not_found(self):
+        share_server_id = fake_share_server_get_result['share_server']['id']
+
+        def raise_not_found(*args, **kwargs):
+            raise exception.ShareServerNotFound(
+                share_server_id=share_server_id)
+
+        share_server = fake_share_server_get()
+        self.stubs.Set(db_api, 'share_server_get',
+                       mock.Mock(side_effect=raise_not_found))
+        self.assertRaises(exc.HTTPNotFound,
+                          self.controller.delete,
+                          FakeRequestAdmin,
+                          share_server_id)
+        db_api.share_server_get.assert_called_once_with(
+            CONTEXT, share_server_id)
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'delete')
+
+    def test_delete_creating_server(self):
+        share_server = FakeShareServer(status=constants.STATUS_CREATING)
+        self.stubs.Set(db_api, 'share_server_get',
+                       mock.Mock(return_value=share_server))
+        self.assertRaises(exc.HTTPForbidden,
+                          self.controller.delete,
+                          FakeRequestAdmin,
+                          share_server['id'])
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'delete')
+
+    def test_delete_deleting_server(self):
+        share_server = FakeShareServer(status=constants.STATUS_DELETING)
+        self.stubs.Set(db_api, 'share_server_get',
+                       mock.Mock(return_value=share_server))
+        self.assertRaises(exc.HTTPForbidden,
+                          self.controller.delete,
+                          FakeRequestAdmin,
+                          share_server['id'])
+        policy.check_policy.assert_called_once_with(CONTEXT,
+            share_servers.RESOURCE_NAME, 'delete')

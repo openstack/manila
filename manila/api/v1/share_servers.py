@@ -14,15 +14,18 @@
 #    under the License.
 
 import six
+import webob
 from webob import exc
 
 from manila.api.openstack import wsgi
 from manila.api.views import share_servers as share_servers_views
 from manila.api import xmlutil
+from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
 from manila.openstack.common import log as logging
 from manila import policy
+from manila import share
 
 RESOURCE_NAME = 'share_server'
 RESOURCES_NAME = 'share_servers'
@@ -63,7 +66,10 @@ class ShareServersTemplate(xmlutil.TemplateBuilder):
 class ShareServerController(wsgi.Controller):
     """The Share Server API controller for the OpenStack API."""
 
-    _view_builder_class = share_servers_views.ViewBuilder
+    def __init__(self):
+        self.share_api = share.API()
+        self._view_builder_class = share_servers_views.ViewBuilder
+        super(ShareServerController, self).__init__()
 
     @wsgi.serializers(xml=ShareServersTemplate)
     def index(self, req):
@@ -117,6 +123,30 @@ class ShareServerController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=msg)
         details = db_api.share_server_backend_details_get(context, id)
         return self._view_builder.build_share_server_details(details)
+
+    def delete(self, req, id):
+        """Delete specified share server."""
+        context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'delete')
+        try:
+            share_server = db_api.share_server_get(context, id)
+        except exception.ShareServerNotFound as e:
+            raise exc.HTTPNotFound(explanation=str(e))
+        allowed_statuses = [constants.STATUS_ERROR, constants.STATUS_ACTIVE]
+        if share_server['status'] not in allowed_statuses:
+            data = {
+                'status': share_server['status'],
+                'allowed_statuses': allowed_statuses,
+            }
+            msg = _("Share server's actual status is %(status)s, allowed "
+                    "statuses for deletion are %(allowed_statuses)s.") % (data)
+            raise exc.HTTPForbidden(explanation=msg)
+        LOG.debug("Deleting share server with id: %s." % id)
+        try:
+            self.share_api.delete_share_server(context, share_server)
+        except exception.ShareServerInUse as e:
+            raise exc.HTTPConflict(explanation=str(e))
+        return webob.Response(status_int=202)
 
 
 def create_resource():

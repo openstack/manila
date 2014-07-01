@@ -185,6 +185,32 @@ class ShareAPITestCase(test.TestCase):
             db_driver.share_snapshot_create.assert_called_once_with(
                 self.context, options)
 
+    @mock.patch.object(db_driver, 'share_get_all_by_share_server',
+                       mock.Mock(return_value=[]))
+    def test_delete_share_server_no_dependent_shares(self):
+        server = {'id': 'fake_share_server_id'}
+        server_returned = {
+            'id': 'fake_share_server_id',
+        }
+        self.stubs.Set(db_driver, 'share_server_update',
+                       mock.Mock(return_value=server_returned))
+        self.api.delete_share_server(self.context, server)
+        db_driver.share_get_all_by_share_server.assert_called_once_with(
+            self.context, server['id'])
+        self.share_rpcapi.delete_share_server.assert_called_once_with(
+            self.context, server_returned)
+
+    @mock.patch.object(db_driver, 'share_get_all_by_share_server',
+                       mock.Mock(return_value=['fake_share', ]))
+    def test_delete_share_server_dependent_share_exists(self):
+        server = {'id': 'fake_share_server_id'}
+        self.assertRaises(exception.ShareServerInUse,
+                          self.api.delete_share_server,
+                          self.context,
+                          server)
+        db_driver.share_get_all_by_share_server.assert_called_once_with(
+            self.context, server['id'])
+
     @mock.patch.object(db_driver, 'share_snapshot_update', mock.Mock())
     def test_delete_snapshot(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
