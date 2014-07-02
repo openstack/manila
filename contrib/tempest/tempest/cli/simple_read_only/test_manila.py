@@ -83,6 +83,22 @@ class SimpleReadOnlyManilaClientTest(manilaclient.ClientTestBase):
     def test_manila_service_list_with_state_param(self):
         self.manila('service-list', params='--state state')
 
+    def test_manila_share_server_list(self):
+        self.manila('share-server-list')
+
+    def test_manila_share_server_list_with_host_param(self):
+        self.manila('share-server-list', params='--host host')
+
+    def test_manila_share_server_list_with_status_param(self):
+        self.manila('share-server-list', params='--status status')
+
+    def test_manila_share_server_list_with_share_network_param(self):
+        self.manila('share-server-list',
+                    params='--share-network share-network')
+
+    def test_manila_share_server_list_with_project_id_param(self):
+        self.manila('share-server-list', params='--project-id project-id')
+
     def test_manila_quota_class_show(self):
         """This CLI can accept and string as param."""
         roles = self.parser.listing(self.manila('quota-class-show',
