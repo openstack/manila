@@ -191,7 +191,7 @@ class ShareTestCase(test.TestCase):
                                                     share_with_server,
                                                     share_server=server)
         driver.allow_access.assert_called_once_with(
-            self.context, share_with_server, mock.ANY)
+            self.context, share_with_server, mock.ANY, share_server=server)
         driver.get_share_stats.assert_called_once_with(refresh=True)
 
     def test_create_share_from_snapshot_with_server(self):

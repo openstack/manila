@@ -91,7 +91,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     if access_ref['state'] == access_ref.STATE_ACTIVE:
                         try:
                             self.driver.allow_access(ctxt, share,
-                                                     access_ref)
+                                                     access_ref,
+                                                     share_server=share_server)
                         except exception.ShareAccessExists:
                             pass
             else:
