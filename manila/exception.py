@@ -484,3 +484,7 @@ class ServiceInstanceUnavailable(ServiceInstanceException):
 
 class NetAppException(ManilaException):
     message = _("Exception due to NetApp failure.")
+
+
+class VserverUnavailable(NetAppException):
+    message = _("Vserver %(vserver)s is not available.")

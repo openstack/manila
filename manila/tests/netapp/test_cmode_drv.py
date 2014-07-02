@@ -64,6 +64,11 @@ class NetAppClusteredDrvTestCase(test.TestCase):
                                  'server': 'fake_server',
                                  'sid': 'fake_sid',
                                  'password': 'fake_password'}
+        self.share_server = {
+            'backend_details': {
+                'vserver_name': 'fake_vserver'
+            }
+        }
         self.helper = mock.Mock()
         self.driver._helpers = {'FAKE': self.helper}
         self.driver._licenses = ['fake']
@@ -97,6 +102,12 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             mock.call('vserver-modify', vserver_modify_args),
             ]
         )
+
+    def test_setup_network(self):
+        self.driver._vserver_create_if_not_exists = mock.Mock(
+            return_value='fake_vserver')
+        result = self.driver.setup_network({'id': 'fakeid'})
+        self.assertEqual(result, {'vserver_name': 'fake_vserver'})
 
     def test_get_network_allocations_number(self):
         res = mock.Mock()
@@ -359,8 +370,46 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             "share_%s" % self.share['id'], 'ip')
         self.assertEqual(export_location, "fake-location")
 
+    def test_create_share(self):
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self.driver._allocate_container = allocate = mock.Mock()
+        self.driver._create_export = create_export = mock.Mock()
+        self.driver.create_share(self._context, self.share,
+                                 share_server=self.share_server)
+        allocate.assert_called_once_with(self.share,
+                                         'fake_vserver',
+                                         self._vserver_client)
+        create_export.assert_called_once_with(self.share,
+                                              'fake_vserver',
+                                              self._vserver_client)
+
+    def test_create_share_fails_without_server(self):
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self.assertRaises(exception.NetAppException,
+                          self.driver.create_share,
+                          self._context,
+                          self.share)
+
+    def test_create_share_fails_vserver_unavailable(self):
+        self.driver._vserver_exists = mock.Mock(return_value=False)
+        self.assertRaises(exception.VserverUnavailable,
+                          self.driver.create_share,
+                          self._context,
+                          self.share,
+                          share_server=self.share_server)
+
+    def test_create_share_fails_vserver_name_missing(self):
+        self.driver._vserver_exists = mock.Mock(return_value=False)
+        self.assertRaises(exception.NetAppException,
+                          self.driver.create_share,
+                          self._context,
+                          self.share,
+                          share_server={'backend_details': None})
+
     def test_create_snapshot(self):
-        self.driver.create_snapshot(self._context, self.snapshot)
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self.driver.create_snapshot(self._context, self.snapshot,
+                                    share_server=self.share_server)
         self._vserver_client.send_request.assert_called_once_with(
             'snapshot-create',
             {'volume': 'share_fake_share_id',
@@ -370,27 +419,33 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         resp = mock.Mock()
         resp.get_child_content.return_value = 1
         self._vserver_client.send_request = mock.Mock(return_value=resp)
-        self.driver.delete_share(self._context, self.share)
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self.driver.delete_share(self._context, self.share,
+                                 share_server=self.share_server)
         self.helper.delete_share.assert_called_once_with(self.share)
 
     def test_allow_access(self):
         access = "1.2.3.4"
-        self.driver.allow_access(self._context, self.share, access)
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self.driver.allow_access(self._context, self.share, access,
+                                 share_server=self.share_server)
         self.helper.allow_access.assert_called_ince_with(self._context,
                                                          self.share, access)
 
     def test_deny_access(self):
         access = "1.2.3.4"
-        self.driver.deny_access(self._context, self.share, access)
+        self.driver._vserver_exists = mock.Mock(return_value=True)
+        self.driver.deny_access(self._context, self.share, access,
+                                share_server=self.share_server)
         self.helper.deny_access.assert_called_ince_with(self._context,
                                                         self.share, access)
 
     def test_teardown_network(self):
-        fake_net_info = {'id': 'fakeid'}
+        fake_net_info = {'id': 'fake'}
         self.driver._delete_vserver = mock.Mock()
         self.driver.teardown_network(fake_net_info)
         self.driver._delete_vserver.assert_called_once_with(
-            'os_fakeid', self._vserver_client, network_info=fake_net_info)
+            'os_fake', self._vserver_client, network_info=fake_net_info)
 
 
 class NetAppNFSHelperTestCase(test.TestCase):
