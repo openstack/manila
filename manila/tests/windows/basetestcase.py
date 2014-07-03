@@ -72,7 +72,7 @@ class BaseTestCase(manila.test.TestCase):
 
     def _load_mock_or_create_proxy(self, module_name):
         m = None
-        if (not gen_test_mocks_key in os.environ or
+        if (gen_test_mocks_key not in os.environ or
                 os.environ[gen_test_mocks_key].lower()
                 not in ['true', 'yes', '1']):
             m = self._load_mock(module_name)
