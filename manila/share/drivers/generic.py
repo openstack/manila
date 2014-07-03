@@ -577,7 +577,7 @@ class NFSHelper(NASHelperBase):
         if access_type != 'ip':
             reason = 'only ip access type allowed'
             raise exception.InvalidShareAccess(reason)
-        #check if presents in export
+        # check if presents in export
         out, _ = self._ssh_exec(server, ['sudo', 'exportfs'])
         out = re.search(re.escape(local_path) + '[\s\n]*' + re.escape(access),
                         out)
@@ -668,13 +668,13 @@ class CIFSHelper(NASHelperBase):
         config = self._get_local_config(server['instance_id'])
         parser = ConfigParser.ConfigParser()
         parser.read(config)
-        #delete old one
+        # delete old one
         if parser.has_section(share_name):
             if recreate:
                 parser.remove_section(share_name)
             else:
                 raise exception.Error('Section exists')
-        #Create new one
+        # Create new one
         parser.add_section(share_name)
         parser.set(share_name, 'path', local_path)
         parser.set(share_name, 'browseable', 'yes')
@@ -695,7 +695,7 @@ class CIFSHelper(NASHelperBase):
         config = self._get_local_config(server['instance_id'])
         parser = ConfigParser.ConfigParser()
         parser.read(config)
-        #delete old one
+        # delete old one
         if parser.has_section(share_name):
             parser.remove_section(share_name)
         self._update_config(parser, config)
@@ -762,10 +762,10 @@ class CIFSHelper(NASHelperBase):
 
     def _update_config(self, parser, config):
         """Check if new configuration is correct and save it."""
-        #Check that configuration is correct
+        # Check that configuration is correct
         with open(self.test_config, 'w') as fp:
             parser.write(fp)
         self._execute('testparm', '-s', self.test_config, check_exit_code=True)
-        #save it
+        # save it
         with open(config, 'w') as fp:
             parser.write(fp)

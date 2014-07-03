@@ -234,7 +234,7 @@ class Migration(BASE, ManilaBase):
     instance_uuid = Column(String(255),
                            ForeignKey('instances.uuid'),
                            nullable=True)
-    #TODO(_cerberus_): enum
+    # TODO(_cerberus_): enum
     status = Column(String(255))
 
 

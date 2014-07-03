@@ -102,8 +102,8 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         for helper_str in self.configuration.share_lvm_helpers:
             share_proto, _, import_str = helper_str.partition('=')
             helper = importutils.import_class(import_str)
-            #TODO(rushiagr): better way to handle configuration
-            #                   instead of just passing to the helper
+            # TODO(rushiagr): better way to handle configuration
+            #                 instead of just passing to the helper
             self._helpers[share_proto.upper()] = helper(self._execute,
                                                         self.configuration)
 
@@ -168,7 +168,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         data["share_backend_name"] = self.backend_name
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
-        #TODO(rushiagr): Pick storage_protocol from the helper used.
+        # TODO(rushiagr): Pick storage_protocol from the helper used.
         data["storage_protocol"] = 'NFS_CIFS'
 
         data['total_capacity_gb'] = 0
@@ -195,13 +195,13 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def create_share(self, context, share, share_server=None):
         self._allocate_container(share)
-        #create file system
+        # create file system
         device_name = self._local_path(share)
         mount_path = self._get_mount_path(share)
         location = self._get_helper(share).create_export(mount_path,
                                                          share['name'])
         self._mount_device(share, device_name)
-        #TODO(rushiagr): what is the provider_location? realy needed?
+        # TODO(rushiagr): what is the provider_location? realy needed?
         return location
 
     def create_share_from_snapshot(self, context, share, snapshot,
@@ -215,7 +215,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         location = self._get_helper(share).create_export(mount_path,
                                                          share['name'])
         self._mount_device(share, device_name)
-        #TODO(rushiagr): what is the provider_location? realy needed?
+        # TODO(rushiagr): what is the provider_location? realy needed?
         return location
 
     def delete_share(self, context, share, share_server=None):
@@ -227,7 +227,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Removes an access rules for a share."""
         mount_path = self._get_mount_path(share)
         if os.path.exists(mount_path):
-            #umount, may be busy
+            # umount, may be busy
             try:
                 self._execute('umount', '-f', mount_path, run_as_root=True)
             except exception.ProcessExecutionError as exc:
@@ -235,7 +235,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     raise exception.ShareIsBusy(share_name=share['name'])
                 else:
                     LOG.info('Unable to umount: %s', exc)
-            #remove dir
+            # remove dir
             try:
                 os.rmdir(mount_path)
             except OSError:
@@ -382,7 +382,7 @@ class NFSHelper(NASHelperBase):
         if access_type != 'ip':
             reason = 'only ip access type allowed'
             raise exception.InvalidShareAccess(reason)
-        #check if presents in export
+        # check if presents in export
         out, _ = self._execute('exportfs', run_as_root=True)
         out = re.search(re.escape(local_path) + '[\s\n]*' + re.escape(access),
                         out)
@@ -419,13 +419,13 @@ class CIFSHelper(NASHelperBase):
         """Create new export, delete old one if exists."""
         parser = ConfigParser.ConfigParser()
         parser.read(self.config)
-        #delete old one
+        # delete old one
         if parser.has_section(share_name):
             if recreate:
                 parser.remove_section(share_name)
             else:
                 raise exception.Error('Section exists')
-        #Create new one
+        # Create new one
         parser.add_section(share_name)
         parser.set(share_name, 'path', local_path)
         parser.set(share_name, 'browseable', 'yes')
@@ -435,7 +435,7 @@ class CIFSHelper(NASHelperBase):
         parser.set(share_name, 'create mask', '0755')
         parser.set(share_name, 'hosts deny', '0.0.0.0/0')  # denying all ips
         parser.set(share_name, 'hosts allow', '127.0.0.1')
-        #NOTE(rushiagr): ensure that local_path dir is existing
+        # NOTE(rushiagr): ensure that local_path dir is existing
         if not os.path.exists(local_path):
             os.makedirs(local_path)
         self._execute('chown', 'nobody', '-R', local_path, run_as_root=True)
@@ -446,7 +446,7 @@ class CIFSHelper(NASHelperBase):
         """Remove export."""
         parser = ConfigParser.ConfigParser()
         parser.read(self.config)
-        #delete old one
+        # delete old one
         if parser.has_section(share_name):
             parser.remove_section(share_name)
         self._update_config(parser)
@@ -497,7 +497,7 @@ class CIFSHelper(NASHelperBase):
         running = False
         for process in processes:
             if not process.endswith(cmd):
-                #alternatively exit
+                # alternatively exit
                 raise exception.Error('smbd already started with wrong config')
             running = True
 
@@ -517,15 +517,15 @@ class CIFSHelper(NASHelperBase):
 
     def _update_config(self, parser, restart=True):
         """Check if new configuration is correct and save it."""
-        #Check that configuration is correct
+        # Check that configuration is correct
         with open(self.test_config, 'w') as fp:
             parser.write(fp)
         self._execute('testparm', '-s', self.test_config,
                       check_exit_code=True)
-        #save it
+        # save it
         with open(self.config, 'w') as fp:
             parser.write(fp)
-        #restart daemon if necessary
+        # restart daemon if necessary
         if restart:
             self._execute(*'pkill -HUP smbd'.split(), run_as_root=True)
 

@@ -44,7 +44,7 @@ class SimpleScheduler(chance.ChanceScheduler):
 
     def schedule_create_share(self, context, request_spec, filter_properties):
         """Picks a host that is up and has the fewest shares."""
-        #TODO(rushiagr) - pick only hosts that run shares
+        # TODO(rushiagr) - pick only hosts that run shares
         elevated = context.elevated()
 
         share_id = request_spec.get('share_id')

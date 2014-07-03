@@ -155,7 +155,7 @@ class FilterScheduler(driver.Scheduler):
                                                             filter_properties)
         best_host = weighed_hosts[0]
         LOG.debug("Choosing for share: %(best_host)s" % locals())
-        #NOTE(rushiagr): updating the available space parameters at same place
+        # NOTE(rushiagr): updating the available space parameters at same place
         best_host.obj.consume_from_share(share_properties)
         return best_host
 

@@ -90,8 +90,8 @@ class API(base.Base):
                         "You should omit the argument.")
                 raise exception.InvalidInput(reason=msg)
 
-        #TODO(rushiagr): Find a suitable place to keep all the allowed
-        #                share types so that it becomes easier to add one
+        # TODO(rushiagr): Find a suitable place to keep all the allowed
+        #                 share types so that it becomes easier to add one
         if share_proto.lower() not in ['nfs', 'cifs']:
             msg = (_("Invalid share type provided: %s") % share_proto)
             raise exception.InvalidInput(reason=msg)
@@ -378,7 +378,7 @@ class API(base.Base):
     def deny_access(self, ctx, share, access):
         """Deny access to share."""
         policy.check_policy(ctx, 'share', 'deny_access')
-        #First check state of the target share
+        # First check state of the target share
         if not share['host']:
             msg = _("Share host is None")
             raise exception.InvalidShare(reason=msg)
@@ -386,7 +386,7 @@ class API(base.Base):
             msg = _("Share status must be available")
             raise exception.InvalidShare(reason=msg)
 
-        #Then check state of the access rule
+        # Then check state of the access rule
         if access['state'] == access.STATE_ERROR:
             self.db.share_access_delete(ctx, access["id"])
         elif access['state'] == access.STATE_ACTIVE:
@@ -396,7 +396,7 @@ class API(base.Base):
         else:
             msg = _("Access policy should be active or in error state")
             raise exception.InvalidShareAccess(reason=msg)
-            #update share state and send message to manager
+            # update share state and send message to manager
 
     def access_get_all(self, context, share):
         """Returns all access rules for share."""

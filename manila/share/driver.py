@@ -35,7 +35,7 @@ from oslo.config import cfg
 LOG = logging.getLogger(__name__)
 
 share_opts = [
-    #NOTE(rushiagr): Reasonable to define this option at only one place.
+    # NOTE(rushiagr): Reasonable to define this option at only one place.
     cfg.IntOpt('num_shell_tries',
                default=3,
                help='number of times to attempt to run flakey shell commands'),

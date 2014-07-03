@@ -642,8 +642,6 @@ class CIFSHelperTestCase(test.TestCase):
                                           self.fake_conf)
 
     def test_create_export(self):
-        #fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-        #                            share_network_id='fake_share_network_id')
         server_details = {'instance_id': 'fake',
                           'ip': '1.2.3.4'}
         self.stubs.Set(self._helper, '_update_config', mock.Mock())
@@ -663,8 +661,6 @@ class CIFSHelperTestCase(test.TestCase):
         self.assertEqual(ret, expected_location)
 
     def test_remove_export(self):
-        #fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-        #                            share_network_id='fake_share_network_id')
         server_details = {'instance_id': 'fake',
                           'ip': '1.2.3.4'}
         self.stubs.Set(generic.ConfigParser, 'ConfigParser', mock.Mock())
@@ -689,8 +685,8 @@ class CIFSHelperTestCase(test.TestCase):
             def set(self, *args, **kwargs):
                 pass
 
-        #fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-        #                            share_network_id='fake_share_network_id')
+        # fake_server = fake_compute.FakeServer(ip='10.254.0.3',
+        #                             share_network_id='fake_share_network_id')
         server_details = {'instance_id': 'fake',
                           'ip': '1.2.3.4'}
         self.stubs.Set(generic.ConfigParser, 'ConfigParser', FakeParser)
@@ -707,8 +703,8 @@ class CIFSHelperTestCase(test.TestCase):
         self._helper._restart_service.assert_called_once()
 
     def test_deny_access(self):
-        #fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-        #                            share_network_id='fake_share_network_id')
+        # fake_server = fake_compute.FakeServer(ip='10.254.0.3',
+        #                             share_network_id='fake_share_network_id')
         server_details = {'instance_id': 'fake',
                           'ip': '1.2.3.4'}
         self.stubs.Set(generic.ConfigParser, 'ConfigParser', mock.Mock())

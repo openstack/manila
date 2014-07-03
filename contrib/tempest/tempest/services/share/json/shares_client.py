@@ -448,14 +448,14 @@ class SharesClient(rest_client.RestClient):
 
     def create_share_network(self, **kwargs):
         # kwargs: name, description
-        #+ for neutron: neutron_net_id, neutron_subnet_id
+        # + for neutron: neutron_net_id, neutron_subnet_id
         body = json.dumps({"share_network": kwargs})
         resp, body = self.post("share-networks", body)
         return resp, self._parse_resp(body)
 
     def update_share_network(self, sn_id, **kwargs):
         # kwargs: name, description
-        #+ for neutron: neutron_net_id, neutron_subnet_id
+        # + for neutron: neutron_net_id, neutron_subnet_id
         body = json.dumps({"share_network": kwargs})
         resp, body = self.put("share-networks/%s" % sn_id, body)
         return resp, self._parse_resp(body)

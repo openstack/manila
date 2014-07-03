@@ -351,7 +351,7 @@ class NetAppShareDriver(driver.ShareDriver):
         data["share_backend_name"] = self.backend_name
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
-        #TODO(rushiagr): Pick storage_protocol from the helper used.
+        # TODO(rushiagr): Pick storage_protocol from the helper used.
         data["storage_protocol"] = 'NFS_CIFS'
 
         data['total_capacity_gb'] = 'infinite'

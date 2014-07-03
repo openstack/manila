@@ -302,7 +302,7 @@ class FileNotFound(NotFound):
     message = _("File %(file_path)s could not be found.")
 
 
-#TODO(bcwaldon): EOL this exception!
+# TODO(bcwaldon): EOL this exception!
 class Duplicate(ManilaException):
     message = _("Duplicate entry: %(message)s")
 

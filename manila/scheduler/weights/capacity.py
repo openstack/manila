@@ -48,7 +48,7 @@ class CapacityWeigher(weights.BaseHostWeigher):
         reserved = float(host_state.reserved_percentage) / 100
         free_space = host_state.free_capacity_gb
         if free_space == 'infinite' or free_space == 'unknown':
-            #(zhiteng) 'infinite' and 'unknown' are treated the same
+            # (zhiteng) 'infinite' and 'unknown' are treated the same
             # here, for sorting purpose.
             free = float('inf')
         else:
