@@ -361,14 +361,6 @@ class NetAppShareDriver(driver.ShareDriver):
 
         self._stats = data
 
-    def get_network_allocations_number(self):
-        """7mode driver does not need to create VIFS."""
-        return 0
-
-    def setup_network(self, network_info, metadata=None):
-        """Nothing to set up"""
-        pass
-
 
 class NetAppNASHelperBase(object):
     """Interface for protocol-specific NAS drivers."""
