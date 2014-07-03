@@ -406,7 +406,7 @@ class ServiceInstanceManager(object):
             raise exception.ServiceInstanceException(
                 _('SSH connection have not been '
                   'established in %ss. Giving up.') %
-                  self.max_time_to_build_instance)
+                self.max_time_to_build_instance)
         return service_instance
 
     def _check_server_availability(self, server):
