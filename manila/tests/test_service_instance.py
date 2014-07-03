@@ -112,8 +112,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                 'fake_share_network_id')
 
     def test_get_server_ip(self):
-        fake_server = fake_compute.FakeServer(networks=
-                {CONF.service_network_name: '10.254.0.1'})
+        fake_server = fake_compute.FakeServer(
+            networks={CONF.service_network_name: '10.254.0.1'})
 
         result = self._manager._get_server_ip(fake_server)
 

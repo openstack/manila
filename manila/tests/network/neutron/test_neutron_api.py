@@ -149,8 +149,8 @@ class NeutronApiTest(test.TestCase):
     @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
     def test_create_port_exception(self):
         port_args = {'tenant_id': 'test tenant', 'network_id': 'test net'}
-        client_create_port_mock = mock.Mock(side_effect=
-                                    neutron_client_exc.NeutronClientException)
+        client_create_port_mock = mock.Mock(
+            side_effect=neutron_client_exc.NeutronClientException)
 
         with mock.patch.object(self.neutron_api, '_has_port_binding_extension',
                           mock.Mock(return_value=True)):
@@ -165,8 +165,9 @@ class NeutronApiTest(test.TestCase):
     @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
     def test_create_port_exception_status_409(self):
         port_args = {'tenant_id': 'test tenant', 'network_id': 'test net'}
-        client_create_port_mock = mock.Mock(side_effect=
-                    neutron_client_exc.NeutronClientException(status_code=409))
+        client_create_port_mock = mock.Mock(
+            side_effect=neutron_client_exc.NeutronClientException(
+                status_code=409))
 
         with mock.patch.object(self.neutron_api, '_has_port_binding_extension',
                           mock.Mock(return_value=True)):
@@ -301,8 +302,8 @@ class NeutronApiTest(test.TestCase):
     @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
     def test_create_network_exception(self):
         net_args = {'tenant_id': 'test tenant', 'name': 'test name'}
-        client_create_network_mock = mock.Mock(side_effect=
-                                     neutron_client_exc.NeutronClientException)
+        client_create_network_mock = mock.Mock(
+            side_effect=neutron_client_exc.NeutronClientException)
 
         with mock.patch.object(self.neutron_api.client, 'create_network',
                           client_create_network_mock):
@@ -316,8 +317,8 @@ class NeutronApiTest(test.TestCase):
     def test_create_subnet_exception(self):
         subnet_args = {'tenant_id': 'test tenant', 'name': 'test name',
                        'net_id': 'test net id', 'cidr': '10.0.0.0/24'}
-        client_create_subnet_mock = mock.Mock(side_effect=
-                                     neutron_client_exc.NeutronClientException)
+        client_create_subnet_mock = mock.Mock(
+            side_effect=neutron_client_exc.NeutronClientException)
 
         with mock.patch.object(self.neutron_api.client, 'create_subnet',
                           client_create_subnet_mock):
@@ -330,8 +331,8 @@ class NeutronApiTest(test.TestCase):
     @mock.patch.object(neutron_api.LOG, 'exception', mock.Mock())
     def test_create_router_exception(self):
         router_args = {'tenant_id': 'test tenant', 'name': 'test name'}
-        client_create_router_mock = mock.Mock(side_effect=
-                                     neutron_client_exc.NeutronClientException)
+        client_create_router_mock = mock.Mock(
+            side_effect=neutron_client_exc.NeutronClientException)
 
         with mock.patch.object(self.neutron_api.client, 'create_router',
                           client_create_router_mock):
@@ -351,8 +352,8 @@ class NeutronApiTest(test.TestCase):
     def test_update_port_fixed_ips_exception(self):
         port_id = 'test_port'
         fixed_ips = {'fixed_ips': [{'subnet_id': 'test subnet'}]}
-        client_update_port_mock = mock.Mock(side_effect=
-                                     neutron_client_exc.NeutronClientException)
+        client_update_port_mock = mock.Mock(
+            side_effect=neutron_client_exc.NeutronClientException)
 
         with mock.patch.object(self.neutron_api.client, 'update_port',
                           client_update_port_mock):
@@ -374,8 +375,8 @@ class NeutronApiTest(test.TestCase):
         router_id = 'test_router'
         routes = {'routes': [{'destination': '0.0.0.0/0',
                               'nexthop': '8.8.8.8'}]}
-        client_update_router_mock = mock.Mock(side_effect=
-                                     neutron_client_exc.NeutronClientException)
+        client_update_router_mock = mock.Mock(
+            side_effect=neutron_client_exc.NeutronClientException)
 
         with mock.patch.object(self.neutron_api.client, 'update_router',
                           client_update_router_mock):
@@ -416,8 +417,8 @@ class NeutronApiTest(test.TestCase):
         router_id = 'test port id'
         subnet_id = 'test subnet id'
         port_id = 'test port id'
-        client_add_interface_router_mock = mock.Mock(side_effect=
-                                     neutron_client_exc.NeutronClientException)
+        client_add_interface_router_mock = mock.Mock(
+            side_effect=neutron_client_exc.NeutronClientException)
 
         with mock.patch.object(self.neutron_api.client, 'add_interface_router',
                           client_add_interface_router_mock):

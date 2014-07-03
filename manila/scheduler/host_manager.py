@@ -269,10 +269,10 @@ class HostManager(object):
                 host_state.update_capabilities(capabilities,
                                                dict(six.iteritems(service)))
             else:
-                host_state = self.host_state_cls(host,
-                                                 capabilities=capabilities,
-                                                 service=
-                                                 dict(six.iteritems(service)))
+                host_state = self.host_state_cls(
+                    host,
+                    capabilities=capabilities,
+                    service=dict(six.iteritems(service)))
                 self.host_state_map[host] = host_state
             # update host_state
             host_state.update_from_share_capability(capabilities)

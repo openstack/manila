@@ -327,8 +327,9 @@ class GenericShareDriverTestCase(test.TestCase):
                 self._driver._get_volume, self._context, self.share['id'])
 
     def test_get_volume_snapshot(self):
-        volume_snapshot = fake_volume.FakeVolumeSnapshot(display_name=
-                CONF.volume_snapshot_name_template % self.snapshot['id'])
+        volume_snapshot = fake_volume.FakeVolumeSnapshot(
+            display_name=CONF.volume_snapshot_name_template %
+            self.snapshot['id'])
         self.stubs.Set(self._driver.volume_api, 'get_all_snapshots',
                        mock.Mock(return_value=[volume_snapshot]))
         result = self._driver._get_volume_snapshot(self._context,
@@ -343,8 +344,9 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertEqual(result, None)
 
     def test_get_volume_snapshot_error(self):
-        volume_snapshot = fake_volume.FakeVolumeSnapshot(display_name=
-                CONF.volume_snapshot_name_template % self.snapshot['id'])
+        volume_snapshot = fake_volume.FakeVolumeSnapshot(
+            display_name=CONF.volume_snapshot_name_template %
+            self.snapshot['id'])
         self.stubs.Set(self._driver.volume_api, 'get_all_snapshots',
                 mock.Mock(return_value=[volume_snapshot, volume_snapshot]))
         self.assertRaises(exception.ManilaException,

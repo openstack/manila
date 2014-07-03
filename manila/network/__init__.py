@@ -21,9 +21,9 @@ from oslo.config import cfg
 
 network_opts = [
     cfg.StrOpt('network_api_class',
-    default=
-        'manila.network.neutron.neutron_network_plugin.NeutronNetworkPlugin',
-    help='The full class name of the network API class to use'),
+               default='manila.network.neutron.'
+                       'neutron_network_plugin.NeutronNetworkPlugin',
+               help='The full class name of the network API class to use'),
 ]
 
 cfg.CONF.register_opts(network_opts)
