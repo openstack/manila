@@ -281,7 +281,6 @@ class ShareApiTest(test.TestCase):
     def test_share_show(self):
         req = fakes.HTTPRequest.blank('/shares/1')
         res_dict = self.controller.show(req, '1')
-        print res_dict
         expected = {
             'share': {'name': 'displayname',
                       'availability_zone': 'fakeaz',
