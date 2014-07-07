@@ -38,3 +38,4 @@ doc/build
 
 # Lock dirs and files
 service_instance_locks
+attach_detach_locks
