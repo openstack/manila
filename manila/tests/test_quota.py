@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -27,12 +25,10 @@ from manila import db
 from manila.db.sqlalchemy import api as sqa_api
 from manila.db.sqlalchemy import models as sqa_models
 from manila import exception
-from manila.openstack.common import rpc
 from manila.openstack.common import timeutils
 from manila import quota
 from manila import share
 from manila import test
-
 
 CONF = cfg.CONF
 
@@ -49,12 +45,6 @@ class QuotaIntegrationTestCase(test.TestCase):
         self.context = context.RequestContext(self.user_id,
                                               self.project_id,
                                               is_admin=True)
-        orig_rpc_call = rpc.call
-
-        def rpc_call_wrapper(context, topic, msg, timeout=None):
-            return orig_rpc_call(context, topic, msg)
-
-        self.stubs.Set(rpc, 'call', rpc_call_wrapper)
 
     def _create_share(self, size=10):
         """Create a test share."""

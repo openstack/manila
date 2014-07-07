@@ -1,6 +1,7 @@
 hacking>=0.8.0,<0.9
 
 coverage>=3.6
+fixtures>=0.3.14
 mock>=1.0
 MySQL-python
 nose

@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright (c) 2010 OpenStack, LLC.
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
@@ -26,12 +24,11 @@ from oslo.config import cfg
 from manila import context
 from manila import db
 from manila import exception
-
 from manila import manager
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
-from manila.openstack.common.notifier import api as notifier
+from manila import rpc
 from manila.share import rpcapi as share_rpcapi
 
 LOG = logging.getLogger(__name__)
@@ -47,8 +44,6 @@ CONF.register_opt(scheduler_driver_opt)
 
 class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
-
-    RPC_API_VERSION = '1.3'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -111,8 +106,8 @@ class SchedulerManager(manager.Manager):
                        method=method,
                        reason=ex)
 
-        notifier.notify(context, notifier.publisher_id("scheduler"),
-                        'scheduler.' + method, notifier.ERROR, payload)
+        rpc.get_notifier("scheduler").error(
+            context, 'scheduler.' + method, payload)
 
     def request_service_capabilities(self, context):
         share_rpcapi.ShareAPI().publish_service_capabilities(context)

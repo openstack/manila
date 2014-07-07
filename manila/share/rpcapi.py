@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012, Intel, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,89 +16,70 @@
 Client side of the share RPC API.
 """
 
-from manila import exception
-from manila.openstack.common import rpc
-import manila.openstack.common.rpc.proxy
 from oslo.config import cfg
+from oslo import messaging
 
+from manila.openstack.common import jsonutils
+from manila import rpc
 
 CONF = cfg.CONF
 
 
-class ShareAPI(manila.openstack.common.rpc.proxy.RpcProxy):
+class ShareAPI(object):
     '''Client side of the share rpc API.
 
     API version history:
 
         1.0 - Initial version.
-        1.1 - Add snapshot support.
-        1.2 - Add filter scheduler support
     '''
 
-    BASE_RPC_API_VERSION = '1.1'
+    BASE_RPC_API_VERSION = '1.0'
 
     def __init__(self, topic=None):
-        super(ShareAPI, self).__init__(
-            topic=topic or CONF.share_topic,
-            default_version=self.BASE_RPC_API_VERSION)
+        super(ShareAPI, self).__init__()
+        target = messaging.Target(topic=CONF.share_topic,
+                                  version=self.BASE_RPC_API_VERSION)
+        self.client = rpc.get_client(target, '1.0')
 
     def create_share(self, ctxt, share, host,
                      request_spec, filter_properties,
                      snapshot_id=None):
-        self.cast(ctxt,
-                  self.make_msg('create_share',
-                                share_id=share['id'],
-                                request_spec=request_spec,
-                                filter_properties=filter_properties,
-                                snapshot_id=snapshot_id),
-                  topic=rpc.queue_get_for(ctxt,
-                                          self.topic,
-                                          host))
+        cctxt = self.client.prepare(server=host, version='1.0')
+        request_spec_p = jsonutils.to_primitive(request_spec)
+        cctxt.cast(
+            ctxt,
+            'create_share',
+            share_id=share['id'],
+            request_spec=request_spec_p,
+            filter_properties=filter_properties,
+            snapshot_id=snapshot_id,
+        )
 
     def delete_share(self, ctxt, share):
-        self.cast(ctxt,
-                  self.make_msg('delete_share',
-                                share_id=share['id']),
-                  topic=rpc.queue_get_for(ctxt, self.topic, share['host']))
+        cctxt = self.client.prepare(server=share['host'], version='1.0')
+        cctxt.cast(ctxt, 'delete_share', share_id=share['id'])
 
     def create_snapshot(self, ctxt, share, snapshot):
-        self.cast(ctxt,
-                  self.make_msg('create_snapshot',
-                                share_id=share['id'],
-                                snapshot_id=snapshot['id']),
-                  topic=rpc.queue_get_for(ctxt, self.topic, share['host']))
+        cctxt = self.client.prepare(server=share['host'])
+        cctxt.cast(
+            ctxt,
+            'create_snapshot',
+            share_id=share['id'],
+            snapshot_id=snapshot['id'],
+        )
 
     def delete_snapshot(self, ctxt, snapshot, host):
-        self.cast(ctxt,
-                  self.make_msg('delete_snapshot',
-                                snapshot_id=snapshot['id']),
-                  topic=rpc.queue_get_for(ctxt, self.topic, host))
+        cctxt = self.client.prepare(server=host)
+        cctxt.cast(ctxt, 'delete_snapshot', snapshot_id=snapshot['id'])
 
     def allow_access(self, ctxt, share, access):
-        self.cast(ctxt, self.make_msg('allow_access', access_id=access['id']),
-                  topic=rpc.queue_get_for(ctxt,
-                                          self.topic,
-                                          share['host']))
+        cctxt = self.client.prepare(server=share['host'], version='1.0')
+        cctxt.cast(ctxt, 'allow_access', access_id=access['id'])
 
     def deny_access(self, ctxt, share, access):
-        self.cast(ctxt, self.make_msg('deny_access', access_id=access['id']),
-                  topic=rpc.queue_get_for(ctxt,
-                                          self.topic,
-                                          share['host']))
+        cctxt = self.client.prepare(server=share['host'], version='1.0')
+        cctxt.cast(ctxt, 'deny_access', access_id=access['id'])
 
     def publish_service_capabilities(self, ctxt):
-        self.fanout_cast(ctxt, self.make_msg('publish_service_capabilities'),
-                         version='1.0')
-
-    def activate_network(self, context, share_network_id, metadata):
-        self.fanout_cast(context,
-                         self.make_msg('activate_network',
-                                       share_network_id=share_network_id,
-                                       metadata=metadata),
-                         version='1.0')
-
-    def deactivate_network(self, context, share_network_id):
-        self.fanout_cast(context,
-                         self.make_msg('deactivate_network',
-                                       share_network_id=share_network_id),
-                         version='1.0')
+        cctxt = self.client.prepare(fanout=True, version='1.0')
+        cctxt.cast(ctxt, 'publish_service_capabilities')

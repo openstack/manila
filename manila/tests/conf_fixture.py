@@ -21,8 +21,6 @@ CONF = cfg.CONF
 
 def set_defaults(conf):
     conf.set_default('connection_type', 'fake')
-    conf.set_default('fake_rabbit', True)
-    conf.set_default('rpc_backend', 'manila.openstack.common.rpc.impl_fake')
     conf.set_default('verbose', True)
     conf.set_default('sql_connection', "sqlite://")
     conf.set_default('sqlite_synchronous', False)

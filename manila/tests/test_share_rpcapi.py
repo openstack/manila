@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 NetApp
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,19 +13,19 @@
 #    under the License.
 
 """
-Unit Tests for manila.volume.rpcapi.
+Unit Tests for manila.share.rpcapi.
 """
 
+import copy
+
+from oslo.config import cfg
+import six
 
 from manila import context
 from manila import db
-
 from manila.openstack.common import jsonutils
-from manila.openstack.common import rpc
 from manila.share import rpcapi as share_rpcapi
 from manila import test
-from oslo.config import cfg
-
 
 CONF = cfg.CONF
 
@@ -68,34 +66,42 @@ class ShareRpcAPITestCase(test.TestCase):
         rpcapi = rpcapi_class()
         expected_retval = 'foo' if method == 'call' else None
 
-        expected_version = kwargs.pop('version', rpcapi.BASE_RPC_API_VERSION)
-        expected_msg = rpcapi.make_msg(method, **kwargs)
-        if 'share' in expected_msg['args']:
-            share = expected_msg['args']['share']
-            del expected_msg['args']['share']
-            expected_msg['args']['share_id'] = share['id']
-        if 'access' in expected_msg['args']:
-            access = expected_msg['args']['access']
-            del expected_msg['args']['access']
-            expected_msg['args']['access_id'] = access['id']
-            del expected_msg['args']['share_id']
-        if 'host' in expected_msg['args']:
-            del expected_msg['args']['host']
-        if 'snapshot' in expected_msg['args']:
-            snapshot = expected_msg['args']['snapshot']
-            del expected_msg['args']['snapshot']
-            expected_msg['args']['snapshot_id'] = snapshot['id']
-
-        expected_msg['version'] = expected_version
+        target = {
+            "version": kwargs.pop('version', rpcapi.BASE_RPC_API_VERSION)
+        }
+        expected_msg = copy.deepcopy(kwargs)
+        if 'share' in expected_msg:
+            share = expected_msg['share']
+            del expected_msg['share']
+            expected_msg['share_id'] = share['id']
+        if 'access' in expected_msg:
+            access = expected_msg['access']
+            del expected_msg['access']
+            expected_msg['access_id'] = access['id']
+            del expected_msg['share_id']
+        if 'host' in expected_msg:
+            del expected_msg['host']
+        if 'snapshot' in expected_msg:
+            snapshot = expected_msg['snapshot']
+            del expected_msg['snapshot']
+            expected_msg['snapshot_id'] = snapshot['id']
 
         if 'host' in kwargs:
             host = kwargs['host']
         else:
             host = kwargs['share']['host']
-        expected_topic = '%s.%s' % (CONF.share_topic, host)
+        target['server'] = host
+        target['topic'] = '%s.%s' % (CONF.share_topic, host)
 
         self.fake_args = None
         self.fake_kwargs = None
+
+        real_prepare = rpcapi.client.prepare
+
+        def _fake_prepare_method(*args, **kwds):
+            for kwd in kwds:
+                self.assertEqual(kwds[kwd], target[kwd])
+            return rpcapi.client
 
         def _fake_rpc_method(*args, **kwargs):
             self.fake_args = args
@@ -103,14 +109,18 @@ class ShareRpcAPITestCase(test.TestCase):
             if expected_retval:
                 return expected_retval
 
-        self.stubs.Set(rpc, rpc_method, _fake_rpc_method)
+        self.stubs.Set(rpcapi.client, "prepare", _fake_prepare_method)
+        self.stubs.Set(rpcapi.client, rpc_method, _fake_rpc_method)
 
         retval = getattr(rpcapi, method)(ctxt, **kwargs)
 
         self.assertEqual(retval, expected_retval)
-        expected_args = [ctxt, expected_topic, expected_msg]
+        expected_args = [ctxt, method]
         for arg, expected_arg in zip(self.fake_args, expected_args):
             self.assertEqual(arg, expected_arg)
+
+        for kwarg, value in six.iteritems(self.fake_kwargs):
+            self.assertEqual(value, expected_msg[kwarg])
 
     def test_create_share(self):
         self._test_share_api('create_share',

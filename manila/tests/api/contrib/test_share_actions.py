@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 #   Copyright 2012 OpenStack LLC.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,20 +14,18 @@
 
 import datetime
 import uuid
+
+from oslo.config import cfg
 import webob
 
 from manila.api.contrib import share_actions
 from manila import exception
-
 from manila.openstack.common import jsonutils
-from manila.openstack.common.rpc import common as rpc_common
 from manila import share
 from manila.share import api as share_api
 from manila import test
 from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
-from oslo.config import cfg
-
 
 CONF = cfg.CONF
 

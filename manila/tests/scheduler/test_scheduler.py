@@ -27,9 +27,9 @@ from manila.openstack.common import timeutils
 from manila.scheduler import driver
 from manila.scheduler import manager
 from manila.scheduler import simple
+from manila.share import rpcapi as share_rpcapi
 from manila import test
 from manila import utils
-
 
 CONF = cfg.CONF
 
@@ -172,10 +172,12 @@ class SchedulerDriverModuleTestCase(test.TestCase):
 
 class SimpleSchedulerSharesTestCase(test.TestCase):
     """Test case for simple scheduler create share method."""
-    driver = simple.SimpleScheduler()
 
     def setUp(self):
         super(SimpleSchedulerSharesTestCase, self).setUp()
+        self.stubs.Set(share_rpcapi, 'ShareAPI', mock.Mock())
+        self.driver = simple.SimpleScheduler()
+
         self.context = context.RequestContext('fake_user', 'fake_project')
         self.admin_context = context.RequestContext('fake_admin_user',
                                                     'fake_project')

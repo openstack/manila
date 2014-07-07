@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # Copyright 2011 Justin Santa Barbara
@@ -30,14 +28,14 @@ import time
 import eventlet
 import greenlet
 from oslo.config import cfg
+from oslo import messaging
 
 from manila import context
 from manila import db
 from manila import exception
-
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
-from manila.openstack.common import rpc
+from manila import rpc
 from manila import utils
 from manila import version
 from manila import wsgi
@@ -333,6 +331,9 @@ class Service(object):
     def __init__(self, host, binary, topic, manager, report_interval=None,
                  periodic_interval=None, periodic_fuzzy_delay=None,
                  service_name=None, *args, **kwargs):
+        super(Service, self).__init__()
+        if not rpc.initialized():
+            rpc.init(CONF)
         self.host = host
         self.binary = binary
         self.topic = topic
@@ -344,7 +345,6 @@ class Service(object):
         self.report_interval = report_interval
         self.periodic_interval = periodic_interval
         self.periodic_fuzzy_delay = periodic_fuzzy_delay
-        super(Service, self).__init__(*args, **kwargs)
         self.saved_args, self.saved_kwargs = args, kwargs
         self.timers = []
 
@@ -352,7 +352,6 @@ class Service(object):
         version_string = version.version_string()
         LOG.audit(_('Starting %(topic)s node (version %(version_string)s)'),
                   {'topic': self.topic, 'version_string': version_string})
-        self.manager.init_host()
         self.model_disconnected = False
         ctxt = context.get_admin_context()
         try:
@@ -363,23 +362,15 @@ class Service(object):
         except exception.NotFound:
             self._create_service_ref(ctxt)
 
-        self.conn = rpc.create_connection(new=True)
-        LOG.debug("Creating Consumer connection for Service %s" %
-                  self.topic)
+        LOG.debug("Creating RPC server for service %s." % self.topic)
 
-        rpc_dispatcher = self.manager.create_rpc_dispatcher()
+        target = messaging.Target(topic=self.topic, server=self.host)
+        endpoints = [self.manager]
+        endpoints.extend(self.manager.additional_endpoints)
+        self.rpcserver = rpc.get_server(target, endpoints)
+        self.rpcserver.start()
 
-        # Share this same connection for these Consumers
-        self.conn.create_consumer(self.topic, rpc_dispatcher, fanout=False)
-
-        node_topic = '%s.%s' % (self.topic, self.host)
-        self.conn.create_consumer(node_topic, rpc_dispatcher, fanout=False)
-
-        self.conn.create_consumer(self.topic, rpc_dispatcher, fanout=True)
-
-        # Consume from all consumers in a thread
-        self.conn.consume_in_thread()
-
+        self.manager.init_host()
         if self.report_interval:
             pulse = utils.LoopingCall(self.report_state)
             pulse.start(interval=self.report_interval,
@@ -461,7 +452,7 @@ class Service(object):
         # Try to shut the connection down, but if we get any sort of
         # errors, go ahead and ignore them.. as we're shutting down anyway
         try:
-            self.conn.close()
+            self.rpcserver.stop()
         except Exception:
             pass
         for x in self.timers:
@@ -530,6 +521,8 @@ class WSGIService(object):
         self.name = name
         self.manager = self._get_manager()
         self.loader = loader or wsgi.Loader()
+        if not rpc.initialized():
+            rpc.init(CONF)
         self.app = self.loader.load_app(name)
         self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")
         self.port = getattr(CONF, '%s_listen_port' % name, 0)

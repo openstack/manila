@@ -17,11 +17,10 @@ import webob
 
 from manila.api.contrib import types_manage
 from manila import exception
-from manila.openstack.common.notifier import api as notifier_api
-from manila.openstack.common.notifier import test_notifier
 from manila.share import volume_types
 from manila import test
 from manila.tests.api import fakes
+from manila.tests import fake_notifier
 
 
 def stub_volume_type(id):
@@ -75,12 +74,12 @@ def make_create_body(name):
 class VolumeTypesManageApiTest(test.TestCase):
     def setUp(self):
         super(VolumeTypesManageApiTest, self).setUp()
-        self.flags(host='fake',
-                   notification_driver=[test_notifier.__name__])
+        self.flags(host='fake')
         self.controller = types_manage.VolumeTypesManageController()
+
         """to reset notifier drivers left over from other api/contrib tests"""
-        notifier_api._reset_drivers()
-        test_notifier.NOTIFICATIONS = []
+        fake_notifier.reset()
+        self.addCleanup(fake_notifier.reset)
         self.stubs.Set(volume_types, 'create',
                        return_volume_types_create)
         self.stubs.Set(volume_types, 'get_volume_type_by_name',
@@ -92,45 +91,45 @@ class VolumeTypesManageApiTest(test.TestCase):
 
     def test_volume_types_delete(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         self.controller._delete(req, 1)
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
     def test_volume_types_delete_not_found(self):
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller._delete,
                           req, '777')
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
     def test_volume_types_with_volumes_destroy(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         self.controller._delete(req, 1)
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
     def test_create(self):
         body = make_create_body("volume_type_1")
         req = fakes.HTTPRequest.blank('/v2/fake/types')
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         res_dict = self.controller._create(req, body)
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
         self.assertEqual(1, len(res_dict))
         self.assertEqual('vol_type_1', res_dict['volume_type']['name'])
 
     def test_create_with_too_small_name(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types')
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._create, req, make_create_body(""))
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
 
     def test_create_with_too_big_name(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types')
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller._create,
                           req, make_create_body("n" * 256))
-        self.assertEqual(len(test_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
 
     def _create_volume_type_bad_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types')

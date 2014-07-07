@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2012, Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,13 +16,14 @@
 Unit Tests for manila.scheduler.rpcapi
 """
 
-from manila import context
+import copy
 
-from manila.openstack.common import rpc
+import mock
+from oslo.config import cfg
+
+from manila import context
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import test
-
-from oslo.config import cfg
 
 CONF = cfg.CONF
 
@@ -37,16 +36,24 @@ class SchedulerRpcAPITestCase(test.TestCase):
     def tearDown(self):
         super(SchedulerRpcAPITestCase, self).tearDown()
 
-    def _test_scheduler_api(self, method, rpc_method, **kwargs):
+    def _test_scheduler_api(self, method, rpc_method, fanout=False, **kwargs):
         ctxt = context.RequestContext('fake_user', 'fake_project')
         rpcapi = scheduler_rpcapi.SchedulerAPI()
         expected_retval = 'foo' if method == 'call' else None
-        expected_version = kwargs.pop('version', rpcapi.RPC_API_VERSION)
-        expected_msg = rpcapi.make_msg(method, **kwargs)
-        expected_msg['version'] = expected_version
+
+        target = {
+            "fanout": fanout,
+            "version": kwargs.pop('version', rpcapi.RPC_API_VERSION),
+        }
+        expected_msg = copy.deepcopy(kwargs)
 
         self.fake_args = None
         self.fake_kwargs = None
+
+        def _fake_prepare_method(*args, **kwds):
+            for kwd in kwds:
+                self.assertEqual(kwds[kwd], target[kwd])
+            return rpcapi.client
 
         def _fake_rpc_method(*args, **kwargs):
             self.fake_args = args
@@ -54,21 +61,24 @@ class SchedulerRpcAPITestCase(test.TestCase):
             if expected_retval:
                 return expected_retval
 
-        self.stubs.Set(rpc, rpc_method, _fake_rpc_method)
+        with mock.patch.object(rpcapi.client, "prepare") as mock_prepared:
+            mock_prepared.side_effect = _fake_prepare_method
 
-        retval = getattr(rpcapi, method)(ctxt, **kwargs)
-
-        self.assertEqual(retval, expected_retval)
-        expected_args = [ctxt, CONF.scheduler_topic, expected_msg]
-        for arg, expected_arg in zip(self.fake_args, expected_args):
-            self.assertEqual(arg, expected_arg)
+            with mock.patch.object(rpcapi.client, rpc_method) as mock_method:
+                mock_method.side_effect = _fake_rpc_method
+                retval = getattr(rpcapi, method)(ctxt, **kwargs)
+                self.assertEqual(retval, expected_retval)
+                expected_args = [ctxt, method, expected_msg]
+                for arg, expected_arg in zip(self.fake_args, expected_args):
+                    self.assertEqual(arg, expected_arg)
 
     def test_update_service_capabilities(self):
         self._test_scheduler_api('update_service_capabilities',
-                                 rpc_method='fanout_cast',
+                                 rpc_method='cast',
                                  service_name='fake_name',
                                  host='fake_host',
-                                 capabilities='fake_capabilities')
+                                 capabilities='fake_capabilities',
+                                 fanout=True)
 
     def test_create_share(self):
         self._test_scheduler_api('create_share',
@@ -78,4 +88,4 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  snapshot_id='snapshot_id',
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
-                                 version='1.3')
+                                 version='1.0')
