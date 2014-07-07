@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010-2011 OpenStack LLC.
 # All Rights Reserved.
 #
@@ -16,6 +14,8 @@
 #    under the License.
 
 import datetime
+
+import six
 
 from manila.openstack.common import timeutils
 
@@ -50,7 +50,7 @@ class ViewBuilder(object):
             "share_networks": ["maxTotalShareNetworks"],
         }
         limits = {}
-        for name, value in absolute_limits.iteritems():
+        for name, value in six.iteritems(absolute_limits):
             if name in limit_names and value is not None:
                 for name in limit_names[name]:
                     limits[name] = value

@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -20,6 +18,9 @@
 Handles all requests relating to shares.
 """
 
+from oslo.config import cfg
+import six
+
 from manila.db import base
 from manila import exception
 from manila.openstack.common import excutils
@@ -30,11 +31,7 @@ from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila.share import rpcapi as share_rpcapi
 
-from oslo.config import cfg
-
-
 CONF = cfg.CONF
-
 LOG = logging.getLogger(__name__)
 GB = 1048576 * 1024
 QUOTAS = quota.QUOTAS
@@ -317,7 +314,7 @@ class API(base.Base):
             results = []
             not_found = object()
             for share in shares:
-                for opt, value in search_opts.iteritems():
+                for opt, value in six.iteritems(search_opts):
                     if share.get(opt, not_found) != value:
                         break
                 else:
@@ -328,7 +325,7 @@ class API(base.Base):
     def get_snapshot(self, context, snapshot_id):
         policy.check_policy(context, 'share', 'get_snapshot')
         rv = self.db.share_snapshot_get(context, snapshot_id)
-        return dict(rv.iteritems())
+        return dict(six.iteritems(rv))
 
     def get_all_snapshots(self, context, search_opts=None):
         policy.check_policy(context, 'share', 'get_all_snapshots')
@@ -349,7 +346,7 @@ class API(base.Base):
             results = []
             not_found = object()
             for snapshot in snapshots:
-                for opt, value in search_opts.iteritems():
+                for opt, value in six.iteritems(search_opts):
                     if snapshot.get(opt, not_found) != value:
                         break
                 else:
@@ -420,7 +417,7 @@ class API(base.Base):
     def get_share_metadata(self, context, share):
         """Get all metadata associated with a share."""
         rv = self.db.share_metadata_get(context, share['id'])
-        return dict(rv.iteritems())
+        return dict(six.iteritems(rv))
 
     @policy.wrap_check_policy('share')
     def delete_share_metadata(self, context, share, key):
@@ -431,7 +428,7 @@ class API(base.Base):
         if not metadata:
             metadata = {}
 
-        for k, v in metadata.iteritems():
+        for k, v in six.iteritems(metadata):
             if len(k) == 0:
                 msg = _("Metadata property key is blank")
                 LOG.warn(msg)

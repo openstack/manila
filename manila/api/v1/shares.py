@@ -15,6 +15,7 @@
 
 """The shares api."""
 
+import six
 import webob
 from webob import exc
 
@@ -256,7 +257,7 @@ class ShareController(wsgi.Controller):
         # TODO(vish): Instance should be None at db layer instead of
         #             trying to lazy load, but for now we turn it into
         #             a dict to avoid an error.
-        return self._view_builder.summary(req, dict(new_share.iteritems()))
+        return self._view_builder.summary(req, dict(six.iteritems(new_share)))
 
 
 def create_resource():

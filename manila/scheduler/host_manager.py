@@ -20,10 +20,10 @@ Manage hosts in the current zone.
 import UserDict
 
 from oslo.config import cfg
+import six
 
 from manila import db
 from manila import exception
-
 from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common.scheduler import weights
@@ -267,12 +267,12 @@ class HostManager(object):
             if host_state:
                 # copy capabilities to host_state.capabilities
                 host_state.update_capabilities(capabilities,
-                                               dict(service.iteritems()))
+                                               dict(six.iteritems(service)))
             else:
                 host_state = self.host_state_cls(host,
                                                  capabilities=capabilities,
                                                  service=
-                                                 dict(service.iteritems()))
+                                                 dict(six.iteritems(service)))
                 self.host_state_map[host] = host_state
             # update host_state
             host_state.update_from_share_capability(capabilities)

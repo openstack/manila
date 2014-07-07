@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -21,6 +19,7 @@
 import datetime
 
 from oslo.config import cfg
+import six
 
 from manila import db
 from manila import exception
@@ -230,7 +229,7 @@ class DbQuotaDriver(object):
                                                            project_id, user_id)
         # Use the project quota for default user quota.
         proj_quotas = db.quota_get_all_by_project(context, project_id)
-        for key, value in proj_quotas.iteritems():
+        for key, value in six.iteritems(proj_quotas):
             if key not in user_quotas.keys():
                 user_quotas[key] = value
         user_usages = None
