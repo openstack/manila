@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # Copyright 2010 OpenStack LLC.
@@ -34,11 +32,11 @@ import greenlet
 from oslo.config import cfg
 from paste import deploy
 import routes.middleware
+import six
 import webob.dec
 import webob.exc
 
 from manila import exception
-
 from manila.openstack.common import log as logging
 from manila import utils
 
@@ -402,7 +400,7 @@ class Debug(Middleware):
         resp = req.get_response(self.application)
 
         print(('*' * 40) + ' RESPONSE HEADERS')
-        for (key, value) in resp.headers.iteritems():
+        for (key, value) in six.iteritems(resp.headers):
             print(key, '=', value)
         print()
 

@@ -27,6 +27,7 @@ import uuid
 import mock
 from oslo.config import cfg
 from oslo.messaging import conffixture as messaging_conffixture
+import six
 import testtools
 
 from manila.openstack.common import importutils
@@ -124,7 +125,7 @@ class TestCase(testtools.TestCase):
 
     def flags(self, **kw):
         """Override flag variables for a test."""
-        for k, v in kw.iteritems():
+        for k, v in six.iteritems(kw):
             CONF.set_override(k, v)
 
     def start_service(self, name, host=None, **kwargs):

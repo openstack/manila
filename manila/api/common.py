@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2010 OpenStack LLC.
 # All Rights Reserved.
 #
@@ -19,19 +17,17 @@ import os
 import re
 import urlparse
 
+from oslo.config import cfg
+import six
 import webob
 
 from manila.api.openstack import wsgi
 from manila.api import xmlutil
 from manila.openstack.common import log as logging
 from manila import utils
-from oslo.config import cfg
 
-
-LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
-
-
+LOG = logging.getLogger(__name__)
 XML_NS_V1 = 'http://docs.openstack.org/volume/api/v1'
 
 
@@ -186,7 +182,7 @@ def dict_to_query_str(params):
     # TODO(throughnothing): we should just use urllib.urlencode instead of this
     # But currently we don't work with urlencoded url's
     param_str = ""
-    for key, val in params.iteritems():
+    for key, val in six.iteritems(params):
         param_str = param_str + '='.join([str(key), str(val)]) + '&'
 
     return param_str.rstrip('&')

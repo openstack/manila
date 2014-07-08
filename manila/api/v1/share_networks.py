@@ -15,6 +15,7 @@
 
 """The shares api."""
 
+import six
 import webob
 from webob import exc
 
@@ -141,7 +142,7 @@ class ShareNetworkController(wsgi.Controller):
                             context.project_id)
 
         if search_opts:
-            for key, value in search_opts.iteritems():
+            for key, value in six.iteritems(search_opts):
                 networks = [network for network in networks
                             if network[key] == value]
         return self._view_builder.build_share_networks(networks, is_detail)
@@ -235,7 +236,7 @@ class ShareNetworkController(wsgi.Controller):
             'add_security_service': self._add_security_service,
             'remove_security_service': self._remove_security_service
         }
-        for action, data in body.iteritems():
+        for action, data in six.iteritems(body):
             try:
                 return _actions[action](req, id, data)
             except KeyError:

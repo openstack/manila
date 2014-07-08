@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2014 Mirantis Inc.
 # All Rights Reserved.
 #
@@ -17,6 +15,7 @@
 
 """The security service api."""
 
+import six
 import webob
 from webob import exc
 
@@ -141,7 +140,7 @@ class SecurityServiceController(wsgi.Controller):
                 results = []
                 not_found = object()
                 for service in security_services:
-                    for opt, value in search_opts.iteritems():
+                    for opt, value in six.iteritems(search_opts):
                         if service.get(opt, not_found) != value:
                             break
                     else:

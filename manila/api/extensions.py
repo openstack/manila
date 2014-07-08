@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2011 OpenStack LLC.
 # Copyright 2011 Justin Santa Barbara
 # All Rights Reserved.
@@ -18,6 +16,8 @@
 
 import os
 
+from oslo.config import cfg
+import six
 import webob.dec
 import webob.exc
 
@@ -25,15 +25,12 @@ import manila.api.openstack
 from manila.api.openstack import wsgi
 from manila.api import xmlutil
 from manila import exception
-
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 import manila.policy
-from oslo.config import cfg
 
-
-LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
+LOG = logging.getLogger(__name__)
 
 
 class ExtensionDescriptor(object):
@@ -152,7 +149,7 @@ class ExtensionsResource(wsgi.Resource):
     @wsgi.serializers(xml=ExtensionsTemplate)
     def index(self, req):
         extensions = []
-        for _alias, ext in self.extension_manager.extensions.iteritems():
+        for _alias, ext in six.iteritems(self.extension_manager.extensions):
             extensions.append(self._translate(ext))
         return dict(extensions=extensions)
 
