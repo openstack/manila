@@ -86,7 +86,7 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                    % self.configuration.share_volume_group)
             raise exception.InvalidParameterValue(err=msg)
         if not self.configuration.share_export_ip:
-            msg = (_("share_export_ip doesn't specified"))
+            msg = (_("share_export_ip isn't specified"))
             raise exception.InvalidParameterValue(err=msg)
 
     def do_setup(self, context):
