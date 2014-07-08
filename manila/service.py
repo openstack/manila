@@ -35,8 +35,8 @@ from manila import db
 from manila import exception
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
+from manila.openstack.common import loopingcall
 from manila import rpc
-from manila import utils
 from manila import version
 from manila import wsgi
 
@@ -372,7 +372,7 @@ class Service(object):
 
         self.manager.init_host()
         if self.report_interval:
-            pulse = utils.LoopingCall(self.report_state)
+            pulse = loopingcall.FixedIntervalLoopingCall(self.report_state)
             pulse.start(interval=self.report_interval,
                         initial_delay=self.report_interval)
             self.timers.append(pulse)
@@ -383,7 +383,8 @@ class Service(object):
             else:
                 initial_delay = None
 
-            periodic = utils.LoopingCall(self.periodic_tasks)
+            periodic = loopingcall.FixedIntervalLoopingCall(
+                self.periodic_tasks)
             periodic.start(interval=self.periodic_interval,
                            initial_delay=initial_delay)
             self.timers.append(periodic)
