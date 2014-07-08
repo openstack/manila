@@ -149,7 +149,8 @@ class LVMShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def get_share_stats(self, refresh=False):
         """Get share status.
 
-        If 'refresh' is True, run update the stats first."""
+        If 'refresh' is True, run update the stats first.
+        """
         if refresh:
             self._update_share_status()
 

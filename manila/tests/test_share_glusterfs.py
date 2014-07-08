@@ -269,16 +269,14 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             Mock(return_value=(('true',), {})))
 
         def exec_runner(*ignore_args, **ignore_kwargs):
-            return """\
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cliOutput>
   <volInfo>
     <volumes>
       <count>0</count>
     </volumes>
   </volInfo>
-</cliOutput>
-""", ''
+</cliOutput>""", ''
         expected_exec = ['true']
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
         self.assertRaises(exception.InvalidShare,
@@ -290,8 +288,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             Mock(return_value=(('true',), {})))
 
         def exec_runner(*ignore_args, **ignore_kwargs):
-            return """\
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cliOutput>
   <volInfo>
     <volumes>
@@ -300,8 +297,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
       <count>1</count>
     </volumes>
   </volInfo>
-</cliOutput>
-""", ''
+</cliOutput>""", ''
         expected_exec = ['true']
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
         ret = self._driver._get_export_dir_dict()
@@ -313,8 +309,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             Mock(return_value=(('true',), {})))
 
         def exec_runner(*ignore_args, **ignore_kwargs):
-            return """\
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cliOutput>
   <volInfo>
     <volumes>
@@ -329,8 +324,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
       <count>1</count>
     </volumes>
   </volInfo>
-</cliOutput>
-""", ''
+</cliOutput>""", ''
         expected_exec = ['true']
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
         ret = self._driver._get_export_dir_dict()

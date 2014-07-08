@@ -98,7 +98,8 @@ class ManilaBase(object):
     def iteritems(self):
         """Make the model object behave like a dict.
 
-        Includes attributes from joins."""
+        Includes attributes from joins.
+        """
         local = dict(self)
         joined = dict([(k, v) for k, v in six.iteritems(self.__dict__)
                       if not k[0] == '_'])

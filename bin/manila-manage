@@ -116,19 +116,22 @@ class ShellCommands(object):
     def bpython(self):
         """Runs a bpython shell.
 
-        Falls back to Ipython/python shell if unavailable"""
+        Falls back to Ipython/python shell if unavailable
+        """
         self.run('bpython')
 
     def ipython(self):
         """Runs an Ipython shell.
 
-        Falls back to Python shell if unavailable"""
+        Falls back to Python shell if unavailable
+        """
         self.run('ipython')
 
     def python(self):
         """Runs a python shell.
 
-        Falls back to Python shell if unavailable"""
+        Falls back to Python shell if unavailable
+        """
         self.run('python')
 
     @args('--shell', dest="shell",
@@ -172,7 +175,8 @@ class ShellCommands(object):
     @args('--path', required=True, help='Script path')
     def script(self, path):
         """Runs the script from the specifed path with flags set properly.
-        arguments: path"""
+        arguments: path
+        """
         exec(compile(open(path).read(), path, 'exec'), locals(), globals())
 
 
@@ -191,7 +195,8 @@ class HostCommands(object):
           help='Availability Zone (default: %(default)s)')
     def list(self, zone=None):
         """Show a list of all physical hosts. Filter by zone.
-        args: [zone]"""
+        args: [zone]
+        """
         print("%-25s\t%-15s" % (_('host'), _('zone')))
         ctxt = context.get_admin_context()
         services = db.service_get_all(ctxt)
@@ -338,7 +343,8 @@ CATEGORIES = {
 
 def methods_of(obj):
     """Get all callable methods of an object that don't start with underscore
-    returns a list of tuples of the form (method_name, method)"""
+    returns a list of tuples of the form (method_name, method)
+    """
     result = []
     for i in dir(obj):
         if callable(getattr(obj, i)) and not i.startswith('_'):
