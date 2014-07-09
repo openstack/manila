@@ -21,6 +21,8 @@
 SQLAlchemy models for Manila data.
 """
 
+from oslo.config import cfg
+import six
 from sqlalchemy import Column, Index, Integer, String, Text, schema
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
@@ -29,12 +31,8 @@ from sqlalchemy.orm import relationship, backref, object_mapper
 
 from manila.common import constants
 from manila.db.sqlalchemy.session import get_session
-
 from manila import exception
-
 from manila.openstack.common import timeutils
-from oslo.config import cfg
-
 
 CONF = cfg.CONF
 BASE = declarative_base()
@@ -94,7 +92,7 @@ class ManilaBase(object):
 
     def update(self, values):
         """Make the model object behave like a dict."""
-        for k, v in values.iteritems():
+        for k, v in six.iteritems(values):
             setattr(self, k, v)
 
     def iteritems(self):
@@ -102,10 +100,10 @@ class ManilaBase(object):
 
         Includes attributes from joins."""
         local = dict(self)
-        joined = dict([(k, v) for k, v in self.__dict__.iteritems()
+        joined = dict([(k, v) for k, v in six.iteritems(self.__dict__)
                       if not k[0] == '_'])
         local.update(joined)
-        return local.iteritems()
+        return six.iteritems(local)
 
 
 class Service(BASE, ManilaBase):

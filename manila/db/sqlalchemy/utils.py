@@ -18,6 +18,7 @@
 import re
 
 from migrate.changeset import UniqueConstraint, ForeignKeyConstraint
+import six
 from sqlalchemy import Boolean
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
@@ -479,7 +480,7 @@ def modify_indexes(migrate_engine, data, upgrade=True):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    for table_name, indexes in data.iteritems():
+    for table_name, indexes in six.iteritems(data):
         table = Table(table_name, meta, autoload=True)
 
         for index_name, old_columns, new_columns in indexes:

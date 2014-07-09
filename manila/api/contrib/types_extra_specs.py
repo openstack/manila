@@ -15,6 +15,7 @@
 
 """The volume types extra specs extension"""
 
+import six
 import webob
 
 from manila.api import common
@@ -34,7 +35,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
     def _get_extra_specs(self, context, type_id):
         extra_specs = db.volume_type_extra_specs_get(context, type_id)
         specs_dict = {}
-        for key, value in extra_specs.iteritems():
+        for key, value in six.iteritems(extra_specs):
             specs_dict[key] = value
         return dict(extra_specs=specs_dict)
 
@@ -48,7 +49,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         # keys and values in extra_specs can be only strings
         # with length in range(1, 256)
         is_valid = True
-        for k, v in extra_specs.iteritems():
+        for k, v in six.iteritems(extra_specs):
             if not (isinstance(k, basestring) and len(k) in range(1, 256)):
                 is_valid = False
                 break

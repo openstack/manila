@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
 from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila import quota
@@ -40,7 +42,7 @@ class UsedLimitsController(wsgi.Controller):
         }
 
         used_limits = {}
-        for display_name, quota in quota_map.iteritems():
+        for display_name, quota in six.iteritems(quota_map):
             if quota in quotas:
                 used_limits[display_name] = quotas[quota]['in_use']
 

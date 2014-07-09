@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+import six
 
 from manila.api.contrib import used_limits
 from manila.api.openstack import wsgi
@@ -45,7 +46,7 @@ class UsedLimitsTestCase(test.TestCase):
             'totalShareGigabytesUsed': 'gigabytes',
         }
         limits = {}
-        for display_name, q in quota_map.iteritems():
+        for display_name, q in six.iteritems(quota_map):
             limits[q] = {'limit': 2, 'in_use': 1, }
 
         def stub_get_project_quotas(*args, **kwargs):
@@ -56,6 +57,6 @@ class UsedLimitsTestCase(test.TestCase):
 
             self.controller.index(fake_req, res)
             abs_limits = res.obj['limits']['absolute']
-            for used_limit, value in abs_limits.iteritems():
+            for used_limit, value in six.iteritems(abs_limits):
                 self.assertEqual(value,
                                  limits[quota_map[used_limit]]['in_use'])

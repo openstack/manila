@@ -16,6 +16,8 @@
 Fakes For Scheduler tests.
 """
 
+import six
+
 from manila.openstack.common import timeutils
 from manila.scheduler import filter_scheduler
 from manila.scheduler import host_manager
@@ -69,7 +71,7 @@ class FakeHostManager(host_manager.HostManager):
 class FakeHostState(host_manager.HostState):
     def __init__(self, host, attribute_dict):
         super(FakeHostState, self).__init__(host)
-        for (key, val) in attribute_dict.iteritems():
+        for (key, val) in six.iteritems(attribute_dict):
             setattr(self, key, val)
 
 
