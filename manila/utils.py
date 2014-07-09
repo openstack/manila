@@ -546,12 +546,6 @@ def parse_mailmap(mailmap='.mailmap'):
     return mapping
 
 
-def str_dict_replace(s, mapping):
-    for s1, s2 in mapping.iteritems():
-        s = s.replace(s1, s2)
-    return s
-
-
 class LazyPluggable(object):
     """A pluggable backend loaded lazily based on some value."""
 
@@ -706,53 +700,6 @@ def get_from_path(items, path):
         return get_from_path(results, remainder)
 
 
-def flatten_dict(dict_, flattened=None):
-    """Recursively flatten a nested dictionary."""
-    flattened = flattened or {}
-    for key, value in dict_.iteritems():
-        if hasattr(value, 'iteritems'):
-            flatten_dict(value, flattened)
-        else:
-            flattened[key] = value
-    return flattened
-
-
-def partition_dict(dict_, keys):
-    """Return two dicts, one with `keys` the other with everything else."""
-    intersection = {}
-    difference = {}
-    for key, value in dict_.iteritems():
-        if key in keys:
-            intersection[key] = value
-        else:
-            difference[key] = value
-    return intersection, difference
-
-
-def map_dict_keys(dict_, key_map):
-    """Return a dict in which the dictionaries keys are mapped to new keys."""
-    mapped = {}
-    for key, value in dict_.iteritems():
-        mapped_key = key_map[key] if key in key_map else key
-        mapped[mapped_key] = value
-    return mapped
-
-
-def subset_dict(dict_, keys):
-    """Return a dict that only contains a subset of keys."""
-    subset = partition_dict(dict_, keys)[0]
-    return subset
-
-
-def check_isinstance(obj, cls):
-    """Checks that obj is of type cls, and lets PyLint infer types."""
-    if isinstance(obj, cls):
-        return obj
-    raise Exception(_('Expected object of type: %s') % (str(cls)))
-    # TODO(justinsb): Can we make this better??
-    return cls()  # Ugly PyLint hack
-
-
 def is_valid_boolstr(val):
     """Check if the provided string is a valid bool string or not. """
     val = str(val).lower()
@@ -820,61 +767,6 @@ def monkey_patch():
                         decorator("%s.%s" % (module, key), func))
 
 
-def convert_to_list_dict(lst, label):
-    """Convert a value or list into a list of dicts"""
-    if not lst:
-        return None
-    if not isinstance(lst, list):
-        lst = [lst]
-    return [{label: x} for x in lst]
-
-
-def timefunc(func):
-    """Decorator that logs how long a particular function took to execute"""
-    @functools.wraps(func)
-    def inner(*args, **kwargs):
-        start_time = time.time()
-        try:
-            return func(*args, **kwargs)
-        finally:
-            total_time = time.time() - start_time
-            LOG.debug("timefunc: '%(name)s' took %(total_time).2f secs" %
-                      dict(name=func.__name__, total_time=total_time))
-    return inner
-
-
-def generate_glance_url():
-    """Generate the URL to glance."""
-    # TODO(jk0): This will eventually need to take SSL into consideration
-    # when supported in glance.
-    return "http://%s:%d" % (CONF.glance_host, CONF.glance_port)
-
-
-@contextlib.contextmanager
-def logging_error(message):
-    """Catches exception, write message to the log, re-raise.
-    This is a common refinement of save_and_reraise that writes a specific
-    message to the log.
-    """
-    try:
-        yield
-    except Exception as error:
-        with excutils.save_and_reraise_exception():
-            LOG.exception(message)
-
-
-@contextlib.contextmanager
-def remove_path_on_error(path):
-    """Protect code that wants to operate on PATH atomically.
-    Any exception will cause PATH to be removed.
-    """
-    try:
-        yield
-    except Exception:
-        with excutils.save_and_reraise_exception():
-            delete_if_exists(path)
-
-
 def make_dev_path(dev, partition=None, base='/dev'):
     """Return a path to a particular device.
 
@@ -888,15 +780,6 @@ def make_dev_path(dev, partition=None, base='/dev'):
     if partition:
         path += str(partition)
     return path
-
-
-def total_seconds(td):
-    """Local total_seconds implementation for compatibility with python 2.6"""
-    if hasattr(td, 'total_seconds'):
-        return td.total_seconds()
-    else:
-        return ((td.days * 86400 + td.seconds) * 10 ** 6 +
-                td.microseconds) / 10.0 ** 6
 
 
 def sanitize_hostname(hostname):
@@ -983,7 +866,7 @@ def service_is_up(service):
     """Check whether a service is up based on last heartbeat."""
     last_heartbeat = service['updated_at'] or service['created_at']
     # Timestamps in DB are UTC.
-    elapsed = total_seconds(timeutils.utcnow() - last_heartbeat)
+    elapsed = timeutils.total_seconds(timeutils.utcnow() - last_heartbeat)
     return abs(elapsed) <= CONF.service_down_time
 
 

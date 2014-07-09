@@ -300,11 +300,6 @@ class GenericUtilsTestCase(test.TestCase):
         hostname = "<}\x1fh\x10e\x08l\x02l\x05o\x12!{>"
         self.assertEqual("hello", utils.sanitize_hostname(hostname))
 
-    def test_generate_glance_url(self):
-        generated_url = utils.generate_glance_url()
-        actual_url = "http://%s:%d" % (CONF.glance_host, CONF.glance_port)
-        self.assertEqual(generated_url, actual_url)
-
     def test_read_cached_file(self):
         cache_data = {"data": 1123, "mtime": 1}
         with mock.patch.object(os.path, "getmtime", mock.Mock(return_value=1)):
