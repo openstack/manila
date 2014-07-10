@@ -29,6 +29,7 @@ from manila import exception
 from manila.openstack.common import importutils
 from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
+from manila.openstack.common import processutils
 from manila.share import driver
 from manila.share.drivers import service_instance
 from manila import utils
@@ -126,7 +127,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             ssh_pool.remove(server['ssh'])
             ssh = ssh_pool.create()
             self.ssh_connections[server['instance_id']] = (ssh_pool, ssh)
-        return utils.ssh_execute(ssh, ' '.join(command))
+        return processutils.ssh_execute(ssh, ' '.join(command))
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
