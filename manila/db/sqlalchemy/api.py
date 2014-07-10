@@ -26,6 +26,7 @@ import uuid
 import warnings
 
 from oslo.config import cfg
+import six
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -1071,7 +1072,7 @@ def _share_get_query(context, session=None):
 def _metadata_refs(metadata_dict, meta_class):
     metadata_refs = []
     if metadata_dict:
-        for k, v in metadata_dict.iteritems():
+        for k, v in six.iteritems(metadata_dict):
             metadata_ref = meta_class()
             metadata_ref['key'] = k
             metadata_ref['value'] = v
@@ -1397,7 +1398,7 @@ def _share_metadata_update(context, share_id, metadata, delete, session=None):
         if delete:
             original_metadata = _share_metadata_get(context, share_id,
                                                     session=session)
-            for meta_key, meta_value in original_metadata.iteritems():
+            for meta_key, meta_value in six.iteritems(original_metadata):
                 if meta_key not in metadata:
                     meta_ref = _share_metadata_get_item(context, share_id,
                                                         meta_key,
@@ -1999,7 +2000,7 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id,
     session = get_session()
     with session.begin():
         spec_ref = None
-        for key, value in specs.iteritems():
+        for key, value in six.iteritems(specs):
             try:
                 spec_ref = _volume_type_extra_specs_get_item(
                     context, volume_type_id, key, session)

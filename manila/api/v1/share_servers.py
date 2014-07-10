@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
 from webob import exc
 
 from manila.api.openstack import wsgi
@@ -82,7 +83,7 @@ class ShareServerController(wsgi.Controller):
             else:
                 s.share_network_name = s.share_network_id
         if search_opts:
-            for k, v in search_opts.iteritems():
+            for k, v in six.iteritems(search_opts):
                 share_servers = [s for s in share_servers if (hasattr(s, k) and
                     s[k] == v or k == 'share_network' and v in
                         [s.share_network['name'], s.share_network['id']])]

@@ -15,6 +15,7 @@
 
 """The share snapshots api."""
 
+import six
 import webob
 from webob import exc
 
@@ -187,7 +188,8 @@ class ShareSnapshotsController(wsgi.Controller):
             share,
             snapshot.get('display_name'),
             snapshot.get('display_description'))
-        return self._view_builder.summary(req, dict(new_snapshot.iteritems()))
+        return self._view_builder.summary(
+            req, dict(six.iteritems(new_snapshot)))
 
 
 def create_resource():

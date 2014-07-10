@@ -23,6 +23,7 @@ SHOULD include dedicated exception logging.
 """
 
 from oslo.config import cfg
+import six
 from sqlalchemy import exc as sqa_exc
 import webob.exc
 
@@ -126,7 +127,7 @@ class ManilaException(Exception):
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
                 LOG.exception(_('Exception in string format operation'))
-                for name, value in kwargs.iteritems():
+                for name, value in six.iteritems(kwargs):
                     LOG.error("%s: %s" % (name, value))
                 if CONF.fatal_exception_format_errors:
                     raise e

@@ -12,6 +12,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import six
+
 from manila.common import constants
 from manila import context
 from manila.db import api as db_api
@@ -193,8 +196,8 @@ class ShareNetworkDBTest(test.TestCase):
                                               self.share_nw_dict['id'])
 
         self.assertEqual(result_update['name'], new_name)
-        self._check_fields(expected=dict(result_update.iteritems()),
-                           actual=dict(result_get.iteritems()))
+        self._check_fields(expected=dict(six.iteritems(result_update)),
+                           actual=dict(six.iteritems(result_get)))
 
     def test_update_not_found(self):
         self.assertRaises(exception.ShareNetworkNotFound,

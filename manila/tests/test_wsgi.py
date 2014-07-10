@@ -22,6 +22,7 @@ import tempfile
 import urllib2
 
 from oslo.config import cfg
+import six
 import testtools
 import webob
 import webob.dec
@@ -225,7 +226,7 @@ class ExceptionTest(test.TestCase):
         self.assertEqual(resp.status_int, exception_type.code, resp.body)
 
         if hasattr(exception_type, 'headers'):
-            for (key, value) in exception_type.headers.iteritems():
+            for (key, value) in six.iteritems(exception_type.headers):
                 self.assertTrue(key in resp.headers)
                 self.assertEqual(resp.headers[key], value)
 
