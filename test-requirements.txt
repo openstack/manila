@@ -5,6 +5,7 @@ discover
 fixtures>=0.3.14
 mock>=1.0
 MySQL-python
+oslotest
 psycopg2
 python-subunit
 sphinx>=1.1.2,!=1.2.0,<1.3

@@ -32,21 +32,20 @@ these objects be simple dictionaries.
 
 **Related Flags**
 
-:db_backend:  string to lookup in the list of LazyPluggable backends.
-              `sqlalchemy` is the only supported backend right now.
+:backend:  string to lookup in the list of LazyPluggable backends.
+           `sqlalchemy` is the only supported backend right now.
 
-:sql_connection:  string specifying the sqlalchemy connection to use, like:
-                  `sqlite:///var/lib/manila/manila.sqlite`.
+:connection:  string specifying the sqlalchemy connection to use, like:
+              `sqlite:///var/lib/manila/manila.sqlite`.
 
 :enable_new_services:  when adding a new service to the database, is it in the
                        pool of available hardware (Default: True)
 
 """
-
 from oslo.config import cfg
+from oslo.db import api as db_api
 
 from manila import exception
-from manila import utils
 
 db_opts = [
     cfg.StrOpt('db_backend',
@@ -67,8 +66,9 @@ db_opts = [
 CONF = cfg.CONF
 CONF.register_opts(db_opts)
 
-IMPL = utils.LazyPluggable('db_backend',
-                           sqlalchemy='manila.db.sqlalchemy.api')
+_BACKEND_MAPPING = {'sqlalchemy': 'manila.db.sqlalchemy.api'}
+IMPL = db_api.DBAPI.from_config(cfg.CONF, backend_mapping=_BACKEND_MAPPING,
+                                lazy=True)
 
 
 ###################

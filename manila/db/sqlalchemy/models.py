@@ -22,6 +22,7 @@ SQLAlchemy models for Manila data.
 """
 
 from oslo.config import cfg
+from oslo.db.sqlalchemy import models
 import six
 from sqlalchemy import Column, Index, Integer, String, Text, schema
 from sqlalchemy.exc import IntegrityError
@@ -30,7 +31,6 @@ from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
 from sqlalchemy.orm import relationship, backref, object_mapper
 
 from manila.common import constants
-from manila.db.sqlalchemy.session import get_session
 from manila import exception
 from manila.openstack.common import timeutils
 
@@ -38,34 +38,12 @@ CONF = cfg.CONF
 BASE = declarative_base()
 
 
-class ManilaBase(object):
+class ManilaBase(models.ModelBase, models.TimestampMixin):
     """Base class for Manila Models."""
     __table_args__ = {'mysql_engine': 'InnoDB'}
-    __table_initialized__ = False
-    created_at = Column(DateTime, default=lambda: timeutils.utcnow())
-    updated_at = Column(DateTime, onupdate=lambda: timeutils.utcnow())
     deleted_at = Column(DateTime)
     deleted = Column(Integer, default=0)
     metadata = None
-
-    def save(self, session=None):
-        """Save this object."""
-        if not session:
-            session = get_session()
-        # NOTE(boris-42): This part of code should be look like:
-        #                       sesssion.add(self)
-        #                       session.flush()
-        #                 But there is a bug in sqlalchemy and eventlet that
-        #                 raises NoneType exception if there is no running
-        #                 transaction and rollback is called. As long as
-        #                 sqlalchemy has this bug we have to create transaction
-        #                 explicity.
-        with session.begin(subtransactions=True):
-            try:
-                session.add(self)
-                session.flush()
-            except IntegrityError as e:
-                raise exception.Duplicate(message=str(e))
 
     def delete(self, session=None):
         """Delete this object."""
@@ -73,38 +51,12 @@ class ManilaBase(object):
         self.deleted_at = timeutils.utcnow()
         self.save(session=session)
 
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def get(self, key, default=None):
-        return getattr(self, key, default)
-
-    def __iter__(self):
-        self._i = iter(object_mapper(self).columns)
-        return self
-
-    def next(self):
-        n = self._i.next().name
-        return n, getattr(self, n)
-
-    def update(self, values):
-        """Make the model object behave like a dict."""
-        for k, v in six.iteritems(values):
-            setattr(self, k, v)
-
-    def iteritems(self):
-        """Make the model object behave like a dict.
-
-        Includes attributes from joins.
-        """
-        local = dict(self)
-        joined = dict([(k, v) for k, v in six.iteritems(self.__dict__)
-                      if not k[0] == '_'])
-        local.update(joined)
-        return six.iteritems(local)
+    def to_dict(self):
+        model_dict = {}
+        for k, v in six.iteritems(self):
+            if not issubclass(type(v), ManilaBase):
+                model_dict[k] = v
+        return model_dict
 
 
 class Service(BASE, ManilaBase):
@@ -500,6 +452,6 @@ def register_models():
               ShareAccessMapping,
               ShareSnapshot
               )
-    engine = create_engine(CONF.sql_connection, echo=False)
+    engine = create_engine(CONF.database.connection, echo=False)
     for model in models:
         model.metadata.create_all(engine)

@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.db import exception as db_exception
 import six
 
 from manila.common import constants
@@ -82,7 +83,7 @@ class ShareNetworkDBTest(test.TestCase):
     def test_create_with_duplicated_id(self):
         db_api.share_network_create(self.fake_context, self.share_nw_dict)
 
-        self.assertRaises(exception.Duplicate,
+        self.assertRaises(db_exception.DBDuplicateEntry,
                           db_api.share_network_create,
                           self.fake_context,
                           self.share_nw_dict)

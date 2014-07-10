@@ -34,7 +34,7 @@ import six
 import testtools
 
 from manila.db import migration
-from manila.db.sqlalchemy import session as sqla_session
+from manila.db.sqlalchemy import api as db_api
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
@@ -129,9 +129,9 @@ class TestCase(testtools.TestCase):
         global _DB_CACHE
         if not _DB_CACHE:
             _DB_CACHE = Database(
-                sqla_session,
+                db_api,
                 migration,
-                sql_connection=CONF.sql_connection,
+                sql_connection=CONF.database.connection,
                 sqlite_db=CONF.sqlite_db,
                 sqlite_clean_db=CONF.sqlite_clean_db,
             )

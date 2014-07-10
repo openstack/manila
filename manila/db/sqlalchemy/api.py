@@ -21,23 +21,23 @@
 
 import datetime
 import functools
+import sys
 import time
 import uuid
 import warnings
 
 from oslo.config import cfg
+from oslo.db import exception as db_exception
+from oslo.db import options as db_options
+from oslo.db.sqlalchemy import session
 import six
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql import func
 
 from manila.common import constants
-from manila.common import sqlalchemyutils
-from manila import db
 from manila.db.sqlalchemy import models
-from manila.db.sqlalchemy.session import get_session
 from manila import exception
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
@@ -49,6 +49,35 @@ LOG = logging.getLogger(__name__)
 
 _DEFAULT_QUOTA_NAME = 'default'
 PER_PROJECT_QUOTAS = []
+
+_FACADE = None
+
+_DEFAULT_SQL_CONNECTION = 'sqlite://'
+db_options.set_defaults(cfg.CONF,
+                        connection=_DEFAULT_SQL_CONNECTION)
+
+
+def _create_facade_lazily():
+    global _FACADE
+    if _FACADE is None:
+        _FACADE = session.EngineFacade.from_config(cfg.CONF)
+    return _FACADE
+
+
+def get_engine():
+    facade = _create_facade_lazily()
+    return facade.get_engine()
+
+
+def get_session(**kwargs):
+    facade = _create_facade_lazily()
+    return facade.get_session(**kwargs)
+
+
+def get_backend():
+    """The backend is this module itself."""
+
+    return sys.modules[__name__]
 
 
 def is_admin_context(context):
@@ -138,7 +167,7 @@ def require_share_exists(f):
     """
 
     def wrapper(context, share_id, *args, **kwargs):
-        db.share_get(context, share_id)
+        share_get(context, share_id)
         return f(context, share_id, *args, **kwargs)
     wrapper.__name__ = f.__name__
     return wrapper
@@ -380,8 +409,11 @@ def service_create(context, values):
     service_ref.update(values)
     if not CONF.enable_new_services:
         service_ref.disabled = True
-    service_ref.save()
-    return service_ref
+
+    session = get_session()
+    with session.begin():
+        service_ref.save(session)
+        return service_ref
 
 
 @require_admin_context
@@ -478,7 +510,9 @@ def quota_create(context, project_id, resource, limit, user_id=None):
     quota_ref.project_id = project_id
     quota_ref.resource = resource
     quota_ref.hard_limit = limit
-    quota_ref.save()
+    session = get_session()
+    with session.begin():
+        quota_ref.save(session)
     return quota_ref
 
 
@@ -551,7 +585,9 @@ def quota_class_create(context, class_name, resource, limit):
     quota_class_ref.class_name = class_name
     quota_class_ref.resource = resource
     quota_class_ref.hard_limit = limit
-    quota_class_ref.save()
+    session = get_session()
+    with session.begin():
+        quota_class_ref.save(session)
     return quota_class_ref
 
 
@@ -1271,7 +1307,9 @@ def snapshot_data_get_for_project(context, project_id, user_id, session=None):
                         func.sum(models.ShareSnapshot.size),
                         read_deleted="no",
                         session=session).\
-        filter_by(project_id=project_id)
+        filter_by(project_id=project_id).\
+        options(joinedload('share'))
+
     if user_id:
         result = query.filter_by(user_id=user_id).first()
     else:
@@ -1297,6 +1335,7 @@ def share_snapshot_get(context, snapshot_id, session=None):
     result = model_query(context, models.ShareSnapshot, session=session,
                          project_only=True).\
         filter_by(id=snapshot_id).\
+        options(joinedload('share')).\
         first()
 
     if not result:
@@ -1307,7 +1346,9 @@ def share_snapshot_get(context, snapshot_id, session=None):
 
 @require_admin_context
 def share_snapshot_get_all(context):
-    return model_query(context, models.ShareSnapshot).all()
+    return model_query(context, models.ShareSnapshot).\
+           options(joinedload('share')).\
+           all()
 
 
 @require_context
@@ -1315,6 +1356,7 @@ def share_snapshot_get_all_by_project(context, project_id):
     authorize_project_context(context, project_id)
     return model_query(context, models.ShareSnapshot).\
         filter_by(project_id=project_id).\
+        options(joinedload('share')).\
         all()
 
 
@@ -1322,7 +1364,9 @@ def share_snapshot_get_all_by_project(context, project_id):
 def share_snapshot_get_all_for_share(context, share_id):
     return model_query(context, models.ShareSnapshot, read_deleted='no',
                        project_only=True).\
-        filter_by(share_id=share_id).all()
+        filter_by(share_id=share_id).\
+        options(joinedload('share')).\
+        all()
 
 
 @require_context
@@ -1334,6 +1378,7 @@ def share_snapshot_data_get_for_project(context, project_id, session=None):
                          read_deleted="no",
                          session=session).\
         filter_by(project_id=project_id).\
+        options(joinedload('share')).\
         first()
 
     # NOTE(vish): convert None to 0
@@ -1379,7 +1424,8 @@ def share_metadata_update(context, share_id, metadata, delete):
 def _share_metadata_get_query(context, share_id, session=None):
     return model_query(context, models.ShareMetadata, session=session,
                        read_deleted="no").\
-        filter_by(share_id=share_id)
+        filter_by(share_id=share_id).\
+        options(joinedload('share'))
 
 
 @require_context
@@ -1533,7 +1579,7 @@ def share_network_create(context, values):
     session = get_session()
     with session.begin():
         network_ref.save(session=session)
-    return network_ref
+    return share_network_get(context, values['id'], session)
 
 
 @require_context
@@ -1649,8 +1695,9 @@ def share_network_remove_security_service(context, id, security_service_id):
 def _server_get_query(context, session=None):
     if session is None:
         session = get_session()
-    return model_query(context, models.ShareServer, session=session)\
-        .options(joinedload('shares'))
+    return model_query(context, models.ShareServer, session=session).\
+        options(joinedload('shares'), joinedload('network_allocations'),
+                joinedload('share_network'))
 
 
 @require_context
@@ -1725,7 +1772,9 @@ def share_server_backend_details_set(context, share_server_id, server_details):
             'value': meta_value,
             'share_server_id': share_server_id
         })
-        meta_ref.save()
+        session = get_session()
+        with session.begin():
+            meta_ref.save(session)
     return server_details
 
 
@@ -1843,10 +1892,10 @@ def volume_type_create(context, values):
             volume_type_ref = models.VolumeTypes()
             volume_type_ref.update(values)
             volume_type_ref.save(session=session)
-        except exception.Duplicate:
+        except db_exception.DBDuplicateEntry:
             raise exception.VolumeTypeExists(id=values['name'])
         except Exception as e:
-            raise exception.DBError(e)
+            raise db_exception.DBError(e)
         return volume_type_ref
 
 
@@ -1859,6 +1908,7 @@ def volume_type_get_all(context, inactive=False, filters=None):
     rows = model_query(context, models.VolumeTypes,
                        read_deleted=read_deleted).\
         options(joinedload('extra_specs')).\
+        options(joinedload('shares')).\
         order_by("name").\
         all()
 
@@ -1878,6 +1928,7 @@ def _volume_type_get(context, id, session=None, inactive=False):
                          read_deleted=read_deleted).\
         options(joinedload('extra_specs')).\
         filter_by(id=id).\
+        options(joinedload('shares')).\
         first()
 
     if not result:
@@ -1897,6 +1948,7 @@ def _volume_type_get_by_name(context, name, session=None):
     result = model_query(context, models.VolumeTypes, session=session).\
         options(joinedload('extra_specs')).\
         filter_by(name=name).\
+        options(joinedload('shares')).\
         first()
 
     if not result:
@@ -1957,7 +2009,8 @@ def volume_get_active_by_window(context,
 def _volume_type_extra_specs_query(context, volume_type_id, session=None):
     return model_query(context, models.VolumeTypeExtraSpecs, session=session,
                        read_deleted="no").\
-        filter_by(volume_type_id=volume_type_id)
+        filter_by(volume_type_id=volume_type_id).\
+        options(joinedload('volume_type'))
 
 
 @require_context
@@ -1991,6 +2044,7 @@ def _volume_type_extra_specs_get_item(context, volume_type_id, key,
     result = _volume_type_extra_specs_query(
         context, volume_type_id, session=session).\
         filter_by(key=key).\
+        options(joinedload('volume_type')).\
         first()
 
     if not result:

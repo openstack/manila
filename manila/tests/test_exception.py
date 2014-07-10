@@ -119,11 +119,6 @@ class ManilaExceptionResponseCode400(test.TestCase):
         self.assertEqual(e.code, 400)
         self.assertIn(content_type, e.msg)
 
-    def test_invalid_unicode_parameter(self):
-        # Verify response code for exception.InvalidUnicodeParameter
-        e = exception.InvalidUnicodeParameter()
-        self.assertEqual(e.code, 400)
-
     def test_invalid_parameter_value(self):
         # Verify response code for exception.InvalidParameterValue
         err = "fake_err"

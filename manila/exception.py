@@ -24,7 +24,6 @@ SHOULD include dedicated exception logging.
 
 from oslo.config import cfg
 import six
-from sqlalchemy import exc as sqa_exc
 import webob.exc
 
 from manila.openstack.common import log as logging
@@ -55,30 +54,6 @@ class ConvertedException(webob.exc.WSGIHTTPException):
 
 class Error(Exception):
     pass
-
-
-class DBError(Error):
-    """Wraps an implementation specific exception."""
-    def __init__(self, inner_exception=None):
-        self.inner_exception = inner_exception
-        super(DBError, self).__init__(str(inner_exception))
-
-
-def wrap_db_error(f):
-    def _wrap(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except UnicodeEncodeError:
-            raise InvalidUnicodeParameter()
-        except sqa_exc.IntegrityError as e:
-            raise Duplicate(message=str(e))
-        except Duplicate:
-            raise
-        except Exception as e:
-            LOG.exception(_('DB exception wrapped.'))
-            raise DBError(e)
-    _wrap.func_name = f.func_name
-    return _wrap
 
 
 class ManilaException(Exception):
@@ -163,11 +138,6 @@ class InvalidInput(Invalid):
 
 class InvalidContentType(Invalid):
     message = _("Invalid content type %(content_type)s.")
-
-
-class InvalidUnicodeParameter(Invalid):
-    message = _("Invalid Parameter: "
-                "Unicode is not supported by the current database.")
 
 
 # Cannot be templated as the error syntax varies.
@@ -286,11 +256,6 @@ class FileNotFound(NotFound):
     message = _("File %(file_path)s could not be found.")
 
 
-# TODO(bcwaldon): EOL this exception!
-class Duplicate(ManilaException):
-    message = _("Duplicate entry: %(message)s")
-
-
 class MigrationError(ManilaException):
     message = _("Migration error") + ": %(reason)s"
 
@@ -352,7 +317,7 @@ class PortLimitExceeded(QuotaError):
     message = _("Maximum number of ports exceeded")
 
 
-class ShareAccessExists(Duplicate):
+class ShareAccessExists(ManilaException):
     message = _("Share access %(access_type)s:%(access)s exists")
 
 

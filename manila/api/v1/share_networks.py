@@ -15,6 +15,7 @@
 
 """The shares api."""
 
+from oslo.db import exception as db_exception
 import six
 import webob
 from webob import exc
@@ -183,7 +184,7 @@ class ShareNetworkController(wsgi.Controller):
             share_network = db_api.share_network_update(context,
                                                         id,
                                                         update_values)
-        except exception.DBError:
+        except db_exception.DBError:
             msg = "Could not save supplied data due to database error"
             raise exc.HTTPBadRequest(explanation=msg)
 
@@ -223,7 +224,7 @@ class ShareNetworkController(wsgi.Controller):
         else:
             try:
                 share_network = db_api.share_network_create(context, values)
-            except exception.DBError:
+            except db_exception.DBError:
                 msg = "Could not save supplied data due to database error"
                 raise exc.HTTPBadRequest(explanation=msg)
 
