@@ -103,10 +103,10 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             ]
         )
 
-    def test_setup_network(self):
+    def test_setup_server(self):
         self.driver._vserver_create_if_not_exists = mock.Mock(
             return_value='fake_vserver')
-        result = self.driver.setup_network({'id': 'fakeid'})
+        result = self.driver.setup_server({'server_id': 'fake_vserver'})
         self.assertEqual(result, {'vserver_name': 'fake_vserver'})
 
     def test_get_network_allocations_number(self):
@@ -133,15 +133,14 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         el['num-records'] = 1
         self.driver._vserver_exists = mock.Mock(return_value=True)
         self._vserver_client.send_request = mock.Mock(return_value=el)
-        net_info = {
-            'security_services': [
-                {'sid': 'admin',
-                 'password': 'pass',
-                 'type': 'active_directory'}
-            ]
-        }
-        self.driver._delete_vserver('fake', self._vserver_client,
-                                    network_info=net_info)
+        security_services = [
+            {'sid': 'admin',
+             'password': 'pass',
+             'type': 'active_directory'}
+        ]
+        self.driver._delete_vserver('fake',
+                                    self._vserver_client,
+                                    security_services=security_services)
         self._vserver_client.send_request.assert_has_calls([
             mock.call('volume-get-iter'),
             mock.call('volume-offline', {'name': 'root'}),
@@ -440,12 +439,13 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.helper.deny_access.assert_called_ince_with(self._context,
                                                         self.share, access)
 
-    def test_teardown_network(self):
-        fake_net_info = {'id': 'fake'}
+    def test_teardown_server(self):
         self.driver._delete_vserver = mock.Mock()
-        self.driver.teardown_network(fake_net_info)
+        sec_services = [{'fake': 'fake'}]
+        self.driver.teardown_server(server_details={'vserver_name': 'fake'},
+                                    security_services=sec_services)
         self.driver._delete_vserver.assert_called_once_with(
-            'os_fake', self._vserver_client, network_info=fake_net_info)
+            'fake', self._vserver_client, security_services=sec_services)
 
 
 class NetAppNFSHelperTestCase(test.TestCase):

@@ -336,16 +336,17 @@ class ShareManager(manager.SchedulerDependentManager):
         self._report_driver_status(context)
         self._publish_service_capabilities(context)
 
-    def _form_network_info(self, context, share_server, share_network):
+    def _form_server_setup_info(self, context, share_server, share_network):
         # Network info is used by driver for setting up share server
         # and getting server info on share creation.
         network_allocations = self.db.network_allocations_get_for_share_server(
             context, share_server['id'])
         network_info = {
-            'id': share_server['id'],
-            'share_network_id': share_server['share_network_id'],
+            'server_id': share_server['id'],
             'segmentation_id': share_network['segmentation_id'],
             'cidr': share_network['cidr'],
+            'neutron_net_id': share_network['neutron_net_id'],
+            'neutron_subnet_id': share_network['neutron_subnet_id'],
             'security_services': share_network['security_services'],
             'network_allocations': network_allocations,
             'backend_details': share_server.get('backend_details'),
@@ -370,10 +371,10 @@ class ShareManager(manager.SchedulerDependentManager):
 
             share_network = self.db.share_network_get(context,
                                                       share_network['id'])
-            network_info = self._form_network_info(context, share_server,
-                                                   share_network)
-            server_info = self.driver.setup_network(network_info,
-                                                    metadata=metadata)
+            network_info = self._form_server_setup_info(context, share_server,
+                                                        share_network)
+            server_info = self.driver.setup_server(network_info,
+                                                   metadata=metadata)
             if server_info and isinstance(server_info, dict):
                 self.db.share_server_backend_details_set(context,
                                                          share_server['id'],
@@ -391,18 +392,16 @@ class ShareManager(manager.SchedulerDependentManager):
 
         @lockutils.synchronized(share_server['share_network_id'])
         def _teardown_server():
-            share_network = self.db.share_network_get(
-                context, share_server['share_network_id'])
-
-            network_info = self._form_network_info(context, share_server,
-                                                   share_network)
-
             self.db.share_server_update(context, share_server['id'],
                                         {'status': constants.STATUS_DELETING})
+            sec_services = self.db.share_network_get(
+                context,
+                share_server['share_network_id'])['security_services']
             try:
                 LOG.debug("Deleting share server")
-                self.driver.teardown_network(network_info)
-            except Exception as e:
+                self.driver.teardown_server(share_server['backend_details'],
+                                            security_services=sec_services)
+            except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_("Share server %s failed on deletion.")
                               % share_server['id'])

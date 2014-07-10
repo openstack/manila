@@ -35,7 +35,7 @@ from manila import utils
 
 NETAPP_NAS_OPTS = [
     cfg.StrOpt('netapp_vserver_name_template',
-               default='os_%(net_id)s',
+               default='os_%s',
                help='Name template to use for new vserver.'),
     cfg.StrOpt('netapp_lif_name_template',
                default='os_%(net_allocation_id)s',
@@ -126,9 +126,9 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         data['QoS_support'] = False
         self._stats = data
 
-    def setup_network(self, network_info, metadata=None):
+    def setup_server(self, network_info, metadata=None):
         """Creates and configures new vserver."""
-        LOG.debug('Configuring network %s' % network_info['id'])
+        LOG.debug('Creating server %s' % network_info['server_id'])
         vserver_name = self._vserver_create_if_not_exists(network_info)
         return {'vserver_name': vserver_name}
 
@@ -248,10 +248,6 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         self._helpers = {'CIFS': NetAppClusteredCIFSHelper(),
                          'NFS': NetAppClusteredNFSHelper()}
 
-    def _get_vserver_name(self, net_id):
-        return self.configuration.netapp_vserver_name_template \
-               % {'net_id': net_id}
-
     def _vserver_exists(self, vserver_name):
         args = {'query': {'vserver-info': {'vserver-name': vserver_name}}}
 
@@ -264,7 +260,8 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
 
     def _vserver_create_if_not_exists(self, network_info):
         """Creates vserver if not exists with given parameters."""
-        vserver_name = self._get_vserver_name(network_info['id'])
+        vserver_name = self.configuration.netapp_vserver_name_template % \
+                       network_info['server_id']
         vserver_client = driver.NetAppApiClient(
             self.api_version, vserver=vserver_name,
             configuration=self.configuration)
@@ -669,7 +666,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         return helper.deny_access(context, share, access)
 
     def _delete_vserver(self, vserver_name, vserver_client,
-                        network_info=None):
+                        security_services=None):
         """
         Delete vserver.
 
@@ -701,8 +698,8 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
                     "Vserver %s has shares.") % vserver_name
             LOG.error(msg)
             raise exception.NetAppException(msg)
-        if network_info and network_info.get('security_services'):
-            for service in network_info['security_services']:
+        if security_services:
+            for service in security_services:
                 if service['type'] == 'active_directory':
                     args = {'admin-password': service['password'],
                             'admin-username': service['sid']}
@@ -718,14 +715,14 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         self._client.send_request('vserver-destroy',
                                   {'vserver-name': vserver_name})
 
-    def teardown_network(self, network_info):
+    def teardown_server(self, server_details, security_services=None):
         """Teardown share network."""
-        vserver_name = self._get_vserver_name(network_info['id'])
+        vserver_name = server_details['vserver_name']
         vserver_client = driver.NetAppApiClient(
             self.api_version, vserver=vserver_name,
             configuration=self.configuration)
         self._delete_vserver(vserver_name, vserver_client,
-                             network_info=network_info)
+                             security_services=security_services)
 
 
 class NetAppClusteredNFSHelper(driver.NetAppNFSHelper):

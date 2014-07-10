@@ -163,6 +163,18 @@ class ShareTestCase(test.TestCase):
         srv['status'] = state
         return db.share_network_create(context.get_admin_context(), srv)
 
+    @staticmethod
+    def _create_security_service(share_network_id=None):
+        service = {}
+        service['type'] = "FAKE"
+        service['project_id'] = 'fake-project-id'
+        service_ref = db.security_service_create(
+            context.get_admin_context(), service)
+        db.share_network_add_security_service(context.get_admin_context(),
+                                              share_network_id,
+                                              service_ref['id'])
+        return service_ref
+
     def test_init_host_ensuring_shares(self):
         """Test init_host for ensuring shares and access rules."""
 
@@ -442,6 +454,35 @@ class ShareTestCase(test.TestCase):
             share_id
         )
 
+    def test_delete_share_last_on_server_with_sec_services(self):
+        share_net = self._create_share_network()
+        sec_service = self._create_security_service(share_net['id'])
+        share_srv = self._create_share_server(
+            share_network_id=share_net['id'],
+            host=self.share_manager.host,
+            state='ACTIVE'
+        )
+        share = self._create_share(share_network_id=share_net['id'],
+                                   share_server_id=share_srv['id'])
+
+        share_id = share['id']
+
+        self.share_manager.driver = mock.Mock()
+        manager.CONF.delete_share_server_with_last_share = True
+        self.share_manager.delete_share(self.context, share_id)
+        self.assertTrue(self.share_manager.driver.teardown_server.called)
+        call_args = self.share_manager.driver.teardown_server.call_args[0]
+        call_kwargs = self.share_manager.driver.teardown_server.call_args[1]
+        self.assertEqual(
+            call_args[0],
+            share_srv.get('backend_details'))
+
+        self.assertEqual(
+            len(call_kwargs['security_services']), 1)
+        self.assertTrue(
+            call_kwargs['security_services'][0]['id'],
+            sec_service['id'])
+
     def test_delete_share_last_on_server(self):
         share_net = self._create_share_network()
         share_srv = self._create_share_server(
@@ -457,17 +498,8 @@ class ShareTestCase(test.TestCase):
         self.share_manager.driver = mock.Mock()
         manager.CONF.delete_share_server_with_last_share = True
         self.share_manager.delete_share(self.context, share_id)
-        net_info = {
-            'id': share_srv['id'],
-            'share_network_id': share_srv['share_network_id'],
-            'segmentation_id': share_net['segmentation_id'],
-            'cidr': share_net['cidr'],
-            'security_services': [],
-            'network_allocations': [],
-            'backend_details': share_srv.get('backend_details'),
-        }
-        self.share_manager.driver.teardown_network.assert_called_once_with(
-            net_info
+        self.share_manager.driver.teardown_server.assert_called_once_with(
+            share_srv.get('backend_details'), security_services=[]
         )
 
     def test_delete_share_last_on_server_deletion_disabled(self):

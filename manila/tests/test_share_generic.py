@@ -367,10 +367,10 @@ class GenericShareDriverTestCase(test.TestCase):
                                     self.server['backend_details'])
 
         self._driver.compute_api.instance_volume_detach.\
-                assert_called_once_with(
-            self._context,
-            self.server['backend_details']['instance_id'],
-            availiable_volume['id'])
+            assert_called_once_with(
+                self._context,
+                self.server['backend_details']['instance_id'],
+                availiable_volume['id'])
         self._driver.volume_api.get.\
                 assert_called_once_with(self._context, availiable_volume['id'])
 
@@ -553,29 +553,35 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_setup_network(self):
         sim = self._driver.instance_manager
-        net_info = self.fake_sn.copy()
-        net_info['share_network_id'] = net_info['id']
-        self._driver.setup_network(net_info)
-        sim.get_service_instance.assert_called_once()
+        net_info = {'server_id': 'fake',
+                    'neutron_net_id': 'fake-net-id',
+                    'neutron_subnet_id': 'fake-subnet-id'}
+        self._driver.setup_server(net_info)
+        sim.set_up_service_instance.assert_called_once_with(
+            self._context,
+            'fake',
+            'fake-net-id',
+            'fake-subnet-id')
 
     def test_setup_network_revert(self):
 
         def raise_exception(*args, **kwargs):
             raise exception.ServiceInstanceException
 
-        net_info = self.fake_sn.copy()
-        net_info['share_network_id'] = net_info['id']
+        net_info = {'server_id': 'fake',
+                    'neutron_net_id': 'fake-net-id',
+                    'neutron_subnet_id': 'fake-subnet-id'}
         self.stubs.Set(self._driver.service_instance_manager,
                        'set_up_service_instance',
                        mock.Mock(side_effect=raise_exception))
         self.assertRaises(exception.ServiceInstanceException,
-                          self._driver.setup_network,
+                          self._driver.setup_server,
                           net_info)
 
     def test_teardown_network(self):
         sim = self._driver.instance_manager
         self._driver.service_instance_manager = sim
-        self._driver.teardown_network(self.fake_net_info)
+        self._driver.teardown_server(self.fake_net_info)
         sim.delete_service_instance.assert_called_once()
 
 

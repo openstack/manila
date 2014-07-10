@@ -227,7 +227,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                                     instance_id,
                                                     volume['id'],
                                                     )
-
             t = time.time()
             while time.time() - t < self.configuration.max_time_to_attach:
                 volume = self.volume_api.get(context, volume['id'])
@@ -491,33 +490,30 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # use service instance provided by Nova.
         return 0
 
-    def setup_network(self, network_info, metadata=None):
-        sn_id = network_info["share_network_id"]
-        srv_id = network_info["id"]
-        msg = "Creating share infrastructure for share network '%s'."
-        LOG.debug(msg % sn_id)
+    def setup_server(self, network_info, metadata=None):
+        msg = "Creating share server '%s'."
+        LOG.debug(msg % network_info['server_id'])
         server = self.service_instance_manager.set_up_service_instance(
-            context=self.admin_context,
-            share_server_id=srv_id,
-            share_network_id=sn_id
+            self.admin_context,
+            network_info['server_id'],
+            network_info['neutron_net_id'],
+            network_info['neutron_subnet_id'],
         )
         for helper in self._helpers.values():
                 helper.init_helper(server)
         return server
 
-    def teardown_network(self, network_info):
-        sn_id = network_info["share_network_id"]
-        server_details = network_info.get("backend_details")
-        if not server_details:
-            LOG.warning(_("No backend details provided for service instance. "
-                        "Passing"))
-            return
+    def teardown_server(self, server_details, security_services=None):
         instance_id = server_details.get("instance_id")
         msg = "Removing share infrastructure for service instance '%s'."
         LOG.debug(msg % instance_id)
         try:
             self.service_instance_manager.delete_service_instance(
-                self.admin_context, sn_id, instance_id)
+                self.admin_context,
+                server_details['instance_id'],
+                server_details['subnet_id'],
+                server_details['router_id']
+            )
         except Exception as e:
             LOG.warning(e)
 
