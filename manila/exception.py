@@ -27,8 +27,8 @@ import six
 from sqlalchemy import exc as sqa_exc
 import webob.exc
 
-
 from manila.openstack.common import log as logging
+from manila.openstack.common import processutils
 
 LOG = logging.getLogger(__name__)
 
@@ -42,31 +42,15 @@ CONF = cfg.CONF
 CONF.register_opts(exc_log_opts)
 
 
+ProcessExecutionError = processutils.ProcessExecutionError
+
+
 class ConvertedException(webob.exc.WSGIHTTPException):
     def __init__(self, code=0, title="", explanation=""):
         self.code = code
         self.title = title
         self.explanation = explanation
         super(ConvertedException, self).__init__()
-
-
-class ProcessExecutionError(IOError):
-    def __init__(self, stdout=None, stderr=None, exit_code=None, cmd=None,
-                 description=None):
-        self.exit_code = exit_code
-        self.stderr = stderr
-        self.stdout = stdout
-        self.cmd = cmd
-        self.description = description
-
-        if description is None:
-            description = _('Unexpected error while running command.')
-        if exit_code is None:
-            exit_code = '-'
-        message = _('%(description)s\nCommand: %(cmd)s\n'
-                    'Exit code: %(exit_code)s\nStdout: %(stdout)r\n'
-                    'Stderr: %(stderr)r') % locals()
-        IOError.__init__(self, message)
 
 
 class Error(Exception):
