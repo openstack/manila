@@ -16,6 +16,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
 import webob.dec
 import webob.exc
 
@@ -42,7 +43,7 @@ class FaultWrapper(base_wsgi.Middleware):
             status, webob.exc.HTTPInternalServerError)()
 
     def _error(self, inner, req):
-        LOG.exception(_("Caught error: %s"), unicode(inner))
+        LOG.exception(_("Caught error: %s"), six.text_type(inner))
 
         safe = getattr(inner, 'safe', False)
         headers = getattr(inner, 'headers', None)
@@ -64,7 +65,7 @@ class FaultWrapper(base_wsgi.Middleware):
         # including those that are safe to expose, see bug 1021373
         if safe:
             outer.explanation = '%s: %s' % (inner.__class__.__name__,
-                                            unicode(inner))
+                                            six.text_type(inner))
         return wsgi.Fault(outer)
 
     @webob.dec.wsgify(RequestClass=wsgi.Request)

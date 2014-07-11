@@ -14,6 +14,7 @@
 
 import re
 
+import six
 import webob
 
 from manila.api import extensions
@@ -138,7 +139,7 @@ class ShareActionsController(wsgi.Controller):
                 raise exception.NotFound()
             share = self.share_api.get(context, id)
         except exception.NotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=unicode(error))
+            raise webob.exc.HTTPNotFound(explanation=six.text_type(error))
         self.share_api.deny_access(context, share, access)
         return webob.Response(status_int=202)
 
