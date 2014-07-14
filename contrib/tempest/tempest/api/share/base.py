@@ -46,10 +46,10 @@ class BaseSharesTest(test.BaseTestCase):
     method_isolated_creds = []
 
     @classmethod
-    def get_client_with_isolated_creads(cls,
-                                        name=None,
-                                        type_of_creds="admin",
-                                        cleanup_in_class=False):
+    def get_client_with_isolated_creds(cls,
+                                       name=None,
+                                       type_of_creds="admin",
+                                       cleanup_in_class=False):
         """Creates isolated creds.
 
         :param name: name, will be used for naming ic and related stuff

@@ -48,14 +48,14 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_reset_quotas_with_empty_tenant_id(self):
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
         self.assertRaises(exceptions.NotFound,
                           client.reset_quotas, "")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_update_shares_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
         self.assertRaises(exceptions.BadRequest,
                           client.update_quotas,
                           client.creds["tenant"]["id"],
@@ -64,7 +64,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", "negative"])
     def test_update_snapshots_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
         self.assertRaises(exceptions.BadRequest,
                           client.update_quotas,
                           client.creds["tenant"]["id"],
@@ -73,7 +73,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", "negative"])
     def test_update_gigabytes_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
         self.assertRaises(exceptions.BadRequest,
                           client.update_quotas,
                           client.creds["tenant"]["id"],
@@ -82,7 +82,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", "negative"])
     def test_update_share_networks_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
         self.assertRaises(exceptions.BadRequest,
                           client.update_quotas,
                           client.creds["tenant"]["id"],
@@ -90,7 +90,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_create_share_with_size_bigger_than_quota(self):
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
         new_quota = 25
         overquota = new_quota + 2
 
@@ -107,7 +107,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_set_user_quota_shares_bigger_than_tenant_quota(self):
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
 
         # get current quotas for tenant
         __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
@@ -122,7 +122,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_set_user_quota_snaps_bigger_than_tenant_quota(self):
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
 
         # get current quotas for tenant
         __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
@@ -137,7 +137,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_set_user_quota_gigabytes_bigger_than_tenant_quota(self):
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
 
         # get current quotas for tenant
         __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
@@ -152,7 +152,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_set_user_quota_share_networks_bigger_than_tenant_quota(self):
-        client = self.get_client_with_isolated_creads()
+        client = self.get_client_with_isolated_creds()
 
         # get current quotas for tenant
         __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
