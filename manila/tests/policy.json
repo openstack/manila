@@ -13,6 +13,12 @@
     "share:get_snapshot": [],
     "share:get_all_snapshots": [],
 
+    "share_network:create": [],
+    "share_network:index": [],
+    "share_network:show": [],
+    "share_network:update": [],
+    "share_network:delete": [],
+
     "share_server:index": [["rule:admin_api"]],
     "share_server:show": [["rule:admin_api"]],
     "share_server:details": [["rule:admin_api"]],

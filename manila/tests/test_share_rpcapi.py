@@ -33,6 +33,7 @@ CONF = cfg.CONF
 class ShareRpcAPITestCase(test.TestCase):
 
     def setUp(self):
+        super(ShareRpcAPITestCase, self).setUp()
         self.context = context.get_admin_context()
         shr = {}
         shr['host'] = 'fake_host'
@@ -53,7 +54,6 @@ class ShareRpcAPITestCase(test.TestCase):
         self.fake_access = jsonutils.to_primitive(access)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
         self.fake_share_server = jsonutils.to_primitive(share_server)
-        super(ShareRpcAPITestCase, self).setUp()
         self.ctxt = context.RequestContext('fake_user', 'fake_project')
         self.rpcapi = share_rpcapi.ShareAPI()
 

@@ -30,52 +30,8 @@
 
 import eventlet
 eventlet.monkey_patch()
-from oslo.config import cfg
 
 # See http://code.google.com/p/python-nose/issues/detail?id=373
 # The code below enables nosetests to work with i18n _() blocks
 import __builtin__
 setattr(__builtin__, '_', lambda x: x)
-import os
-import shutil
-
-from manila.db import migration
-from manila.db.sqlalchemy.session import get_engine
-from manila.tests import conf_fixture
-
-
-CONF = cfg.CONF
-
-_DB = None
-
-
-def reset_db():
-    if CONF.sql_connection == "sqlite://":
-        engine = get_engine()
-        engine.dispose()
-        conn = engine.connect()
-        conn.connection.executescript(_DB)
-    else:
-        shutil.copyfile(os.path.join(CONF.state_path, CONF.sqlite_clean_db),
-                        os.path.join(CONF.state_path, CONF.sqlite_db))
-
-
-def setup():
-    conf_fixture.set_defaults(CONF)
-    if CONF.sql_connection == "sqlite://":
-        if migration.db_version() > 1:
-            return
-    else:
-        testdb = os.path.join(CONF.state_path, CONF.sqlite_db)
-        if os.path.exists(testdb):
-            return
-    migration.db_sync()
-
-    if CONF.sql_connection == "sqlite://":
-        global _DB
-        engine = get_engine()
-        conn = engine.connect()
-        _DB = "".join(line for line in conn.connection.iterdump())
-    else:
-        cleandb = os.path.join(CONF.state_path, CONF.sqlite_clean_db)
-        shutil.copyfile(testdb, cleandb)

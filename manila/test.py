@@ -22,14 +22,19 @@ inline callbacks.
 """
 
 import functools
+import os
+import shutil
 import uuid
 
+import fixtures
 import mock
 from oslo.config import cfg
 from oslo.messaging import conffixture as messaging_conffixture
 import six
 import testtools
 
+from manila.db import migration
+from manila.db.sqlalchemy import session as sqla_session
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
@@ -51,6 +56,47 @@ CONF = cfg.CONF
 CONF.register_opts(test_opts)
 
 LOG = logging.getLogger(__name__)
+
+_DB_CACHE = None
+
+
+class Database(fixtures.Fixture):
+
+    def __init__(self, db_session, db_migrate, sql_connection, sqlite_db,
+                 sqlite_clean_db):
+        self.sql_connection = sql_connection
+        self.sqlite_db = sqlite_db
+        self.sqlite_clean_db = sqlite_clean_db
+        self.engine = db_session.get_engine()
+        self.engine.dispose()
+        conn = self.engine.connect()
+        if sql_connection == "sqlite://":
+            if db_migrate.db_version() > db_migrate.INIT_VERSION:
+                return
+        else:
+            testdb = os.path.join(CONF.state_path, sqlite_db)
+            if os.path.exists(testdb):
+                return
+        db_migrate.db_sync()
+        if sql_connection == "sqlite://":
+            conn = self.engine.connect()
+            self._DB = "".join(line for line in conn.connection.iterdump())
+            self.engine.dispose()
+        else:
+            cleandb = os.path.join(CONF.state_path, sqlite_clean_db)
+            shutil.copyfile(testdb, cleandb)
+
+    def setUp(self):
+        super(Database, self).setUp()
+        if self.sql_connection == "sqlite://":
+            conn = self.engine.connect()
+            conn.connection.executescript(self._DB)
+            self.addCleanup(self.engine.dispose)  # pylint: disable=E1101
+        else:
+            shutil.copyfile(
+                os.path.join(CONF.state_path, self.sqlite_clean_db),
+                os.path.join(CONF.state_path, self.sqlite_db),
+            )
 
 
 class StubOutForTesting(object):
@@ -77,7 +123,19 @@ class TestCase(testtools.TestCase):
         #             now that we have some required db setup for the system
         #             to work properly.
         self.start = timeutils.utcnow()
-        tests.reset_db()
+
+        self.log_fixture = self.useFixture(fixtures.FakeLogger())
+
+        global _DB_CACHE
+        if not _DB_CACHE:
+            _DB_CACHE = Database(
+                sqla_session,
+                migration,
+                sql_connection=CONF.sql_connection,
+                sqlite_db=CONF.sqlite_db,
+                sqlite_clean_db=CONF.sqlite_clean_db,
+            )
+        self.useFixture(_DB_CACHE)
 
         self.stubs = StubOutForTesting(self)
         self.injected = []

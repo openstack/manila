@@ -233,6 +233,16 @@ The copy of the code should never be directly modified here. Please
 always update openstack-common first and then run the script to copy
 the changes across.
 
+
+Running Tests
+-------------
+The testing system is based on a combination of tox and testr. If you just
+want to run the whole suite, run `tox` and all will be fine. However, if
+you'd like to dig in a bit more, you might want to learn some things about
+testr itself. A basic walkthrough for OpenStack can be found at
+http://wiki.openstack.org/testr
+
+
 OpenStack Trademark
 -------------------
 

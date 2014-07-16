@@ -20,7 +20,6 @@ WSGI middleware for OpenStack API controllers.
 
 import routes
 
-from manila.api.middleware import fault
 from manila.api.openstack import wsgi
 from manila.openstack.common import log as logging
 from manila import utils
@@ -123,8 +122,10 @@ class APIRouter(base_wsgi.Router):
         raise NotImplementedError
 
 
-class FaultWrapper(fault.FaultWrapper):
+class FaultWrapper(base_wsgi.Middleware):
     def __init__(self, application):
         LOG.warn(_('manila.api.openstack:FaultWrapper is deprecated. Please '
                    'use manila.api.middleware.fault:FaultWrapper instead.'))
-        super(FaultWrapper, self).__init__(application)
+        # Avoid circular imports from here.
+        from manila.api.middleware import fault
+        super(FaultWrapper, self).__init__(fault.FaultWrapper(application))
