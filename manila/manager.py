@@ -53,6 +53,7 @@ This module provides Manager, a base class for managers.
 
 from oslo.config import cfg
 from oslo import messaging
+import six
 
 from manila.db import base
 from manila.openstack.common import log as logging
@@ -127,7 +128,7 @@ class ManagerMeta(type):
 
 
 class Manager(base.Base):
-    __metaclass__ = ManagerMeta
+    six.add_metaclass(ManagerMeta)
 
     def __init__(self, host=None, db_driver=None):
         if not host:

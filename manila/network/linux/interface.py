@@ -17,6 +17,7 @@ import abc
 
 import netaddr
 from oslo.config import cfg
+import six
 
 from manila import exception
 from manila.network.linux import ip_lib
@@ -38,7 +39,7 @@ CONF.register_opts(OPTS)
 
 
 class LinuxInterfaceDriver(object):
-    __metaclass__ = abc.ABCMeta
+    six.add_metaclass(abc.ABCMeta)
 
     # from linux IF_NAMESIZE
     DEV_NAME_LEN = 14
