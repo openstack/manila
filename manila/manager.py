@@ -127,8 +127,8 @@ class ManagerMeta(type):
                 cls._ticks_to_skip[name] = task._ticks_between_runs
 
 
+@six.add_metaclass(ManagerMeta)
 class Manager(base.Base):
-    six.add_metaclass(ManagerMeta)
 
     def __init__(self, host=None, db_driver=None):
         if not host:

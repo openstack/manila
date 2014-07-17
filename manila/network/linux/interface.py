@@ -38,8 +38,8 @@ CONF = cfg.CONF
 CONF.register_opts(OPTS)
 
 
+@six.add_metaclass(abc.ABCMeta)
 class LinuxInterfaceDriver(object):
-    six.add_metaclass(abc.ABCMeta)
 
     # from linux IF_NAMESIZE
     DEV_NAME_LEN = 14

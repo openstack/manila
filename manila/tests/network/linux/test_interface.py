@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+import six
 
 from manila.network.linux import interface
 from manila.network.linux import ip_lib
@@ -31,22 +32,22 @@ class BaseChild(interface.LinuxInterfaceDriver):
 
 
 FakeSubnet = {
-        'cidr': '192.168.1.1/24',
-    }
+    'cidr': '192.168.1.1/24',
+}
 
 
 FakeAllocation = {
-        'subnet': FakeSubnet,
-        'ip_address': '192.168.1.2',
-        'ip_version': 4,
-    }
+    'subnet': FakeSubnet,
+    'ip_address': '192.168.1.2',
+    'ip_version': 4,
+}
 
 
 FakePort = {
-        'id': 'abcdef01-1234-5678-90ab-ba0987654321',
-        'fixed_ips': [FakeAllocation],
-        'device_id': 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-    }
+    'id': 'abcdef01-1234-5678-90ab-ba0987654321',
+    'fixed_ips': [FakeAllocation],
+    'device_id': 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+}
 
 
 class TestBase(test.TestCase):
@@ -60,15 +61,27 @@ class TestBase(test.TestCase):
         self.ip = self.ip_p.start()
         self.device_exists_p = mock.patch.object(ip_lib, 'device_exists')
         self.device_exists = self.device_exists_p.start()
-
-    def tearDown(self):
-        self.ip_dev_p.stop()
-        self.ip_p.stop()
-        self.device_exists_p.stop()
-        super(TestBase, self).tearDown()
+        self.addCleanup(self.ip_dev_p.stop)
+        self.addCleanup(self.ip_p.stop)
+        self.addCleanup(self.device_exists_p.stop)
 
 
 class TestABCDriver(TestBase):
+
+    def test_verify_abs_class_has_abs_methods(self):
+
+        class ICanNotBeInstancetiated(interface.LinuxInterfaceDriver):
+            pass
+
+        try:
+            fake = ICanNotBeInstancetiated()
+        except TypeError:
+            pass
+        except Exception as e:
+            self.fail("Unexpected exception thrown: '%s'" % six.text_type(e))
+        else:
+            self.fail("ExpectedException 'TypeError' not thrown.")
+
     def test_get_device_name(self):
         bc = BaseChild()
         device_name = bc.get_device_name(FakePort)
