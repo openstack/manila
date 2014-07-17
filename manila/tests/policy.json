@@ -3,6 +3,7 @@
     "admin_api": [["is_admin:True"]],
 
     "share:create": [],
+    "share:list_by_share_server_id": [["rule:admin_api"]],
     "share:get": [],
     "share:get_all": [],
     "share:delete": [],

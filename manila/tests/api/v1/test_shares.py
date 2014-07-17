@@ -354,6 +354,51 @@ class ShareApiTest(test.TestCase):
                           req,
                           1)
 
+    def test_share_list_summary_with_search_opts_by_non_admin(self):
+        # fake_key should be filtered for non-admin
+        fake_key = 'fake_value'
+        name = 'fake_name'
+        status = 'available'
+        share_server_id = 'fake_share_server_id'
+        req = fakes.HTTPRequest.blank(
+            '/shares?fake_key=%s&name=%s&share_server_id=%s&'
+            'status=%s' % (fake_key, name, share_server_id, status),
+            use_admin_context=False,
+        )
+        self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
+        res_dict = self.controller.index(req)
+        share_api.API.get_all.assert_called_once_with(
+            req.environ['manila.context'],
+            search_opts={
+                'display_name': name,
+                'share_server_id': share_server_id,
+                'status': status,
+            },
+        )
+
+    def test_share_list_summary_with_search_opts_by_admin(self):
+        # none of search_opts should be filtered for admin
+        fake_key = 'fake_value'
+        name = 'fake_name'
+        status = 'available'
+        share_server_id = 'fake_share_server_id'
+        req = fakes.HTTPRequest.blank(
+            '/shares?fake_key=%s&name=%s&share_server_id=%s&'
+            'status=%s' % (fake_key, name, share_server_id, status),
+            use_admin_context=True,
+        )
+        self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
+        res_dict = self.controller.index(req)
+        share_api.API.get_all.assert_called_once_with(
+            req.environ['manila.context'],
+            search_opts={
+                'display_name': name,
+                'fake_key': fake_key,
+                'share_server_id': share_server_id,
+                'status': status,
+            },
+        )
+
     def test_share_list_summary(self):
         self.stubs.Set(share_api.API, 'get_all',
                        stubs.stub_share_get_all_by_project)
@@ -378,6 +423,51 @@ class ShareApiTest(test.TestCase):
             ]
         }
         self.assertEqual(res_dict, expected)
+
+    def test_share_list_detail_with_search_opts_by_non_admin(self):
+        # fake_key should be filtered for non-admin
+        fake_key = 'fake_value'
+        name = 'fake_name'
+        status = 'available'
+        share_server_id = 'fake_share_server_id'
+        req = fakes.HTTPRequest.blank(
+            '/shares?fake_key=%s&name=%s&share_server_id=%s&'
+            'status=%s' % (fake_key, name, share_server_id, status),
+            use_admin_context=False,
+        )
+        self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
+        res_dict = self.controller.detail(req)
+        share_api.API.get_all.assert_called_once_with(
+            req.environ['manila.context'],
+            search_opts={
+                'display_name': name,
+                'share_server_id': share_server_id,
+                'status': status,
+            },
+        )
+
+    def test_share_list_detail_with_search_opts_by_admin(self):
+        # none of search_opts should be filtered for admin
+        fake_key = 'fake_value'
+        name = 'fake_name'
+        status = 'available'
+        share_server_id = 'fake_share_server_id'
+        req = fakes.HTTPRequest.blank(
+            '/shares?fake_key=%s&name=%s&share_server_id=%s&'
+            'status=%s' % (fake_key, name, share_server_id, status),
+            use_admin_context=True,
+        )
+        self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
+        res_dict = self.controller.detail(req)
+        share_api.API.get_all.assert_called_once_with(
+            req.environ['manila.context'],
+            search_opts={
+                'display_name': name,
+                'fake_key': fake_key,
+                'share_server_id': share_server_id,
+                'status': status,
+            },
+        )
 
     def test_share_list_detail(self):
         self.stubs.Set(share_api.API, 'get_all',

@@ -34,7 +34,6 @@ def stub_share(id, **kwargs):
         'size': 1,
         'availability_zone': 'fakeaz',
         'status': 'fakestatus',
-        'name': 'vol name',
         'display_name': 'displayname',
         'display_description': 'displaydesc',
         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),

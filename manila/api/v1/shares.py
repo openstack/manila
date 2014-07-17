@@ -133,7 +133,9 @@ class ShareController(wsgi.Controller):
 
     def _get_share_search_options(self):
         """Return share search options allowed by non-admin."""
-        return ('name', 'status')
+        # NOTE(vponomaryov): share_server_id depends on policy, allow search
+        #                    by it for non-admins in case policy changed.
+        return ('display_name', 'status', 'share_server_id', )
 
     @wsgi.serializers(xml=ShareTemplate)
     def update(self, req, id, body):

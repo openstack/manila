@@ -44,6 +44,13 @@ class SharesNegativeTest(base.BaseSharesTest):
                           self.shares_client.get_share, '')
 
     @test.attr(type=["negative", "smoke", "gate", ])
+    def test_list_shares_nonadmin_with_nonexistent_share_server_filter(self):
+        # filtering by share server allowed only for admins by default
+        self.assertRaises(exceptions.Unauthorized,
+                          self.shares_client.list_shares_with_detail,
+                          {'share_server_id': 'fake_share_server_id'})
+
+    @test.attr(type=["negative", "smoke", "gate", ])
     def test_delete_share_with_wrong_id(self):
         self.assertRaises(exceptions.NotFound, self.shares_client.delete_share,
                           "wrong_share_id")

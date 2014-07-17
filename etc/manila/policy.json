@@ -9,6 +9,7 @@
     "share:delete": [["rule:default"]],
     "share:get": [["rule:default"]],
     "share:get_all": [["rule:default"]],
+    "share:list_by_share_server_id": [["rule:admin_api"]],
     "share:update": [["rule:default"]],
     "share:snapshot_update": [["rule:default"]],
     "share:create_snapshot": [["rule:default"]],
