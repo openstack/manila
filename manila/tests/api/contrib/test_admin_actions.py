@@ -15,9 +15,9 @@
 
 import shutil
 import tempfile
-import webob
 
 from oslo.config import cfg
+import webob
 
 from manila import context
 from manila import db

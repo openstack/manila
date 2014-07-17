@@ -13,14 +13,14 @@
 #    under the License.
 
 import mock
+from novaclient import exceptions as nova_exception
+from novaclient.v1_1 import servers as nova_servers
 
 from manila.compute import nova
 from manila import context
 from manila import exception
 from manila import test
 from manila.volume import cinder
-from novaclient import exceptions as nova_exception
-from novaclient.v1_1 import servers as nova_servers
 
 
 class Volume(object):

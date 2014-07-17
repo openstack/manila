@@ -14,7 +14,6 @@
 #     under the License.
 
 import mock
-
 from oslo.config import cfg
 
 from manila import context

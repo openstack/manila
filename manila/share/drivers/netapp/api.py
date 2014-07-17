@@ -18,8 +18,9 @@ NetApp api for ONTAP and OnCommand DFM.
 Contains classes required to issue api calls to ONTAP and OnCommand DFM.
 """
 
-from lxml import etree
 import urllib2
+
+from lxml import etree
 
 from manila.openstack.common import log
 

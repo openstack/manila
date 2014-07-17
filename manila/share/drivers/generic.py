@@ -14,8 +14,8 @@
 #    under the License.
 
 """Generic Driver for shares."""
-import ConfigParser
 
+import ConfigParser
 import os
 import re
 import shutil

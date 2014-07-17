@@ -15,12 +15,12 @@
 
 """Module for managing nova instances for share drivers."""
 
-import netaddr
 import os
 import socket
 import threading
 import time
 
+import netaddr
 from oslo.config import cfg
 
 from manila.common import constants

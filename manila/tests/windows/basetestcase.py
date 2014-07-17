@@ -19,10 +19,10 @@ TestCase for MockProxy based tests and related classes.
 """
 
 import gzip
-import manila.test
 import os
 import pickle
 
+import manila.test
 from manila.tests.windows import mockproxy
 
 gen_test_mocks_key = 'MANILA_GENERATE_TEST_MOCKS'

@@ -19,6 +19,7 @@
 import re
 
 from eventlet import greenthread
+
 from manila import exception
 from manila.openstack.common import log as logging
 from manila import utils

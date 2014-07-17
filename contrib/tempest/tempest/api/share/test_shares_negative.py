@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import testtools
+import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config

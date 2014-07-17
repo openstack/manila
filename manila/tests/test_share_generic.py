@@ -15,9 +15,9 @@
 
 """Unit tests for the Generic driver module."""
 
-import mock
 import os
 
+import mock
 from oslo.config import cfg
 
 from manila import compute
