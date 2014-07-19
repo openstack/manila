@@ -612,7 +612,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                           fake_subnet['id'])
 
     def test_setup_connectivity_with_service_instances(self):
-        fake_subnet = fake_network.FakeSubnet(cidr='10.254.0.0/29')
+        interface_name = 'fake_interface_name'
+        fake_division_mask = CONF.service_network_division_mask
+        fake_subnet = fake_network.FakeSubnet(
+            cidr='10.254.0.0/%s' % fake_division_mask)
         fake_port = fake_network.FakePort(fixed_ips=[
             {'subnet_id': fake_subnet['id'], 'ip_address': '10.254.0.2'}],
             mac_address='fake_mac_address')
@@ -620,7 +623,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager, '_get_service_port',
                 mock.Mock(return_value=fake_port))
         self.stubs.Set(self._manager.vif_driver, 'get_device_name',
-                mock.Mock(return_value='fake_interface_name'))
+                mock.Mock(return_value=interface_name))
         self.stubs.Set(self._manager.neutron_api, 'get_subnet',
                 mock.Mock(return_value=fake_subnet))
         self.stubs.Set(self._manager, '_remove_outdated_interfaces',
@@ -632,16 +635,18 @@ class ServiceInstanceManagerTestCase(test.TestCase):
 
         self._manager._setup_connectivity_with_service_instances()
 
-        self._manager._get_service_port.assert_called_once()
+        self._manager._get_service_port.assert_called_once_with()
         self._manager.vif_driver.get_device_name.assert_called_once_with(
                 fake_port)
-        self._manager.vif_driver.plug.assert_called_once_with(fake_port['id'],
-                'fake_interface_name', fake_port['mac_address'])
+        self._manager.vif_driver.plug.assert_called_once_with(
+            fake_port['id'], interface_name, fake_port['mac_address'])
         self._manager.neutron_api.get_subnet.assert_called_once_with(
-                fake_subnet['id'])
-        self._manager.vif_driver.init_l3.assert_called_once()
-        service_instance.ip_lib.IPDevice.assert_called_once()
-        device_mock.route.pullup_route.assert_called_once()
+            fake_subnet['id'])
+        self._manager.vif_driver.init_l3.assert_called_once_with(
+            interface_name, ['10.254.0.2/%s' % fake_division_mask])
+        service_instance.ip_lib.IPDevice.assert_called_once_with(
+            interface_name)
+        device_mock.route.pullup_route.assert_called_once_with(interface_name)
         self._manager._remove_outdated_interfaces.assert_called_once_with(
                 device_mock)
 
@@ -711,7 +716,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_get_cidr_for_subnet(self):
         serv_cidr = service_instance.netaddr.IPNetwork(
                 CONF.service_network_cidr)
-        cidrs = serv_cidr.subnet(29)
+        fake_division_mask = CONF.service_network_division_mask
+        cidrs = serv_cidr.subnet(fake_division_mask)
         cidr1 = str(cidrs.next())
         cidr2 = str(cidrs.next())
         self.stubs.Set(self._manager, '_get_all_service_subnets',
@@ -726,20 +732,23 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertEqual(result, cidr2)
 
     def test_delete_service_instance(self):
-        fake_server = fake_compute.FakeServer()
-        fake_router = fake_network.FakeRouter()
-        fake_subnet = fake_network.FakeSubnet(cidr='10.254.0.0/29')
+        instance_id = 'fake_instance_id'
+        router_id = 'fake_router_id'
+        subnet_id = 'fake_subnet_id'
         self.stubs.Set(self._manager, '_delete_server', mock.Mock())
-        self.stubs.Set(self._manager, '_get_service_subnet',
-                mock.Mock(return_value=fake_subnet))
-        self.stubs.Set(self._manager, '_get_private_router',
-                mock.Mock(return_value=fake_router))
         self.stubs.Set(self._manager.neutron_api, 'router_remove_interface',
                 mock.Mock())
         self.stubs.Set(self._manager.neutron_api, 'update_subnet',
                 mock.Mock())
-        self._manager._delete_server.assert_called_once()
-        self._manager._get_service_subnet.assert_called_once()
-        self._manager._get_private_router.assert_called_once()
-        self._manager.neutron_api.router_remove_interface.assert_called_once()
-        self._manager.neutron_api.update_subnet.assert_called_once()
+
+        self._manager.delete_service_instance(
+            self._context, instance_id, subnet_id, router_id)
+
+        self._manager._delete_server.assert_called_once_with(
+            self._context, instance_id)
+        self._manager.neutron_api.router_remove_interface.assert_has_calls([
+            mock.call(router_id, subnet_id),
+        ])
+        self._manager.neutron_api.update_subnet.assert_has_calls([
+            mock.call(subnet_id, ''),
+        ])
