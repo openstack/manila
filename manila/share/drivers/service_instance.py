@@ -77,6 +77,12 @@ server_opts = [
     cfg.StrOpt('service_network_cidr',
                default='10.254.0.0/16',
                help="CIDR of manila service network."),
+    cfg.IntOpt('service_network_division_mask',
+               default=28,
+               help="This mask is used for dividing service network into"
+                    "subnets, ip capacity of subnet with this mask directly"
+                    "defines possible amount of created service VMs"
+                    "per tenant's subnet."),
     cfg.StrOpt('interface_driver',
                default='manila.network.linux.interface.OVSInterfaceDriver',
                help="Vif driver."),
@@ -583,7 +589,8 @@ class ServiceInstanceManager(object):
         used_cidrs = set(subnet['cidr'] for subnet in subnets)
         serv_cidr = netaddr.IPNetwork(
             self.get_config_option("service_network_cidr"))
-        for subnet in serv_cidr.subnet(29):
+        division_mask = self.get_config_option("service_network_division_mask")
+        for subnet in serv_cidr.subnet(division_mask):
             cidr = str(subnet.cidr)
             if cidr not in used_cidrs:
                 return cidr
