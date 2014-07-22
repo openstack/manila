@@ -46,7 +46,6 @@ these objects be simple dictionaries.
 from oslo.config import cfg
 
 from manila import exception
-
 from manila import utils
 
 db_opts = [

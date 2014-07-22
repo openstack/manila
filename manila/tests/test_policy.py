@@ -15,12 +15,12 @@
 
 """Test of Policy Engine For Manila."""
 
-import mock
 import os.path
+
+import mock
+from oslo.config import cfg
 import six
 from six.moves.urllib import request as urlrequest
-
-from oslo.config import cfg
 
 from manila import context
 from manila import exception

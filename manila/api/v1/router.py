@@ -24,8 +24,6 @@ WSGI middleware for OpenStack Share API.
 from manila.api import extensions
 import manila.api.openstack
 from manila.api.v1 import limits
-from manila.api import versions
-
 from manila.api.v1 import security_service
 from manila.api.v1 import share_metadata
 from manila.api.v1 import share_networks
@@ -33,7 +31,7 @@ from manila.api.v1 import share_servers
 from manila.api.v1 import share_snapshots
 from manila.api.v1 import shares
 from manila.api.v1 import volume_types
-
+from manila.api import versions
 from manila.openstack.common import log as logging
 
 

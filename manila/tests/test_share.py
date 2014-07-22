@@ -19,16 +19,15 @@ Tests for Share Code.
 
 """
 import mock
+from oslo.config import cfg
 
 from manila import context
 from manila import db
 from manila import exception
-
 from manila.openstack.common import importutils
 import manila.policy
 from manila.share import manager
 from manila import test
-from oslo.config import cfg
 
 CONF = cfg.CONF
 

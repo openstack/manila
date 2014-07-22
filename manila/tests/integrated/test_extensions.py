@@ -15,10 +15,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.config import cfg
 
 from manila.openstack.common import log as logging
 from manila.tests.integrated import integrated_helpers
-from oslo.config import cfg
 
 
 CONF = cfg.CONF

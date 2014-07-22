@@ -27,7 +27,6 @@ import webob.exc
 from manila.api.openstack import wsgi
 from manila import context
 from manila.openstack.common import jsonutils
-
 from manila.openstack.common import log as logging
 from manila import wsgi as base_wsgi
 

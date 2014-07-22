@@ -16,15 +16,16 @@
 #    under the License.
 
 import errno
-from mock import Mock
-from mock import patch
 import os
 import subprocess
+
+from mock import Mock
+from mock import patch
+from oslo.config import cfg
 
 from manila import context
 from manila.db.sqlalchemy import models
 from manila import exception
-
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.share import configuration as config
@@ -32,8 +33,6 @@ from manila.share.drivers import glusterfs
 from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_utils
-
-from oslo.config import cfg
 
 
 CONF = cfg.CONF

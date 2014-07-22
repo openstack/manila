@@ -14,6 +14,7 @@
 #     under the License.
 
 import hashlib
+
 import mock
 
 from manila import context

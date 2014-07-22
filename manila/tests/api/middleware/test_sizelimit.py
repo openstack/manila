@@ -13,13 +13,13 @@
 #    under the License.
 
 import StringIO
+
+from oslo.config import cfg
 import webob
 
 from manila.api.middleware import sizelimit
-
 from manila import test
 
-from oslo.config import cfg
 
 CONF = cfg.CONF
 MAX_REQUEST_BODY_SIZE = CONF.osapi_max_request_body_size

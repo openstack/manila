@@ -25,9 +25,7 @@ import errno
 import functools
 import hashlib
 import inspect
-import netaddr
 import os
-import paramiko
 import pyclbr
 import random
 import re
@@ -43,10 +41,12 @@ from xml import sax
 from xml.sax import expatreader
 from xml.sax import saxutils
 
-from oslo.config import cfg
-
 from eventlet import event
 from eventlet import pools
+import netaddr
+from oslo.config import cfg
+import paramiko
+
 from manila import exception
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils

@@ -18,14 +18,13 @@
 
 import iso8601
 from lxml import etree
+from oslo.config import cfg
 import webob
 
 from manila.api.v1 import router
 from manila.api import xmlutil
-
 from manila.openstack.common import jsonutils
 from manila import test
-from oslo.config import cfg
 
 CONF = cfg.CONF
 NS = "{http://docs.openstack.org/common/api/v1.0}"

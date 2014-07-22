@@ -16,12 +16,12 @@
 #    under the License.
 
 import webob
+from webob import exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
 from manila import exception
 from manila import share
-from webob import exc
 
 
 class ShareMetadataController(object):

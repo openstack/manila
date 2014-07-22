@@ -30,7 +30,6 @@
 
 import eventlet
 eventlet.monkey_patch()
-
 from oslo.config import cfg
 
 # See http://code.google.com/p/python-nose/issues/detail?id=373

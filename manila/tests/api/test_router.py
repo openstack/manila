@@ -13,15 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.config import cfg
 
 from manila.api.openstack import wsgi
 from manila.api.v1 import router
 from manila.api import versions
-
 from manila.openstack.common import log as logging
 from manila import test
 from manila.tests.api import fakes
-from oslo.config import cfg
 
 CONF = cfg.CONF
 

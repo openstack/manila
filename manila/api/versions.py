@@ -16,13 +16,13 @@
 #    under the License.
 
 import datetime
+
 from lxml import etree
+from oslo.config import cfg
 
 from manila.api.openstack import wsgi
 from manila.api.views import versions as views_versions
 from manila.api import xmlutil
-
-from oslo.config import cfg
 
 CONF = cfg.CONF
 

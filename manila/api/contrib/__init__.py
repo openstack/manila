@@ -21,11 +21,10 @@ It can't be called 'extensions' because that causes namespacing problems.
 
 """
 
-from manila.api import extensions
-
-from manila.openstack.common import log as logging
-
 from oslo.config import cfg
+
+from manila.api import extensions
+from manila.openstack.common import log as logging
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)

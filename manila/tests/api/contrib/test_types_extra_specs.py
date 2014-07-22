@@ -16,7 +16,6 @@
 #    under the License.
 
 from lxml import etree
-
 import mock
 import webob
 

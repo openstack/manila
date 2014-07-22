@@ -17,7 +17,6 @@
 #    under the License.
 
 from oslo.config import cfg
-
 import paste.urlmap
 
 

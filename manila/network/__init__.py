@@ -16,8 +16,9 @@
 #    under the License.
 import abc
 
-import manila.openstack.common.importutils
 from oslo.config import cfg
+
+import manila.openstack.common.importutils
 
 network_opts = [
     cfg.StrOpt('network_api_class',

@@ -22,14 +22,13 @@ Weighing Functions.
 
 import operator
 
-from manila import exception
+from oslo.config import cfg
 
+from manila import exception
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.scheduler import driver
 from manila.scheduler import scheduler_options
-
-from oslo.config import cfg
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)

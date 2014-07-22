@@ -19,19 +19,15 @@
 import distutils.version as dist_version
 import os
 
+import migrate
+from migrate.versioning import util as migrate_util
 from oslo.config import cfg
+import sqlalchemy
 
 from manila.db import migration
 from manila.db.sqlalchemy.session import get_engine
 from manila import exception
-
 from manila.openstack.common import log as logging
-
-
-import migrate
-from migrate.versioning import util as migrate_util
-import sqlalchemy
-
 
 LOG = logging.getLogger(__name__)
 

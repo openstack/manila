@@ -23,11 +23,10 @@ Chance (Random) Scheduler implementation
 
 import random
 
-from manila import exception
-
-from manila.scheduler import driver
-
 from oslo.config import cfg
+
+from manila import exception
+from manila.scheduler import driver
 
 CONF = cfg.CONF
 
