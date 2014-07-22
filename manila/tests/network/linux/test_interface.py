@@ -139,8 +139,8 @@ class TestOVSInterfaceDriver(TestBase):
         with mock.patch.object(utils, 'execute') as execute:
             ovs = interface.OVSInterfaceDriver()
             self.device_exists.side_effect = device_exists
-            ovs.plug('port-1234',
-                     'tap0',
+            ovs.plug('tap0',
+                     'port-1234',
                      'aa:bb:cc:dd:ee:ff',
                      bridge=bridge,
                      namespace=namespace)
@@ -193,8 +193,8 @@ class TestBridgeInterfaceDriver(TestBase):
         self.device_exists.side_effect = device_exists
         br = interface.BridgeInterfaceDriver()
         mac_address = 'aa:bb:cc:dd:ee:ff'
-        br.plug('port-1234',
-                'ns-0',
+        br.plug('ns-0',
+                'port-1234',
                 mac_address,
                 namespace=namespace)
 

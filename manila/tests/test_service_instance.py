@@ -668,7 +668,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.vif_driver.get_device_name.assert_called_once_with(
                 fake_port)
         self._manager.vif_driver.plug.assert_called_once_with(
-            fake_port['id'], interface_name, fake_port['mac_address'])
+            interface_name, fake_port['id'], fake_port['mac_address'])
         self._manager.neutron_api.get_subnet.assert_called_once_with(
             fake_subnet['id'])
         self._manager.vif_driver.init_l3.assert_called_once_with(
