@@ -25,13 +25,14 @@ class IgnoreAttemptedHostsFilter(filters.BaseHostFilter):
     A host passes this filter if it has not already been attempted for
     scheduling. The scheduler needs to add previously attempted hosts
     to the 'retry' key of filter_properties in order for this to work
-    correctly.  For example:
-    {
-        'retry': {
+    correctly. For example::
+
+     {
+      'retry': {
                 'hosts': ['host1', 'host2'],
                 'num_attempts': 3,
-            }
-    }
+               }
+     }
     """
 
     def host_passes(self, host_state, filter_properties):
