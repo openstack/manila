@@ -37,7 +37,7 @@ class SimpleReadOnlyManilaClientTest(manilaclient.ClientTestBase):
             raise cls.skipException("Manila not available")
 
     def test_manila_fake_action(self):
-        self.assertRaises(subprocess.CalledProcessError,
+        self.assertRaises(manilaclient.cli.CommandFailed,
                           self.manila, 'this-does-not-exist')
 
     def test_manila_absolute_limit_list(self):
