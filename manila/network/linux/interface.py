@@ -22,6 +22,7 @@ import six
 from manila import exception
 from manila.network.linux import ip_lib
 from manila.network.linux import ovs_lib
+from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila import utils
 
@@ -38,6 +39,22 @@ CONF = cfg.CONF
 CONF.register_opts(OPTS)
 
 
+def device_name_synchronized(f):
+    """Wraps methods with interprocess locks by device names."""
+
+    def wrapped_func(self, *args, **kwargs):
+        device_name = "device_name_%s" % args[0]
+
+        @lockutils.synchronized(device_name, external=True,
+                                lock_path="service_instance_locks")
+        def source_func(self, *args, **kwargs):
+            return f(self, *args, **kwargs)
+
+        return source_func(self, *args, **kwargs)
+
+    return wrapped_func
+
+
 @six.add_metaclass(abc.ABCMeta)
 class LinuxInterfaceDriver(object):
 
@@ -48,6 +65,7 @@ class LinuxInterfaceDriver(object):
     def __init__(self):
         self.conf = CONF
 
+    @device_name_synchronized
     def init_l3(self, device_name, ip_cidrs, namespace=None):
         """Set the L3 settings for the interface using data from the port.
 
@@ -82,7 +100,7 @@ class LinuxInterfaceDriver(object):
         return (self.DEV_NAME_PREFIX + port['id'])[:self.DEV_NAME_LEN]
 
     @abc.abstractmethod
-    def plug(self, network_id, port_id, device_name, mac_address,
+    def plug(self, device_name, port_id, mac_address,
              bridge=None, namespace=None, prefix=None):
         """Plug in the interface."""
 
@@ -113,7 +131,8 @@ class OVSInterfaceDriver(LinuxInterfaceDriver):
                 'external-ids:attached-mac=%s' % mac_address]
         utils.execute(*cmd, run_as_root=True)
 
-    def plug(self, port_id, device_name, mac_address,
+    @device_name_synchronized
+    def plug(self, device_name, port_id, mac_address,
              bridge=None, namespace=None, prefix=None):
         """Plug in the interface."""
         if not bridge:
@@ -139,6 +158,7 @@ class OVSInterfaceDriver(LinuxInterfaceDriver):
             LOG.warn(_("Device %s already exists"), device_name)
         ns_dev.link.set_up()
 
+    @device_name_synchronized
     def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
         """Unplug the interface."""
         if not bridge:
@@ -160,7 +180,8 @@ class BridgeInterfaceDriver(LinuxInterfaceDriver):
 
     DEV_NAME_PREFIX = 'ns-'
 
-    def plug(self, port_id, device_name, mac_address,
+    @device_name_synchronized
+    def plug(self, device_name, port_id, mac_address,
              bridge=None, namespace=None, prefix=None):
         """Plugin the interface."""
         ip = ip_lib.IPWrapper()
@@ -184,6 +205,7 @@ class BridgeInterfaceDriver(LinuxInterfaceDriver):
         root_veth.link.set_up()
         ns_veth.link.set_up()
 
+    @device_name_synchronized
     def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
         """Unplug the interface."""
         device = ip_lib.IPDevice(device_name, namespace)

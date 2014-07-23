@@ -500,7 +500,7 @@ class ServiceInstanceManager(object):
         port = self._get_service_port()
         port = self._add_fixed_ips_to_service_port(port)
         interface_name = self.vif_driver.get_device_name(port)
-        self.vif_driver.plug(port['id'], interface_name, port['mac_address'])
+        self.vif_driver.plug(interface_name, port['id'], port['mac_address'])
         ip_cidrs = []
         for fixed_ip in port['fixed_ips']:
             subnet = self.neutron_api.get_subnet(fixed_ip['subnet_id'])
