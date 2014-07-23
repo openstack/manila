@@ -22,6 +22,7 @@ import time
 
 import netaddr
 from oslo.config import cfg
+import six
 
 from manila.common import constants
 from manila import compute
@@ -187,17 +188,19 @@ class ServiceInstanceManager(object):
 
     def _get_server_ip(self, server):
         """Returns service vms ip address."""
-        net = server['networks']
-        try:
-            net_ips = net[self.get_config_option("service_network_name")]
-            return net_ips[0]
-        except KeyError:
-            msg = _('Service vm is not attached to %s network.')
-        except IndexError:
-            msg = _('Service vm has no ips on %s network.')
-        msg = msg % self.get_config_option("service_network_name")
-        LOG.error(msg)
-        raise exception.ServiceInstanceException(msg)
+        net_name = self.get_config_option("service_network_name")
+        net_ips = []
+        if 'networks' in server and net_name in server['networks']:
+            net_ips = server['networks'][net_name]
+        elif 'addresses' in server and net_name in server['addresses']:
+            net_ips = [addr['addr'] for addr in server['addresses'][net_name]]
+        if not net_ips:
+            msg = _("Failed to get service instance ip address. "
+                    "Service network name is '%(net_name)s' "
+                    "and provided data are '%(data)s'.")
+            msg = msg % {'net_name': net_name, 'data': six.text_type(server)}
+            raise exception.ServiceInstanceException(msg)
+        return net_ips[0]
 
     @lockutils.synchronized("_get_or_create_security_group",
                             external=True, lock_path="service_instance_locks")

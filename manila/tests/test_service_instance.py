@@ -111,19 +111,48 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertEqual(result, CONF.service_instance_name_template %
                 'fake_share_network_id')
 
-    def test_get_server_ip(self):
-        fake_server = fake_compute.FakeServer(
-            networks={CONF.service_network_name: '10.254.0.1'})
-
+    def test_get_server_ip_found_in_networks_section(self):
+        ip = '10.0.0.1'
+        fake_server = {
+            'networks': {
+                CONF.service_network_name: [ip],
+            }
+        }
         result = self._manager._get_server_ip(fake_server)
+        self.assertEqual(result, ip)
 
-        self.assertEqual(result,
-                fake_server['networks'][CONF.service_network_name][0])
+    def test_get_server_ip_found_in_addresses_section(self):
+        ip = '10.0.0.1'
+        fake_server = {
+            'addresses': {
+                CONF.service_network_name: [
+                    {'addr': ip, 'version': 4, }
+                ],
+            }
+        }
+        result = self._manager._get_server_ip(fake_server)
+        self.assertEqual(result, ip)
 
-    def test_get_server_ip_exception(self):
-        fake_server = fake_compute.FakeServer(networks={})
-        self.assertRaises(exception.ManilaException,
-                          self._manager._get_server_ip, fake_server)
+    def test_get_server_ip_not_found_1(self):
+        self.assertRaises(
+            exception.ManilaException,
+            self._manager._get_server_ip,
+            {},
+        )
+
+    def test_get_server_ip_not_found_2(self):
+        self.assertRaises(
+            exception.ManilaException,
+            self._manager._get_server_ip,
+            {'networks': {CONF.service_network_name: []}},
+        )
+
+    def test_get_server_ip_not_found_3(self):
+        self.assertRaises(
+            exception.ManilaException,
+            self._manager._get_server_ip,
+            {'addresses': {CONF.service_network_name: []}},
+        )
 
     def test_security_group_name_not_specified(self):
         self.stubs.Set(self._manager, 'get_config_option',
