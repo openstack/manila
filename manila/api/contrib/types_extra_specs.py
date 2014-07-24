@@ -50,12 +50,13 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         # with length in range(1, 256)
         is_valid = True
         for k, v in six.iteritems(extra_specs):
-            if not (isinstance(k, basestring) and len(k) in range(1, 256)):
+            if not (isinstance(k, six.string_types) and
+                    len(k) in range(1, 256)):
                 is_valid = False
                 break
             if isinstance(v, dict):
                 self._verify_extra_specs(v)
-            elif isinstance(v, basestring):
+            elif isinstance(v, six.string_types):
                 if len(v) not in range(1, 256):
                     is_valid = False
                     break

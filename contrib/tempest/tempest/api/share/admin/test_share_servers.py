@@ -15,6 +15,8 @@
 
 import re
 
+import six  # noqa
+
 from tempest.api.share import base
 from tempest import config_share as config
 from tempest import exceptions
@@ -206,8 +208,8 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         # If details are present they and their values should be only strings
         for k, v in details.iteritems():
-            self.assertTrue(isinstance(k, basestring))
-            self.assertTrue(isinstance(v, basestring))
+            self.assertTrue(isinstance(k, six.string_types))
+            self.assertTrue(isinstance(v, six.string_types))
 
     @test.attr(type=["gate", "smoke", ])
     def test_delete_share_server(self):

@@ -22,6 +22,8 @@
 import copy
 import uuid
 
+import six
+
 from manila.openstack.common import local
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
@@ -73,7 +75,7 @@ class RequestContext(object):
         self.remote_address = remote_address
         if not timestamp:
             timestamp = timeutils.utcnow()
-        if isinstance(timestamp, basestring):
+        if isinstance(timestamp, six.string_types):
             timestamp = timeutils.parse_strtime(timestamp)
         self.timestamp = timestamp
         if service_catalog:
