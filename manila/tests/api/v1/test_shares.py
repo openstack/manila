@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import datetime
 
 import mock
@@ -48,8 +49,41 @@ class ShareApiTest(test.TestCase):
             "display_description": "Updated Display Desc",
         }
 
+    def _get_expected_share_detailed_response(self, values=None):
+        share = {
+            'id': '1',
+            'name': 'displayname',
+            'availability_zone': 'fakeaz',
+            'description': 'displaydesc',
+            'export_location': 'fake_location',
+            'project_id': 'fakeproject',
+            'host': 'fakehost',
+            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'share_proto': 'FAKEPROTO',
+            'metadata': {},
+            'size': 1,
+            'snapshot_id': '2',
+            'share_network_id': None,
+            'status': 'fakestatus',
+            'volume_type': '1',
+            'links': [
+                {
+                    'href': 'http://localhost/v1/fake/shares/1',
+                    'rel': 'self'
+                },
+                {
+                    'href': 'http://localhost/fake/shares/1',
+                    'rel': 'bookmark'
+                }
+            ],
+        }
+        if values:
+            share.update(values)
+        if share.get('share_proto'):
+            share['share_proto'] = share['share_proto'].upper()
+        return {'share': share}
+
     def test_share_create(self):
-        self.stubs.Set(share_api.API, 'create', stubs.stub_share_create)
         shr = {
             "size": 100,
             "name": "Share Test Name",
@@ -57,35 +91,22 @@ class ShareApiTest(test.TestCase):
             "share_proto": "fakeproto",
             "availability_zone": "zone1:host1"
         }
-        body = {"share": shr}
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=100,
+                                share_proto=shr['share_proto'].upper(),
+                                availability_zone=shr['availability_zone']))
+        self.stubs.Set(share_api.API, 'create', create_mock)
+
+        body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.create(req, body)
-        expected = {
-            'share': {
-                'name': 'Share Test Name',
-                'id': '1',
-                'links': [
-                    {
-                        'href': 'http://localhost/v1/fake/shares/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fake/shares/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
-        self.assertEqual(res_dict, expected)
+
+        expected = self._get_expected_share_detailed_response(shr)
+        self.assertEqual(expected, res_dict)
 
     def test_share_create_with_share_net(self):
-        create_mock = mock.Mock(return_value={
-            'display_name': 'Share Test Name',
-            'id': '1'
-        })
-        self.stubs.Set(share_api.API, 'create', create_mock)
-        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
-            return_value={'id': 'fakenetid'}))
         shr = {
             "size": 100,
             "name": "Share Test Name",
@@ -94,31 +115,27 @@ class ShareApiTest(test.TestCase):
             "availability_zone": "zone1:host1",
             "share_network_id": "fakenetid"
         }
-        body = {"share": shr}
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                availability_zone=shr['availability_zone'],
+                                share_network_id=shr['share_network_id']))
+        self.stubs.Set(share_api.API, 'create', create_mock)
+        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
+            return_value={'id': 'fakenetid'}))
+
+        body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.create(req, body)
-        expected = {
-            'share': {
-                'name': 'Share Test Name',
-                'id': '1',
-                'links': [
-                    {
-                        'href': 'http://localhost/v1/fake/shares/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fake/shares/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
-        self.assertEqual(res_dict, expected)
+
+        expected = self._get_expected_share_detailed_response(shr)
+        self.assertEqual(expected, res_dict)
         self.assertEqual(create_mock.call_args[1]['share_network_id'],
                          "fakenetid")
 
     def test_share_create_from_snapshot_without_share_net_no_parent(self):
-        self.stubs.Set(share_api.API, 'create', stubs.stub_share_create)
         shr = {
             "size": 100,
             "name": "Share Test Name",
@@ -128,33 +145,40 @@ class ShareApiTest(test.TestCase):
             "snapshot_id": 333,
             "share_network_id": None,
         }
-        body = {"share": shr}
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                availability_zone=shr['availability_zone'],
+                                snapshot_id=shr['snapshot_id'],
+                                share_network_id=shr['share_network_id']))
+        self.stubs.Set(share_api.API, 'create', create_mock)
+        body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.create(req, body)
-        expected = {
-            'share': {
-                'name': 'Share Test Name',
-                'id': '1',
-                'links': [
-                    {
-                        'href': 'http://localhost/v1/fake/shares/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fake/shares/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
-        self.assertEqual(res_dict, expected)
+        expected = self._get_expected_share_detailed_response(shr)
+        self.assertEqual(expected, res_dict)
 
     def test_share_create_from_snapshot_without_share_net_parent_exists(self):
-        create_mock = mock.Mock(return_value={
-            'display_name': 'Share Test Name',
-            'id': '1'
-        })
+        shr = {
+            "size": 100,
+            "name": "Share Test Name",
+            "description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
+            "snapshot_id": 333,
+            "share_network_id": None,
+        }
         parent_share_net = 444
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                availability_zone=shr['availability_zone'],
+                                snapshot_id=shr['snapshot_id'],
+                                share_network_id=shr['share_network_id']))
         self.stubs.Set(share_api.API, 'create', create_mock)
         self.stubs.Set(share_api.API, 'get_snapshot', stubs.stub_snapshot_get)
         self.stubs.Set(share_api.API, 'get', mock.Mock(
@@ -162,51 +186,16 @@ class ShareApiTest(test.TestCase):
         self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
 
-        shr = {
-            "size": 100,
-            "name": "Share Test Name",
-            "description": "Share Test Desc",
-            "share_proto": "fakeproto",
-            "availability_zone": "zone1:host1",
-            "snapshot_id": 333,
-            "share_network_id": None,
-        }
-        body = {"share": shr}
+        body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.create(req, body)
-        expected = {
-            'share': {
-                'name': 'Share Test Name',
-                'id': '1',
-                'links': [
-                    {
-                        'href': 'http://localhost/v1/fake/shares/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fake/shares/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
-        self.assertEqual(res_dict, expected)
+        expected = self._get_expected_share_detailed_response(shr)
+        self.assertEqual(expected, res_dict)
         self.assertEqual(create_mock.call_args[1]['share_network_id'],
                          parent_share_net)
 
     def test_share_create_from_snapshot_with_share_net_equals_parent(self):
-        create_mock = mock.Mock(return_value={
-            'display_name': 'Share Test Name',
-            'id': '1'
-        })
         parent_share_net = 444
-        self.stubs.Set(share_api.API, 'create', create_mock)
-        self.stubs.Set(share_api.API, 'get_snapshot', stubs.stub_snapshot_get)
-        self.stubs.Set(share_api.API, 'get', mock.Mock(
-            return_value={'share_network_id': parent_share_net}))
-        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
-            return_value={'id': parent_share_net}))
-
         shr = {
             "size": 100,
             "name": "Share Test Name",
@@ -216,31 +205,31 @@ class ShareApiTest(test.TestCase):
             "snapshot_id": 333,
             "share_network_id": parent_share_net
         }
-        body = {"share": shr}
+        create_mock = mock.Mock(return_value=stubs.stub_share('1',
+                                display_name=shr['name'],
+                                display_description=shr['description'],
+                                size=shr['size'],
+                                share_proto=shr['share_proto'].upper(),
+                                availability_zone=shr['availability_zone'],
+                                snapshot_id=shr['snapshot_id'],
+                                share_network_id=shr['share_network_id']))
+        self.stubs.Set(share_api.API, 'create', create_mock)
+        self.stubs.Set(share_api.API, 'get_snapshot', stubs.stub_snapshot_get)
+        self.stubs.Set(share_api.API, 'get', mock.Mock(
+            return_value={'share_network_id': parent_share_net}))
+        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
+            return_value={'id': parent_share_net}))
+
+        body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.create(req, body)
-        expected = {
-            'share': {
-                'name': 'Share Test Name',
-                'id': '1',
-                'links': [
-                    {
-                        'href': 'http://localhost/v1/fake/shares/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fake/shares/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
+        expected = self._get_expected_share_detailed_response(shr)
         self.assertEqual(res_dict, expected)
         self.assertEqual(create_mock.call_args[1]['share_network_id'],
                          parent_share_net)
 
     def test_share_create_from_snapshot_invalid_share_net(self):
-        self.stubs.Set(share_api.API, 'create', stubs.stub_share_create)
+        self.stubs.Set(share_api.API, 'create', mock.Mock())
         shr = {
             "size": 100,
             "name": "Share Test Name",
@@ -281,29 +270,8 @@ class ShareApiTest(test.TestCase):
     def test_share_show(self):
         req = fakes.HTTPRequest.blank('/shares/1')
         res_dict = self.controller.show(req, '1')
-        expected = {
-            'share': {'name': 'displayname',
-                      'availability_zone': 'fakeaz',
-                      'description': 'displaydesc',
-                      'export_location': 'fake_location',
-                      'id': '1',
-                      'project_id': 'fakeproject',
-                      'host': 'fakehost',
-                      'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                      'share_proto': 'fakeproto',
-                      'metadata': {},
-                      'size': 1,
-                      'snapshot_id': '2',
-                      'share_network_id': None,
-                      'status': 'fakestatus',
-                      'volume_type': '1',
-                      'links': [{'href': 'http://localhost/v1/fake/shares/1',
-                                 'rel': 'self'},
-                                {'href': 'http://localhost/fake/shares/1',
-                                 'rel': 'bookmark'}]
-                      }
-        }
-        self.assertEqual(res_dict, expected)
+        expected = self._get_expected_share_detailed_response()
+        self.assertEqual(expected, res_dict)
 
     def test_share_show_no_share(self):
         self.stubs.Set(share_api.API, 'get',
@@ -483,7 +451,7 @@ class ShareApiTest(test.TestCase):
                     'export_location': 'fake_location',
                     'availability_zone': 'fakeaz',
                     'name': 'displayname',
-                    'share_proto': 'fakeproto',
+                    'share_proto': 'FAKEPROTO',
                     'metadata': {},
                     'project_id': 'fakeproject',
                     'host': 'fakehost',
@@ -506,7 +474,7 @@ class ShareApiTest(test.TestCase):
                 }
             ]
         }
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
 
     def test_remove_invalid_options(self):
         ctx = context.RequestContext('fakeuser', 'fakeproject', is_admin=False)

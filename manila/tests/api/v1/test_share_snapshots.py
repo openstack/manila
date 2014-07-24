@@ -63,20 +63,28 @@ class ShareSnapshotApiTest(test.TestCase):
         expected = {
             'snapshot': {
                 'id': 200,
+                'share_id': 100,
+                'share_size': 1,
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'status': 'fakesnapstatus',
                 'name': 'fake_share_name',
+                'size': 1,
+                'description': 'fake_share_description',
+                'share_proto': 'fakesnapproto',
+                'export_location': 'fakesnaplocation',
                 'links': [
                     {
                         'href': 'http://localhost/v1/fake/snapshots/200',
-                        'rel': 'self'
+                        'rel': 'self',
                     },
                     {
                         'href': 'http://localhost/fake/snapshots/200',
-                        'rel': 'bookmark'
-                    }
+                        'rel': 'bookmark',
+                    },
                 ],
             }
         }
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
 
     def test_snapshot_create_no_body(self):
         body = {}

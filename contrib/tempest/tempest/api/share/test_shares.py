@@ -42,6 +42,16 @@ class SharesNFSTest(base.BaseSharesTest):
         # create share
         resp, share = self.create_share(self.protocol)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        detailed_elements = {'name', 'id', 'availability_zone',
+                             'description', 'export_location', 'project_id',
+                             'host', 'created_at', 'share_proto', 'metadata',
+                             'size', 'snapshot_id', 'share_network_id',
+                             'status', 'volume_type', 'links'}
+        self.assertTrue(detailed_elements.issubset(share.keys()),
+                        'At least one expected element missing from share '
+                        'response. Expected %(expected)s, got %(actual)s.' % {
+                            "expected": detailed_elements,
+                            "actual": share.keys()})
 
         # delete share
         resp, __ = self.shares_client.delete_share(share['id'])
@@ -57,6 +67,14 @@ class SharesNFSTest(base.BaseSharesTest):
         # create snapshot
         resp, snap = self.create_snapshot_wait_for_active(self.share["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        detailed_elements = {'name', 'id', 'description', 'export_location',
+                             'created_at', 'share_proto', 'size', 'share_size',
+                             'share_id', 'status', 'links'}
+        self.assertTrue(detailed_elements.issubset(snap.keys()),
+                        'At least one expected element missing from snapshot '
+                        'response. Expected %(expected)s, got %(actual)s.' % {
+                            "expected": detailed_elements,
+                            "actual": snap.keys()})
 
         # delete snapshot
         resp, __ = self.shares_client.delete_snapshot(snap["id"])
