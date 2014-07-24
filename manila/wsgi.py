@@ -38,7 +38,6 @@ import webob.exc
 
 from manila import exception
 from manila.openstack.common import log as logging
-from manila import utils
 
 socket_opts = [
     cfg.IntOpt('backlog',
@@ -487,7 +486,9 @@ class Loader(object):
 
         """
         config_path = config_path or CONF.api_paste_config
-        self.config_path = utils.find_config(config_path)
+        self.config_path = CONF.find_file(config_path)
+        if not self.config_path:
+            raise exception.ConfigNotFound(path=config_path)
 
     def load_app(self, name):
         """Return the paste URLMap wrapped WSGI application.

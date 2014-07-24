@@ -42,14 +42,11 @@ TEST_VAR_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
 class TestLoaderNothingExists(test.TestCase):
     """Loader tests where os.path.exists always returns False."""
 
-    def setUp(self):
-        super(TestLoaderNothingExists, self).setUp()
-        self.stubs.Set(os.path, 'exists', lambda _: False)
-
     def test_config_not_found(self):
         self.assertRaises(
             manila.exception.ConfigNotFound,
             manila.wsgi.Loader,
+            'nonexistent_file.ini',
         )
 
 

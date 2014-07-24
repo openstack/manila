@@ -19,6 +19,8 @@ import os
 from manila.common import config
 
 CONF = config.CONF
+_API_PASTE_PATH = os.path.abspath(os.path.join(CONF.state_path,
+                                               'etc/manila/api-paste.ini'))
 _POLICY_PATH = os.path.abspath(os.path.join(CONF.state_path,
                                             'manila/tests/policy.json'))
 
@@ -31,6 +33,7 @@ def set_defaults(conf):
     conf.set_default('policy_file', _POLICY_PATH)
     conf.set_default('share_export_ip', '0.0.0.0')
     conf.set_default('service_instance_user', 'fake_user')
+    conf.set_default('api_paste_config', _API_PASTE_PATH)
     conf.set_default('share_driver',
                      'manila.tests.fake_driver.FakeShareDriver')
     conf.set_default('auth_strategy', 'noauth')
