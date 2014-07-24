@@ -1,8 +1,9 @@
 The Choose Your Own Adventure README for Manila
 ===============================================
 
-You have come across a storage service for an open cloud computing service.
-It has identified itself as "Manila."   It was abstracted from the Cinder project.
+You have come across an OpenStack shared filesystem service.  It has
+identified itself as "Manila."  It was abstracted from the Cinder
+project.
 
 To monitor it from a distance: follow `@openstack <http://twitter.com/openstack>`_ on twitter.
 
