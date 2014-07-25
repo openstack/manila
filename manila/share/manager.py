@@ -260,9 +260,11 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             model_update = self.driver.create_snapshot(
                 context, snapshot_ref, share_server=share_server)
+
             if model_update:
+                model_dict = model_update.to_dict()
                 self.db.share_snapshot_update(context, snapshot_ref['id'],
-                                              model_update)
+                                              model_dict)
 
         except Exception:
             with excutils.save_and_reraise_exception():

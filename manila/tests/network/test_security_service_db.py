@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.db import exception as db_exception
+
 from manila.common import constants
 from manila import context
 from manila.db import api as db_api
@@ -56,7 +58,7 @@ class SecurityServiceDBTest(test.TestCase):
         db_api.security_service_create(self.fake_context,
                                        security_service_dict)
 
-        self.assertRaises(exception.Duplicate,
+        self.assertRaises(db_exception.DBDuplicateEntry,
                           db_api.security_service_create,
                           self.fake_context,
                           security_service_dict)

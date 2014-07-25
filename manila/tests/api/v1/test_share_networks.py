@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+from oslo.db import exception as db_exception
 from webob import exc as webob_exc
 
 from manila.api.v1 import share_networks
@@ -108,7 +109,7 @@ class ShareNetworkAPITest(test.TestCase):
     def test_create_db_api_exception(self):
         with mock.patch.object(db_api,
                                'share_network_create',
-                               mock.Mock(side_effect=exception.DBError)):
+                               mock.Mock(side_effect=db_exception.DBError)):
             self.assertRaises(webob_exc.HTTPBadRequest,
                               self.controller.create,
                               self.req,
@@ -274,7 +275,7 @@ class ShareNetworkAPITest(test.TestCase):
 
         with mock.patch.object(db_api,
                                'share_network_update',
-                               mock.Mock(side_effect=exception.DBError)):
+                               mock.Mock(side_effect=db_exception.DBError)):
             self.assertRaises(webob_exc.HTTPBadRequest,
                               self.controller.update,
                               self.req,

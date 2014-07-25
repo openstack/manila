@@ -22,7 +22,7 @@ CONF = cfg.CONF
 def set_defaults(conf):
     conf.set_default('connection_type', 'fake')
     conf.set_default('verbose', True)
-    conf.set_default('sql_connection', "sqlite://")
+    conf.set_default('connection', "sqlite://", group='database')
     conf.set_default('sqlite_synchronous', False)
     conf.set_default('policy_file', 'manila/tests/policy.json')
     conf.set_default('share_export_ip', '0.0.0.0')

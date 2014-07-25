@@ -16,6 +16,7 @@
 
 
 from oslo.config import cfg
+from oslo.db import exception as db_exception
 import six
 
 from manila import context
@@ -33,7 +34,7 @@ def create(context, name, extra_specs={}):
         type_ref = db.volume_type_create(context,
                                          dict(name=name,
                                               extra_specs=extra_specs))
-    except exception.DBError as e:
+    except db_exception.DBError as e:
         LOG.exception(_('DB error: %s') % e)
         raise exception.VolumeTypeCreateFailed(name=name,
                                                extra_specs=extra_specs)
