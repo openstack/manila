@@ -16,9 +16,11 @@
 
 import __builtin__
 import datetime
+import errno
 import hashlib
 import os
 import os.path
+import socket
 import StringIO
 import tempfile
 import uuid
@@ -359,6 +361,51 @@ class GenericUtilsTestCase(test.TestCase):
         h1 = utils.hash_file(flo)
         h2 = hashlib.sha1(data).hexdigest()
         self.assertEqual(h1, h2)
+
+    def test_is_ipv6_configured0(self):
+        fake_fd = mock.Mock()
+        fake_fd.read.return_value = 'test'
+        with mock.patch(
+                '__builtin__.open', mock.Mock(return_value=fake_fd)) as open:
+            self.assertTrue(utils.is_ipv6_configured())
+
+            open.assert_called_once_with('/proc/net/if_inet6')
+            fake_fd.read.assert_called_once()
+
+    def test_is_ipv6_configured1(self):
+        fake_fd = mock.Mock()
+        fake_fd.read.return_value = ''
+        with mock.patch(
+                '__builtin__.open', mock.Mock(return_value=fake_fd)):
+            self.assertFalse(utils.is_ipv6_configured())
+
+    def test_is_ipv6_configured2(self):
+        with mock.patch('__builtin__.open', mock.Mock(side_effect=IOError(
+                errno.ENOENT, 'Fake no such file error.'))):
+            self.assertFalse(utils.is_ipv6_configured())
+
+    def test_is_ipv6_configured3(self):
+        with mock.patch('__builtin__.open', mock.Mock(side_effect=IOError(
+                errno.EPERM, 'Fake no such file error.'))):
+            self.assertRaises(IOError, utils.is_ipv6_configured)
+
+    def test_is_eventlet_bug105(self):
+        fake_dns = mock.Mock()
+        fake_dns.getaddrinfo.side_effect = socket.gaierror(errno.EBADF)
+        with mock.patch.dict('sys.modules', {
+                'eventlet.support.greendns': fake_dns}):
+            self.assertTrue(utils.is_eventlet_bug105())
+            fake_dns.getaddrinfo.assert_called_once()
+
+    def test_is_eventlet_bug105_neg(self):
+        fake_dns = mock.Mock()
+        fake_dns.getaddrinfo.return_value = [
+            (socket.AF_INET6, socket.SOCK_STREAM, 0, '', (u'127.0.0.1', 80)),
+        ]
+        with mock.patch.dict('sys.modules', {
+            'eventlet.support.greendns': fake_dns}):
+            self.assertFalse(utils.is_eventlet_bug105())
+            fake_dns.getaddrinfo.assert_called_once()
 
 
 class MonkeyPatchTestCase(test.TestCase):

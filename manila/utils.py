@@ -564,6 +564,45 @@ def is_valid_ipv4(address):
     return True
 
 
+def is_ipv6_configured():
+    """Check if system contain IPv6 capable network interface.
+
+    :rtype: bool
+    :raises: IOError
+    """
+    try:
+        fd = open('/proc/net/if_inet6')
+    except IOError as e:
+        if e.errno != errno.ENOENT:
+            raise
+        result = False
+    else:
+        result = bool(fd.read(32))
+        fd.close()
+    return result
+
+
+def is_eventlet_bug105():
+    """Check if eventlet support IPv6 addresses.
+
+    See https://bitbucket.org/eventlet/eventlet/issue/105
+
+    :rtype: bool
+    """
+    try:
+        mod = sys.modules['eventlet.support.greendns']
+    except KeyError:
+        return False
+
+    try:
+        connect_data = mod.getaddrinfo('::1', 80)
+    except socket.gaierror:
+        return True
+
+    fail = [x for x in connect_data if x[0] != socket.AF_INET6]
+    return bool(fail)
+
+
 def monkey_patch():
     """If the Flags.monkey_patch set as True,
     this function patches a decorator
