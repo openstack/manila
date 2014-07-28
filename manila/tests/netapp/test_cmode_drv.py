@@ -104,6 +104,42 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             ]
         )
 
+    def test_update_share_stats(self):
+        """Retrieve status info from share volume group."""
+        fake_aggr1_struct = {
+            'aggr-space-attributes': {
+                'size-total': '3774873600',
+                'size-available': '3688566784'
+            }
+        }
+        fake_aggr2_struct = {
+            'aggr-space-attributes': {
+                'size-total': '943718400',
+                'size-available': '45506560'
+            }
+        }
+
+        fake_aggr1 = naapi.NaElement('root')
+        fake_aggr1.translate_struct(fake_aggr1_struct)
+
+        fake_aggr2 = naapi.NaElement('root')
+        fake_aggr2.translate_struct(fake_aggr2_struct)
+        self.driver._find_match_aggregates = mock.Mock(
+            return_value=[fake_aggr1, fake_aggr2])
+        self.driver._update_share_status()
+        res = self.driver._stats
+
+        expected = {}
+        expected["share_backend_name"] = self.driver.backend_name
+        expected["vendor_name"] = 'NetApp'
+        expected["driver_version"] = '1.0'
+        expected["storage_protocol"] = 'NFS_CIFS'
+        expected['total_capacity_gb'] = 4
+        expected['free_capacity_gb'] = 3
+        expected['reserved_percentage'] = 0
+        expected['QoS_support'] = False
+        self.assertDictMatch(res, expected)
+
     def test_setup_server(self):
         self.driver._vserver_create_if_not_exists = mock.Mock(
             return_value='fake_vserver')
