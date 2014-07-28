@@ -62,8 +62,6 @@ class NetAppApiClient(object):
         self.configuration = kwargs.get('configuration', None)
         if not self.configuration:
             raise exception.NetAppException(_("NetApp configuration missing."))
-        self.backend_name = self.configuration.safe_get(
-            'share_backend_name') or "NetApp_7_Mode"
         self._client = naapi.NaServer(
             host=self.configuration.netapp_nas_server_hostname,
             username=self.configuration.netapp_nas_login,
@@ -104,6 +102,8 @@ class NetAppShareDriver(driver.ShareDriver):
         self._helpers = None
         self._licenses = None
         self._client = None
+        self.backend_name = self.configuration.safe_get(
+            'share_backend_name') or "NetApp_7_Mode"
 
     def do_setup(self, context):
         """Prepare once the driver.
@@ -301,16 +301,23 @@ class NetAppShareDriver(driver.ShareDriver):
 
         for aggr_elem in aggr_list_elements:
             aggr_name = aggr_elem.get_child_content('name')
-            aggr_size = int(aggr_elem.get_child_content('size-available'))
-            aggr_dict[aggr_name] = aggr_size
+            aggr_size_av = int(aggr_elem.get_child_content('size-available'))
+            aggr_size_total = int(aggr_elem.get_child_content('size-total'))
+            aggr_dict[aggr_name] = (aggr_size_av, aggr_size_total)
         LOG.debug("Found available aggregates: %r" % aggr_dict)
         return aggr_dict
+
+    def _calculate_capacity(self):
+        aggrs = self.get_available_aggregates()
+        total = sum([aggr[1] for aggr in aggrs.values()])
+        available = sum([aggr[0] for aggr in aggrs.values()])
+        return total, available
 
     def _allocate_share_space(self, share):
         """Create new share on aggregate."""
         share_name = self._get_valid_share_name(share['id'])
         aggregates = self.get_available_aggregates()
-        aggregate = max(aggregates, key=lambda m: aggregates[m])
+        aggregate = max(aggregates, key=lambda m: aggregates[m][0])
         LOG.debug('Creating volume %(share)s on aggregate %(aggr)s'
                   % {'share': share_name, 'aggr': aggregate})
         args = {'containing-aggr-name': aggregate,
@@ -344,18 +351,16 @@ class NetAppShareDriver(driver.ShareDriver):
 
         LOG.debug("Updating share status")
         data = {}
-
-        # Note(zhiteng): These information are driver/backend specific,
-        # each driver may define these values in its own config options
-        # or fetch from driver specific configuration file.
         data["share_backend_name"] = self.backend_name
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
-        # TODO(rushiagr): Pick storage_protocol from the helper used.
         data["storage_protocol"] = 'NFS_CIFS'
 
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
+        bytes_in_gb = 1024 * 1024 * 1024
+        total, free = self._calculate_capacity()
+        data['total_capacity_gb'] = total / bytes_in_gb
+        data['free_capacity_gb'] = free / bytes_in_gb
+
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
 

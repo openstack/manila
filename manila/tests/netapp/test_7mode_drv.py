@@ -50,6 +50,26 @@ class NetApp7modeDrvTestCase(test.TestCase):
         self.driver._helpers = {'FAKE': self.helper}
         self.driver._licenses = ['fake']
 
+    def test_update_share_stats(self):
+        """Retrieve status info from share volume group."""
+        aggrs = {'fake1': (3774873600, 943718400),
+                 'fake2': (45506560, 3774873600)}
+        self.driver.get_available_aggregates = mock.Mock(
+            return_value=aggrs)
+        self.driver._update_share_status()
+        res = self.driver._stats
+
+        expected = {}
+        expected["share_backend_name"] = self.driver.backend_name
+        expected["vendor_name"] = 'NetApp'
+        expected["driver_version"] = '1.0'
+        expected["storage_protocol"] = 'NFS_CIFS'
+        expected['total_capacity_gb'] = 4
+        expected['free_capacity_gb'] = 3
+        expected['reserved_percentage'] = 0
+        expected['QoS_support'] = False
+        self.assertDictMatch(res, expected)
+
     def test_check_vfiler_exists(self):
         elem = naapi.NaElement('fake')
         elem['status'] = 'running'
@@ -84,7 +104,8 @@ class NetApp7modeDrvTestCase(test.TestCase):
         for i in range(1, 4):
             aggregates.add_node_with_children('aggr-attributes',
                                               **{'name': 'fake%s' % i,
-                                              'size-available': '%s' % i})
+                                              'size-available': '%s' % i,
+                                              'size-total': '%s' % i})
         root.add_child_elem(aggregates)
 
         self.driver._client.send_request = mock.Mock(return_value=root)
