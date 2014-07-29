@@ -284,21 +284,35 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
                 self._delete_vserver(vserver_name, vserver_client)
 
         self._enable_nfs(vserver_client)
-        if network_info.get('security_services'):
-            for security_service in network_info['security_services']:
-                if security_service['type'].lower() == "ldap":
-                    self._configure_ldap(security_service, vserver_client)
-                elif security_service['type'].lower() == "active_directory":
-                    self._configure_active_directory(security_service,
-                                                     vserver_client)
-                elif security_service['type'].lower() == "kerberos":
-                    self._configure_kerberos(vserver_name, security_service,
-                                             vserver_client)
-                else:
-                    raise exception.NetAppException(
-                        _('Unsupported protocol %s for NetApp driver')
-                        % security_service['type'])
+
+        security_services = network_info.get('security_services')
+        if security_services:
+            self._setup_security_services(security_services, vserver_client,
+                                          vserver_name)
         return vserver_name
+
+    def _setup_security_services(self, security_services, vserver_client,
+                                 vserver_name):
+        modify_args = {
+            'name-mapping-switch': {
+                'nmswitch': 'ldap,file'},
+            'name-server-switch': {
+                'nsswitch': 'ldap,file'},
+            'vserver-name': vserver_name}
+        self._client.send_request('vserver-modify', modify_args)
+        for security_service in security_services:
+            if security_service['type'].lower() == "ldap":
+                self._configure_ldap(security_service, vserver_client)
+            elif security_service['type'].lower() == "active_directory":
+                self._configure_active_directory(security_service,
+                                                 vserver_client)
+            elif security_service['type'].lower() == "kerberos":
+                self._configure_kerberos(vserver_name, security_service,
+                                         vserver_client)
+            else:
+                raise exception.NetAppException(
+                    _('Unsupported protocol %s for NetApp driver')
+                    % security_service['type'])
 
     def _enable_nfs(self, vserver_client):
         """Enables NFS on vserver."""
