@@ -79,7 +79,7 @@ class ShareManager(manager.SchedulerDependentManager):
         shares = self.db.share_get_all_by_host(ctxt, self.host)
         LOG.debug("Re-exporting %s shares", len(shares))
         for share in shares:
-            if share['status'] in ['available', 'in-use']:
+            if share['status'] == 'available':
                 share_server = self._get_share_server(ctxt, share)
                 self.driver.ensure_share(ctxt, share,
                                          share_server=share_server)
