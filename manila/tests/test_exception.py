@@ -15,6 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
 from manila import exception
 from manila import test
 from manila import utils
@@ -43,10 +45,10 @@ class ManilaExceptionTestCase(test.TestCase):
             message = "default message"
 
         exc = FakeManilaException()
-        self.assertEqual(unicode(exc), 'default message')
+        self.assertEqual(six.text_type(exc), 'default message')
 
     def test_error_msg(self):
-        self.assertEqual(unicode(exception.ManilaException('test')),
+        self.assertEqual(six.text_type(exception.ManilaException('test')),
                           'test')
 
     def test_default_error_msg_with_kwargs(self):
@@ -54,7 +56,7 @@ class ManilaExceptionTestCase(test.TestCase):
             message = "default message: %(code)s"
 
         exc = FakeManilaException(code=500)
-        self.assertEqual(unicode(exc), 'default message: 500')
+        self.assertEqual(six.text_type(exc), 'default message: 500')
 
     def test_error_msg_exception_with_kwargs(self):
         # NOTE(dprince): disable format errors for this test
@@ -64,7 +66,8 @@ class ManilaExceptionTestCase(test.TestCase):
             message = "default message: %(mispelled_code)s"
 
         exc = FakeManilaException(code=500)
-        self.assertEqual(unicode(exc), 'default message: %(mispelled_code)s')
+        self.assertEqual(six.text_type(exc),
+                         'default message: %(mispelled_code)s')
 
     def test_default_error_code(self):
         class FakeManilaException(exception.ManilaException):
