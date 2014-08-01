@@ -161,8 +161,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def _read_gluster_vol_from_config(self):
         config_file = self.configuration.glusterfs_volumes_config
         if not os.access(config_file, os.R_OK):
-            msg = (_("Gluster config file at %(config)s doesn't exist") %
-                   {'config': config})
+            msg = (_("Gluster config file %(config)s doesn't exist") %
+                   {'config': config_file})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
