@@ -410,6 +410,18 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.ProcessExecutionError,
                           self._driver.create_share, self._context, self.share)
 
+    def test_create_share_can_be_called_with_extra_arg_share_server(self):
+        share_server = None
+        self._driver._get_local_share_path = Mock()
+        with patch.object(os.path, 'join', return_value=None):
+            ret = self._driver.create_share(self._context, self.share,
+                                            share_server)
+            self.assertEqual(ret, None)
+            self._driver._get_local_share_path.assert_called_once_with(
+                self.share)
+            os.path.join.assert_called_once_with(
+                self._driver.gluster_address.qualified, self.share['name'])
+
     def test_delete_share(self):
         self._driver._get_local_share_path =\
             Mock(return_value='/mnt/nfs/testvol/fakename')
@@ -430,6 +442,14 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
         self.assertRaises(exception.ProcessExecutionError,
                           self._driver.delete_share, self._context, self.share)
+
+    def test_delete_share_can_be_called_with_extra_arg_share_server(self):
+        share_server = None
+        self._driver._get_local_share_path = Mock()
+        ret = self._driver.delete_share(self._context, self.share,
+                                        share_server)
+        self.assertEqual(ret, None)
+        self._driver._get_local_share_path.assert_called_once_with(self.share)
 
     def test_manage_access_bad_access_type(self):
         cbk = Mock()
@@ -535,6 +555,15 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver.allow_access(self._context, self.share, access)
         self.assertFalse(self._driver.gluster_address.make_gluster_args.called)
 
+    def test_allow_access_can_be_called_with_extra_arg_share_server(self):
+        access = None
+        share_server = None
+        self._driver._manage_access = Mock()
+        ret = self._driver.allow_access(self._context, self.share, access,
+                                        share_server)
+        self.assertEqual(ret, None)
+        self._driver._manage_access.assert_called_once()
+
     def test_deny_access_with_share_having_noaccess(self):
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
         self._driver._get_export_dir_dict = Mock(return_value={})
@@ -555,3 +584,12 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(
           self._driver.gluster_address.make_gluster_args.call_args[0][-1],
           '/example.com(10.0.0.1)')
+
+    def test_deny_access_can_be_called_with_extra_arg_share_server(self):
+        access = None
+        share_server = None
+        self._driver._manage_access = Mock()
+        ret = self._driver.deny_access(self._context, self.share, access,
+                                       share_server)
+        self.assertEqual(ret, None)
+        self._driver._manage_access.assert_called_once()

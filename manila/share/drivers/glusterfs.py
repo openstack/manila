@@ -269,7 +269,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         data['free_capacity_gb'] = (smpv.f_bavail * smpv.f_frsize) >> 30
         self._stats = data
 
-    def create_share(self, ctx, share):
+    def create_share(self, ctx, share, share_server=None):
         """Create a directory that'd serve as a share in a Gluster volume."""
         local_share_path = self._get_local_share_path(share)
         cmd = ['mkdir', local_share_path]
@@ -283,7 +283,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                        share['name'])
         return export_location
 
-    def delete_share(self, context, share):
+    def delete_share(self, context, share, share_server=None):
         """Remove a directory that served as a share in a Gluster volume."""
         local_share_path = self._get_local_share_path(share)
         cmd = ['rm', '-rf', local_share_path]
@@ -293,19 +293,20 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error('Unable to delete share %s', share['name'])
             raise
 
-    def create_snapshot(self, context, snapshot):
+    def create_snapshot(self, context, snapshot, share_server=None):
         """TBD: Is called to create snapshot."""
         raise NotImplementedError()
 
-    def create_share_from_snapshot(self, context, share, snapshot):
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
         """Is called to create share from snapshot."""
         raise NotImplementedError()
 
-    def delete_snapshot(self, context, snapshot):
+    def delete_snapshot(self, context, snapshot, share_server=None):
         """TBD: Is called to remove snapshot."""
         raise NotImplementedError()
 
-    def ensure_share(self, context, share):
+    def ensure_share(self, context, share, share_server=None):
         """Might not be needed?"""
         pass
 
@@ -351,7 +352,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(_("Error in gluster volume set: %s") % exc.stderr)
             raise
 
-    def allow_access(self, context, share, access):
+    def allow_access(self, context, share, access, share_server=None):
         """Allow access to a share."""
         def cbk(ddict, edir, host):
             if edir not in ddict:
@@ -361,7 +362,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             ddict[edir].append(host)
         self._manage_access(context, share, access, cbk)
 
-    def deny_access(self, context, share, access):
+    def deny_access(self, context, share, access, share_server=None):
         """Deny access to a share."""
         def cbk(ddict, edir, host):
             if edir not in ddict or host not in ddict[edir]:
