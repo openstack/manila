@@ -631,7 +631,7 @@ def _quota_usage_get_all(context, project_id, user_id=None):
     result = {'project_id': project_id}
     if user_id:
         query = query.filter(or_(models.QuotaUsage.user_id == user_id,
-                                 models.QuotaUsage.user_id == None))
+                                 models.QuotaUsage.user_id is None))
         result['user_id'] = user_id
 
     rows = query.all()
@@ -685,7 +685,7 @@ def quota_usage_update(context, project_id, user_id, resource, **kwargs):
                      filter_by(project_id=project_id).\
                      filter_by(resource=resource).\
                      filter(or_(models.QuotaUsage.user_id == user_id,
-                                models.QuotaUsage.user_id == None)).\
+                                models.QuotaUsage.user_id is None)).\
                      update(updates)
 
     if not result:
@@ -743,7 +743,7 @@ def _get_user_quota_usages(context, session, project_id, user_id):
                        session=session).\
                    filter_by(project_id=project_id).\
                    filter(or_(models.QuotaUsage.user_id == user_id,
-                              models.QuotaUsage.user_id == None)).\
+                              models.QuotaUsage.user_id is None)).\
                    with_lockmode('update').\
                    all()
     return dict((row.resource, row) for row in rows)
@@ -1994,7 +1994,7 @@ def volume_get_active_by_window(context,
                                 project_id=None):
     """Return volumes that were active during window."""
     query = model_query(context, models.Share, read_deleted="yes")
-    query = query.filter(or_(models.Share.deleted_at == None,
+    query = query.filter(or_(models.Share.deleted_at is None,
                              models.Share.deleted_at > begin))
     if end:
         query = query.filter(models.Share.created_at < end)
