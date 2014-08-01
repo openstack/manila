@@ -88,15 +88,6 @@ document_root = /tmp
 
 class TestWSGIServer(test.TestCase):
     """WSGI server tests."""
-    def _ipv6_configured():
-        try:
-            out, err = utils.execute('cat', '/proc/net/if_inet6')
-        except exception.ProcessExecutionError:
-            return False
-
-        if not out:
-            return False
-        return True
 
     def test_no_app(self):
         server = manila.wsgi.Server("test_app", None)
@@ -110,8 +101,10 @@ class TestWSGIServer(test.TestCase):
         server.stop()
         server.wait()
 
-    @testtools.skipIf(not _ipv6_configured(),
+    @testtools.skipIf(not utils.is_ipv6_configured(),
                       "Test requires an IPV6 configured interface")
+    @testtools.skipIf(utils.is_eventlet_bug105(),
+                      'Eventlet bug #105 affect test results.')
     def test_start_random_port_with_ipv6(self):
         server = manila.wsgi.Server("test_random_port",
                                     None,
@@ -161,8 +154,10 @@ class TestWSGIServer(test.TestCase):
 
         server.stop()
 
-    @testtools.skipIf(not _ipv6_configured(),
+    @testtools.skipIf(not utils.is_ipv6_configured(),
                       "Test requires an IPV6 configured interface")
+    @testtools.skipIf(utils.is_eventlet_bug105(),
+                      'Eventlet bug #105 affect test results.')
     def test_app_using_ipv6_and_ssl(self):
         CONF.set_default("ssl_cert_file",
                          os.path.join(TEST_VAR_DIR, 'certificate.crt'))
