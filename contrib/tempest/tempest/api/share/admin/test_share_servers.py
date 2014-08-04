@@ -222,17 +222,30 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         # Get share to be able to get its share_network_id
         __, share = client.get_share(share["id"])
 
+        # List share servers, filtered by share_network_id,
+        # list with only one item is expected - our share server.
+        search_opts = {"share_network": share["share_network_id"]}
+        __, servers = client.list_share_servers(search_opts)
+        self.assertEqual(len(servers), 1)
+
+        # List shares by share server id, we expect only one share
+        params = {"share_server_id": servers[0]["id"]}
+        resp, shares = client.list_shares_with_detail(params)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertEqual(len(shares), 1)
+        self.assertEqual(shares[0]["id"], share["id"])
+
         # Delete share, so we will have share server without shares
         client.delete_share(share["id"])
 
         # Wait for share deletion
         client.wait_for_resource_deletion(share_id=share["id"])
 
-        # List share servers, filtered by share_network_id,
-        # list with only one item is expected - our share server.
-        search_opts = {"share_network": share["share_network_id"]}
-        __, servers = client.list_share_servers(search_opts)
-        self.assertEqual(len(servers), 1)
+        # List shares by share server id, we expect empty list
+        params = {"share_server_id": servers[0]["id"]}
+        resp, empty_list = client.list_shares_with_detail(params)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertEqual(len(empty_list), 0)
 
         # Delete share server
         resp, server = client.delete_share_server(servers[0]["id"])

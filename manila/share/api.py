@@ -308,30 +308,29 @@ class API(base.Base):
         policy.check_policy(context, 'share', 'get', rv)
         return rv
 
-    def get_all(self, context, search_opts={}):
+    def get_all(self, context, search_opts=None):
         policy.check_policy(context, 'share', 'get_all')
-
-        search_opts = search_opts or {}
-
-        if (context.is_admin and 'all_tenants' in search_opts):
-            # Need to remove all_tenants to pass the filtering below.
-            del search_opts['all_tenants']
+        if search_opts is None:
+            search_opts = {}
+        if 'share_server_id' in search_opts:
+            # NOTE(vponomaryov): this is project_id independent
+            policy.check_policy(context, 'share', 'list_by_share_server_id')
+            shares = self.db.share_get_all_by_share_server(
+                context, search_opts.pop('share_server_id'))
+        elif (context.is_admin and 'all_tenants' in search_opts):
             shares = self.db.share_get_all(context)
         else:
             shares = self.db.share_get_all_by_project(context,
                                                       context.project_id)
-
+        # NOTE(vponomaryov): we do not need 'all_tenants' opt anymore
+        search_opts.pop('all_tenants', None)
         if search_opts:
-            LOG.debug("Searching by: %s" % str(search_opts))
-
+            LOG.debug("Searching for shares by: %s" % str(search_opts))
             results = []
-            not_found = object()
-            for share in shares:
-                for opt, value in six.iteritems(search_opts):
-                    if share.get(opt, not_found) != value:
-                        break
-                else:
-                    results.append(share)
+            for s in shares:
+                # values in search_opts can be only strings
+                if all(s.get(k, None) == v for k, v in search_opts.items()):
+                    results.append(s)
             shares = results
         return shares
 

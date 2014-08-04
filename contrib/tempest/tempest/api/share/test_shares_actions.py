@@ -113,6 +113,54 @@ class SharesTest(base.BaseSharesTest):
         self.assertEqual(len(gen), 1, msg)
 
     @test.attr(type=["gate", ])
+    def test_list_shares_with_detail_filter_by_existed_name(self):
+        # list shares by name, at least one share is expected
+        params = {"name": self.share_name}
+        resp, shares = self.shares_client.list_shares_with_detail(params)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertEqual(shares[0]["name"], self.share_name)
+
+    @test.attr(type=["gate", ])
+    def test_list_shares_with_detail_filter_by_fake_name(self):
+        # list shares by fake name, no shares are expected
+        params = {"name": data_utils.rand_name("fake-nonexistent-name")}
+        resp, shares = self.shares_client.list_shares_with_detail(params)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertEqual(len(shares), 0)
+
+    @test.attr(type=["gate", ])
+    def test_list_shares_with_detail_filter_by_active_status(self):
+        # list shares by active status, at least one share is expected
+        params = {"status": "available"}
+        resp, shares = self.shares_client.list_shares_with_detail(params)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertTrue(len(shares) > 0)
+        for share in shares:
+            self.assertEqual(share["status"], params["status"])
+
+    @test.attr(type=["gate", ])
+    def test_list_shares_with_detail_filter_by_fake_status(self):
+        # list shares by fake status, no shares are expected
+        params = {"status": 'fake'}
+        resp, shares = self.shares_client.list_shares_with_detail(params)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertEqual(len(shares), 0)
+
+    @test.attr(type=["gate", ])
+    def test_list_shares_with_detail_filter_by_all_tenants(self):
+        # non-admin user can get shares only from his project
+        params = {"all_tenants": 1}
+        resp, shares = self.shares_client.list_shares_with_detail(params)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertTrue(len(shares) > 0)
+
+        # get share with detailed info, we need its 'project_id'
+        __, share = self.shares_client.get_share(self.share["id"])
+        project_id = share["project_id"]
+        for share in shares:
+            self.assertEqual(share["project_id"], project_id)
+
+    @test.attr(type=["gate", ])
     def test_get_snapshot(self):
 
         # get snapshot
