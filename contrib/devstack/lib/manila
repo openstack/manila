@@ -32,11 +32,6 @@ MANILA_BRANCH=master
 MANILACLIENT_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/python-manilaclient.git
 MANILACLIENT_BRANCH=master
 
-SHARE_BACKING_FILE_SIZE=${SHARE_BACKING_FILE_SIZE:-8400M}
-
-# set up default driver
-MANILA_DRIVER=${MANILA_DRIVER:-default}
-
 # set up default directories
 MANILA_DIR=${MANILA_DIR:=$DEST/manila}
 MANILACLIENT_DIR=${MANILACLIENT_DIR:=$DEST/python-manilaclient}
@@ -72,15 +67,10 @@ MANILA_SHARE_BACKEND1_NAME=${MANILA_SHARE_BACKEND1_NAME:-BACKEND1}
 MANILA_BACKEND2_CONFIG_GROUP_NAME=${MANILA_BACKEND2_CONFIG_GROUP_NAME:-backend2}
 MANILA_SHARE_BACKEND2_NAME=${MANILA_SHARE_BACKEND2_NAME:-BACKEND2}
 
-SHARE_GROUP=${SHARE_GROUP:-stack-shares}
 SHARE_NAME_PREFIX=${SHARE_NAME_PREFIX:-share-}
-SHARE_EXPORT_IP=${SHARE_EXPORT_IP:-$HOST_IP}
-#SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.lvm.LVMShareDriver}
 SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.generic.GenericShareDriver}
 
 MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.filter_scheduler.FilterScheduler}
-
-CIFS_HELPER=${CIFS_HELPER:-manila.share.drivers.lvm.CIFSNetConfHelper}
 
 eval USER_HOME=~
 
@@ -97,48 +87,12 @@ MANILA_SERVICE_VM_FLAVOR_RAM=${MANILA_SERVICE_VM_FLAVOR_RAM:-64}
 MANILA_SERVICE_VM_FLAVOR_DISK=${MANILA_SERVICE_VM_FLAVOR_DISK:-0}
 MANILA_SERVICE_VM_FLAVOR_VCPUS=${MANILA_SERVICE_VM_FLAVOR_VCPUS:-1}
 
-function _clean_share_group {
-   local vg=$1
-   local vg_prefix=$2
-   # Clean out existing shares
-   for lv in `sudo lvs --noheadings -o lv_name $vg`; do
-       # vg_prefix prefixes the LVs we want
-       if [[ "${lv#$vg_prefix}" != "$lv" ]]; then
-           sudo umount $MANILA_MNT_DIR/$lv
-           sudo lvremove -f $vg/$lv
-           sudo rm -rf $MANILA_MNT_DIR/$lv
-       fi
-   done
-}
-
-# _clean_share_group removes all manila shares from the specified shares group
-_clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
-
-function _clean_manila_lvm_backing_file {
-    local vg=$1
-
-    # if there is no logical volume left, it's safe to attempt a cleanup
-    # of the backing file
-    if [ -z "`sudo lvs --noheadings -o lv_name $vg`" ]; then
-        # if the backing physical device is a loop device, it was probably setup by devstack
-        VG_DEV=$(sudo losetup -j $DATA_DIR/${vg}-backing-file | awk -F':' '/backing-file/ { print $1}')
-        if [[ -n "$VG_DEV" ]]; then
-            sudo losetup -d $VG_DEV
-            rm -f $DATA_DIR/${vg}-backing-file
-        fi
-    fi
-}
-
 # cleanup_manila - Remove residual data files, anything left over from previous
 # runs that a clean run would need to clean up
 function cleanup_manila {
-    # ensure the volume group is cleared up because fails might
-    # leave dead volumes in the group
-
-    # Campsite rule: leave behind a share volume group at least as clean as we found it
-    # _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
-    _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
-    _clean_manila_lvm_backing_file $SHARE_GROUP
+    # This is placeholder.
+    # All stuff, that are created by Generic driver will be cleaned up by other services.
+    :
 }
 
 function add_share_backend {
@@ -214,16 +168,12 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT debug True
     iniset $MANILA_CONF DEFAULT verbose True
     iniset $MANILA_CONF DEFAULT scheduler_driver $MANILA_SCHEDULER_DRIVER
-    iniset $MANILA_CONF DEFAULT share_export_ip $SHARE_EXPORT_IP
-    iniset $MANILA_CONF DEFAULT share_volume_group $SHARE_GROUP
     iniset $MANILA_CONF DEFAULT share_name_template ${SHARE_NAME_PREFIX}%s
-    iniset $MANILA_CONF DEFAULT iscsi_helper tgtadm
     iniset $MANILA_CONF DEFAULT sql_connection `database_connection_url manila`
     iniset $MANILA_CONF DEFAULT api_paste_config $MANILA_API_PASTE_INI
     iniset $MANILA_CONF DEFAULT rootwrap_config $MANILA_CONF_DIR/rootwrap.conf
     iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.openstack.share.contrib.standard_extensions
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
-    iniset $MANILA_CONF DEFAULT share_lvm_helpers CIFS=$CIFS_HELPER,NFS=manila.share.drivers.lvm.NFSHelper
 
     iniset $MANILA_CONF DEFAULT nova_admin_password $SERVICE_PASSWORD
     iniset $MANILA_CONF DEFAULT cinder_admin_password $SERVICE_PASSWORD
@@ -368,30 +318,6 @@ function init_manila {
         $MANILA_BIN_DIR/manila-manage db sync
     fi
 
-    if is_service_enabled m-shr; then
-        # Configure a default volume group called '`stack-shares`' for the share
-        # service if it does not yet exist.  If you don't wish to use a file backed
-        # volume group, create your own volume group called ``stack-volumes`` before
-        # invoking ``stack.sh``.
-        #
-        # By default, the backing file is 8G in size, and is stored in ``/opt/stack/data``.
-
-        if ! sudo vgs $SHARE_GROUP; then
-            SHARE_BACKING_FILE=${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}
-            # Only create if the file doesn't already exists
-            [[ -f $SHARE_BACKING_FILE ]] || truncate -s $SHARE_BACKING_FILE_SIZE $SHARE_BACKING_FILE
-            DEV=`sudo losetup -f --show $SHARE_BACKING_FILE`
-            # Only create if the loopback device doesn't contain $SHARE_GROUP
-            if ! sudo vgs $SHARE_GROUP; then sudo vgcreate $SHARE_GROUP $DEV; fi
-        fi
-
-        mkdir -p $MANILA_STATE_PATH/shares
-
-        if sudo vgs $SHARE_GROUP; then
-            _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
-        fi
-    fi
-
     # Create cache dir
     sudo mkdir -p $MANILA_AUTH_CACHE_DIR
     sudo chown $STACK_USER $MANILA_AUTH_CACHE_DIR
@@ -402,26 +328,10 @@ function init_manila {
 function install_manila {
     git_clone $MANILA_REPO $MANILA_DIR $MANILA_BRANCH
     git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
-
-    if is_service_enabled m-shr; then
-        if is_ubuntu; then
-            sudo apt-get install -y nfs-kernel-server nfs-common samba
-        elif is_fedora; then
-            sudo yum install -y nfs-utils nfs-utils-lib samba
-        fi
-    fi
 }
 
 # start_manila - Start running processes, including screen
 function start_manila {
-    samba_daemon_name=smbd
-    if is_service_enabled m-shr; then
-        if is_fedora; then
-            samba_daemon_name=smb
-        fi
-        stop_service $samba_daemon_name || echo "Couldn't stop '$samba_daemon_name' service"
-    fi
-
     screen_it m-api "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
     screen_it m-shr "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
     screen_it m-sch "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"

@@ -12,8 +12,6 @@ $ cp lib/manila ${DEVSTACK_DIR}/lib
 
 $ cp extras.d/70-manila.sh ${DEVSTACK_DIR}/extras.d
 
-note: 70-manila.sh uses simple lvm-driver without multitenancy support.
-
 To configure devstack to run manila:
 
 $ cd ${DEVSTACK_DIR}
