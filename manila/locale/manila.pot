@@ -1505,7 +1505,7 @@ msgstr ""
 msgid "Error in gluster volume set: %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:144 manila/share/drivers/lvm.py:306
+#: manila/share/drivers/glusterfs.py:144
 #, python-format
 msgid "%s is already mounted"
 msgstr ""
@@ -1522,39 +1522,6 @@ msgstr ""
 
 #: manila/share/drivers/glusterfs.py:251
 msgid "GlusterFS control mount is not available"
-msgstr ""
-
-#: manila/share/drivers/lvm.py:85
-#, python-format
-msgid "share volume group %s doesn't exist"
-msgstr ""
-
-#: manila/share/drivers/lvm.py:89
-msgid "share_export_ip isn't specified"
-msgstr ""
-
-#: manila/share/drivers/lvm.py:145
-#, python-format
-msgid "Error deleting volume: %s"
-msgstr ""
-
-#: manila/share/drivers/lvm.py:147
-#, python-format
-msgid "Volume not found: %s"
-msgstr ""
-
-#: manila/share/drivers/lvm.py:186
-#, python-format
-msgid "Error retrieving volume status: %s"
-msgstr ""
-
-#: manila/share/drivers/lvm.py:561
-#, python-format
-msgid "Share section %r already defined."
-msgstr ""
-
-#: manila/share/drivers/lvm.py:591
-msgid "only ip access type allowed"
 msgstr ""
 
 #: manila/share/drivers/service_instance.py:130

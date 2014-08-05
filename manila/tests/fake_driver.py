@@ -13,16 +13,20 @@
 #    under the License.
 
 from manila.openstack.common import log as logging
-from manila.share.drivers import lvm
+from manila.share.drivers import generic
 
 LOG = logging.getLogger(__name__)
 
 
-class FakeShareDriver(lvm.LVMShareDriver):
+class FakeShareDriver(generic.GenericShareDriver):
     """Logs calls instead of executing."""
     def __init__(self, *args, **kwargs):
         super(FakeShareDriver, self).__init__(execute=self.fake_execute,
                                               *args, **kwargs)
+
+    def do_setup(self, context):
+        """Fake setup of Generic driver."""
+        pass
 
     def check_for_setup_error(self):
         """No setup necessary in fake mode."""

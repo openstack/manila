@@ -24,14 +24,14 @@ This module allows support for setting configurations either from default
 or from a particular CONF group, to be able to set multiple configurations
 for a given set of values.
 
-For instance, two lvm configurations can be set by naming them in groups as
+For instance, two generic configurations can be set by naming them in groups as
 
- [lvm1]
- volume_group=lvm-group-1
+ [generic1]
+ share_backend_name=generic-backend-1
  ...
 
- [lvm2]
- volume_group=lvm-group-2
+ [generic2]
+ share_backend_name=generic-backend-2
  ...
 
 And the configuration group name will be passed in so that all calls to

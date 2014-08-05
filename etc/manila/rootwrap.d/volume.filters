@@ -28,10 +28,6 @@ lvdisplay: CommandFilter, lvdisplay, root
 # manila/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
 iscsiadm: CommandFilter, iscsiadm, root
 
-# manila/volume/drivers/lvm.py: 'shred', '-n3'
-# manila/volume/drivers/lvm.py: 'shred', '-n0', '-z', '-s%dMiB'
-shred: CommandFilter, shred, root
-
 #manila/volume/.py: utils.temporary_chown(path, 0), ...
 chown: CommandFilter, chown, root
 
