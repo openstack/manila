@@ -18,6 +18,7 @@ import subprocess
 
 from tempest.cli import manilaclient
 from tempest import config_share as config
+from tempest import exceptions
 
 CONF = config.CONF
 
@@ -37,7 +38,7 @@ class SimpleReadOnlyManilaClientTest(manilaclient.ClientTestBase):
             raise cls.skipException("Manila not available")
 
     def test_manila_fake_action(self):
-        self.assertRaises(manilaclient.cli.CommandFailed,
+        self.assertRaises(exceptions.CommandFailed,
                           self.manila, 'this-does-not-exist')
 
     def test_manila_absolute_limit_list(self):
