@@ -113,7 +113,9 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 raise
 
         self._ensure_gluster_vol_mounted()
+        self._setup_gluster_vol()
 
+    def _setup_gluster_vol(self):
         # exporting the whole volume must be prohibited
         # to not to defeat access control
         args, kw = self.gluster_address.make_gluster_args(
