@@ -67,6 +67,20 @@ class ShareActionsController(wsgi.Controller):
         self.share_api = share.API()
 
     @staticmethod
+    def _validate_common_name(access):
+        """Validate common name passed by user.
+
+        'access' is used as the certificate's CN (common name)
+        to which access is allowed or denied by the backend.
+        The standard allows for just about any string in the
+        common name. The meaning of a string depends on its
+        interpretation and is limited to 64 characters.
+        """
+        if len(access) == 0 or len(access) > 64:
+            exc_str = _('Invalid CN (common name). Must be 1-64 chars long')
+            raise webob.exc.HTTPBadRequest(explanation=exc_str)
+
+    @staticmethod
     def _validate_username(access):
         valid_useraname_re = '[\w\.\-_\`;\'\{\}\[\]]{4,32}$'
         username = access
@@ -115,8 +129,11 @@ class ShareActionsController(wsgi.Controller):
             self._validate_ip_range(access_to)
         elif access_type == 'user':
             self._validate_username(access_to)
+        elif access_type == 'cert':
+            self._validate_common_name(access_to.strip())
         else:
-            exc_str = _("Only 'ip' or 'user' access types are supported.")
+            exc_str = _("Only 'ip','user',or'cert' access types "
+                        "are supported.")
             raise webob.exc.HTTPBadRequest(explanation=exc_str)
         try:
             access = self.share_api.allow_access(

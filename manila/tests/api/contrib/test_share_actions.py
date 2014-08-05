@@ -56,8 +56,61 @@ class ShareActionsTest(test.TestCase):
         self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
 
         id = 'fake_share_id'
-        body = {"os-allow_access": {"access_type": 'ip',
-                                    "access_to": '127.0.0.1'}}
+        body = {
+            "os-allow_access": {
+                "access_type": 'ip',
+                "access_to": '127.0.0.1',
+            }
+        }
+        expected = {'access': {'fake': 'fake'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        res = self.controller._allow_access(req, id, body)
+        self.assertEqual(res, expected)
+
+    def test_allow_access_cert_min_accessto(self):
+        def _stub_allow_access(*args, **kwargs):
+            return {'fake': 'fake'}
+        self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
+
+        body = {
+            "os-allow_access": {
+                "access_type": 'cert',
+                "access_to": 'x',
+            }
+        }
+        expected = {'access': {'fake': 'fake'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        res = self.controller._allow_access(req, id, body)
+        self.assertEqual(res, expected)
+
+    def test_allow_access_cert_typical_accessto(self):
+        def _stub_allow_access(*args, **kwargs):
+            return {'fake': 'fake'}
+        self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
+
+        body = {
+            "os-allow_access": {
+                "access_type": 'cert',
+                "access_to": 'tenant.example.com',
+            }
+        }
+        expected = {'access': {'fake': 'fake'}}
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        res = self.controller._allow_access(req, id, body)
+        self.assertEqual(res, expected)
+
+    def test_allow_access_cert_max_accessto(self):
+        def _stub_allow_access(*args, **kwargs):
+            return {'fake': 'fake'}
+        self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
+
+        access_to = 'x' * 64
+        body = {
+            "os-allow_access": {
+                "access_type": 'cert',
+                "access_to": access_to,
+            }
+        }
         expected = {'access': {'fake': 'fake'}}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
         res = self.controller._allow_access(req, id, body)
@@ -99,6 +152,48 @@ class ShareActionsTest(test.TestCase):
             "os-allow_access": {
                 "access_type": 'user',
                 "access_to": '1' * 33,
+            }
+        }
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._allow_access, req, id, body)
+
+    def test_allow_access_cert_error_invalid_accessto_gt64(self):
+        id = 'fake_share_id'
+
+        access_to = 'x' * 65
+        body = {
+            "os-allow_access": {
+                "access_type": 'cert',
+                "access_to": access_to,
+            }
+        }
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._allow_access, req, id, body)
+
+    def test_allow_access_cert_error_invalid_accessto_zero(self):
+        id = 'fake_share_id'
+
+        access_to = ''
+        body = {
+            "os-allow_access": {
+                "access_type": 'cert',
+                "access_to": access_to,
+            }
+        }
+        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._allow_access, req, id, body)
+
+    def test_allow_access_cert_error_invalid_accessto_whitespace(self):
+        id = 'fake_share_id'
+
+        access_to = ' '
+        body = {
+            "os-allow_access": {
+                "access_type": 'cert',
+                "access_to": access_to,
             }
         }
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
