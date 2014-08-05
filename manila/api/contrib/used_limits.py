@@ -42,9 +42,9 @@ class UsedLimitsController(wsgi.Controller):
         }
 
         used_limits = {}
-        for display_name, quota in six.iteritems(quota_map):
-            if quota in quotas:
-                used_limits[display_name] = quotas[quota]['in_use']
+        for display_name, quota_name in six.iteritems(quota_map):
+            if quota_name in quotas:
+                used_limits[display_name] = quotas[quota_name]['in_use']
 
         resp_obj.obj['limits']['absolute'].update(used_limits)
 
