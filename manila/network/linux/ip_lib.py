@@ -383,7 +383,10 @@ class IpNetnsCommand(IpCommandBase):
     def delete(self, name):
         self._as_root('delete', name, use_root_namespace=True)
 
-    def execute(self, cmds, addl_env={}, check_exit_code=True):
+    def execute(self, cmds, addl_env=None, check_exit_code=True):
+        if addl_env is None:
+            addl_env = dict()
+
         if not self._parent.namespace:
             raise Exception(_('No namespace defined for parent'))
         else:
