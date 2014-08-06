@@ -637,87 +637,228 @@ class CIFSHelperTestCase(test.TestCase):
 
     def setUp(self):
         super(CIFSHelperTestCase, self).setUp()
+        self.server_details = {'instance_id': 'fake', 'ip': '1.2.3.4', }
+        self.share_name = 'fake_share_name'
         self.fake_conf = Configuration(None)
         self._ssh_exec = mock.Mock(return_value=('', ''))
         self._execute = mock.Mock(return_value=('', ''))
         self._helper = generic.CIFSHelper(self._execute, self._ssh_exec,
                                           self.fake_conf)
 
-    def test_create_export(self):
-        server_details = {'instance_id': 'fake',
-                          'ip': '1.2.3.4'}
-        self.stubs.Set(self._helper, '_update_config', mock.Mock())
-        self.stubs.Set(self._helper, '_write_remote_config', mock.Mock())
-        self.stubs.Set(self._helper, '_restart_service', mock.Mock())
-        self.stubs.Set(self._helper, '_get_local_config', mock.Mock())
-        self.stubs.Set(generic.ConfigParser, 'ConfigParser', mock.Mock())
+    def test_init_helper(self):
+        self._helper.init_helper(self.server_details)
+        self._helper._ssh_exec.assert_called_once_with(
+            self.server_details,
+            ['sudo', 'net', 'conf', 'list'],
+        )
 
-        ret = self._helper.create_export(server_details, 'volume-00001',
-                                         recreate=True)
-        self._helper._get_local_config.\
-                assert_called_once_with(server_details['instance_id'])
-        self._helper._update_config.assert_called_once()
-        self._helper._write_remote_config.assert_called_once()
-        self._helper._restart_service.assert_called_once()
-        expected_location = '//%s/%s' % (server_details['ip'], 'volume-00001')
+    def test_create_export_share_does_not_exist(self):
+        def fake_ssh_exec(*args, **kwargs):
+            if 'showshare' in args[1]:
+                raise exception.ProcessExecutionError()
+            else:
+                return ('', '')
+
+        self.stubs.Set(self._helper, '_ssh_exec',
+                       mock.Mock(side_effect=fake_ssh_exec))
+
+        ret = self._helper.create_export(self.server_details, self.share_name)
+        expected_location = '//%s/%s' % (
+            self.server_details['ip'], self.share_name)
         self.assertEqual(ret, expected_location)
+        self._helper._ssh_exec.assert_has_calls([
+            mock.call(
+                self.server_details,
+                ['sudo', 'net', 'conf', 'showshare', self.share_name, ]
+            ),
+            mock.call(
+                self.server_details,
+                [
+                    'sudo', 'net', 'conf', 'addshare', self.share_name,
+                    self._helper.configuration.share_mount_path,
+                    'writeable=y', 'guest_ok=y',
+                ]
+            ),
+            mock.call(self.server_details, mock.ANY),
+        ])
+
+    def test_create_export_share_exist_recreate_true(self):
+        ret = self._helper.create_export(self.server_details, self.share_name,
+                                         recreate=True)
+        expected_location = '//%s/%s' % (
+            self.server_details['ip'], self.share_name)
+        self.assertEqual(ret, expected_location)
+        self._helper._ssh_exec.assert_has_calls([
+            mock.call(
+                self.server_details,
+                ['sudo', 'net', 'conf', 'showshare', self.share_name, ]
+            ),
+            mock.call(
+                self.server_details,
+                ['sudo', 'net', 'conf', 'delshare', self.share_name, ]
+            ),
+            mock.call(
+                self.server_details,
+                [
+                    'sudo', 'net', 'conf', 'addshare', self.share_name,
+                    self._helper.configuration.share_mount_path,
+                    'writeable=y', 'guest_ok=y',
+                ]
+            ),
+            mock.call(self.server_details, mock.ANY),
+        ])
+
+    def test_create_export_share_exist_recreate_false(self):
+        self.assertRaises(
+            exception.ShareBackendException,
+            self._helper.create_export,
+            self.server_details,
+            self.share_name,
+            recreate=False,
+        )
+        self._helper._ssh_exec.assert_has_calls([
+            mock.call(
+                self.server_details,
+                ['sudo', 'net', 'conf', 'showshare', self.share_name, ]
+            ),
+        ])
 
     def test_remove_export(self):
-        server_details = {'instance_id': 'fake',
-                          'ip': '1.2.3.4'}
-        self.stubs.Set(generic.ConfigParser, 'ConfigParser', mock.Mock())
-        self.stubs.Set(self._helper, '_get_local_config', mock.Mock())
-        self.stubs.Set(self._helper, '_update_config', mock.Mock())
-        self.stubs.Set(self._helper, '_write_remote_config', mock.Mock())
-        self._helper.remove_export(server_details, 'volume-00001')
-        self._helper._get_local_config.assert_called_once()
-        self._helper._update_config.assert_called_once()
-        self._helper._write_remote_config.assert_called_once()
-        self._helper._ssh_exec.assert_called_once_with(server_details,
-                ['sudo', 'smbcontrol', 'all', 'close-share', 'volume-00001'])
+        self._helper.remove_export(self.server_details, self.share_name)
+        self._helper._ssh_exec.assert_called_once_with(
+            self.server_details,
+            ['sudo', 'net', 'conf', 'delshare', self.share_name],
+        )
 
-    def test_allow_access(self):
-        class FakeParser(object):
-            def read(self, *args, **kwargs):
-                pass
+    def test_remove_export_forcibly(self):
+        delshare_command = ['sudo', 'net', 'conf', 'delshare', self.share_name]
 
-            def get(self, *args, **kwargs):
-                return ''
+        def fake_ssh_exec(*args, **kwargs):
+            if delshare_command == args[1]:
+                raise exception.ProcessExecutionError()
+            else:
+                return ('', '')
 
-            def set(self, *args, **kwargs):
-                pass
+        self.stubs.Set(self._helper, '_ssh_exec',
+                       mock.Mock(side_effect=fake_ssh_exec))
 
-        # fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-        #                             share_network_id='fake_share_network_id')
-        server_details = {'instance_id': 'fake',
-                          'ip': '1.2.3.4'}
-        self.stubs.Set(generic.ConfigParser, 'ConfigParser', FakeParser)
-        self.stubs.Set(self._helper, '_get_local_config', mock.Mock())
-        self.stubs.Set(self._helper, '_update_config', mock.Mock())
-        self.stubs.Set(self._helper, '_write_remote_config', mock.Mock())
-        self.stubs.Set(self._helper, '_restart_service', mock.Mock())
+        self._helper.remove_export(self.server_details, self.share_name)
 
-        self._helper.allow_access(server_details, 'volume-00001',
-                                  'ip', '10.0.0.2')
-        self._helper._get_local_config.assert_called_once()
-        self._helper._update_config.assert_called_once()
-        self._helper._write_remote_config.assert_called_once()
-        self._helper._restart_service.assert_called_once()
+        self._helper._ssh_exec.assert_has_calls([
+            mock.call(
+                self.server_details,
+                ['sudo', 'net', 'conf', 'delshare', self.share_name],
+            ),
+            mock.call(
+                self.server_details,
+                ['sudo', 'smbcontrol', 'all', 'close-share', self.share_name],
+            ),
+        ])
 
-    def test_deny_access(self):
-        # fake_server = fake_compute.FakeServer(ip='10.254.0.3',
-        #                             share_network_id='fake_share_network_id')
-        server_details = {'instance_id': 'fake',
-                          'ip': '1.2.3.4'}
-        self.stubs.Set(generic.ConfigParser, 'ConfigParser', mock.Mock())
-        self.stubs.Set(self._helper, '_get_local_config', mock.Mock())
-        self.stubs.Set(self._helper, '_update_config', mock.Mock())
-        self.stubs.Set(self._helper, '_write_remote_config', mock.Mock())
-        self.stubs.Set(self._helper, '_restart_service', mock.Mock())
+    def test_allow_access_ip_exist(self):
+        ip = '1.1.1.1'
+        hosts = [ip, ]
+        self.stubs.Set(self._helper, '_get_allow_hosts',
+                       mock.Mock(return_value=hosts))
+        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
 
-        self._helper.deny_access(server_details, 'volume-00001',
-                                  'ip', '10.0.0.2')
-        self._helper._get_local_config.assert_called_once()
-        self._helper._update_config.assert_called_once()
-        self._helper._write_remote_config.assert_called_once()
-        self._helper._restart_service.assert_called_once()
+        self.assertRaises(
+            exception.ShareAccessExists,
+            self._helper.allow_access,
+            self.server_details,
+            self.share_name,
+            'ip',
+            ip,
+        )
+
+        self._helper._get_allow_hosts.assert_called_once_with(
+            self.server_details, self.share_name)
+        self._helper._set_allow_hosts.assert_has_calls([])
+
+    def test_allow_access_ip_does_not_exist(self):
+        ip = '1.1.1.1'
+        hosts = []
+        self.stubs.Set(self._helper, '_get_allow_hosts',
+                       mock.Mock(return_value=hosts))
+        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+
+        self._helper.allow_access(
+            self.server_details, self.share_name, 'ip', ip)
+
+        self._helper._get_allow_hosts.assert_called_once_with(
+            self.server_details, self.share_name)
+        self._helper._set_allow_hosts.assert_called_once_with(
+            self.server_details, hosts, self.share_name)
+
+    def test_allow_access_wrong_type(self):
+        self.assertRaises(
+            exception.InvalidShareAccess,
+            self._helper.allow_access,
+            self.server_details,
+            self.share_name,
+            'fake',
+            '1.1.1.1',
+        )
+
+    def test_deny_access_list_has_value(self):
+        ip = '1.1.1.1'
+        hosts = [ip, ]
+        self.stubs.Set(self._helper, '_get_allow_hosts',
+                       mock.Mock(return_value=hosts))
+        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+
+        self._helper.deny_access(
+            self.server_details, self.share_name, 'ip', ip)
+
+        self._helper._get_allow_hosts.assert_called_once_with(
+            self.server_details, self.share_name)
+        self._helper._set_allow_hosts.assert_called_once_with(
+            self.server_details, [], self.share_name)
+
+    def test_deny_access_list_does_not_have_value(self):
+        ip = '1.1.1.1'
+        hosts = []
+        self.stubs.Set(self._helper, '_get_allow_hosts',
+                       mock.Mock(return_value=hosts))
+        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+
+        self._helper.deny_access(
+            self.server_details, self.share_name, 'ip', ip)
+
+        self._helper._get_allow_hosts.assert_called_once_with(
+            self.server_details, self.share_name)
+        self._helper._set_allow_hosts.assert_has_calls([])
+
+    def test_deny_access_force(self):
+        self.stubs.Set(
+            self._helper,
+            '_get_allow_hosts',
+            mock.Mock(side_effect=exception.ProcessExecutionError()),
+        )
+        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+
+        self._helper.deny_access(
+            self.server_details, self.share_name, 'ip', '1.1.1.1', force=True)
+
+        self._helper._get_allow_hosts.assert_called_once_with(
+            self.server_details, self.share_name)
+        self._helper._set_allow_hosts.assert_has_calls([])
+
+    def test_deny_access_not_force(self):
+        def raise_process_execution_error(*args, **kwargs):
+            raise exception.ProcessExecutionError()
+
+        self.stubs.Set(self._helper, '_get_allow_hosts',
+                       mock.Mock(side_effect=raise_process_execution_error))
+        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+        self.assertRaises(
+            exception.ProcessExecutionError,
+            self._helper.deny_access,
+            self.server_details,
+            self.share_name,
+            'ip',
+            '1.1.1.1',
+        )
+        self._helper._get_allow_hosts.assert_called_once_with(
+            self.server_details, self.share_name)
+        self._helper._set_allow_hosts.assert_has_calls([])

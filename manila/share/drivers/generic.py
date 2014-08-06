@@ -15,10 +15,8 @@
 
 """Generic Driver for shares."""
 
-import ConfigParser
 import os
 import re
-import shutil
 import time
 
 from oslo.config import cfg
@@ -26,6 +24,7 @@ from oslo.config import cfg
 from manila import compute
 from manila import context
 from manila import exception
+from manila.openstack.common import excutils
 from manila.openstack.common import importutils
 from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
@@ -597,175 +596,106 @@ class NFSHelper(NASHelperBase):
                                 ':'.join([access, local_path])])
 
 
-def cifs_synchronized(f):
-
-    def wrapped_func(self, *args, **kwargs):
-        key = "cifs-%s" % args[0]["instance_id"]
-
-        @lockutils.synchronized(key)
-        def source_func(self, *args, **kwargs):
-            return f(self, *args, **kwargs)
-
-        return source_func(self, *args, **kwargs)
-
-    return wrapped_func
-
-
 class CIFSHelper(NASHelperBase):
-    """Class provides functionality to operate with cifs shares"""
+    """Manage shares in samba server by net conf tool.
 
-    def __init__(self, *args):
-        """Store executor and configuration path."""
-        super(CIFSHelper, self).__init__(*args)
-        self.config_path = self.configuration.service_instance_smb_config_path
-        self.smb_template_config = self.configuration.smb_template_config_path
-        self.test_config = "%s_" % (self.smb_template_config,)
-        self.local_configs = {}
+    Class provides functionality to operate with CIFS shares.
+    Samba server should be configured to use registry as configuration
+    backend to allow dynamically share managements.
+    """
 
-    def _create_local_config(self, share_network_id):
-        path, ext = os.path.splitext(self.smb_template_config)
-        local_config = '%s-%s%s' % (path, share_network_id, ext)
-        self.local_configs[share_network_id] = local_config
-        shutil.copy(self.smb_template_config, local_config)
-        return local_config
-
-    def _get_local_config(self, share_network_id):
-        local_config = self.local_configs.get(share_network_id, None)
-        if local_config is None:
-            local_config = self._create_local_config(share_network_id)
-        return local_config
-
-    @cifs_synchronized
     def init_helper(self, server):
-        self._recreate_template_config()
-        local_config = self._create_local_config(server['instance_id'])
-        config_dir = os.path.dirname(self.config_path)
-        try:
-            self._ssh_exec(server, ['sudo', 'mkdir', config_dir])
-        except exception.ProcessExecutionError as e:
-            if 'File exists' not in e.stderr:
-                raise
-            LOG.debug('Directory %s already exists' % config_dir)
-        self._ssh_exec(server, ['sudo', 'chown',
-                                self.configuration.service_instance_user,
-                                config_dir])
-        self._ssh_exec(server, ['touch', self.config_path])
-        try:
-            self._ssh_exec(server, ['sudo', 'stop', 'smbd'])
-        except exception.ProcessExecutionError as e:
-            if 'Unknown instance' not in e.stderr:
-                raise
-            LOG.debug('Samba service is not running')
-        self._write_remote_config(local_config, server)
-        self._ssh_exec(server, ['sudo', 'smbd', '-s', self.config_path])
-        self._restart_service(server)
+        # This is smoke check that we have required dependency
+        self._ssh_exec(server, ['sudo', 'net', 'conf', 'list'])
 
-    @cifs_synchronized
     def create_export(self, server, share_name, recreate=False):
-        """Create new export, delete old one if exists."""
-        local_path = os.path.join(self.configuration.share_mount_path,
-                                  share_name)
-        config = self._get_local_config(server['instance_id'])
-        parser = ConfigParser.ConfigParser()
-        parser.read(config)
-        # delete old one
-        if parser.has_section(share_name):
+        """Create share at samba server."""
+        create_cmd = [
+            'sudo', 'net', 'conf', 'addshare',
+            share_name, self.configuration.share_mount_path,
+            'writeable=y', 'guest_ok=y',
+        ]
+        try:
+            self._ssh_exec(
+                server, ['sudo', 'net', 'conf', 'showshare', share_name, ])
+        except exception.ProcessExecutionError as parent_e:
+            # Share does not exist, create it
+            try:
+                self._ssh_exec(server, create_cmd)
+            except Exception as e:
+                # If we get here, then it will be useful
+                # to log parent exception too.
+                with excutils.save_and_reraise_exception():
+                    LOG.error(parent_e)
+        else:
+            # Share exists
             if recreate:
-                parser.remove_section(share_name)
+                self._ssh_exec(
+                    server, ['sudo', 'net', 'conf', 'delshare', share_name, ])
+                self._ssh_exec(server, create_cmd)
             else:
-                raise exception.Error('Section exists')
-        # Create new one
-        parser.add_section(share_name)
-        parser.set(share_name, 'path', local_path)
-        parser.set(share_name, 'browseable', 'yes')
-        parser.set(share_name, 'guest ok', 'yes')
-        parser.set(share_name, 'read only', 'no')
-        parser.set(share_name, 'writable', 'yes')
-        parser.set(share_name, 'create mask', '0755')
-        parser.set(share_name, 'hosts deny', '0.0.0.0/0')  # denying all ips
-        parser.set(share_name, 'hosts allow', '127.0.0.1')
-        self._update_config(parser, config)
-        self._write_remote_config(config, server)
-        self._restart_service(server)
+                msg = _('Share section %s already defined.') % share_name
+                raise exception.ShareBackendException(msg=msg)
+        parameters = {
+            'browseable': 'yes',
+            '\"create mask\"': '0755',
+            '\"hosts deny\"': '0.0.0.0/0',  # deny all by default
+            '\"hosts allow\"': '127.0.0.1',
+            '\"read only\"': 'no',
+        }
+        set_of_commands = [':', ]  # : is just placeholder
+        for param, value in parameters.items():
+            # These are combined in one list to run in one process
+            # instead of big chain of one action calls.
+            set_of_commands.extend(['&&', 'sudo', 'net', 'conf', 'setparm',
+                                    share_name, param, value])
+        self._ssh_exec(server, set_of_commands)
         return '//%s/%s' % (server['ip'], share_name)
 
-    @cifs_synchronized
     def remove_export(self, server, share_name):
-        """Remove export."""
-        config = self._get_local_config(server['instance_id'])
-        parser = ConfigParser.ConfigParser()
-        parser.read(config)
-        # delete old one
-        if parser.has_section(share_name):
-            parser.remove_section(share_name)
-        self._update_config(parser, config)
-        self._write_remote_config(config, server)
-        self._ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
-                                share_name])
+        """Remove share definition from samba server."""
+        try:
+            self._ssh_exec(
+                server, ['sudo', 'net', 'conf', 'delshare', share_name])
+        except exception.ProcessExecutionError as e:
+            LOG.warning(_("Caught error trying delete share: %(error)s, try"
+                          "ing delete it forcibly.") % {'error': e.stderr})
+            self._ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
+                                    share_name])
 
-    def _write_remote_config(self, config, server):
-        with open(config, 'r') as f:
-            cfg = "'%s'" % f.read()
-        self._ssh_exec(server, ['echo %s > %s' % (cfg, self.config_path)])
-
-    @cifs_synchronized
     def allow_access(self, server, share_name, access_type, access):
-        """Allow access to the host."""
+        """Add access for share."""
         if access_type != 'ip':
-            reason = 'only ip access type allowed'
-            raise exception.InvalidShareAccess(reason)
-        config = self._get_local_config(server['instance_id'])
-        parser = ConfigParser.ConfigParser()
-        parser.read(config)
+            reason = _('Only ip access type allowed.')
+            raise exception.InvalidShareAccess(reason=reason)
 
-        hosts = parser.get(share_name, 'hosts allow')
-
-        if access in hosts.split():
+        hosts = self._get_allow_hosts(server, share_name)
+        if access in hosts:
             raise exception.ShareAccessExists(access_type=access_type,
                                               access=access)
-        hosts += ' %s' % (access,)
-        parser.set(share_name, 'hosts allow', hosts)
-        self._update_config(parser, config)
-        self._write_remote_config(config, server)
-        self._restart_service(server)
+        hosts.append(access)
+        self._set_allow_hosts(server, hosts, share_name)
 
-    @cifs_synchronized
     def deny_access(self, server, share_name, access_type, access,
                     force=False):
-        """Deny access to the host."""
-        config = self._get_local_config(server['instance_id'])
-        parser = ConfigParser.ConfigParser()
+        """Remove access for share."""
         try:
-            parser.read(config)
-            hosts = parser.get(share_name, 'hosts allow')
-            hosts = hosts.replace(' %s' % (access,), '', 1)
-            parser.set(share_name, 'hosts allow', hosts)
-            self._update_config(parser, config)
-        except ConfigParser.NoSectionError:
+            hosts = self._get_allow_hosts(server, share_name)
+            if access in hosts:
+                # Access rule can be in error state, if so
+                # it can be absent in rules, hence - skip removal.
+                hosts.remove(access)
+                self._set_allow_hosts(server, hosts, share_name)
+        except exception.ProcessExecutionError:
             if not force:
                 raise
-        self._write_remote_config(config, server)
-        self._restart_service(server)
 
-    def _recreate_template_config(self):
-        """Create new SAMBA configuration file."""
-        if os.path.exists(self.smb_template_config):
-            os.unlink(self.smb_template_config)
-        parser = ConfigParser.ConfigParser()
-        parser.add_section('global')
-        parser.set('global', 'security', 'user')
-        parser.set('global', 'server string', '%h server (Samba, Openstack)')
-        self._update_config(parser, self.smb_template_config)
+    def _get_allow_hosts(self, server, share_name):
+        (out, _) = self._ssh_exec(server, ['sudo', 'net', 'conf', 'getparm',
+                                           share_name, '\"hosts allow\"'])
+        return out.split()
 
-    def _restart_service(self, server):
-        self._ssh_exec(server, 'sudo pkill -HUP smbd'.split())
-
-    def _update_config(self, parser, config):
-        """Check if new configuration is correct and save it."""
-        # Check that configuration is correct
-        with open(self.test_config, 'w') as fp:
-            parser.write(fp)
-        self._execute('testparm', '-s', self.test_config, check_exit_code=True)
-        # save it
-        with open(config, 'w') as fp:
-            parser.write(fp)
+    def _set_allow_hosts(self, server, hosts, share_name):
+        value = "\"" + ' '.join(hosts) + "\""
+        self._ssh_exec(server, ['sudo', 'net', 'conf', 'setparm', share_name,
+                                '\"hosts allow\"', value])
