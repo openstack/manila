@@ -22,17 +22,19 @@ from manila import exception
 from manila import test
 
 
-security_service_dict = {'id': 'fake id',
-                         'project_id': 'fake project',
-                         'type': 'ldap',
-                         'dns_ip': 'fake dns',
-                         'server': 'fake ldap server',
-                         'domain': 'fake ldap domain',
-                         'sid': 'fake sid',
-                         "password": "fake password",
-                         'name': 'whatever',
-                         'description': 'nevermind',
-                         'status': constants.STATUS_NEW}
+security_service_dict = {
+    'id': 'fake id',
+    'project_id': 'fake project',
+    'type': 'ldap',
+    'dns_ip': 'fake dns',
+    'server': 'fake ldap server',
+    'domain': 'fake ldap domain',
+    'user': 'fake user',
+    'password': 'fake password',
+    'name': 'whatever',
+    'description': 'nevermind',
+    'status': constants.STATUS_NEW,
+}
 
 
 class SecurityServiceDBTest(test.TestCase):
@@ -91,14 +93,16 @@ class SecurityServiceDBTest(test.TestCase):
                           security_service_dict['id'])
 
     def test_update(self):
-        update_dict = {'dns_ip': 'new dns',
-                       'server': 'new ldap server',
-                       'domain': 'new ldap domain',
-                       'sid': 'new sid',
-                       'password': 'new password',
-                       'name': 'new whatever',
-                       'description': 'new nevermind',
-                       'status': constants.STATUS_ERROR}
+        update_dict = {
+            'dns_ip': 'new dns',
+            'server': 'new ldap server',
+            'domain': 'new ldap domain',
+            'user': 'new user',
+            'password': 'new password',
+            'name': 'new whatever',
+            'description': 'new nevermind',
+            'status': constants.STATUS_ERROR,
+        }
 
         db_api.security_service_create(self.fake_context,
                                        security_service_dict)

@@ -330,7 +330,7 @@ class SecurityService(BASE, ManilaBase):
     dns_ip = Column(String(64), nullable=True)
     server = Column(String(255), nullable=True)
     domain = Column(String(255), nullable=True)
-    sid = Column(String(255), nullable=True)
+    user = Column(String(255), nullable=True)
     password = Column(String(255), nullable=True)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)

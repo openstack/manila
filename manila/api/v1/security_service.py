@@ -35,7 +35,7 @@ LOG = logging.getLogger(__name__)
 
 
 def make_security_service(elem):
-    attrs = ['id', 'name', 'description', 'type', 'server', 'domain', 'sid',
+    attrs = ['id', 'name', 'description', 'type', 'server', 'domain', 'user',
              'password', 'dns_ip', 'status', 'updated_at', 'created_at']
     for attr in attrs:
         elem.set(attr)

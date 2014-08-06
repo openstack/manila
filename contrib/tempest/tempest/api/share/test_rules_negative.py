@@ -110,16 +110,16 @@ class ShareIpRulesForCIFSNegativeTest(ShareIpRulesForNFSNegativeTest):
     protocol = "cifs"
 
 
-class ShareSidRulesForNFSNegativeTest(base.BaseSharesTest):
+class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
     protocol = "nfs"
 
     @classmethod
     @test.safe_setup
     def setUpClass(cls):
-        super(ShareSidRulesForNFSNegativeTest, cls).setUpClass()
+        super(ShareUserRulesForNFSNegativeTest, cls).setUpClass()
         if not (cls.protocol in CONF.share.enable_protocols and
-                cls.protocol in CONF.share.enable_sid_rules_for_protocols):
-            msg = "SID rule tests for %s protocol are disabled" % cls.protocol
+                cls.protocol in CONF.share.enable_user_rules_for_protocols):
+            msg = "USER rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
         # create share
         __, cls.share = cls.create_share(cls.protocol)
@@ -127,55 +127,55 @@ class ShareSidRulesForNFSNegativeTest(base.BaseSharesTest):
         __, cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_sid_with_wrong_input_2(self):
+    def test_create_access_rule_user_with_wrong_input_2(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.create_access_rule,
-                          self.share["id"], "sid",
+                          self.share["id"], "user",
                           "try+")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_sid_with_empty_key(self):
+    def test_create_access_rule_user_with_empty_key(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.create_access_rule,
-                          self.share["id"], "sid", "")
+                          self.share["id"], "user", "")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_sid_with_too_little_key(self):
+    def test_create_access_rule_user_with_too_little_key(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.create_access_rule,
-                          self.share["id"], "sid", "abc")
+                          self.share["id"], "user", "abc")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_sid_with_too_big_key(self):
+    def test_create_access_rule_user_with_too_big_key(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.create_access_rule,
-                          self.share["id"], "sid", "a" * 33)
+                          self.share["id"], "user", "a" * 33)
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_sid_with_wrong_input_1(self):
+    def test_create_access_rule_user_with_wrong_input_1(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.create_access_rule,
-                          self.share["id"], "sid",
+                          self.share["id"], "user",
                           "try+")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_sid_to_snapshot(self):
+    def test_create_access_rule_user_to_snapshot(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.create_access_rule,
                           self.snap["id"],
-                          access_type="sid",
+                          access_type="user",
                           access_to="fakeuser")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_sid_with_wrong_share_id(self):
+    def test_create_access_rule_user_with_wrong_share_id(self):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.create_access_rule,
                           "wrong_share_id",
-                          access_type="sid",
+                          access_type="user",
                           access_to="fakeuser")
 
 
-class ShareSidRulesForCIFSNegativeTest(ShareSidRulesForNFSNegativeTest):
+class ShareUserRulesForCIFSNegativeTest(ShareUserRulesForNFSNegativeTest):
     protocol = "cifs"
 
 
@@ -188,7 +188,7 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
         super(ShareRulesNegativeTest, cls).setUpClass()
         if not (any(p in CONF.share.enable_ip_rules_for_protocols
                     for p in cls.protocols) or
-                any(p in CONF.share.enable_sid_rules_for_protocols
+                any(p in CONF.share.enable_user_rules_for_protocols
                     for p in cls.protocols)):
             cls.message = "Rule tests are disabled"
             raise cls.skipException(cls.message)

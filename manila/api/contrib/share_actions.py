@@ -113,10 +113,10 @@ class ShareActionsController(wsgi.Controller):
         access_to = body['os-allow_access']['access_to']
         if access_type == 'ip':
             self._validate_ip_range(access_to)
-        elif access_type == 'sid':
+        elif access_type == 'user':
             self._validate_username(access_to)
         else:
-            exc_str = "Only 'ip' or 'sid' access types are supported"
+            exc_str = _("Only 'ip' or 'user' access types are supported.")
             raise webob.exc.HTTPBadRequest(explanation=exc_str)
         try:
             access = self.share_api.allow_access(

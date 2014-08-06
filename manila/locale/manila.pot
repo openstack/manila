@@ -1796,7 +1796,7 @@ msgid "7mode driver supports only 'ip' type"
 msgstr ""
 
 #: manila/share/drivers/netapp/driver.py:588
-msgid "NetApp only supports \"sid\" access type for CIFS."
+msgid "NetApp only supports \"user\" access type for CIFS."
 msgstr ""
 
 #: manila/share/drivers/netapp/driver.py:605

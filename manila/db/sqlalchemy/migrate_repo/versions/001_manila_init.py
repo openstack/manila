@@ -275,7 +275,7 @@ def upgrade(migrate_engine):
         Column('dns_ip', String(length=64), nullable=True),
         Column('server', String(length=255), nullable=True),
         Column('domain', String(length=255), nullable=True),
-        Column('sid', String(length=255), nullable=True),
+        Column('user', String(length=255), nullable=True),
         Column('password', String(length=255), nullable=True),
         Column('name', String(length=255), nullable=True),
         Column('description', String(length=255), nullable=True),

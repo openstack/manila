@@ -589,8 +589,8 @@ class NetAppCIFSHelper(NetAppNASHelperBase):
 
     def allow_access(self, context, share, access):
         """Allows access to a given CIFS storage for IPs in access."""
-        if access['access_type'] != 'sid':
-            msg = _('NetApp only supports "sid" access type for CIFS.')
+        if access['access_type'] != 'user':
+            msg = _('NetApp only supports "user" access type for CIFS.')
             raise exception.NetAppException(msg)
 
         user = access['access_to']

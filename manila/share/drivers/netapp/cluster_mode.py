@@ -396,22 +396,25 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
             LOG.error(msg)
             raise Exception(msg)
         for lif_name in lifs:
-            args = {'admin-password': data['password'],
-                    'admin-user-name': data['sid'],
-                    'interface-name': lif_name,
-                    'is-kerberos-enabled': 'true',
-                    'service-principal-name': spn
-                    }
+            args = {
+                'admin-password': data['password'],
+                'admin-user-name': data['user'],
+                'interface-name': lif_name,
+                'is-kerberos-enabled': 'true',
+                'service-principal-name': spn
+            }
         vserver_client.send_request('kerberos-config-modify', args)
 
     def _configure_active_directory(self, data, vserver_client):
         """Configures AD on vserver."""
         self._configure_dns(data, vserver_client)
-        args = {'admin-username': data['sid'],
-                'admin-password': data['password'],
-                'force-account-overwrite': 'true',
-                'cifs-server': data['server'],
-                'domain': data['domain']}
+        args = {
+            'admin-username': data['user'],
+            'admin-password': data['password'],
+            'force-account-overwrite': 'true',
+            'cifs-server': data['server'],
+            'domain': data['domain'],
+        }
         try:
             vserver_client.send_request('cifs-server-create', args)
         except naapi.NaApiError as e:
@@ -713,8 +716,10 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         if security_services:
             for service in security_services:
                 if service['type'] == 'active_directory':
-                    args = {'admin-password': service['password'],
-                            'admin-username': service['sid']}
+                    args = {
+                        'admin-password': service['password'],
+                        'admin-username': service['user'],
+                    }
                     try:
                         vserver_client.send_request('cifs-server-delete',
                                                     args)
@@ -746,8 +751,8 @@ class NetAppClusteredNFSHelper(driver.NetAppNFSHelper):
         export_location = ':'.join([export_ip, export_pathname])
         return export_location
 
-    def allow_access_by_sid(self, share, sid):
-        user, _x, group = sid.partition(':')
+    def allow_access_by_user(self, share, user):
+        user, _x, group = user.partition(':')
         args = {
             'attributes': {
                 'volume-attributes': {
@@ -769,7 +774,7 @@ class NetAppClusteredNFSHelper(driver.NetAppNFSHelper):
         }
         self._client.send_request('volume-modify-iter', args)
 
-    def deny_access_by_sid(self, share, sid):
+    def deny_access_by_user(self, share, user):
         args = {
             'attributes': {
                 'volume-security-attributes': {

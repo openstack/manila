@@ -55,7 +55,7 @@ class ViewBuilder(common.ViewBuilder):
                 'dns_ip': security_service.get('dns_ip'),
                 'server': security_service.get('server'),
                 'domain': security_service.get('domain'),
-                'sid': security_service.get('sid'),
+                'user': security_service.get('user'),
                 'password': security_service.get('password'),
                 'type': security_service.get('type'),
                 'project_id': security_service.get('project_id'),

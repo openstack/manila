@@ -88,7 +88,7 @@ class SecurityServicesTest(base.BaseSharesTest):
         # verify keys
         keys = [
             "name", "id", "status", "description",
-            "domain", "server", "dns_ip", "sid", "password", "type",
+            "domain", "server", "dns_ip", "user", "password", "type",
             "created_at", "updated_at", "project_id",
         ]
         [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
