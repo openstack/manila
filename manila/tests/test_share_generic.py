@@ -605,9 +605,9 @@ class NFSHelperTestCase(test.TestCase):
                                          self.fake_conf)
 
     def test_create_export(self):
-        fake_server = fake_compute.FakeServer(ip='10.254.0.3')
+        fake_server = fake_compute.FakeServer(public_address='10.254.0.3')
         ret = self._helper.create_export(fake_server, 'volume-00001')
-        expected_location = ':'.join([fake_server['ip'],
+        expected_location = ':'.join([fake_server['public_address'],
                                       os.path.join(CONF.share_mount_path,
                                                    'volume-00001')])
         self.assertEqual(ret, expected_location)
@@ -643,7 +643,8 @@ class CIFSHelperTestCase(test.TestCase):
 
     def setUp(self):
         super(CIFSHelperTestCase, self).setUp()
-        self.server_details = {'instance_id': 'fake', 'ip': '1.2.3.4', }
+        self.server_details = {'instance_id': 'fake',
+                               'public_address': '1.2.3.4', }
         self.share_name = 'fake_share_name'
         self.fake_conf = Configuration(None)
         self._ssh_exec = mock.Mock(return_value=('', ''))
@@ -670,7 +671,7 @@ class CIFSHelperTestCase(test.TestCase):
 
         ret = self._helper.create_export(self.server_details, self.share_name)
         expected_location = '//%s/%s' % (
-            self.server_details['ip'], self.share_name)
+            self.server_details['public_address'], self.share_name)
         self.assertEqual(ret, expected_location)
         self._helper._ssh_exec.assert_has_calls([
             mock.call(
@@ -692,7 +693,7 @@ class CIFSHelperTestCase(test.TestCase):
         ret = self._helper.create_export(self.server_details, self.share_name,
                                          recreate=True)
         expected_location = '//%s/%s' % (
-            self.server_details['ip'], self.share_name)
+            self.server_details['public_address'], self.share_name)
         self.assertEqual(ret, expected_location)
         self._helper._ssh_exec.assert_has_calls([
             mock.call(

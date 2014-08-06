@@ -87,6 +87,9 @@ server_opts = [
     cfg.StrOpt('interface_driver',
                default='manila.network.linux.interface.OVSInterfaceDriver',
                help="Vif driver."),
+    cfg.BoolOpt('connect_share_server_to_tenant_network',
+                default=False,
+                help='Attach share server directly to share network.'),
 ]
 
 CONF = cfg.CONF
@@ -158,6 +161,8 @@ class ServiceInstanceManager(object):
         self.path_to_private_key = self.get_config_option(
             "path_to_private_key")
         self.path_to_public_key = self.get_config_option("path_to_public_key")
+        self.connect_share_server_to_tenant_network = self.get_config_option(
+            'connect_share_server_to_tenant_network')
 
     @lockutils.synchronized("_get_service_network", external=True,
                             lock_path="service_instance_locks")
@@ -299,7 +304,8 @@ class ServiceInstanceManager(object):
                 'router_id': server['router_id'],
                 'password': self.get_config_option(
                     'service_instance_password'),
-                'username': self.get_config_option('service_instance_user')}
+                'username': self.get_config_option('service_instance_user'),
+                'public_address': server['public_address']}
 
     @lockutils.synchronized("_get_key", external=True,
                             lock_path="service_instance_locks")
@@ -366,14 +372,14 @@ class ServiceInstanceManager(object):
                       'instance password nor key are available.'))
 
             security_group = self._get_or_create_security_group(context)
-            subnet_id, router_id, port_id = \
-                self._setup_network_for_instance(neutron_net_id,
-                                                 neutron_subnet_id)
+            network_data = self._setup_network_for_instance(neutron_net_id,
+                                                            neutron_subnet_id)
             try:
                 self._setup_connectivity_with_service_instances()
             except Exception as e:
                 LOG.debug(e)
-                self.neutron_api.delete_port(port_id)
+                for port in network_data['ports']:
+                    self.neutron_api.delete_port(port['id'])
                 raise
 
         service_instance = self.compute_api.server_create(
@@ -382,7 +388,7 @@ class ServiceInstanceManager(object):
             image=service_image_id,
             flavor=self.get_config_option("service_instance_flavor_id"),
             key_name=key_name,
-            nics=[{'port-id': port_id}])
+            nics=[{'port-id': port['id']} for port in network_data['ports']])
 
         t = time.time()
         while time.time() - t < self.max_time_to_build_instance:
@@ -414,17 +420,33 @@ class ServiceInstanceManager(object):
                 context,
                 service_instance["id"], security_group.id)
 
+        router, service_subnet, service_port = (
+            network_data['router'], network_data['service_subnet'],
+            network_data['service_port']
+        )
+
         service_instance['ip'] = self._get_server_ip(service_instance)
         service_instance['pk_path'] = key_path
-        service_instance['router_id'] = router_id
-        service_instance['subnet_id'] = subnet_id
-        service_instance['port_id'] = port_id
+        service_instance['router_id'] = router['id']
+        service_instance['subnet_id'] = service_subnet['id']
+        service_instance['port_id'] = service_port['id']
+
+        try:
+            public_ip = network_data['public_port']
+        except KeyError:
+            public_ip = network_data['service_port']
+        public_ip = public_ip['fixed_ips']
+        public_ip = public_ip[0]
+        public_ip = public_ip['ip_address']
+
+        service_instance['public_address'] = public_ip
 
         if not self._check_server_availability(service_instance):
             raise exception.ServiceInstanceException(
                 _('SSH connection have not been '
                   'established in %ss. Giving up.') %
                 self.max_time_to_build_instance)
+
         return service_instance
 
     def _check_server_availability(self, server):
@@ -446,6 +468,8 @@ class ServiceInstanceManager(object):
     def _setup_network_for_instance(self, neutron_net_id, neutron_subnet_id):
         """Sets up network for service vm."""
 
+        network_data = dict()
+
         # We get/create subnet for service instance that is routed to
         # subnet provided in args.
         subnet_name = "routed_to_%s" % neutron_subnet_id
@@ -458,10 +482,11 @@ class ServiceInstanceManager(object):
                 self._get_cidr_for_subnet()
             )
 
-        private_router = self._get_private_router(neutron_net_id,
-                                                  neutron_subnet_id)
+        network_data['service_subnet'] = service_subnet
+        network_data['router'] = router = self._get_private_router(
+            neutron_net_id, neutron_subnet_id)
         try:
-            self.neutron_api.router_add_interface(private_router['id'],
+            self.neutron_api.router_add_interface(router['id'],
                                                   service_subnet['id'])
         except exception.NetworkException as e:
             if e.kwargs['code'] != 400:
@@ -469,13 +494,25 @@ class ServiceInstanceManager(object):
             LOG.debug('Subnet %(subnet_id)s is already attached to the '
                       'router %(router_id)s.' %
                       {'subnet_id': service_subnet['id'],
-                       'router_id': private_router['id']})
+                       'router_id': router['id']})
 
-        port = self.neutron_api.create_port(self.service_tenant_id,
-                                            self.service_network_id,
-                                            subnet_id=service_subnet['id'],
-                                            device_owner='manila')
-        return service_subnet['id'], private_router['id'], port['id']
+        network_data['service_port'] = self.neutron_api.create_port(
+            self.service_tenant_id, self.service_network_id,
+            subnet_id=service_subnet['id'], device_owner='manila')
+
+        if self.connect_share_server_to_tenant_network:
+            network_data['public_port'] = self.neutron_api.create_port(
+                self.service_tenant_id, neutron_net_id,
+                subnet_id=neutron_subnet_id, device_owner='manila')
+
+        network_data['ports'] = ports = list()
+        ports.append(network_data['service_port'])
+        try:
+            ports.append(network_data['public_port'])
+        except KeyError:
+            pass
+
+        return network_data
 
     @lockutils.synchronized("_get_private_router", external=True,
                             lock_path="service_instance_locks")

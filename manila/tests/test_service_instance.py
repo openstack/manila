@@ -242,6 +242,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_set_up_service_instance(self):
         fake_server = {'id': 'fake',
                        'ip': '1.2.3.4',
+                       'public_address': '1.2.3.4',
                        'subnet_id': 'fake-subnet-id',
                        'router_id': 'fake-router-id',
                        'pk_path': 'path'}
@@ -413,9 +414,18 @@ class ServiceInstanceManagerTestCase(test.TestCase):
 
     def test_create_service_instance(self):
         fake_server = fake_compute.FakeServer()
-        fake_port = fake_network.FakePort()
+        fake_port = fake_network.FakePort(
+            fixed_ips=[{'ip_address': '127.0.0.1'}])
         fake_security_group = fake_compute.FakeSecurityGroup()
         fake_instance_name = 'fake_instance_name'
+        fake_router = {'id': 'fake-router-id'}
+        fake_service_subnet = {'id': 'fake-service-subnet-id'}
+        fake_network_data = {
+            'router': fake_router,
+            'service_subnet': fake_service_subnet,
+            'service_port': fake_port,
+            'ports': [fake_port],
+        }
 
         self.stubs.Set(self._manager, '_get_service_image',
                        mock.Mock(return_value='fake_image_id'))
@@ -423,9 +433,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        mock.Mock(
                            return_value=('fake_key_name', 'fake_key_path')))
         self.stubs.Set(self._manager, '_setup_network_for_instance',
-                       mock.Mock(return_value=('fake-subnet',
-                                               'fake-router',
-                                               fake_port['id'])))
+                       mock.Mock(return_value=fake_network_data))
         self.stubs.Set(self._manager,
                        '_setup_connectivity_with_service_instances',
                        mock.Mock())
@@ -446,22 +454,30 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             'fake-subnet'
         )
 
-        self._manager._get_service_image.assert_called_once()
-        self._manager._get_key.assert_called_once()
-        self._manager._setup_network_for_instance.assert_called_once()
+        self._manager._get_service_image.assert_called_once_with(
+            self._context)
+        self._manager._get_key.assert_called_once_with(self._context)
+        self._manager._setup_network_for_instance.assert_called_once_with(
+            'fake-net', 'fake-subnet')
         self._manager._setup_connectivity_with_service_instances.\
-            assert_called_once()
+            assert_called_once_with()
         self._manager.compute_api.server_create.assert_called_once_with(
             self._context, name=fake_instance_name, image='fake_image_id',
             flavor=CONF.service_instance_flavor_id,
             key_name='fake_key_name', nics=[{'port-id': fake_port['id']}])
-        service_instance.socket.socket.assert_called_once()
-        self.assertEqual(result, fake_server)
+        service_instance.socket.socket.assert_called_once_with()
+
+        self.assertIs(result, fake_server)
+        self.assertEqual(result['public_address'], '127.0.0.1')
 
     def test_create_service_instance_error(self):
         fake_server = fake_compute.FakeServer(status='ERROR')
         fake_port = fake_network.FakePort()
         fake_security_group = fake_compute.FakeSecurityGroup()
+        fake_network_data = {
+            'ports': [fake_port],
+        }
+
         self.stubs.Set(self._manager, '_get_service_image',
                        mock.Mock(return_value='fake_image_id'))
         self.stubs.Set(self._manager, '_get_key',
@@ -470,9 +486,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager, '_get_or_create_security_group',
                        mock.Mock(return_value=fake_security_group))
         self.stubs.Set(self._manager, '_setup_network_for_instance',
-                       mock.Mock(return_value=('fake-subnet',
-                                               'fake-router',
-                                               fake_port['id'])))
+                       mock.Mock(return_value=fake_network_data))
         self.stubs.Set(self._manager,
                        '_setup_connectivity_with_service_instances',
                        mock.Mock())
@@ -497,6 +511,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         fake_server = fake_compute.FakeServer(status='ERROR')
         fake_port = fake_network.FakePort()
         fake_security_group = fake_compute.FakeSecurityGroup()
+        fake_network_data = {
+            'ports': [fake_port]
+        }
+
         self.stubs.Set(self._manager, '_get_service_image',
                        mock.Mock(return_value='fake_image_id'))
         self.stubs.Set(self._manager, '_get_key',
@@ -505,9 +523,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager, '_get_or_create_security_group',
                        mock.Mock(return_value=fake_security_group))
         self.stubs.Set(self._manager, '_setup_network_for_instance',
-                       mock.Mock(return_value=('fake-subnet',
-                                               'fake-router',
-                                               fake_port['id'])))
+                       mock.Mock(return_value=fake_network_data))
         self.stubs.Set(self._manager,
                        '_setup_connectivity_with_service_instances',
                        mock.Mock(side_effect=exception.ManilaException))
@@ -543,12 +559,14 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                           'fake-neutron-net',
                           'fake-neutron-subnet')
 
-    def test_setup_network_for_instance(self):
+    def test_setup_network_for_instance0(self):
         fake_service_net = fake_network.FakeNetwork(subnets=[])
         fake_service_subnet = fake_network.\
             FakeSubnet(name=self.share['share_network_id'])
         fake_router = fake_network.FakeRouter()
         fake_port = fake_network.FakePort()
+        self.stubs.Set(self._manager,
+                       'connect_share_server_to_tenant_network', False)
         self.stubs.Set(self._manager.neutron_api, 'get_network',
                        mock.Mock(return_value=fake_service_net))
         self.stubs.Set(self._manager.neutron_api, 'subnet_create',
@@ -564,8 +582,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager, '_get_cidr_for_subnet',
                        mock.Mock(return_value='fake_cidr'))
 
-        result = self._manager._setup_network_for_instance('fake-net',
-                                                           'fake-subnet')
+        network_data = self._manager._setup_network_for_instance(
+            'fake-net', 'fake-subnet')
 
         self._manager.neutron_api.get_network.assert_called_once_with(
             self._manager.service_network_id)
@@ -584,8 +602,66 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             subnet_id='fake_subnet_id',
             device_owner='manila')
         self._manager._get_cidr_for_subnet.assert_called_once()
-        self.assertEqual(result,
-                         ('fake_subnet_id', 'fake_router_id', fake_port['id']))
+        self.assertIs(network_data.get('service_subnet'), fake_service_subnet)
+        self.assertIs(network_data.get('router'), fake_router)
+        self.assertIs(network_data.get('service_port'), fake_port)
+        self.assertNotIn('public_port', network_data)
+        self.assertEqual(network_data.get('ports'), [fake_port])
+
+    def test_setup_network_for_instance1(self):
+        fake_service_net = fake_network.FakeNetwork(subnets=[])
+        fake_service_subnet = fake_network. \
+            FakeSubnet(name=self.share['share_network_id'])
+        fake_router = fake_network.FakeRouter()
+        fake_ports = [
+            fake_network.FakePort(fixed_ips=[{'ip_address': '1.2.3.4'}]),
+            fake_network.FakePort(fixed_ips=[{'ip_address': '5.6.7.8'}]),
+        ]
+        self.stubs.Set(self._manager,
+                       'connect_share_server_to_tenant_network', True)
+        self.stubs.Set(self._manager.neutron_api, 'get_network',
+                       mock.Mock(return_value=fake_service_net))
+        self.stubs.Set(self._manager.neutron_api, 'subnet_create',
+                       mock.Mock(return_value=fake_service_subnet))
+        self.stubs.Set(self._manager, '_get_private_router',
+                       mock.Mock(return_value=fake_router))
+        self.stubs.Set(self._manager.neutron_api, 'router_add_interface',
+                       mock.Mock())
+        self.stubs.Set(self._manager.neutron_api, 'create_port',
+                       mock.Mock(side_effect=fake_ports))
+        self.stubs.Set(self._manager, '_get_cidr_for_subnet',
+                       mock.Mock(return_value='fake_cidr'))
+
+        network_data = self._manager._setup_network_for_instance('fake-net',
+                                                                 'fake-subnet')
+
+        self._manager.neutron_api.get_network. \
+            assert_called_once_with(self._manager.service_network_id)
+        self._manager._get_private_router. \
+            assert_called_once_with('fake-net', 'fake-subnet')
+        self._manager.neutron_api.router_add_interface. \
+            assert_called_once_with('fake_router_id', 'fake_subnet_id')
+        self._manager.neutron_api.subnet_create.assert_called_once_with(
+            self._manager.service_tenant_id,
+            self._manager.service_network_id,
+            'routed_to_fake-subnet',
+            'fake_cidr')
+        self.assertEqual(self._manager.neutron_api.create_port.call_args_list,
+                         [((self._manager.service_tenant_id,
+                            self._manager.service_network_id),
+                           {'subnet_id': 'fake_subnet_id',
+                            'device_owner': 'manila'}),
+                          ((self._manager.service_tenant_id,
+                            'fake-net'),
+                           {'subnet_id': 'fake-subnet',
+                            'device_owner': 'manila'})])
+        self._manager._get_cidr_for_subnet.assert_called_once_with()
+
+        self.assertIs(network_data.get('service_subnet'), fake_service_subnet)
+        self.assertIs(network_data.get('router'), fake_router)
+        self.assertIs(network_data.get('service_port'), fake_ports[0])
+        self.assertIs(network_data.get('public_port'), fake_ports[1])
+        self.assertEqual(network_data.get('ports'), fake_ports)
 
     def test_get_private_router(self):
         fake_net = fake_network.FakeNetwork()
