@@ -146,6 +146,35 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         result = self.driver.setup_server({'server_id': 'fake_vserver'})
         self.assertEqual(result, {'vserver_name': 'fake_vserver'})
 
+    def test_setup_security_services(self):
+        fake_sevice_ldap = {'type': 'ldap'}
+        fake_sevice_krb = {'type': 'kerberos'}
+        fake_sevice_ad = {'type': 'active_directory'}
+
+        vserver_name = 'fake_vserver'
+
+        modify_args = {
+            'name-mapping-switch': {
+                'nmswitch': 'ldap,file'},
+            'name-server-switch': {
+                'nsswitch': 'ldap,file'},
+            'vserver-name': 'fake_vserver'}
+        self.driver._configure_kerberos = mock.Mock()
+        self.driver._configure_ldap = mock.Mock()
+        self.driver._configure_active_directory = mock.Mock()
+
+        self.driver._setup_security_services(
+            [fake_sevice_ad, fake_sevice_krb, fake_sevice_ldap],
+            self._vserver_client, vserver_name)
+        self.driver._client.send_request.assert_called_once_with(
+            'vserver-modify', modify_args)
+        self.driver._configure_active_directory.assert_called_once_with(
+            fake_sevice_ad, self._vserver_client)
+        self.driver._configure_kerberos.assert_called_once_with(
+            vserver_name, fake_sevice_krb, self._vserver_client)
+        self.driver._configure_ldap.assert_called_once_with(
+            fake_sevice_ldap, self._vserver_client)
+
     def test_get_network_allocations_number(self):
         res = mock.Mock()
         res.get_child_content.return_value = '5'
