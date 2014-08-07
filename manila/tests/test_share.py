@@ -28,6 +28,7 @@ from manila.openstack.common import importutils
 import manila.policy
 from manila.share import manager
 from manila import test
+from manila import utils
 
 CONF = cfg.CONF
 
@@ -353,6 +354,57 @@ class ShareTestCase(test.TestCase):
         self.assertEqual(share_id, db.share_get(context.get_admin_context(),
                          share_id).id)
 
+    def test_create_share_with_share_network_server_creation_failed(self):
+        fake_share = {'id': 'fake_share_id', 'share_network_id': 'fake_sn_id'}
+        fake_server = {'id': 'fake_srv_id'}
+        self.stubs.Set(db, 'share_server_create',
+                       mock.Mock(return_value=fake_server))
+        self.stubs.Set(db, 'share_update',
+                       mock.Mock(return_value=fake_share))
+        self.stubs.Set(db, 'share_get',
+                       mock.Mock(return_value=fake_share))
+
+        def raise_share_server_not_found(*args, **kwargs):
+            raise exception.ShareServerNotFound(
+                share_server_id=fake_server['id'])
+
+        def raise_manila_exception(*args, **kwargs):
+            raise exception.ManilaException()
+
+        self.stubs.Set(db, 'share_server_get_by_host_and_share_net_valid',
+                       mock.Mock(side_effect=raise_share_server_not_found))
+        self.stubs.Set(self.share_manager, '_setup_server',
+                       mock.Mock(side_effect=raise_manila_exception))
+
+        self.assertRaises(
+            exception.ManilaException,
+            self.share_manager.create_share,
+            self.context,
+            fake_share['id'],
+        )
+        db.share_server_get_by_host_and_share_net_valid.\
+            assert_called_once_with(
+                utils.IsAMatcher(context.RequestContext),
+                self.share_manager.host,
+                fake_share['share_network_id'],
+            )
+        db.share_server_create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), mock.ANY)
+        db.share_update.assert_has_calls([
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_share['id'],
+                {'share_server_id': fake_server['id']},
+            ),
+            mock.call(
+                utils.IsAMatcher(context.RequestContext),
+                fake_share['id'],
+                {'status': 'error'},
+            )
+        ])
+        self.share_manager._setup_server.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_server)
+
     def test_create_share_with_share_network_not_found(self):
         """Test creation fails if share network not found."""
 
@@ -395,20 +447,24 @@ class ShareTestCase(test.TestCase):
         self._create_share_server(
             share_network_id=share_net['id'], host=self.share_manager.host,
             state='ERROR')
-
         share_id = share['id']
+        fake_server = {'id': 'fake_srv_id'}
+        self.stubs.Set(db, 'share_server_create',
+                       mock.Mock(return_value=fake_server))
+        self.stubs.Set(self.share_manager, '_setup_server',
+                       mock.Mock(return_value=fake_server))
 
-        self.share_manager.driver = mock.Mock()
-        self.share_manager._setup_server = mock.Mock(
-            return_value={'id': 'fake_srv_id'})
-        self.share_manager.driver.create_share.return_value = "fake_location"
         self.share_manager.create_share(self.context, share_id)
+
         self.assertEqual(share_id, db.share_get(context.get_admin_context(),
                          share_id).id)
-
         shr = db.share_get(self.context, share_id)
         self.assertEqual(shr['status'], 'available')
         self.assertEqual(shr['share_server_id'], 'fake_srv_id')
+        db.share_server_create.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), mock.ANY)
+        self.share_manager._setup_server.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), fake_server)
 
     def test_create_delete_share_error(self):
         """Test share can be created and deleted with error."""

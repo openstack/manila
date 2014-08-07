@@ -118,22 +118,37 @@ class ShareManager(manager.SchedulerDependentManager):
 
         @lockutils.synchronized(share_network_id)
         def _provide_share_server_for_share():
+            exist = False
             try:
                 share_server = \
                     self.db.share_server_get_by_host_and_share_net_valid(
                         context, self.host, share_network_id)
+                exist = True
             except exception.ShareServerNotFound:
-                share_network = self.db.share_network_get(
-                    context, share_network_id)
-                share_server = self._setup_server(context, share_network)
-                LOG.info(_("Share server created successfully."))
-            LOG.debug("Using share_server "
-                      "%s for share %s" % (share_server['id'], share_id))
+                share_server = self.db.share_server_create(
+                    context,
+                    {
+                        'host': self.host,
+                        'share_network_id': share_network_id,
+                        'status': constants.STATUS_CREATING
+                    }
+                )
+
+            LOG.debug("Using share_server %s for share %s" % (
+                share_server['id'], share_id))
             share_ref = self.db.share_update(
                 context,
                 share_id,
                 {'share_server_id': share_server['id']},
             )
+
+            if not exist:
+                # Create share server on backend with data from db
+                share_server = self._setup_server(context, share_server)
+                LOG.info(_("Share server created successfully."))
+            else:
+                LOG.info(_("Used already existed share server '%(share_server"
+                           "_id)s'") % {'share_server_id': share_server['id']})
             return share_server, share_ref
 
         return _provide_share_server_for_share()
@@ -380,15 +395,9 @@ class ShareManager(manager.SchedulerDependentManager):
         }
         return network_info
 
-    def _setup_server(self, context, share_network, metadata=None):
-        share_server_val = {
-            'host': self.host,
-            'share_network_id': share_network['id'],
-            'status': constants.STATUS_CREATING
-        }
-        share_server = self.db.share_server_create(context,
-                                                   share_server_val)
-
+    def _setup_server(self, context, share_server, metadata=None):
+        share_network = self.db.share_network_get(
+            context, share_server['share_network_id'])
         try:
             allocation_number = self.driver.get_network_allocations_number()
             if allocation_number:
@@ -396,8 +405,6 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_server, share_network,
                     count=allocation_number)
 
-            share_network = self.db.share_network_get(context,
-                                                      share_network['id'])
             network_info = self._form_server_setup_info(context, share_server,
                                                         share_network)
             server_info = self.driver.setup_server(network_info,
