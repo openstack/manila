@@ -111,20 +111,19 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         """Raises error if prerequisites are not met."""
         self._check_licenses()
 
-    def _update_share_status(self):
-        """Retrieve status info from share volume group."""
-        # TODO(yportnova): Retrieve capacity info from backend
-        LOG.debug("Updating share status")
-        data = {}
-        data["share_backend_name"] = self.backend_name
-        data["vendor_name"] = 'NetApp'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS_CIFS'
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 0
-        data['QoS_support'] = False
-        self._stats = data
+    def _calculate_capacity(self):
+        """Calculates capacity
+
+        Returns tuple (total, free) in bytes.
+        """
+        aggrs = self._find_match_aggregates()
+        aggr_space_attrs = [aggr.get_child_by_name('aggr-space-attributes')
+                            for aggr in aggrs]
+        total = sum([int(aggr.get_child_content('size-total'))
+                     for aggr in aggr_space_attrs])
+        free = max([int(aggr.get_child_content('size-available'))
+                    for aggr in aggr_space_attrs])
+        return total, free
 
     def setup_server(self, network_info, metadata=None):
         """Creates and configures new vserver."""
@@ -168,7 +167,9 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
                            self.configuration.netapp_root_volume_name,
                        'name-server-switch': {'nsswitch': 'file'}}
         self._client.send_request('vserver-create', create_args)
-        aggr_list = self._find_match_aggregates()
+        aggrs = self._find_match_aggregates()
+        aggr_list = [{'aggr-name': aggr.get_child_content('aggregate-name')}
+                     for aggr in aggrs]
         modify_args = {'aggr-list': aggr_list,
                        'vserver-name': vserver_name}
         self._client.send_request('vserver-modify', modify_args)
@@ -184,11 +185,8 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
                   % pattern
             LOG.error(msg)
             raise exception.NetAppException(msg)
-        aggr_list = [
-            {'aggr-name': aggr} for aggr in
-            map(lambda x: x.get_child_content('aggregate-name'), aggrs)
-            if re.match(pattern, aggr)
-        ]
+        aggr_list = [aggr for aggr in aggrs if re.match(
+            pattern, aggr.get_child_content('aggregate-name'))]
         return aggr_list
 
     def get_network_allocations_number(self):
