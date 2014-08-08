@@ -19,14 +19,10 @@ Drivers for shares.
 
 """
 
-import ConfigParser
-import os
-import re
 import time
 
 from manila import exception
 from manila.openstack.common import log as logging
-from manila.share.configuration import Configuration
 from manila import utils
 
 from oslo.config import cfg
