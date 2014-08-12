@@ -18,22 +18,38 @@ NetApp specific NAS storage driver. Supports NFS and CIFS protocols.
 This driver requires ONTAP Cluster mode storage system
 with installed CIFS and NFS licenses.
 """
-
+import abc
 import hashlib
 import os
 import re
 
 from oslo.config import cfg
+from oslo.utils import units
+import six
 
 from manila import exception
 from manila.openstack.common import excutils
 from manila.openstack.common import log
+from manila.share import driver
 from manila.share.drivers.netapp import api as naapi
-from manila.share.drivers.netapp import driver
 from manila import utils
 
 
 NETAPP_NAS_OPTS = [
+    cfg.StrOpt('netapp_nas_login',
+               default='admin',
+               help='User name for the ONTAP controller.'),
+    cfg.StrOpt('netapp_nas_password',
+               help='Password for the ONTAP controller.',
+               secret=True),
+    cfg.StrOpt('netapp_nas_server_hostname',
+               help='Hostname for the ONTAP controller.'),
+    cfg.StrOpt('netapp_nas_transport_type',
+               default='http',
+               help='Transport type protocol.'),
+    cfg.StrOpt('netapp_nas_volume_name_template',
+               help='Netapp volume name template.',
+               default='share_%(share_id)s'),
     cfg.StrOpt('netapp_vserver_name_template',
                default='os_%s',
                help='Name template to use for new vserver.'),
@@ -63,7 +79,7 @@ def ensure_vserver(f):
         server = kwargs.get('share_server')
         if not server:
             # For now cmode driver does not support flat networking.
-            raise exception.NetAppException(_('Share sever is not provided.'))
+            raise exception.NetAppException(_('Share server is not provided.'))
         vserver_name = server['backend_details'].get('vserver_name') if \
             server.get('backend_details') else None
         if not vserver_name:
@@ -75,9 +91,33 @@ def ensure_vserver(f):
     return wrap
 
 
-class NetAppClusteredShareDriver(driver.NetAppShareDriver):
-    """
-    NetApp specific ONTAP C-mode driver.
+class NetAppApiClient(object):
+
+    def __init__(self, version, vserver=None, *args, **kwargs):
+        self.configuration = kwargs.get('configuration', None)
+        if not self.configuration:
+            raise exception.NetAppException(_("NetApp configuration missing."))
+        self._client = naapi.NaServer(
+            host=self.configuration.netapp_nas_server_hostname,
+            username=self.configuration.netapp_nas_login,
+            password=self.configuration.netapp_nas_password,
+            transport_type=self.configuration.netapp_nas_transport_type,
+        )
+        self._client.set_api_version(*version)
+        if vserver:
+            self._client.set_vserver(vserver)
+
+    def send_request(self, api_name, args=None):
+        """Sends request to Ontapi."""
+        elem = naapi.NaElement(api_name)
+        if args:
+            elem.translate_struct(args)
+        LOG.debug("NaElement: %s", elem.to_string(pretty=True))
+        return self._client.invoke_successfully(elem, enable_tunneling=True)
+
+
+class NetAppClusteredShareDriver(driver.ShareDriver):
+    """NetApp specific ONTAP Cluster mode driver.
 
     Supports NFS and CIFS protocols.
     Uses Ontap devices as backend to create shares
@@ -89,7 +129,11 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     """
 
     def __init__(self, db, *args, **kwargs):
-        super(NetAppClusteredShareDriver, self).__init__(db, *args, **kwargs)
+        super(NetAppClusteredShareDriver, self).__init__(*args, **kwargs)
+        self.db = db
+        self._helpers = None
+        self._licenses = []
+        self._client = None
         if self.configuration:
             self.configuration.append_config_values(NETAPP_NAS_OPTS)
         self.api_version = (1, 15)
@@ -103,9 +147,58 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         Sets up clients, check licenses, sets up protocol
         specific helpers.
         """
-        self._client = driver.NetAppApiClient(self.api_version,
-                                              configuration=self.configuration)
+        self._client = NetAppApiClient(self.api_version,
+                                       configuration=self.configuration)
         self._setup_helpers()
+
+    def ensure_share(self, context, share, share_server=None):
+        """Invoked to ensure that share is exported."""
+        pass
+
+    def _check_licenses(self):
+        self._licenses = []
+        try:
+            licenses = self._client.send_request('license-v2-list-info')
+        except naapi.NaApiError as e:
+            LOG.error(_("Could not get licenses list. %s.") % e)
+        else:
+            self._licenses = [l.get_child_content('package').lower()
+                for l in licenses.get_child_by_name('licenses').get_children()]
+            log_data = {
+                'backend': self.backend_name,
+                'licenses': ', '.join(self._licenses),
+            }
+            LOG.info(_("Available licenses on '%(backend)s' "
+                       "are %(licenses)s.") % log_data)
+        return self._licenses
+
+    def _get_valid_share_name(self, share_id):
+        """Get share name according to share name template."""
+        return self.configuration.netapp_nas_volume_name_template % {
+            'share_id': share_id.replace('-', '_')}
+
+    def _get_valid_snapshot_name(self, snapshot_id):
+        """Get snapshot name according to snapshot name template."""
+        return 'share_snapshot_' + snapshot_id.replace('-', '_')
+
+    def _update_share_status(self):
+        """Retrieve status info from Cluster Mode backend."""
+
+        LOG.debug("Updating share status")
+        data = {}
+        data["share_backend_name"] = self.backend_name
+        data["vendor_name"] = 'NetApp'
+        data["driver_version"] = '1.0'
+        data["storage_protocol"] = 'NFS_CIFS'
+
+        total, free = self._calculate_capacity()
+        data['total_capacity_gb'] = total / units.Gi
+        data['free_capacity_gb'] = free / units.Gi
+
+        data['reserved_percentage'] = 0
+        data['QoS_support'] = False
+
+        self._stats = data
 
     def check_for_setup_error(self):
         """Raises error if prerequisites are not met."""
@@ -246,6 +339,24 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         self._helpers = {'CIFS': NetAppClusteredCIFSHelper(),
                          'NFS': NetAppClusteredNFSHelper()}
 
+    def _get_helper(self, share):
+        """Returns driver which implements share protocol."""
+        share_proto = share['share_proto']
+        if share_proto.lower() not in self._licenses:
+            current_licenses = self._check_licenses()
+            if share_proto not in current_licenses:
+                msg = _("There is no license for %s at Ontap") % share_proto
+                LOG.error(msg)
+                raise exception.NetAppException(msg)
+
+        for proto in self._helpers.keys():
+            if share_proto.upper().startswith(proto):
+                return self._helpers[proto]
+
+        err_msg = _("Invalid NAS protocol supplied: %s. ") % share_proto
+
+        raise exception.NetAppException(err_msg)
+
     def _vserver_exists(self, vserver_name):
         args = {'query': {'vserver-info': {'vserver-name': vserver_name}}}
 
@@ -260,7 +371,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         """Creates vserver if not exists with given parameters."""
         vserver_name = self.configuration.netapp_vserver_name_template % \
                        network_info['server_id']
-        vserver_client = driver.NetAppApiClient(
+        vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver_name,
             configuration=self.configuration)
         if not self._vserver_exists(vserver_name):
@@ -481,7 +592,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     def create_share(self, context, share, share_server=None):
         """Creates new share."""
         vserver = share_server['backend_details']['vserver_name']
-        vserver_client = driver.NetAppApiClient(
+        vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)
         self._allocate_container(share, vserver, vserver_client)
@@ -492,7 +603,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
                                    share_server=None):
         """Creates new share form snapshot."""
         vserver = share_server['backend_details']['vserver_name']
-        vserver_client = driver.NetAppApiClient(
+        vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)
 
@@ -572,7 +683,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         """Deletes share."""
         share_name = self._get_valid_share_name(share['id'])
         vserver = share_server['backend_details']['vserver_name']
-        vserver_client = driver.NetAppApiClient(
+        vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)
         if self._share_exists(share_name, vserver_client):
@@ -605,7 +716,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot of a share."""
         vserver = share_server['backend_details']['vserver_name']
-        vserver_client = driver.NetAppApiClient(
+        vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)
         share_name = self._get_valid_share_name(snapshot['share_id'])
@@ -628,7 +739,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot of a share."""
         vserver = share_server['backend_details']['vserver_name']
-        vserver_client = driver.NetAppApiClient(
+        vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)
         share_name = self._get_valid_share_name(snapshot['share_id'])
@@ -660,9 +771,9 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
 
     @ensure_vserver
     def allow_access(self, context, share, access, share_server=None):
-        """Allows access to a given NAS storage for IPs in access."""
+        """Allows access to a given NAS storage."""
         vserver = share_server['backend_details']['vserver_name']
-        vserver_client = driver.NetAppApiClient(
+        vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)
         helper = self._get_helper(share)
@@ -671,9 +782,9 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
 
     @ensure_vserver
     def deny_access(self, context, share, access, share_server=None):
-        """Denies access to a given NAS storage for IPs in access."""
+        """Denies access to a given NAS storage."""
         vserver = share_server['backend_details']['vserver_name']
-        vserver_client = driver.NetAppApiClient(
+        vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver,
             configuration=self.configuration)
         helper = self._get_helper(share)
@@ -690,7 +801,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
         Deletes vserver.
         """
         if not self._vserver_exists(vserver_name):
-            LOG.error(_("Vserver %s does not exists.") % vserver_name)
+            LOG.error(_("Vserver %s does not exist.") % vserver_name)
             return
         volumes_data = vserver_client.send_request('volume-get-iter')
         volumes_count = int(volumes_data.get_child_content('num-records'))
@@ -725,7 +836,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
                                                     args)
                     except naapi.NaApiError as e:
                         if e.code == "15661":
-                            LOG.error(_("Cifs server does not exists for"
+                            LOG.error(_("CIFS server does not exist for"
                                       " vserver %s") % vserver_name)
                         else:
                             vserver_client.send_request('cifs-server-delete')
@@ -735,15 +846,47 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
     def teardown_server(self, server_details, security_services=None):
         """Teardown share network."""
         vserver_name = server_details['vserver_name']
-        vserver_client = driver.NetAppApiClient(
+        vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver_name,
             configuration=self.configuration)
         self._delete_vserver(vserver_name, vserver_client,
                              security_services=security_services)
 
 
-class NetAppClusteredNFSHelper(driver.NetAppNFSHelper):
+@six.add_metaclass(abc.ABCMeta)
+class NetAppNASHelperBase(object):
+    """Interface for protocol-specific NAS drivers."""
+
+    def __init__(self):
+        self._client = None
+
+    def set_client(self, client):
+        self._client = client
+
+    @abc.abstractmethod
+    def create_share(self, share, export_ip):
+        """Creates NAS share."""
+
+    @abc.abstractmethod
+    def delete_share(self, share):
+        """Deletes NAS share."""
+
+    @abc.abstractmethod
+    def allow_access(self, context, share, access):
+        """Allows new_rules to a given NAS storage in new_rules."""
+
+    @abc.abstractmethod
+    def deny_access(self, context, share, access):
+        """Denies new_rules to a given NAS storage in new_rules."""
+
+    @abc.abstractmethod
+    def get_target(self, share):
+        """Returns host where the share located."""
+
+
+class NetAppClusteredNFSHelper(NetAppNASHelperBase):
     """Netapp specific cluster-mode NFS sharing driver."""
+
     def create_share(self, share_name, export_ip):
         """Creates NFS share."""
         export_pathname = os.path.join('/', share_name)
@@ -793,40 +936,213 @@ class NetAppClusteredNFSHelper(driver.NetAppNFSHelper):
         }
         self._client.send_request('volume-modify-iter', args)
 
+    def add_rules(self, volume_path, rules):
+        security_rule_args = {
+            'security-rule-info': {
+                'read-write': {
+                    'exports-hostname-info': {
+                        'name': 'localhost',
+                    }
+                },
+                'root': {
+                    'exports-hostname-info': {
+                        'all-hosts': 'false',
+                        'name': 'localhost',
+                    }
+                }
+            }
+        }
+        hostname_info_args = {
+            'exports-hostname-info': {
+                'name': 'localhost',
+            }
+        }
+        args = {
+            'rules': {
+                'exports-rule-info-2': {
+                    'pathname': volume_path,
+                    'security-rules': {
+                        'security-rule-info': {
+                            'read-write': {
+                                'exports-hostname-info': {
+                                    'name': 'localhost',
+                                }
+                            },
+                            'root': {
+                                'exports-hostname-info': {
+                                    'all-hosts': 'false',
+                                    'name': 'localhost',
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        allowed_hosts_xml = []
 
-class NetAppClusteredCIFSHelper(driver.NetAppCIFSHelper):
+        for ip in rules:
+            hostname_info = hostname_info_args.copy()
+            hostname_info['exports-hostname-info'] = {'name': ip}
+            allowed_hosts_xml.append(hostname_info)
+
+        security_rule = security_rule_args.copy()
+        security_rule['security-rule-info']['read-write'] = allowed_hosts_xml
+        security_rule['security-rule-info']['root'] = allowed_hosts_xml
+
+        args['rules']['exports-rule-info-2']['security-rules'] = security_rule
+
+        LOG.debug('Appending nfs rules %r' % rules)
+        self._client.send_request('nfs-exportfs-append-rules-2', args)
+
+    def delete_share(self, share):
+        """Deletes NFS share."""
+        target, export_path = self._get_export_path(share)
+        args = {
+            'pathnames': {
+                'pathname-info': {
+                    'name': export_path,
+                }
+            }
+        }
+        LOG.debug('Deleting NFS rules for share %s' % share['id'])
+        self._client.send_request('nfs-exportfs-delete-rules', args)
+
+    def allow_access(self, context, share, access):
+        """Allows access to a given NFS storage."""
+        new_rules = access['access_to']
+        existing_rules = self._get_exisiting_rules(share)
+
+        if not isinstance(new_rules, list):
+            new_rules = [new_rules]
+
+        rules = existing_rules + new_rules
+        try:
+            self._modify_rule(share, rules)
+        except naapi.NaApiError:
+            self._modify_rule(share, existing_rules)
+
+    def deny_access(self, context, share, access):
+        """Denies access to a given NFS storage."""
+        access_to = access['access_to']
+        existing_rules = self._get_exisiting_rules(share)
+
+        if not isinstance(access_to, list):
+            access_to = [access_to]
+
+        for deny_rule in access_to:
+            if deny_rule in existing_rules:
+                existing_rules.remove(deny_rule)
+
+        self._modify_rule(share, existing_rules)
+
+    def get_target(self, share):
+        """Returns ID of target OnTap device based on export location."""
+        return self._get_export_path(share)[0]
+
+    def _modify_rule(self, share, rules):
+        """Modifies access rule for a given NFS share."""
+        target, export_path = self._get_export_path(share)
+        self.add_rules(export_path, rules)
+
+    def _get_exisiting_rules(self, share):
+        """Returns available access rules for a given NFS share."""
+        target, export_path = self._get_export_path(share)
+
+        args = {'pathname': export_path}
+        response = self._client.send_request('nfs-exportfs-list-rules-2', args)
+        rules = response.get_child_by_name('rules')
+        allowed_hosts = []
+        if rules and rules.get_child_by_name('exports-rule-info-2'):
+            security_rule = rules.get_child_by_name(
+                'exports-rule-info-2').get_child_by_name('security-rules')
+            security_info = security_rule.get_child_by_name(
+                'security-rule-info')
+            if security_info:
+                root_rules = security_info.get_child_by_name('root')
+                if root_rules:
+                    allowed_hosts = root_rules.get_children()
+
+        existing_rules = []
+
+        for allowed_host in allowed_hosts:
+            if 'exports-hostname-info' in allowed_host.get_name():
+                existing_rules.append(allowed_host.get_child_content('name'))
+        LOG.debug('Found existing rules %(rules)r for share %(share)s'
+                  % {'rules': existing_rules, 'share': share['id']})
+
+        return existing_rules
+
+    @staticmethod
+    def _get_export_path(share):
+        """Returns IP address and export location of a NFS share."""
+        export_location = share['export_location'] or ':'
+        return export_location.split(':')
+
+
+class NetAppClusteredCIFSHelper(NetAppNASHelperBase):
     """Netapp specific cluster-mode CIFS sharing driver."""
 
     def create_share(self, share_name, export_ip):
-
-        self._add_share(share_name)
-
-        cifs_location = self._set_export_location(export_ip, share_name)
-        self._restrict_access('Everyone', share_name)
-
-        return cifs_location
-
-    def _add_share(self, share_name):
         """Creates CIFS share on target OnTap host."""
         share_path = '/%s' % share_name
-        args = {'path': share_path,
-                'share-name': share_name}
+        args = {'path': share_path, 'share-name': share_name}
         self._client.send_request('cifs-share-create', args)
+        self._restrict_access('Everyone', share_name)
+        return "//%s/%s" % (export_ip, share_name)
 
     def delete_share(self, share):
-        """Deletes CIFS storage."""
+        """Deletes CIFS share on target OnTap host."""
         host_ip, share_name = self._get_export_location(share)
         args = {'share-name': share_name}
         self._client.send_request('cifs-share-delete', args)
 
-    def _allow_access_for(self, username, share_name):
+    def allow_access(self, context, share, access):
         """Allows access to the CIFS share for a given user."""
-        args = {'permission': 'full_control',
-                'share': share_name,
-                'user-or-group': username}
-        self._client.send_request('cifs-share-access-control-create', args)
+        if access['access_type'] != 'sid':
+            msg = _("Cluster Mode supports only 'sid' type for share access"
+                    " rules with CIFS protocol.")
+            raise exception.NetAppException(msg)
+        target, share_name = self._get_export_location(share)
+        args = {
+            'permission': 'full_control',
+            'share': share_name,
+            'user-or-group': access['access_to'],
+        }
+        try:
+            self._client.send_request('cifs-share-access-control-create', args)
+        except naapi.NaApiError as e:
+            if e.code == "13130":
+                # duplicate entry
+                raise exception.ShareAccessExists(
+                    access_type=access['access_type'], access=access)
+            raise e
+
+    def deny_access(self, context, share, access):
+        """Denies access to the CIFS share for a given user."""
+        host_ip, share_name = self._get_export_location(share)
+        user = access['access_to']
+        try:
+            self._restrict_access(user, share_name)
+        except naapi.NaApiError as e:
+            if e.code == "22":
+                LOG.error(_("User %s does not exist.") % user)
+            elif e.code == "15661":
+                LOG.error(_("Rule %s does not exist.") % user)
+            else:
+                raise e
+
+    def get_target(self, share):
+        """Returns OnTap target IP based on share export location."""
+        return self._get_export_location(share)[0]
 
     def _restrict_access(self, user_name, share_name):
-        args = {'user-or-group': user_name,
-                'share': share_name}
+        args = {'user-or-group': user_name, 'share': share_name}
         self._client.send_request('cifs-share-access-control-delete', args)
+
+    @staticmethod
+    def _get_export_location(share):
+        """Returns host ip and share name for a given CIFS share."""
+        export_location = share['export_location'] or '///'
+        _x, _x, host_ip, share_name = export_location.split('/')
+        return host_ip, share_name

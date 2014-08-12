@@ -26,21 +26,19 @@ from manila import test
 
 
 class NetAppClusteredDrvTestCase(test.TestCase):
-    """Tests for NetApp cmode driver."""
+    """Test suite for NetApp Cluster Mode driver."""
+
     def setUp(self):
         super(NetAppClusteredDrvTestCase, self).setUp()
         self._context = context.get_admin_context()
         self._db = mock.Mock()
-        driver.driver.NetAppApiClient = mock.Mock()
         self.driver = driver.NetAppClusteredShareDriver(
             self._db, configuration=configuration.Configuration(None))
         self.driver._client = mock.Mock()
         self.driver._client.send_request = mock.Mock()
         self._vserver_client = mock.Mock()
         self._vserver_client.send_request = mock.Mock()
-        driver.driver.NetAppApiClient = mock.Mock(
-            return_value=self._vserver_client)
-
+        driver.NetAppApiClient = mock.Mock(return_value=self._vserver_client)
         self.share = {'id': 'fake_uuid',
                       'project_id': 'fake_tenant_id',
                       'name': 'fake_name',
@@ -513,20 +511,61 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.driver._delete_vserver.assert_called_once_with(
             'fake', self._vserver_client, security_services=sec_services)
 
+    def test_ensure_share(self):
+        self.driver.ensure_share(
+            self._context, self.share, share_server=self.share_server)
+
+    def test_licenses(self):
+        licenses_dict = {
+            'licenses': {
+                'fake_license_1': {
+                    'package': 'Fake_License_1',
+                },
+                'fake_license_2': {
+                    'package': 'Fake_License_2',
+                },
+            },
+        }
+        licenses = naapi.NaElement('fake_licenses_as_response')
+        licenses.translate_struct(licenses_dict)
+
+        self.stubs.Set(self.driver._client, 'send_request',
+                       mock.Mock(return_value=licenses))
+        self.stubs.Set(driver.LOG, 'info', mock.Mock())
+
+        response = self.driver._check_licenses()
+
+        self.driver._client.send_request.assert_called_once_with(
+            'license-v2-list-info')
+        driver.LOG.info.assert_called_once_with(mock.ANY)
+        self.assertEqual(response, ['fake_license_1', 'fake_license_2'])
+
+    def test_licenses_exception_raise(self):
+        self.stubs.Set(self.driver._client, 'send_request',
+                       mock.Mock(side_effect=naapi.NaApiError()))
+        self.stubs.Set(driver.LOG, 'error', mock.Mock())
+
+        self.driver._check_licenses()
+
+        self.driver._client.send_request.assert_called_once_with(
+            'license-v2-list-info')
+        driver.LOG.error.assert_called_once_with(mock.ANY)
+
 
 class NetAppNFSHelperTestCase(test.TestCase):
-    """Tests for NetApp 7mode driver."""
+    """Test suite for NetApp Cluster Mode NFS helper."""
+
     def setUp(self):
         super(NetAppNFSHelperTestCase, self).setUp()
         self._context = context.get_admin_context()
         self._db = mock.Mock()
         self.client = mock.Mock()
-
+        self.name = 'fake_share_name'
         self.share = {'id': 'fake_uuid',
                       'tenant_id': 'fake_tenant_id',
-                      'name': 'fake_name',
+                      'name': self.name,
                       'size': 1,
-                      'export_location': 'location:/path',
+                      'export_location': 'location:/%s' % self.name,
                       'share_server_id': 'fake-share-srv-id',
                       'share_proto': 'fake'}
         self.helper = driver.NetAppClusteredNFSHelper()
@@ -573,40 +612,110 @@ class NetAppNFSHelperTestCase(test.TestCase):
 
 
 class NetAppCIFSHelperTestCase(test.TestCase):
-    """Tests for NetApp 7mode driver."""
+    """Test suite for NetApp Cluster Mode CIFS helper."""
+
     def setUp(self):
         super(NetAppCIFSHelperTestCase, self).setUp()
         self._context = context.get_admin_context()
-        self._db = mock.Mock()
-
+        self.name = 'fake_share_name'
         self.share = {'id': 'fake_uuid',
                       'tenant_id': 'fake_tenant_id',
-                      'name': 'fake_name',
+                      'name': self.name,
                       'size': 1,
-                      'export_location': 'location:/path',
+                      'export_location': '//location/%s' % self.name,
                       'share_proto': 'fake'}
         self.helper = driver.NetAppClusteredCIFSHelper()
-        self.helper._client = mock.Mock()
-        self.helper._client.send_request = mock.Mock()
+        self.stubs.Set(self.helper, '_client', mock.Mock())
+        self.stubs.Set(self.helper._client, 'send_request', mock.Mock())
 
     def test_create_share(self):
-        self.helper.create_share('fake_name', '1.1.1.1')
+        self.helper.create_share(self.name, '1.1.1.1')
         self.helper._client.send_request.assert_has_calls([
-            mock.call('cifs-share-create', {'path': '/fake_name',
-                                            'share-name': 'fake_name'}),
-            mock.call('cifs-share-access-control-delete',
-                      {'user-or-group': 'Everyone', 'share': 'fake_name'})
+            mock.call(
+                'cifs-share-create',
+                {'path': '/%s' % self.name, 'share-name': self.name},
+            ),
+            mock.call(
+                'cifs-share-access-control-delete',
+                {'user-or-group': 'Everyone', 'share': self.name},
+            )
         ])
 
     def test_delete_share(self):
-        self.share['export_location'] = "nfs://host/fake_name"
         self.helper.delete_share(self.share)
         self.helper._client.send_request.assert_called_with(
-            'cifs-share-delete', {'share-name': 'fake_name'})
+            'cifs-share-delete', {'share-name': self.name})
 
-    def test_allow_access(self):
-        self.helper._allow_access_for('fake_name', 'fake_share')
-        self.helper._client.send_request.assert_called_with(
-            'cifs-share-access-control-create', {'permission': 'full_control',
-                                                 'share': 'fake_share',
-                                                 'user-or-group': 'fake_name'})
+    def test_allow_access_sid_type(self):
+        access = {'access_to': 'fake_access', 'access_type': 'sid'}
+        self.helper.allow_access(self._context, self.share, access)
+        self.helper._client.send_request.assert_called_once_with(
+            'cifs-share-access-control-create',
+            {
+                'permission': 'full_control',
+                'share': self.name,
+                'user-or-group': access['access_to'],
+            },
+        )
+
+    def test_allow_access_sid_type_rule_already_present(self):
+        self.stubs.Set(self.helper._client, 'send_request',
+                       mock.Mock(side_effect=naapi.NaApiError('13130')))
+        access = {'access_to': 'fake_access', 'access_type': 'sid'}
+        self.assertRaises(
+            exception.ShareAccessExists,
+            self.helper.allow_access,
+            self._context,
+            self.share,
+            access,
+        )
+        self.helper._client.send_request.assert_called_once_with(
+            'cifs-share-access-control-create',
+            {
+                'permission': 'full_control',
+                'share': self.name,
+                'user-or-group': access['access_to'],
+            },
+        )
+
+    def test_allow_access_ip_type(self):
+        # IP rules are not supported by Cluster Mode driver
+        self.assertRaises(
+            exception.NetAppException,
+            self.helper.allow_access,
+            self._context,
+            self.share,
+            {'access_to': 'fake_access', 'access_type': 'ip'},
+        )
+
+    def test_allow_access_fake_type(self):
+        self.assertRaises(
+            exception.NetAppException,
+            self.helper.allow_access,
+            self._context,
+            self.share,
+            {'access_to': 'fake_access', 'access_type': 'fake_type'},
+        )
+
+    def test_deny_access(self):
+        access = {'access_to': 'fake_access', 'access_type': 'sid'}
+        self.helper.deny_access(self._context, self.share, access)
+        self.helper._client.send_request.assert_called_once_with(
+            'cifs-share-access-control-delete',
+            {'user-or-group': access['access_to'], 'share': self.name},
+        )
+
+    def test_deny_access_exception_raised(self):
+        self.stubs.Set(self.helper, '_restrict_access',
+                       mock.Mock(side_effect=naapi.NaApiError()))
+        self.assertRaises(
+            naapi.NaApiError,
+            self.helper.deny_access,
+            self._context,
+            self.share,
+            {'access_to': 'fake_access'},
+        )
+
+    def test_get_target(self):
+        result = self.helper.get_target(self.share)
+        self.assertEqual(result, 'location')
