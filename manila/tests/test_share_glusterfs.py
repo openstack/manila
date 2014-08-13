@@ -162,7 +162,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         glusterfs.LOG.error = Mock()
 
         def exec_runner(*ignore_args, **ignore_kwargs):
-                raise exception.ProcessExecutionError(stderr='testvol')
+            raise exception.ProcessExecutionError(stderr='testvol')
         expected_exec = ['gluster volume set testvol nfs.export-volumes off']
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
 

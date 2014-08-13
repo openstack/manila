@@ -101,38 +101,38 @@ fake_response_service_list = {'services': [
 
 
 class FakeRequest(object):
-        environ = {"manila.context": context.get_admin_context()}
-        GET = {}
+    environ = {"manila.context": context.get_admin_context()}
+    GET = {}
 
 
 class FakeRequestWithBinary(object):
-        environ = {"manila.context": context.get_admin_context()}
-        GET = {"binary": "manila-share"}
+    environ = {"manila.context": context.get_admin_context()}
+    GET = {"binary": "manila-share"}
 
 
 class FakeRequestWithHost(object):
-        environ = {"manila.context": context.get_admin_context()}
-        GET = {"host": "host1"}
+    environ = {"manila.context": context.get_admin_context()}
+    GET = {"host": "host1"}
 
 
 class FakeRequestWithZone(object):
-        environ = {"manila.context": context.get_admin_context()}
-        GET = {"zone": "manila1"}
+    environ = {"manila.context": context.get_admin_context()}
+    GET = {"zone": "manila1"}
 
 
 class FakeRequestWithStatus(object):
-        environ = {"manila.context": context.get_admin_context()}
-        GET = {"status": "enabled"}
+    environ = {"manila.context": context.get_admin_context()}
+    GET = {"status": "enabled"}
 
 
 class FakeRequestWithState(object):
-        environ = {"manila.context": context.get_admin_context()}
-        GET = {"state": "up"}
+    environ = {"manila.context": context.get_admin_context()}
+    GET = {"state": "up"}
 
 
 class FakeRequestWithHostBinary(object):
-        environ = {"manila.context": context.get_admin_context()}
-        GET = {"host": "host1", "binary": "manila-share"}
+    environ = {"manila.context": context.get_admin_context()}
+    GET = {"host": "host1", "binary": "manila-share"}
 
 
 def fake_service_get_all(context):

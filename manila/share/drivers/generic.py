@@ -501,7 +501,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             network_info['neutron_subnet_id'],
         )
         for helper in self._helpers.values():
-                helper.init_helper(server)
+            helper.init_helper(server)
         return server
 
     def teardown_server(self, server_details, security_services=None):

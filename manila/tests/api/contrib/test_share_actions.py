@@ -32,21 +32,21 @@ CONF = cfg.CONF
 
 def _fake_access_get(self, ctxt, access_id):
 
-        class Access(object):
-            def __init__(self, **kwargs):
-                self.STATE_NEW = 'fake_new'
-                self.STATE_ACTIVE = 'fake_active'
-                self.STATE_ERROR = 'fake_error'
-                self.params = kwargs
-                self.params['state'] = self.STATE_NEW
-                self.share_id = kwargs.get('share_id')
-                self.id = access_id
+    class Access(object):
+        def __init__(self, **kwargs):
+            self.STATE_NEW = 'fake_new'
+            self.STATE_ACTIVE = 'fake_active'
+            self.STATE_ERROR = 'fake_error'
+            self.params = kwargs
+            self.params['state'] = self.STATE_NEW
+            self.share_id = kwargs.get('share_id')
+            self.id = access_id
 
-            def __getitem__(self, item):
-                return self.params[item]
+        def __getitem__(self, item):
+            return self.params[item]
 
-        access = Access(access_id=access_id, share_id='fake_share_id')
-        return access
+    access = Access(access_id=access_id, share_id='fake_share_id')
+    return access
 
 
 class ShareActionsTest(test.TestCase):

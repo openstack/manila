@@ -335,7 +335,7 @@ class NetAppShareDriver(driver.ShareDriver):
             for snap in snapshots.get_children():
                 if snap.get_child_content('name') == snapshot_name \
                     and snap.get_child_content('busy') == 'true':
-                        return True
+                    return True
 
     def _get_valid_share_name(self, share_id):
         """Get share name according to share name template."""
