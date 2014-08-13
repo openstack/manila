@@ -170,7 +170,9 @@ class SharesClient(rest_client.RestClient):
             time.sleep(self.build_interval)
             __, body = self.get_share(share_id)
             share_status = body['status']
-            if 'error' in share_status:
+            if share_status == status:
+                return
+            elif 'error' in share_status:
                 raise share_exceptions.\
                     ShareBuildErrorException(share_id=share_id)
 
