@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 # Copyright (c) 2013, Nebula, Inc.
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
@@ -44,14 +45,15 @@ import heapq
 import sys
 import unittest
 
+import six
 import subunit
 import testtools
 
 
 class _AnsiColorizer(object):
-    """ANSI colorizer that wraps a stream object.
+    """Colorizer allows callers to write text in a particular color.
 
-    colorizer is an object that loosely wraps around a stream, allowing
+    A colorizer is an object that loosely wraps around a stream, allowing
     callers to write text to the stream in a particular color.
 
     Colorizer classes must implement C{supported()} and C{write(text, color)}.
@@ -63,12 +65,10 @@ class _AnsiColorizer(object):
         self.stream = stream
 
     def supported(cls, stream=sys.stdout):
-        """Check if platform is supported.
+        """Check is the current platform supports coloring terminal output.
 
         A class method that returns True if the current platform supports
-        coloring terminal output using this method.
-
-        Returns False otherwise.
+        coloring terminal output using this method. Returns False otherwise.
         """
         if not stream.isatty():
             return False  # auto color only on TTYs
@@ -118,7 +118,7 @@ class _Win32Colorizer(object):
             'yellow': red | green | bold,
             'magenta': red | blue | bold,
             'cyan': green | blue | bold,
-            'white': red | green | blue | bold
+            'white': red | green | blue | bold,
         }
 
     def supported(cls, stream=sys.stdout):
@@ -169,9 +169,9 @@ def get_elapsed_time_color(elapsed_time):
         return 'green'
 
 
-class ManilaTestResult(testtools.TestResult):
+class OpenStackTestResult(testtools.TestResult):
     def __init__(self, stream, descriptions, verbosity):
-        super(ManilaTestResult, self).__init__()
+        super(OpenStackTestResult, self).__init__()
         self.stream = stream
         self.showAll = verbosity > 1
         self.num_slow_tests = 10
@@ -225,26 +225,26 @@ class ManilaTestResult(testtools.TestResult):
             self.colorizer.write(short_result, color)
 
     def addSuccess(self, test):
-        super(ManilaTestResult, self).addSuccess(test)
+        super(OpenStackTestResult, self).addSuccess(test)
         self._addResult(test, 'OK', 'green', '.', True)
 
     def addFailure(self, test, err):
         if test.id() == 'process-returncode':
             return
-        super(ManilaTestResult, self).addFailure(test, err)
+        super(OpenStackTestResult, self).addFailure(test, err)
         self._addResult(test, 'FAIL', 'red', 'F', False)
 
     def addError(self, test, err):
-        super(ManilaTestResult, self).addFailure(test, err)
+        super(OpenStackTestResult, self).addFailure(test, err)
         self._addResult(test, 'ERROR', 'red', 'E', False)
 
     def addSkip(self, test, reason=None, details=None):
-        super(ManilaTestResult, self).addSkip(test, reason, details)
+        super(OpenStackTestResult, self).addSkip(test, reason, details)
         self._addResult(test, 'SKIP', 'blue', 'S', True)
 
     def startTest(self, test):
         self.start_time = self._now()
-        super(ManilaTestResult, self).startTest(test)
+        super(OpenStackTestResult, self).startTest(test)
 
     def writeTestCase(self, cls):
         if not self.results.get(cls):
@@ -274,7 +274,7 @@ class ManilaTestResult(testtools.TestResult):
         self.stopTestRun()
 
     def stopTestRun(self):
-        for cls in list(self.results.iterkeys()):
+        for cls in list(six.iterkeys(self.results)):
             self.writeTestCase(cls)
         self.stream.writeln()
         self.writeSlowTests()
@@ -323,7 +323,8 @@ test = subunit.ProtocolTestCase(sys.stdin, passthrough=None)
 if sys.version_info[0:2] <= (2, 6):
     runner = unittest.TextTestRunner(verbosity=2)
 else:
-    runner = unittest.TextTestRunner(verbosity=2, resultclass=ManilaTestResult)
+    runner = unittest.TextTestRunner(verbosity=2,
+                                     resultclass=OpenStackTestResult)
 
 if runner.run(test).wasSuccessful():
     exit_code = 0
