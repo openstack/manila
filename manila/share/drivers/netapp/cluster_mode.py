@@ -423,7 +423,8 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                 self._configure_ldap(security_service, vserver_client)
             elif security_service['type'].lower() == "active_directory":
                 self._configure_active_directory(security_service,
-                                                 vserver_client)
+                                                 vserver_client,
+                                                 vserver_name)
             elif security_service['type'].lower() == "kerberos":
                 self._configure_kerberos(vserver_name, security_service,
                                          vserver_client)
@@ -523,24 +524,26 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             }
         vserver_client.send_request('kerberos-config-modify', args)
 
-    def _configure_active_directory(self, data, vserver_client):
+    def _configure_active_directory(self, sec_service_data, vserver_client,
+                                    vserver_name):
         """Configures AD on vserver."""
-        self._configure_dns(data, vserver_client)
-        args = {
-            'admin-username': data['user'],
-            'admin-password': data['password'],
+        self._configure_dns(sec_service_data, vserver_client)
+        # 'cifs-server' is CIFS Server NetBIOS Name, max length is 15.
+        # Should be unique within each domain (data['domain']).
+        cifs_server = (vserver_name[0:7] + '..' + vserver_name[-6:]).upper()
+        data = {
+            'admin-username': sec_service_data['user'],
+            'admin-password': sec_service_data['password'],
             'force-account-overwrite': 'true',
-            'cifs-server': data['server'],
-            'domain': data['domain'],
+            'cifs-server': cifs_server,
+            'domain': sec_service_data['domain'],
         }
         try:
-            vserver_client.send_request('cifs-server-create', args)
+            LOG.debug("Trying to setup cifs server with data: %s" % data)
+            vserver_client.send_request('cifs-server-create', data)
         except naapi.NaApiError as e:
-            if e.code == '13001':
-                LOG.debug("CIFS server entry already exists")
-            else:
-                raise exception.NetAppException(
-                    _("Failed to create CIFS server entry. %s") % e.message)
+            msg = _("Failed to create CIFS server entry. %s.") % e.message
+            raise exception.NetAppException(msg)
 
     def _get_lifs(self, vserver_client):
         lifs_info = vserver_client.send_request('net-interface-get-iter')
