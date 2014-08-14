@@ -118,8 +118,8 @@ class TestMigrations(test.TestCase,
                 cp.read(self.CONFIG_FILE_PATH)
                 self.snake_walk = cp.getboolean('walk_style', 'snake_walk')
             except ConfigParser.ParsingError as e:
-                    self.fail("Failed to read test_migrations.conf config "
-                              "file. Got error: %s" % e)
+                self.fail("Failed to read test_migrations.conf config "
+                          "file. Got error: %s" % e)
 
     def _cleanup(self):
         shutil.rmtree(os.environ["OSLO_LOCK_PATH"], ignore_errors=True)

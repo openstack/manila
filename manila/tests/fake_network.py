@@ -126,14 +126,14 @@ class API(object):
         port['admin_state_up'] = True
         port['tenant_id'] = tenant_id
         if fixed_ip:
-                fixed_ip_dict = {'ip_address': fixed_ip}
-                if subnet_id:
-                    fixed_ip_dict.update({'subnet_id': subnet_id})
-                port['fixed_ips'] = [fixed_ip_dict]
+            fixed_ip_dict = {'ip_address': fixed_ip}
+            if subnet_id:
+                fixed_ip_dict.update({'subnet_id': subnet_id})
+            port['fixed_ips'] = [fixed_ip_dict]
         if device_owner:
-                port['device_owner'] = device_owner
+            port['device_owner'] = device_owner
         if device_id:
-                port['device_id'] = device_id
+            port['device_id'] = device_id
         return port
 
     def list_ports(self, **search_opts):

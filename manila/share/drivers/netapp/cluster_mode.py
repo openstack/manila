@@ -646,7 +646,7 @@ class NetAppClusteredShareDriver(driver.NetAppShareDriver):
             .get_children():
             if snap.get_child_by_name('name').get_content() == snapshot_name\
                 and snap.get_child_by_name('busy').get_content() == 'true':
-                    return True
+                return True
 
     def _share_unmount(self, share, vserver_client):
         """Unmounts share (required before deleting)."""
