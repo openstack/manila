@@ -46,16 +46,15 @@ CONF = cfg.CONF
 
 if __name__ == '__main__':
     args = CONF(sys.argv[1:], project='manila',
-            version=version.version_string())
+                version=version.version_string())
     logging.setup("manila")
     utils.monkey_patch()
     launcher = service.ProcessLauncher()
     if CONF.enabled_share_backends:
         for backend in CONF.enabled_share_backends:
             host = "%s@%s" % (CONF.host, backend)
-            server = service.Service.create(
-                                        host=host,
-                                        service_name=backend)
+            server = service.Service.create(host=host,
+                                            service_name=backend)
             launcher.launch_server(server)
     else:
         server = service.Service.create(binary='manila-share')

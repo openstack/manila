@@ -58,11 +58,6 @@ from __future__ import print_function
 
 import os
 import sys
-import uuid
-
-from sqlalchemy import create_engine, MetaData, Table
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 
 # If ../manila/__init__.py exists, add ../ to Python search path, so that
@@ -82,7 +77,6 @@ from manila.common import config  # Need to register global_opts
 from manila import context
 from manila import db
 from manila.db import migration
-from manila import exception
 from manila.openstack.common import log as logging
 from manila.openstack.common import uuidutils
 from manila import utils
@@ -418,7 +412,7 @@ def main():
 
     try:
         CONF(sys.argv[1:], project='manila',
-            version=version.version_string())
+             version=version.version_string())
         logging.setup("manila")
     except cfg.ConfigFilesNotFoundError:
         cfgfile = CONF.config_file[-1] if CONF.config_file else None

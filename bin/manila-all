@@ -34,8 +34,9 @@ import os
 import sys
 
 from oslo.config import cfg
-possible_topdir = os.path.normpath(os.path.join(os.path.abspath(
-        sys.argv[0]), os.pardir, os.pardir))
+possible_topdir = os.path.normpath(os.path.join
+                                   (os.path.abspath(sys.argv[0]),
+                                    os.pardir, os.pardir))
 if os.path.exists(os.path.join(possible_topdir, "manila", "__init__.py")):
     sys.path.insert(0, possible_topdir)
 
@@ -51,7 +52,7 @@ CONF = cfg.CONF
 
 if __name__ == '__main__':
     CONF(sys.argv[1:], project='manila',
-            version=version.version_string())
+         version=version.version_string())
     logging.setup("manila")
     LOG = logging.getLogger('manila.all')
 

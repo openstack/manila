@@ -47,7 +47,7 @@ CONF = cfg.CONF
 
 if __name__ == '__main__':
     CONF(sys.argv[1:], project='manila',
-            version=version.version_string())
+         version=version.version_string())
     logging.setup("manila")
     utils.monkey_patch()
     server = service.Service.create(binary='manila-scheduler')
