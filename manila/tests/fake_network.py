@@ -77,7 +77,7 @@ class FakeRouter(object):
 
 
 class API(object):
-    """Fake Network API"""
+    """Fake Network API."""
     admin_tenant_id = 'fake admin tenant id'
 
     network = {

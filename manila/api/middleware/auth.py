@@ -70,7 +70,7 @@ class InjectContext(base_wsgi.Middleware):
 
 
 class ManilaKeystoneContext(base_wsgi.Middleware):
-    """Make a request context from keystone headers"""
+    """Make a request context from keystone headers."""
 
     @webob.dec.wsgify(RequestClass=base_wsgi.Request)
     def __call__(self, req):

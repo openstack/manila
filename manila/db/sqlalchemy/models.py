@@ -320,7 +320,7 @@ class ShareSnapshot(BASE, ManilaBase):
 
 
 class SecurityService(BASE, ManilaBase):
-    """Security service information for manila shares"""
+    """Security service information for manila shares."""
 
     __tablename__ = 'security_services'
     id = Column(String(36), primary_key=True)

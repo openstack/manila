@@ -41,7 +41,7 @@ class FakeFilterClass2(filters.BaseHostFilter):
 
 
 class HostManagerTestCase(test.TestCase):
-    """Test case for HostManager class"""
+    """Test case for HostManager class."""
 
     def setUp(self):
         super(HostManagerTestCase, self).setUp()

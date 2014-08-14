@@ -278,7 +278,7 @@ class TestCase(testtools.TestCase):
                 self.assertEqual(sub_value, super_value)
 
     def assertIn(self, a, b, *args, **kwargs):
-        """Python < v2.7 compatibility.  Assert 'a' in 'b'"""
+        """Python < v2.7 compatibility.  Assert 'a' in 'b'."""
         try:
             f = super(TestCase, self).assertIn
         except AttributeError:
@@ -287,7 +287,7 @@ class TestCase(testtools.TestCase):
             f(a, b, *args, **kwargs)
 
     def assertNotIn(self, a, b, *args, **kwargs):
-        """Python < v2.7 compatibility.  Assert 'a' NOT in 'b'"""
+        """Python < v2.7 compatibility.  Assert 'a' NOT in 'b'."""
         try:
             f = super(TestCase, self).assertNotIn
         except AttributeError:

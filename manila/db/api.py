@@ -370,7 +370,7 @@ def share_access_get_all_for_share(context, share_id):
 
 def share_access_get_all_by_type_and_access(context, share_id, access_type,
                                             access):
-    """Returns share access by given type and access"""
+    """Returns share access by given type and access."""
     return IMPL.share_access_get_all_by_type_and_access(
         context, share_id, access_type, access)
 
@@ -583,14 +583,14 @@ def share_server_get(context, id, session=None):
 
 
 def share_server_get_by_host(context, host, share_net_id, session=None):
-    """Get share server DB records by host"""
+    """Get share server DB records by host."""
     return IMPL.share_server_get_by_host(context, host, share_net_id,
                                          session=session)
 
 
 def share_server_get_by_host_and_share_net(context, host, share_net_id,
                                            session=None):
-    """Get share server DB records by host and share net"""
+    """Get share server DB records by host and share net."""
     return IMPL.share_server_get_by_host_and_share_net(context, host,
                                                        share_net_id,
                                                        session=session)
@@ -599,7 +599,7 @@ def share_server_get_by_host_and_share_net(context, host, share_net_id,
 def share_server_get_by_host_and_share_net_valid(context, host,
                                                  share_net_id,
                                                  session=None):
-    """Get share server DB records by host and share net not error"""
+    """Get share server DB records by host and share net not error."""
     return IMPL.share_server_get_by_host_and_share_net_valid(context,
                                                              host,
                                                              share_net_id,

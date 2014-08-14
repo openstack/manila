@@ -133,7 +133,6 @@ class NetAppShareDriver(driver.ShareDriver):
         return self._create_export(share)
 
     def ensure_share(self, context, share, share_server=None):
-        """"""
         pass
 
     def _allocate_container(self, share):
