@@ -124,7 +124,7 @@ def upgrade(migrate_engine):
         Column('until_refresh', Integer(), nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
-        )
+    )
 
     reservations = Table(
         'reservations', meta,
@@ -157,7 +157,7 @@ def upgrade(migrate_engine):
         Column('expire', DateTime(timezone=False)),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
-        )
+    )
 
     project_user_quotas = Table(
         'project_user_quotas', meta,
@@ -172,7 +172,7 @@ def upgrade(migrate_engine):
         Column('hard_limit', Integer, nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
-        )
+    )
 
     shares = Table(
         'shares', meta,
@@ -207,7 +207,7 @@ def upgrade(migrate_engine):
         Column('volume_type_id', String(length=36)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
-        )
+    )
 
     access_map = Table(
         'share_access_map', meta,
@@ -223,7 +223,7 @@ def upgrade(migrate_engine):
         Column('state', String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
-        )
+    )
 
     share_snapshots = Table(
         'share_snapshots', meta,
@@ -246,7 +246,7 @@ def upgrade(migrate_engine):
         Column('export_location', String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
-        )
+    )
 
     share_metadata = Table(
         'share_metadata', meta,

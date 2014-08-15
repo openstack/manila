@@ -45,7 +45,6 @@ these objects be simple dictionaries.
 from oslo.config import cfg
 from oslo.db import api as db_api
 
-from manila import exception
 
 db_opts = [
     cfg.StrOpt('db_backend',
@@ -370,7 +369,7 @@ def share_access_get_all_for_share(context, share_id):
 
 def share_access_get_all_by_type_and_access(context, share_id, access_type,
                                             access):
-    """Returns share access by given type and access"""
+    """Returns share access by given type and access."""
     return IMPL.share_access_get_all_by_type_and_access(
         context, share_id, access_type, access)
 
@@ -532,8 +531,8 @@ def share_network_add_security_service(context, id, security_service_id):
 
 def share_network_remove_security_service(context, id, security_service_id):
     return IMPL.share_network_remove_security_service(context,
-                                                   id,
-                                                   security_service_id)
+                                                      id,
+                                                      security_service_id)
 
 
 def network_allocation_create(context, values):
@@ -552,7 +551,7 @@ def network_allocation_update(context, id, values):
 
 
 def network_allocations_get_for_share_server(context, share_server_id,
-                                            session=None):
+                                             session=None):
     """Get netwwork allocation for share server."""
     return IMPL.network_allocations_get_for_share_server(context,
                                                          share_server_id,
@@ -583,14 +582,14 @@ def share_server_get(context, id, session=None):
 
 
 def share_server_get_by_host(context, host, share_net_id, session=None):
-    """Get share server DB records by host"""
+    """Get share server DB records by host."""
     return IMPL.share_server_get_by_host(context, host, share_net_id,
                                          session=session)
 
 
 def share_server_get_by_host_and_share_net(context, host, share_net_id,
                                            session=None):
-    """Get share server DB records by host and share net"""
+    """Get share server DB records by host and share net."""
     return IMPL.share_server_get_by_host_and_share_net(context, host,
                                                        share_net_id,
                                                        session=session)
@@ -599,7 +598,7 @@ def share_server_get_by_host_and_share_net(context, host, share_net_id,
 def share_server_get_by_host_and_share_net_valid(context, host,
                                                  share_net_id,
                                                  session=None):
-    """Get share server DB records by host and share net not error"""
+    """Get share server DB records by host and share net not error."""
     return IMPL.share_server_get_by_host_and_share_net_valid(context,
                                                              host,
                                                              share_net_id,
@@ -679,8 +678,10 @@ def volume_type_extra_specs_delete(context, volume_type_id, key):
 def volume_type_extra_specs_update_or_create(context,
                                              volume_type_id,
                                              extra_specs):
-    """Create or update volume type extra specs. This adds or modifies the
-    key/value pairs specified in the extra specs dict argument
+    """Create or update volume type extra specs.
+
+    This adds or modifies the key/value pairs specified in the extra
+    specs dict argument.
     """
     return IMPL.volume_type_extra_specs_update_or_create(context,
                                                          volume_type_id,
