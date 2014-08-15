@@ -394,8 +394,8 @@ class IpNetnsCommand(IpCommandBase):
             if addl_env:
                 env_params = (['env'] +
                               ['%s=%s' % pair for pair in addl_env.items()])
-            total_cmd = ['ip', 'netns', 'exec', self._parent.namespace] + \
-                env_params + list(cmds)
+            total_cmd = (['ip', 'netns', 'exec', self._parent.namespace] +
+                         env_params + list(cmds))
             return utils.execute(*total_cmd, run_as_root=True,
                                  check_exit_code=check_exit_code)
 
