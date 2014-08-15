@@ -70,13 +70,13 @@ class NovaApiTestCase(test.TestCase):
         self.novaclient = FakeNovaClient()
         self.ctx = context.get_admin_context()
         self.stubs.Set(nova, 'novaclient',
-                mock.Mock(return_value=self.novaclient))
+                       mock.Mock(return_value=self.novaclient))
         self.stubs.Set(nova, '_untranslate_server_summary_view',
                        lambda server: server)
 
     def test_server_create(self):
         result = self.api.server_create(self.ctx, 'server_name', 'fake_image',
-                'fake_flavor', None, None, None)
+                                        'fake_flavor', None, None, None)
         self.assertEqual(result['id'], 'created_id')
 
     def test_server_delete(self):
@@ -122,14 +122,14 @@ class NovaApiTestCase(test.TestCase):
     def test_server_reboot_hard(self):
         self.stubs.Set(self.novaclient.servers, 'reboot', mock.Mock())
         self.api.server_reboot(self.ctx, 'id1')
-        self.novaclient.servers.reboot.assert_called_once_with('id1',
-                nova_servers.REBOOT_HARD)
+        self.novaclient.servers.reboot.assert_called_once_with(
+            'id1', nova_servers.REBOOT_HARD)
 
     def test_server_reboot_soft(self):
         self.stubs.Set(self.novaclient.servers, 'reboot', mock.Mock())
         self.api.server_reboot(self.ctx, 'id1', True)
-        self.novaclient.servers.reboot.assert_called_once_with('id1',
-                nova_servers.REBOOT_SOFT)
+        self.novaclient.servers.reboot.assert_called_once_with(
+            'id1', nova_servers.REBOOT_SOFT)
 
     def test_server_rebuild(self):
         self.stubs.Set(self.novaclient.servers, 'rebuild', mock.Mock())
@@ -144,7 +144,7 @@ class NovaApiTestCase(test.TestCase):
         self.api.instance_volume_attach(self.ctx, 'instance_id',
                                         'vol_id', 'device')
         self.novaclient.volumes.create_server_volume.\
-                assert_called_once_with('instance_id', 'vol_id', 'device')
+            assert_called_once_with('instance_id', 'vol_id', 'device')
 
     def test_instance_volume_detach(self):
         self.stubs.Set(self.novaclient.volumes, 'delete_server_volume',
@@ -152,7 +152,7 @@ class NovaApiTestCase(test.TestCase):
         self.api.instance_volume_detach(self.ctx, 'instance_id',
                                         'att_id')
         self.novaclient.volumes.delete_server_volume.\
-                assert_called_once_with('instance_id', 'att_id')
+            assert_called_once_with('instance_id', 'att_id')
 
     def test_instance_volumes_list(self):
         self.stubs.Set(self.novaclient.volumes, 'get_server_volumes',
@@ -177,7 +177,7 @@ class NovaApiTestCase(test.TestCase):
         self.api.update_server_volume(self.ctx, 'instance_id', 'att_id',
                                       'new_vol_id')
         self.novaclient.volumes.update_server_volume.\
-                assert_called_once_with('instance_id', 'att_id', 'new_vol_id')
+            assert_called_once_with('instance_id', 'att_id', 'new_vol_id')
 
     def test_keypair_create(self):
         self.stubs.Set(self.novaclient.keypairs, 'create', mock.Mock())
@@ -188,13 +188,13 @@ class NovaApiTestCase(test.TestCase):
         self.stubs.Set(self.novaclient.keypairs, 'create', mock.Mock())
         self.api.keypair_import(self.ctx, 'keypair_name', 'fake_pub_key')
         self.novaclient.keypairs.create.\
-                assert_called_once_with('keypair_name', 'fake_pub_key')
+            assert_called_once_with('keypair_name', 'fake_pub_key')
 
     def test_keypair_delete(self):
         self.stubs.Set(self.novaclient.keypairs, 'delete', mock.Mock())
         self.api.keypair_delete(self.ctx, 'fake_keypair_id')
         self.novaclient.keypairs.delete.\
-                assert_called_once_with('fake_keypair_id')
+            assert_called_once_with('fake_keypair_id')
 
     def test_keypair_list(self):
         self.assertEqual([{'id': 'id1'}, {'id': 'id2'}],

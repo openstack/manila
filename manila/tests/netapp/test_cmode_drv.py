@@ -26,8 +26,7 @@ from manila import test
 
 
 class NetAppClusteredDrvTestCase(test.TestCase):
-    """Tests for NetApp cmode driver.
-    """
+    """Tests for NetApp cmode driver."""
     def setUp(self):
         super(NetAppClusteredDrvTestCase, self).setUp()
         self._context = context.get_admin_context()
@@ -53,8 +52,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
                           'network_allocations': [
                               {'ip_address': 'ip'}
                           ]
-                      }
-        }
+                      }}
         self.snapshot = {'id': 'fake_snapshot_uuid',
                          'project_id': 'fake_tenant_id',
                          'share_id': 'fake_share_id',
@@ -101,7 +99,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             mock.call('vserver-create', vserver_create_args),
             mock.call('aggr-get-iter'),
             mock.call('vserver-modify', vserver_modify_args),
-            ]
+        ]
         )
 
     def test_update_share_stats(self):
@@ -290,7 +288,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             'interface-name': 'os_all_id',
             'role': 'data',
             'vserver': 'vserver-name',
-            }
+        }
         self.driver._client.send_request.assert_has_calls([
             mock.call('net-vlan-create', vlan_args),
             mock.call('net-interface-create', interface_args),
@@ -381,9 +379,9 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         vserver_info = naapi.NaElement('vserver-info')
         vserver_aggr_info_list = naapi.NaElement('vserver-aggr-info-list')
         for i in range(1, 4):
-            vserver_aggr_info_list.add_node_with_children('aggr-attributes',
-                                              **{'aggr-name': 'fake%s' % i,
-                                              'aggr-availsize': '%s' % i})
+            vserver_aggr_info_list.add_node_with_children(
+                'aggr-attributes', **{'aggr-name': 'fake%s' % i,
+                                      'aggr-availsize': '%s' % i})
         vserver_info.add_child_elem(vserver_aggr_info_list)
         attributes.add_child_elem(vserver_info)
         root.add_child_elem(attributes)
@@ -517,8 +515,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
 
 
 class NetAppNFSHelperTestCase(test.TestCase):
-    """Tests for NetApp 7mode driver.
-    """
+    """Tests for NetApp 7mode driver."""
     def setUp(self):
         super(NetAppNFSHelperTestCase, self).setUp()
         self._context = context.get_admin_context()
@@ -576,8 +573,7 @@ class NetAppNFSHelperTestCase(test.TestCase):
 
 
 class NetAppCIFSHelperTestCase(test.TestCase):
-    """Tests for NetApp 7mode driver.
-    """
+    """Tests for NetApp 7mode driver."""
     def setUp(self):
         super(NetAppCIFSHelperTestCase, self).setUp()
         self._context = context.get_admin_context()

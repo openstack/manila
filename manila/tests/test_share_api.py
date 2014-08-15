@@ -453,7 +453,7 @@ class ShareAPITestCase(test.TestCase):
             'snapshot_id': share['snapshot_id'],
         }
         with mock.patch.object(db_driver, 'share_create',
-            mock.Mock(return_value=share)):
+                               mock.Mock(return_value=share)):
             self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
                             snapshot=snapshot, availability_zone='fakeaz')
             self.scheduler_rpcapi.create_share.assert_called_once_with(
