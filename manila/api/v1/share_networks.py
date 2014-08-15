@@ -26,7 +26,6 @@ from manila.api import xmlutil
 from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
-from manila import network
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila import policy
