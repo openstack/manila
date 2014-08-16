@@ -66,6 +66,10 @@ share_opts = [
                     'NFS=manila.share.drivers.generic.NFSHelper',
                 ],
                 help='Specify list of share export helpers.'),
+    cfg.StrOpt('share_volume_fstype',
+               default='ext4',
+               choices=['ext4', 'ext3'],
+               help='Filesystem type of the share volume.'),
 ]
 
 CONF = cfg.CONF
@@ -173,7 +177,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _format_device(self, server_details, volume):
         """Formats device attached to the service vm."""
-        command = ['sudo', 'mkfs.ext4', volume['mountpoint']]
+        command = ['sudo', 'mkfs.%s' % self.configuration.share_volume_fstype,
+                   volume['mountpoint']]
         self._ssh_exec(server_details, command)
 
     def _mount_device(self, context, share, server_details, volume):
