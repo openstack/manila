@@ -26,14 +26,22 @@ _POLICY_PATH = os.path.abspath(os.path.join(CONF.state_path,
 
 
 def set_defaults(conf):
-    conf.set_default('connection_type', 'fake')
-    conf.set_default('verbose', True)
-    conf.set_default('connection', "sqlite://", group='database')
-    conf.set_default('sqlite_synchronous', False)
-    conf.set_default('policy_file', _POLICY_PATH)
-    conf.set_default('share_export_ip', '0.0.0.0')
-    conf.set_default('service_instance_user', 'fake_user')
-    conf.set_default('api_paste_config', _API_PASTE_PATH)
-    conf.set_default('share_driver',
-                     'manila.tests.fake_driver.FakeShareDriver')
-    conf.set_default('auth_strategy', 'noauth')
+    _safe_set_of_opts(conf, 'connection_type', 'fake')
+    _safe_set_of_opts(conf, 'verbose', True)
+    _safe_set_of_opts(conf, 'connection', "sqlite://", group='database')
+    _safe_set_of_opts(conf, 'sqlite_synchronous', False)
+    _safe_set_of_opts(conf, 'policy_file', _POLICY_PATH)
+    _safe_set_of_opts(conf, 'share_export_ip', '0.0.0.0')
+    _safe_set_of_opts(conf, 'service_instance_user', 'fake_user')
+    _safe_set_of_opts(conf, 'api_paste_config', _API_PASTE_PATH)
+    _safe_set_of_opts(conf, 'share_driver',
+                      'manila.tests.fake_driver.FakeShareDriver')
+    _safe_set_of_opts(conf, 'auth_strategy', 'noauth')
+
+
+def _safe_set_of_opts(conf, *args, **kwargs):
+    try:
+        conf.set_default(*args, **kwargs)
+    except config.cfg.NoSuchOptError:
+        # Assumed that opt is not imported and not used
+        pass
