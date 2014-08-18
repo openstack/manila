@@ -14,9 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.config import cfg
+import os
 
-CONF = cfg.CONF
+from manila.common import config
+
+CONF = config.CONF
+_POLICY_PATH = os.path.abspath(os.path.join(CONF.state_path,
+                                            'manila/tests/policy.json'))
 
 
 def set_defaults(conf):
@@ -24,7 +28,7 @@ def set_defaults(conf):
     conf.set_default('verbose', True)
     conf.set_default('connection', "sqlite://", group='database')
     conf.set_default('sqlite_synchronous', False)
-    conf.set_default('policy_file', 'manila/tests/policy.json')
+    conf.set_default('policy_file', _POLICY_PATH)
     conf.set_default('share_export_ip', '0.0.0.0')
     conf.set_default('service_instance_user', 'fake_user')
     conf.set_default('share_driver',

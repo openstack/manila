@@ -33,6 +33,7 @@ CONF = cfg.CONF
 
 
 class PolicyFileTestCase(test.TestCase):
+
     def setUp(self):
         super(PolicyFileTestCase, self).setUp()
         # since is_admin is defined by policy, create context before reset
@@ -40,26 +41,27 @@ class PolicyFileTestCase(test.TestCase):
         policy.reset()
         self.target = {}
 
-    def tearDown(self):
-        super(PolicyFileTestCase, self).tearDown()
-        policy.reset()
-
     def test_modified_policy_reloads(self):
         with utils.tempdir() as tmpdir:
             tmpfilename = os.path.join(tmpdir, 'policy')
             self.flags(policy_file=tmpfilename)
-
             action = "example:test"
             with open(tmpfilename, "w") as policyfile:
                 policyfile.write("""{"example:test": []}""")
+            policy.init(tmpfilename)
             policy.enforce(self.context, action, self.target)
             with open(tmpfilename, "w") as policyfile:
                 policyfile.write("""{"example:test": ["false:false"]}""")
             # NOTE(vish): reset stored policy cache so we don't have to
             # sleep(1)
-            policy._POLICY_CACHE = {}
-            self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
-                              self.context, action, self.target)
+            policy._ENFORCER.load_rules(True)
+            self.assertRaises(
+                exception.PolicyNotAuthorized,
+                policy.enforce,
+                self.context,
+                action,
+                self.target,
+            )
 
 
 class PolicyTestCase(test.TestCase):

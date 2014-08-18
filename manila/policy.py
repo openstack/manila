@@ -16,48 +16,27 @@
 """Policy Engine For Manila"""
 
 import functools
-import os.path
-
-from oslo.config import cfg
 
 from manila import exception
 from manila.openstack.common import policy
-from manila import utils
-
-CONF = cfg.CONF
 
 _ENFORCER = None
-_POLICY_PATH = None
-_POLICY_CACHE = {}
 
 
 def reset():
-    global _POLICY_PATH
-    global _POLICY_CACHE
     global _ENFORCER
-    _POLICY_PATH = None
-    _POLICY_CACHE = {}
-    _ENFORCER = None
+    if _ENFORCER:
+        _ENFORCER.clear()
+        _ENFORCER = None
 
 
-def init():
-    global _POLICY_PATH
-    global _POLICY_CACHE
+def init(policy_path=None):
     global _ENFORCER
-    if not _POLICY_PATH:
-        _POLICY_PATH = CONF.policy_file
-        if not os.path.exists(_POLICY_PATH):
-            _POLICY_PATH = utils.find_config(_POLICY_PATH)
     if not _ENFORCER:
-        _ENFORCER = policy.Enforcer(policy_file=_POLICY_PATH)
-    utils.read_cached_file(_POLICY_PATH, _POLICY_CACHE, reload_func=_set_rules)
-
-
-def _set_rules(data):
-    global _ENFORCER
-    default_rule = CONF.policy_default_rule
-    _ENFORCER.set_rules(policy.Rules.load_json(
-        data, default_rule))
+        _ENFORCER = policy.Enforcer()
+        if policy_path:
+            _ENFORCER.policy_path = policy_path
+    _ENFORCER.load_rules()
 
 
 def enforce(context, action, target, do_raise=True):
