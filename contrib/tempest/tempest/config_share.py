@@ -52,13 +52,13 @@ ShareGroup = [
                 default=["nfs", "cifs", ],
                 help="Selection of protocols, that should "
                      "be covered with ip rule tests"),
-    cfg.ListOpt("enable_sid_rules_for_protocols",
+    cfg.ListOpt("enable_user_rules_for_protocols",
                 default=[],
                 help="Selection of protocols, that should "
-                     "be covered with sid rule tests"),
-    cfg.StrOpt("username_for_sid_rules",
+                     "be covered with user rule tests"),
+    cfg.StrOpt("username_for_user_rules",
                default="Administrator",
-               help="Username, that will be used in sid tests."),
+               help="Username, that will be used in user tests."),
     cfg.StrOpt("storage_protocol",
                default="NFS_CIFS",
                help="Backend protocol to target when creating volume types."),

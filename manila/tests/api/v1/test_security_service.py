@@ -40,7 +40,7 @@ class ShareApiTest(test.TestCase):
             "dns_ip": "1.1.1.1",
             "server": "fake-server",
             "domain": "fake-domain",
-            "sid": "fake-sid",
+            "user": "fake-user",
             "password": "fake-password",
             "status": "new",
             "project_id": "fake",

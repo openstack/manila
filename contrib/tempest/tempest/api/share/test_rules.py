@@ -79,25 +79,25 @@ class ShareIpRulesForCIFSTest(ShareIpRulesForNFSTest):
     protocol = "cifs"
 
 
-class ShareSidRulesForNFSTest(base.BaseSharesTest):
+class ShareUserRulesForNFSTest(base.BaseSharesTest):
     protocol = "nfs"
 
     @classmethod
     @test.safe_setup
     def setUpClass(cls):
-        super(ShareSidRulesForNFSTest, cls).setUpClass()
+        super(ShareUserRulesForNFSTest, cls).setUpClass()
         if (cls.protocol not in CONF.share.enable_protocols or
-            cls.protocol not in CONF.share.enable_sid_rules_for_protocols):
-            msg = "SID rule tests for %s protocol are disabled" % cls.protocol
+            cls.protocol not in CONF.share.enable_user_rules_for_protocols):
+            msg = "USER rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
         __, cls.share = cls.create_share(cls.protocol)
 
     @test.attr(type=["gate", ])
-    def test_create_delete_sid_rule(self):
+    def test_create_delete_user_rule(self):
 
         # test data
-        access_type = "sid"
-        access_to = CONF.share.username_for_sid_rules
+        access_type = "user"
+        access_to = CONF.share.username_for_user_rules
 
         # create rule
         resp, rule = self.shares_client.create_access_rule(self.share["id"],
@@ -113,7 +113,7 @@ class ShareSidRulesForNFSTest(base.BaseSharesTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
 
-class ShareSidRulesForCIFSTest(ShareSidRulesForNFSTest):
+class ShareUserRulesForCIFSTest(ShareUserRulesForNFSTest):
     protocol = "cifs"
 
 
@@ -125,7 +125,7 @@ class ShareRulesTest(base.BaseSharesTest):
         super(ShareRulesTest, cls).setUpClass()
         if not (any(p in CONF.share.enable_ip_rules_for_protocols
                     for p in cls.protocols) or
-                any(p in CONF.share.enable_sid_rules_for_protocols
+                any(p in CONF.share.enable_user_rules_for_protocols
                     for p in cls.protocols)):
             cls.message = "Rule tests are disabled"
             raise cls.skipException(cls.message)
@@ -140,10 +140,10 @@ class ShareRulesTest(base.BaseSharesTest):
             self.access_type = "ip"
             self.access_to = "8.8.8.8"
             protocol = CONF.share.enable_ip_rules_for_protocols[0]
-        elif CONF.share.enable_sid_rules_for_protocols:
-            self.access_type = "sid"
-            self.access_to = CONF.share.username_for_sid_rules
-            protocol = CONF.share.enable_sid_rules_for_protocols[0]
+        elif CONF.share.enable_user_rules_for_protocols:
+            self.access_type = "user"
+            self.access_to = CONF.share.username_for_user_rules
+            protocol = CONF.share.enable_user_rules_for_protocols[0]
         else:
             raise self.skipException(self.message)
         self.shares_client.protocol = protocol

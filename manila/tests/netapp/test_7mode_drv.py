@@ -288,8 +288,7 @@ class NetAppCIFSHelperTestCase(test.TestCase):
             'cifs-share-delete', mock.ANY)
 
     def test_allow_access(self):
-        access = {'access_to': 'user',
-                  'access_type': 'sid'}
+        access = {'access_to': 'user', 'access_type': 'user', }
         self.helper.allow_access(self._context, self.share, access)
         self.helper._client.send_request.assert_called_once_with(
             'cifs-share-ace-set', mock.ANY)

@@ -96,14 +96,17 @@ class ShareActionsTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._allow_access, req, id, body)
 
-        body = {"os-allow_access": {"access_type": 'sid',
-                                    "access_to": '1'}}
+        body = {"os-allow_access": {"access_type": 'user', "access_to": '1'}}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._allow_access, req, id, body)
 
-        body = {"os-allow_access": {"access_type": 'sid',
-                "access_to": '1' * 33}}
+        body = {
+            "os-allow_access": {
+                "access_type": 'user',
+                "access_to": '1' * 33,
+            }
+        }
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._allow_access, req, id, body)

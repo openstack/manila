@@ -63,7 +63,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.security_service = {'id': 'fake_id',
                                  'domain': 'FAKE',
                                  'server': 'fake_server',
-                                 'sid': 'fake_sid',
+                                 'user': 'fake_user',
                                  'password': 'fake_password'}
         self.share_server = {
             'backend_details': {
@@ -200,7 +200,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.driver._vserver_exists = mock.Mock(return_value=True)
         self._vserver_client.send_request = mock.Mock(return_value=el)
         security_services = [
-            {'sid': 'admin',
+            {'user': 'admin',
              'password': 'pass',
              'type': 'active_directory'}
         ]
@@ -347,7 +347,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
                          'realm': 'FAKE'}
         spn = 'nfs/fake-vserver.FAKE@FAKE'
         kerberos_modify_args = {'admin-password': 'fake_password',
-                                'admin-user-name': 'fake_sid',
+                                'admin-user-name': 'fake_user',
                                 'interface-name': 'fake_lif',
                                 'is-kerberos-enabled': 'true',
                                 'service-principal-name': spn
@@ -365,11 +365,13 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.driver._configure_dns = mock.Mock()
         self.driver._configure_active_directory(self.security_service,
                                                 self._vserver_client)
-        args = {'admin-username': 'fake_sid',
-                'admin-password': 'fake_password',
-                'force-account-overwrite': 'true',
-                'cifs-server': 'fake_server',
-                'domain': 'FAKE'}
+        args = {
+            'admin-username': 'fake_user',
+            'admin-password': 'fake_password',
+            'force-account-overwrite': 'true',
+            'cifs-server': 'fake_server',
+            'domain': 'FAKE',
+        }
         self._vserver_client.send_request.assert_called_with(
             'cifs-server-create', args)
 
