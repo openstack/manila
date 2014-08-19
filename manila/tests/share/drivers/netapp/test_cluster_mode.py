@@ -13,6 +13,7 @@
 #     License for the specific language governing permissions and limitations
 #     under the License.
 
+import copy
 import hashlib
 
 import mock
@@ -23,6 +24,7 @@ from manila.share import configuration
 from manila.share.drivers.netapp import api as naapi
 from manila.share.drivers.netapp import cluster_mode as driver
 from manila import test
+from manila import utils
 
 
 class NetAppClusteredDrvTestCase(test.TestCase):
@@ -69,6 +71,17 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.helper = mock.Mock()
         self.driver._helpers = {'FAKE': self.helper}
         self.driver._licenses = ['fake']
+
+        self.network_info = {
+            'server_id': 'fake_server_id',
+            'cidr': '10.0.0.0/24',
+            'security_services': ['fake_ldap', 'fake_kerberos', 'fake_ad', ],
+            'segmentation_id': '1000',
+            'network_allocations': [
+                {'id': 'fake_na_id_1', 'ip_address': 'fake_ip_1', },
+                {'id': 'fake_na_id_2', 'ip_address': 'fake_ip_2', },
+            ],
+        }
 
     def test_create_vserver(self):
         res = naapi.NaElement('fake')
@@ -141,6 +154,164 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             return_value='fake_vserver')
         result = self.driver.setup_server({'server_id': 'fake_vserver'})
         self.assertEqual(result, {'vserver_name': 'fake_vserver'})
+
+    def test_vserver_create_if_not_exists_1(self):
+        # server exists, lifs ok, all sec services
+        nodes = ['fake_node_1', 'fake_node_2', ]
+        port = 'fake_port'
+        ip1 = self.network_info['network_allocations'][0]['ip_address']
+        ip2 = self.network_info['network_allocations'][1]['ip_address']
+        vserver_name = \
+            self.driver.configuration.netapp_vserver_name_template % \
+            self.network_info['server_id']
+        self.stubs.Set(self.driver.db, 'share_server_backend_details_set',
+                       mock.Mock())
+        self.stubs.Set(self.driver, '_vserver_exists',
+                       mock.Mock(return_value=True))
+        self.stubs.Set(self.driver, '_get_cluster_nodes',
+                       mock.Mock(return_value=nodes))
+        self.stubs.Set(self.driver, '_get_node_data_port',
+                       mock.Mock(return_value=port))
+        self.stubs.Set(self.driver, '_create_lif_if_not_exists', mock.Mock())
+        self.stubs.Set(self.driver, '_enable_nfs', mock.Mock())
+        self.stubs.Set(self.driver, '_setup_security_services', mock.Mock())
+
+        returned_data = self.driver._vserver_create_if_not_exists(
+            self.network_info)
+
+        self.assertEqual(returned_data, vserver_name)
+        self.driver.db.share_server_backend_details_set.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      self.network_info['server_id'],
+                      {'vserver_name': vserver_name}),
+        ])
+        self.driver._vserver_exists.assert_has_calls([mock.call(vserver_name)])
+        self.driver._get_cluster_nodes.assert_has_calls([])
+        self.driver._get_node_data_port.assert_has_calls([
+            mock.call(nodes[0]),
+            mock.call(nodes[1]),
+        ])
+        self.driver._create_lif_if_not_exists.assert_has_calls([
+            mock.call(vserver_name,
+                      self.network_info['network_allocations'][0]['id'],
+                      self.network_info['segmentation_id'],
+                      nodes[0], port, ip1, '255.255.255.0', mock.ANY),
+            mock.call(vserver_name,
+                      self.network_info['network_allocations'][1]['id'],
+                      self.network_info['segmentation_id'],
+                      nodes[1], port, ip2, '255.255.255.0', mock.ANY),
+        ])
+        self.driver._enable_nfs.assert_has_calls([mock.call(mock.ANY)])
+        self.driver._setup_security_services.assert_has_calls([
+            mock.call(self.network_info.get('security_services'),
+                      mock.ANY, vserver_name),
+        ])
+
+    def test_vserver_create_if_not_exists_2(self):
+        # server does not exist, lifs ok, no sec services
+        network_info = copy.deepcopy(self.network_info)
+        network_info['security_services'] = []
+        nodes = ['fake_node_1', 'fake_node_2', ]
+        port = 'fake_port'
+        ip1 = network_info['network_allocations'][0]['ip_address']
+        ip2 = network_info['network_allocations'][1]['ip_address']
+        vserver_name = \
+            self.driver.configuration.netapp_vserver_name_template % \
+            network_info['server_id']
+        self.stubs.Set(self.driver.db, 'share_server_backend_details_set',
+                       mock.Mock())
+        self.stubs.Set(self.driver, '_vserver_exists',
+                       mock.Mock(return_value=False))
+        self.stubs.Set(self.driver, '_create_vserver', mock.Mock())
+        self.stubs.Set(self.driver, '_get_cluster_nodes',
+                       mock.Mock(return_value=nodes))
+        self.stubs.Set(self.driver, '_get_node_data_port',
+                       mock.Mock(return_value=port))
+        self.stubs.Set(self.driver, '_create_lif_if_not_exists', mock.Mock())
+        self.stubs.Set(self.driver, '_enable_nfs', mock.Mock())
+
+        returned_data = self.driver._vserver_create_if_not_exists(network_info)
+
+        self.assertEqual(returned_data, vserver_name)
+        self.driver.db.share_server_backend_details_set.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      self.network_info['server_id'],
+                      {'vserver_name': vserver_name}),
+        ])
+        self.driver._vserver_exists.assert_has_calls([mock.call(vserver_name)])
+        self.driver._create_vserver.assert_has_calls([mock.call(vserver_name)])
+        self.driver._get_cluster_nodes.assert_has_calls([])
+        self.driver._get_node_data_port.assert_has_calls([
+            mock.call(nodes[0]),
+            mock.call(nodes[1]),
+        ])
+        self.driver._create_lif_if_not_exists.assert_has_calls([
+            mock.call(vserver_name,
+                      network_info['network_allocations'][0]['id'],
+                      network_info['segmentation_id'],
+                      nodes[0], port, ip1, '255.255.255.0', mock.ANY),
+            mock.call(vserver_name,
+                      network_info['network_allocations'][1]['id'],
+                      network_info['segmentation_id'],
+                      nodes[1], port, ip2, '255.255.255.0', mock.ANY),
+        ])
+        self.driver._enable_nfs.assert_has_calls([mock.call(mock.ANY)])
+
+    def test_vserver_create_if_not_exists_3(self):
+        # server does not exist, lifs ok, one sec service
+        network_info = copy.deepcopy(self.network_info)
+        network_info['security_services'] = self.network_info[
+            'security_services'][0]
+        nodes = ['fake_node_1', 'fake_node_2', ]
+        port = 'fake_port'
+        ip1 = network_info['network_allocations'][0]['ip_address']
+        ip2 = network_info['network_allocations'][1]['ip_address']
+        vserver_name = \
+            self.driver.configuration.netapp_vserver_name_template % \
+            network_info['server_id']
+        self.stubs.Set(self.driver.db, 'share_server_backend_details_set',
+                       mock.Mock())
+        self.stubs.Set(self.driver, '_vserver_exists',
+                       mock.Mock(return_value=False))
+        self.stubs.Set(self.driver, '_create_vserver', mock.Mock())
+        self.stubs.Set(self.driver, '_get_cluster_nodes',
+                       mock.Mock(return_value=nodes))
+        self.stubs.Set(self.driver, '_get_node_data_port',
+                       mock.Mock(return_value=port))
+        self.stubs.Set(self.driver, '_create_lif_if_not_exists', mock.Mock())
+        self.stubs.Set(self.driver, '_enable_nfs', mock.Mock())
+        self.stubs.Set(self.driver, '_setup_security_services', mock.Mock())
+
+        returned_data = self.driver._vserver_create_if_not_exists(network_info)
+
+        self.assertEqual(returned_data, vserver_name)
+        self.driver.db.share_server_backend_details_set.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext),
+                      self.network_info['server_id'],
+                      {'vserver_name': vserver_name}),
+        ])
+        self.driver._vserver_exists.assert_has_calls([mock.call(vserver_name)])
+        self.driver._create_vserver.assert_has_calls([mock.call(vserver_name)])
+        self.driver._get_cluster_nodes.assert_has_calls([])
+        self.driver._get_node_data_port.assert_has_calls([
+            mock.call(nodes[0]),
+            mock.call(nodes[1]),
+        ])
+        self.driver._create_lif_if_not_exists.assert_has_calls([
+            mock.call(vserver_name,
+                      network_info['network_allocations'][0]['id'],
+                      network_info['segmentation_id'],
+                      nodes[0], port, ip1, '255.255.255.0', mock.ANY),
+            mock.call(vserver_name,
+                      network_info['network_allocations'][1]['id'],
+                      network_info['segmentation_id'],
+                      nodes[1], port, ip2, '255.255.255.0', mock.ANY),
+        ])
+        self.driver._enable_nfs.assert_has_calls([mock.call(mock.ANY)])
+        self.driver._setup_security_services.assert_has_calls([
+            mock.call(network_info.get('security_services'),
+                      mock.ANY, vserver_name),
+        ])
 
     def test_setup_security_services(self):
         fake_sevice_ldap = {'type': 'ldap'}
