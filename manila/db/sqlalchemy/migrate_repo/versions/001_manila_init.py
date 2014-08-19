@@ -419,14 +419,15 @@ def upgrade(migrate_engine):
                   "share_network_security_service_association", "volume_types",
                   "volume_type_extra_specs", "share_server_backend_details"]
 
-        sql = "SET foreign_key_checks = 0;"
+        migrate_engine.execute("SET foreign_key_checks = 0")
         for table in tables:
-            sql += "ALTER TABLE %s CONVERT TO CHARACTER SET utf8;" % table
-        sql += "SET foreign_key_checks = 1;"
-        sql += "ALTER DATABASE %s DEFAULT CHARACTER SET utf8;" \
-            % migrate_engine.url.database
-        sql += "ALTER TABLE %s Engine=InnoDB;" % table
-        migrate_engine.execute(sql)
+            migrate_engine.execute(
+                "ALTER TABLE %s CONVERT TO CHARACTER SET utf8" % table)
+        migrate_engine.execute("SET foreign_key_checks = 1")
+        migrate_engine.execute(
+            "ALTER DATABASE %s DEFAULT CHARACTER SET utf8" %
+            migrate_engine.url.database)
+        migrate_engine.execute("ALTER TABLE %s Engine=InnoDB" % table)
 
 
 def downgrade(migrate_engine):
