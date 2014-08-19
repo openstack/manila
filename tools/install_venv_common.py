@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2013 OpenStack Foundation
 # Copyright 2013 IBM Corp.
 #
@@ -18,12 +16,15 @@
 """Provides methods needed by installation script for OpenStack development
 virtual environments.
 
+Since this script is used to bootstrap a virtualenv from the system's Python
+environment, it should be kept strictly compatible with Python 2.6.
+
 Synced in from openstack-common
 """
 
 from __future__ import print_function
 
-import argparse
+import optparse
 import os
 import subprocess
 import sys
@@ -31,12 +32,13 @@ import sys
 
 class InstallVenv(object):
 
-    def __init__(self, root, venv, pip_requires, test_requires, py_version,
+    def __init__(self, root, venv, requirements,
+                 test_requirements, py_version,
                  project):
         self.root = root
         self.venv = venv
-        self.pip_requires = pip_requires
-        self.test_requires = test_requires
+        self.requirements = requirements
+        self.test_requirements = test_requirements
         self.py_version = py_version
         self.project = project
 
@@ -72,11 +74,13 @@ class InstallVenv(object):
     def get_distro(self):
         if (os.path.exists('/etc/fedora-release') or
                 os.path.exists('/etc/redhat-release')):
-            return Fedora(self.root, self.venv, self.pip_requires,
-                          self.test_requires, self.py_version, self.project)
+            return Fedora(
+                self.root, self.venv, self.requirements,
+                self.test_requirements, self.py_version, self.project)
         else:
-            return Distro(self.root, self.venv, self.pip_requires,
-                          self.test_requires, self.py_version, self.project)
+            return Distro(
+                self.root, self.venv, self.requirements,
+                self.test_requirements, self.py_version, self.project)
 
     def check_dependencies(self):
         self.get_distro().install_virtualenv()
@@ -95,11 +99,6 @@ class InstallVenv(object):
             else:
                 self.run_command(['virtualenv', '-q', self.venv])
             print('done.')
-            print('Installing pip in venv...', end=' ')
-            if not self.run_command(['tools/with_venv.sh', 'easy_install',
-                                    'pip>1.0']).strip():
-                self.die("Failed to install pip.")
-            print('done.')
         else:
             print("venv already exists...")
             pass
@@ -111,18 +110,23 @@ class InstallVenv(object):
 
     def install_dependencies(self):
         print('Installing dependencies with pip (this can take a while)...')
-        self.pip_install('pip>=1.3')
+
+        # First things first, make sure our venv has the latest pip and
+        # setuptools and pbr
+        self.pip_install('pip>=1.4')
         self.pip_install('setuptools')
-        self.pip_install('-r', self.pip_requires, '-r', self.test_requires)
+        self.pip_install('pbr')
+
+        self.pip_install('-r', self.requirements, '-r', self.test_requirements)
 
     def parse_args(self, argv):
         """Parses command-line arguments."""
-        parser = argparse.ArgumentParser()
-        parser.add_argument('-n', '--no-site-packages',
-                            action='store_true',
-                            help="Do not inherit packages from global Python "
-                                 "install")
-        return parser.parse_args(argv[1:])
+        parser = optparse.OptionParser()
+        parser.add_option('-n', '--no-site-packages',
+                          action='store_true',
+                          help="Do not inherit packages from global Python "
+                               "install.")
+        return parser.parse_args(argv[1:])[0]
 
 
 class Distro(InstallVenv):
@@ -158,15 +162,11 @@ class Fedora(Distro):
         return self.run_command_with_code(['rpm', '-q', pkg],
                                           check_exit_code=False)[1] == 0
 
-    def yum_install(self, pkg, **kwargs):
-        print("Attempting to install '%s' via yum" % pkg)
-        self.run_command(['sudo', 'yum', 'install', '-y', pkg], **kwargs)
-
     def install_virtualenv(self):
         if self.check_cmd('virtualenv'):
             return
 
         if not self.check_pkg('python-virtualenv'):
-            self.yum_install('python-virtualenv', check_exit_code=False)
+            self.die("Please install 'python-virtualenv'.")
 
         super(Fedora, self).install_virtualenv()
