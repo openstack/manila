@@ -26,6 +26,8 @@ from manila.openstack.common import log
 from manila.share import driver
 from manila.share.drivers.emc.plugins import \
     registry as emc_plugins_registry
+# TODO(jay.xu): Implement usage of stevedore for plugins.
+from manila.share.drivers.emc.plugins.vnx import connection    # noqa
 
 
 LOG = log.getLogger(__name__)
