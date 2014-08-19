@@ -36,7 +36,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         fake_context = context.RequestContext('user', 'project')
         request_spec = {
             'share_properties': {'project_id': 1, 'size': 1},
-            'share_type': {'name': 'LVM_NFS'},
+            'share_type': {'name': 'NFS'},
             'share_id': ['fake-id1'],
         }
         self.assertRaises(exception.NoValidHost, sched.schedule_create_share,
@@ -60,7 +60,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         fake_context = context.RequestContext('user', 'project')
         request_spec = {
             'share_properties': {'project_id': 1, 'size': 1},
-            'share_type': {'name': 'LVM_NFS'},
+            'share_type': {'name': 'NFS'},
             'share_id': ['fake-id1'],
         }
         self.assertRaises(exception.NoValidHost, sched.schedule_create_share,
@@ -77,7 +77,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                               is_admin=True)
         fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
         request_spec = {
-            'share_type': {'name': 'LVM_NFS'},
+            'share_type': {'name': 'NFS'},
             'share_properties': {'project_id': 1, 'size': 1},
         }
         weighed_host = sched._schedule_share(fake_context, request_spec, {})
@@ -99,7 +99,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.flags(scheduler_max_attempts=1)
         sched = fakes.FakeFilterScheduler()
         request_spec = {
-            'volume_type': {'name': 'LVM_iSCSI'},
+            'volume_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
         }
         filter_properties = {}
@@ -113,7 +113,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.flags(scheduler_max_attempts=2)
         sched = fakes.FakeFilterScheduler()
         request_spec = {
-            'volume_type': {'name': 'LVM_iSCSI'},
+            'volume_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
         }
         filter_properties = {}
@@ -127,7 +127,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.flags(scheduler_max_attempts=2)
         sched = fakes.FakeFilterScheduler()
         request_spec = {
-            'volume_type': {'name': 'LVM_iSCSI'},
+            'volume_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
         }
         retry = dict(num_attempts=1)
@@ -142,7 +142,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.flags(scheduler_max_attempts=2)
         sched = fakes.FakeFilterScheduler()
         request_spec = {
-            'volume_type': {'name': 'LVM_iSCSI'},
+            'volume_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
         }
         retry = dict(num_attempts=2)

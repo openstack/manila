@@ -16,8 +16,7 @@
 
 **Related Flags**
 
-:share_driver: Used by :class:`ShareManager`. Defaults to
-                       :class:`manila.share.drivers.lvm.LVMShareDriver`.
+:share_driver: Used by :class:`ShareManager`.
 """
 
 from manila.common import constants
@@ -39,7 +38,7 @@ LOG = logging.getLogger(__name__)
 
 share_manager_opts = [
     cfg.StrOpt('share_driver',
-               default='manila.share.drivers.lvm.LVMShareDriver',
+               default='manila.share.drivers.generic.GenericShareDriver',
                help='Driver to use for share creation'),
     cfg.BoolOpt('delete_share_server_with_last_share',
                 default=False,

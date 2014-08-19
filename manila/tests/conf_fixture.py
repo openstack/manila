@@ -31,7 +31,6 @@ def set_defaults(conf):
     _safe_set_of_opts(conf, 'connection', "sqlite://", group='database')
     _safe_set_of_opts(conf, 'sqlite_synchronous', False)
     _safe_set_of_opts(conf, 'policy_file', _POLICY_PATH)
-    _safe_set_of_opts(conf, 'share_export_ip', '0.0.0.0')
     _safe_set_of_opts(conf, 'service_instance_user', 'fake_user')
     _safe_set_of_opts(conf, 'api_paste_config', _API_PASTE_PATH)
     _safe_set_of_opts(conf, 'share_driver',
