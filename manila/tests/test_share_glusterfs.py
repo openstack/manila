@@ -24,10 +24,7 @@ from mock import patch
 from oslo.config import cfg
 
 from manila import context
-from manila.db.sqlalchemy import models
 from manila import exception
-from manila.openstack.common import importutils
-from manila.openstack.common import log as logging
 from manila.share import configuration as config
 from manila.share.drivers import glusterfs
 from manila import test
@@ -98,11 +95,11 @@ class GlusterAddressTestCase(test.TestCase):
         # python 2.6 compat thingy
         check_output = lambda cmd:\
             subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).\
-                communicate()[0]
+            communicate()[0]
         # shell unescaping thru echo(1)
         self.assertEqual(check_output('echo ' + ' '.join(ret[0]),)[:-1],
                          'ssh testuser@127.0.0.1 gluster ' +
-                            ' '.join(self._gluster_args))
+                         ' '.join(self._gluster_args))
         self.assertEqual(ret[1], {})
 
 
@@ -121,8 +118,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.fake_conf = config.Configuration(None)
         self._db = Mock()
         self._driver = glusterfs.GlusterfsShareDriver(
-                        self._db, execute=self._execute,
-                        configuration=self.fake_conf)
+            self._db, execute=self._execute,
+            configuration=self.fake_conf)
         self._driver.gluster_address = Mock(**gluster_address_attrs)
         self.share = fake_share()
 
@@ -330,7 +327,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
         self.assertEqual(ret,
                          {'foo': ['10.0.0.1', '10.0.0.2'], 'bar': ['10.0.0.1']}
-                        )
+                         )
 
     def test_get_local_share_path(self):
         with patch.object(os, 'access', return_value=True):
@@ -373,7 +370,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         some_no = 42
         not_some_no = some_no + 1
         os_stat = lambda path: Mock(st_dev=some_no) if path == '/mnt/nfs' \
-                    else Mock(st_dev=not_some_no)
+            else Mock(st_dev=not_some_no)
         with patch.object(os, 'statvfs', return_value=test_statvfs):
             with patch.object(os, 'stat', os_stat):
                 ret = self._driver._update_share_stats()
@@ -486,8 +483,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(ret, None)
         self.assertTrue(self._driver.gluster_address.make_gluster_args.called)
         self.assertEqual(
-          self._driver.gluster_address.make_gluster_args.call_args[0][-1],
-          '/example.com(10.0.0.1),/fakename(10.0.0.1|10.0.0.2)')
+            self._driver.gluster_address.make_gluster_args.call_args[0][-1],
+            '/example.com(10.0.0.1),/fakename(10.0.0.1|10.0.0.2)')
 
     def test_manage_access_adding_entry_cmd_fail(self):
         def cbk(d, key, value):
@@ -510,8 +507,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
         self.assertTrue(self._driver.gluster_address.make_gluster_args.called)
         self.assertEqual(
-          self._driver.gluster_address.make_gluster_args.call_args[0][-1],
-          '/example.com(10.0.0.1),/fakename(10.0.0.1|10.0.0.2)')
+            self._driver.gluster_address.make_gluster_args.call_args[0][-1],
+            '/example.com(10.0.0.1),/fakename(10.0.0.1|10.0.0.2)')
 
     def test_manage_access_removing_last_entry(self):
         def cbk(d, key, value):
@@ -528,11 +525,11 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(ret, None)
         self.assertTrue(self._driver.gluster_address.make_gluster_args.called)
         self.assertEqual(
-          self._driver.gluster_address.make_gluster_args.call_args[0][1],
-          'reset')
+            self._driver.gluster_address.make_gluster_args.call_args[0][1],
+            'reset')
         self.assertEqual(
-          self._driver.gluster_address.make_gluster_args.call_args[0][-1],
-          'nfs.export-dir')
+            self._driver.gluster_address.make_gluster_args.call_args[0][-1],
+            'nfs.export-dir')
 
     def test_allow_access_with_share_having_noaccess(self):
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
@@ -543,8 +540,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver.allow_access(self._context, self.share, access)
         self.assertTrue(self._driver.gluster_address.make_gluster_args.called)
         self.assertEqual(
-          self._driver.gluster_address.make_gluster_args.call_args[0][-1],
-          '/example.com(10.0.0.1),/fakename(10.0.0.1)')
+            self._driver.gluster_address.make_gluster_args.call_args[0][-1],
+            '/example.com(10.0.0.1),/fakename(10.0.0.1)')
 
     def test_allow_access_with_share_having_access(self):
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
@@ -582,8 +579,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver.deny_access(self._context, self.share, access)
         self.assertTrue(self._driver.gluster_address.make_gluster_args.called)
         self.assertEqual(
-          self._driver.gluster_address.make_gluster_args.call_args[0][-1],
-          '/example.com(10.0.0.1)')
+            self._driver.gluster_address.make_gluster_args.call_args[0][-1],
+            '/example.com(10.0.0.1)')
 
     def test_deny_access_can_be_called_with_extra_arg_share_server(self):
         access = None

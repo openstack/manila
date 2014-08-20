@@ -109,7 +109,7 @@ class GetFromPathTestCase(test.TestCase):
         input = [{'a': {'b': {'c': 'c_1'}}},
                  {'a': {'b': {'c': 'c_2'}}}]
         self.assertEqual([{'b': {'c': 'c_1'}}, {'b': {'c': 'c_2'}}],
-                          f(input, "a"))
+                         f(input, "a"))
         self.assertEqual([{'c': 'c_1'}, {'c': 'c_2'}], f(input, "a/b"))
         self.assertEqual(['c_1', 'c_2'], f(input, "a/b/c"))
 
@@ -233,8 +233,9 @@ class GenericUtilsTestCase(test.TestCase):
             fake_context_manager = mock.Mock()
             fake_context_manager.__enter__ = mock.Mock(return_value=fake_file)
             fake_context_manager.__exit__ = mock.Mock()
-            with mock.patch.object(__builtin__, 'open',
-                mock.Mock(return_value=fake_context_manager)):
+            with mock.patch.object(
+                    __builtin__, 'open',
+                    mock.Mock(return_value=fake_context_manager)):
                 cache_data = {"data": 1123, "mtime": 1}
                 self.reload_called = False
 
@@ -403,7 +404,7 @@ class GenericUtilsTestCase(test.TestCase):
             (socket.AF_INET6, socket.SOCK_STREAM, 0, '', (u'127.0.0.1', 80)),
         ]
         with mock.patch.dict('sys.modules', {
-            'eventlet.support.greendns': fake_dns}):
+                'eventlet.support.greendns': fake_dns}):
             self.assertFalse(utils.is_eventlet_bug105())
             fake_dns.getaddrinfo.assert_called_once()
 

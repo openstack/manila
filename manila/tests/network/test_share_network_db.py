@@ -234,8 +234,8 @@ class ShareNetworkDBTest(test.TestCase):
         db_api.share_network_create(self.fake_context, share_nw_dict2)
 
         result = db_api.share_network_get_all_by_project(
-                                                self.fake_context,
-                                                share_nw_dict2['project_id'])
+            self.fake_context,
+            share_nw_dict2['project_id'])
 
         self.assertEqual(len(result), 1)
         self._check_fields(expected=share_nw_dict2, actual=result[0])
@@ -252,10 +252,10 @@ class ShareNetworkDBTest(test.TestCase):
                                                   security_dict1['id'])
 
         result = sqlalchemy_api.model_query(
-                self.fake_context,
-                models.ShareNetworkSecurityServiceAssociation).\
-                filter_by(security_service_id=security_dict1['id']).\
-                filter_by(share_network_id=self.share_nw_dict['id']).first()
+            self.fake_context,
+            models.ShareNetworkSecurityServiceAssociation).\
+            filter_by(security_service_id=security_dict1['id']).\
+            filter_by(share_network_id=self.share_nw_dict['id']).first()
 
         self.assertTrue(result is not None)
 
@@ -316,10 +316,10 @@ class ShareNetworkDBTest(test.TestCase):
                                                      security_dict1['id'])
 
         result = sqlalchemy_api.model_query(
-                self.fake_context,
-                models.ShareNetworkSecurityServiceAssociation).\
-                filter_by(security_service_id=security_dict1['id']).\
-                filter_by(share_network_id=self.share_nw_dict['id']).first()
+            self.fake_context,
+            models.ShareNetworkSecurityServiceAssociation).\
+            filter_by(security_service_id=security_dict1['id']).\
+            filter_by(share_network_id=self.share_nw_dict['id']).first()
 
         self.assertTrue(result is None)
 

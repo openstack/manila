@@ -165,81 +165,84 @@ class ShareServerAPITest(test.TestCase):
 
     def test_index_no_filters(self):
         result = self.controller.index(FakeRequestAdmin)
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'index')
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'index')
         db_api.share_server_get_all.assert_called_once_with(CONTEXT)
         self.assertEqual(result, fake_share_server_list)
 
     def test_index_host_filter(self):
         result = self.controller.index(FakeRequestWithHost)
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'index')
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'index')
         db_api.share_server_get_all.assert_called_once_with(CONTEXT)
         self.assertEqual(result['share_servers'],
                          [fake_share_server_list['share_servers'][0]])
 
     def test_index_status_filter(self):
         result = self.controller.index(FakeRequestWithStatus)
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'index')
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'index')
         db_api.share_server_get_all.assert_called_once_with(CONTEXT)
         self.assertEqual(result['share_servers'],
                          [fake_share_server_list['share_servers'][1]])
 
     def test_index_project_id_filter(self):
         result = self.controller.index(FakeRequestWithProjectId)
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'index')
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'index')
         db_api.share_server_get_all.assert_called_once_with(CONTEXT)
         self.assertEqual(result['share_servers'],
                          [fake_share_server_list['share_servers'][0]])
 
     def test_index_share_network_filter_by_name(self):
         result = self.controller.index(FakeRequestWithShareNetworkName)
-        policy.check_policy.assert_called_once_with(CONTEXT,
-                share_servers.RESOURCE_NAME, 'index')
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'index')
         db_api.share_server_get_all.assert_called_once_with(CONTEXT)
         self.assertEqual(result['share_servers'],
                          [fake_share_server_list['share_servers'][0]])
 
     def test_index_share_network_filter_by_id(self):
         result = self.controller.index(FakeRequestWithShareNetworkId)
-        policy.check_policy.assert_called_once_with(CONTEXT,
-                share_servers.RESOURCE_NAME, 'index')
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'index')
         db_api.share_server_get_all.assert_called_once_with(CONTEXT)
         self.assertEqual(result['share_servers'],
                          [fake_share_server_list['share_servers'][0]])
 
     def test_index_fake_filter(self):
         result = self.controller.index(FakeRequestWithFakeFilter)
-        policy.check_policy.assert_called_once_with(CONTEXT,
-                share_servers.RESOURCE_NAME, 'index')
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'index')
         db_api.share_server_get_all.assert_called_once_with(CONTEXT)
         self.assertEqual(len(result['share_servers']), 0)
 
     def test_show(self):
         self.stubs.Set(db_api, 'share_server_get',
                        mock.Mock(return_value=fake_share_server_get()))
-        result = self.controller.show(FakeRequestAdmin,
+        result = self.controller.show(
+            FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'show')
-        db_api.share_server_get.assert_called_once_with(CONTEXT,
-            fake_share_server_get_result['share_server']['id'])
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'show')
+        db_api.share_server_get.assert_called_once_with(
+            CONTEXT, fake_share_server_get_result['share_server']['id'])
         self.assertEqual(result['share_server'],
                          fake_share_server_get_result['share_server'])
 
     def test_details(self):
         self.stubs.Set(db_api, 'share_server_get',
                        mock.Mock(return_value=fake_share_server_get()))
-        self.stubs.Set(db_api, 'share_server_backend_details_get',
+        self.stubs.Set(
+            db_api, 'share_server_backend_details_get',
             mock.Mock(return_value=fake_share_server_backend_details_get()))
-        result = self.controller.details(FakeRequestAdmin,
+        result = self.controller.details(
+            FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'details')
-        db_api.share_server_get.assert_called_once_with(CONTEXT,
-            fake_share_server_get_result['share_server']['id'])
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'details')
+        db_api.share_server_get.assert_called_once_with(
+            CONTEXT, fake_share_server_get_result['share_server']['id'])
         db_api.share_server_backend_details_get.assert_called_once_with(
             CONTEXT, fake_share_server_get_result['share_server']['id'])
         self.assertEqual(result,
@@ -251,12 +254,13 @@ class ShareServerAPITest(test.TestCase):
                        mock.Mock(return_value=share_server))
         self.stubs.Set(self.controller.share_api, 'delete_share_server',
                        mock.Mock())
-        result = self.controller.delete(FakeRequestAdmin,
+        result = self.controller.delete(
+            FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'delete')
-        db_api.share_server_get.assert_called_once_with(CONTEXT,
-            fake_share_server_get_result['share_server']['id'])
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'delete')
+        db_api.share_server_get.assert_called_once_with(
+            CONTEXT, fake_share_server_get_result['share_server']['id'])
         self.controller.share_api.delete_share_server.assert_called_once_with(
             CONTEXT, share_server)
 
@@ -266,12 +270,13 @@ class ShareServerAPITest(test.TestCase):
                        mock.Mock(return_value=share_server))
         self.stubs.Set(self.controller.share_api, 'delete_share_server',
                        mock.Mock())
-        result = self.controller.delete(FakeRequestAdmin,
+        result = self.controller.delete(
+            FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'delete')
-        db_api.share_server_get.assert_called_once_with(CONTEXT,
-            fake_share_server_get_result['share_server']['id'])
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'delete')
+        db_api.share_server_get.assert_called_once_with(
+            CONTEXT, fake_share_server_get_result['share_server']['id'])
         self.controller.share_api.delete_share_server.assert_called_once_with(
             CONTEXT, share_server)
 
@@ -291,7 +296,7 @@ class ShareServerAPITest(test.TestCase):
                           FakeRequestAdmin,
                           share_server_id)
         db_api.share_server_get.assert_called_once_with(CONTEXT,
-            share_server_id)
+                                                        share_server_id)
         self.controller.share_api.delete_share_server.assert_called_once_with(
             CONTEXT, share_server)
 
@@ -311,8 +316,8 @@ class ShareServerAPITest(test.TestCase):
                           share_server_id)
         db_api.share_server_get.assert_called_once_with(
             CONTEXT, share_server_id)
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'delete')
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'delete')
 
     def test_delete_creating_server(self):
         share_server = FakeShareServer(status=constants.STATUS_CREATING)
@@ -322,7 +327,8 @@ class ShareServerAPITest(test.TestCase):
                           self.controller.delete,
                           FakeRequestAdmin,
                           share_server['id'])
-        policy.check_policy.assert_called_once_with(CONTEXT,
+        policy.check_policy.assert_called_once_with(
+            CONTEXT,
             share_servers.RESOURCE_NAME, 'delete')
 
     def test_delete_deleting_server(self):
@@ -333,5 +339,5 @@ class ShareServerAPITest(test.TestCase):
                           self.controller.delete,
                           FakeRequestAdmin,
                           share_server['id'])
-        policy.check_policy.assert_called_once_with(CONTEXT,
-            share_servers.RESOURCE_NAME, 'delete')
+        policy.check_policy.assert_called_once_with(
+            CONTEXT, share_servers.RESOURCE_NAME, 'delete')

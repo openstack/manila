@@ -37,16 +37,21 @@ class OVS_Lib_Test(test.TestCase):
     def test_reset_bridge(self):
         self.br.reset_bridge()
         self.execute.assert_has_calls([mock.call("ovs-vsctl", self.TO, "--",
-                      "--if-exists", "del-br", self.BR_NAME, run_as_root=True),
-                      mock.call("ovs-vsctl", self.TO, "add-br",
-                                self.BR_NAME, run_as_root=True)])
+                                                 "--if-exists", "del-br",
+                                                 self.BR_NAME,
+                                                 run_as_root=True),
+                                       mock.call("ovs-vsctl", self.TO,
+                                                 "add-br",
+                                                 self.BR_NAME,
+                                                 run_as_root=True)])
 
     def test_delete_port(self):
         pname = "tap5"
         self.br.delete_port(pname)
         self.execute.assert_called_once_with("ovs-vsctl", self.TO, "--",
-                        "--if-exists", "del-port", self.BR_NAME, pname,
-                        run_as_root=True)
+                                             "--if-exists", "del-port",
+                                             self.BR_NAME, pname,
+                                             run_as_root=True)
 
     def test_port_id_regex(self):
         result = ('external_ids        : {attached-mac="fa:16:3e:23:5b:f2",'

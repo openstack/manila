@@ -34,7 +34,6 @@ CONF = cfg.CONF
 
 
 class QuotaIntegrationTestCase(test.TestCase):
-
     def setUp(self):
         super(QuotaIntegrationTestCase, self).setUp()
         self.flags(quota_shares=2,
@@ -580,9 +579,9 @@ class QuotaEngineTestCase(test.TestCase):
                                                   'test_project', 'fake_user')
 
         self.assertEqual(driver.called, [
-                ('destroy_all_by_project_and_user', context, 'test_project',
-                 'fake_user'),
-                ])
+            ('destroy_all_by_project_and_user', context, 'test_project',
+             'fake_user'),
+        ])
 
     def test_destroy_all_by_project(self):
         context = FakeContext(None, None)
@@ -612,7 +611,6 @@ class QuotaEngineTestCase(test.TestCase):
 
 
 class DbQuotaDriverTestCase(test.TestCase):
-
     expected_all_context = {
         "shares": {"limit": 10, "in_use": 2, "reserved": 0, },
         "gigabytes": {"limit": 50, "in_use": 10, "reserved": 0, },
@@ -718,11 +716,11 @@ class DbQuotaDriverTestCase(test.TestCase):
             quota.QUOTAS._resources, 'test_project', 'fake_user')
 
         self.assertEqual(self.calls, [
-                'quota_get_all_by_project_and_user',
-                'quota_get_all_by_project',
-                'quota_usage_get_all_by_project_and_user',
-                'quota_class_get_all_by_name',
-                ])
+            'quota_get_all_by_project_and_user',
+            'quota_get_all_by_project',
+            'quota_usage_get_all_by_project_and_user',
+            'quota_class_get_all_by_name',
+        ])
         self.assertEqual(result, self.expected_all_context)
 
     def _stub_get_by_project(self):
@@ -760,10 +758,10 @@ class DbQuotaDriverTestCase(test.TestCase):
             quota.QUOTAS._resources, 'test_project', 'fake_user')
 
         self.assertEqual(self.calls, [
-                'quota_get_all_by_project_and_user',
-                'quota_get_all_by_project',
-                'quota_usage_get_all_by_project_and_user',
-                ])
+            'quota_get_all_by_project_and_user',
+            'quota_get_all_by_project',
+            'quota_usage_get_all_by_project_and_user',
+        ])
         self.assertEqual(result, self.expected_all_context)
 
     def test_get_project_quotas_alt_context_no_class(self):
@@ -784,11 +782,11 @@ class DbQuotaDriverTestCase(test.TestCase):
             quota_class='test_class')
 
         self.assertEqual(self.calls, [
-                'quota_get_all_by_project_and_user',
-                'quota_get_all_by_project',
-                'quota_usage_get_all_by_project_and_user',
-                'quota_class_get_all_by_name',
-                ])
+            'quota_get_all_by_project_and_user',
+            'quota_get_all_by_project',
+            'quota_usage_get_all_by_project_and_user',
+            'quota_class_get_all_by_name',
+        ])
         self.assertEqual(result, self.expected_all_context)
 
     def test_get_project_quotas_alt_context_with_class(self):
@@ -810,11 +808,11 @@ class DbQuotaDriverTestCase(test.TestCase):
             defaults=False)
 
         self.assertEqual(self.calls, [
-                'quota_get_all_by_project_and_user',
-                'quota_get_all_by_project',
-                'quota_usage_get_all_by_project_and_user',
-                'quota_class_get_all_by_name',
-                ])
+            'quota_get_all_by_project_and_user',
+            'quota_get_all_by_project',
+            'quota_usage_get_all_by_project_and_user',
+            'quota_class_get_all_by_name',
+        ])
         expected = {
             "shares": {"limit": 10, "in_use": 2, "reserved": 0, },
             "gigabytes": {"limit": 50, "in_use": 10, "reserved": 0, },
@@ -843,10 +841,10 @@ class DbQuotaDriverTestCase(test.TestCase):
             quota.QUOTAS._resources, 'test_project', 'fake_user', usages=False)
 
         self.assertEqual(self.calls, [
-                'quota_get_all_by_project_and_user',
-                'quota_get_all_by_project',
-                'quota_class_get_all_by_name',
-                ])
+            'quota_get_all_by_project_and_user',
+            'quota_get_all_by_project',
+            'quota_class_get_all_by_name',
+        ])
         expected = {
             "shares": {"limit": 10, },
             "gigabytes": {"limit": 50, },
@@ -913,10 +911,10 @@ class DbQuotaDriverTestCase(test.TestCase):
             quota.QUOTAS._resources, 'test_project', user_id='test_user')
 
         self.assertEqual(self.calls, [
-                'get_project_quotas',
-                'get_user_quotas',
-                'quota_get_all_by_project_and_user',
-                ])
+            'get_project_quotas',
+            'get_user_quotas',
+            'quota_get_all_by_project_and_user',
+        ])
         expected = {
             "shares": {"minimum": 0, "maximum": 12, },
             "gigabytes": {"minimum": 0, "maximum": 1000, },
@@ -932,8 +930,8 @@ class DbQuotaDriverTestCase(test.TestCase):
             quota.QUOTAS._resources, 'test_project')
 
         self.assertEqual(self.calls, [
-                'get_project_quotas',
-                ])
+            'get_project_quotas',
+        ])
         expected = {
             "shares": {"minimum": 0, "maximum": -1, },
             "gigabytes": {"minimum": 0, "maximum": -1, },
@@ -1103,7 +1101,7 @@ class DbQuotaDriverTestCase(test.TestCase):
                                                        'test_class'),
                                            'test_project')
         self.assertEqual(self.calls, [('quota_destroy_all_by_project',
-                                      ('test_project')), ])
+                                       ('test_project')), ])
 
 
 class FakeSession(object):

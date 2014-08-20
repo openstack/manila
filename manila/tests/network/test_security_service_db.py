@@ -43,8 +43,8 @@ class SecurityServiceDBTest(test.TestCase):
         super(SecurityServiceDBTest, self).__init__(*args, **kwargs)
 
         self.fake_context = context.RequestContext(user_id='fake user',
-                                           project_id='fake project',
-                                           is_admin=False)
+                                                   project_id='fake project',
+                                                   is_admin=False)
 
     def _check_expected_fields(self, result, expected):
         for key in expected:
@@ -168,15 +168,15 @@ class SecurityServiceDBTest(test.TestCase):
                                        dict2)
 
         result1 = db_api.security_service_get_all_by_project(
-                    self.fake_context,
-                    dict1['project_id'])
+            self.fake_context,
+            dict1['project_id'])
 
         self.assertEqual(len(result1), 1)
         self._check_expected_fields(result1[0], dict1)
 
         result2 = db_api.security_service_get_all_by_project(
-                    self.fake_context,
-                    dict2['project_id'])
+            self.fake_context,
+            dict2['project_id'])
 
         self.assertEqual(len(result2), 1)
         self._check_expected_fields(result2[0], dict2)
