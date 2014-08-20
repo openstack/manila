@@ -133,7 +133,7 @@ class HostState(object):
             self.updated = capability['timestamp']
 
     def consume_from_share(self, share):
-        """Incrementally update host state from an share"""
+        """Incrementally update host state from an share."""
         share_gb = share['size']
         if self.free_capacity_gb == 'infinite':
             # There's virtually infinite space on back-end
@@ -216,7 +216,7 @@ class HostManager(object):
 
     def get_filtered_hosts(self, hosts, filter_properties,
                            filter_class_names=None):
-        """Filter hosts and return only ones passing all filters"""
+        """Filter hosts and return only ones passing all filters."""
         filter_classes = self._choose_host_filters(filter_class_names)
         return self.filter_handler.get_filtered_objects(filter_classes,
                                                         hosts,
@@ -224,7 +224,7 @@ class HostManager(object):
 
     def get_weighed_hosts(self, hosts, weight_properties,
                           weigher_class_names=None):
-        """Weigh the hosts"""
+        """Weigh the hosts."""
         weigher_classes = self._choose_host_weighers(weigher_class_names)
         return self.weight_handler.get_weighed_objects(weigher_classes,
                                                        hosts,

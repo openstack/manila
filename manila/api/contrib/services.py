@@ -59,7 +59,7 @@ class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
 class ServiceController(object):
     @wsgi.serializers(xml=ServicesIndexTemplate)
     def index(self, req):
-        """Return a list of all running services. """
+        """Return a list of all running services."""
         context = req.environ['manila.context']
         authorize(context)
         now = timeutils.utcnow()
@@ -96,7 +96,7 @@ class ServiceController(object):
 
     @wsgi.serializers(xml=ServicesUpdateTemplate)
     def update(self, req, id, body):
-        """Enable/Disable scheduling for a service"""
+        """Enable/Disable scheduling for a service."""
         context = req.environ['manila.context']
         authorize(context)
 
@@ -126,7 +126,7 @@ class ServiceController(object):
 
 
 class Services(extensions.ExtensionDescriptor):
-    """Services support"""
+    """Services support."""
 
     name = "Services"
     alias = "os-services"

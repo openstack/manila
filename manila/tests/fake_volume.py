@@ -51,7 +51,7 @@ class FakeVolumeSnapshot(object):
 
 
 class API(object):
-    """Fake Volume API"""
+    """Fake Volume API."""
     def get(self, volume_id):
         pass
 

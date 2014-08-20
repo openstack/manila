@@ -59,7 +59,7 @@ class QuotaSetsController(object):
         self.ext_mgr = ext_mgr
 
     def _format_quota_set(self, project_id, quota_set):
-        """Convert the quota object to a result dict"""
+        """Convert the quota object to a result dict."""
 
         result = dict(id=str(project_id))
 
@@ -240,7 +240,7 @@ class QuotaSetsController(object):
 
 
 class Quotas(extensions.ExtensionDescriptor):
-    """Quotas management support"""
+    """Quotas management support."""
 
     name = "Quotas"
     alias = "os-quota-sets"

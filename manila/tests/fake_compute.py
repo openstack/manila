@@ -69,7 +69,7 @@ class FakeSecurityGroup(object):
 
 
 class API(object):
-    """Fake Compute API"""
+    """Fake Compute API."""
     def instance_volume_attach(self, ctx, server_id, volume_id, mount_path):
         pass
 

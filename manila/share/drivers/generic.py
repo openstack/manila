@@ -570,7 +570,7 @@ class NFSHelper(NASHelperBase):
         pass
 
     def allow_access(self, server, share_name, access_type, access):
-        """Allow access to the host"""
+        """Allow access to the host."""
         local_path = os.path.join(self.configuration.share_mount_path,
                                   share_name)
         if access_type != 'ip':
