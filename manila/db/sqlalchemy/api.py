@@ -19,10 +19,7 @@
 
 """Implementation of SQLAlchemy backend."""
 
-import datetime
-import functools
 import sys
-import time
 import uuid
 import warnings
 
@@ -197,7 +194,7 @@ def model_query(context, model, *args, **kwargs):
         query = query.filter(model.deleted != default_deleted_value)
     else:
         raise Exception(_("Unrecognized read_deleted value '%s'")
-                            % read_deleted)
+                        % read_deleted)
 
     if project_only and is_user_context(context):
         query = query.filter_by(project_id=context.project_id)
@@ -272,9 +269,9 @@ def _sync_gigabytes(context, project_id, user_id, session):
         return {'gigabytes': share_gigs}
 
     (_junk, snap_gigs) = snapshot_data_get_for_project(context,
-                                                          project_id,
-                                                          user_id,
-                                                          session=session)
+                                                       project_id,
+                                                       user_id,
+                                                       session=session)
     return {'gigabytes': share_gigs + snap_gigs}
 
 
@@ -449,9 +446,9 @@ def quota_get_all_by_project_and_user(context, project_id, user_id):
     user_quotas = model_query(context, models.ProjectUserQuota,
                               models.ProjectUserQuota.resource,
                               models.ProjectUserQuota.hard_limit).\
-                   filter_by(project_id=project_id).\
-                   filter_by(user_id=user_id).\
-                   all()
+        filter_by(project_id=project_id).\
+        filter_by(user_id=user_id).\
+        all()
 
     result = {'project_id': project_id, 'user_id': user_id}
     for quota in user_quotas:
@@ -480,8 +477,8 @@ def quota_get_all(context, project_id):
     authorize_project_context(context, project_id)
 
     result = model_query(context, models.ProjectUserQuota).\
-                   filter_by(project_id=project_id).\
-                   all()
+        filter_by(project_id=project_id).\
+        all()
 
     return result
 
@@ -492,15 +489,15 @@ def quota_create(context, project_id, resource, limit, user_id=None):
 
     if per_user:
         check = model_query(context, models.ProjectUserQuota).\
-                            filter_by(project_id=project_id).\
-                            filter_by(user_id=user_id).\
-                            filter_by(resource=resource).\
-                            all()
+            filter_by(project_id=project_id).\
+            filter_by(user_id=user_id).\
+            filter_by(resource=resource).\
+            all()
     else:
         check = model_query(context, models.Quota).\
-                            filter_by(project_id=project_id).\
-                            filter_by(resource=resource).\
-                            all()
+            filter_by(project_id=project_id).\
+            filter_by(resource=resource).\
+            all()
     if check:
         raise exception.QuotaExists(project_id=project_id, resource=resource)
 
@@ -521,8 +518,8 @@ def quota_update(context, project_id, resource, limit, user_id=None):
     per_user = user_id and resource not in PER_PROJECT_QUOTAS
     model = models.ProjectUserQuota if per_user else models.Quota
     query = model_query(context, model).\
-                filter_by(project_id=project_id).\
-                filter_by(resource=resource)
+        filter_by(project_id=project_id).\
+        filter_by(resource=resource)
     if per_user:
         query = query.filter_by(user_id=user_id)
 
@@ -554,8 +551,8 @@ def quota_class_get(context, class_name, resource, session=None):
 
 def quota_class_get_default(context):
     rows = model_query(context, models.QuotaClass, read_deleted="no").\
-                   filter_by(class_name=_DEFAULT_QUOTA_NAME).\
-                   all()
+        filter_by(class_name=_DEFAULT_QUOTA_NAME).\
+        all()
 
     result = {'class_name': _DEFAULT_QUOTA_NAME}
     for row in rows:
@@ -594,9 +591,9 @@ def quota_class_create(context, class_name, resource, limit):
 @require_admin_context
 def quota_class_update(context, class_name, resource, limit):
     result = model_query(context, models.QuotaClass, read_deleted="no").\
-                     filter_by(class_name=class_name).\
-                     filter_by(resource=resource).\
-                     update({'hard_limit': limit})
+        filter_by(class_name=class_name).\
+        filter_by(resource=resource).\
+        update({'hard_limit': limit})
 
     if not result:
         raise exception.QuotaClassNotFound(class_name=class_name)
@@ -608,8 +605,8 @@ def quota_class_update(context, class_name, resource, limit):
 @require_context
 def quota_usage_get(context, project_id, resource, user_id=None):
     query = model_query(context, models.QuotaUsage, read_deleted="no").\
-                     filter_by(project_id=project_id).\
-                     filter_by(resource=resource)
+        filter_by(project_id=project_id).\
+        filter_by(resource=resource)
     if user_id:
         if resource not in PER_PROJECT_QUOTAS:
             result = query.filter_by(user_id=user_id).first()
@@ -627,7 +624,7 @@ def quota_usage_get(context, project_id, resource, user_id=None):
 def _quota_usage_get_all(context, project_id, user_id=None):
     authorize_project_context(context, project_id)
     query = model_query(context, models.QuotaUsage, read_deleted="no").\
-                   filter_by(project_id=project_id)
+        filter_by(project_id=project_id)
     result = {'project_id': project_id}
     if user_id:
         query = query.filter(or_(models.QuotaUsage.user_id == user_id,
@@ -657,7 +654,7 @@ def quota_usage_get_all_by_project_and_user(context, project_id, user_id):
 
 
 def _quota_usage_create(context, project_id, user_id, resource, in_use,
-                       reserved, until_refresh, session=None):
+                        reserved, until_refresh, session=None):
     quota_usage_ref = models.QuotaUsage()
     quota_usage_ref.project_id = project_id
     quota_usage_ref.user_id = user_id
@@ -682,11 +679,11 @@ def quota_usage_update(context, project_id, user_id, resource, **kwargs):
             updates[key] = kwargs[key]
 
     result = model_query(context, models.QuotaUsage, read_deleted="no").\
-                     filter_by(project_id=project_id).\
-                     filter_by(resource=resource).\
-                     filter(or_(models.QuotaUsage.user_id == user_id,
-                                models.QuotaUsage.user_id is None)).\
-                     update(updates)
+        filter_by(project_id=project_id).\
+        filter_by(resource=resource).\
+        filter(or_(models.QuotaUsage.user_id == user_id,
+                   models.QuotaUsage.user_id is None)).\
+        update(updates)
 
     if not result:
         raise exception.QuotaUsageNotFound(project_id=project_id)
@@ -741,11 +738,11 @@ def _get_user_quota_usages(context, session, project_id, user_id):
     rows = model_query(context, models.QuotaUsage,
                        read_deleted="no",
                        session=session).\
-                   filter_by(project_id=project_id).\
-                   filter(or_(models.QuotaUsage.user_id == user_id,
-                              models.QuotaUsage.user_id is None)).\
-                   with_lockmode('update').\
-                   all()
+        filter_by(project_id=project_id).\
+        filter(or_(models.QuotaUsage.user_id == user_id,
+                   models.QuotaUsage.user_id is None)).\
+        with_lockmode('update').\
+        all()
     return dict((row.resource, row) for row in rows)
 
 
@@ -753,9 +750,9 @@ def _get_project_quota_usages(context, session, project_id):
     rows = model_query(context, models.QuotaUsage,
                        read_deleted="no",
                        session=session).\
-                   filter_by(project_id=project_id).\
-                   with_lockmode('update').\
-                   all()
+        filter_by(project_id=project_id).\
+        with_lockmode('update').\
+        all()
     result = dict()
     # Get the total count of in_use,reserved
     for row in rows:
@@ -798,23 +795,25 @@ def quota_reserve(context, resources, project_quotas, user_quotas, deltas,
             refresh = False
             if ((resource not in PER_PROJECT_QUOTAS) and
                     (resource not in user_usages)):
-                user_usages[resource] = _quota_usage_create(elevated,
-                                                      project_id,
-                                                      user_id,
-                                                      resource,
-                                                      0, 0,
-                                                      until_refresh or None,
-                                                      session=session)
+                user_usages[resource] = _quota_usage_create(
+                    elevated,
+                    project_id,
+                    user_id,
+                    resource,
+                    0, 0,
+                    until_refresh or None,
+                    session=session)
                 refresh = True
             elif ((resource in PER_PROJECT_QUOTAS) and
                     (resource not in user_usages)):
-                user_usages[resource] = _quota_usage_create(elevated,
-                                                      project_id,
-                                                      None,
-                                                      resource,
-                                                      0, 0,
-                                                      until_refresh or None,
-                                                      session=session)
+                user_usages[resource] = _quota_usage_create(
+                    elevated,
+                    project_id,
+                    None,
+                    resource,
+                    0, 0,
+                    until_refresh or None,
+                    session=session)
                 refresh = True
             elif user_usages[resource].in_use < 0:
                 # Negative in_use count indicates a desync, so try to
@@ -838,22 +837,24 @@ def quota_reserve(context, resources, project_quotas, user_quotas, deltas,
                     # Make sure we have a destination for the usage!
                     if ((res not in PER_PROJECT_QUOTAS) and
                             (res not in user_usages)):
-                        user_usages[res] = _quota_usage_create(elevated,
-                                                         project_id,
-                                                         user_id,
-                                                         res,
-                                                         0, 0,
-                                                         until_refresh or None,
-                                                         session=session)
+                        user_usages[res] = _quota_usage_create(
+                            elevated,
+                            project_id,
+                            user_id,
+                            res,
+                            0, 0,
+                            until_refresh or None,
+                            session=session)
                     if ((res in PER_PROJECT_QUOTAS) and
                             (res not in user_usages)):
-                        user_usages[res] = _quota_usage_create(elevated,
-                                                         project_id,
-                                                         None,
-                                                         res,
-                                                         0, 0,
-                                                         until_refresh or None,
-                                                         session=session)
+                        user_usages[res] = _quota_usage_create(
+                            elevated,
+                            project_id,
+                            None,
+                            res,
+                            0, 0,
+                            until_refresh or None,
+                            session=session)
 
                     if user_usages[res].in_use != in_use:
                         LOG.debug('quota_usages out of sync, updating. '
@@ -862,11 +863,11 @@ def quota_reserve(context, resources, project_quotas, user_quotas, deltas,
                                   'resource: %(res)s, '
                                   'tracked usage: %(tracked_use)s, '
                                   'actual usage: %(in_use)s',
-                            {'project_id': project_id,
-                             'user_id': user_id,
-                             'res': res,
-                             'tracked_use': user_usages[res].in_use,
-                             'in_use': in_use})
+                                  {'project_id': project_id,
+                                   'user_id': user_id,
+                                   'res': res,
+                                   'tracked_use': user_usages[res].in_use,
+                                   'in_use': in_use})
 
                     # Update the usage
                     user_usages[res].in_use = in_use
@@ -916,12 +917,12 @@ def quota_reserve(context, resources, project_quotas, user_quotas, deltas,
             reservations = []
             for res, delta in deltas.items():
                 reservation = _reservation_create(elevated,
-                                                 str(uuid.uuid4()),
-                                                 user_usages[res],
-                                                 project_id,
-                                                 user_id,
-                                                 res, delta, expire,
-                                                 session=session)
+                                                  str(uuid.uuid4()),
+                                                  user_usages[res],
+                                                  project_id,
+                                                  user_id,
+                                                  res, delta, expire,
+                                                  session=session)
                 reservations.append(reservation.uuid)
 
                 # Also update the reserved quantity
@@ -966,8 +967,8 @@ def _quota_reservations_query(session, context, reservations):
     return model_query(context, models.Reservation,
                        read_deleted="no",
                        session=session).\
-                   filter(models.Reservation.uuid.in_(reservations)).\
-                   with_lockmode('update')
+        filter(models.Reservation.uuid.in_(reservations)).\
+        with_lockmode('update')
 
 
 @require_context
@@ -985,7 +986,7 @@ def reservation_commit(context, reservations, project_id=None, user_id=None):
         reservation_query.update({'deleted': True,
                                   'deleted_at': timeutils.utcnow(),
                                   'updated_at': literal_column('updated_at')},
-                                  synchronize_session=False)
+                                 synchronize_session=False)
 
 
 @require_context
@@ -1002,7 +1003,7 @@ def reservation_rollback(context, reservations, project_id=None, user_id=None):
         reservation_query.update({'deleted': True,
                                   'deleted_at': timeutils.utcnow(),
                                   'updated_at': literal_column('updated_at')},
-                                  synchronize_session=False)
+                                 synchronize_session=False)
 
 
 @require_admin_context
@@ -1011,30 +1012,30 @@ def quota_destroy_all_by_project_and_user(context, project_id, user_id):
     with session.begin():
         model_query(context, models.ProjectUserQuota, session=session,
                     read_deleted="no").\
-                filter_by(project_id=project_id).\
-                filter_by(user_id=user_id).\
-                update({'deleted': True,
-                        'deleted_at': timeutils.utcnow(),
-                        'updated_at': literal_column('updated_at')},
-                        synchronize_session=False)
+            filter_by(project_id=project_id).\
+            filter_by(user_id=user_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')},
+                   synchronize_session=False)
 
         model_query(context, models.QuotaUsage,
                     session=session, read_deleted="no").\
-                filter_by(project_id=project_id).\
-                filter_by(user_id=user_id).\
-                update({'deleted': True,
-                        'deleted_at': timeutils.utcnow(),
-                        'updated_at': literal_column('updated_at')},
-                        synchronize_session=False)
+            filter_by(project_id=project_id).\
+            filter_by(user_id=user_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')},
+                   synchronize_session=False)
 
         model_query(context, models.Reservation,
                     session=session, read_deleted="no").\
-                filter_by(project_id=project_id).\
-                filter_by(user_id=user_id).\
-                update({'deleted': True,
-                        'deleted_at': timeutils.utcnow(),
-                        'updated_at': literal_column('updated_at')},
-                        synchronize_session=False)
+            filter_by(project_id=project_id).\
+            filter_by(user_id=user_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')},
+                   synchronize_session=False)
 
 
 @require_admin_context
@@ -1043,35 +1044,35 @@ def quota_destroy_all_by_project(context, project_id):
     with session.begin():
         model_query(context, models.Quota, session=session,
                     read_deleted="no").\
-                filter_by(project_id=project_id).\
-                update({'deleted': True,
-                        'deleted_at': timeutils.utcnow(),
-                        'updated_at': literal_column('updated_at')},
-                        synchronize_session=False)
+            filter_by(project_id=project_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')},
+                   synchronize_session=False)
 
         model_query(context, models.ProjectUserQuota, session=session,
                     read_deleted="no").\
-                filter_by(project_id=project_id).\
-                update({'deleted': True,
-                        'deleted_at': timeutils.utcnow(),
-                        'updated_at': literal_column('updated_at')},
-                        synchronize_session=False)
+            filter_by(project_id=project_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')},
+                   synchronize_session=False)
 
         model_query(context, models.QuotaUsage,
                     session=session, read_deleted="no").\
-                filter_by(project_id=project_id).\
-                update({'deleted': True,
-                        'deleted_at': timeutils.utcnow(),
-                        'updated_at': literal_column('updated_at')},
-                        synchronize_session=False)
+            filter_by(project_id=project_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')},
+                   synchronize_session=False)
 
         model_query(context, models.Reservation,
                     session=session, read_deleted="no").\
-                filter_by(project_id=project_id).\
-                update({'deleted': True,
-                        'deleted_at': timeutils.utcnow(),
-                        'updated_at': literal_column('updated_at')},
-                        synchronize_session=False)
+            filter_by(project_id=project_id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')},
+                   synchronize_session=False)
 
 
 @require_admin_context
@@ -1081,7 +1082,7 @@ def reservation_expire(context):
         current_time = timeutils.utcnow()
         reservation_query = model_query(context, models.Reservation,
                                         session=session, read_deleted="no").\
-                            filter(models.Reservation.expire < current_time)
+            filter(models.Reservation.expire < current_time)
 
         for reservation in reservation_query.join(models.QuotaUsage).all():
             if reservation.delta >= 0:
@@ -1089,9 +1090,9 @@ def reservation_expire(context):
                 session.add(reservation.usage)
 
         reservation_query.update({'deleted': True,
-                        'deleted_at': timeutils.utcnow(),
-                        'updated_at': literal_column('updated_at')},
-                        synchronize_session=False)
+                                  'deleted_at': timeutils.utcnow(),
+                                  'updated_at': literal_column('updated_at')},
+                                 synchronize_session=False)
 
 
 ################
@@ -1101,8 +1102,8 @@ def _share_get_query(context, session=None):
     if session is None:
         session = get_session()
     return model_query(context, models.Share, session=session).\
-            options(joinedload('share_metadata')).\
-            options(joinedload('volume_type'))
+        options(joinedload('share_metadata')).\
+        options(joinedload('volume_type'))
 
 
 def _metadata_refs(metadata_dict, meta_class):
@@ -1198,10 +1199,10 @@ def share_delete(context, share_id):
                       'updated_at': literal_column('updated_at'),
                       'status': 'deleted'})
     session.query(models.ShareMetadata).\
-            filter_by(share_id=share_id).\
-            update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
+        filter_by(share_id=share_id).\
+        update({'deleted': True,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': literal_column('updated_at')})
 
     share_ref.save(session)
 
@@ -1210,9 +1211,7 @@ def share_delete(context, share_id):
 
 
 def _share_access_get_query(context, session, values):
-    """
-    Get access record.
-    """
+    """Get access record."""
     query = model_query(context, models.ShareAccessMapping, session=session)
     return query.filter_by(**values)
 
@@ -1231,9 +1230,7 @@ def share_access_create(context, values):
 
 @require_context
 def share_access_get(context, access_id):
-    """
-    Get access record.
-    """
+    """Get access record."""
     session = get_session()
     access = _share_access_get_query(context, session,
                                      {'id': access_id}).first()
@@ -1347,8 +1344,8 @@ def share_snapshot_get(context, snapshot_id, session=None):
 @require_admin_context
 def share_snapshot_get_all(context):
     return model_query(context, models.ShareSnapshot).\
-           options(joinedload('share')).\
-           all()
+        options(joinedload('share')).\
+        all()
 
 
 @require_context
@@ -1533,7 +1530,7 @@ def security_service_update(context, id, values):
 @require_context
 def security_service_get(context, id, session=None):
     result = _security_service_get_query(context, session=session).\
-                filter_by(id=id).first()
+        filter_by(id=id).first()
 
     if result is None:
         raise exception.SecurityServiceNotFound(security_service_id=id)
@@ -1548,7 +1545,7 @@ def security_service_get_all(context):
 @require_context
 def security_service_get_all_by_project(context, project_id):
     return _security_service_get_query(context).\
-            filter_by(project_id=project_id).all()
+        filter_by(project_id=project_id).all()
 
 
 def _security_service_get_query(context, session=None):
@@ -1564,9 +1561,9 @@ def _network_get_query(context, session=None):
     if session is None:
         session = get_session()
     return model_query(context, models.ShareNetwork, session=session).\
-            options(joinedload('shares'),
-                    joinedload('security_services'),
-                    joinedload('share_servers'))
+        options(joinedload('shares'),
+                joinedload('security_services'),
+                joinedload('share_servers'))
 
 
 @require_context
@@ -1648,9 +1645,9 @@ def share_network_add_security_service(context, id, security_service_id):
         if assoc_ref:
             msg = "Already associated"
             raise exception.ShareNetworkSecurityServiceAssociationError(
-                    share_network_id=id,
-                    security_service_id=security_service_id,
-                    reason=msg)
+                share_network_id=id,
+                security_service_id=security_service_id,
+                reason=msg)
 
         share_nw_ref = share_network_get(context, id, session=session)
         security_service_ref = security_service_get(context,
@@ -1682,9 +1679,9 @@ def share_network_remove_security_service(context, id, security_service_id):
         else:
             msg = "No association defined"
             raise exception.ShareNetworkSecurityServiceDissociationError(
-                    share_network_id=id,
-                    security_service_id=security_service_id,
-                    reason=msg)
+                share_network_id=id,
+                security_service_id=security_service_id,
+                reason=msg)
 
     return share_nw_ref
 
@@ -1748,7 +1745,7 @@ def share_server_get_by_host_and_share_net_valid(context, host, share_net_id,
     result = _server_get_query(context, session).filter_by(host=host)\
         .filter_by(share_network_id=share_net_id)\
         .filter(models.ShareServer.status.in_(
-        (constants.STATUS_CREATING, constants.STATUS_ACTIVE))).first()
+            (constants.STATUS_CREATING, constants.STATUS_ACTIVE))).first()
     if result is None:
         raise exception.ShareServerNotFound(share_server_id=id)
     result['backend_details'] = share_server_backend_details_get(
@@ -1826,7 +1823,7 @@ def network_allocation_get(context, id, session=None):
     if session is None:
         session = get_session()
     result = model_query(context, models.NetworkAllocation, session=session).\
-                        filter_by(id=id).first()
+        filter_by(id=id).first()
     if result is None:
         raise exception.NotFound()
     return result
@@ -1838,7 +1835,7 @@ def network_allocations_get_for_share_server(context, share_server_id,
     if session is None:
         session = get_session()
     result = model_query(context, models.NetworkAllocation, session=session).\
-                         filter_by(share_server_id=share_server_id).all()
+        filter_by(share_server_id=share_server_id).all()
     return result
 
 
@@ -1983,8 +1980,8 @@ def volume_type_destroy(context, id):
         model_query(context, models.VolumeTypes, session=session).\
             filter_by(id=id).update(
                 {'deleted': id,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
+                 'deleted_at': timeutils.utcnow(),
+                 'updated_at': literal_column('updated_at')})
 
 
 @require_context
@@ -2042,10 +2039,8 @@ def volume_type_extra_specs_delete(context, volume_type_id, key):
 def _volume_type_extra_specs_get_item(context, volume_type_id, key,
                                       session=None):
     result = _volume_type_extra_specs_query(
-        context, volume_type_id, session=session).\
-        filter_by(key=key).\
-        options(joinedload('volume_type')).\
-        first()
+        context, volume_type_id, session=session
+    ).filter_by(key=key).options(joinedload('volume_type')).first()
 
     if not result:
         raise exception.VolumeTypeExtraSpecsNotFound(

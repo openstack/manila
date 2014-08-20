@@ -24,14 +24,12 @@ SQLAlchemy models for Manila data.
 from oslo.config import cfg
 from oslo.db.sqlalchemy import models
 import six
-from sqlalchemy import Column, Index, Integer, String, Text, schema
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
-from sqlalchemy.orm import relationship, backref, object_mapper
+from sqlalchemy.orm import relationship, backref
 
 from manila.common import constants
-from manila import exception
 from manila.openstack.common import timeutils
 
 CONF = cfg.CONF
@@ -320,7 +318,7 @@ class ShareSnapshot(BASE, ManilaBase):
 
 
 class SecurityService(BASE, ManilaBase):
-    """Security service information for manila shares"""
+    """Security service information for manila shares."""
 
     __tablename__ = 'security_services'
     id = Column(String(36), primary_key=True)
@@ -354,15 +352,16 @@ class ShareNetwork(BASE, ManilaBase):
     ip_version = Column(Integer, nullable=True)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
-    security_services = relationship("SecurityService",
-                    secondary="share_network_security_service_association",
-                    backref="share_networks",
-                    primaryjoin='and_('
-        'ShareNetwork.id == '
-        'ShareNetworkSecurityServiceAssociation.share_network_id,'
-        'ShareNetworkSecurityServiceAssociation.deleted == 0,'
-        'ShareNetwork.deleted == "False")',
-                    secondaryjoin='and_('
+    security_services = relationship(
+        "SecurityService",
+        secondary="share_network_security_service_association",
+        backref="share_networks",
+        primaryjoin='and_('
+                    'ShareNetwork.id == '
+                    'ShareNetworkSecurityServiceAssociation.share_network_id,'
+                    'ShareNetworkSecurityServiceAssociation.deleted == 0,'
+                    'ShareNetwork.deleted == "False")',
+        secondaryjoin='and_('
         'SecurityService.id == '
         'ShareNetworkSecurityServiceAssociation.security_service_id,'
         'SecurityService.deleted == "False")')
@@ -388,8 +387,9 @@ class ShareServer(BASE, ManilaBase):
     status = Column(Enum(constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
                          constants.STATUS_ERROR),
                     default=constants.STATUS_INACTIVE)
-    network_allocations = relationship("NetworkAllocation",
-                                        primaryjoin='and_('
+    network_allocations = relationship(
+        "NetworkAllocation",
+        primaryjoin='and_('
                     'ShareServer.id == NetworkAllocation.share_server_id,'
                     'NetworkAllocation.deleted == "False")')
     shares = relationship("Share",
@@ -411,8 +411,8 @@ class ShareServerBackendDetails(BASE, ManilaBase):
 
 
 class ShareNetworkSecurityServiceAssociation(BASE, ManilaBase):
-    """" Association table between compute_zones and compute_nodes tables.
-    """
+    """Association table between compute_zones and compute_nodes tables."""
+
     __tablename__ = 'share_network_security_service_association'
 
     id = Column(Integer, primary_key=True)
