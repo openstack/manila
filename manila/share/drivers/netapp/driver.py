@@ -83,8 +83,7 @@ class NetAppApiClient(object):
 
 
 class NetAppShareDriver(driver.ShareDriver):
-    """
-    NetApp specific ONTAP 7-mode driver.
+    """NetApp specific ONTAP 7-mode driver.
 
     Supports NFS and CIFS protocols.
     Uses Ontap devices as backend to create shares
@@ -225,11 +224,12 @@ class NetAppShareDriver(driver.ShareDriver):
         return helper.deny_access(context, share, access)
 
     def _check_vfiler_exists(self):
-        vfiler_status = self._client.send_request('vfiler-get-status',
-                {'vfiler': self.configuration.netapp_nas_vfiler})
+        vfiler_status = self._client.send_request(
+            'vfiler-get-status',
+            {'vfiler': self.configuration.netapp_nas_vfiler})
         if vfiler_status.get_child_content('status') != 'running':
-            msg = _("Vfiler %s is not running") \
-                  % self.configuration.netapp_nas_vfiler
+            msg = (_("Vfiler %s is not running")
+                   % self.configuration.netapp_nas_vfiler)
             LOG.error(msg)
             raise exception.NetAppException(msg)
 
@@ -238,8 +238,10 @@ class NetAppShareDriver(driver.ShareDriver):
             licenses = self._client.send_request('license-v2-list-info')
         except naapi.NaApiError:
             licenses = self._client.send_request('license-list-info')
-        self._licenses = [l.get_child_content('package').lower() for l in
-                licenses.get_child_by_name('licenses').get_children()]
+        self._licenses = [l.get_child_content('package').lower()
+                          for l in
+                          licenses.get_child_by_name('licenses').get_children()
+                          ]
         LOG.info(_("Available licenses: %s") % ', '.join(self._licenses))
         return self._licenses
 
@@ -290,8 +292,8 @@ class NetAppShareDriver(driver.ShareDriver):
             .get_children()
 
         if not aggr_list_elements:
-            msg = _("No aggregate assigned to vfiler %s")\
-                  % self.configuration.netapp_nas_vfiler
+            msg = (_("No aggregate assigned to vfiler %s")
+                   % self.configuration.netapp_nas_vfiler)
             LOG.error(msg)
             raise exception.NetAppException(msg)
 
@@ -332,14 +334,14 @@ class NetAppShareDriver(driver.ShareDriver):
         snapshots = snapshots.get_child_by_name('snapshots')
         if snapshots:
             for snap in snapshots.get_children():
-                if snap.get_child_content('name') == snapshot_name \
-                    and snap.get_child_content('busy') == 'true':
+                if (snap.get_child_content('name') == snapshot_name
+                        and snap.get_child_content('busy') == 'true'):
                     return True
 
     def _get_valid_share_name(self, share_id):
         """Get share name according to share name template."""
-        return self.configuration.netapp_nas_volume_name_template %\
-               {'share_id': share_id.replace('-', '_')}
+        return (self.configuration.netapp_nas_volume_name_template %
+                {'share_id': share_id.replace('-', '_')})
 
     def _get_valid_snapshot_name(self, snapshot_id):
         """Get snapshot name according to snapshot name template."""
@@ -455,7 +457,7 @@ class NetAppNFSHelper(NetAppNASHelperBase):
 
         LOG.debug('Appending nfs rules %r' % rules)
         self._client.send_request('nfs-exportfs-append-rules-2',
-                                               args)
+                                  args)
 
     def create_share(self, share_name, export_ip):
         """Creates NFS share."""

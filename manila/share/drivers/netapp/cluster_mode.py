@@ -236,9 +236,15 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
 
     def _get_node_data_port(self, node):
         """Get data port on the node."""
-        args = {'query': {'net-port-info': {'node': node,
-                          'port-type': 'physical',
-                          'role': 'data'}}}
+        args = {
+            'query': {
+                'net-port-info': {
+                    'node': node,
+                    'port-type': 'physical',
+                    'role': 'data'
+                }
+            }
+        }
         port_info = self._client.send_request('net-port-get-iter', args)
         try:
             port = port_info.get_child_by_name('attributes-list')\
@@ -274,8 +280,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             aggrs = self._client.send_request('aggr-get-iter')\
                 .get_child_by_name('attributes-list').get_children()
         except AttributeError:
-            msg = _("Have not found aggregates match pattern %s")\
-                  % pattern
+            msg = _("Have not found aggregates match pattern %s") % pattern
             LOG.error(msg)
             raise exception.NetAppException(msg)
         aggr_list = [aggr for aggr in aggrs if re.match(
@@ -309,10 +314,10 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                     _("Failed to create vlan %(vlan)s on "
                       "port %(port)s. %(err_msg)") %
                     {'vlan': vlan, 'port': port, 'err_msg': e.message})
-        iface_name = self.configuration.netapp_lif_name_template % \
-                     {'node': node, 'net_allocation_id': allocation_id}
+        iface_name = (self.configuration.netapp_lif_name_template %
+                      {'node': node, 'net_allocation_id': allocation_id})
         LOG.debug('Creating LIF %(lif)r for vserver %(vserver)s '
-                        % {'lif': iface_name, 'vserver': vserver_name})
+                  % {'lif': iface_name, 'vserver': vserver_name})
         args = {'address': ip,
                 'administrative-status': 'up',
                 'data-protocols': [
@@ -369,8 +374,8 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
 
     def _vserver_create_if_not_exists(self, network_info):
         """Creates vserver if not exists with given parameters."""
-        vserver_name = self.configuration.netapp_vserver_name_template % \
-                       network_info['server_id']
+        vserver_name = (self.configuration.netapp_vserver_name_template %
+                        network_info['server_id'])
         vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver_name,
             configuration=self.configuration)
@@ -460,7 +465,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
     def _configure_dns(self, data, vserver_client):
         args = {
             'domains': {
-            'string': data['domain']
+                'string': data['domain']
             },
             'name-servers': {
                 'ip-address': data['dns_ip']
@@ -559,9 +564,9 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             }
         }
         ifaces = vserver_client.send_request('net-interface-get-iter',
-                                                   args)
-        if not ifaces.get_child_content('num_records') or \
-                        ifaces.get_child_content('num_records') == '0':
+                                             args)
+        if (not ifaces.get_child_content('num_records') or
+                ifaces.get_child_content('num_records') == '0'):
             self._create_net_iface(ip, netmask, vlan, node, port, vserver_name,
                                    allocation_id)
 
@@ -755,11 +760,11 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         """Raises ShareSnapshotIsBusy if snapshot is busy."""
         args = {'volume': share_name}
         snapshots = vserver_client.send_request('snapshot-list-info',
-                                                      args)
-        for snap in snapshots.get_child_by_name('snapshots')\
-            .get_children():
-            if snap.get_child_by_name('name').get_content() == snapshot_name\
-                and snap.get_child_by_name('busy').get_content() == 'true':
+                                                args)
+        for snap in snapshots.get_child_by_name('snapshots').get_children():
+            if (snap.get_child_by_name('name').get_content() == snapshot_name
+                    and (snap.get_child_by_name('busy').get_content()
+                         == 'true')):
                 return True
 
     def _share_unmount(self, share, vserver_client):
@@ -793,8 +798,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
 
     def _delete_vserver(self, vserver_name, vserver_client,
                         security_services=None):
-        """
-        Delete vserver.
+        """Delete vserver.
 
         Checks if vserver exists and does not have active shares.
         Offlines and destroys root volumes.

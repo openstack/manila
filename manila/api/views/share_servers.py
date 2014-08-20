@@ -23,14 +23,16 @@ class ViewBuilder(common.ViewBuilder):
 
     def build_share_server(self, share_server):
         """View of a share server."""
-        return {'share_server':
-            self._build_share_server_view(share_server, detailed=True)
+        return {
+            'share_server':
+                self._build_share_server_view(share_server, detailed=True)
         }
 
     def build_share_servers(self, share_servers):
-        return {'share_servers':
-            [self._build_share_server_view(share_server)
-             for share_server in share_servers]
+        return {
+            'share_servers':
+                [self._build_share_server_view(share_server)
+                 for share_server in share_servers]
         }
 
     def build_share_server_details(self, details):
