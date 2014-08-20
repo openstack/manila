@@ -15,21 +15,17 @@
 """Unit tests for the Share API module."""
 
 import datetime
-import random
 import uuid
 
 import mock
-import suds
 
 from manila import context
 from manila import db as db_driver
 from manila import exception
 from manila.openstack.common import timeutils
 from manila import quota
-from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import share
 from manila.share import api as share_api
-from manila.share import rpcapi as share_rpcapi
 from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila import utils

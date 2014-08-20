@@ -20,7 +20,6 @@ from manila.api.openstack import wsgi
 from manila import db
 from manila import exception
 from manila.openstack.common import log as logging
-from manila.openstack.common import strutils
 from manila import share
 
 

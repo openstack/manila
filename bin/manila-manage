@@ -73,7 +73,7 @@ gettextutils.install('manila')
 
 from oslo.config import cfg
 
-from manila.common import config  # Need to register global_opts
+from manila.common import config  # Need to register global_opts  # noqa
 from manila import context
 from manila import db
 from manila.db import migration
@@ -162,7 +162,7 @@ class ShellCommands(object):
             else:
                 # We don't have to wrap the following import in a 'try',
                 # because we already know 'readline' was imported successfully.
-                import rlcompleter
+                import rlcompleter  # noqa
                 readline.parse_and_bind("tab:complete")
             code.interact()
 

@@ -36,7 +36,7 @@ if os.path.exists(os.path.join(possible_topdir, 'manila', '__init__.py')):
 
 from manila.openstack.common import gettextutils
 gettextutils.install('manila')
-from manila.common import config  # Need to register global_opts
+from manila.common import config  # Need to register global_opts  # noqa
 from manila.openstack.common import log as logging
 from manila import service
 from manila import utils

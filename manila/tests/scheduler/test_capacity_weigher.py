@@ -18,7 +18,6 @@ Tests For Capacity Weigher.
 
 import mock
 from oslo.config import cfg
-import testtools
 
 from manila import context
 from manila.openstack.common.scheduler.weights import HostWeightHandler

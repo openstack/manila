@@ -21,7 +21,6 @@ from manila.api.v1 import share_networks
 from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
-from manila import policy
 from manila import quota
 from manila import test
 from manila.tests.api import fakes

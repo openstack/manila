@@ -16,7 +16,6 @@
 from oslo.db import exception as db_exception
 import six
 
-from manila.common import constants
 from manila import context
 from manila.db import api as db_api
 from manila.db.sqlalchemy import api as sqlalchemy_api

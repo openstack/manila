@@ -12,16 +12,10 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-import datetime
-import uuid
-
 from oslo.config import cfg
 import webob
 
 from manila.api.contrib import share_actions
-from manila import exception
-from manila.openstack.common import jsonutils
-from manila import share
 from manila.share import api as share_api
 from manila import test
 from manila.tests.api.contrib import stubs

@@ -38,7 +38,6 @@ from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 from manila import rpc
 from manila import service
-from manila import tests
 from manila.tests import conf_fixture
 from manila.tests import fake_notifier
 

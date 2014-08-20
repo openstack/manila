@@ -20,7 +20,6 @@ import uuid
 from oslo.config import cfg
 import webob
 
-from manila.api import extensions
 from manila.api.v1 import share_metadata
 from manila.api.v1 import shares
 import manila.db

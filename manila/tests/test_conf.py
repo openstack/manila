@@ -47,7 +47,7 @@ class ConfigTestCase(test.TestCase):
 
     def test_runtime_and_unknown_flags(self):
         self.assertNotIn('runtime_answer', CONF)
-        import manila.tests.runtime_conf
+        import manila.tests.runtime_conf  # noqa
         self.assertIn('runtime_answer', CONF)
         self.assertEqual(CONF.runtime_answer, 54)
 

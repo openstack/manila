@@ -23,10 +23,8 @@ from webob import exc
 from manila.api.openstack import wsgi
 from manila.api.views import share_networks as share_networks_views
 from manila.api import xmlutil
-from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
-from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila import policy
 from manila import quota

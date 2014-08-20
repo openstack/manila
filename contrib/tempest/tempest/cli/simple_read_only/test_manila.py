@@ -14,7 +14,6 @@
 #    under the License.
 
 import re
-import subprocess
 
 from tempest.cli import manilaclient
 from tempest import config_share as config

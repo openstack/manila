@@ -15,16 +15,11 @@
 Tests For Scheduler Host Filters.
 """
 
-import httplib
-
 from manila import context
-from manila import db
-from manila import exception
 from manila.openstack.common import jsonutils
 from manila.openstack.common.scheduler import filters
 from manila import test
 from manila.tests.scheduler import fakes
-from manila.tests import utils as test_utils
 from manila import utils
 
 

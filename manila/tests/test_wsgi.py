@@ -17,7 +17,6 @@
 """Unit tests for `manila.wsgi`."""
 
 import os.path
-import ssl
 import tempfile
 import urllib2
 

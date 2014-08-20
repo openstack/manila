@@ -27,7 +27,6 @@ TODO(rraja): support SMB protocol.
 
 import errno
 import os
-import pdb
 from pipes import quote as shellquote
 import re
 import xml.etree.cElementTree as etree
@@ -35,7 +34,6 @@ import xml.etree.cElementTree as etree
 from manila import exception
 from manila.openstack.common import log as logging
 from manila.share import driver
-from manila import utils
 
 from oslo.config import cfg
 

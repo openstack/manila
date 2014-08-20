@@ -19,7 +19,6 @@ import six
 
 from manila import exception
 from manila import test
-from manila import utils
 
 
 class FakeNotifier(object):

@@ -16,7 +16,6 @@
 #    under the License.
 
 from manila.api import common
-from manila.openstack.common import log as logging
 
 
 class ViewBuilder(common.ViewBuilder):

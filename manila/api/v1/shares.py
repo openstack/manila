@@ -23,7 +23,6 @@ from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import shares as share_views
 from manila.api import xmlutil
-from manila.common import constants
 from manila import exception
 from manila.openstack.common import log as logging
 from manila.openstack.common import uuidutils
