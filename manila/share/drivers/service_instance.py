@@ -386,7 +386,10 @@ class ServiceInstanceManager(object):
 
         t = time.time()
         while time.time() - t < self.max_time_to_build_instance:
-            if service_instance['status'] == 'ACTIVE':
+            # NOTE(vponomaryov): emptiness of 'networks' field is checked as
+            #                    workaround for nova/neutron bug #1210483.
+            if (service_instance['status'] == 'ACTIVE' and
+                    service_instance.get('networks', {})):
                 break
             if service_instance['status'] == 'ERROR':
                 raise exception.ServiceInstanceException(
