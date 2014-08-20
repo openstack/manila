@@ -32,6 +32,10 @@ class FakeShareDriver(generic.GenericShareDriver):
         """No setup necessary in fake mode."""
         pass
 
+    def ensure_share(self, *args, **kwargs):
+        """Fake ensure_share for fake mode."""
+        pass
+
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
         """Execute that simply logs the command."""
