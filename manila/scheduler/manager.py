@@ -89,7 +89,8 @@ class SchedulerManager(manager.Manager):
 
     def _set_share_error_state_and_notify(self, method, context, ex,
                                           request_spec):
-        LOG.warning(_("Failed to schedule_%(method)s: %(ex)s") % locals())
+        LOG.warning(_("Failed to schedule_%(method)s: %(ex)s") %
+                    {"method": method, "ex": ex})
 
         share_state = {'status': 'error'}
         properties = request_spec.get('share_properties', {})

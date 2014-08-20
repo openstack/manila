@@ -100,7 +100,7 @@ def fake_execute(*cmd_parts, **kwargs):
     stdout = reply[0]
     stderr = reply[1]
     LOG.debug("Reply to faked command is stdout='%(stdout)s' "
-              "stderr='%(stderr)s'" % locals())
+              "stderr='%(stderr)s'" % {"stdout": stdout, "stderr": stderr})
 
     # Replicate the sleep call in the real function
     greenthread.sleep(0)

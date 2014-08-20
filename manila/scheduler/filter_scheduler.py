@@ -144,13 +144,14 @@ class FilterScheduler(driver.Scheduler):
         if not hosts:
             return None
 
-        LOG.debug("Filtered share %(hosts)s" % locals())
+        LOG.debug("Filtered share %(hosts)s" % {"hosts": hosts})
         # weighted_host = WeightedHost() ... the best
         # host for the job.
         weighed_hosts = self.host_manager.get_weighed_hosts(hosts,
                                                             filter_properties)
         best_host = weighed_hosts[0]
-        LOG.debug("Choosing for share: %(best_host)s" % locals())
+        LOG.debug("Choosing for share: %(best_host)s"
+                  % {"best_host": best_host})
         # NOTE(rushiagr): updating the available space parameters at same place
         best_host.obj.consume_from_share(share_properties)
         return best_host
@@ -181,7 +182,10 @@ class FilterScheduler(driver.Scheduler):
 
         if retry['num_attempts'] > max_attempts:
             msg = _("Exceeded max scheduling attempts %(max_attempts)d for "
-                    "share %(share_id)s") % locals()
+                    "share %(share_id)s") % {
+                        "max_attempts": max_attempts,
+                        "share_id": share_id
+            }
             raise exception.NoValidHost(reason=msg)
 
     def _log_share_error(self, share_id, retry):
@@ -198,7 +202,11 @@ class FilterScheduler(driver.Scheduler):
 
         last_host = hosts[-1]
         msg = _("Error scheduling %(share_id)s from last share-service: "
-                "%(last_host)s : %(exc)s") % locals()
+                "%(last_host)s : %(exc)s") % {
+                    "share_id": share_id,
+                    "last_host": last_host,
+                    "exc": "exc"
+        }
         LOG.error(msg)
 
     def populate_filter_properties_share(self, request_spec,

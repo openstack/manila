@@ -238,7 +238,7 @@ class HostManager(object):
             return
 
         LOG.debug("Received %(service_name)s service update from "
-                  "%(host)s." % locals())
+                  "%(host)s." % {"service_name": service_name, "host": host})
 
         # Copy the capabilities, so we don't modify the original dict
         capab_copy = dict(capabilities)

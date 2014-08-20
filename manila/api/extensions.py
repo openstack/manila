@@ -287,7 +287,8 @@ class ExtensionManager(object):
                 self.load_extension(ext_factory)
             except Exception as exc:
                 LOG.warn(_('Failed to load extension %(ext_factory)s: '
-                           '%(exc)s') % locals())
+                           '%(exc)s') %
+                         {"ext_factory": ext_factory, "exc": exc})
 
 
 class ControllerExtension(object):
@@ -355,7 +356,8 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                 ext_mgr.load_extension(classpath)
             except Exception as exc:
                 logger.warn(_('Failed to load extension %(classpath)s: '
-                              '%(exc)s') % locals())
+                              '%(exc)s')
+                            % {"classpath": classpath, "exc": exc})
 
         # Now, let's consider any subdirectories we may have...
         subdirs = []
@@ -379,7 +381,8 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                     ext(ext_mgr)
                 except Exception as exc:
                     logger.warn(_('Failed to load extension %(ext_name)s: '
-                                  '%(exc)s') % locals())
+                                  '%(exc)s') %
+                                {"ext_name": ext_name, "exc": exc})
 
         # Update the list of directories we'll explore...
         dirnames[:] = subdirs

@@ -67,7 +67,8 @@ class SchedulerOptions(object):
             return os.path.getmtime(filename)
         except os.error as e:
             LOG.exception(_("Could not stat scheduler options file "
-                            "%(filename)s: '%(e)s'"), locals())
+                            "%(filename)s: '%(e)s'") %
+                          {"filename": filename, "e": e})
             raise
 
     def _load_file(self, handle):
@@ -76,7 +77,7 @@ class SchedulerOptions(object):
             return jsonutils.load(handle)
         except ValueError as e:
             LOG.exception(_("Could not decode scheduler options: "
-                            "'%(e)s'") % locals())
+                            "'%(e)s'") % {"e": e})
             return {}
 
     def _get_time_now(self):

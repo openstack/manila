@@ -35,7 +35,11 @@ class OpenStackApiException(Exception):
             _body = response.read()
 
             message = _('%(message)s\nStatus Code: %(_status)s\n'
-                        'Body: %(_body)s') % locals()
+                        'Body: %(_body)s') % {
+                            "message": message,
+                            "_status": _status,
+                            "_body": _body
+            }
 
         super(OpenStackApiException, self).__init__(message)
 
@@ -101,7 +105,8 @@ class TestOpenStackClient(object):
         relative_url = parsed_url.path
         if parsed_url.query:
             relative_url = relative_url + "?" + parsed_url.query
-        LOG.info(_("Doing %(method)s on %(relative_url)s") % locals())
+        LOG.info(_("Doing %(method)s on %(relative_url)s") %
+                 {"method": method, "relative_url": relative_url})
         if body:
             LOG.info(_("Body: %s") % body)
 
@@ -121,7 +126,8 @@ class TestOpenStackClient(object):
                                 headers=headers)
 
         http_status = response.status
-        LOG.debug("%(auth_uri)s => code %(http_status)s" % locals())
+        LOG.debug("%(auth_uri)s => code %(http_status)s" %
+                  {"auth_uri": auth_uri, "http_status": http_status})
 
         if http_status == 401:
             raise OpenStackApiAuthenticationException(response=response)
@@ -147,7 +153,8 @@ class TestOpenStackClient(object):
         response = self.request(full_uri, **kwargs)
 
         http_status = response.status
-        LOG.debug("%(relative_uri)s => code %(http_status)s" % locals())
+        LOG.debug("%(relative_uri)s => code %(http_status)s" %
+                  {"relative_uri": relative_uri, "http_status": http_status})
 
         if check_response_status:
             if http_status not in check_response_status:

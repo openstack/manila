@@ -607,9 +607,10 @@ def wait():
         # should use secret flag when switch over to openstack-common
         if ("_password" in flag or "_key" in flag or
                 (flag == "sql_connection" and "mysql:" in flag_get)):
-            LOG.debug('%(flag)s : FLAG SET ' % locals())
+            LOG.debug('%(flag)s : FLAG SET ' % {"flag": flag})
         else:
-            LOG.debug('%(flag)s : %(flag_get)s' % locals())
+            LOG.debug('%(flag)s : %(flag_get)s' %
+                      {"flag": flag, "flag_get": flag_get})
     try:
         _launcher.wait()
     except KeyboardInterrupt:
