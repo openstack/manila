@@ -137,7 +137,7 @@ class ShareTestCase(test.TestCase):
         return db.share_access_create(context.get_admin_context(), access)
 
     @staticmethod
-    def _create_share_server(state='new', share_network_id=None, host=None):
+    def _create_share_server(state='ACTIVE', share_network_id=None, host=None):
         """Create a share server object."""
         srv = {}
         srv['host'] = host
@@ -207,7 +207,9 @@ class ShareTestCase(test.TestCase):
 
     def test_create_share_from_snapshot_with_server(self):
         """Test share can be created from snapshot if server exists."""
-        server = self._create_share_server(share_network_id='net-id',)
+        network = self._create_share_network()
+        server = self._create_share_server(share_network_id=network['id'],
+                                           host='fake_host')
         parent_share = self._create_share(share_network_id='net-id',
                                           share_server_id=server['id'])
         share = self._create_share()
@@ -344,7 +346,8 @@ class ShareTestCase(test.TestCase):
 
         def fake_setup_server(context, share_network, *args, **kwargs):
             return self._create_share_server(
-                share_network_id=share_network['id'])
+                share_network_id=share_network['id'],
+                host='fake_host')
 
         self.share_manager.driver.create_share = mock.Mock(
             return_value='fake_location')
@@ -423,8 +426,7 @@ class ShareTestCase(test.TestCase):
         share_net = self._create_share_network()
         share = self._create_share(share_network_id=share_net['id'])
         share_srv = self._create_share_server(
-            share_network_id=share_net['id'], host=self.share_manager.host,
-            state='ACTIVE')
+            share_network_id=share_net['id'], host=self.share_manager.host)
 
         share_id = share['id']
 
@@ -513,8 +515,7 @@ class ShareTestCase(test.TestCase):
         sec_service = self._create_security_service(share_net['id'])
         share_srv = self._create_share_server(
             share_network_id=share_net['id'],
-            host=self.share_manager.host,
-            state='ACTIVE'
+            host=self.share_manager.host
         )
         share = self._create_share(share_network_id=share_net['id'],
                                    share_server_id=share_srv['id'])
@@ -541,8 +542,7 @@ class ShareTestCase(test.TestCase):
         share_net = self._create_share_network()
         share_srv = self._create_share_server(
             share_network_id=share_net['id'],
-            host=self.share_manager.host,
-            state='ACTIVE'
+            host=self.share_manager.host
         )
         share = self._create_share(share_network_id=share_net['id'],
                                    share_server_id=share_srv['id'])
@@ -560,8 +560,7 @@ class ShareTestCase(test.TestCase):
         share_net = self._create_share_network()
         share_srv = self._create_share_server(
             share_network_id=share_net['id'],
-            host=self.share_manager.host,
-            state='ACTIVE'
+            host=self.share_manager.host
         )
         share = self._create_share(share_network_id=share_net['id'],
                                    share_server_id=share_srv['id'])
@@ -576,8 +575,7 @@ class ShareTestCase(test.TestCase):
         share_net = self._create_share_network()
         share_srv = self._create_share_server(
             share_network_id=share_net['id'],
-            host=self.share_manager.host,
-            state='ACTIVE'
+            host=self.share_manager.host
         )
         share = self._create_share(share_network_id=share_net['id'],
                                    share_server_id=share_srv['id'])

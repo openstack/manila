@@ -18,27 +18,33 @@
 
 """Database setup and migration commands."""
 
-import os
-
-from manila.db.sqlalchemy import api as db_api
 from manila import utils
 
 
-IMPL = utils.LazyPluggable('db_backend',
-                           sqlalchemy='oslo.db.sqlalchemy.migration')
+IMPL = utils.LazyPluggable(
+    'db_backend', sqlalchemy='manila.db.migrations.alembic.migration')
 
 
-INIT_VERSION = 000
-MIGRATE_REPO = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            'sqlalchemy/migrate_repo')
+def upgrade(version):
+    """Upgrade database to 'version' or the most recent version."""
+    return IMPL.upgrade(version)
 
 
-def db_sync(version=None):
-    """Migrate the database to `version` or the most recent version."""
-    return IMPL.db_sync(db_api.get_engine(), MIGRATE_REPO, version=version,
-                        init_version=INIT_VERSION)
+def downgrade(version):
+    """Downgrade database to 'version' or to initial state."""
+    return IMPL.downgrade(version)
 
 
-def db_version():
+def version():
     """Display the current database version."""
-    return IMPL.db_version(db_api.get_engine(), MIGRATE_REPO, INIT_VERSION)
+    return IMPL.version()
+
+
+def stamp(version):
+    """Stamp database with 'version' or the most recent version."""
+    return IMPL.stamp(version)
+
+
+def revision(message, autogenerate):
+    """Generate new migration script."""
+    return IMPL.revision(message, autogenerate)

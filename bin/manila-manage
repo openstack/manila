@@ -215,11 +215,29 @@ class DbCommands(object):
           help='Database version')
     def sync(self, version=None):
         """Sync the database up to the most recent version."""
-        return migration.db_sync(version)
+        return migration.upgrade(version)
 
     def version(self):
         """Print the current database version."""
-        print(migration.db_version())
+        print(migration.version())
+
+    @args('version', nargs='?', default=None,
+          help='Version to downgrade')
+    def downgrade(self, version=None):
+        """Downgrade database to the given version."""
+        return migration.downgrade(version)
+
+    @args('--message', help='Revision message')
+    @args('--authogenerate', help='Autogenerate migration from schema')
+    def revision(self, message, autogenerate):
+        """Generate new migration."""
+        return migration.revision(message, autogenerate)
+
+    @args('version', nargs='?', default=None,
+          help='Version to stamp version table with')
+    def stamp(self, version=None):
+        """Stamp the revision table with the given version."""
+        return migration.stamp(version)
 
 
 class VersionCommands(object):

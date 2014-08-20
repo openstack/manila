@@ -86,7 +86,7 @@ class ShareServerTableTestCase(test.TestCase):
         update = {
             'share_network_id': 'update_net',
             'host': 'update_host',
-            'status': 'updated_status'
+            'status': 'ACTIVE'
         }
         server = self._create_share_server()
         updated_server = db.share_server_update(self.ctxt, server['id'],
