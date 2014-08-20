@@ -20,4 +20,4 @@
 DB abstraction for Manila
 """
 
-from manila.db.api import *
+from manila.db.api import *  # noqa
