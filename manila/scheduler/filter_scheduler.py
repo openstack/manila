@@ -20,12 +20,9 @@ You can customize this scheduler by specifying your own share Filters and
 Weighing Functions.
 """
 
-import operator
-
 from oslo.config import cfg
 
 from manila import exception
-from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.scheduler import driver
 from manila.scheduler import scheduler_options

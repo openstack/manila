@@ -32,9 +32,9 @@ from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 
 scheduler_json_config_location_opt = cfg.StrOpt(
-        'scheduler_json_config_location',
-        default='',
-        help='Absolute path to scheduler configuration JSON file.')
+    'scheduler_json_config_location',
+    default='',
+    help='Absolute path to scheduler configuration JSON file.')
 
 CONF = cfg.CONF
 CONF.register_opt(scheduler_json_config_location_opt)

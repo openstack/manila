@@ -142,8 +142,9 @@ class DbQuotaDriver(object):
             if not defaults and resource.name not in quotas:
                 continue
 
-            limit = quotas.get(resource.name, class_quotas.get(
-                        resource.name, default_quotas[resource.name]))
+            limit = quotas.get(
+                resource.name,
+                class_quotas.get(resource.name, default_quotas[resource.name]))
             modified_quotas[resource.name] = dict(limit=limit)
 
             # Include usages if desired.  This is optional because one
@@ -154,7 +155,7 @@ class DbQuotaDriver(object):
                 modified_quotas[resource.name].update(
                     in_use=usage.get('in_use', 0),
                     reserved=usage.get('reserved', 0),
-                    )
+                )
             # Initialize remains quotas.
             if remains:
                 modified_quotas[resource.name].update(remains=limit)
@@ -163,8 +164,8 @@ class DbQuotaDriver(object):
             all_quotas = db.quota_get_all(context, project_id)
             for quota in all_quotas:
                 if quota.resource in modified_quotas:
-                    modified_quotas[quota.resource]['remains'] -= \
-                            quota.hard_limit
+                    modified_quotas[quota.resource]['remains'] -= (
+                        quota.hard_limit)
 
         return modified_quotas
 
@@ -234,9 +235,8 @@ class DbQuotaDriver(object):
                 user_quotas[key] = value
         user_usages = None
         if usages:
-            user_usages = db.quota_usage_get_all_by_project_and_user(context,
-                                                         project_id,
-                                                         user_id)
+            user_usages = db.quota_usage_get_all_by_project_and_user(
+                context, project_id, user_id)
         return self._process_quotas(context, resources, project_id,
                                     user_quotas, quota_class,
                                     defaults=defaults, usages=user_usages)
@@ -258,16 +258,14 @@ class DbQuotaDriver(object):
         if user_id:
             user_quotas = self.get_user_quotas(context, resources,
                                                project_id, user_id)
-            setted_quotas = db.quota_get_all_by_project_and_user(context,
-                                                     project_id,
-                                                     user_id)
+            setted_quotas = db.quota_get_all_by_project_and_user(
+                context, project_id, user_id)
             for key, value in user_quotas.items():
-                maximum = project_quotas[key]['remains'] +\
-                        setted_quotas.get(key, 0)
+                maximum = (project_quotas[key]['remains'] +
+                           setted_quotas.get(key, 0))
                 settable_quotas[key] = dict(
-                        minimum=value['in_use'] + value['reserved'],
-                        maximum=maximum
-                        )
+                    minimum=value['in_use'] + value['reserved'],
+                    maximum=maximum)
         else:
             for key, value in project_quotas.items():
                 minimum = max(int(value['limit'] - value['remains']),
@@ -837,14 +835,15 @@ class QuotaEngine(object):
         """
 
         return self._driver.get_project_quotas(context, self._resources,
-                                              project_id,
-                                              quota_class=quota_class,
-                                              defaults=defaults,
-                                              usages=usages,
-                                              remains=remains)
+                                               project_id,
+                                               quota_class=quota_class,
+                                               defaults=defaults,
+                                               usages=usages,
+                                               remains=remains)
 
     def get_settable_quotas(self, context, project_id, user_id=None):
-        """
+        """Get settable quotas.
+
         Given a list of resources, retrieve the range of settable quotas for
         the given user or project.
 

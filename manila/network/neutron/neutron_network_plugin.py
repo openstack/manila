@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import time
-
 from oslo.config import cfg
 
 from manila.common import constants
@@ -99,9 +97,8 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
         try:
             self.neutron_api.delete_port(port['id'])
         except exception.NetworkException:
-            self.db.network_allocation_update(context,
-                                        port['id'],
-                                        {'status': constants.STATUS_ERROR})
+            self.db.network_allocation_update(
+                context, port['id'], {'status': constants.STATUS_ERROR})
             raise
         else:
             self.db.network_allocation_delete(context, port['id'])
@@ -112,12 +109,12 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
 
     def _save_neutron_network_data(self, context, share_network):
         net_info = self.neutron_api.get_network(
-                        share_network['neutron_net_id'])
+            share_network['neutron_net_id'])
 
         provider_nw_dict = {
             'network_type': net_info['provider:network_type'],
             'segmentation_id': net_info['provider:segmentation_id']
-            }
+        }
 
         self.db.share_network_update(context,
                                      share_network['id'],
@@ -125,12 +122,12 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
 
     def _save_neutron_subnet_data(self, context, share_network):
         subnet_info = self.neutron_api.get_subnet(
-                        share_network['neutron_subnet_id'])
+            share_network['neutron_subnet_id'])
 
         subnet_values = {
             'cidr': subnet_info['cidr'],
             'ip_version': subnet_info['ip_version']
-            }
+        }
 
         self.db.share_network_update(context,
                                      share_network['id'],

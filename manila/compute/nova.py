@@ -19,7 +19,6 @@ Handles all requests to Nova.
 import sys
 
 from novaclient import exceptions as nova_exception
-from novaclient import extension
 from novaclient import service_catalog
 from novaclient.v1_1 import client as nova_client
 from novaclient.v1_1.contrib import assisted_volume_snapshots
@@ -51,16 +50,16 @@ nova_opts = [
                 default=False,
                 help='Allow to perform insecure SSL requests to nova'),
     cfg.StrOpt('nova_admin_username',
-                default='nova',
-                help='Nova admin username'),
+               default='nova',
+               help='Nova admin username'),
     cfg.StrOpt('nova_admin_password',
                help='Nova admin password'),
     cfg.StrOpt('nova_admin_tenant_name',
-                default='service',
-                help='Nova admin tenant name'),
+               default='service',
+               help='Nova admin tenant name'),
     cfg.StrOpt('nova_admin_auth_url',
-                default='http://localhost:5000/v2.0',
-                help='Identity service url'),
+               default='http://localhost:5000/v2.0',
+               help='Identity service url'),
 ]
 
 CONF = cfg.CONF
@@ -163,14 +162,14 @@ class API(base.Base):
                       availability_zone=None, instance_count=1,
                       admin_pass=None):
         return _untranslate_server_summary_view(
-                novaclient(context).servers.create(
-                    name, image, flavor, userdata=user_data,
-                    security_groups=security_groups, key_name=key_name,
-                    block_device_mapping=block_device_mapping,
-                    block_device_mapping_v2=block_device_mapping_v2,
-                    nics=nics, availability_zone=availability_zone,
-                    min_count=instance_count, admin_pass=admin_pass)
-                )
+            novaclient(context).servers.create(
+                name, image, flavor, userdata=user_data,
+                security_groups=security_groups, key_name=key_name,
+                block_device_mapping=block_device_mapping,
+                block_device_mapping_v2=block_device_mapping_v2,
+                nics=nics, availability_zone=availability_zone,
+                min_count=instance_count, admin_pass=admin_pass)
+        )
 
     def server_delete(self, context, instance):
         novaclient(context).servers.delete(instance)
@@ -178,8 +177,8 @@ class API(base.Base):
     @translate_server_exception
     def server_get(self, context, instance_id):
         return _untranslate_server_summary_view(
-                novaclient(context).servers.get(instance_id)
-                )
+            novaclient(context).servers.get(instance_id)
+        )
 
     def server_list(self, context, search_opts=None, all_tenants=False):
         if search_opts is None:
@@ -189,7 +188,8 @@ class API(base.Base):
         else:
             search_opts['project_id'] = context.project_id
         servers = [_untranslate_server_summary_view(s)
-                for s in novaclient(context).servers.list(True, search_opts)]
+                   for s in novaclient(context).servers.list(True,
+                                                             search_opts)]
 
         return servers
 
@@ -219,9 +219,9 @@ class API(base.Base):
     @translate_server_exception
     def server_rebuild(self, context, instance_id, image_id, password=None):
         return _untranslate_server_summary_view(
-                novaclient(context).servers.rebuild(instance_id, image_id,
-                                                    password)
-                )
+            novaclient(context).servers.rebuild(instance_id, image_id,
+                                                password)
+        )
 
     @translate_server_exception
     def instance_volume_attach(self, context, instance_id, volume_id,
@@ -235,7 +235,7 @@ class API(base.Base):
     @translate_server_exception
     def instance_volume_detach(self, context, instance_id, att_id):
         return novaclient(context).volumes.delete_server_volume(instance_id,
-                                                                  att_id)
+                                                                att_id)
 
     @translate_server_exception
     def instance_volumes_list(self, context, instance_id):
@@ -252,8 +252,8 @@ class API(base.Base):
     @translate_server_exception
     def server_update(self, context, instance_id, name):
         return _untranslate_server_summary_view(
-                novaclient(context).servers.update(instance_id, name=name)
-                )
+            novaclient(context).servers.update(instance_id, name=name)
+        )
 
     def update_server_volume(self, context, instance_id, attachment_id,
                              new_volume_id):

@@ -21,7 +21,6 @@ inline callbacks.
 
 """
 
-import functools
 import os
 import shutil
 import uuid
@@ -35,7 +34,6 @@ import testtools
 
 from manila.db import migration
 from manila.db.sqlalchemy import api as db_api
-from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 from manila import rpc
@@ -278,7 +276,7 @@ class TestCase(testtools.TestCase):
                 self.assertEqual(sub_value, super_value)
 
     def assertIn(self, a, b, *args, **kwargs):
-        """Python < v2.7 compatibility.  Assert 'a' in 'b'"""
+        """Python < v2.7 compatibility.  Assert 'a' in 'b'."""
         try:
             f = super(TestCase, self).assertIn
         except AttributeError:
@@ -287,7 +285,7 @@ class TestCase(testtools.TestCase):
             f(a, b, *args, **kwargs)
 
     def assertNotIn(self, a, b, *args, **kwargs):
-        """Python < v2.7 compatibility.  Assert 'a' NOT in 'b'"""
+        """Python < v2.7 compatibility.  Assert 'a' NOT in 'b'."""
         try:
             f = super(TestCase, self).assertNotIn
         except AttributeError:

@@ -69,9 +69,9 @@ neutron_opts = [
                deprecated_name='quantum_ovs_bridge',
                help='Name of Integration Bridge used by Open vSwitch'),
     cfg.StrOpt('neutron_ca_certificates_file',
-                help='Location of ca certificates file to use for '
-                     'neutron client requests.'),
-    ]
+               help='Location of ca certificates file to use for '
+                    'neutron client requests.'),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(neutron_opts)
@@ -208,8 +208,8 @@ class API(base.Base):
         network_req_body['network']['tenant_id'] = tenant_id
         network_req_body['network']['name'] = name
         try:
-            return self.client.create_network(network_req_body).\
-                                                        get('network', {})
+            return self.client.create_network(
+                network_req_body).get('network', {})
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
@@ -222,8 +222,8 @@ class API(base.Base):
         subnet_req_body['subnet']['cidr'] = cidr
         subnet_req_body['subnet']['ip_version'] = 4
         try:
-            return self.client.create_subnet(subnet_req_body).\
-                                                        get('subnet', {})
+            return self.client.create_subnet(
+                subnet_req_body).get('subnet', {})
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)
@@ -262,8 +262,8 @@ class API(base.Base):
     def update_port_fixed_ips(self, port_id, fixed_ips):
         try:
             port_req_body = {'port': fixed_ips}
-            port = self.client.update_port(port_id, port_req_body).\
-                                                            get('port', {})
+            port = self.client.update_port(
+                port_id, port_req_body).get('port', {})
             return port
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
@@ -279,8 +279,8 @@ class API(base.Base):
     def router_update_routes(self, router_id, routes):
         try:
             router_req_body = {'router': routes}
-            port = self.client.update_router(router_id, router_req_body).\
-                                                            get('router', {})
+            port = self.client.update_router(
+                router_id, router_req_body).get('router', {})
             return port
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
@@ -290,8 +290,8 @@ class API(base.Base):
         """Update specific subnet for client."""
         subnet_req_body = {'subnet': {'name': name}}
         try:
-            return self.client.update_subnet(subnet_uuid, subnet_req_body).\
-                                                            get('subnet', {})
+            return self.client.update_subnet(
+                subnet_uuid, subnet_req_body).get('subnet', {})
         except neutron_client_exc.NeutronClientException as e:
             raise exception.NetworkException(code=e.status_code,
                                              message=e.message)

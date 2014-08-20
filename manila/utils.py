@@ -22,7 +22,6 @@
 import contextlib
 import datetime
 import errno
-import functools
 import hashlib
 import inspect
 import os
@@ -31,17 +30,14 @@ import random
 import re
 import shutil
 import socket
-import struct
 import sys
 import tempfile
-import time
 from xml.dom import minidom
 from xml.parsers import expat
 from xml import sax
 from xml.sax import expatreader
 from xml.sax import saxutils
 
-from eventlet import event
 from eventlet import pools
 import netaddr
 from oslo.config import cfg
@@ -477,7 +473,7 @@ def utf8(value):
 
 
 def delete_if_exists(pathname):
-    """delete a file, but ignore file not found error"""
+    """Delete a file, but ignore file not found error."""
 
     try:
         os.unlink(pathname)
@@ -540,7 +536,7 @@ def get_from_path(items, path):
 
 
 def is_valid_boolstr(val):
-    """Check if the provided string is a valid bool string or not. """
+    """Check if the provided string is a valid bool string or not."""
     val = str(val).lower()
     return (val == 'true' or val == 'false' or
             val == 'yes' or val == 'no' or
@@ -825,7 +821,7 @@ def strcmp_const_time(s1, s2):
 
 
 def walk_class_hierarchy(clazz, encountered=None):
-    """Walk class hierarchy, yielding most derived classes first"""
+    """Walk class hierarchy, yielding most derived classes first."""
     if not encountered:
         encountered = []
     for subclass in clazz.__subclasses__():
