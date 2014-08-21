@@ -20,6 +20,7 @@ import re
 import time
 
 from oslo.config import cfg
+import six
 
 from manila import compute
 from manila import context
@@ -169,7 +170,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             server_details['instance_id'],
             volume)
         self._format_device(server_details, volume)
-        self._mount_device(context, share, server_details, volume)
+        self._mount_device(share, server_details, volume)
         location = self._get_helper(share).create_export(
             server_details,
             share['name'])
@@ -181,30 +182,89 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                    volume['mountpoint']]
         self._ssh_exec(server_details, command)
 
-    def _mount_device(self, context, share, server_details, volume):
-        """Mounts attached and formatted block device to the directory."""
+    def _is_device_mounted(self, share, server_details, volume=None):
+        """Checks whether volume already mounted or not."""
         mount_path = self._get_mount_path(share)
-        command = ['sudo', 'mkdir', '-p', mount_path, ';']
-        command.extend(['sudo', 'mount', volume['mountpoint'], mount_path])
-        try:
-            self._ssh_exec(server_details, command)
-        except exception.ProcessExecutionError as e:
-            if 'already mounted' not in e.stderr:
-                raise
-            LOG.debug('Share %s is already mounted' % share['name'])
-        command = ['sudo', 'chmod', '777', mount_path]
-        self._ssh_exec(server_details, command)
+        log_data = {
+            'mount_path': mount_path,
+            'server_id': server_details['instance_id'],
+        }
+        if volume and volume.get('mountpoint', ''):
+            log_data['volume_id'] = volume['id']
+            log_data['dev_mount_path'] = volume['mountpoint']
+            msg = ("Checking whether volume '%(volume_id)s' with mountpoint "
+                   "'%(dev_mount_path)s' is mounted on mount path '%(mount_p"
+                   "ath)s' on server '%(server_id)s' or not." % log_data)
+        else:
+            msg = ("Checking whether mount path '%(mount_path)s' exists on "
+                   "server '%(server_id)s' or not." % log_data)
+        LOG.debug(msg)
+        mounts_list_cmd = ['sudo', 'mount']
+        output, __ = self._ssh_exec(server_details, mounts_list_cmd)
+        mounts = output.split('\n')
+        for mount in mounts:
+            mount_elements = mount.split(' ')
+            if (len(mount_elements) > 2 and mount_path == mount_elements[2]):
+                if volume:
+                    # Mount goes with device path and mount path
+                    if (volume.get('mountpoint', '') == mount_elements[0]):
+                        return True
+                else:
+                    # Unmount goes only by mount path
+                    return True
+        return False
+
+    def _mount_device(self, share, server_details, volume):
+        """Mounts block device to the directory on service vm.
+
+        Mounts attached and formatted block device to the directory if not
+        mounted yet.
+        """
+
+        @utils.synchronized('generic_driver_mounts_%s' % share['id'])
+        def _mount_device_with_lock():
+            mount_path = self._get_mount_path(share)
+            log_data = {
+                'dev': volume['mountpoint'],
+                'path': mount_path,
+                'server': server_details['instance_id'],
+            }
+            try:
+                if not self._is_device_mounted(share, server_details, volume):
+                    LOG.debug("Mounting '%(dev)s' to path '%(path)s' on "
+                              "server '%(server)s'." % log_data)
+                    mount_cmd = ['sudo mkdir -p', mount_path, '&&']
+                    mount_cmd.extend(['sudo mount', volume['mountpoint'],
+                                      mount_path])
+                    mount_cmd.extend(['&& sudo chmod 777', mount_path])
+                    self._ssh_exec(server_details, mount_cmd)
+                else:
+                    LOG.warning(_("Mount point '%(path)s' already exists on "
+                                  "server '%(server)s'.") % log_data)
+            except exception.ProcessExecutionError as e:
+                raise exception.ShareBackendException(msg=six.text_type(e))
+        return _mount_device_with_lock()
 
     def _unmount_device(self, share, server_details):
-        """Unmounts device from directory on service vm."""
-        mount_path = self._get_mount_path(share)
-        command = ['sudo', 'umount', mount_path, ';']
-        command.extend(['sudo', 'rmdir', mount_path])
-        try:
-            self._ssh_exec(server_details, command)
-        except exception.ProcessExecutionError as e:
-            if 'not found' in e.stderr:
-                LOG.debug('%s is not mounted' % share['name'])
+        """Unmounts block device from directory on service vm."""
+
+        @utils.synchronized('generic_driver_mounts_%s' % share['id'])
+        def _unmount_device_with_lock():
+            mount_path = self._get_mount_path(share)
+            log_data = {
+                'path': mount_path,
+                'server': server_details['instance_id'],
+            }
+            if self._is_device_mounted(share, server_details):
+                LOG.debug("Unmounting path '%(path)s' on server "
+                          "'%(server)s'." % log_data)
+                unmount_cmd = ['sudo umount', mount_path, '&& sudo rmdir',
+                               mount_path]
+                self._ssh_exec(server_details, unmount_cmd)
+            else:
+                LOG.warning(_("Mount point '%(path)s' does not exist on "
+                              "server '%(server)s'.") % log_data)
+        return _unmount_device_with_lock()
 
     def _get_mount_path(self, share):
         """Returns the path to use for mount device in service vm."""
@@ -390,8 +450,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         volume = self._attach_volume(
             self.admin_context, share,
             share_server['backend_details']['instance_id'], volume)
-        self._mount_device(context, share, share_server['backend_details'],
-                           volume)
+        self._mount_device(share, share_server['backend_details'], volume)
         location = self._get_helper(share).create_export(
             share_server['backend_details'],
             share['name'])
@@ -465,8 +524,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             share,
             share_server['backend_details']['instance_id'],
             volume)
-        self._mount_device(context, share, share_server['backend_details'],
-                           volume)
+        self._mount_device(share, share_server['backend_details'], volume)
         self._get_helper(share).create_export(share_server['backend_details'],
                                               share['name'],
                                               recreate=True)

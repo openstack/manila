@@ -183,61 +183,164 @@ class GenericShareDriverTestCase(test.TestCase):
             ['sudo', 'mkfs.%s' % self.fake_conf.share_volume_fstype,
              volume['mountpoint']])
 
-    def _test_mount_device(self):
+    def test_mount_device_not_present(self):
+        server = {'instance_id': 'fake_server_id'}
+        mount_path = '/fake/mount/path'
         volume = {'mountpoint': 'fake_mount_point'}
+        self.stubs.Set(self._driver, '_is_device_mounted',
+                       mock.Mock(return_value=False))
         self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value='fake_mount_path'))
+                       mock.Mock(return_value=mount_path))
 
-        self._driver._mount_device(self._context, self.share, 'fake_server',
-                                   volume)
+        self._driver._mount_device(self.share, server, volume)
 
-        self._driver._ssh_exec.assert_has_calls([
-            mock.call('fake_server', ['sudo', 'mkdir', '-p',
-                                      'fake_mount_path',
-                                      ';', 'sudo', 'mount',
-                                      volume['mountpoint'],
-                                      'fake_mount_path']),
-            mock.call('fake_server', ['sudo', 'chmod', '777',
-                                      'fake_mount_path'])
-        ])
-
-    def test_mount_device_exception_01(self):
-        volume = {'mountpoint': 'fake_mount_point'}
-        self._driver._ssh_exec.side_effect = [
-            exception.ProcessExecutionError(stderr='already mounted'), None]
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value='fake_mount_path'))
-
-        self._driver._mount_device(self._context, self.share, 'fake_server',
-                                   volume)
-
-        self._driver._ssh_exec.assert_has_calls([
-            mock.call('fake_server', ['sudo', 'mkdir', '-p',
-                                      'fake_mount_path',
-                                      ';', 'sudo', 'mount',
-                                      volume['mountpoint'],
-                                      'fake_mount_path']),
-            mock.call('fake_server', ['sudo', 'chmod', '777',
-                                      'fake_mount_path'])
-        ])
-
-    def test_mount_device_exception_02(self):
-        volume = {'mountpoint': 'fake_mount_point'}
-        self._driver._ssh_exec.side_effect = exception.ManilaException
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value='fake_mount_path'))
-        self.assertRaises(exception.ManilaException,
-                          self._driver._mount_device,
-                          self._context, self.share, 'fake_server', volume)
-
-    def test_umount_device(self):
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value='fake_mount_path'))
-        self._driver._unmount_device(self.share, 'fake_server')
+        self._driver._get_mount_path.assert_called_once_with(self.share)
+        self._driver._is_device_mounted.assert_called_once_with(
+            self.share, server, volume)
         self._driver._ssh_exec.assert_called_once_with(
-            'fake_server',
-            ['sudo', 'umount', 'fake_mount_path', ';', 'sudo', 'rmdir',
-             'fake_mount_path'])
+            server,
+            ['sudo mkdir -p', mount_path,
+             '&&', 'sudo mount', volume['mountpoint'], mount_path,
+             '&& sudo chmod 777', mount_path],
+        )
+
+    def test_mount_device_present(self):
+        server = {'instance_id': 'fake_server_id'}
+        mount_path = '/fake/mount/path'
+        volume = {'mountpoint': 'fake_mount_point'}
+        self.stubs.Set(self._driver, '_is_device_mounted',
+                       mock.Mock(return_value=True))
+        self.stubs.Set(self._driver, '_get_mount_path',
+                       mock.Mock(return_value=mount_path))
+        self.stubs.Set(generic.LOG, 'warning', mock.Mock())
+
+        self._driver._mount_device(self.share, server, volume)
+
+        self._driver._get_mount_path.assert_called_once_with(self.share)
+        self._driver._is_device_mounted.assert_called_once_with(
+            self.share, server, volume)
+        generic.LOG.warning.assert_called_once_with(mock.ANY)
+
+    def test_mount_device_exception_raised(self):
+        server = {'instance_id': 'fake_server_id'}
+        volume = {'mountpoint': 'fake_mount_point'}
+        self.stubs.Set(self._driver, '_get_mount_path',
+                       mock.Mock(return_value='fake'))
+        self.stubs.Set(self._driver, '_is_device_mounted',
+                       mock.Mock(side_effect=exception.ProcessExecutionError))
+
+        self.assertRaises(
+            exception.ShareBackendException,
+            self._driver._mount_device,
+            self.share,
+            server,
+            volume,
+        )
+        self._driver._get_mount_path.assert_called_once_with(self.share)
+        self._driver._is_device_mounted.assert_called_once_with(
+            self.share, server, volume)
+
+    def test_unmount_device_present(self):
+        server = {'instance_id': 'fake_server_id'}
+        mount_path = '/fake/mount/path'
+        self.stubs.Set(self._driver, '_is_device_mounted',
+                       mock.Mock(return_value=True))
+        self.stubs.Set(self._driver, '_get_mount_path',
+                       mock.Mock(return_value=mount_path))
+
+        self._driver._unmount_device(self.share, server)
+
+        self._driver._get_mount_path.assert_called_once_with(self.share)
+        self._driver._is_device_mounted.assert_called_once_with(
+            self.share, server)
+        self._driver._ssh_exec.assert_called_once_with(
+            server,
+            ['sudo umount', mount_path, '&& sudo rmdir', mount_path],
+        )
+
+    def test_unmount_device_not_present(self):
+        server = {'instance_id': 'fake_server_id'}
+        mount_path = '/fake/mount/path'
+        self.stubs.Set(self._driver, '_is_device_mounted',
+                       mock.Mock(return_value=False))
+        self.stubs.Set(self._driver, '_get_mount_path',
+                       mock.Mock(return_value=mount_path))
+        self.stubs.Set(generic.LOG, 'warning', mock.Mock())
+
+        self._driver._unmount_device(self.share, server)
+
+        self._driver._get_mount_path.assert_called_once_with(self.share)
+        self._driver._is_device_mounted.assert_called_once_with(
+            self.share, server)
+        generic.LOG.warning.assert_called_once_with(mock.ANY)
+
+    def test_is_device_mounted_true(self):
+        volume = {'mountpoint': 'fake_mount_point', 'id': 'fake_id'}
+        server = {'instance_id': 'fake_server_id'}
+        mount_path = '/fake/mount/path'
+        mounts = "%(dev)s on %(path)s" % {'dev': volume['mountpoint'],
+                                          'path': mount_path}
+        self.stubs.Set(self._driver, '_ssh_exec',
+                       mock.Mock(return_value=(mounts, '')))
+        self.stubs.Set(self._driver, '_get_mount_path',
+                       mock.Mock(return_value=mount_path))
+
+        result = self._driver._is_device_mounted(self.share, server, volume)
+
+        self._driver._get_mount_path.assert_called_once_with(self.share)
+        self._driver._ssh_exec.assert_called_once_with(
+            server, ['sudo', 'mount'])
+        self.assertEqual(result, True)
+
+    def test_is_device_mounted_true_no_volume_provided(self):
+        server = {'instance_id': 'fake_server_id'}
+        mount_path = '/fake/mount/path'
+        mounts = "/fake/dev/path on %(path)s type fake" % {'path': mount_path}
+        self.stubs.Set(self._driver, '_ssh_exec',
+                       mock.Mock(return_value=(mounts, '')))
+        self.stubs.Set(self._driver, '_get_mount_path',
+                       mock.Mock(return_value=mount_path))
+
+        result = self._driver._is_device_mounted(self.share, server)
+
+        self._driver._get_mount_path.assert_called_once_with(self.share)
+        self._driver._ssh_exec.assert_called_once_with(
+            server, ['sudo', 'mount'])
+        self.assertEqual(result, True)
+
+    def test_is_device_mounted_false(self):
+        server = {'instance_id': 'fake_server_id'}
+        mount_path = '/fake/mount/path'
+        volume = {'mountpoint': 'fake_mount_point', 'id': 'fake_id'}
+        mounts = "%(dev)s on %(path)s" % {'dev': '/fake',
+                                          'path': mount_path}
+        self.stubs.Set(self._driver, '_ssh_exec',
+                       mock.Mock(return_value=(mounts, '')))
+        self.stubs.Set(self._driver, '_get_mount_path',
+                       mock.Mock(return_value=mount_path))
+
+        result = self._driver._is_device_mounted(self.share, server, volume)
+
+        self._driver._get_mount_path.assert_called_once_with(self.share)
+        self._driver._ssh_exec.assert_called_once_with(
+            server, ['sudo', 'mount'])
+        self.assertEqual(result, False)
+
+    def test_is_device_mounted_false_no_volume_provided(self):
+        server = {'instance_id': 'fake_server_id'}
+        mount_path = '/fake/mount/path'
+        mounts = "%(path)s" % {'path': 'fake'}
+        self.stubs.Set(self._driver, '_ssh_exec',
+                       mock.Mock(return_value=(mounts, '')))
+        self.stubs.Set(self._driver, '_get_mount_path',
+                       mock.Mock(return_value=mount_path))
+
+        result = self._driver._is_device_mounted(self.share, server)
+
+        self._driver._get_mount_path.assert_called_once_with(self.share)
+        self._driver._ssh_exec.assert_called_once_with(
+            server, ['sudo', 'mount'])
+        self.assertEqual(result, False)
 
     def test_get_mount_path(self):
         result = self._driver._get_mount_path(self.share)
