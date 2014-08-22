@@ -249,6 +249,16 @@ class ShareNetworkController(wsgi.Controller):
         if share_network['share_servers']:
             msg = _("Cannot add security services. Share network is used.")
             raise exc.HTTPForbidden(explanation=msg)
+        security_service = db_api.security_service_get(
+            context, data['security_service_id'])
+        for attached_service in share_network['security_services']:
+            if attached_service['type'] == security_service['type']:
+                msg = _("Cannot add security service to share network. "
+                        "Security service with '%(ss_type)s' type already "
+                        "added to '%(sn_id)s' share network") % {
+                            'ss_type': security_service['type'],
+                            'sn_id': share_network['id']}
+                raise exc.HTTPConflict(explanation=msg)
         try:
             share_network = db_api.share_network_add_security_service(
                 context,
