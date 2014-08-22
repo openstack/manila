@@ -22,7 +22,6 @@ import six
 from manila import exception
 from manila.network.linux import ip_lib
 from manila.network.linux import ovs_lib
-from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila import utils
 
@@ -45,8 +44,7 @@ def device_name_synchronized(f):
     def wrapped_func(self, *args, **kwargs):
         device_name = "device_name_%s" % args[0]
 
-        @lockutils.synchronized(device_name, external=True,
-                                lock_path="service_instance_locks")
+        @utils.synchronized("linux_interface_%s" % device_name, external=True)
         def source_func(self, *args, **kwargs):
             return f(self, *args, **kwargs)
 

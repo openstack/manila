@@ -34,6 +34,7 @@ MANILACLIENT_BRANCH=master
 
 # set up default directories
 MANILA_DIR=${MANILA_DIR:=$DEST/manila}
+MANILA_LOCK_PATH=${MANILA_LOCK_PATH:=$MANILA_DIR/manila_locks}
 MANILACLIENT_DIR=${MANILACLIENT_DIR:=$DEST/python-manilaclient}
 MANILA_STATE_PATH=${MANILA_STATE_PATH:=$DATA_DIR/manila}
 MANILA_MNT_DIR=${MANILA_MNT_DIR:=$MANILA_STATE_PATH/mnt}
@@ -178,6 +179,8 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT nova_admin_password $SERVICE_PASSWORD
     iniset $MANILA_CONF DEFAULT cinder_admin_password $SERVICE_PASSWORD
     iniset $MANILA_CONF DEFAULT neutron_admin_password $SERVICE_PASSWORD
+
+    iniset $MANILA_CONF DEFAULT lock_path $MANILA_LOCK_PATH
 
     add_share_backend $MANILA_BACKEND1_CONFIG_GROUP_NAME $MANILA_SHARE_BACKEND1_NAME
     enabled_backends=$MANILA_BACKEND1_CONFIG_GROUP_NAME

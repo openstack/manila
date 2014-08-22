@@ -23,7 +23,6 @@ from oslo.config import cfg
 from manila import compute
 from manila import context
 from manila import exception
-from manila.openstack.common import lockutils
 import manila.share.configuration
 from manila.share.drivers import generic
 from manila import test
@@ -32,8 +31,8 @@ from manila.tests import fake_compute
 from manila.tests import fake_service_instance
 from manila.tests import fake_utils
 from manila.tests import fake_volume
+from manila import utils
 from manila import volume
-
 
 CONF = cfg.CONF
 
@@ -115,7 +114,7 @@ class GenericShareDriverTestCase(test.TestCase):
             share_network_id=self.fake_sn["id"], old_server_ip="fake")
 
         self._driver._ssh_exec = mock.Mock(return_value=('', ''))
-        self.stubs.Set(lockutils, 'synchronized',
+        self.stubs.Set(utils, 'synchronized',
                        mock.Mock(return_value=lambda f: f))
         self.stubs.Set(generic.os.path, 'exists', mock.Mock(return_value=True))
         self._driver._helpers = {

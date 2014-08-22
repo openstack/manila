@@ -19,17 +19,16 @@ import copy
 import os
 
 import mock
+from oslo.config import cfg
 
 from manila import context
 from manila import exception
-from manila.openstack.common import lockutils
 from manila.share.drivers import service_instance
 from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_compute
 from manila.tests import fake_network
-
-from oslo.config import cfg
+from manila import utils
 
 CONF = cfg.CONF
 
@@ -69,7 +68,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.admin_context = self._context
         self._manager._execute = mock.Mock(return_value=('', ''))
         self._manager.vif_driver = mock.Mock()
-        self.stubs.Set(lockutils, 'synchronized',
+        self.stubs.Set(utils, 'synchronized',
                        mock.Mock(return_value=lambda f: f))
         self.stubs.Set(service_instance.os.path, 'exists',
                        mock.Mock(return_value=True))
