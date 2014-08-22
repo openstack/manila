@@ -180,7 +180,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._format_device('fake_server', volume)
         self._driver._ssh_exec.assert_called_once_with(
             'fake_server',
-            ['sudo', 'mkfs.ext4', volume['mountpoint']])
+            ['sudo', 'mkfs.%s' % self.fake_conf.share_volume_fstype,
+             volume['mountpoint']])
 
     def _test_mount_device(self):
         volume = {'mountpoint': 'fake_mount_point'}
