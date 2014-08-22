@@ -161,9 +161,9 @@ class HostStateTestCase(test.TestCase):
         self.assertEqual(fake_host.free_capacity_gb, None)
 
         share_capability = {'total_capacity_gb': 1024,
-                             'free_capacity_gb': 512,
-                             'reserved_percentage': 0,
-                             'timestamp': None}
+                            'free_capacity_gb': 512,
+                            'reserved_percentage': 0,
+                            'timestamp': None}
 
         fake_host.update_from_share_capability(share_capability)
         self.assertEqual(fake_host.free_capacity_gb, 512)
@@ -173,9 +173,9 @@ class HostStateTestCase(test.TestCase):
         self.assertEqual(fake_host.free_capacity_gb, None)
 
         share_capability = {'total_capacity_gb': 'infinite',
-                             'free_capacity_gb': 'infinite',
-                             'reserved_percentage': 0,
-                             'timestamp': None}
+                            'free_capacity_gb': 'infinite',
+                            'reserved_percentage': 0,
+                            'timestamp': None}
 
         fake_host.update_from_share_capability(share_capability)
         self.assertEqual(fake_host.total_capacity_gb, 'infinite')
@@ -185,10 +185,12 @@ class HostStateTestCase(test.TestCase):
         fake_host = host_manager.HostState('host1')
         self.assertEqual(fake_host.free_capacity_gb, None)
 
-        share_capability = {'total_capacity_gb': 'infinite',
-                             'free_capacity_gb': 'unknown',
-                             'reserved_percentage': 0,
-                             'timestamp': None}
+        share_capability = {
+            'total_capacity_gb': 'infinite',
+            'free_capacity_gb': 'unknown',
+            'reserved_percentage': 0,
+            'timestamp': None
+        }
 
         fake_host.update_from_share_capability(share_capability)
         self.assertEqual(fake_host.total_capacity_gb, 'infinite')
@@ -200,10 +202,12 @@ class HostStateTestCase(test.TestCase):
         free_capacity = 100
         fake_share = {'id': 'foo', 'size': share_size}
 
-        share_capability = {'total_capacity_gb': free_capacity * 2,
-                             'free_capacity_gb': free_capacity,
-                             'reserved_percentage': 0,
-                             'timestamp': None}
+        share_capability = {
+            'total_capacity_gb': free_capacity * 2,
+            'free_capacity_gb': free_capacity,
+            'reserved_percentage': 0,
+            'timestamp': None
+        }
 
         fake_host.update_from_share_capability(share_capability)
         fake_host.consume_from_share(fake_share)
@@ -215,10 +219,12 @@ class HostStateTestCase(test.TestCase):
         share_size = 1000
         fake_share = {'id': 'foo', 'size': share_size}
 
-        share_capability = {'total_capacity_gb': 'infinite',
-                             'free_capacity_gb': 'infinite',
-                             'reserved_percentage': 0,
-                             'timestamp': None}
+        share_capability = {
+            'total_capacity_gb': 'infinite',
+            'free_capacity_gb': 'infinite',
+            'reserved_percentage': 0,
+            'timestamp': None
+        }
 
         fake_host.update_from_share_capability(share_capability)
         fake_host.consume_from_share(fake_share)
@@ -230,10 +236,12 @@ class HostStateTestCase(test.TestCase):
         share_size = 1000
         fake_share = {'id': 'foo', 'size': share_size}
 
-        share_capability = {'total_capacity_gb': 'infinite',
-                             'free_capacity_gb': 'unknown',
-                             'reserved_percentage': 0,
-                             'timestamp': None}
+        share_capability = {
+            'total_capacity_gb': 'infinite',
+            'free_capacity_gb': 'unknown',
+            'reserved_percentage': 0,
+            'timestamp': None
+        }
 
         fake_host.update_from_share_capability(share_capability)
         fake_host.consume_from_share(fake_share)

@@ -137,7 +137,7 @@ class ShareNetworkAPITest(test.TestCase):
     def test_delete_not_found(self):
         share_nw = 'fake network id'
         db_api.share_network_get.side_effect = exception.ShareNetworkNotFound(
-                                                    share_network_id=share_nw)
+            share_network_id=share_nw)
 
         self.assertRaises(webob_exc.HTTPNotFound,
                           self.controller.delete,
@@ -243,7 +243,7 @@ class ShareNetworkAPITest(test.TestCase):
     def test_update_not_found(self):
         share_nw = 'fake network id'
         db_api.share_network_get.side_effect = exception.ShareNetworkNotFound(
-                                                share_network_id=share_nw)
+            share_network_id=share_nw)
 
         self.assertRaises(webob_exc.HTTPNotFound,
                           self.controller.update,

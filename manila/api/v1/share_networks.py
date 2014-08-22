@@ -136,8 +136,8 @@ class ShareNetworkController(wsgi.Controller):
             networks = db_api.share_network_get_all(context)
         else:
             networks = db_api.share_network_get_all_by_project(
-                            context,
-                            context.project_id)
+                context,
+                context.project_id)
 
         if search_opts:
             for key, value in six.iteritems(search_opts):
@@ -210,12 +210,12 @@ class ShareNetworkController(wsgi.Controller):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
             if 'share_networks' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create"
-                " share-network (%(d_consumed)d of %(d_quota)d "
-                "already consumed)")
+                msg = _("Quota exceeded for %(s_pid)s, tried to create "
+                        "share-network (%(d_consumed)d of %(d_quota)d "
+                        "already consumed)")
                 LOG.warn(msg % {'s_pid': context.project_id,
-                         'd_consumed': _consumed('share_networks'),
-                         'd_quota': quotas['share_networks']})
+                                'd_consumed': _consumed('share_networks'),
+                                'd_quota': quotas['share_networks']})
                 raise exception.ShareNetworksLimitExceeded(
                     allowed=quotas['share_networks'])
         else:
@@ -251,9 +251,9 @@ class ShareNetworkController(wsgi.Controller):
             raise exc.HTTPForbidden(explanation=msg)
         try:
             share_network = db_api.share_network_add_security_service(
-                                context,
-                                id,
-                                data['security_service_id'])
+                context,
+                id,
+                data['security_service_id'])
         except KeyError:
             msg = "Malformed request body"
             raise exc.HTTPBadRequest(explanation=msg)
@@ -272,9 +272,9 @@ class ShareNetworkController(wsgi.Controller):
         policy.check_policy(context, RESOURCE_NAME, 'remove_security_service')
         try:
             share_network = db_api.share_network_remove_security_service(
-                                context,
-                                id,
-                                data['security_service_id'])
+                context,
+                id,
+                data['security_service_id'])
         except KeyError:
             msg = "Malformed request body"
             raise exc.HTTPBadRequest(explanation=msg)

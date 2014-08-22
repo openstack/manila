@@ -144,8 +144,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.service_instance_manager = service_instance.\
             ServiceInstanceManager(self.db, self._helpers,
                                    driver_config=self.configuration)
-        self.share_networks_servers = self.service_instance_manager.\
-                                                        share_networks_servers
+        self.share_networks_servers = (
+            self.service_instance_manager.share_networks_servers)
         self._setup_helpers()
 
     def _setup_helpers(self):
@@ -207,9 +207,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 LOG.debug('%s is not mounted' % share['name'])
 
     def _get_mount_path(self, share):
-        """
-        Returns the path, that will be used for mount device in service vm.
-        """
+        """Returns the path to use for mount device in service vm."""
         return os.path.join(self.configuration.share_mount_path, share['name'])
 
     def _attach_volume(self, context, share, instance_id, volume):
@@ -262,16 +260,17 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _get_volume_snapshot(self, context, snapshot_id):
         """Finds volume snaphots, associated to the specific share snaphots."""
-        volume_snapshot_name = self.configuration.\
-                volume_snapshot_name_template % snapshot_id
-        volume_snapshot_list = self.volume_api.get_all_snapshots(context,
-                                        {'display_name': volume_snapshot_name})
+        volume_snapshot_name = (
+            self.configuration.volume_snapshot_name_template % snapshot_id)
+        volume_snapshot_list = self.volume_api.get_all_snapshots(
+            context,
+            {'display_name': volume_snapshot_name})
         volume_snapshot = None
         if len(volume_snapshot_list) == 1:
             volume_snapshot = volume_snapshot_list[0]
         elif len(volume_snapshot_list) > 1:
             raise exception.ManilaException(
-                    _('Error. Ambiguous volume snaphots'))
+                _('Error. Ambiguous volume snaphots'))
         return volume_snapshot
 
     def _detach_volume(self, context, share, server_details):
@@ -309,9 +308,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if snapshot:
             volume_snapshot = self._get_volume_snapshot(context,
                                                         snapshot['id'])
-        volume = self.volume_api.create(context, share['size'],
-                     self.configuration.volume_name_template % share['id'], '',
-                     snapshot=volume_snapshot)
+        volume = self.volume_api.create(
+            context,
+            share['size'],
+            self.configuration.volume_name_template % share['id'], '',
+            snapshot=volume_snapshot)
 
         t = time.time()
         while time.time() - t < self.configuration.max_time_to_create_volume:
@@ -322,9 +323,10 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             time.sleep(1)
             volume = self.volume_api.get(context, volume['id'])
         else:
-            raise exception.ManilaException(_('Volume have not been created '
-                                              'in %ss. Giving up') %
-                                 self.configuration.max_time_to_create_volume)
+            raise exception.ManilaException(
+                _('Volume have not been created '
+                  'in %ss. Giving up') %
+                self.configuration.max_time_to_create_volume)
 
         return volume
 
@@ -343,12 +345,14 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     break
                 time.sleep(1)
             else:
-                raise exception.ManilaException(_('Volume have not been '
-                                                  'deleted in %ss. Giving up')
-                               % self.configuration.max_time_to_create_volume)
+                raise exception.ManilaException(
+                    _('Volume have not been '
+                      'deleted in %ss. Giving up')
+                    % self.configuration.max_time_to_create_volume)
 
     def get_share_stats(self, refresh=False):
         """Get share status.
+
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
@@ -373,7 +377,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         data['total_capacity_gb'] = 'infinite'
         data['free_capacity_gb'] = 'infinite'
         data['reserved_percentage'] = (self.configuration.
-                reserved_share_percentage)
+                                       reserved_share_percentage)
         data['QoS_support'] = False
 
         self._stats = data
@@ -419,12 +423,14 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 raise exception.ManilaException(_('Failed to create volume '
                                                   'snapshot'))
             time.sleep(1)
-            volume_snapshot = self.volume_api.get_snapshot(self.admin_context,
-                                                volume_snapshot['id'])
+            volume_snapshot = self.volume_api.get_snapshot(
+                self.admin_context,
+                volume_snapshot['id'])
         else:
-            raise exception.ManilaException(_('Volume snapshot have not been '
-                                              'created in %ss. Giving up') %
-                                  self.configuration.max_time_to_create_volume)
+            raise exception.ManilaException(
+                _('Volume snapshot have not been '
+                  'created in %ss. Giving up') %
+                self.configuration.max_time_to_create_volume)
 
     @ensure_server
     def delete_snapshot(self, context, snapshot, share_server=None):
@@ -445,9 +451,10 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 break
             time.sleep(1)
         else:
-            raise exception.ManilaException(_('Volume snapshot have not been '
-                                              'deleted in %ss. Giving up') %
-                                  self.configuration.max_time_to_create_volume)
+            raise exception.ManilaException(
+                _('Volume snapshot have not been '
+                  'deleted in %ss. Giving up') %
+                self.configuration.max_time_to_create_volume)
 
     @ensure_server
     def ensure_share(self, context, share, share_server=None):
@@ -558,7 +565,8 @@ class NFSHelper(NASHelperBase):
     def create_export(self, server, share_name, recreate=False):
         """Create new export, delete old one if exists."""
         return ':'.join([server['ip'],
-            os.path.join(self.configuration.share_mount_path, share_name)])
+                         os.path.join(
+                             self.configuration.share_mount_path, share_name)])
 
     def init_helper(self, server):
         try:

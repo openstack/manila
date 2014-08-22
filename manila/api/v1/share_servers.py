@@ -90,9 +90,11 @@ class ShareServerController(wsgi.Controller):
                 s.share_network_name = s.share_network_id
         if search_opts:
             for k, v in six.iteritems(search_opts):
-                share_servers = [s for s in share_servers if (hasattr(s, k) and
-                    s[k] == v or k == 'share_network' and v in
-                        [s.share_network['name'], s.share_network['id']])]
+                share_servers = [s for s in share_servers if
+                                 (hasattr(s, k) and
+                                  s[k] == v or k == 'share_network' and
+                                  v in [s.share_network['name'],
+                                        s.share_network['id']])]
         return self._view_builder.build_share_servers(share_servers)
 
     @wsgi.serializers(xml=ShareServerTemplate)

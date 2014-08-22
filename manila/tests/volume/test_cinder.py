@@ -50,7 +50,7 @@ class CinderApiTestCase(test.TestCase):
         self.cinderclient = FakeCinderClient()
         self.ctx = context.get_admin_context()
         self.stubs.Set(cinder, 'cinderclient',
-                mock.Mock(return_value=self.cinderclient))
+                       mock.Mock(return_value=self.cinderclient))
         self.stubs.Set(cinder, '_untranslate_volume_summary_view',
                        lambda ctx, vol: vol)
         self.stubs.Set(cinder, '_untranslate_snapshot_summary_view',
@@ -138,15 +138,14 @@ class CinderApiTestCase(test.TestCase):
         self.stubs.Set(self.cinderclient.volumes, 'begin_detaching',
                        mock.Mock())
         self.api.begin_detaching(self.ctx, 'id1')
-        self.cinderclient.volumes.begin_detaching.\
-                assert_called_once_with('id1')
+        self.cinderclient.volumes.begin_detaching.assert_called_once_with(
+            'id1')
 
     def test_roll_detaching(self):
         self.stubs.Set(self.cinderclient.volumes, 'roll_detaching',
                        mock.Mock())
         self.api.roll_detaching(self.ctx, 'id1')
-        self.cinderclient.volumes.roll_detaching.\
-                assert_called_once_with('id1')
+        self.cinderclient.volumes.roll_detaching.assert_called_once_with('id1')
 
     def test_attach(self):
         self.stubs.Set(self.cinderclient.volumes, 'attach', mock.Mock())
@@ -208,5 +207,5 @@ class CinderApiTestCase(test.TestCase):
         self.stubs.Set(self.cinderclient.volume_snapshots,
                        'delete', mock.Mock())
         self.api.delete_snapshot(self.ctx, 'id1')
-        self.cinderclient.volume_snapshots.delete.\
-                assert_called_once_with('id1')
+        self.cinderclient.volume_snapshots.delete.assert_called_once_with(
+            'id1')

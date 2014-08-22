@@ -48,7 +48,7 @@ class ManilaExceptionTestCase(test.TestCase):
 
     def test_error_msg(self):
         self.assertEqual(six.text_type(exception.ManilaException('test')),
-                          'test')
+                         'test')
 
     def test_default_error_msg_with_kwargs(self):
         class FakeManilaException(exception.ManilaException):

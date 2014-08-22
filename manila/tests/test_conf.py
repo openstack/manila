@@ -24,8 +24,8 @@ from manila import test
 
 CONF = cfg.CONF
 CONF.register_opt(cfg.StrOpt('conf_unittest',
-                              default='foo',
-                              help='for testing purposes only'))
+                             default='foo',
+                             help='for testing purposes only'))
 
 
 class ConfigTestCase(test.TestCase):
@@ -54,11 +54,11 @@ class ConfigTestCase(test.TestCase):
     def test_long_vs_short_flags(self):
         CONF.clear()
         CONF.register_cli_opt(cfg.StrOpt('duplicate_answer_long',
-                                          default='val',
-                                          help='desc'))
+                                         default='val',
+                                         help='desc'))
         CONF.register_cli_opt(cfg.IntOpt('duplicate_answer',
-                                          default=50,
-                                          help='desc'))
+                                         default=50,
+                                         help='desc'))
 
         argv = ['--duplicate_answer=60']
         CONF(argv, default_config_files=[])

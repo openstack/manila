@@ -61,7 +61,7 @@ class AdminController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation="Must specify 'status'")
         if update['status'] not in self.valid_status:
             expl = "Invalid state. Valid states: " +\
-                    ', '.join(self.valid_status) + '.'
+                   ', '.join(self.valid_status) + '.'
             raise exc.HTTPBadRequest(explanation=expl)
         return update
 

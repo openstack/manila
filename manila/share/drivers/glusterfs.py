@@ -100,8 +100,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Native mount the GlusterFS volume and tune it."""
         super(GlusterfsShareDriver, self).do_setup(context)
         self.gluster_address = GlusterAddress(
-                                   self._read_gluster_vol_from_config()
-                               )
+            self._read_gluster_vol_from_config()
+        )
         try:
             self._execute('mount.glusterfs', check_exit_code=False)
         except OSError as exc:
@@ -116,8 +116,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # exporting the whole volume must be prohibited
         # to not to defeat access control
         args, kw = self.gluster_address.make_gluster_args(
-                    'volume', 'set', self.gluster_address.volume,
-                    NFS_EXPORT_VOL, 'off')
+            'volume', 'set', self.gluster_address.volume,
+            NFS_EXPORT_VOL, 'off')
         try:
             self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
@@ -146,7 +146,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                          self.gluster_address.export)
             else:
                 raise exception.GlusterfsException(
-                     'Unable to mount Gluster volume'
+                    'Unable to mount Gluster volume'
                 )
 
     def _mount_gluster_vol(self, mount_path, ensure=False):
@@ -171,10 +171,10 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Get the export entries of shares in the GlusterFS volume."""
         try:
             args, kw = self.gluster_address.make_gluster_args(
-                           '--xml',
-                           'volume',
-                           'info',
-                           self.gluster_address.volume
+                '--xml',
+                'volume',
+                'info',
+                self.gluster_address.volume
             )
             out, err = self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
@@ -183,8 +183,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         if not out:
             raise exception.GlusterfsException(
-                      'Empty answer from gluster command'
-                  )
+                'Empty answer from gluster command'
+            )
 
         vix = etree.fromstring(out)
         if int(vix.find('./volInfo/volumes/count').text) != 1:
@@ -247,8 +247,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         smp = os.stat(self._get_mount_point_for_gluster_vol())
         if smpb.st_dev == smp.st_dev:
             raise exception.GlusterfsException(
-                     _("GlusterFS control mount is not available")
-                  )
+                _("GlusterFS control mount is not available")
+            )
         smpv = os.statvfs(self._get_mount_point_for_gluster_vol())
 
         LOG.debug("Updating share stats")
@@ -339,12 +339,12 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             export_dir_new = ",".join("/%s(%s)" % (d, "|".join(v))
                                       for d, v in export_dir_dict.items())
             args, kw = self.gluster_address.make_gluster_args(
-                        'volume', 'set', self.gluster_address.volume,
-                        NFS_EXPORT_DIR, export_dir_new)
+                'volume', 'set', self.gluster_address.volume,
+                NFS_EXPORT_DIR, export_dir_new)
         else:
             args, kw = self.gluster_address.make_gluster_args(
-                        'volume', 'reset', self.gluster_address.volume,
-                        NFS_EXPORT_DIR)
+                'volume', 'reset', self.gluster_address.volume,
+                NFS_EXPORT_DIR)
         try:
             self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:

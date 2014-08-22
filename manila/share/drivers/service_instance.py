@@ -172,7 +172,7 @@ class ServiceInstanceManager(object):
                                                        'networks.'))
         elif not networks:
             return self.neutron_api.network_create(self.service_tenant_id,
-                                              service_network_name)['id']
+                                                   service_network_name)['id']
         else:
             return networks[0]['id']
 
@@ -231,7 +231,8 @@ class ServiceInstanceManager(object):
             sg = self.compute_api.security_group_create(
                 context, name, description)
             for protocol, ports in constants.SERVICE_INSTANCE_SECGROUP_DATA:
-                self.compute_api.security_group_rule_create(context,
+                self.compute_api.security_group_rule_create(
+                    context,
                     parent_group_id=sg.id,
                     ip_protocol=protocol,
                     from_port=ports[0],
@@ -270,8 +271,9 @@ class ServiceInstanceManager(object):
                 break
             time.sleep(1)
         else:
-            raise exception.ServiceInstanceException(_('Instance have not '
-                'been deleted in %ss. Giving up.') %
+            raise exception.ServiceInstanceException(
+                _('Instance have not '
+                  'been deleted in %ss. Giving up.') %
                 self.max_time_to_build_instance)
 
     def set_up_service_instance(self, context, instance_name, neutron_net_id,
@@ -286,9 +288,9 @@ class ServiceInstanceManager(object):
         :raises: exception.ServiceInstanceException
         """
         server = self._create_service_instance(context,
-                                             instance_name,
-                                             neutron_net_id,
-                                             neutron_subnet_id)
+                                               instance_name,
+                                               neutron_net_id,
+                                               neutron_subnet_id)
 
         return {'instance_id': server['id'],
                 'ip': server['ip'],
@@ -312,7 +314,7 @@ class ServiceInstanceManager(object):
         path_to_public_key = os.path.expanduser(self.path_to_public_key)
         path_to_private_key = os.path.expanduser(self.path_to_private_key)
         if (not os.path.exists(path_to_public_key) or
-                                    not os.path.exists(path_to_private_key)):
+                not os.path.exists(path_to_private_key)):
             return
         keypair_name = self.get_config_option("manila_service_keypair_name")
         keypairs = [k for k in self.compute_api.keypair_list(context)
@@ -348,7 +350,7 @@ class ServiceInstanceManager(object):
                                                        'image was found.'))
         else:
             raise exception.ServiceInstanceException(
-                                    _('Ambiguous image name.'))
+                _('Ambiguous image name.'))
 
     def _create_service_instance(self, context, instance_name, neutron_net_id,
                                  neutron_subnet_id):
@@ -359,8 +361,9 @@ class ServiceInstanceManager(object):
             key_name, key_path = self._get_key(context)
             if not (self.get_config_option("service_instance_password") or
                     key_name):
-                raise exception.ServiceInstanceException(_('Neither service '
-                    'instance password nor key are available.'))
+                raise exception.ServiceInstanceException(
+                    _('Neither service '
+                      'instance password nor key are available.'))
 
             security_group = self._get_or_create_security_group(context)
             subnet_id, router_id, port_id = \
@@ -373,7 +376,8 @@ class ServiceInstanceManager(object):
                 self.neutron_api.delete_port(port_id)
                 raise
 
-        service_instance = self.compute_api.server_create(context,
+        service_instance = self.compute_api.server_create(
+            context,
             name=instance_name,
             image=service_image_id,
             flavor=self.get_config_option("service_instance_flavor_id"),
@@ -386,23 +390,25 @@ class ServiceInstanceManager(object):
                 break
             if service_instance['status'] == 'ERROR':
                 raise exception.ServiceInstanceException(
-                        _('Failed to build service instance.'))
+                    _('Failed to build service instance.'))
             time.sleep(1)
             try:
-                service_instance = self.compute_api.server_get(context,
-                                                        service_instance['id'])
+                service_instance = self.compute_api.server_get(
+                    context,
+                    service_instance['id'])
             except exception.InstanceNotFound as e:
                 LOG.debug(e)
         else:
             raise exception.ServiceInstanceException(
-                    _('Instance have not been spawned in %ss. Giving up.') %
-                    self.max_time_to_build_instance)
+                _('Instance have not been spawned in %ss. Giving up.') %
+                self.max_time_to_build_instance)
 
         if security_group:
             LOG.debug("Adding security group "
                       "'%s' to server '%s'." % (security_group.id,
                                                 service_instance["id"]))
-            self.compute_api.add_security_group_to_server(context,
+            self.compute_api.add_security_group_to_server(
+                context,
                 service_instance["id"], security_group.id)
 
         service_instance['ip'] = self._get_server_ip(service_instance)
@@ -459,8 +465,8 @@ class ServiceInstanceManager(object):
                 raise
             LOG.debug('Subnet %(subnet_id)s is already attached to the '
                       'router %(router_id)s.' %
-                                  {'subnet_id': service_subnet['id'],
-                                   'router_id': private_router['id']})
+                      {'subnet_id': service_subnet['id'],
+                       'router_id': private_router['id']})
 
         port = self.neutron_api.create_port(self.service_tenant_id,
                                             self.service_network_id,
@@ -475,20 +481,20 @@ class ServiceInstanceManager(object):
         private_subnet = self.neutron_api.get_subnet(neutron_subnet_id)
         if not private_subnet['gateway_ip']:
             raise exception.ServiceInstanceException(
-                    _('Subnet must have gateway.'))
+                _('Subnet must have gateway.'))
         private_network_ports = [p for p in self.neutron_api.list_ports(
                                  network_id=neutron_net_id)]
         for p in private_network_ports:
             fixed_ip = p['fixed_ips'][0]
             if (fixed_ip['subnet_id'] == private_subnet['id'] and
-                     fixed_ip['ip_address'] == private_subnet['gateway_ip']):
+                    fixed_ip['ip_address'] == private_subnet['gateway_ip']):
                 private_subnet_gateway_port = p
                 break
         else:
             raise exception.ServiceInstanceException(
-                    _('Subnet gateway is not attached the router.'))
+                _('Subnet gateway is not attached the router.'))
         private_subnet_router = self.neutron_api.show_router(
-                                  private_subnet_gateway_port['device_id'])
+            private_subnet_gateway_port['device_id'])
         return private_subnet_router
 
     def _setup_connectivity_with_service_instances(self):
@@ -548,7 +554,7 @@ class ServiceInstanceManager(object):
                  list_ports(device_id='manila-share')]
         if len(ports) > 1:
             raise exception.ServiceInstanceException(
-                    _('Error. Ambiguous service ports.'))
+                _('Error. Ambiguous service ports.'))
         elif not ports:
             try:
                 stdout, stderr = self._execute('hostname')
@@ -556,11 +562,12 @@ class ServiceInstanceManager(object):
             except exception.ProcessExecutionError as e:
                 msg = _('Unable to get host. %s') % e.stderr
                 raise exception.ManilaException(msg)
-            port = self.neutron_api.create_port(self.service_tenant_id,
-                                       self.service_network_id,
-                                       device_id='manila-share',
-                                       device_owner='manila:share',
-                                       host_id=host)
+            port = self.neutron_api.create_port(
+                self.service_tenant_id,
+                self.service_network_id,
+                device_id='manila-share',
+                device_owner='manila:share',
+                host_id=host)
         else:
             port = ports[0]
         return port
@@ -582,7 +589,7 @@ class ServiceInstanceManager(object):
         if subnets:
             port_fixed_ips.extend([dict(subnet_id=s) for s in subnets])
             port = self.neutron_api.update_port_fixed_ips(
-                   port['id'], {'fixed_ips': port_fixed_ips})
+                port['id'], {'fixed_ips': port_fixed_ips})
 
         return port
 
@@ -616,8 +623,8 @@ class ServiceInstanceManager(object):
                     raise
                 LOG.debug('Subnet %(subnet_id)s is not attached to the '
                           'router %(router_id)s.' %
-                                      {'subnet_id': subnet_id,
-                                       'router_id': router_id})
+                          {'subnet_id': subnet_id,
+                           'router_id': router_id})
             self.neutron_api.update_subnet(subnet_id, '')
 
     @lockutils.synchronized("_get_all_service_subnets", external=True,

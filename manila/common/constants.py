@@ -43,7 +43,5 @@ PING_PORTS = (
     ("icmp", (-1, -1)),
 )
 
-SERVICE_INSTANCE_SECGROUP_DATA = CIFS_PORTS + \
-                                 NFS_PORTS + \
-                                 SSH_PORTS + \
-                                 PING_PORTS
+SERVICE_INSTANCE_SECGROUP_DATA = (
+    CIFS_PORTS + NFS_PORTS + SSH_PORTS + PING_PORTS)

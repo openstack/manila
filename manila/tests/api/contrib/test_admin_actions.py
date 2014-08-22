@@ -74,7 +74,7 @@ class AdminActionsTest(test.TestCase):
     def test_reset_status_as_non_admin(self):
         # current status is 'error'
         share = db.share_create(context.get_admin_context(),
-                                  {'status': 'error'})
+                                {'status': 'error'})
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -147,7 +147,10 @@ class AdminActionsTest(test.TestCase):
         # snapshot in 'error_deleting'
         share = db.share_create(self.admin_context, {})
         snapshot = db.share_snapshot_create(self.admin_context,
-            {'status': 'error_deleting', 'share_id': share['id']})
+                                            {
+                                                'status': 'error_deleting',
+                                                'share_id': share['id']
+                                            })
         req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
                                   snapshot['id'])
         req.method = 'POST'
@@ -167,7 +170,10 @@ class AdminActionsTest(test.TestCase):
         # snapshot in 'available'
         share = db.share_create(self.admin_context, {})
         snapshot = db.share_snapshot_create(self.admin_context,
-            {'status': 'available', 'share_id': share['id']})
+                                            {
+                                                'status': 'available',
+                                                'share_id': share['id']
+                                            })
         req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
                                   snapshot['id'])
         req.method = 'POST'
