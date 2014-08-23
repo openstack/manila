@@ -15,7 +15,7 @@
 #    under the License.
 
 
-from datetime import datetime
+import datetime
 
 from manila.api.contrib import services
 from manila import context
@@ -34,8 +34,8 @@ fake_services_list = [
         'availability_zone': 'manila1',
         'id': 1,
         'disabled': True,
-        'updated_at': datetime(2012, 10, 29, 13, 42, 2),
-        'created_at': datetime(2012, 9, 18, 2, 46, 27),
+        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
+        'created_at': datetime.datetime(2012, 9, 18, 2, 46, 27),
     },
     {
         'binary': 'manila-share',
@@ -43,24 +43,24 @@ fake_services_list = [
         'availability_zone': 'manila1',
         'id': 2,
         'disabled': True,
-        'updated_at': datetime(2012, 10, 29, 13, 42, 5),
-        'created_at': datetime(2012, 9, 18, 2, 46, 27)},
+        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
+        'created_at': datetime.datetime(2012, 9, 18, 2, 46, 27)},
     {
         'binary': 'manila-scheduler',
         'host': 'host2',
         'availability_zone': 'manila2',
         'id': 3,
         'disabled': False,
-        'updated_at': datetime(2012, 9, 19, 6, 55, 34),
-        'created_at': datetime(2012, 9, 18, 2, 46, 28)},
+        'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
+        'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28)},
     {
         'binary': 'manila-share',
         'host': 'host2',
         'availability_zone': 'manila2',
         'id': 4,
         'disabled': True,
-        'updated_at': datetime(2012, 9, 18, 8, 3, 38),
-        'created_at': datetime(2012, 9, 18, 2, 46, 28),
+        'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
+        'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28),
     },
 ]
 
@@ -71,7 +71,7 @@ fake_response_service_list = {'services': [
         'host': 'host1',
         'zone': 'manila1',
         'status': 'disabled', 'state': 'up',
-        'updated_at': datetime(2012, 10, 29, 13, 42, 2),
+        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
     },
     {
         'binary': 'manila-share',
@@ -79,7 +79,7 @@ fake_response_service_list = {'services': [
         'zone': 'manila1',
         'status': 'disabled',
         'state': 'up',
-        'updated_at': datetime(2012, 10, 29, 13, 42, 5),
+        'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
     },
     {
         'binary': 'manila-scheduler',
@@ -87,7 +87,7 @@ fake_response_service_list = {'services': [
         'zone': 'manila2',
         'status': 'enabled',
         'state': 'down',
-        'updated_at': datetime(2012, 9, 19, 6, 55, 34),
+        'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
     },
     {
         'binary': 'manila-share',
@@ -95,7 +95,7 @@ fake_response_service_list = {'services': [
         'zone': 'manila2',
         'status': 'disabled',
         'state': 'down',
-        'updated_at': datetime(2012, 9, 18, 8, 3, 38),
+        'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),
     },
 ]}
 
@@ -167,7 +167,7 @@ def fake_policy_enforce(context, action, target):
 
 
 def fake_utcnow():
-    return datetime(2012, 10, 29, 13, 42, 11)
+    return datetime.datetime(2012, 10, 29, 13, 42, 11)
 
 
 class ServicesTest(test.TestCase):

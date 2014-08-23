@@ -25,7 +25,6 @@ from manila.api import xmlutil
 from manila import db
 from manila.db.sqlalchemy import api as sqlalchemy_api
 from manila import exception
-from manila.openstack.common.gettextutils import _
 from manila.openstack.common import log as logging
 from manila.openstack.common import strutils
 from manila import quota
@@ -103,8 +102,8 @@ class QuotaSetsController(object):
             user_id = params.get('user_id', [None])[0]
         try:
             sqlalchemy_api.authorize_project_context(context, id)
-            return self._format_quota_set(id,
-                    self._get_quotas(context, id, user_id=user_id))
+            return self._format_quota_set(
+                id, self._get_quotas(context, id, user_id=user_id))
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
@@ -193,8 +192,8 @@ class QuotaSetsController(object):
                                'value': value})
                     if quota_used > value:
                         msg = (_("Quota value %(value)s for %(key)s are "
-                               "greater than already used and reserved "
-                               "%(quota_used)s") %
+                                 "greater than already used and reserved "
+                                 "%(quota_used)s") %
                                {'value': value, 'key': key,
                                 'quota_used': quota_used})
                         raise webob.exc.HTTPBadRequest(explanation=msg)

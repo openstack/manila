@@ -27,7 +27,7 @@ TODO(rraja): support SMB protocol.
 
 import errno
 import os
-from pipes import quote as shellquote
+import pipes
 import re
 import xml.etree.cElementTree as etree
 
@@ -78,7 +78,7 @@ class GlusterAddress(object):
         kw = {}
         if self.remote_user:
             args = ('ssh', '@'.join([self.remote_user, self.host]),
-                    ' '.join(shellquote(a) for a in args))
+                    ' '.join(pipes.quote(a) for a in args))
         else:
             kw['run_as_root'] = True
         return args, kw

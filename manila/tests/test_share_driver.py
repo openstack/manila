@@ -18,7 +18,7 @@
 import time
 
 from manila import exception
-from manila.share.configuration import Configuration
+import manila.share.configuration
 from manila.share import driver
 from manila import test
 from manila import utils
@@ -44,6 +44,7 @@ class ShareDriverTestCase(test.TestCase):
         super(ShareDriverTestCase, self).tearDown()
 
     def test__try_execute(self):
-        execute_mixin = driver.ExecuteMixin(configuration=Configuration(None))
+        execute_mixin = driver.ExecuteMixin(
+            configuration=manila.share.configuration.Configuration(None))
         self.assertRaises(exception.ProcessExecutionError,
                           execute_mixin._try_execute)

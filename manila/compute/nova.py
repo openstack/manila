@@ -239,12 +239,12 @@ class API(base.Base):
 
     @translate_server_exception
     def instance_volumes_list(self, context, instance_id):
-        from manila.volume.cinder import cinderclient
+        from manila.volume import cinder
 
         volumes = novaclient(context).volumes.get_server_volumes(instance_id)
 
         for volume in volumes:
-            volume_data = cinderclient(context).volumes.get(volume.id)
+            volume_data = cinder.cinderclient(context).volumes.get(volume.id)
             volume.name = volume_data.display_name
 
         return volumes

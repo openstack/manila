@@ -29,7 +29,6 @@ from oslo.config import cfg
 
 from manila.db import base
 from manila import exception
-from manila.openstack.common.gettextutils import _
 from manila.openstack.common import log as logging
 
 

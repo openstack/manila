@@ -20,8 +20,8 @@ import mock
 from oslo.config import cfg
 
 from manila import context
-from manila.openstack.common.scheduler.weights import HostWeightHandler
-from manila.scheduler.weights.capacity import CapacityWeigher
+from manila.openstack.common.scheduler import weights
+from manila.scheduler.weights import capacity
 from manila import test
 from manila.tests.scheduler import fakes
 
@@ -32,14 +32,16 @@ class CapacityWeigherTestCase(test.TestCase):
     def setUp(self):
         super(CapacityWeigherTestCase, self).setUp()
         self.host_manager = fakes.FakeHostManager()
-        self.weight_handler = HostWeightHandler('manila.scheduler.weights')
+        self.weight_handler = weights.HostWeightHandler(
+            'manila.scheduler.weights')
 
     def _get_weighed_host(self, hosts, weight_properties=None):
         if weight_properties is None:
             weight_properties = {}
-        return self.weight_handler.get_weighed_objects([CapacityWeigher],
-                                                       hosts,
-                                                       weight_properties)[0]
+        return self.weight_handler.get_weighed_objects(
+            [capacity.CapacityWeigher],
+            hosts,
+            weight_properties)[0]
 
     @mock.patch('manila.db.sqlalchemy.api.service_get_all_by_topic')
     def _get_all_hosts(self, _mock_service_get_all_by_topic, disabled=False):
