@@ -1103,8 +1103,8 @@ class NetAppClusteredCIFSHelper(NetAppNASHelperBase):
 
     def allow_access(self, context, share, access):
         """Allows access to the CIFS share for a given user."""
-        if access['access_type'] != 'sid':
-            msg = _("Cluster Mode supports only 'sid' type for share access"
+        if access['access_type'] != 'user':
+            msg = _("Cluster Mode supports only 'user' type for share access"
                     " rules with CIFS protocol.")
             raise exception.NetAppException(msg)
         target, share_name = self._get_export_location(share)
