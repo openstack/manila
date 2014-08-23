@@ -366,7 +366,7 @@ class ShareApiTest(test.TestCase):
             use_admin_context=False,
         )
         self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
-        res_dict = self.controller.index(req)
+        self.controller.index(req)
         share_api.API.get_all.assert_called_once_with(
             req.environ['manila.context'],
             search_opts={
@@ -388,7 +388,7 @@ class ShareApiTest(test.TestCase):
             use_admin_context=True,
         )
         self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
-        res_dict = self.controller.index(req)
+        self.controller.index(req)
         share_api.API.get_all.assert_called_once_with(
             req.environ['manila.context'],
             search_opts={
@@ -436,7 +436,7 @@ class ShareApiTest(test.TestCase):
             use_admin_context=False,
         )
         self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
-        res_dict = self.controller.detail(req)
+        self.controller.detail(req)
         share_api.API.get_all.assert_called_once_with(
             req.environ['manila.context'],
             search_opts={
@@ -458,7 +458,7 @@ class ShareApiTest(test.TestCase):
             use_admin_context=True,
         )
         self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
-        res_dict = self.controller.detail(req)
+        self.controller.detail(req)
         share_api.API.get_all.assert_called_once_with(
             req.environ['manila.context'],
             search_opts={

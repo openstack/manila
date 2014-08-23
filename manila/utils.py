@@ -166,11 +166,11 @@ class SSHPool(pools.Pool):
             raise paramiko.SSHException(msg)
 
     def get(self):
-        """
-        Return an item from the pool, when one is available.  This may
-        cause the calling greenthread to block. Check if a connection is active
-        before returning it. For dead connections create and return a new
-        connection.
+        """Return an item from the pool, when one is available.
+
+        This may cause the calling greenthread to block. Check if a
+        connection is active before returning it. For dead connections
+        create and return a new connection.
         """
         if self.free_items:
             conn = self.free_items.popleft()
@@ -448,7 +448,7 @@ def safe_minidom_parse_string(xml_string):
     """
     try:
         return minidom.parseString(xml_string, parser=ProtectedExpatParser())
-    except sax.SAXParseException as se:
+    except sax.SAXParseException:
         raise expat.ExpatError()
 
 
@@ -876,12 +876,12 @@ def ensure_tree(path):
 
 
 def to_bytes(text, default=0):
-    """Try to turn a string into a number of bytes. Looks at the last
-    characters of the text to determine what conversion is needed to
-    turn the input text into a byte number.
+    """Try to turn a string into a number of bytes.
 
-    Supports: B/b, K/k, M/m, G/g, T/t (or the same with b/B on the end)
+    Looks at the last characters of the text to determine what
+    conversion is needed to turn the input text into a byte number.
 
+    Supports: B/b, K/k, M/m, G/g, T/t (or the same with b/B on the end).
     """
     BYTE_MULTIPLIERS = {
         '': 1,

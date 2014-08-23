@@ -242,8 +242,6 @@ class ExceptionTest(test.TestCase):
         class ExceptionWithNoneCode(Exception):
             code = None
 
-        msg = 'Internal Server Error'
-
         @webob.dec.wsgify
         def fail(req):
             raise ExceptionWithNoneCode()

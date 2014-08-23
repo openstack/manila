@@ -254,7 +254,7 @@ class ShareServerAPITest(test.TestCase):
                        mock.Mock(return_value=share_server))
         self.stubs.Set(self.controller.share_api, 'delete_share_server',
                        mock.Mock())
-        result = self.controller.delete(
+        self.controller.delete(
             FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
         policy.check_policy.assert_called_once_with(
@@ -270,7 +270,7 @@ class ShareServerAPITest(test.TestCase):
                        mock.Mock(return_value=share_server))
         self.stubs.Set(self.controller.share_api, 'delete_share_server',
                        mock.Mock())
-        result = self.controller.delete(
+        self.controller.delete(
             FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
         policy.check_policy.assert_called_once_with(
@@ -307,7 +307,6 @@ class ShareServerAPITest(test.TestCase):
             raise exception.ShareServerNotFound(
                 share_server_id=share_server_id)
 
-        share_server = fake_share_server_get()
         self.stubs.Set(db_api, 'share_server_get',
                        mock.Mock(side_effect=raise_not_found))
         self.assertRaises(exc.HTTPNotFound,

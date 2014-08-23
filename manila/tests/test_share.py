@@ -184,7 +184,7 @@ class ShareTestCase(test.TestCase):
 
         another_share = self._create_share(status='error')
 
-        access = self._create_access(share_id=share_id, state='active')
+        self._create_access(share_id=share_id, state='active')
 
         context.get_admin_context = mock.Mock(return_value=self.context)
         db.share_get_all_by_host = mock.Mock(

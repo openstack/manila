@@ -635,7 +635,7 @@ class CIFSHelper(NASHelperBase):
             # Share does not exist, create it
             try:
                 self._ssh_exec(server, create_cmd)
-            except Exception as e:
+            except Exception:
                 # If we get here, then it will be useful
                 # to log parent exception too.
                 with excutils.save_and_reraise_exception():

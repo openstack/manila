@@ -23,7 +23,6 @@ from manila.api import xmlutil
 from manila import db
 from manila import exception
 from manila.openstack.common import log as logging
-from manila.openstack.common import timeutils
 from manila import utils
 
 
@@ -62,7 +61,6 @@ class ServiceController(object):
         """Return a list of all running services."""
         context = req.environ['manila.context']
         authorize(context)
-        now = timeutils.utcnow()
         all_services = db.service_get_all(context)
 
         services = []

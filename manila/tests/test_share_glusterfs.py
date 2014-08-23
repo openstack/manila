@@ -230,7 +230,6 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_ensure_gluster_vol_mounted(self):
-        mount_path = 'mnt/nfs/testvol'
         self._driver._mount_gluster_vol = Mock()
         self._driver._ensure_gluster_vol_mounted()
         self.assertTrue(self._driver._mount_gluster_vol.called)
@@ -373,7 +372,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             else Mock(st_dev=not_some_no)
         with patch.object(os, 'statvfs', return_value=test_statvfs):
             with patch.object(os, 'stat', os_stat):
-                ret = self._driver._update_share_stats()
+                self._driver._update_share_stats()
                 self.assertEqual(self._driver._stats, test_data)
 
     def test_update_share_stats_gluster_mnt_unavailable(self):

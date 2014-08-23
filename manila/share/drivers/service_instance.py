@@ -265,7 +265,7 @@ class ServiceInstanceManager(object):
         t = time.time()
         while time.time() - t < self.max_time_to_build_instance:
             try:
-                server = self.compute_api.server_get(context, server_id)
+                self.compute_api.server_get(context, server_id)
             except exception.InstanceNotFound:
                 LOG.debug('Service instance was deleted succesfully.')
                 break

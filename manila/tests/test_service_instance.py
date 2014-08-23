@@ -286,7 +286,6 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_ensure_server_not_exists(self):
         server_details = {'instance_id': 'fake_inst_id',
                           'ip': '1.2.3.4'}
-        fake_server = fake_compute.FakeServer()
         self.stubs.Set(self._manager, '_check_server_availability',
                        mock.Mock(return_value=True))
         self.stubs.Set(self._manager.compute_api, 'server_get',
