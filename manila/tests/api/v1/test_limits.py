@@ -67,9 +67,7 @@ class BaseLimitTestSuite(test.TestCase):
 
 
 class LimitsControllerTest(BaseLimitTestSuite):
-    """
-    Tests for `limits.LimitsController` class.
-    """
+    """Tests for `limits.LimitsController` class."""
 
     def setUp(self):
         """Run before each test."""
@@ -236,9 +234,7 @@ class TestLimiter(limits.Limiter):
 
 
 class LimitMiddlewareTest(BaseLimitTestSuite):
-    """
-    Tests for the `limits.RateLimitingMiddleware` class.
-    """
+    """Tests for the `limits.RateLimitingMiddleware` class."""
 
     @webob.dec.wsgify
     def _empty_app(self, request):
@@ -304,9 +300,7 @@ class LimitMiddlewareTest(BaseLimitTestSuite):
 
 
 class LimitTest(BaseLimitTestSuite):
-    """
-    Tests for the `limits.Limit` class.
-    """
+    """Tests for the `limits.Limit` class."""
 
     def test_GET_no_delay(self):
         """Test a limit handles 1 GET per second."""
@@ -402,9 +396,7 @@ class ParseLimitsTest(BaseLimitTestSuite):
 
 
 class LimiterTest(BaseLimitTestSuite):
-    """
-    Tests for the in-memory `limits.Limiter` class.
-    """
+    """Tests for the in-memory `limits.Limiter` class."""
 
     def setUp(self):
         """Run before each test."""
@@ -461,9 +453,7 @@ class LimiterTest(BaseLimitTestSuite):
         self.failUnlessAlmostEqual(expected, results, 8)
 
     def test_delay_GET(self):
-        """
-        Ensure the 11th GET will result in NO delay.
-        """
+        """Ensure the 11th GET will result in NO delay."""
         expected = [None] * 11
         results = list(self._check(11, "GET", "/anything"))
 
@@ -502,9 +492,7 @@ class LimiterTest(BaseLimitTestSuite):
         self.assertEqual(expected, results)
 
     def test_multiple_delays(self):
-        """
-        Ensure multiple requests still get a delay.
-        """
+        """Ensure multiple requests still get a delay."""
         expected = [None] * 10 + [6.0] * 10
         results = list(self._check(20, "PUT", "/anything"))
         self.assertEqual(expected, results)
@@ -516,15 +504,11 @@ class LimiterTest(BaseLimitTestSuite):
         self.assertEqual(expected, results)
 
     def test_user_limit(self):
-        """
-        Test user-specific limits.
-        """
+        """Test user-specific limits."""
         self.assertEqual(self.limiter.levels['user3'], [])
 
     def test_multiple_users(self):
-        """
-        Tests involving multiple users.
-        """
+        """Tests involving multiple users."""
         # User1
         expected = [None] * 10 + [6.0] * 10
         results = list(self._check(20, "PUT", "/anything", "user1"))
@@ -556,9 +540,7 @@ class LimiterTest(BaseLimitTestSuite):
 
 
 class WsgiLimiterTest(BaseLimitTestSuite):
-    """
-    Tests for `limits.WsgiLimiter` class.
-    """
+    """Tests for `limits.WsgiLimiter` class."""
 
     def setUp(self):
         """Run before each test."""
@@ -591,7 +573,6 @@ class WsgiLimiterTest(BaseLimitTestSuite):
 
     def test_invalid_methods(self):
         """Only POSTs should work."""
-        requests = []
         for method in ["GET", "PUT", "DELETE", "HEAD", "OPTIONS"]:
             request = webob.Request.blank("/", method=method)
             response = request.get_response(self.app)
@@ -627,9 +608,7 @@ class WsgiLimiterTest(BaseLimitTestSuite):
 
 
 class FakeHttplibSocket(object):
-    """
-    Fake `httplib.HTTPResponse` replacement.
-    """
+    """Fake `httplib.HTTPResponse` replacement."""
 
     def __init__(self, response_string):
         """Initialize new `FakeHttplibSocket`."""
@@ -641,14 +620,10 @@ class FakeHttplibSocket(object):
 
 
 class FakeHttplibConnection(object):
-    """
-    Fake `httplib.HTTPConnection`.
-    """
+    """Fake `httplib.HTTPConnection`."""
 
     def __init__(self, app, host):
-        """
-        Initialize `FakeHttplibConnection`.
-        """
+        """Initialize `FakeHttplibConnection`."""
         self.app = app
         self.host = host
 
@@ -698,8 +673,11 @@ def wire_HTTPConnection_to_WSGI(host, app):
     can restore the default HTTPConnection interface (for all hosts).
     """
     class HTTPConnectionDecorator(object):
-        """Wraps the real HTTPConnection class so that when you instantiate
-        the class you might instead get a fake instance.
+        """Wrapper for HTTPConnection class
+
+        Wraps the real HTTPConnection class so that when you
+        instantiate the class you might instead get a fake instance.
+
         """
 
         def __init__(self, wrapped):
@@ -717,12 +695,11 @@ def wire_HTTPConnection_to_WSGI(host, app):
 
 
 class WsgiLimiterProxyTest(BaseLimitTestSuite):
-    """
-    Tests for the `limits.WsgiLimiterProxy` class.
-    """
+    """Tests for the `limits.WsgiLimiterProxy` class."""
 
     def setUp(self):
-        """
+        """Set up HTTP/WSGI magic.
+
         Do some nifty HTTP/WSGI magic which allows for WSGI to be called
         directly by something like the `httplib` library.
         """

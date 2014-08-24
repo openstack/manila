@@ -245,7 +245,6 @@ class GenericShareDriverTestCase(test.TestCase):
                                               self.share['name']))
 
     def test_attach_volume_not_attached(self):
-        fake_server = fake_compute.FakeServer()
         availiable_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
         self.stubs.Set(self._driver.compute_api, 'instance_volume_attach',
@@ -359,7 +358,6 @@ class GenericShareDriverTestCase(test.TestCase):
                           self.share['id'])
 
     def test_detach_volume(self):
-        fake_server = fake_compute.FakeServer()
         availiable_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
         self.stubs.Set(self._driver, '_get_volume',
@@ -383,7 +381,6 @@ class GenericShareDriverTestCase(test.TestCase):
             self._context, availiable_volume['id'])
 
     def test_detach_volume_detached(self):
-        fake_server = fake_compute.FakeServer()
         availiable_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
         self.stubs.Set(self._driver, '_get_volume',

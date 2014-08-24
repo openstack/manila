@@ -95,8 +95,6 @@ class ShareRpcAPITestCase(test.TestCase):
         self.fake_args = None
         self.fake_kwargs = None
 
-        real_prepare = self.rpcapi.client.prepare
-
         def _fake_prepare_method(*args, **kwds):
             for kwd in kwds:
                 self.assertEqual(kwds[kwd], target[kwd])
