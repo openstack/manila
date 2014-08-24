@@ -162,8 +162,10 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         except naapi.NaApiError as e:
             LOG.error(_("Could not get licenses list. %s.") % e)
         else:
-            self._licenses = [l.get_child_content('package').lower()
-                for l in licenses.get_child_by_name('licenses').get_children()]
+            self._licenses = [
+                l.get_child_content('package').lower()
+                for l in licenses.get_child_by_name('licenses').get_children()
+            ]
             log_data = {
                 'backend': self.backend_name,
                 'licenses': ', '.join(self._licenses),

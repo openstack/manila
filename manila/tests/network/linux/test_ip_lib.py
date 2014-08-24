@@ -201,7 +201,7 @@ class TestIpWrapper(test.TestCase):
         ip_lib.IPWrapper().add_veth('tap0', 'tap1')
         self.execute.assert_called_once_with('', 'link',
                                              ('add', 'tap0', 'type', 'veth',
-                                             'peer', 'name', 'tap1'),
+                                              'peer', 'name', 'tap1'),
                                              None, as_root=True)
 
     def test_add_veth_with_namespaces(self):

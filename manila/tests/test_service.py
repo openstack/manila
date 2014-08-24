@@ -162,7 +162,7 @@ class ServiceTestCase(test.TestCase):
                        mock.Mock(return_value=service_ref))
     @mock.patch.object(service.db, 'service_update',
                        mock.Mock(return_value=service_ref.
-                           update({'report_count': 1})))
+                                 update({'report_count': 1})))
     def test_report_state_newly_connected(self):
         serv = service.Service(host, binary, topic, CONF.fake_manager)
         serv.start()

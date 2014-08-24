@@ -148,7 +148,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         retry = dict(num_attempts=2)
         filter_properties = dict(retry=retry)
         self.assertRaises(exception.NoValidHost, sched._schedule_share,
-            self.context, request_spec, filter_properties=filter_properties)
+                          self.context, request_spec,
+                          filter_properties=filter_properties)
 
     def test_add_retry_host(self):
         retry = dict(num_attempts=1, hosts=[])

@@ -33,7 +33,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         super(ShareServersAdminTest, cls).setUpClass()
         if not CONF.share.multitenancy_enabled:
             msg = ("Share servers can be tested only with multitenant drivers."
-                  " Skipping.")
+                   " Skipping.")
             raise cls.skipException(msg)
         __, cls.share = cls.create_share()
         __, cls.share_network = cls.shares_client.get_share_network(
@@ -93,7 +93,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             if server["share_network_name"] in self.sn_name_and_id:
                 if not server["host"]:
                     msg = ("Server '%s' has wrong value for host - "
-                          "'%s'.") % (server["id"], server["host"])
+                           "'%s'.") % (server["id"], server["host"])
                     raise exceptions.InvalidContentType(message=msg)
                 host = server["host"]
                 break
@@ -119,7 +119,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             if server["share_network_name"] in self.sn_name_and_id:
                 if not server["status"]:
                     msg = ("Server '%s' has wrong value for status - "
-                          "'%s'.") % (server["id"], server["host"])
+                           "'%s'.") % (server["id"], server["host"])
                     raise exceptions.InvalidContentType(message=msg)
                 status = server["status"]
                 break

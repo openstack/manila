@@ -37,47 +37,54 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_extra_specs_with_user(self):
         vt = self._create_volume_type()
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(
+            exceptions.Unauthorized,
             self.member_shares_client.create_volume_type_extra_specs,
             vt["id"], {"key": "new_value"})
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_list_extra_specs_with_user(self):
         vt = self._create_volume_type()
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(
+            exceptions.Unauthorized,
             self.member_shares_client.list_volume_types_extra_specs, vt["id"])
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_spec_with_user(self):
         vt = self._create_volume_type()
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(
+            exceptions.Unauthorized,
             self.member_shares_client.get_volume_type_extra_spec,
             vt["id"], "key")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_specs_with_user(self):
         vt = self._create_volume_type()
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(
+            exceptions.Unauthorized,
             self.member_shares_client.get_volume_type_extra_specs, vt["id"])
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_extra_spec_with_user(self):
         vt = self._create_volume_type()
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(
+            exceptions.Unauthorized,
             self.member_shares_client.update_volume_type_extra_spec,
             vt["id"], "key", "new_value")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_extra_specs_with_user(self):
         vt = self._create_volume_type()
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(
+            exceptions.Unauthorized,
             self.member_shares_client.update_volume_type_extra_specs,
             vt["id"], {"key": "new_value"})
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_delete_extra_specs_with_user(self):
         vt = self._create_volume_type()
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(
+            exceptions.Unauthorized,
             self.member_shares_client.delete_volume_type_extra_spec,
             vt["id"], "key")
 

@@ -31,17 +31,19 @@ class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_try_list_share_servers_with_member(self):
         self.assertRaises(exceptions.Unauthorized,
-            self.member_shares_client.list_share_servers)
+                          self.member_shares_client.list_share_servers)
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_try_show_share_server_with_member(self):
         self.assertRaises(exceptions.Unauthorized,
-            self.member_shares_client.show_share_server, 'fake_id')
+                          self.member_shares_client.show_share_server,
+                          'fake_id')
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_try_show_share_server_details_with_member(self):
         self.assertRaises(exceptions.Unauthorized,
-            self.member_shares_client.show_share_server_details, 'fake_id')
+                          self.member_shares_client.show_share_server_details,
+                          'fake_id')
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_show_share_server_with_inexistent_id(self):
