@@ -95,6 +95,7 @@ def args(*args, **kwargs):
 
 def param2id(object_id):
     """Helper function to convert various id types to internal id.
+
     args: [object_id], e.g. 'vol-0000000a' or 'volume-0000000a' or '10'
     """
     if uuidutils.is_uuid_like(object_id):
@@ -169,6 +170,7 @@ class ShellCommands(object):
     @args('--path', required=True, help='Script path')
     def script(self, path):
         """Runs the script from the specifed path with flags set properly.
+
         arguments: path
         """
         exec(compile(open(path).read(), path, 'exec'), locals(), globals())
@@ -189,6 +191,7 @@ class HostCommands(object):
           help='Availability Zone (default: %(default)s)')
     def list(self, zone=None):
         """Show a list of all physical hosts. Filter by zone.
+
         args: [zone]
         """
         print("%-25s\t%-15s" % (_('host'), _('zone')))
@@ -354,8 +357,9 @@ CATEGORIES = {
 
 
 def methods_of(obj):
-    """Get all callable methods of an object that don't start with underscore
-    returns a list of tuples of the form (method_name, method)
+    """Get all callable methods of an object that don't start with underscore.
+
+    Returns a list of tuples of the form (method_name, method).
     """
     result = []
     for i in dir(obj):

@@ -358,8 +358,8 @@ class SharesClient(rest_client.RestClient):
         return resp, self._parse_resp(body)
 
     def reset_state(self, s_id, status="error", s_type="shares"):
-        """
-        Resets the state of a share or a snapshot
+        """Resets the state of a share or a snapshot.
+
         status: available, error, creating, deleting, error_deleting
         s_type: shares, snapshots
         """
@@ -368,8 +368,8 @@ class SharesClient(rest_client.RestClient):
         return self.post("%s/%s/action" % (s_type, s_id), body)
 
     def force_delete(self, s_id, s_type="shares"):
-        """
-        Force delete share or snapshot
+        """Force delete share or snapshot.
+
         s_type: shares, snapshots
         """
         body = {"os-force_delete": None}

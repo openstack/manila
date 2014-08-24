@@ -84,8 +84,7 @@ def check_is_admin(roles):
 
 
 def wrap_check_policy(resource):
-    """Check policy corresponding to the wrapped methods prior to execution.
-    """
+    """Check policy corresponding to the wrapped methods prior to execution."""
     def check_policy_wraper(func):
         @functools.wraps(func)
         def wrapped(self, context, target_obj, *args, **kwargs):

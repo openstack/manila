@@ -141,9 +141,10 @@ class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin):
             raise
 
     def test_walk_versions(self):
-        """
-        Walks all version scripts for each tested database, ensuring
-        that there are no errors in the version scripts for each engine
+        """Walks all version scripts for each tested database.
+
+        While walking, ensur that there are no errors in the version
+        scripts for each engine.
         """
         with mock.patch('manila.db.sqlalchemy.api.get_engine',
                         return_value=self.engine):

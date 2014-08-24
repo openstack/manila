@@ -34,9 +34,10 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
         self.neutron_api = neutron_api.API()
 
     def allocate_network(self, context, share_server, share_network, **kwargs):
-        """Allocate network resources using given network information: create
-        neutron ports for a given neutron network and subnet, create manila db
-        records for allocated neutron ports.
+        """Allocate network resources using given network information.
+
+        Create neutron ports for a given neutron network and subnet,
+        create manila db records for allocated neutron ports.
 
         :param context: RequestContext object
         :param share_network: share network data
@@ -64,9 +65,10 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
         return ports
 
     def deallocate_network(self, context, share_server):
-        """Deallocate neutron network resources for the given network info:
-        delete previously allocated neutron ports, delete manila db records for
-        deleted ports.
+        """Deallocate neutron network resources for the given network info.
+
+        Delete previously allocated neutron ports, delete manila db
+        records for deleted ports.
 
         :param context: RequestContext object
         :param share_network: share network data

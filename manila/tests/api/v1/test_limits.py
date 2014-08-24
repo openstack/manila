@@ -330,7 +330,8 @@ class LimitTest(BaseLimitTestSuite):
 
 
 class ParseLimitsTest(BaseLimitTestSuite):
-    """
+    """Test default limits parser.
+
     Tests for the default limits parser in the in-memory
     `limits.Limiter` class.
     """
@@ -415,7 +416,8 @@ class LimiterTest(BaseLimitTestSuite):
         return sum(item for item in results if item)
 
     def test_no_delay_GET(self):
-        """
+        """Test no delay on GET for single call.
+
         Simple test to ensure no delay on a single call for a limit verb we
         didn"t set.
         """
@@ -423,14 +425,16 @@ class LimiterTest(BaseLimitTestSuite):
         self.assertEqual(delay, (None, None))
 
     def test_no_delay_PUT(self):
-        """
+        """Test no delay on single call.
+
         Simple test to ensure no delay on a single call for a known limit.
         """
         delay = self.limiter.check_for_delay("PUT", "/anything")
         self.assertEqual(delay, (None, None))
 
     def test_delay_PUT(self):
-        """
+        """Ensure 11th PUT will be delayed.
+
         Ensure the 11th PUT will result in a delay of 6.0 seconds until
         the next request will be granced.
         """
@@ -440,7 +444,8 @@ class LimiterTest(BaseLimitTestSuite):
         self.assertEqual(expected, results)
 
     def test_delay_POST(self):
-        """
+        """Ensure 8th POST will be delayed.
+
         Ensure the 8th POST will result in a delay of 6.0 seconds until
         the next request will be granced.
         """
@@ -460,7 +465,8 @@ class LimiterTest(BaseLimitTestSuite):
         self.assertEqual(expected, results)
 
     def test_delay_PUT_volumes(self):
-        """
+        """Ensure PUT limits.
+
         Ensure PUT on /volumes limits at 5 requests, and PUT elsewhere is still
         OK after 5 requests...but then after 11 total requests, PUT limiting
         kicks in.
@@ -476,7 +482,8 @@ class LimiterTest(BaseLimitTestSuite):
         self.assertEqual(expected, results)
 
     def test_delay_PUT_wait(self):
-        """
+        """Test limit handling.
+
         Ensure after hitting the limit and then waiting for the correct
         amount of time, the limit will be lifted.
         """
@@ -628,7 +635,8 @@ class FakeHttplibConnection(object):
         self.host = host
 
     def request(self, method, path, body="", headers=None):
-        """
+        """Transalate request to WSGI app.
+
         Requests made via this connection actually get translated and routed
         into our WSGI app, we then wait for the response and turn it back into
         an `httplib.HTTPResponse`.

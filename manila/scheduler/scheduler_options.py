@@ -43,7 +43,8 @@ LOG = logging.getLogger(__name__)
 
 
 class SchedulerOptions(object):
-    """
+    """Monitor and load local .json file for filtering and weighing.
+
     SchedulerOptions monitors a local .json file for changes and loads it
     if needed. This file is converted to a data structure and passed into
     the filtering and weighing functions which can use it for dynamic

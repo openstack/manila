@@ -39,7 +39,8 @@ LOG = logging.getLogger(__name__)
 
 
 class APIRouter(manila.api.openstack.APIRouter):
-    """
+    """Route API requests.
+
     Routes requests on the OpenStack API to the appropriate controller
     and method.
     """

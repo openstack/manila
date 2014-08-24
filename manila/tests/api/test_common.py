@@ -31,10 +31,11 @@ ATOMNS = "{http://www.w3.org/2005/Atom}"
 
 
 class LimiterTest(test.TestCase):
-    """
-    Unit tests for the `manila.api.common.limited` method which takes
-    in a list of items and, depending on the 'offset' and 'limit' GET params,
-    returns a subset or complete set of the given items.
+    """Unit tests for the `manila.api.common.limited` method.
+
+    Takes in a list of items and, depending on the 'offset' and
+    'limit' GET params, returns a subset or complete set of the given
+    items.
     """
 
     def setUp(self):
@@ -155,10 +156,10 @@ class LimiterTest(test.TestCase):
 
 
 class PaginationParamsTest(test.TestCase):
-    """
-    Unit tests for the `manila.api.common.get_pagination_params`
-    method which takes in a request object and returns 'marker' and 'limit'
-    GET params.
+    """Unit tests for the `manila.api.common.get_pagination_params` method.
+
+    Takes in a request object and returns 'marker' and 'limit' GET
+    params.
     """
 
     def test_no_params(self):

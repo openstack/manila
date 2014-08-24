@@ -61,7 +61,8 @@ CONF.register_opts(quota_opts)
 
 
 class DbQuotaDriver(object):
-    """
+    """Database Quota driver.
+
     Driver to perform necessary checks to enforce quotas and obtain
     quota information.  The default driver utilizes the local
     database.
@@ -98,7 +99,8 @@ class DbQuotaDriver(object):
 
     def get_class_quotas(self, context, resources, quota_class,
                          defaults=True):
-        """
+        """Retrieve quotas for a quota class.
+
         Given a list of resources, retrieve the quotas for the given
         quota class.
 
@@ -172,7 +174,8 @@ class DbQuotaDriver(object):
     def get_project_quotas(self, context, resources, project_id,
                            quota_class=None, defaults=True,
                            usages=True, remains=False):
-        """
+        """Retrieve quotas for project.
+
         Given a list of resources, retrieve the quotas for the given
         project.
 
@@ -206,7 +209,8 @@ class DbQuotaDriver(object):
     def get_user_quotas(self, context, resources, project_id, user_id,
                         quota_class=None, defaults=True,
                         usages=True):
-        """
+        """Retrieve quotas for user and project.
+
         Given a list of resources, retrieve the quotas for the given
         user and project.
 
@@ -243,7 +247,8 @@ class DbQuotaDriver(object):
 
     def get_settable_quotas(self, context, resources, project_id,
                             user_id=None):
-        """
+        """Retrieve range of settable quotas.
+
         Given a list of resources, retrieve the range of settable quotas for
         the given user or project.
 
@@ -275,7 +280,8 @@ class DbQuotaDriver(object):
 
     def _get_quotas(self, context, resources, keys, has_sync, project_id=None,
                     user_id=None):
-        """
+        """Retrieve quotas for a resource.
+
         A helper method which retrieves the quotas for the specific
         resources identified by keys, and which apply to the current
         context.
@@ -503,7 +509,8 @@ class DbQuotaDriver(object):
                                 user_id=user_id)
 
     def usage_reset(self, context, resources):
-        """
+        """Reset usage records.
+
         Reset the usage records for a particular user on a list of
         resources.  This will force that user's usage records to be
         refreshed the next time a reservation is made.
@@ -533,7 +540,8 @@ class DbQuotaDriver(object):
                 pass
 
     def destroy_all_by_project(self, context, project_id):
-        """
+        """Destroy metadata associated with a project.
+
         Destroy all quotas, usages, and reservations associated with a
         project.
 
@@ -544,7 +552,8 @@ class DbQuotaDriver(object):
         db.quota_destroy_all_by_project(context, project_id)
 
     def destroy_all_by_project_and_user(self, context, project_id, user_id):
-        """
+        """Destroy metadata associated with a project and user.
+
         Destroy all quotas, usages, and reservations associated with a
         project and user.
 
@@ -571,8 +580,7 @@ class BaseResource(object):
     """Describe a single resource for quota checking."""
 
     def __init__(self, name, flag=None):
-        """
-        Initializes a Resource.
+        """Initializes a Resource.
 
         :param name: The name of the resource, i.e., "shares".
         :param flag: The name of the flag or configuration option
@@ -584,7 +592,8 @@ class BaseResource(object):
         self.flag = flag
 
     def quota(self, driver, context, **kwargs):
-        """
+        """Obtain quota for a resource.
+
         Given a driver and context, obtain the quota for this
         resource.
 
@@ -641,8 +650,7 @@ class ReservableResource(BaseResource):
     """Describe a reservable resource."""
 
     def __init__(self, name, sync, flag=None):
-        """
-        Initializes a ReservableResource.
+        """Initializes a ReservableResource.
 
         Reservable resources are those resources which directly
         correspond to objects in the database, i.e., shares, gigabytes,
@@ -680,14 +688,14 @@ class AbsoluteResource(BaseResource):
 
 
 class CountableResource(AbsoluteResource):
-    """
+    """Describe a countable resource.
+
     Describe a resource where the counts aren't based solely on the
     project ID.
     """
 
     def __init__(self, name, count, flag=None):
-        """
-        Initializes a CountableResource.
+        """Initializes a CountableResource.
 
         Countable resources are those resources which directly
         correspond to objects in the database, i.e., shares, gigabytes,
@@ -1000,7 +1008,8 @@ class QuotaEngine(object):
         LOG.debug("Rolled back reservations %s", reservations)
 
     def usage_reset(self, context, resources):
-        """
+        """Reset usage records.
+
         Reset the usage records for a particular user on a list of
         resources.  This will force that user's usage records to be
         refreshed the next time a reservation is made.
@@ -1017,7 +1026,8 @@ class QuotaEngine(object):
         self._driver.usage_reset(context, resources)
 
     def destroy_all_by_project_and_user(self, context, project_id, user_id):
-        """
+        """Destroy metadata associated with a project and user.
+
         Destroy all quotas, usages, and reservations associated with a
         project and user.
 
@@ -1030,7 +1040,8 @@ class QuotaEngine(object):
                                                      project_id, user_id)
 
     def destroy_all_by_project(self, context, project_id):
-        """
+        """Destroy metadate associated with a project.
+
         Destroy all quotas, usages, and reservations associated with a
         project.
 
