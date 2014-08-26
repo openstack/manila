@@ -646,8 +646,8 @@ class NetAppCIFSHelperTestCase(test.TestCase):
         self.helper._client.send_request.assert_called_with(
             'cifs-share-delete', {'share-name': self.name})
 
-    def test_allow_access_sid_type(self):
-        access = {'access_to': 'fake_access', 'access_type': 'sid'}
+    def test_allow_access_user_type(self):
+        access = {'access_to': 'fake_access', 'access_type': 'user'}
         self.helper.allow_access(self._context, self.share, access)
         self.helper._client.send_request.assert_called_once_with(
             'cifs-share-access-control-create',
@@ -658,10 +658,10 @@ class NetAppCIFSHelperTestCase(test.TestCase):
             },
         )
 
-    def test_allow_access_sid_type_rule_already_present(self):
+    def test_allow_access_user_type_rule_already_present(self):
         self.stubs.Set(self.helper._client, 'send_request',
                        mock.Mock(side_effect=naapi.NaApiError('13130')))
-        access = {'access_to': 'fake_access', 'access_type': 'sid'}
+        access = {'access_to': 'fake_access', 'access_type': 'user'}
         self.assertRaises(
             exception.ShareAccessExists,
             self.helper.allow_access,
@@ -698,7 +698,7 @@ class NetAppCIFSHelperTestCase(test.TestCase):
         )
 
     def test_deny_access(self):
-        access = {'access_to': 'fake_access', 'access_type': 'sid'}
+        access = {'access_to': 'fake_access', 'access_type': 'user'}
         self.helper.deny_access(self._context, self.share, access)
         self.helper._client.send_request.assert_called_once_with(
             'cifs-share-access-control-delete',
