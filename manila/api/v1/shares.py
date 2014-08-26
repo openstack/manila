@@ -104,9 +104,7 @@ class ShareController(wsgi.Controller):
         return self._get_shares(req, is_detail=True)
 
     def _get_shares(self, req, is_detail):
-        """Returns a list of shares, transformed through view
-           builder.
-        """
+        """Returns a list of shares, transformed through view builder."""
         context = req.environ['manila.context']
 
         search_opts = {}

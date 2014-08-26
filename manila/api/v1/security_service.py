@@ -111,8 +111,9 @@ class SecurityServiceController(wsgi.Controller):
         return self._get_security_services(req, is_detail=True)
 
     def _get_security_services(self, req, is_detail):
-        """Returns a list of security services, transformed through view
-           builder.
+        """Returns a transformed list of security services.
+
+        The list gets transformed through view builder.
         """
         context = req.environ['manila.context']
         policy.check_policy(context, RESOURCE_NAME,

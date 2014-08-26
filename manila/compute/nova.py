@@ -135,8 +135,9 @@ def _untranslate_server_summary_view(server):
 
 
 def translate_server_exception(method):
-    """Transforms the exception for the instance but keeps its traceback
-    intact.
+    """Transforms the exception for the instance.
+
+    Note: keeps its traceback intact.
     """
     def wrapper(self, ctx, instance_id, *args, **kwargs):
         try:

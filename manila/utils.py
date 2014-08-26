@@ -546,7 +546,9 @@ def is_valid_boolstr(val):
 
 
 def is_valid_ipv4(address):
-    """valid the address strictly as per format xxx.xxx.xxx.xxx.
+    """Validate IPv4 address.
+
+    Valid the address strictly as per format xxx.xxx.xxx.xxx.
     where xxx is a value between 0 and 255.
     """
     parts = address.split(".")
@@ -601,7 +603,9 @@ def is_eventlet_bug105():
 
 
 def monkey_patch():
-    """If the Flags.monkey_patch set as True,
+    """Patch decorator.
+
+    If the Flags.monkey_patch set as True,
     this function patches a decorator
     for all functions in specified modules.
     You can set decorators for each modules
@@ -711,7 +715,9 @@ def hash_file(file_like_object):
 
 @contextlib.contextmanager
 def temporary_mutation(obj, **kwargs):
-    """Temporarily set the attr on a particular object to a given value then
+    """Temporarily set the attr on a particular object.
+
+    Temporarily set the attr on a particular object to a given value then
     revert when finished.
 
     One use of this is to temporarily set the read_deleted flag on a context
@@ -835,8 +841,9 @@ def walk_class_hierarchy(clazz, encountered=None):
 
 
 class UndoManager(object):
-    """Provides a mechanism to facilitate rolling back a series of actions
-    when an exception is raised.
+    """Provides a mechanism to facilitate rolling back a series of actions.
+
+    This can be used when an exception is raised.
     """
     def __init__(self):
         self.undo_stack = []

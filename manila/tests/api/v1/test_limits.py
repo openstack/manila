@@ -559,9 +559,12 @@ class WsgiLimiterTest(BaseLimitTestSuite):
         return jsonutils.dumps({"verb": verb, "path": path})
 
     def _request(self, verb, url, username=None):
-        """Make sure that POSTing to the given url causes the given username
-        to perform the given action.  Make the internal rate limiter return
-        delay and make sure that the WSGI app returns the correct response.
+        """Send request.
+
+        Make sure that POSTing to the given url causes the given
+        username to perform the given action.  Make the internal rate
+        limiter return delay and make sure that the WSGI app returns
+        the correct response.
         """
         if username:
             request = webob.Request.blank("/%s" % username)
@@ -662,8 +665,10 @@ class FakeHttplibConnection(object):
 
 
 def wire_HTTPConnection_to_WSGI(host, app):
-    """Monkeypatches HTTPConnection so that if you try to connect to host, you
-    are instead routed straight to the given WSGI app.
+    """Wire HTTPConnection to WSGI app.
+
+    Monkeypatches HTTPConnection so that if you try to connect to
+    host, you are instead routed straight to the given WSGI app.
 
     After calling this method, when any code calls
 

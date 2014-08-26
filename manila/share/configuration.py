@@ -55,8 +55,10 @@ LOG = logging.getLogger(__name__)
 class Configuration(object):
 
     def __init__(self, share_opts, config_group=None):
-        """This takes care of grafting the implementation's config
-           values into the config group.
+        """Graft config values into config group.
+
+        This takes care of grafting the implementation's config values
+        into the config group.
         """
         self.config_group = config_group
 

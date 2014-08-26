@@ -17,8 +17,10 @@ from manila.api import extensions
 
 
 class Extended_quotas(extensions.ExtensionDescriptor):
-    """Adds ability for admins to delete quota
-    and optionally force the update Quota command.
+    """Extend quotas.
+
+    Adds ability for admins to delete quota and optionally force the
+    update Quota command.
     """
 
     name = "ExtendedQuotas"

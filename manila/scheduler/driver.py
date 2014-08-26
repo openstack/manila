@@ -65,8 +65,7 @@ class Scheduler(object):
         return self.host_manager.get_host_list()
 
     def get_service_capabilities(self):
-        """Get the normalized set of capabilities for the services.
-        """
+        """Get the normalized set of capabilities for the services."""
         return self.host_manager.get_service_capabilities()
 
     def update_service_capabilities(self, service_name, host, capabilities):
