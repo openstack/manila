@@ -74,7 +74,7 @@ class TestABCDriver(TestBase):
             pass
 
         try:
-            fake = ICanNotBeInstancetiated()
+            ICanNotBeInstancetiated()
         except TypeError:
             pass
         except Exception as e:

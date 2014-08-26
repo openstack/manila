@@ -101,7 +101,7 @@ class NeutronApiTest(test.TestCase):
     @mock.patch.object(neutron, 'get_client', mock.Mock())
     def test_create_api_object(self):
         with mock.patch.object(base.Base, '__init__', mock.Mock()):
-            neutron_api_obj = neutron_api.API()
+            neutron_api.API()
             base.Base.__init__.assert_called_once()
             neutron.get_client.assert_called_once_with('context')
 

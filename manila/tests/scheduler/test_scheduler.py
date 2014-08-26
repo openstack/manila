@@ -60,14 +60,14 @@ class SchedulerManagerTestCase(test.TestCase):
         host = 'fake_host'
         with mock.patch.object(self.manager.driver,
                                'update_service_capabilities', mock.Mock()):
-            result = self.manager.update_service_capabilities(
+            self.manager.update_service_capabilities(
                 self.context, service_name=service_name, host=host)
             self.manager.driver.update_service_capabilities.\
                 assert_called_once_with(service_name, host, {})
         with mock.patch.object(self.manager.driver,
                                'update_service_capabilities', mock.Mock()):
             capabilities = {'fake_capability': 'fake_value'}
-            result = self.manager.update_service_capabilities(
+            self.manager.update_service_capabilities(
                 self.context, service_name=service_name, host=host,
                 capabilities=capabilities)
             self.manager.driver.update_service_capabilities.\
@@ -116,7 +116,7 @@ class SchedulerTestCase(test.TestCase):
         capabilities = {'fake_capability': 'fake_value'}
         with mock.patch.object(self.driver.host_manager,
                                'update_service_capabilities', mock.Mock()):
-            result = self.driver.update_service_capabilities(
+            self.driver.update_service_capabilities(
                 service_name, host, capabilities)
             self.driver.host_manager.update_service_capabilities.\
                 assert_called_once_with(service_name, host, capabilities)
@@ -142,8 +142,9 @@ class SchedulerTestCase(test.TestCase):
 
 
 class SchedulerDriverBaseTestCase(SchedulerTestCase):
-    """Test cases for base scheduler driver class methods
-       that can't will fail if the driver is changed
+    """Test cases for base scheduler driver class methods.
+
+    These can't fail if the driver is changed.
     """
 
     def test_unimplemented_schedule(self):
@@ -167,7 +168,8 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         with mock.patch.object(timeutils, 'utcnow',
                                mock.Mock(return_value='fake-now')):
             driver.share_update_db(self.context, 31337, 'fake_host')
-            db.share_update.assert_called_once_with(self.context, 31337,
+            db.share_update.assert_called_once_with(
+                self.context, 31337,
                 {'host': 'fake_host', 'scheduled_at': 'fake-now'})
 
 
@@ -200,7 +202,7 @@ class SimpleSchedulerSharesTestCase(test.TestCase):
             with mock.patch.object(driver, 'share_update_db',
                                    mock.Mock(return_value=fake_share)):
                 self.driver.schedule_create_share(self.context,
-                    fake_request_spec, {})
+                                                  fake_request_spec, {})
                 utils.service_is_up.assert_called_once_with(
                     utils.IsAMatcher(dict))
                 db.service_get_all_share_sorted.assert_called_once_with(

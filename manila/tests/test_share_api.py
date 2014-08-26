@@ -303,13 +303,6 @@ class ShareAPITestCase(test.TestCase):
         for name in ('id', 'export_location', 'host', 'launched_at',
                      'terminated_at'):
             options.pop(name, None)
-        request_spec = {
-            'share_properties': options,
-            'share_proto': share['share_proto'],
-            'share_id': share['id'],
-            'snapshot_id': share['snapshot_id'],
-            'volume_type': None,
-        }
         with mock.patch.object(db_driver, 'share_create',
                                mock.Mock(return_value=share)):
             self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',

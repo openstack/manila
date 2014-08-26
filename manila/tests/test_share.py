@@ -276,7 +276,7 @@ class ShareTestCase(test.TestCase):
         self.share_manager.create_snapshot(self.context, share_id, snapshot_id)
         self.assertEqual(share_id,
                          db.share_snapshot_get(context.get_admin_context(),
-                         snapshot_id).share_id)
+                                               snapshot_id).share_id)
 
         snap = db.share_snapshot_get(self.context, snapshot_id)
         self.assertEqual(snap['status'], 'available')
@@ -581,8 +581,8 @@ class ShareTestCase(test.TestCase):
         )
         share = self._create_share(share_network_id=share_net['id'],
                                    share_server_id=share_srv['id'])
-        share2 = self._create_share(share_network_id=share_net['id'],
-                                    share_server_id=share_srv['id'])
+        self._create_share(share_network_id=share_net['id'],
+                           share_server_id=share_srv['id'])
         share_id = share['id']
 
         manager.CONF.delete_share_server_with_last_share = True
