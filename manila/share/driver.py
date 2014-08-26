@@ -34,13 +34,14 @@ share_opts = [
     # NOTE(rushiagr): Reasonable to define this option at only one place.
     cfg.IntOpt('num_shell_tries',
                default=3,
-               help='number of times to attempt to run flakey shell commands'),
+               help='Number of times to attempt to run flakey shell '
+               'commands.'),
     cfg.IntOpt('reserved_share_percentage',
                default=0,
-               help='The percentage of backend capacity reserved'),
+               help='The percentage of backend capacity reserved.'),
     cfg.StrOpt('share_backend_name',
                default=None,
-               help='The backend name for a given driver implementation'),
+               help='The backend name for a given driver implementation.'),
 ]
 
 CONF = cfg.CONF

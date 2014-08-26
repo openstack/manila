@@ -80,9 +80,9 @@ server_opts = [
                help="CIDR of manila service network."),
     cfg.IntOpt('service_network_division_mask',
                default=28,
-               help="This mask is used for dividing service network into"
-                    "subnets, ip capacity of subnet with this mask directly"
-                    "defines possible amount of created service VMs"
+               help="This mask is used for dividing service network into "
+                    "subnets, IP capacity of subnet with this mask directly "
+                    "defines possible amount of created service VMs "
                     "per tenant's subnet."),
     cfg.StrOpt('interface_driver',
                default='manila.network.linux.interface.OVSInterfaceDriver',

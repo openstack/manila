@@ -34,32 +34,32 @@ nova_opts = [
     cfg.StrOpt('nova_catalog_info',
                default='compute:nova:publicURL',
                help='Info to match when looking for nova in the service '
-                    'catalog. Format is : separated values of the form: '
+                    'catalog. Format is separated values of the form: '
                     '<service_type>:<service_name>:<endpoint_type>'),
     cfg.StrOpt('nova_catalog_admin_info',
                default='compute:nova:adminURL',
                help='Same as nova_catalog_info, but for admin endpoint.'),
     cfg.StrOpt('os_region_name',
                default=None,
-               help='region name of this node'),
+               help='Region name of this node.'),
     cfg.StrOpt('nova_ca_certificates_file',
                default=None,
-               help='Location of ca certicates file to use for nova client '
+               help='Location of CA certicates file to use for nova client '
                     'requests.'),
     cfg.BoolOpt('nova_api_insecure',
                 default=False,
-                help='Allow to perform insecure SSL requests to nova'),
+                help='Allow to perform insecure SSL requests to nova.'),
     cfg.StrOpt('nova_admin_username',
                default='nova',
-               help='Nova admin username'),
+               help='Nova admin username.'),
     cfg.StrOpt('nova_admin_password',
-               help='Nova admin password'),
+               help='Nova admin password.'),
     cfg.StrOpt('nova_admin_tenant_name',
                default='service',
-               help='Nova admin tenant name'),
+               help='Nova admin tenant name.'),
     cfg.StrOpt('nova_admin_auth_url',
                default='http://localhost:5000/v2.0',
-               help='Identity service url'),
+               help='Identity service URL.'),
 ]
 
 CONF = cfg.CONF

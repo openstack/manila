@@ -36,7 +36,7 @@ LOG = logging.getLogger(__name__)
 scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
                                   default='manila.scheduler.filter_scheduler.'
                                           'FilterScheduler',
-                                  help='Default scheduler driver to use')
+                                  help='Default scheduler driver to use.')
 
 CONF = cfg.CONF
 CONF.register_opt(scheduler_driver_opt)

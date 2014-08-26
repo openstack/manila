@@ -39,7 +39,7 @@ EMC_NAS_OPTS = [
                help='Password for the EMC server.'),
     cfg.StrOpt('emc_nas_server',
                default=None,
-               help='EMC server hostname or ip-address.'),
+               help='EMC server hostname or IP address.'),
     cfg.IntOpt('emc_nas_server_port',
                default=8080,
                help='Port number for the EMC server.'),

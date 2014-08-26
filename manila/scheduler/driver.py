@@ -32,10 +32,10 @@ from manila import utils
 scheduler_driver_opts = [
     cfg.StrOpt('scheduler_host_manager',
                default='manila.scheduler.host_manager.HostManager',
-               help='The scheduler host manager class to use'),
+               help='The scheduler host manager class to use.'),
     cfg.IntOpt('scheduler_max_attempts',
                default=3,
-               help='Maximum number of attempts to schedule a share'),
+               help='Maximum number of attempts to schedule a share.'),
 ]
 
 CONF = cfg.CONF
