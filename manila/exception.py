@@ -456,3 +456,11 @@ class VserverUnavailable(NetAppException):
 
 class EMCVnxXMLAPIError(Invalid):
     message = _("%(err)s")
+
+
+class GPFSException(ManilaException):
+    message = _("GPFS exception occurred.")
+
+
+class GPFSGaneshaException(ManilaException):
+    message = _("GPFS Ganesha exception occurred.")
