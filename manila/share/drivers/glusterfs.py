@@ -336,8 +336,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             return
 
         if export_dir_dict:
-            export_dir_new = ",".join("/%s(%s)" % (d, "|".join(v))
-                                      for d, v in export_dir_dict.items())
+            export_dir_new = (",".join("/%s(%s)" % (d, "|".join(v))
+                              for d, v in sorted(export_dir_dict.items())))
             args, kw = self.gluster_address.make_gluster_args(
                 'volume', 'set', self.gluster_address.volume,
                 NFS_EXPORT_DIR, export_dir_new)

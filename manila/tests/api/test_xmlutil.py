@@ -15,6 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from xml.dom import minidom
+
 from lxml import etree
 
 from manila.api import xmlutil
@@ -689,9 +691,26 @@ class TemplateBuilderTest(test.TestCase):
 
 class MiscellaneousXMLUtilTests(test.TestCase):
     def test_make_flat_dict(self):
-        expected_xml = ("<?xml version='1.0' encoding='UTF-8'?>\n"
-                        '<wrapper><a>foo</a><b>bar</b></wrapper>')
+        expected = minidom.parseString(
+            "<?xml version='1.0' encoding='UTF-8'?>"
+            "<wrapper><a>foo</a><b>bar</b></wrapper>"
+        )
         root = xmlutil.make_flat_dict('wrapper')
         tmpl = xmlutil.MasterTemplate(root, 1)
         result = tmpl.serialize(dict(wrapper=dict(a='foo', b='bar')))
-        self.assertEqual(result, expected_xml)
+        actual = minidom.parseString(result)
+
+        self.assertEqual(expected.firstChild.tagName,
+                         actual.firstChild.tagName)
+        expected_child_a = expected.firstChild.getElementsByTagName('a')
+        expected_child_b = expected.firstChild.getElementsByTagName('b')
+        actual_child_a = actual.firstChild.getElementsByTagName('a')
+        actual_child_b = actual.firstChild.getElementsByTagName('b')
+        self.assertEqual(len(expected_child_a), 1)
+        self.assertEqual(len(expected_child_b), 1)
+        self.assertEqual(len(actual_child_a), 1)
+        self.assertEqual(len(actual_child_b), 1)
+        self.assertEqual(expected_child_a[0].toxml(),
+                         actual_child_a[0].toxml())
+        self.assertEqual(expected_child_b[0].toxml(),
+                         actual_child_b[0].toxml())
