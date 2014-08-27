@@ -33,7 +33,7 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         resp, __ = self.cl.add_sec_service_to_share_network(self.sn["id"],
                                                             self.ss["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(exceptions.Conflict,
                           self.cl.add_sec_service_to_share_network,
                           self.sn["id"], self.ss["id"])
 
@@ -86,7 +86,7 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
                           "wrong_id", "wrong_id")
 
     @test.attr(type=["gate", "smoke", "negative"])
-    def test_try_map_same_ss_to_sn_twice(self):
+    def test_try_map_two_ss_with_same_type_to_sn(self):
         # create share network
         data = self.generate_share_network_data()
 
@@ -94,22 +94,24 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertDictContainsSubset(data, sn)
 
-        # create security service
-        data = self.generate_security_service_data()
-
-        resp, ss = self.create_security_service(client=self.cl, **data)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertDictContainsSubset(data, ss)
+        # create security services with same type
+        security_services = []
+        for i in range(2):
+            data = self.generate_security_service_data()
+            resp, ss = self.create_security_service(client=self.cl, **data)
+            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+            self.assertDictContainsSubset(data, ss)
+            security_services.insert(i, ss)
 
         # Add security service to share network
-        resp, __ = self.cl.add_sec_service_to_share_network(sn["id"],
-                                                            ss["id"])
+        resp, __ = self.cl.add_sec_service_to_share_network(
+            sn["id"], security_services[0]["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
-        # Try add same security service one more time
-        self.assertRaises(exceptions.BadRequest,
+        # Try to add security service with same type
+        self.assertRaises(exceptions.Conflict,
                           self.cl.add_sec_service_to_share_network,
-                          sn["id"], ss["id"])
+                          sn["id"], security_services[1]["id"])
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_delete_ss_that_assigned_to_sn(self):

@@ -293,6 +293,30 @@ class ShareNetworkAPITest(test.TestCase):
             self.controller._add_security_service.assert_called_once_with(
                 self.req, share_network_id, body['add_security_service'])
 
+    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
+    @mock.patch.object(db_api, 'security_service_get', mock.Mock())
+    def test_action_add_security_service_conflict(self):
+        share_network = fake_share_network.copy()
+        share_network['security_services'] = [{'id': 'security_service_1',
+                                               'type': 'ldap'}]
+        security_service = {'id': ' security_service_2',
+                            'type': 'ldap'}
+        body = {'add_security_service': {'security_service_id':
+                                         security_service['id']}}
+
+        db_api.security_service_get.return_value = security_service
+        db_api.share_network_get.return_value = share_network
+
+        self.assertRaises(webob_exc.HTTPConflict,
+                          self.controller.action,
+                          self.req,
+                          share_network['id'],
+                          body)
+        db_api.share_network_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_network['id'])
+        db_api.security_service_get.assert_called_once_with(
+            self.req.environ['manila.context'], security_service['id'])
+
     def test_action_remove_security_service(self):
         share_network_id = 'fake network id'
         security_service_id = 'fake ss id'
