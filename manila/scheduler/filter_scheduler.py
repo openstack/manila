@@ -40,9 +40,7 @@ class FilterScheduler(driver.Scheduler):
         self.max_attempts = self._max_attempts()
 
     def schedule(self, context, topic, method, *args, **kwargs):
-        """The schedule() contract requires we return the one
-        best-suited host for this request.
-        """
+        """Return best-suited host for request."""
         self._schedule(context, topic, *args, **kwargs)
 
     def _get_configuration_options(self):
@@ -51,16 +49,19 @@ class FilterScheduler(driver.Scheduler):
 
     def _post_select_populate_filter_properties(self, filter_properties,
                                                 host_state):
-        """Add additional information to the filter properties after a host has
+        """Add additional information to filter properties.
+
+        Add additional information to the filter properties after a host has
         been selected by the scheduling process.
         """
         # Add a retry entry for the selected volume backend:
         self._add_retry_host(filter_properties, host_state.host)
 
     def _add_retry_host(self, filter_properties, host):
-        """Add a retry entry for the selected volume backend. In the event that
-        the request gets re-scheduled, this entry will signal that the given
-        backend has already been tried.
+        """Add retry entry for the selected volume backend.
+
+        In the event that the request gets re-scheduled, this entry
+        will signal that the given backend has already been tried.
         """
         retry = filter_properties.get('retry', None)
         if not retry:
@@ -101,8 +102,9 @@ class FilterScheduler(driver.Scheduler):
                                        snapshot_id=snapshot_id)
 
     def _schedule_share(self, context, request_spec, filter_properties=None):
-        """Returns a list of hosts that meet the required specs,
-        ordered by their fitness.
+        """Returns a list of hosts that meet the required specs.
+
+        The list is ordered by their fitness.
         """
         elevated = context.elevated()
 
@@ -157,7 +159,9 @@ class FilterScheduler(driver.Scheduler):
         return best_host
 
     def _populate_retry_share(self, filter_properties, properties):
-        """Populate filter properties with history of retries for this
+        """Populate filter properties with retry history.
+
+        Populate filter properties with history of retries for this
         request. If maximum retries is exceeded, raise NoValidHost.
         """
         max_attempts = self.max_attempts
@@ -189,7 +193,9 @@ class FilterScheduler(driver.Scheduler):
             raise exception.NoValidHost(reason=msg)
 
     def _log_share_error(self, share_id, retry):
-        """If the request contained an exception from a previous share
+        """Log any exceptions from a previous share create operation.
+
+        If the request contained an exception from a previous share
         create operation, log it to aid debugging.
         """
         exc = retry.pop('exc', None)  # string-ified exception from share
@@ -211,8 +217,9 @@ class FilterScheduler(driver.Scheduler):
 
     def populate_filter_properties_share(self, request_spec,
                                          filter_properties):
-        """Stuff things into filter_properties.  Can be overridden in a
-        subclass to add more data.
+        """Stuff things into filter_properties.
+
+        Can be overridden in a subclass to add more data.
         """
         shr = request_spec['share_properties']
         filter_properties['size'] = shr['size']

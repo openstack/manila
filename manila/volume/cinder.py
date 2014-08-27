@@ -172,8 +172,7 @@ def _untranslate_snapshot_summary_view(context, snapshot):
 
 
 def translate_volume_exception(method):
-    """Transforms the exception for the volume but keeps its traceback intact.
-    """
+    """Transforms the exception for the volume, keeps its traceback intact."""
     def wrapper(self, ctx, volume_id, *args, **kwargs):
         try:
             res = method(self, ctx, volume_id, *args, **kwargs)
@@ -189,8 +188,9 @@ def translate_volume_exception(method):
 
 
 def translate_snapshot_exception(method):
-    """Transforms the exception for the snapshot but keeps its traceback
-       intact.
+    """Transforms the exception for the snapshot.
+
+    Note: Keeps its traceback intact.
     """
     def wrapper(self, ctx, snapshot_id, *args, **kwargs):
         try:

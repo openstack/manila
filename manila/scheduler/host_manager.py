@@ -162,10 +162,12 @@ class HostManager(object):
         self.weight_classes = self.weight_handler.get_all_classes()
 
     def _choose_host_filters(self, filter_cls_names):
-        """Since the caller may specify which filters to use we need
-        to have an authoritative list of what is permissible. This
-        function checks the filter names against a predefined set
-        of acceptable filters.
+        """Choose acceptable filters.
+
+        Since the caller may specify which filters to use we need to
+        have an authoritative list of what is permissible. This
+        function checks the filter names against a predefined set of
+        acceptable filters.
         """
         if filter_cls_names is None:
             filter_cls_names = CONF.scheduler_default_filters
@@ -188,10 +190,12 @@ class HostManager(object):
         return good_filters
 
     def _choose_host_weighers(self, weight_cls_names):
-        """Since the caller may specify which weighers to use, we need
-        to have an authoritative list of what is permissible. This
-        function checks the weigher names against a predefined set
-        of acceptable weighers.
+        """Choose acceptable weighers.
+
+        Since the caller may specify which weighers to use, we need to
+        have an authoritative list of what is permissible. This
+        function checks the weigher names against a predefined set of
+        acceptable weighers.
         """
         if weight_cls_names is None:
             weight_cls_names = CONF.scheduler_default_weighers
@@ -246,11 +250,13 @@ class HostManager(object):
         self.service_states[host] = capab_copy
 
     def get_all_host_states_share(self, context):
-        """Returns a dict of all the hosts the HostManager
-          knows about. Also, each of the consumable resources in HostState
-          are pre-populated and adjusted based on data in the db.
+        """Get all hosts and their states.
 
-          For example:
+        Returns a dict of all the hosts the HostManager knows
+        about. Also, each of the consumable resources in HostState are
+        pre-populated and adjusted based on data in the db.
+
+        For example:
           {'192.168.1.100': HostState(), ...}
         """
 

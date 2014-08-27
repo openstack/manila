@@ -20,9 +20,7 @@ LOG = logging.getLogger(__name__)
 
 
 class RetryFilter(filters.BaseHostFilter):
-    """Filter out nodes that have already been attempted for scheduling
-    purposes
-    """
+    """Filter out already tried nodes for scheduling purposes."""
 
     def host_passes(self, host_state, filter_properties):
         """Skip nodes that have already been attempted."""
