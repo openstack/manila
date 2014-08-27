@@ -622,7 +622,7 @@ class NFSHelper(NASHelperBase):
 
     def create_export(self, server, share_name, recreate=False):
         """Create new export, delete old one if exists."""
-        return ':'.join([server['ip'],
+        return ':'.join([server['public_address'],
                          os.path.join(
                              self.configuration.share_mount_path, share_name)])
 
@@ -721,7 +721,7 @@ class CIFSHelper(NASHelperBase):
             set_of_commands.extend(['&&', 'sudo', 'net', 'conf', 'setparm',
                                     share_name, param, value])
         self._ssh_exec(server, set_of_commands)
-        return '//%s/%s' % (server['ip'], share_name)
+        return '//%s/%s' % (server['public_address'], share_name)
 
     def remove_export(self, server, share_name):
         """Remove share definition from samba server."""
