@@ -22,7 +22,6 @@ from manila import context
 from manila.db import base
 from manila import exception
 from manila.network import neutron
-from manila.openstack.common.gettextutils import _
 from manila.openstack.common import log as logging
 
 neutron_opts = [

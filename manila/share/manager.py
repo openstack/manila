@@ -30,7 +30,7 @@ from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 from manila import quota
-from manila.share.configuration import Configuration
+import manila.share.configuration
 
 from oslo.config import cfg
 
@@ -57,8 +57,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
-        self.configuration = Configuration(share_manager_opts,
-                                           config_group=service_name)
+        self.configuration = manila.share.configuration.Configuration(
+            share_manager_opts,
+            config_group=service_name)
         super(ShareManager, self).__init__(service_name='share',
                                            *args, **kwargs)
 
@@ -98,7 +99,7 @@ class ShareManager(manager.SchedulerDependentManager):
         self.publish_service_capabilities(ctxt)
 
     def _provide_share_server_for_share(self, context, share_network_id,
-                                       share_id):
+                                        share_id):
         """Gets or creates share_server and updates share with its id.
 
         Active share_server can be deleted if there are no dependent shares
@@ -418,7 +419,7 @@ class ShareManager(manager.SchedulerDependentManager):
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.share_server_update(context, share_server['id'],
-                    {'status': constants.STATUS_ERROR})
+                                            {'status': constants.STATUS_ERROR})
                 self.network_api.deallocate_network(context, share_network)
 
     def delete_share_server(self, context, share_server):
@@ -451,7 +452,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 with excutils.save_and_reraise_exception():
                     LOG.error(_("Share server %s failed on deletion.")
                               % share_server['id'])
-                    self.db.share_server_update(context, share_server['id'],
+                    self.db.share_server_update(
+                        context, share_server['id'],
                         {'status': constants.STATUS_ERROR})
             else:
                 self.db.share_server_delete(context, share_server['id'])

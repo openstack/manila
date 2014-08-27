@@ -24,7 +24,7 @@ from manila import compute
 from manila import context
 from manila import exception
 from manila.openstack.common import lockutils
-from manila.share.configuration import Configuration
+import manila.share.configuration
 from manila.share.drivers import generic
 from manila import test
 from manila.tests.db import fakes as db_fakes
@@ -87,7 +87,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._helper_cifs = mock.Mock()
         self._helper_nfs = mock.Mock()
-        self.fake_conf = Configuration(None)
+        self.fake_conf = manila.share.configuration.Configuration(None)
         self._db = mock.Mock()
         self._driver = generic.GenericShareDriver(self._db,
                                                   execute=self._execute,
@@ -598,7 +598,7 @@ class NFSHelperTestCase(test.TestCase):
     def setUp(self):
         super(NFSHelperTestCase, self).setUp()
         fake_utils.stub_out_utils_execute(self.stubs)
-        self.fake_conf = Configuration(None)
+        self.fake_conf = manila.share.configuration.Configuration(None)
         self._ssh_exec = mock.Mock(return_value=('', ''))
         self._execute = mock.Mock(return_value=('', ''))
         self._helper = generic.NFSHelper(self._execute, self._ssh_exec,
@@ -645,7 +645,7 @@ class CIFSHelperTestCase(test.TestCase):
         super(CIFSHelperTestCase, self).setUp()
         self.server_details = {'instance_id': 'fake', 'ip': '1.2.3.4', }
         self.share_name = 'fake_share_name'
-        self.fake_conf = Configuration(None)
+        self.fake_conf = manila.share.configuration.Configuration(None)
         self._ssh_exec = mock.Mock(return_value=('', ''))
         self._execute = mock.Mock(return_value=('', ''))
         self._helper = generic.CIFSHelper(self._execute, self._ssh_exec,

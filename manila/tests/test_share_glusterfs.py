@@ -19,8 +19,7 @@ import errno
 import os
 import subprocess
 
-from mock import Mock
-from mock import patch
+import mock
 from oslo.config import cfg
 
 from manila import context
@@ -116,11 +115,11 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         CONF.set_default('reserved_share_percentage', 50)
 
         self.fake_conf = config.Configuration(None)
-        self._db = Mock()
+        self._db = mock.Mock()
         self._driver = glusterfs.GlusterfsShareDriver(
             self._db, execute=self._execute,
             configuration=self.fake_conf)
-        self._driver.gluster_address = Mock(**gluster_address_attrs)
+        self._driver.gluster_address = mock.Mock(**gluster_address_attrs)
         self.share = fake_share()
 
     def tearDown(self):
@@ -130,8 +129,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_do_setup(self):
         self._driver._read_gluster_vol_from_config =\
-            Mock(return_value='127.0.0.1:/testvol')
-        self._driver._ensure_gluster_vol_mounted = Mock()
+            mock.Mock(return_value='127.0.0.1:/testvol')
+        self._driver._ensure_gluster_vol_mounted = mock.Mock()
         exec_cmd1 = 'mount.glusterfs'
         exec_cmd2 = 'gluster volume set testvol nfs.export-volumes off'
         expected_exec = [exec_cmd1, exec_cmd2]
@@ -141,8 +140,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_do_setup_mount_glusterfs_not_installed(self):
         self._driver._read_gluster_vol_from_config =\
-            Mock(return_value='127.0.0.1:/testvol')
-        self._driver._ensure_gluster_vol_mounted = Mock()
+            mock.Mock(return_value='127.0.0.1:/testvol')
+        self._driver._ensure_gluster_vol_mounted = mock.Mock()
 
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise OSError(errno.ENOENT, os.strerror(errno.ENOENT))
@@ -154,9 +153,9 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_do_setup_mount_glusterfs_error_gluster_vol_set(self):
         self._driver._read_gluster_vol_from_config =\
-            Mock(return_value='127.0.0.1:/testvol')
-        self._driver._ensure_gluster_vol_mounted = Mock()
-        glusterfs.LOG.error = Mock()
+            mock.Mock(return_value='127.0.0.1:/testvol')
+        self._driver._ensure_gluster_vol_mounted = mock.Mock()
+        glusterfs.LOG.error = mock.Mock()
 
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise exception.ProcessExecutionError(stderr='testvol')
@@ -192,7 +191,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise exception.ProcessExecutionError(stderr='already mounted')
         expected_exec = ['true']
-        glusterfs.LOG.warn = Mock()
+        glusterfs.LOG.warn = mock.Mock()
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
         ret = self._driver._do_mount(expected_exec, True)
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
@@ -220,7 +219,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_mount_gluster_vol(self):
         mount_path = '/mnt/nfs/testvol'
-        self._driver._do_mount = Mock()
+        self._driver._do_mount = mock.Mock()
         cmd = ['mount', '-t', 'glusterfs', gluster_address_attrs['export'],
                mount_path]
         expected_exec = ['mkdir -p %s' % (mount_path)]
@@ -230,27 +229,27 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_ensure_gluster_vol_mounted(self):
-        self._driver._mount_gluster_vol = Mock()
+        self._driver._mount_gluster_vol = mock.Mock()
         self._driver._ensure_gluster_vol_mounted()
         self.assertTrue(self._driver._mount_gluster_vol.called)
 
     def test_ensure_gluster_vol_mounted_error(self):
         self._driver._mount_gluster_vol =\
-            Mock(side_effect=exception.GlusterfsException)
+            mock.Mock(side_effect=exception.GlusterfsException)
         self.assertRaises(exception.GlusterfsException,
                           self._driver._ensure_gluster_vol_mounted)
 
     def test_get_export_dir_dict_empty_volinfo(self):
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
         expected_exec = ['true']
         self.assertRaises(exception.GlusterfsException,
                           self._driver._get_export_dir_dict)
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_get_export_dir_dict_failing_volinfo(self):
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
 
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise RuntimeError('fake error')
@@ -260,8 +259,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_get_export_dir_dict_ambiguous_volinfo(self):
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
 
         def exec_runner(*ignore_args, **ignore_kwargs):
             return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -279,8 +278,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
     def test_get_export_dir_dict_trivial_volinfo(self):
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
 
         def exec_runner(*ignore_args, **ignore_kwargs):
             return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -300,8 +299,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(ret, {})
 
     def test_get_export_dir_dict(self):
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
 
         def exec_runner(*ignore_args, **ignore_kwargs):
             return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -329,26 +328,26 @@ class GlusterfsShareDriverTestCase(test.TestCase):
                          )
 
     def test_get_local_share_path(self):
-        with patch.object(os, 'access', return_value=True):
+        with mock.patch.object(os, 'access', return_value=True):
             expected_ret = '/mnt/nfs/testvol/fakename'
             ret = self._driver._get_local_share_path(self.share)
             self.assertEqual(ret, expected_ret)
 
     def test_local_share_path_not_exists(self):
-        with patch.object(os, 'access', return_value=False):
+        with mock.patch.object(os, 'access', return_value=False):
             self.assertRaises(exception.GlusterfsException,
                               self._driver._get_local_share_path,
                               self.share)
 
     def test_get_share_stats_refresh_false(self):
-        self._driver._stats = Mock()
+        self._driver._stats = mock.Mock()
         ret = self._driver.get_share_stats()
         self.assertEqual(ret, self._driver._stats)
 
     def test_get_share_stats_refresh_true(self):
         def foo():
             self._driver._stats = {'key': 'value'}
-        self._driver._update_share_stats = Mock(side_effect=foo)
+        self._driver._update_share_stats = mock.Mock(side_effect=foo)
         ret = self._driver.get_share_stats(refresh=True)
         self.assertEqual(ret, {'key': 'value'})
 
@@ -363,29 +362,31 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             'total_capacity_gb': 2,
             'free_capacity_gb': 2,
         }
-        test_statvfs = Mock(f_frsize=4096, f_blocks=524288, f_bavail=524288)
+        test_statvfs = mock.Mock(f_frsize=4096, f_blocks=524288,
+                                 f_bavail=524288)
         self._driver._get_mount_point_for_gluster_vol = \
-            Mock(return_value='/mnt/nfs/testvol')
+            mock.Mock(return_value='/mnt/nfs/testvol')
         some_no = 42
         not_some_no = some_no + 1
-        os_stat = lambda path: Mock(st_dev=some_no) if path == '/mnt/nfs' \
-            else Mock(st_dev=not_some_no)
-        with patch.object(os, 'statvfs', return_value=test_statvfs):
-            with patch.object(os, 'stat', os_stat):
+        os_stat = lambda path: mock.Mock(st_dev=some_no) if path == '/mnt/nfs' \
+            else mock.Mock(st_dev=not_some_no)
+        with mock.patch.object(os, 'statvfs', return_value=test_statvfs):
+            with mock.patch.object(os, 'stat', os_stat):
                 self._driver._update_share_stats()
                 self.assertEqual(self._driver._stats, test_data)
 
     def test_update_share_stats_gluster_mnt_unavailable(self):
         self._driver._get_mount_point_for_gluster_vol = \
-            Mock(return_value='/mnt/nfs/testvol')
+            mock.Mock(return_value='/mnt/nfs/testvol')
         some_no = 42
-        with patch.object(os, 'stat', return_value=Mock(st_dev=some_no)):
+        with mock.patch.object(os, 'stat',
+                               return_value=mock.Mock(st_dev=some_no)):
             self.assertRaises(exception.GlusterfsException,
                               self._driver._update_share_stats)
 
     def test_create_share(self):
         self._driver._get_local_share_path =\
-            Mock(return_value='/mnt/nfs/testvol/fakename')
+            mock.Mock(return_value='/mnt/nfs/testvol/fakename')
         expected_exec = ['mkdir /mnt/nfs/testvol/fakename', ]
         expected_ret = 'testuser@127.0.0.1:/testvol/fakename'
 
@@ -395,7 +396,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_cannot_create_share(self):
         self._driver._get_local_share_path =\
-            Mock(return_value='/mnt/nfs/testvol/fakename')
+            mock.Mock(return_value='/mnt/nfs/testvol/fakename')
 
         def exec_runner(*ignore_args, **ignore_kw):
             raise exception.ProcessExecutionError
@@ -408,8 +409,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_create_share_can_be_called_with_extra_arg_share_server(self):
         share_server = None
-        self._driver._get_local_share_path = Mock()
-        with patch.object(os.path, 'join', return_value=None):
+        self._driver._get_local_share_path = mock.Mock()
+        with mock.patch.object(os.path, 'join', return_value=None):
             ret = self._driver.create_share(self._context, self.share,
                                             share_server)
             self.assertEqual(ret, None)
@@ -420,7 +421,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_delete_share(self):
         self._driver._get_local_share_path =\
-            Mock(return_value='/mnt/nfs/testvol/fakename')
+            mock.Mock(return_value='/mnt/nfs/testvol/fakename')
 
         expected_exec = ['rm -rf /mnt/nfs/testvol/fakename']
 
@@ -429,7 +430,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_cannot_delete_share(self):
         self._driver._get_local_share_path =\
-            Mock(return_value='/mnt/nfs/testvol/fakename')
+            mock.Mock(return_value='/mnt/nfs/testvol/fakename')
 
         def exec_runner(*ignore_args, **ignore_kw):
             raise exception.ProcessExecutionError
@@ -441,25 +442,25 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_delete_share_can_be_called_with_extra_arg_share_server(self):
         share_server = None
-        self._driver._get_local_share_path = Mock()
+        self._driver._get_local_share_path = mock.Mock()
         ret = self._driver.delete_share(self._context, self.share,
                                         share_server)
         self.assertEqual(ret, None)
         self._driver._get_local_share_path.assert_called_once_with(self.share)
 
     def test_manage_access_bad_access_type(self):
-        cbk = Mock()
+        cbk = mock.Mock()
         access = {'access_type': 'bad'}
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver._manage_access,
                           self._context, self.share, access, cbk)
 
     def test_manage_access_noop(self):
-        cbk = Mock(return_value=True)
+        cbk = mock.Mock(return_value=True)
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
-        self._driver._get_export_dir_dict = Mock()
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+        self._driver._get_export_dir_dict = mock.Mock()
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
         expected_exec = []
         ret = self._driver._manage_access(self._context, self.share, access,
                                           cbk)
@@ -471,10 +472,10 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             d[key].append(value)
         access = {'access_type': 'ip', 'access_to': '10.0.0.2'}
         self._driver._get_export_dir_dict =\
-            Mock(return_value={'example.com': ['10.0.0.1'],
-                               'fakename': ['10.0.0.1']})
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+            mock.Mock(return_value={'example.com': ['10.0.0.1'],
+                                    'fakename': ['10.0.0.1']})
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
         expected_exec = ['true']
         ret = self._driver._manage_access(self._context, self.share, access,
                                           cbk)
@@ -490,10 +491,10 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             d[key].append(value)
         access = {'access_type': 'ip', 'access_to': '10.0.0.2'}
         self._driver._get_export_dir_dict =\
-            Mock(return_value={'example.com': ['10.0.0.1'],
-                               'fakename': ['10.0.0.1']})
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+            mock.Mock(return_value={'example.com': ['10.0.0.1'],
+                                    'fakename': ['10.0.0.1']})
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
         expected_exec = ['true']
 
         def exec_runner(*ignore_args, **ignore_kw):
@@ -514,9 +515,9 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             d.pop(key)
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
         self._driver._get_export_dir_dict =\
-            Mock(return_value={'fakename': ['10.0.0.1']})
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+            mock.Mock(return_value={'fakename': ['10.0.0.1']})
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
         expected_exec = ['true']
         ret = self._driver._manage_access(self._context, self.share, access,
                                           cbk)
@@ -533,9 +534,9 @@ class GlusterfsShareDriverTestCase(test.TestCase):
     def test_allow_access_with_share_having_noaccess(self):
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
         self._driver._get_export_dir_dict =\
-            Mock(return_value={'example.com': ['10.0.0.1']})
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+            mock.Mock(return_value={'example.com': ['10.0.0.1']})
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
         self._driver.allow_access(self._context, self.share, access)
         self.assertTrue(self._driver.gluster_address.make_gluster_args.called)
         self.assertEqual(
@@ -545,16 +546,16 @@ class GlusterfsShareDriverTestCase(test.TestCase):
     def test_allow_access_with_share_having_access(self):
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
         self._driver._get_export_dir_dict = \
-            Mock(return_value={'fakename': ['10.0.0.1']})
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+            mock.Mock(return_value={'fakename': ['10.0.0.1']})
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
         self._driver.allow_access(self._context, self.share, access)
         self.assertFalse(self._driver.gluster_address.make_gluster_args.called)
 
     def test_allow_access_can_be_called_with_extra_arg_share_server(self):
         access = None
         share_server = None
-        self._driver._manage_access = Mock()
+        self._driver._manage_access = mock.Mock()
         ret = self._driver.allow_access(self._context, self.share, access,
                                         share_server)
         self.assertEqual(ret, None)
@@ -562,19 +563,19 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_deny_access_with_share_having_noaccess(self):
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
-        self._driver._get_export_dir_dict = Mock(return_value={})
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+        self._driver._get_export_dir_dict = mock.Mock(return_value={})
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
         self._driver.deny_access(self._context, self.share, access)
         self.assertFalse(self._driver.gluster_address.make_gluster_args.called)
 
     def test_deny_access_with_share_having_access(self):
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
         self._driver._get_export_dir_dict = \
-            Mock(return_value={'fakename': ['10.0.0.1'],
-                               'example.com': ['10.0.0.1']})
-        self._driver.gluster_address = Mock(
-            make_gluster_args=Mock(return_value=(('true',), {})))
+            mock.Mock(return_value={'fakename': ['10.0.0.1'],
+                                    'example.com': ['10.0.0.1']})
+        self._driver.gluster_address = mock.Mock(
+            make_gluster_args=mock.Mock(return_value=(('true',), {})))
         self._driver.deny_access(self._context, self.share, access)
         self.assertTrue(self._driver.gluster_address.make_gluster_args.called)
         self.assertEqual(
@@ -584,7 +585,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
     def test_deny_access_can_be_called_with_extra_arg_share_server(self):
         access = None
         share_server = None
-        self._driver._manage_access = Mock()
+        self._driver._manage_access = mock.Mock()
         ret = self._driver.deny_access(self._context, self.share, access,
                                        share_server)
         self.assertEqual(ret, None)
