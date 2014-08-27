@@ -42,6 +42,7 @@ class ShareNetworkDBTest(test.TestCase):
                               'neutron_net_id': 'fake net id',
                               'neutron_subnet_id': 'fake subnet id',
                               'project_id': self.fake_context.project_id,
+                              'user_id': 'fake_user_id',
                               'network_type': 'vlan',
                               'segmentation_id': 1000,
                               'cidr': '10.0.0.0/24',

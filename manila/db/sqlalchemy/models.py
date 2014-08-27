@@ -170,24 +170,6 @@ class Reservation(BASE, ManilaBase):
 #                         'QuotaUsage.deleted == 0)')
 
 
-class Migration(BASE, ManilaBase):
-    """Represents a running host-to-host migration."""
-    __tablename__ = 'migrations'
-    id = Column(Integer, primary_key=True, nullable=False)
-    # NOTE(tr3buchet): the ____compute variables are instance['host']
-    source_compute = Column(String(255))
-    dest_compute = Column(String(255))
-    # NOTE(tr3buchet): dest_host, btw, is an ip address
-    dest_host = Column(String(255))
-    old_instance_type_id = Column(Integer())
-    new_instance_type_id = Column(Integer())
-    instance_uuid = Column(String(255),
-                           ForeignKey('instances.uuid'),
-                           nullable=True)
-    # TODO(_cerberus_): enum
-    status = Column(String(255))
-
-
 class Share(BASE, ManilaBase):
     """Represents an NFS and CIFS shares."""
     __tablename__ = 'shares'
@@ -385,7 +367,8 @@ class ShareServer(BASE, ManilaBase):
                               nullable=True)
     host = Column(String(255), nullable=False)
     status = Column(Enum(constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
-                         constants.STATUS_ERROR),
+                         constants.STATUS_ERROR, constants.STATUS_DELETING,
+                         constants.STATUS_CREATING),
                     default=constants.STATUS_INACTIVE)
     network_allocations = relationship(
         "NetworkAllocation",
@@ -446,8 +429,7 @@ def register_models():
     connection is lost and needs to be reestablished.
     """
     from sqlalchemy import create_engine
-    models = (Migration,
-              Service,
+    models = (Service,
               Share,
               ShareAccessMapping,
               ShareSnapshot

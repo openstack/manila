@@ -34,6 +34,7 @@ import testtools
 
 from manila.db import migration
 from manila.db.sqlalchemy import api as db_api
+from manila.db.sqlalchemy import models as db_models
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 from manila import rpc
@@ -68,13 +69,12 @@ class Database(fixtures.Fixture):
         self.engine.dispose()
         conn = self.engine.connect()
         if sql_connection == "sqlite://":
-            if db_migrate.db_version() > db_migrate.INIT_VERSION:
-                return
+            self.setup_sqlite(db_migrate)
         else:
             testdb = os.path.join(CONF.state_path, sqlite_db)
+            db_migrate.upgrade('head')
             if os.path.exists(testdb):
                 return
-        db_migrate.db_sync()
         if sql_connection == "sqlite://":
             conn = self.engine.connect()
             self._DB = "".join(line for line in conn.connection.iterdump())
@@ -94,6 +94,12 @@ class Database(fixtures.Fixture):
                 os.path.join(CONF.state_path, self.sqlite_clean_db),
                 os.path.join(CONF.state_path, self.sqlite_db),
             )
+
+    def setup_sqlite(self, db_migrate):
+        if db_migrate.version():
+            return
+        db_models.BASE.metadata.create_all(self.engine)
+        db_migrate.stamp('head')
 
 
 class StubOutForTesting(object):

@@ -2,51 +2,44 @@
 
 # Copyright 2012 OpenStack LLC.
 #
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
-#    not use this file except in compliance with the License. You may obtain
-#    a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
 #
-#         http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#    License for the specific language governing permissions and limitations
-#    under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
 
-from oslo.config import cfg
+"""manila_init
+
+Revision ID: 162a3e673105
+Revises: None
+Create Date: 2014-07-23 17:51:57.077203
+
+"""
+
+# revision identifiers, used by Alembic.
+revision = '162a3e673105'
+down_revision = None
+
+from alembic import op
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy import Integer, MetaData, String, Table, UniqueConstraint
 
-
 from manila.openstack.common import log as logging
 
-CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 
 
-def upgrade(migrate_engine):
+def upgrade():
+    migrate_engine = op.get_bind().engine
     meta = MetaData()
     meta.bind = migrate_engine
-
-    migrations = Table(
-        'migrations', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Integer, default=0),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('source_compute', String(length=255)),
-        Column('dest_compute', String(length=255)),
-        Column('dest_host', String(length=255)),
-        Column('status', String(length=255)),
-        Column('instance_uuid', String(length=255)),
-        Column('old_instance_type_id', Integer),
-        Column('new_instance_type_id', Integer),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
-    )
 
     services = Table(
         'services', meta,
@@ -395,7 +388,7 @@ def upgrade(migrate_engine):
 
     # create all tables
     # Take care on create order for those with FK dependencies
-    tables = [migrations, quotas, services, quota_classes, quota_usages,
+    tables = [quotas, services, quota_classes, quota_usages,
               reservations, project_user_quotas, security_services,
               share_networks, ss_nw_association,
               share_servers, network_allocations, shares, access_map,
@@ -403,19 +396,20 @@ def upgrade(migrate_engine):
               share_metadata, volume_types, volume_type_extra_specs]
 
     for table in tables:
-        try:
-            table.create()
-        except Exception:
-            LOG.info(repr(table))
-            LOG.exception(_('Exception while creating table.'))
-            raise
+        if not table.exists():
+            try:
+                table.create()
+            except Exception:
+                LOG.info(repr(table))
+                LOG.exception(_('Exception while creating table.'))
+                raise
 
     if migrate_engine.name == "mysql":
-        tables = ["migrate_version", "migrations", "quotas", "services",
-                  "quota_classes", "quota_usages", "reservations",
-                  "project_user_quotas", "share_access_map", "share_snapshots",
-                  "share_metadata", "security_services", "share_networks",
-                  "network_allocations", "shares", "share_servers",
+        tables = ["quotas", "services", "quota_classes", "quota_usages",
+                  "reservations", "project_user_quotas", "share_access_map",
+                  "share_snapshots", "share_metadata", "security_services",
+                  "share_networks", "network_allocations", "shares",
+                  "share_servers",
                   "share_network_security_service_association", "volume_types",
                   "volume_type_extra_specs", "share_server_backend_details"]
 
@@ -430,6 +424,6 @@ def upgrade(migrate_engine):
         migrate_engine.execute("ALTER TABLE %s Engine=InnoDB" % table)
 
 
-def downgrade(migrate_engine):
+def downgrade():
     raise NotImplementedError('Downgrade from initial Manila install is not'
                               ' supported.')

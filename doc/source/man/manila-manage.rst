@@ -51,6 +51,18 @@ Manila Db
 
     Sync the database up to the most recent version. This is the standard way to create the db as well.
 
+``manila-manage db downgrade <version>``
+
+    Downgrade database to given version.
+
+``manila-manage db stamp <version>``
+
+    Stamp database with given revision.
+
+``manila-manage db revision <message> <authogenerate>``
+
+    Generate new migration.
+
 Manila Logs
 ~~~~~~~~~~~
 
