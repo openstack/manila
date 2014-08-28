@@ -173,16 +173,24 @@ class FaultsXMLSerializationTestV11(test.TestCase):
         }
 
         output = serializer.serialize(fixture)
-        actual = minidom.parseString(self._prepare_xml(output))
+        result = minidom.parseString(self._prepare_xml(output))
 
-        expected = minidom.parseString(self._prepare_xml("""
-                <overLimit code="413" xmlns="%s">
-                    <message>sorry</message>
-                    <retryAfter>4</retryAfter>
-                </overLimit>
-            """) % common.XML_NS_V1)
+        # result has 1 child - overLimit
+        self.assertEqual(result.firstChild, result.lastChild)
+        self.assertEqual(result.firstChild.tagName, 'overLimit')
 
-        self.assertEqual(expected.toxml(), actual.toxml())
+        # overLimit has attrs code = '413' and xmlns = common.XML_NS_V1
+        self.assertEqual(result.firstChild.getAttribute('code'), '413')
+        self.assertEqual(result.firstChild.getAttribute('xmlns'),
+                         common.XML_NS_V1)
+
+        # overLimit has childs message = 'sorry' and retryAfter = '4'
+        message = result.firstChild.getElementsByTagName('message')
+        retry_after = result.firstChild.getElementsByTagName('retryAfter')
+        self.assertEqual(len(message), 1)
+        self.assertEqual(len(retry_after), 1)
+        self.assertEqual(message[0].toxml(), '<message>sorry</message>')
+        self.assertEqual(retry_after[0].toxml(), '<retryAfter>4</retryAfter>')
 
     def test_404_fault(self):
         metadata = {'attributes': {"itemNotFound": 'code'}}
