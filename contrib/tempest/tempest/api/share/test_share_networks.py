@@ -55,6 +55,19 @@ class ShareNetworksTest(base.BaseSharesTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertDictContainsSubset(update_data, updated)
 
+    @test.attr(type=["gate", "smoke"])
+    def test_update_valid_keys_sh_server_exists(self):
+        resp, share = self.create_share(cleanup_in_class=False)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        update_dict = {
+            "name": "new_name",
+            "description": "new_description",
+        }
+        resp, updated = self.shares_client.update_share_network(
+            self.shares_client.share_network_id, **update_dict)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertDictContainsSubset(update_dict, updated)
+
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_networks(self):
         resp, listed = self.shares_client.list_share_networks()

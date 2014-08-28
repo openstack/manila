@@ -86,6 +86,25 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
                           "wrong_id", "wrong_id")
 
     @test.attr(type=["gate", "smoke", "negative"])
+    def test_delete_ss_from_sn_used_by_share_server(self):
+        sn = self.shares_client.get_share_network(
+            self.os.shares_client.share_network_id)[1]
+        resp, fresh_sn = self.create_share_network(
+            neutron_net_id=sn["neutron_net_id"],
+            neutron_subnet_id=sn["neutron_subnet_id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        resp, body = self.shares_client.add_sec_service_to_share_network(
+            fresh_sn["id"], self.ss["id"])
+        resp, share = self.create_share(share_network_id=fresh_sn["id"],
+                                        cleanup_in_class=False)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertRaises(exceptions.Unauthorized,
+                          self.cl.remove_sec_service_from_share_network,
+                          self.shares_client.share_network_id,
+                          self.ss["id"])
+
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_map_two_ss_with_same_type_to_sn(self):
         # create share network
         data = self.generate_share_network_data()

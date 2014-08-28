@@ -170,12 +170,16 @@ class ShareNetworkController(wsgi.Controller):
             msg = "%s" % e
             raise exc.HTTPNotFound(explanation=msg)
 
-        if share_network['share_servers']:
-            msg = _("Cannot update share network %s."
-                    " It is used by share servers") % share_network['id']
-            raise exc.HTTPForbidden(explanation=msg)
-
         update_values = body[RESOURCE_NAME]
+
+        if share_network['share_servers']:
+            for value in update_values:
+                if value not in ['name', 'description']:
+                    msg = _("Cannot update share network %s. It is used by "
+                            "share servers. Only 'name' and 'description' "
+                            "fields are available for update")\
+                        % share_network['id']
+                    raise exc.HTTPForbidden(explanation=msg)
 
         try:
             share_network = db_api.share_network_update(context,
@@ -280,6 +284,10 @@ class ShareNetworkController(wsgi.Controller):
         """Dissociate share network from a given security service."""
         context = req.environ['manila.context']
         policy.check_policy(context, RESOURCE_NAME, 'remove_security_service')
+        share_network = db_api.share_network_get(context, id)
+        if share_network['share_servers']:
+            msg = _("Cannot remove security services. Share network is used.")
+            raise exc.HTTPForbidden(explanation=msg)
         try:
             share_network = db_api.share_network_remove_security_service(
                 context,
