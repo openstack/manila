@@ -146,15 +146,12 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         fake_sevice_ldap = {'type': 'ldap'}
         fake_sevice_krb = {'type': 'kerberos'}
         fake_sevice_ad = {'type': 'active_directory'}
-
         vserver_name = 'fake_vserver'
-
         modify_args = {
-            'name-mapping-switch': {
-                'nmswitch': 'ldap,file'},
-            'name-server-switch': {
-                'nsswitch': 'ldap,file'},
-            'vserver-name': 'fake_vserver'}
+            'name-mapping-switch': {'nmswitch': 'ldap,file'},
+            'name-server-switch': {'nsswitch': 'ldap,file'},
+            'vserver-name': vserver_name,
+        }
         self.driver._configure_kerberos = mock.Mock()
         self.driver._configure_ldap = mock.Mock()
         self.driver._configure_active_directory = mock.Mock()
@@ -162,12 +159,16 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.driver._setup_security_services(
             [fake_sevice_ad, fake_sevice_krb, fake_sevice_ldap],
             self._vserver_client, vserver_name)
+
         self.driver._client.send_request.assert_called_once_with(
             'vserver-modify', modify_args)
         self.driver._configure_active_directory.assert_called_once_with(
-            fake_sevice_ad, self._vserver_client)
+            fake_sevice_ad, self._vserver_client, vserver_name)
         self.driver._configure_kerberos.assert_called_once_with(
-            vserver_name, fake_sevice_krb, self._vserver_client)
+            vserver_name,
+            fake_sevice_krb,
+            self._vserver_client,
+        )
         self.driver._configure_ldap.assert_called_once_with(
             fake_sevice_ldap, self._vserver_client)
 
@@ -358,18 +359,53 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             'kerberos-config-modify', kerberos_modify_args)
 
     def test_configure_active_directory(self):
+        vserver_name = 'fake_cifs_server_name'
+        # cifs_server is made of first seven symbols and end six symbols
+        # separated by two dots.
+        cifs_server = 'FAKE_CI..R_NAME'
         self.driver._configure_dns = mock.Mock()
-        self.driver._configure_active_directory(self.security_service,
-                                                self._vserver_client)
-        args = {
+        self.driver._configure_active_directory(
+            self.security_service, self._vserver_client, vserver_name)
+        arguments = {
             'admin-username': 'fake_user',
             'admin-password': 'fake_password',
             'force-account-overwrite': 'true',
-            'cifs-server': 'fake_server',
+            'cifs-server': cifs_server,
             'domain': 'FAKE',
         }
+        self.driver._configure_dns.assert_called_with(
+            self.security_service, self._vserver_client)
         self._vserver_client.send_request.assert_called_with(
-            'cifs-server-create', args)
+            'cifs-server-create', arguments)
+
+    def test_configure_active_directory_error_configuring(self):
+        vserver_name = 'fake_cifs_server_name'
+        # cifs_server is made of first seven symbols and end six symbols
+        # separated by two dots.
+        cifs_server = 'FAKE_CI..R_NAME'
+        arguments = {
+            'admin-username': 'fake_user',
+            'admin-password': 'fake_password',
+            'force-account-overwrite': 'true',
+            'cifs-server': cifs_server,
+            'domain': 'FAKE',
+        }
+        self.driver._configure_dns = mock.Mock()
+        self.stubs.Set(self._vserver_client, 'send_request',
+                       mock.Mock(side_effect=naapi.NaApiError()))
+
+        self.assertRaises(
+            exception.NetAppException,
+            self.driver._configure_active_directory,
+            self.security_service,
+            self._vserver_client,
+            vserver_name,
+        )
+
+        self.driver._configure_dns.assert_called_with(
+            self.security_service, self._vserver_client)
+        self._vserver_client.send_request.assert_called_once_with(
+            'cifs-server-create', arguments)
 
     def test_allocate_container(self):
         root = naapi.NaElement('root')
