@@ -306,16 +306,22 @@ class ShareNetworkAPITest(test.TestCase):
 
         db_api.security_service_get.return_value = security_service
         db_api.share_network_get.return_value = share_network
-
-        self.assertRaises(webob_exc.HTTPConflict,
-                          self.controller.action,
-                          self.req,
-                          share_network['id'],
-                          body)
-        db_api.share_network_get.assert_called_once_with(
-            self.req.environ['manila.context'], share_network['id'])
-        db_api.security_service_get.assert_called_once_with(
-            self.req.environ['manila.context'], security_service['id'])
+        with mock.patch.object(share_networks.policy, 'check_policy',
+                               mock.Mock()):
+            self.assertRaises(webob_exc.HTTPConflict,
+                              self.controller.action,
+                              self.req,
+                              share_network['id'],
+                              body)
+            db_api.share_network_get.assert_called_once_with(
+                self.req.environ['manila.context'], share_network['id'])
+            db_api.security_service_get.assert_called_once_with(
+                self.req.environ['manila.context'], security_service['id'])
+            share_networks.policy.check_policy.assert_called_once_with(
+                self.req.environ['manila.context'],
+                share_networks.RESOURCE_NAME,
+                'add_security_service',
+            )
 
     def test_action_remove_security_service(self):
         share_network_id = 'fake network id'
