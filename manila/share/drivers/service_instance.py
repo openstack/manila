@@ -123,7 +123,7 @@ class ServiceInstanceManager(object):
             value = CONF.get(key)
         return value
 
-    def __init__(self, db, _helpers, *args, **kwargs):
+    def __init__(self, db, *args, **kwargs):
         """Do initialization."""
         super(ServiceInstanceManager, self).__init__()
         self.driver_config = None
@@ -136,7 +136,6 @@ class ServiceInstanceManager(object):
         self._execute = utils.execute
         self.compute_api = compute.API()
         self.neutron_api = neutron.API()
-        self._helpers = _helpers
         self.db = db
         attempts = 5
         while attempts:
@@ -150,7 +149,6 @@ class ServiceInstanceManager(object):
         else:
             raise exception.ServiceInstanceException(_('Can not receive '
                                                        'service tenant id.'))
-        self.share_networks_servers = {}
         self.service_network_id = self._get_service_network()
         self.vif_driver = importutils.import_class(
             self.get_config_option("interface_driver"))()

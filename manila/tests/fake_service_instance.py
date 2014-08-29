@@ -22,7 +22,7 @@ LOG = logging.getLogger(__name__)
 
 class FakeServiceInstanceManager(object):
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self.db = mock.Mock()
         self._helpers = {
             'CIFS': mock.Mock(),

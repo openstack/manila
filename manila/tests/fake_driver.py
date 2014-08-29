@@ -13,13 +13,14 @@
 #    under the License.
 
 from manila.openstack.common import log as logging
-from manila.share.drivers import generic
+from manila.share import driver
 
 LOG = logging.getLogger(__name__)
 
 
-class FakeShareDriver(generic.GenericShareDriver):
+class FakeShareDriver(driver.ShareDriver):
     """Logs calls instead of executing."""
+
     def __init__(self, *args, **kwargs):
         super(FakeShareDriver, self).__init__(execute=self.fake_execute,
                                               *args, **kwargs)
