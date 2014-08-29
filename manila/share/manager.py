@@ -26,11 +26,11 @@ from manila import manager
 from manila import network
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
-from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 from manila import quota
 import manila.share.configuration
+from manila import utils
 
 from oslo.config import cfg
 
@@ -116,7 +116,7 @@ class ShareManager(manager.SchedulerDependentManager):
                   share updated with share_server_id.
         """
 
-        @lockutils.synchronized(share_network_id)
+        @utils.synchronized("share_manager_%s" % share_network_id)
         def _provide_share_server_for_share():
             exist = False
             try:
@@ -424,7 +424,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def delete_share_server(self, context, share_server):
 
-        @lockutils.synchronized(share_server['share_network_id'])
+        @utils.synchronized(
+            "share_manager_%s" % share_server['share_network_id'])
         def _teardown_server():
             # NOTE(vponomaryov): Verify that there are no dependent shares.
             # Without this verification we can get here exception in next case:

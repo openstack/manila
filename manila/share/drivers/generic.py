@@ -27,7 +27,6 @@ from manila import context
 from manila import exception
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
-from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import processutils
 from manila.share import driver
@@ -272,8 +271,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _attach_volume(self, context, share, instance_id, volume):
         """Attaches cinder volume to service vm."""
-        @lockutils.synchronized(instance_id, external=True,
-                                lock_path="attach_detach_locks")
+        @utils.synchronized(
+            "generic_driver_attach_detach_%s" % instance_id, external=True)
         def do_attach(volume):
             if volume['status'] == 'in-use':
                 attached_volumes = [vol.id for vol in
@@ -337,8 +336,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Detaches cinder volume from service vm."""
         instance_id = server_details['instance_id']
 
-        @lockutils.synchronized(instance_id, external=True,
-                                lock_path="attach_detach_locks")
+        @utils.synchronized(
+            "generic_driver_attach_detach_%s" % instance_id, external=True)
         def do_detach():
             attached_volumes = [vol.id for vol in
                                 self.compute_api.instance_volumes_list(
