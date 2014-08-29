@@ -32,29 +32,29 @@ LOG = logging.getLogger(__name__)
 quota_opts = [
     cfg.IntOpt('quota_shares',
                default=10,
-               help='number of shares allowed per project'),
+               help='Number of shares allowed per project.'),
     cfg.IntOpt('quota_snapshots',
                default=10,
-               help='number of share snapshots allowed per project'),
+               help='Number of share snapshots allowed per project.'),
     cfg.IntOpt('quota_gigabytes',
                default=1000,
-               help='number of share gigabytes (snapshots are also included) '
-                    'allowed per project'),
+               help='Number of share gigabytes (snapshots are also included) '
+                    'allowed per project.'),
     cfg.IntOpt('quota_share_networks',
                default=5,
-               help='number of activated share-networks allowed per project'),
+               help='Number of activated share-networks allowed per project.'),
     cfg.IntOpt('reservation_expire',
                default=86400,
-               help='number of seconds until a reservation expires'),
+               help='Number of seconds until a reservation expires.'),
     cfg.IntOpt('until_refresh',
                default=0,
-               help='count of reservations until usage is refreshed'),
+               help='Count of reservations until usage is refreshed.'),
     cfg.IntOpt('max_age',
                default=0,
-               help='number of seconds between subsequent usage refreshes'),
+               help='Number of seconds between subsequent usage refreshes.'),
     cfg.StrOpt('quota_driver',
                default='manila.quota.DbQuotaDriver',
-               help='default driver to use for quota checks'), ]
+               help='Default driver to use for quota checks.'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(quota_opts)

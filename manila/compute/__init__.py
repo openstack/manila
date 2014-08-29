@@ -21,7 +21,7 @@ _compute_opts = [
     oslo.config.cfg.StrOpt('compute_api_class',
                            default='manila.compute.nova.API',
                            help='The full class name of the '
-                                'compute API class to use'),
+                                'Compute API class to use.'),
 ]
 
 oslo.config.cfg.CONF.register_opts(_compute_opts)

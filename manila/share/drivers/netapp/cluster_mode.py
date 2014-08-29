@@ -58,8 +58,8 @@ NETAPP_NAS_OPTS = [
                help='Lif name template'),
     cfg.StrOpt('netapp_aggregate_name_search_pattern',
                default='(.*)',
-               help='Pattern for searching available aggregates'
-                    ' for provisioning.'),
+               help='Pattern for searching available aggregates '
+                    'for provisioning.'),
     cfg.StrOpt('netapp_root_volume_aggregate',
                help='Name of aggregate to create root volume on.'),
     cfg.StrOpt('netapp_root_volume_name',

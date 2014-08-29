@@ -59,7 +59,7 @@ share_opts = [
                help="Maximum time to wait for attaching cinder volume."),
     cfg.StrOpt('service_instance_smb_config_path',
                default='$share_mount_path/smb.conf',
-               help="Path to smb config in service instance."),
+               help="Path to SMB config in service instance."),
     cfg.ListOpt('share_helpers',
                 default=[
                     'CIFS=manila.share.drivers.generic.CIFSHelper',

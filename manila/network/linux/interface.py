@@ -31,7 +31,7 @@ LOG = logging.getLogger(__name__)
 OPTS = [
     cfg.StrOpt('ovs_integration_bridge',
                default='br-int',
-               help=_('Name of Open vSwitch bridge to use')),
+               help=_('Name of Open vSwitch bridge to use.')),
 ]
 
 CONF = cfg.CONF

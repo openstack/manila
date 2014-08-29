@@ -36,34 +36,34 @@ cinder_opts = [
     cfg.StrOpt('cinder_catalog_info',
                default='volume:cinder:publicURL',
                help='Info to match when looking for cinder in the service '
-                    'catalog. Format is : separated values of the form: '
+                    'catalog. Format is separated values of the form: '
                     '<service_type>:<service_name>:<endpoint_type>'),
     cfg.StrOpt('os_region_name',
-               help='region name of this node'),
+               help='Region name of this node.'),
     cfg.StrOpt('cinder_ca_certificates_file',
-               help='Location of ca certificates file to use for cinder '
+               help='Location of CA certificates file to use for cinder '
                     'client requests.'),
     cfg.IntOpt('cinder_http_retries',
                default=3,
-               help='Number of cinderclient retries on failed http calls'),
+               help='Number of cinderclient retries on failed HTTP calls.'),
     cfg.BoolOpt('cinder_api_insecure',
                 default=False,
-                help='Allow to perform insecure SSL requests to cinder'),
+                help='Allow to perform insecure SSL requests to cinder.'),
     cfg.BoolOpt('cinder_cross_az_attach',
                 default=True,
-                help='Allow attach between instance and volume in different '
-                     'availability zones.'),
+                help='Allow attaching between instances and volumes in '
+                     'different availability zones.'),
     cfg.StrOpt('cinder_admin_username',
                default='cinder',
-               help='Cinder admin username'),
+               help='Cinder admin username.'),
     cfg.StrOpt('cinder_admin_password',
-               help='Cinder admin password'),
+               help='Cinder admin password.'),
     cfg.StrOpt('cinder_admin_tenant_name',
                default='service',
-               help='Cinder admin tenant name'),
+               help='Cinder admin tenant name.'),
     cfg.StrOpt('cinder_admin_auth_url',
                default='http://localhost:5000/v2.0',
-               help='Identity service url')
+               help='Identity service URL.')
 ]
 
 CONF = cfg.CONF

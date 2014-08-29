@@ -49,17 +49,17 @@ from oslo.db import api as db_api
 db_opts = [
     cfg.StrOpt('db_backend',
                default='sqlalchemy',
-               help='The backend to use for db'),
+               help='The backend to use for database.'),
     cfg.BoolOpt('enable_new_services',
                 default=True,
-                help='Services to be added to the available pool on create'),
+                help='Services to be added to the available pool on create.'),
     cfg.StrOpt('share_name_template',
                default='share-%s',
-               help='Template string to be used to generate share names'),
+               help='Template string to be used to generate share names.'),
     cfg.StrOpt('share_snapshot_name_template',
                default='share-snapshot-%s',
                help='Template string to be used to generate share snapshot '
-                    'names'),
+                    'names.'),
 ]
 
 CONF = cfg.CONF

@@ -32,7 +32,7 @@ from manila import utils
 simple_scheduler_opts = [
     cfg.IntOpt("max_gigabytes",
                default=10000,
-               help="maximum number of volume gigabytes to allow per host"), ]
+               help="Maximum number of volume gigabytes to allow per host."), ]
 
 CONF = cfg.CONF
 CONF.register_opts(simple_scheduler_opts)

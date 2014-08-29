@@ -45,21 +45,21 @@ LOG = logging.getLogger(__name__)
 service_opts = [
     cfg.IntOpt('report_interval',
                default=10,
-               help='seconds between nodes reporting state to datastore'),
+               help='Seconds between nodes reporting state to datastore.'),
     cfg.IntOpt('periodic_interval',
                default=60,
-               help='seconds between running periodic tasks'),
+               help='Seconds between running periodic tasks.'),
     cfg.IntOpt('periodic_fuzzy_delay',
                default=60,
-               help='range of seconds to randomly delay when starting the'
-                    ' periodic task scheduler to reduce stampeding.'
-                    ' (Disable by setting to 0)'),
+               help='Range of seconds to randomly delay when starting the '
+                    'periodic task scheduler to reduce stampeding. '
+                    '(Disable by setting to 0)'),
     cfg.StrOpt('osapi_share_listen',
                default="0.0.0.0",
-               help='IP address for OpenStack Share API to listen'),
+               help='IP address for OpenStack Share API to listen on.'),
     cfg.IntOpt('osapi_share_listen_port',
                default=8786,
-               help='port for os share api to listen'), ]
+               help='Port for OpenStack Share API to listen on.'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(service_opts)

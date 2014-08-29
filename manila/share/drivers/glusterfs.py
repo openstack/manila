@@ -42,11 +42,12 @@ LOG = logging.getLogger(__name__)
 GlusterfsManilaShare_opts = [
     cfg.StrOpt('glusterfs_volumes_config',
                default='/etc/manila/glusterfs_volumes',
-               help='File with the list of Gluster volumes that can'
-                    'be used to create shares'),
+               help='File with the list of Gluster volumes that can '
+                    'be used to create shares.'),
     cfg.StrOpt('glusterfs_mount_point_base',
                default='$state_path/mnt',
-               help='Base dir containing mount points for Gluster volumes.'),
+               help='Base directory containing mount points for Gluster '
+                    'volumes.'),
 ]
 
 CONF = cfg.CONF

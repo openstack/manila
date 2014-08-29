@@ -39,11 +39,11 @@ LOG = logging.getLogger(__name__)
 share_manager_opts = [
     cfg.StrOpt('share_driver',
                default='manila.share.drivers.generic.GenericShareDriver',
-               help='Driver to use for share creation'),
+               help='Driver to use for share creation.'),
     cfg.BoolOpt('delete_share_server_with_last_share',
                 default=False,
-                help='With this option is set to True share server will'
-                     'be deleted on deletion of last share'),
+                help='Whether share servers will '
+                     'be deleted on deletion of the last share.'),
 ]
 
 CONF = cfg.CONF
