@@ -464,3 +464,16 @@ class GPFSException(ManilaException):
 
 class GPFSGaneshaException(ManilaException):
     message = _("GPFS Ganesha exception occurred.")
+
+
+class GaneshaCommandFailure(ProcessExecutionError):
+    _description = _("Ganesha management command failed.")
+
+    def __init__(self, **kw):
+        if 'description' not in kw:
+            kw['description'] = self._description
+        super(GaneshaCommandFailure, self).__init__(**kw)
+
+
+class InvalidSqliteDB(Invalid):
+    message = _("Invalid Sqlite database.")

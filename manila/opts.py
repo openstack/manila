@@ -95,6 +95,7 @@ _global_opt_lists = [
     manila.scheduler.weights.capacity.capacity_weight_opts,
     manila.service.service_opts,
     manila.share.api.share_api_opts,
+    manila.share.driver.ganesha_opts,
     manila.share.driver.share_opts,
     manila.share.driver.ssh_opts,
     manila.share.drivers.emc.driver.EMC_NAS_OPTS,

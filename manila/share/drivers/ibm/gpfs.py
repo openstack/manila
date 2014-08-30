@@ -101,22 +101,6 @@ gpfs_share_opts = [
                      'NFS server. Note that these defaults can be overridden '
                      'when a share is created by passing metadata with key '
                      'name export_options.')),
-    cfg.StrOpt('gnfs_export_options',
-               default=('maxread = 65536, prefread = 65536'),
-               help=('Options to use when exporting a share using ganesha '
-                     'NFS server. Note that these defaults can be overridden '
-                     'when a share is created by passing metadata with key '
-                     'name export_options.  Also note the complete set of '
-                     'default ganesha export options is specified in '
-                     'ganesha_utils.')),
-    cfg.StrOpt('ganesha_config_path',
-               default='/etc/ganesha/ganesha_exports.conf',
-               help=('Path to ganesha export config file.  The config file '
-                     'may also contain non-export configuration data but it '
-                     'must be placed before the EXPORT clauses.')),
-    cfg.StrOpt('ganesha_service_name',
-               default='ganesha.nfsd',
-               help=('Name of the ganesha nfs service.')),
 ]
 
 
@@ -124,7 +108,9 @@ CONF = cfg.CONF
 CONF.register_opts(gpfs_share_opts)
 
 
-class GPFSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
+class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
+                      driver.ShareDriver):
+
     """GPFS Share Driver.
 
     Executes commands relating to Shares.
@@ -696,7 +682,9 @@ class GNFSHelper(NASHelperBase):
     def __init__(self, execute, config_object):
         super(GNFSHelper, self).__init__(execute, config_object)
         self.default_export_options = dict()
-        for m in AVPATTERN.finditer(self.configuration.gnfs_export_options):
+        for m in AVPATTERN.finditer(
+            self.configuration.ganesha_nfs_export_options
+        ):
             self.default_export_options[m.group('attr')] = m.group('val')
 
     def _get_export_options(self, share):

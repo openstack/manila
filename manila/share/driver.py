@@ -77,9 +77,40 @@ ssh_opts = [
         help='Maximum number of connections in the SSH pool.'),
 ]
 
+ganesha_opts = [
+    cfg.StrOpt('ganesha_config_dir',
+               default='/etc/ganesha',
+               help='Directory where Ganesha config files are stored.'),
+    cfg.StrOpt('ganesha_config_path',
+               default='$ganesha_config_dir/ganesha.conf',
+               help='Path to main Ganesha config file.'),
+    cfg.StrOpt('ganesha_nfs_export_options',
+               default='maxread = 65536, prefread = 65536',
+               help='Options to use when exporting a share using ganesha '
+                    'NFS server. Note that these defaults can be overridden '
+                    'when a share is created by passing metadata with key '
+                    'name export_options.  Also note the complete set of '
+                    'default ganesha export options is specified in '
+                    'ganesha_utils. (GPFS only.)'),
+    cfg.StrOpt('ganesha_service_name',
+               default='ganesha.nfsd',
+               help='Name of the ganesha nfs service.'),
+    cfg.StrOpt('ganesha_db_path',
+               default='$state_path/manila-ganesha.db',
+               help='Location of Ganesha database file. '
+                    '(Ganesha module only.)'),
+    cfg.StrOpt('ganesha_export_dir',
+               default='$ganesha_config_dir/export.d',
+               help='Path to Ganesha export template. (Ganesha module only.)'),
+    cfg.StrOpt('ganesha_export_template_dir',
+               default='/etc/manila/ganesha-export-templ.d',
+               help='Path to Ganesha export template. (Ganesha module only.)'),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(share_opts)
 CONF.register_opts(ssh_opts)
+CONF.register_opts(ganesha_opts)
 
 
 class ExecuteMixin(object):
@@ -111,6 +142,14 @@ class ExecuteMixin(object):
                 time.sleep(tries ** 2)
 
 
+class GaneshaMixin(object):
+    """Augment derived classes with Ganesha configuration."""
+
+    def init_ganesha_mixin(self, *args, **kwargs):
+        if self.configuration:
+            self.configuration.append_config_values(ganesha_opts)
+
+
 class ShareDriver(object):
     """Class defines interface of NAS driver."""
 
@@ -128,6 +167,9 @@ class ShareDriver(object):
 
         if hasattr(self, 'init_execute_mixin'):
             # Instance with 'ExecuteMixin'
+            self.init_execute_mixin(*args, **kwargs)  # pylint: disable=E1101
+        if hasattr(self, 'init_ganesha_mixin'):
+            # Instance with 'GaneshaMixin'
             self.init_execute_mixin(*args, **kwargs)  # pylint: disable=E1101
         self.network_api = network.API(config_group_name=network_config_group)
 

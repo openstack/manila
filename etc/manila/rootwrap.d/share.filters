@@ -3,6 +3,7 @@
 
 [Filters]
 # manila/share/drivers/glusterfs.py: 'mkdir', '%s'
+# manila/share/drivers/ganesha/manager.py: 'mkdir', '-p', '%s'
 mkdir: CommandFilter, /usr/bin/mkdir, root
 
 # manila/share/drivers/glusterfs.py: 'rm', '-rf', '%s'
@@ -49,6 +50,7 @@ rsync: CommandFilter, /usr/bin/rsync, root
 exportfs: CommandFilter, /usr/sbin/exportfs, root
 # Ganesha commands
 # manila/share/drivers/ibm/ganesha_utils.py: 'mv', '%s', '%s'
+# manila/share/drivers/ganesha/manager.py: 'mv', '%s', '%s'
 mv: CommandFilter, /bin/mv, root
 # manila/share/drivers/ibm/ganesha_utils.py: 'cp', '%s', '%s'
 cp: CommandFilter, /bin/cp, root
@@ -60,3 +62,18 @@ ssh: CommandFilter, /usr/bin/ssh, root
 chmod: CommandFilter, /bin/chmod, root
 # manila/share/drivers/ibm/ganesha_utils.py: 'service', '%s', 'restart'
 service: CommandFilter, /sbin/service, root
+
+# manila/share/drivers/ganesha/manager.py: 'mktemp', '-p', '%s', '-t', '%s'
+mktemp: CommandFilter, /bin/mktemp, root
+
+# manila/share/drivers/ganesha/manager.py:
+shcat: RegExpFilter, /bin/sh, root, sh, -c, cat > /.*
+
+# manila/share/drivers/ganesha/manager.py:
+dbus-addexport: RegExpFilter, /usr/bin/dbus-send, root, dbus-send, --print-reply, --system, --dest=org\.ganesha\.nfsd, /org/ganesha/nfsd/ExportMgr, org\.ganesha\.nfsd\.exportmgr\.(Add|Remove)Export, .*, .*
+
+# manila/share/drivers/ganesha/manager.py:
+dbus-removeexport: RegExpFilter, /usr/bin/dbus-send, root, dbus-send, --print-reply, --system, --dest=org\.ganesha\.nfsd, /org/ganesha/nfsd/ExportMgr, org\.ganesha\.nfsd\.exportmgr\.(Add|Remove)Export, .*
+
+# manila/share/drivers/ganesha/manager.py:
+rmconf: RegExpFilter, /bin/sh, root, sh, -c, rm /.*/\*\.conf$
