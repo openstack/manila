@@ -133,7 +133,7 @@ class InvalidResults(Invalid):
 
 
 class InvalidInput(Invalid):
-    message = _("Invalid input received") + ": %(reason)s"
+    message = _("Invalid input received: %(reason)s")
 
 
 class InvalidContentType(Invalid):
@@ -257,7 +257,7 @@ class FileNotFound(NotFound):
 
 
 class MigrationError(ManilaException):
-    message = _("Migration error") + ": %(reason)s"
+    message = _("Migration error: %(reason)s")
 
 
 class MalformedRequestBody(ManilaException):
@@ -281,7 +281,7 @@ class WillNotSchedule(ManilaException):
 
 
 class QuotaError(ManilaException):
-    message = _("Quota exceeded") + ": code=%(code)s"
+    message = _("Quota exceeded: code=%(code)s")
     code = 413
     headers = {'Retry-After': 0}
     safe = True
