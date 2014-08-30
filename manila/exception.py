@@ -85,7 +85,7 @@ class ManilaException(Exception):
             except Exception as e:
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception(_('Exception in string format operation'))
+                LOG.exception(_('Exception in string format operation.'))
                 for name, value in six.iteritems(kwargs):
                     LOG.error("%s: %s" % (name, value))
                 if CONF.fatal_exception_format_errors:
@@ -99,11 +99,11 @@ class ManilaException(Exception):
 
 
 class NetworkException(ManilaException):
-    message = _("Exception due to network failure")
+    message = _("Exception due to network failure.")
 
 
 class NetworkBadConfigurationException(NetworkException):
-    message = _("Bad network configuration: %(reason)s")
+    message = _("Bad network configuration: %(reason)s.")
 
 
 class NotAuthorized(ManilaException):
@@ -112,7 +112,7 @@ class NotAuthorized(ManilaException):
 
 
 class AdminRequired(NotAuthorized):
-    message = _("User does not have admin privileges")
+    message = _("User does not have admin privileges.")
 
 
 class PolicyNotAuthorized(NotAuthorized):
@@ -133,7 +133,7 @@ class InvalidResults(Invalid):
 
 
 class InvalidInput(Invalid):
-    message = _("Invalid input received: %(reason)s")
+    message = _("Invalid input received: %(reason)s.")
 
 
 class InvalidContentType(Invalid):
@@ -202,16 +202,16 @@ class InvalidReservationExpiration(Invalid):
 
 class InvalidQuotaValue(Invalid):
     msg_fmt = _("Change would make usage less than 0 for the following "
-                "resources: %(unders)s")
+                "resources: %(unders)s.")
 
 
 class QuotaNotFound(NotFound):
-    msg_fmt = _("Quota could not be found")
+    msg_fmt = _("Quota could not be found.")
 
 
 class QuotaExists(ManilaException):
     msg_fmt = _("Quota exists for project %(project_id)s, "
-                "resource %(resource)s")
+                "resource %(resource)s.")
 
 
 class QuotaResourceUnknown(QuotaNotFound):
@@ -240,7 +240,7 @@ class ReservationNotFound(QuotaNotFound):
 
 
 class OverQuota(ManilaException):
-    msg_fmt = _("Quota exceeded for resources: %(overs)s")
+    msg_fmt = _("Quota exceeded for resources: %(overs)s.")
 
 
 class MigrationNotFound(NotFound):
@@ -257,23 +257,23 @@ class FileNotFound(NotFound):
 
 
 class MigrationError(ManilaException):
-    message = _("Migration error: %(reason)s")
+    message = _("Migration error: %(reason)s.")
 
 
 class MalformedRequestBody(ManilaException):
-    message = _("Malformed message body: %(reason)s")
+    message = _("Malformed message body: %(reason)s.")
 
 
 class ConfigNotFound(NotFound):
-    message = _("Could not find config at %(path)s")
+    message = _("Could not find config at %(path)s.")
 
 
 class PasteAppNotFound(NotFound):
-    message = _("Could not load paste app '%(name)s' from %(path)s")
+    message = _("Could not load paste app '%(name)s' from %(path)s.")
 
 
 class NoValidHost(ManilaException):
-    message = _("No valid host was found. %(reason)s")
+    message = _("No valid host was found. %(reason)s.")
 
 
 class WillNotSchedule(ManilaException):
@@ -281,7 +281,7 @@ class WillNotSchedule(ManilaException):
 
 
 class QuotaError(ManilaException):
-    message = _("Quota exceeded: code=%(code)s")
+    message = _("Quota exceeded: code=%(code)s.")
     code = 413
     headers = {'Retry-After': 0}
     safe = True
@@ -289,48 +289,48 @@ class QuotaError(ManilaException):
 
 class ShareSizeExceedsAvailableQuota(QuotaError):
     message = _("Requested share or snapshot exceeds "
-                "allowed Gigabytes quota")
+                "allowed Gigabytes quota.")
 
 
 class ShareLimitExceeded(QuotaError):
-    message = _("Maximum number of shares allowed (%(allowed)d) exceeded")
+    message = _("Maximum number of shares allowed (%(allowed)d) exceeded.")
 
 
 class SnapshotLimitExceeded(QuotaError):
-    message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
+    message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded.")
 
 
 class ShareNetworksLimitExceeded(QuotaError):
     message = _("Maximum number of share-networks "
-                "allowed (%(allowed)d) exceeded")
+                "allowed (%(allowed)d) exceeded.")
 
 
 class GlusterfsException(ManilaException):
-    message = _("Unknown Gluster exception")
+    message = _("Unknown Gluster exception.")
 
 
 class InvalidShare(Invalid):
-    message = _("Invalid share: %(reason)s")
+    message = _("Invalid share: %(reason)s.")
 
 
 class PortLimitExceeded(QuotaError):
-    message = _("Maximum number of ports exceeded")
+    message = _("Maximum number of ports exceeded.")
 
 
 class ShareAccessExists(ManilaException):
-    message = _("Share access %(access_type)s:%(access)s exists")
+    message = _("Share access %(access_type)s:%(access)s exists.")
 
 
 class InvalidShareAccess(Invalid):
-    message = _("Invalid access_rule: %(reason)s")
+    message = _("Invalid access_rule: %(reason)s.")
 
 
 class ShareIsBusy(ManilaException):
-    message = _("Deleting $(share_name) share that used")
+    message = _("Deleting $(share_name) share that used.")
 
 
 class ShareBackendException(ManilaException):
-    message = _("Share backend error: %(msg)s")
+    message = _("Share backend error: %(msg)s.")
 
 
 class ShareSnapshotNotFound(NotFound):
@@ -343,19 +343,19 @@ class ShareSnapshotIsBusy(ManilaException):
 
 
 class InvalidShareSnapshot(Invalid):
-    message = _("Invalid share snapshot: %(reason)s")
+    message = _("Invalid share snapshot: %(reason)s.")
 
 
 class ShareMetadataNotFound(NotFound):
-    message = _("Metadata item is not found")
+    message = _("Metadata item is not found.")
 
 
 class InvalidShareMetadata(Invalid):
-    message = _("Invalid metadata")
+    message = _("Invalid metadata.")
 
 
 class InvalidShareMetadataSize(Invalid):
-    message = _("Invalid metadata size")
+    message = _("Invalid metadata size.")
 
 
 class SecurityServiceNotFound(NotFound):
@@ -377,7 +377,7 @@ class InvalidVolume(Invalid):
 
 
 class InvalidVolumeType(Invalid):
-    message = _("Invalid volume type: %(reason)s")
+    message = _("Invalid volume type: %(reason)s.")
 
 
 class VolumeNotFound(NotFound):
@@ -413,7 +413,7 @@ class VolumeTypeExists(ManilaException):
 
 class VolumeTypeCreateFailed(ManilaException):
     message = _("Cannot create volume_type with "
-                "name %(name)s and specs %(extra_specs)s")
+                "name %(name)s and specs %(extra_specs)s.")
 
 
 class InstanceNotFound(NotFound):
