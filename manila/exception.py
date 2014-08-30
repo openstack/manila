@@ -77,6 +77,9 @@ class ManilaException(Exception):
                 self.kwargs['code'] = self.code
             except AttributeError:
                 pass
+        for k, v in six.iteritems(self.kwargs):
+            if isinstance(v, Exception):
+                self.kwargs[k] = six.text_type(v)
 
         if not message:
             try:
@@ -93,6 +96,8 @@ class ManilaException(Exception):
                 else:
                     # at least get the core message out if something happened
                     message = self.message
+        elif isinstance(message, Exception):
+            message = six.text_type(message)
 
         self.msg = message
         super(ManilaException, self).__init__(message)

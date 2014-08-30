@@ -82,6 +82,28 @@ class ManilaExceptionTestCase(test.TestCase):
         exc = FakeManilaException(code=404)
         self.assertEqual(exc.kwargs['code'], 404)
 
+    def test_error_msg_is_exception_to_string(self):
+        msg = 'test message'
+        exc1 = Exception(msg)
+        exc2 = exception.ManilaException(exc1)
+        self.assertEqual(msg, exc2.msg)
+
+    def test_exception_kwargs_to_string(self):
+        msg = 'test message'
+        exc1 = Exception(msg)
+        exc2 = exception.ManilaException(kwarg1=exc1)
+        self.assertEqual(msg, exc2.kwargs['kwarg1'])
+
+    def test_exception_multi_kwargs_to_string(self):
+        exc = exception.ManilaException(
+            'fake_msg', foo=Exception('foo_msg'), bar=Exception('bar_msg'))
+        self.assertEqual('fake_msg', exc.msg)
+        self.assertEqual('foo_msg', exc.kwargs['foo'])
+        self.assertEqual('bar_msg', exc.kwargs['bar'])
+        self.assertNotIn('fake_msg', exc.kwargs)
+        self.assertNotIn('foo_msg', exc.kwargs)
+        self.assertNotIn('bar_msg', exc.kwargs)
+
 
 class ManilaExceptionResponseCode400(test.TestCase):
 
