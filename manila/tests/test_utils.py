@@ -21,13 +21,13 @@ import hashlib
 import os
 import os.path
 import socket
-import StringIO
 import tempfile
 import uuid
 
 import mock
 from oslo.config import cfg
 import paramiko
+import six
 
 import manila
 from manila import exception
@@ -358,7 +358,7 @@ class GenericUtilsTestCase(test.TestCase):
 
     def test_hash_file(self):
         data = 'Mary had a little lamb, its fleece as white as snow'
-        flo = StringIO.StringIO(data)
+        flo = six.StringIO(data)
         h1 = utils.hash_file(flo)
         h2 = hashlib.sha1(data).hexdigest()
         self.assertEqual(h1, h2)
