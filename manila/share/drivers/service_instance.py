@@ -255,8 +255,8 @@ class ServiceInstanceManager(object):
             inst = self.compute_api.server_get(self.admin_context,
                                                server['instance_id'])
         except exception.InstanceNotFound:
-            LOG.warning(_("Service instance %s does not exists")
-                        % server['instance_id'])
+            LOG.warning(_("Service instance %s does not exist."),
+                        server['instance_id'])
             return False
         if inst['status'] == 'ACTIVE':
             return self._check_server_availability(server)

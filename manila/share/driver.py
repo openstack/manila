@@ -74,7 +74,7 @@ class ExecuteMixin(object):
                 tries += 1
                 if tries >= self.configuration.num_shell_tries:
                     raise
-                LOG.exception(_("Recovering from a failed execute.  "
+                LOG.exception(_("Recovering from a failed execute. "
                                 "Try number %s"), tries)
                 time.sleep(tries ** 2)
 

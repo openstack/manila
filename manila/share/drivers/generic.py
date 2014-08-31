@@ -239,7 +239,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     self._ssh_exec(server_details, mount_cmd)
                 else:
                     LOG.warning(_("Mount point '%(path)s' already exists on "
-                                  "server '%(server)s'.") % log_data)
+                                  "server '%(server)s'."), log_data)
             except exception.ProcessExecutionError as e:
                 raise exception.ShareBackendException(msg=six.text_type(e))
         return _mount_device_with_lock()
@@ -262,7 +262,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 self._ssh_exec(server_details, unmount_cmd)
             else:
                 LOG.warning(_("Mount point '%(path)s' does not exist on "
-                              "server '%(server)s'.") % log_data)
+                              "server '%(server)s'."), log_data)
         return _unmount_device_with_lock()
 
     def _get_mount_path(self, share):
@@ -729,7 +729,7 @@ class CIFSHelper(NASHelperBase):
                 server, ['sudo', 'net', 'conf', 'delshare', share_name])
         except exception.ProcessExecutionError as e:
             LOG.warning(_("Caught error trying delete share: %(error)s, try"
-                          "ing delete it forcibly.") % {'error': e.stderr})
+                          "ing delete it forcibly."), {'error': e.stderr})
             self._ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
                                     share_name])
 

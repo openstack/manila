@@ -148,7 +148,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 LOG.info(_("Share server created successfully."))
             else:
                 LOG.info(_("Used already existed share server '%(share_server"
-                           "_id)s'") % {'share_server_id': share_server['id']})
+                           "_id)s'"), {'share_server_id': share_server['id']})
             return share_server, share_ref
 
         return _provide_share_server_for_share()
@@ -187,8 +187,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_id, {'share_server_id': share_server['id']})
             except exception.ShareServerNotFound:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_("Share server %s does not exist.")
-                              % parent_share_server_id)
+                    LOG.error(_("Share server %s does not exist."),
+                              parent_share_server_id)
                     self.db.share_update(context, share_id,
                                          {'status': 'error'})
         elif share_network_id:
@@ -216,7 +216,7 @@ class ShareManager(manager.SchedulerDependentManager):
                                  {'export_location': export_location})
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Share %s failed on creation.") % share_id)
+                LOG.error(_("Share %s failed on creation."), share_id)
                 self.db.share_update(context, share_id, {'status': 'error'})
         else:
             LOG.info(_("Share created successfully."))
@@ -454,8 +454,8 @@ class ShareManager(manager.SchedulerDependentManager):
                                             security_services=sec_services)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_("Share server %s failed on deletion.")
-                              % share_server['id'])
+                    LOG.error(_("Share server %s failed on deletion."),
+                              share_server['id'])
                     self.db.share_server_update(
                         context, share_server['id'],
                         {'status': constants.STATUS_ERROR})

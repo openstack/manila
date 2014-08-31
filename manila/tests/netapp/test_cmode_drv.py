@@ -573,7 +573,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
 
         self.driver._client.send_request.assert_called_once_with(
             'license-v2-list-info')
-        driver.LOG.info.assert_called_once_with(mock.ANY)
+        driver.LOG.info.assert_called_once_with(mock.ANY, mock.ANY)
         self.assertEqual(response, ['fake_license_1', 'fake_license_2'])
 
     def test_licenses_exception_raise(self):
@@ -585,7 +585,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
 
         self.driver._client.send_request.assert_called_once_with(
             'license-v2-list-info')
-        driver.LOG.error.assert_called_once_with(mock.ANY)
+        driver.LOG.error.assert_called_once_with(mock.ANY, mock.ANY)
 
 
 class NetAppNFSHelperTestCase(test.TestCase):

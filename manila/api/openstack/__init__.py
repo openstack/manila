@@ -107,8 +107,8 @@ class APIRouter(base_wsgi.Router):
 
             if collection not in self.resources:
                 LOG.warning(_('Extension %(ext_name)s: Cannot extend '
-                              'resource %(collection)s: No such resource') %
-                            locals())
+                              'resource %(collection)s: No such resource'),
+                            {'ext_name': ext_name, 'collection': collection})
                 continue
 
             LOG.debug('Extension %(ext_name)s extending resource: '

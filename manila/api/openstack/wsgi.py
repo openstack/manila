@@ -579,9 +579,8 @@ class ResourceExceptionHandler(object):
                 code=ex_value.code, explanation=six.text_type(ex_value)))
         elif isinstance(ex_value, TypeError):
             exc_info = (ex_type, ex_value, ex_traceback)
-            LOG.error(_(
-                'Exception handling resource: %s') %
-                ex_value, exc_info=exc_info)
+            LOG.error(_('Exception handling resource: %s'),
+                      ex_value, exc_info=exc_info)
             raise Fault(webob.exc.HTTPBadRequest())
         elif isinstance(ex_value, Fault):
             LOG.info(_("Fault thrown: %s"), six.text_type(ex_value))
