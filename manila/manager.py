@@ -144,12 +144,15 @@ class Manager(base.Base):
             ticks_to_skip = self._ticks_to_skip[task_name]
             if ticks_to_skip > 0:
                 LOG.debug("Skipping %(full_task_name)s, %(ticks_to_skip)s"
-                          " ticks left until next run", locals())
+                          " ticks left until next run",
+                          {'full_task_name': full_task_name,
+                           'ticks_to_skip': ticks_to_skip})
                 self._ticks_to_skip[task_name] -= 1
                 continue
 
             self._ticks_to_skip[task_name] = task._ticks_between_runs
-            LOG.debug("Running periodic task %(full_task_name)s", locals())
+            LOG.debug("Running periodic task %(full_task_name)s",
+                      {'full_task_name': full_task_name})
 
             try:
                 task(self, context)

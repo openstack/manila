@@ -146,14 +146,14 @@ class FilterScheduler(driver.Scheduler):
         if not hosts:
             return None
 
-        LOG.debug("Filtered share %(hosts)s" % {"hosts": hosts})
+        LOG.debug("Filtered share %(hosts)s", {"hosts": hosts})
         # weighted_host = WeightedHost() ... the best
         # host for the job.
         weighed_hosts = self.host_manager.get_weighed_hosts(hosts,
                                                             filter_properties)
         best_host = weighed_hosts[0]
-        LOG.debug("Choosing for share: %(best_host)s"
-                  % {"best_host": best_host})
+        LOG.debug("Choosing for share: %(best_host)s",
+                  {"best_host": best_host})
         # NOTE(rushiagr): updating the available space parameters at same place
         best_host.obj.consume_from_share(share_properties)
         return best_host

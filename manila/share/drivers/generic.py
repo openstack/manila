@@ -250,7 +250,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             try:
                 if not self._is_device_mounted(share, server_details, volume):
                     LOG.debug("Mounting '%(dev)s' to path '%(path)s' on "
-                              "server '%(server)s'." % log_data)
+                              "server '%(server)s'.", log_data)
                     mount_cmd = ['sudo mkdir -p', mount_path, '&&']
                     mount_cmd.extend(['sudo mount', volume['mountpoint'],
                                       mount_path])
@@ -279,7 +279,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             }
             if self._is_device_mounted(share, server_details):
                 LOG.debug("Unmounting path '%(path)s' on server "
-                          "'%(server)s'." % log_data)
+                          "'%(server)s'.", log_data)
                 unmount_cmd = ['sudo umount', mount_path, '&& sudo rmdir',
                                mount_path]
                 self._ssh_exec(server_details, unmount_cmd)

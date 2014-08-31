@@ -228,7 +228,7 @@ class ServiceInstanceManager(object):
             if not description:
                 description = "This security group is intended "\
                               "to be used by share service."
-            LOG.debug("Creating security group with name '%s'." % name)
+            LOG.debug("Creating security group with name '%s'.", name)
             sg = self.compute_api.security_group_create(
                 context, name, description)
             for protocol, ports in constants.SERVICE_INSTANCE_SECGROUP_DATA:
@@ -487,7 +487,7 @@ class ServiceInstanceManager(object):
             if e.kwargs['code'] != 400:
                 raise
             LOG.debug('Subnet %(subnet_id)s is already attached to the '
-                      'router %(router_id)s.' %
+                      'router %(router_id)s.',
                       {'subnet_id': service_subnet['id'],
                        'router_id': router['id']})
 
@@ -655,7 +655,7 @@ class ServiceInstanceManager(object):
                 if e.kwargs['code'] != 404:
                     raise
                 LOG.debug('Subnet %(subnet_id)s is not attached to the '
-                          'router %(router_id)s.' %
+                          'router %(router_id)s.',
                           {'subnet_id': subnet_id,
                            'router_id': router_id})
             self.neutron_api.update_subnet(subnet_id, '')

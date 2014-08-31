@@ -112,7 +112,8 @@ class APIRouter(base_wsgi.Router):
                 continue
 
             LOG.debug('Extension %(ext_name)s extending resource: '
-                      '%(collection)s' % locals())
+                      '%(collection)s',
+                      {'ext_name': ext_name, 'collection': collection})
 
             resource = self.resources[collection]
             resource.register_actions(controller)

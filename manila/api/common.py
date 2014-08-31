@@ -335,7 +335,7 @@ def remove_invalid_options(context, search_options, allowed_search_options):
     unknown_options = [opt for opt in search_options
                        if opt not in allowed_search_options]
     bad_options = ", ".join(unknown_options)
-    LOG.debug("Removing options '%(bad_options)s' from query" %
+    LOG.debug("Removing options '%(bad_options)s' from query",
               {"bad_options": bad_options})
     for opt in unknown_options:
         del search_options[opt]

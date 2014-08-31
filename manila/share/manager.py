@@ -289,7 +289,7 @@ class ShareManager(manager.SchedulerDependentManager):
             if share_server and not share_server.shares:
                 LOG.debug("Scheduled deletion of share-server "
                           "with id '%s' automatically by "
-                          "deletion of last share." % share_server['id'])
+                          "deletion of last share.", share_server['id'])
                 self.delete_share_server(context, share_server)
 
     def create_snapshot(self, context, share_id, snapshot_id):

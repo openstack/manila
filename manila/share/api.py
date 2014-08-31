@@ -325,7 +325,7 @@ class API(base.Base):
         # NOTE(vponomaryov): we do not need 'all_tenants' opt anymore
         search_opts.pop('all_tenants', None)
         if search_opts:
-            LOG.debug("Searching for shares by: %s" % str(search_opts))
+            LOG.debug("Searching for shares by: %s", str(search_opts))
             results = []
             for s in shares:
                 # values in search_opts can be only strings
@@ -353,7 +353,7 @@ class API(base.Base):
                 context, context.project_id)
 
         if search_opts:
-            LOG.debug("Searching by: %s" % str(search_opts))
+            LOG.debug("Searching by: %s", str(search_opts))
 
             results = []
             not_found = object()

@@ -37,7 +37,7 @@ class RetryFilter(filters.BaseHostFilter):
         pass_msg = "passes" if passes else "fails"
 
         LOG.debug("Host %(host)s %(pass_msg)s.  Previously tried hosts: "
-                  "%(hosts)s" %
+                  "%(hosts)s",
                   {"host": host, "pass_msg": pass_msg, "hosts": hosts})
 
         # Host passes if it's not in the list of previously attempted hosts:
