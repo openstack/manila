@@ -17,6 +17,7 @@
 
 import mock
 
+from manila.common import constants
 from manila import context
 from manila import exception
 from manila.share import manager
@@ -113,3 +114,185 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.allow_access.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), shares[0], rules[0],
             share_server=share_server)
+
+    def test_setup_server_2_net_allocations(self):
+        # Setup required test data
+        allocation_number = 2
+        context = "fake_context"
+        share_server = {
+            'id': 'fake_id',
+            'share_network_id': 'fake_sn_id',
+        }
+        metadata = {'fake_metadata_key': 'fake_metadata_value'}
+        share_network = {'id': 'fake_sn_id'}
+        network_info = {'fake_network_info_key': 'fake_network_info_value'}
+        server_info = {'fake_server_info_key': 'fake_server_info_value'}
+
+        # mock required stuff
+        self.stubs.Set(self.share_manager.db, 'share_network_get',
+                       mock.Mock(return_value=share_network))
+        self.stubs.Set(self.share_manager.driver,
+                       'get_network_allocations_number',
+                       mock.Mock(return_value=allocation_number))
+        self.stubs.Set(self.share_manager.network_api, 'allocate_network',
+                       mock.Mock())
+        self.stubs.Set(self.share_manager, '_form_server_setup_info',
+                       mock.Mock(return_value=network_info))
+        self.stubs.Set(self.share_manager.driver, 'setup_server',
+                       mock.Mock(return_value=server_info))
+        self.stubs.Set(self.share_manager.db,
+                       'share_server_backend_details_set',
+                       mock.Mock())
+        self.stubs.Set(self.share_manager.db, 'share_server_update',
+                       mock.Mock(return_value=share_server))
+
+        # execute method _setup_server
+        result = self.share_manager._setup_server(
+            context, share_server, metadata=metadata)
+
+        # verify results
+        self.assertEqual(share_server, result)
+        self.share_manager.db.share_network_get.assert_has_calls([
+            mock.call(context, share_server['share_network_id']),
+            mock.call(context, share_server['share_network_id']),
+        ])
+        self.share_manager.driver.get_network_allocations_number.\
+            assert_called_once_with()
+        self.share_manager.network_api.allocate_network.\
+            assert_called_once_with(context, share_server, share_network,
+                                    count=allocation_number)
+        self.share_manager._form_server_setup_info.assert_called_once_with(
+            context, share_server, share_network)
+        self.share_manager.driver.setup_server.assert_called_once_with(
+            network_info, metadata=metadata)
+        self.share_manager.db.share_server_backend_details_set.\
+            assert_called_once_with(context, share_server['id'], server_info)
+        self.share_manager.db.share_server_update.assert_called_once_with(
+            context, share_server['id'], {'status': constants.STATUS_ACTIVE})
+
+    def test_setup_server_no_net_allocations(self):
+        # Setup required test data
+        allocation_number = 0
+        context = "fake_context"
+        share_server = {
+            'id': 'fake_id',
+            'share_network_id': 'fake_sn_id',
+        }
+        metadata = {'fake_metadata_key': 'fake_metadata_value'}
+        share_network = {'id': 'fake_sn_id'}
+        network_info = {'fake_network_info_key': 'fake_network_info_value'}
+        server_info = {'fake_server_info_key': 'fake_server_info_value'}
+
+        # mock required stuff
+        self.stubs.Set(self.share_manager.db, 'share_network_get',
+                       mock.Mock(return_value=share_network))
+        self.stubs.Set(self.share_manager.driver,
+                       'get_network_allocations_number',
+                       mock.Mock(return_value=allocation_number))
+        self.stubs.Set(self.share_manager, '_form_server_setup_info',
+                       mock.Mock(return_value=network_info))
+        self.stubs.Set(self.share_manager.driver, 'setup_server',
+                       mock.Mock(return_value=server_info))
+        self.stubs.Set(self.share_manager.db,
+                       'share_server_backend_details_set',
+                       mock.Mock())
+        self.stubs.Set(self.share_manager.db, 'share_server_update',
+                       mock.Mock(return_value=share_server))
+
+        # execute method _setup_server
+        result = self.share_manager._setup_server(
+            context, share_server, metadata=metadata)
+
+        # verify results
+        self.assertEqual(share_server, result)
+        self.share_manager.db.share_network_get.assert_called_once_with(
+            context, share_server['share_network_id'])
+        self.share_manager.driver.get_network_allocations_number.\
+            assert_called_once_with()
+        self.share_manager._form_server_setup_info.assert_called_once_with(
+            context, share_server, share_network)
+        self.share_manager.driver.setup_server.assert_called_once_with(
+            network_info, metadata=metadata)
+        self.share_manager.db.share_server_backend_details_set.\
+            assert_called_once_with(context, share_server['id'], server_info)
+        self.share_manager.db.share_server_update.assert_called_once_with(
+            context, share_server['id'], {'status': constants.STATUS_ACTIVE})
+
+    def test_setup_server_server_info_not_present_no_net_allocations(self):
+        # Setup required test data
+        allocation_number = 0
+        context = "fake_context"
+        share_server = {
+            'id': 'fake_id',
+            'share_network_id': 'fake_sn_id',
+        }
+        metadata = {'fake_metadata_key': 'fake_metadata_value'}
+        share_network = {'id': 'fake_sn_id'}
+        network_info = {'fake_network_info_key': 'fake_network_info_value'}
+        server_info = {}
+
+        # mock required stuff
+        self.stubs.Set(self.share_manager.db, 'share_network_get',
+                       mock.Mock(return_value=share_network))
+        self.stubs.Set(self.share_manager.driver,
+                       'get_network_allocations_number',
+                       mock.Mock(return_value=allocation_number))
+        self.stubs.Set(self.share_manager, '_form_server_setup_info',
+                       mock.Mock(return_value=network_info))
+        self.stubs.Set(self.share_manager.driver, 'setup_server',
+                       mock.Mock(return_value=server_info))
+        self.stubs.Set(self.share_manager.db, 'share_server_update',
+                       mock.Mock(return_value=share_server))
+
+        # execute method _setup_server
+        result = self.share_manager._setup_server(
+            context, share_server, metadata=metadata)
+
+        # verify results
+        self.assertEqual(share_server, result)
+        self.share_manager.db.share_network_get.assert_called_once_with(
+            context, share_server['share_network_id'])
+        self.share_manager.driver.get_network_allocations_number.\
+            assert_called_once_with()
+        self.share_manager._form_server_setup_info.assert_called_once_with(
+            context, share_server, share_network)
+        self.share_manager.driver.setup_server.assert_called_once_with(
+            network_info, metadata=metadata)
+        self.share_manager.db.share_server_update.assert_called_once_with(
+            context, share_server['id'], {'status': constants.STATUS_ACTIVE})
+
+    def test_setup_server_exception_raised(self):
+        # Setup required test data
+        context = "fake_context"
+        share_server = {
+            'id': 'fake_id',
+            'share_network_id': 'fake_sn_id',
+        }
+        share_network = {'id': 'fake_sn_id'}
+
+        # mock required stuff
+        self.stubs.Set(self.share_manager.db, 'share_network_get',
+                       mock.Mock(return_value=share_network))
+        self.stubs.Set(self.share_manager.driver,
+                       'get_network_allocations_number',
+                       mock.Mock(side_effect=exception.ManilaException()))
+        self.stubs.Set(self.share_manager.db, 'share_server_update',
+                       mock.Mock())
+        self.stubs.Set(self.share_manager.network_api, 'deallocate_network',
+                       mock.Mock())
+
+        # execute method _setup_server
+        self.assertRaises(
+            exception.ManilaException,
+            self.share_manager._setup_server,
+            context,
+            share_server,
+        )
+        self.share_manager.db.share_network_get.assert_called_once_with(
+            context, share_server['share_network_id'])
+        self.share_manager.driver.get_network_allocations_number.\
+            assert_called_once_with()
+        self.share_manager.db.share_server_update.assert_called_once_with(
+            context, share_server['id'], {'status': constants.STATUS_ERROR})
+        self.share_manager.network_api.deallocate_network.\
+            assert_called_once_with(context, share_network)

@@ -404,6 +404,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.network_api.allocate_network(
                     context, share_server, share_network,
                     count=allocation_number)
+                # If we reach here, then share_network was updated
+                share_network = self.db.share_network_get(
+                    context, share_server['share_network_id'])
 
             network_info = self._form_server_setup_info(context, share_server,
                                                         share_network)
