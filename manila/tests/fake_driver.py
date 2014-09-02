@@ -1,4 +1,5 @@
-#    Copyright 2012 OpenStack LLC
+#    Copyright 2012 OpenStack Foundation
+#    Copyright 2014 Mirantis Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
 from manila.openstack.common import log as logging
 from manila.share import driver
 
@@ -19,22 +22,60 @@ LOG = logging.getLogger(__name__)
 
 
 class FakeShareDriver(driver.ShareDriver):
-    """Logs calls instead of executing."""
+    """Fake share driver."""
 
     def __init__(self, *args, **kwargs):
         super(FakeShareDriver, self).__init__(execute=self.fake_execute,
                                               *args, **kwargs)
+        self.db = mock.Mock()
 
-    def do_setup(self, context):
-        """Fake setup of Generic driver."""
+        def share_network_update(*args, **kwargs):
+            pass
+
+        self.db.share_network_update = mock.Mock(
+            side_effect=share_network_update)
+
+    def create_snapshot(self, context, snapshot, share_server=None):
+        pass
+
+    def delete_snapshot(self, context, snapshot, share_server=None):
+        pass
+
+    def create_share(self, context, share, share_server=None):
+        pass
+
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
+        pass
+
+    def delete_share(self, context, share, share_server=None):
+        pass
+
+    def ensure_share(self, context, share, share_server=None):
+        pass
+
+    def allow_access(self, context, share, access, share_server=None):
+        pass
+
+    def deny_access(self, context, share, access, share_server=None):
         pass
 
     def check_for_setup_error(self):
-        """No setup necessary in fake mode."""
         pass
 
-    def ensure_share(self, *args, **kwargs):
-        """Fake ensure_share for fake mode."""
+    def get_share_stats(self, refresh=False):
+        return None
+
+    def do_setup(self, context):
+        pass
+
+    def setup_server(self, *args, **kwargs):
+        pass
+
+    def teardown_server(self, *args, **kwargs):
+        pass
+
+    def get_network_allocations_number(self):
         pass
 
     @staticmethod
