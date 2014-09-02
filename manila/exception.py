@@ -443,3 +443,7 @@ class NetAppException(ManilaException):
 
 class VserverUnavailable(NetAppException):
     message = _("Vserver %(vserver)s is not available.")
+
+
+class EMCVnxXMLAPIError(Invalid):
+    message = _("%(err)s")
