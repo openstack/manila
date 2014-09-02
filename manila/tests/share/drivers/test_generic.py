@@ -89,11 +89,12 @@ class GenericShareDriverTestCase(test.TestCase):
         self._helper_nfs = mock.Mock()
         self.fake_conf = manila.share.configuration.Configuration(None)
         self._db = mock.Mock()
-        generic.service_instance.ServiceInstanceManager = (
-            fake_service_instance.FakeServiceInstanceManager)
-        self._driver = generic.GenericShareDriver(self._db,
-                                                  execute=self._execute,
-                                                  configuration=self.fake_conf)
+        with mock.patch.object(
+                generic.service_instance,
+                'ServiceInstanceManager',
+                fake_service_instance.FakeServiceInstanceManager):
+            self._driver = generic.GenericShareDriver(
+                self._db, execute=self._execute, configuration=self.fake_conf)
         self._driver.service_tenant_id = 'service tenant id'
         self._driver.service_network_id = 'service network id'
         self._driver.compute_api = fake_compute.API()
