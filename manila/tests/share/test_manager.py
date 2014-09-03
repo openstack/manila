@@ -31,6 +31,8 @@ class FakeAccessRule(object):
         self.STATE_ACTIVE = 'active'
         self.STATE_NEW = 'new'
         self.STATE_ERROR = 'error'
+        self.access_type = 'fake_type'
+        self.id = 'fake_id'
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -114,6 +116,121 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.allow_access.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), shares[0], rules[0],
             share_server=share_server)
+
+    def test_init_host_with_exception_on_ensure_share(self):
+        def raise_exception(*args, **kwargs):
+            raise exception.ManilaException(message="Fake raise")
+
+        shares = [
+            {'id': 'fake_id_1', 'status': 'available', 'name': 'fake_name_1'},
+            {'id': 'fake_id_2', 'status': 'error', 'name': 'fake_name_2'},
+            {'id': 'fake_id_3', 'status': 'available', 'name': 'fake_name_3'},
+        ]
+        share_server = 'fake_share_server_type_does_not_matter'
+        self.stubs.Set(self.share_manager.db,
+                       'share_get_all_by_host',
+                       mock.Mock(return_value=shares))
+        self.stubs.Set(self.share_manager.driver, 'ensure_share',
+                       mock.Mock(side_effect=raise_exception))
+        self.stubs.Set(self.share_manager, '_get_share_server',
+                       mock.Mock(return_value=share_server))
+        self.stubs.Set(self.share_manager, 'publish_service_capabilities',
+                       mock.Mock())
+        self.stubs.Set(manager.LOG, 'error', mock.Mock())
+        self.stubs.Set(manager.LOG, 'info', mock.Mock())
+
+        # call of 'init_host' method
+        self.share_manager.init_host()
+
+        # verification of call
+        self.share_manager.db.share_get_all_by_host.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), self.share_manager.host)
+        self.share_manager.driver.do_setup.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext))
+        self.share_manager.driver.check_for_setup_error.assert_called_with()
+        self.share_manager._get_share_server.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[0]),
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[2]),
+        ])
+        self.share_manager.driver.ensure_share.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[0],
+                      share_server=share_server),
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[2],
+                      share_server=share_server),
+        ])
+        self.share_manager.publish_service_capabilities.\
+            assert_called_once_with(
+                utils.IsAMatcher(context.RequestContext))
+        manager.LOG.info.assert_called_once_with(
+            mock.ANY,
+            {'name': shares[1]['name'], 'status': shares[1]['status']},
+        )
+
+    def test_init_host_with_exception_on_rule_access_allow(self):
+        def raise_exception(*args, **kwargs):
+            raise exception.ManilaException(message="Fake raise")
+
+        shares = [
+            {'id': 'fake_id_1', 'status': 'available', 'name': 'fake_name_1'},
+            {'id': 'fake_id_2', 'status': 'error', 'name': 'fake_name_2'},
+            {'id': 'fake_id_3', 'status': 'available', 'name': 'fake_name_3'},
+        ]
+        rules = [
+            FakeAccessRule(state='active'),
+            FakeAccessRule(state='error'),
+        ]
+        share_server = 'fake_share_server_type_does_not_matter'
+        self.stubs.Set(self.share_manager.db,
+                       'share_get_all_by_host',
+                       mock.Mock(return_value=shares))
+        self.stubs.Set(self.share_manager.driver, 'ensure_share', mock.Mock())
+        self.stubs.Set(self.share_manager, '_get_share_server',
+                       mock.Mock(return_value=share_server))
+        self.stubs.Set(self.share_manager, 'publish_service_capabilities',
+                       mock.Mock())
+        self.stubs.Set(manager.LOG, 'error', mock.Mock())
+        self.stubs.Set(manager.LOG, 'info', mock.Mock())
+        self.stubs.Set(self.share_manager.db, 'share_access_get_all_for_share',
+                       mock.Mock(return_value=rules))
+        self.stubs.Set(self.share_manager.driver, 'allow_access',
+                       mock.Mock(side_effect=raise_exception))
+
+        # call of 'init_host' method
+        self.share_manager.init_host()
+
+        # verification of call
+        self.share_manager.db.share_get_all_by_host.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), self.share_manager.host)
+        self.share_manager.driver.do_setup.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext))
+        self.share_manager.driver.check_for_setup_error.assert_called_with()
+        self.share_manager._get_share_server.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[0]),
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[2]),
+        ])
+        self.share_manager.driver.ensure_share.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[0],
+                      share_server=share_server),
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[2],
+                      share_server=share_server),
+        ])
+        self.share_manager.publish_service_capabilities.\
+            assert_called_once_with(
+                utils.IsAMatcher(context.RequestContext))
+        manager.LOG.info.assert_called_once_with(
+            mock.ANY,
+            {'name': shares[1]['name'], 'status': shares[1]['status']},
+        )
+        self.share_manager.driver.allow_access.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[0],
+                      rules[0], share_server=share_server),
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[2],
+                      rules[0], share_server=share_server),
+        ])
+        manager.LOG.error.assert_has_calls([
+            mock.call(mock.ANY, mock.ANY),
+            mock.call(mock.ANY, mock.ANY),
+        ])
 
     def test_setup_server_2_net_allocations(self):
         # Setup required test data

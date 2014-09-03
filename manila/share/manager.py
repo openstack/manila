@@ -19,6 +19,9 @@
 :share_driver: Used by :class:`ShareManager`.
 """
 
+from oslo.config import cfg
+import six
+
 from manila.common import constants
 from manila import context
 from manila import exception
@@ -31,8 +34,6 @@ from manila.openstack.common import timeutils
 from manila import quota
 import manila.share.configuration
 from manila import utils
-
-from oslo.config import cfg
 
 LOG = logging.getLogger(__name__)
 
@@ -81,8 +82,16 @@ class ShareManager(manager.SchedulerDependentManager):
         for share in shares:
             if share['status'] == 'available':
                 share_server = self._get_share_server(ctxt, share)
-                self.driver.ensure_share(ctxt, share,
-                                         share_server=share_server)
+                try:
+                    self.driver.ensure_share(
+                        ctxt, share, share_server=share_server)
+                except Exception as e:
+                    LOG.error(
+                        _("Caught exception trying ensure share '%(s_id)s'. "
+                          "Exception: \n%(e)s."),
+                        {'s_id': share['id'], 'e': six.text_type(e)},
+                    )
+                    continue
                 rules = self.db.share_access_get_all_for_share(ctxt,
                                                                share['id'])
                 for access_ref in rules:
@@ -93,8 +102,24 @@ class ShareManager(manager.SchedulerDependentManager):
                                                      share_server=share_server)
                         except exception.ShareAccessExists:
                             pass
+                        except Exception as e:
+                            LOG.error(
+                                _("Unexpected exception during share access"
+                                  " allow operation. Share id is '%(s_id)s'"
+                                  ", access rule type is '%(ar_type)s', "
+                                  "access rule id is '%(ar_id)s', exception"
+                                  " is '%(e)s'."),
+                                {'s_id': share['id'],
+                                 'ar_type': access_ref['access_type'],
+                                 'ar_id': access_ref['id'],
+                                 'e': six.text_type(e)},
+                            )
             else:
-                LOG.info(_("share %s: skipping export"), share['name'])
+                LOG.info(
+                    _("Share %(name)s: skipping export, because it has "
+                      "'%(status)s' status."),
+                    {'name': share['name'], 'status': share['status']},
+                )
 
         self.publish_service_capabilities(ctxt)
 
