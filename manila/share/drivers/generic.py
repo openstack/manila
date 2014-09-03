@@ -130,7 +130,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             ssh_pool, ssh = connection
 
         if not ssh.get_transport().is_active():
-            ssh_pool.remove(server['ssh'])
+            ssh_pool.remove(ssh)
             ssh = ssh_pool.create()
             self.ssh_connections[server['instance_id']] = (ssh_pool, ssh)
         return processutils.ssh_execute(ssh, ' '.join(command))

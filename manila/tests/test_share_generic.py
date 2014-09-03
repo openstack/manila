@@ -23,6 +23,7 @@ from oslo.config import cfg
 from manila import compute
 from manila import context
 from manila import exception
+from manila.openstack.common import processutils
 import manila.share.configuration
 from manila.share.drivers import generic
 from manila import test
@@ -115,7 +116,6 @@ class GenericShareDriverTestCase(test.TestCase):
             context="fake", instance_name="fake",
             share_network_id=self.fake_sn["id"], old_server_ip="fake")
 
-        self._driver._ssh_exec = mock.Mock(return_value=('', ''))
         self.stubs.Set(utils, 'synchronized',
                        mock.Mock(return_value=lambda f: f))
         self.stubs.Set(generic.os.path, 'exists', mock.Mock(return_value=True))
@@ -125,6 +125,11 @@ class GenericShareDriverTestCase(test.TestCase):
         }
         self.share = fake_share()
         self.server = {
+            'instance_id': 'fake_instance_id',
+            'ip': 'fake_ip',
+            'username': 'fake_username',
+            'password': 'fake_password',
+            'pk_path': 'fake_pk_path',
             'backend_details': {
                 'ip': '1.2.3.4',
                 'instance_id': 'fake'
@@ -177,9 +182,11 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_format_device(self):
         volume = {'mountpoint': 'fake_mount_point'}
-        self._driver._format_device('fake_server', volume)
+        self.stubs.Set(self._driver, '_ssh_exec',
+                       mock.Mock(return_value=('', '')))
+        self._driver._format_device(self.server, volume)
         self._driver._ssh_exec.assert_called_once_with(
-            'fake_server',
+            self.server,
             ['sudo', 'mkfs.%s' % self.fake_conf.share_volume_fstype,
              volume['mountpoint']])
 
@@ -191,6 +198,8 @@ class GenericShareDriverTestCase(test.TestCase):
                        mock.Mock(return_value=False))
         self.stubs.Set(self._driver, '_get_mount_path',
                        mock.Mock(return_value=mount_path))
+        self.stubs.Set(self._driver, '_ssh_exec',
+                       mock.Mock(return_value=('', '')))
 
         self._driver._mount_device(self.share, server, volume)
 
@@ -241,20 +250,21 @@ class GenericShareDriverTestCase(test.TestCase):
             self.share, server, volume)
 
     def test_unmount_device_present(self):
-        server = {'instance_id': 'fake_server_id'}
         mount_path = '/fake/mount/path'
         self.stubs.Set(self._driver, '_is_device_mounted',
                        mock.Mock(return_value=True))
         self.stubs.Set(self._driver, '_get_mount_path',
                        mock.Mock(return_value=mount_path))
+        self.stubs.Set(self._driver, '_ssh_exec',
+                       mock.Mock(return_value=('', '')))
 
-        self._driver._unmount_device(self.share, server)
+        self._driver._unmount_device(self.share, self.server)
 
         self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._is_device_mounted.assert_called_once_with(
-            self.share, server)
+            self.share, self.server)
         self._driver._ssh_exec.assert_called_once_with(
-            server,
+            self.server,
             ['sudo umount', mount_path, '&& sudo rmdir', mount_path],
         )
 
@@ -693,6 +703,83 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver.service_instance_manager = sim
         self._driver.teardown_server(self.fake_net_info)
         sim.delete_service_instance.assert_called_once()
+
+    def test_ssh_exec_connection_not_exist(self):
+        ssh_output = 'fake_ssh_output'
+        cmd = ['fake', 'command']
+        ssh = mock.Mock()
+        ssh.get_transport = mock.Mock()
+        ssh.get_transport().is_active = mock.Mock(return_value=True)
+        ssh_pool = mock.Mock()
+        ssh_pool.create = mock.Mock(return_value=ssh)
+        self.stubs.Set(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
+        self.stubs.Set(processutils, 'ssh_execute',
+                       mock.Mock(return_value=ssh_output))
+        self._driver.ssh_connections = {}
+
+        result = self._driver._ssh_exec(self.server, cmd)
+
+        utils.SSHPool.assert_called_once_with(
+            self.server['ip'], 22, None, self.server['username'],
+            self.server['password'], self.server['pk_path'], max_size=1)
+        ssh_pool.create.assert_called_once_with()
+        processutils.ssh_execute.assert_called_once_with(ssh, 'fake command')
+        ssh.get_transport().is_active.assert_called_once_with()
+        self.assertEqual(
+            self._driver.ssh_connections,
+            {self.server['instance_id']: (ssh_pool, ssh)}
+        )
+        self.assertEqual(ssh_output, result)
+
+    def test_ssh_exec_connection_exist(self):
+        ssh_output = 'fake_ssh_output'
+        cmd = ['fake', 'command']
+        ssh = mock.Mock()
+        ssh.get_transport = mock.Mock()
+        ssh.get_transport().is_active = mock.Mock(side_effect=lambda: True)
+        ssh_pool = mock.Mock()
+        self.stubs.Set(processutils, 'ssh_execute',
+                       mock.Mock(return_value=ssh_output))
+        self._driver.ssh_connections = {
+            self.server['instance_id']: (ssh_pool, ssh)
+        }
+
+        result = self._driver._ssh_exec(self.server, cmd)
+
+        processutils.ssh_execute.assert_called_once_with(ssh, 'fake command')
+        ssh.get_transport().is_active.assert_called_once_with()
+        self.assertEqual(
+            self._driver.ssh_connections,
+            {self.server['instance_id']: (ssh_pool, ssh)}
+        )
+        self.assertEqual(ssh_output, result)
+
+    def test_ssh_exec_connection_recreation(self):
+        ssh_output = 'fake_ssh_output'
+        cmd = ['fake', 'command']
+        ssh = mock.Mock()
+        ssh.get_transport = mock.Mock()
+        ssh.get_transport().is_active = mock.Mock(side_effect=lambda: False)
+        ssh_pool = mock.Mock()
+        ssh_pool.create = mock.Mock(side_effect=lambda: ssh)
+        ssh_pool.remove = mock.Mock()
+        self.stubs.Set(processutils, 'ssh_execute',
+                       mock.Mock(return_value=ssh_output))
+        self._driver.ssh_connections = {
+            self.server['instance_id']: (ssh_pool, ssh)
+        }
+
+        result = self._driver._ssh_exec(self.server, cmd)
+
+        processutils.ssh_execute.assert_called_once_with(ssh, 'fake command')
+        ssh.get_transport().is_active.assert_called_once_with()
+        ssh_pool.create.assert_called_once_with()
+        ssh_pool.remove.assert_called_once_with(ssh)
+        self.assertEqual(
+            self._driver.ssh_connections,
+            {self.server['instance_id']: (ssh_pool, ssh)}
+        )
+        self.assertEqual(ssh_output, result)
 
 
 class NFSHelperTestCase(test.TestCase):
