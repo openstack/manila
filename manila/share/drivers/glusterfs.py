@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Single tenant GlusterFS Driver for shares.
+"""Flat network GlusterFS Driver.
 
 Manila shares are subdirectories within a GlusterFS volume. The access to the
 shares is currently mediated by the Gluster-NFS server running in the GlusterFS
