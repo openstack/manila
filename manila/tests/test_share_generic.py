@@ -88,6 +88,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self._helper_nfs = mock.Mock()
         self.fake_conf = manila.share.configuration.Configuration(None)
         self._db = mock.Mock()
+        generic.service_instance.ServiceInstanceManager = (
+            fake_service_instance.FakeServiceInstanceManager)
         self._driver = generic.GenericShareDriver(self._db,
                                                   execute=self._execute,
                                                   configuration=self.fake_conf)
@@ -134,12 +136,11 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_do_setup(self):
         self.stubs.Set(volume, 'API', mock.Mock())
         self.stubs.Set(compute, 'API', mock.Mock())
-        self.stubs.Set(generic, 'service_instance', mock.Mock())
         self.stubs.Set(self._driver, '_setup_helpers', mock.Mock())
         self._driver.do_setup(self._context)
-        volume.API.assert_called_once()
-        compute.API.assert_called_once()
-        self._driver._setup_helpers.assert_called_once()
+        volume.API.assert_called_once_with()
+        compute.API.assert_called_once_with()
+        self._driver._setup_helpers.assert_called_once_with()
 
     def test_setup_helpers(self):
         self._driver._helpers = {}

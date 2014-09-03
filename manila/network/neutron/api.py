@@ -22,6 +22,7 @@ from manila import context
 from manila.db import base
 from manila import exception
 from manila.network import neutron
+from manila.network.neutron import constants as neutron_constants
 from manila.openstack.common import log as logging
 
 neutron_opts = [
@@ -190,7 +191,7 @@ class API(base.Base):
     def _has_port_binding_extension(self):
         if not self.extensions:
             self.extensions = self.list_extensions()
-        return neutron.constants.PORTBINDING_EXT in self.extensions
+        return neutron_constants.PORTBINDING_EXT in self.extensions
 
     def router_create(self, tenant_id, name):
         router_req_body = {'router': {}}

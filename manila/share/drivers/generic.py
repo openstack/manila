@@ -110,6 +110,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "Cinder_Volumes"
         self.ssh_connections = {}
+        self.service_instance_manager = (
+            service_instance.ServiceInstanceManager(
+                self.db, driver_config=self.configuration))
 
     def _ssh_exec(self, server, command):
         connection = self.ssh_connections.get(server['instance_id'])
@@ -141,11 +144,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         super(GenericShareDriver, self).do_setup(context)
         self.compute_api = compute.API()
         self.volume_api = volume.API()
-        self.service_instance_manager = service_instance.\
-            ServiceInstanceManager(self.db, self._helpers,
-                                   driver_config=self.configuration)
-        self.share_networks_servers = (
-            self.service_instance_manager.share_networks_servers)
         self._setup_helpers()
 
     def _setup_helpers(self):
