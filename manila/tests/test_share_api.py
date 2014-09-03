@@ -310,6 +310,25 @@ class ShareAPITestCase(test.TestCase):
             db_driver.share_create.assert_called_once_with(
                 self.context, options)
 
+    def test_create_glusterfs(self):
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        self.mock_utcnow.return_value = date
+        share = fake_share('fakeid',
+                           user_id=self.context.user_id,
+                           project_id=self.context.project_id,
+                           status='creating')
+        options = share.copy()
+        for name in ('id', 'export_location', 'host', 'launched_at',
+                     'terminated_at'):
+            options.pop(name, None)
+        with mock.patch.object(db_driver, 'share_create',
+                               mock.Mock(return_value=share)):
+            options.update(share_proto='glusterfs')
+            self.api.create(self.context, 'glusterfs', '1', 'fakename',
+                            'fakedesc', availability_zone='fakeaz')
+            db_driver.share_create.assert_called_once_with(
+                self.context, options)
+
     @mock.patch.object(quota.QUOTAS, 'reserve',
                        mock.Mock(return_value='reservation'))
     @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
