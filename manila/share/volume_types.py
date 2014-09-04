@@ -35,7 +35,7 @@ def create(context, name, extra_specs={}):
                                          dict(name=name,
                                               extra_specs=extra_specs))
     except db_exception.DBError as e:
-        LOG.exception(_('DB error: %s') % e)
+        LOG.exception(_('DB error: %s'), e)
         raise exception.VolumeTypeCreateFailed(name=name,
                                                extra_specs=extra_specs)
     return type_ref

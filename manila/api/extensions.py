@@ -287,7 +287,7 @@ class ExtensionManager(object):
                 self.load_extension(ext_factory)
             except Exception as exc:
                 LOG.warn(_('Failed to load extension %(ext_factory)s: '
-                           '%(exc)s') %
+                           '%(exc)s'),
                          {"ext_factory": ext_factory, "exc": exc})
 
 

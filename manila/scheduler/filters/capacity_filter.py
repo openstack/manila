@@ -50,8 +50,8 @@ class CapacityFilter(filters.BaseHostFilter):
         if free < volume_size:
             LOG.warning(_("Insufficient free space for volume creation "
                           "(requested / avail): "
-                          "%(requested)s/%(available)s")
-                        % {'requested': volume_size,
-                           'available': free})
+                          "%(requested)s/%(available)s"),
+                        {'requested': volume_size,
+                         'available': free})
 
         return free >= volume_size

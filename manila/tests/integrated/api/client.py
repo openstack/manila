@@ -105,10 +105,10 @@ class TestOpenStackClient(object):
         relative_url = parsed_url.path
         if parsed_url.query:
             relative_url = relative_url + "?" + parsed_url.query
-        LOG.info(_("Doing %(method)s on %(relative_url)s") %
+        LOG.info(_("Doing %(method)s on %(relative_url)s"),
                  {"method": method, "relative_url": relative_url})
         if body:
-            LOG.info(_("Body: %s") % body)
+            LOG.info(_("Body: %s"), body)
 
         conn.request(method, relative_url, body, _headers)
         response = conn.getresponse()

@@ -160,7 +160,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         try:
             licenses = self._client.send_request('license-v2-list-info')
         except naapi.NaApiError as e:
-            LOG.error(_("Could not get licenses list. %s.") % e)
+            LOG.error(_("Could not get licenses list. %s."), e)
         else:
             self._licenses = sorted([
                 l.get_child_content('package').lower()
@@ -171,7 +171,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                 'licenses': ', '.join(self._licenses),
             }
             LOG.info(_("Available licenses on '%(backend)s' "
-                       "are %(licenses)s.") % log_data)
+                       "are %(licenses)s."), log_data)
         return self._licenses
 
     def _get_valid_share_name(self, share_id):
@@ -253,7 +253,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                 .get_child_by_name('net-port-info')\
                 .get_child_content('port')
         except AttributeError:
-            msg = _("Data port does not exists for node %s") % node
+            msg = _("Data port does not exist for node %s.") % node
             LOG.error(msg)
             raise exception.NetAppException(msg)
         return port
@@ -479,7 +479,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             vserver_client.send_request('net-dns-create', args)
         except naapi.NaApiError as e:
             if e.code == '13130':
-                LOG.error(_("Dns exists for vserver"))
+                LOG.error(_("DNS exists for vserver."))
             else:
                 raise exception.NetAppException(
                     _("Failed to configure DNS. %s") % e.message)
@@ -700,7 +700,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             self._remove_export(share, vserver_client)
             self._deallocate_container(share, vserver_client)
         else:
-            LOG.info(_("Share %s does not exists") % share['id'])
+            LOG.info(_("Share %s does not exist."), share['id'])
 
     def _create_export(self, share, vserver, vserver_client):
         """Creates NAS storage."""
@@ -810,7 +810,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         Deletes vserver.
         """
         if not self._vserver_exists(vserver_name):
-            LOG.error(_("Vserver %s does not exist.") % vserver_name)
+            LOG.error(_("Vserver %s does not exist."), vserver_name)
             return
         volumes_data = vserver_client.send_request('volume-get-iter')
         volumes_count = int(volumes_data.get_child_content('num-records'))
@@ -821,8 +821,8 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                     {'name': self.configuration.netapp_root_volume_name})
             except naapi.NaApiError as e:
                 if e.code == '13042':
-                    LOG.error(_("Volume %s is already offline.")
-                              % self.configuration.netapp_root_volume_name)
+                    LOG.error(_("Volume %s is already offline."),
+                              self.configuration.netapp_root_volume_name)
                 else:
                     raise e
             vserver_client.send_request(
@@ -846,7 +846,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                     except naapi.NaApiError as e:
                         if e.code == "15661":
                             LOG.error(_("CIFS server does not exist for"
-                                      " vserver %s") % vserver_name)
+                                        " vserver %s"), vserver_name)
                         else:
                             vserver_client.send_request('cifs-server-delete')
         self._client.send_request('vserver-destroy',
@@ -1135,9 +1135,9 @@ class NetAppClusteredCIFSHelper(NetAppNASHelperBase):
             self._restrict_access(user, share_name)
         except naapi.NaApiError as e:
             if e.code == "22":
-                LOG.error(_("User %s does not exist.") % user)
+                LOG.error(_("User %s does not exist."), user)
             elif e.code == "15661":
-                LOG.error(_("Rule %s does not exist.") % user)
+                LOG.error(_("Rule %s does not exist."), user)
             else:
                 raise e
 

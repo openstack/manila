@@ -124,7 +124,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_("Error in gluster volume set: %s") % exc.stderr)
+            LOG.error(_("Error in gluster volume set: %s"), exc.stderr)
             raise
 
     def check_for_setup_error(self):
@@ -181,7 +181,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             )
             out, err = self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_("Error retrieving volume info: %s") % exc.stderr)
+            LOG.error(_("Error retrieving volume info: %s"), exc.stderr)
             raise
 
         if not out:
@@ -351,7 +351,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_("Error in gluster volume set: %s") % exc.stderr)
+            LOG.error(_("Error in gluster volume set: %s"), exc.stderr)
             raise
 
     def allow_access(self, context, share, access, share_server=None):

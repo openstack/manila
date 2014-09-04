@@ -58,8 +58,8 @@ class ContextTestCase(test.TestCase):
     def test_extra_args_to_context_get_logged(self):
         info = {}
 
-        def fake_warn(log_msg):
-            info['log_msg'] = log_msg
+        def fake_warn(log_msg, other_args):
+            info['log_msg'] = log_msg % other_args
 
         self.stubs.Set(context.LOG, 'warn', fake_warn)
 

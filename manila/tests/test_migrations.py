@@ -135,9 +135,9 @@ class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin):
         except Exception as e:
             LOG.error(_("Failed to migrate to version %(version)s on engine "
                         "%(engine)s. Exception while running the migration: "
-                        "%(exception)s") % {'version': version,
-                                            'engine': self.engine,
-                                            'exception': e})
+                        "%(exception)s"), {'version': version,
+                                           'engine': self.engine,
+                                           'exception': e})
             raise
 
     def test_walk_versions(self):

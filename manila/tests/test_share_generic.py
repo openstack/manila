@@ -219,7 +219,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._is_device_mounted.assert_called_once_with(
             self.share, server, volume)
-        generic.LOG.warning.assert_called_once_with(mock.ANY)
+        generic.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
 
     def test_mount_device_exception_raised(self):
         server = {'instance_id': 'fake_server_id'}
@@ -272,7 +272,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._is_device_mounted.assert_called_once_with(
             self.share, server)
-        generic.LOG.warning.assert_called_once_with(mock.ANY)
+        generic.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
 
     def test_is_device_mounted_true(self):
         volume = {'mountpoint': 'fake_mount_point', 'id': 'fake_id'}

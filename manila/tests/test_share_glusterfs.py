@@ -169,8 +169,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         else:
             self.fail('Expecting exception.ProcessExecutionError')
 
-        glusterfs.LOG.error.assert_called_with("Error in gluster volume set: "
-                                               "testvol")
+        glusterfs.LOG.error.assert_called_with(
+            "Error in gluster volume set: %s", "testvol")
 
     def test_do_mount(self):
         expected_exec = ['true']
