@@ -22,6 +22,7 @@ import time
 from oslo.config import cfg
 import six
 
+from manila.common import constants as const
 from manila import compute
 from manila import context
 from manila import exception
@@ -614,6 +615,20 @@ class NASHelperBase(object):
         raise NotImplementedError()
 
 
+def nfs_synchronized(f):
+
+    def wrapped_func(self, *args, **kwargs):
+        key = "nfs-%s" % args[0]["instance_id"]
+
+        @utils.synchronized(key)
+        def source_func(self, *args, **kwargs):
+            return f(self, *args, **kwargs)
+
+        return source_func(self, *args, **kwargs)
+
+    return wrapped_func
+
+
 class NFSHelper(NASHelperBase):
     """Interface to work with share."""
 
@@ -637,6 +652,7 @@ class NFSHelper(NASHelperBase):
         """Remove export."""
         pass
 
+    @nfs_synchronized
     def allow_access(self, server, share_name, access_type, access):
         """Allow access to the host."""
         local_path = os.path.join(self.configuration.share_mount_path,
@@ -654,7 +670,9 @@ class NFSHelper(NASHelperBase):
         self._ssh_exec(server,
                        ['sudo', 'exportfs', '-o', 'rw,no_subtree_check',
                         ':'.join([access, local_path])])
+        self._sync_nfs_temp_and_perm_files(server)
 
+    @nfs_synchronized
     def deny_access(self, server, share_name, access_type, access,
                     force=False):
         """Deny access to the host."""
@@ -662,6 +680,20 @@ class NFSHelper(NASHelperBase):
                                   share_name)
         self._ssh_exec(server, ['sudo', 'exportfs', '-u',
                                 ':'.join([access, local_path])])
+        self._sync_nfs_temp_and_perm_files(server)
+
+    def _sync_nfs_temp_and_perm_files(self, server):
+        """Sync changes of exports with permanent NFS config file.
+
+        This is required to ensure, that after share server reboot, exports
+        still exist.
+        """
+        sync_cmd = [
+            'sudo', 'cp ', const.NFS_EXPORTS_FILE_TEMP, const.NFS_EXPORTS_FILE,
+            '&&',
+            'sudo', 'exportfs', '-a',
+        ]
+        self._ssh_exec(server, sync_cmd)
 
 
 class CIFSHelper(NASHelperBase):
