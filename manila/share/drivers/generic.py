@@ -122,8 +122,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                      22,
                                      None,
                                      server['username'],
-                                     server['password'],
-                                     server['pk_path'],
+                                     server.get('password'),
+                                     server.get('pk_path'),
                                      max_size=1)
             ssh = ssh_pool.create()
             self.ssh_connections[server['instance_id']] = (ssh_pool, ssh)

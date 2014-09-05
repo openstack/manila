@@ -247,7 +247,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        'pk_path': 'path'}
         expected_details = fake_server.copy()
         expected_details['instance_id'] = expected_details.pop('id')
-        expected_details['password'] = CONF.service_instance_password
+        if CONF.service_instance_password:
+            expected_details['password'] = CONF.service_instance_password
         expected_details['username'] = CONF.service_instance_user
         self.stubs.Set(self._manager, '_get_server_ip',
                        mock.Mock(return_value='fake_ip'))
@@ -383,6 +384,46 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertEqual(result,
                          (fake_keypair.name,
                           os.path.expanduser(CONF.path_to_private_key)))
+
+    def test_get_key_keypath_to_public_not_set(self):
+        self._manager.path_to_public_key = None
+        result = self._manager._get_key(self._context)
+        self.assertEqual(result, (None, None))
+
+    def test_get_key_keypath_to_private_not_set(self):
+        self._manager.path_to_private_key = None
+        result = self._manager._get_key(self._context)
+        self.assertEqual(result, (None, None))
+
+    def test_get_key_incorrect_keypath_to_public(self):
+        def exists_side_effect(path):
+            if path == 'fake_path':
+                return False
+            else:
+                return True
+
+        self._manager.path_to_public_key = 'fake_path'
+        os_path_exists_mock = mock.Mock(side_effect=exists_side_effect)
+        with mock.patch.object(os.path, 'exists', os_path_exists_mock):
+            with mock.patch.object(os.path, 'expanduser',
+                                   mock.Mock(side_effect=lambda value: value)):
+                result = self._manager._get_key(self._context)
+                self.assertEqual(result, (None, None))
+
+    def test_get_key_incorrect_keypath_to_private(self):
+        def exists_side_effect(path):
+            if path == 'fake_path':
+                return False
+            else:
+                return True
+
+        self._manager.path_to_private_key = 'fake_path'
+        os_path_exists_mock = mock.Mock(side_effect=exists_side_effect)
+        with mock.patch.object(os.path, 'exists', os_path_exists_mock):
+            with mock.patch.object(os.path, 'expanduser',
+                                   mock.Mock(side_effect=lambda value: value)):
+                result = self._manager._get_key(self._context)
+                self.assertEqual(result, (None, None))
 
     def test_get_service_image(self):
         fake_image1 = fake_compute.FakeImage(name=CONF.service_image_name)

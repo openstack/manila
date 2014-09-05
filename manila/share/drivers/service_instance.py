@@ -293,15 +293,21 @@ class ServiceInstanceManager(object):
                                                neutron_net_id,
                                                neutron_subnet_id)
 
-        return {'instance_id': server['id'],
-                'ip': server['ip'],
-                'pk_path': server['pk_path'],
-                'subnet_id': server['subnet_id'],
-                'router_id': server['router_id'],
-                'password': self.get_config_option(
-                    'service_instance_password'),
-                'username': self.get_config_option('service_instance_user'),
-                'public_address': server['public_address']}
+        instance_details = {'instance_id': server['id'],
+                            'ip': server['ip'],
+                            'pk_path': server['pk_path'],
+                            'subnet_id': server['subnet_id'],
+                            'router_id': server['router_id'],
+                            'password': self.get_config_option(
+                                'service_instance_password'),
+                            'username': self.get_config_option(
+                                'service_instance_user'),
+                            'public_address': server['public_address']}
+        for key in ('password', 'pk_path'):
+            if not instance_details[key]:
+                instance_details.pop(key)
+
+        return instance_details
 
     @utils.synchronized("service_instance_get_key", external=True)
     def _get_key(self, context):
@@ -310,13 +316,13 @@ class ServiceInstanceManager(object):
         :param context: defines context, that should be used
         :returns: tuple with keypair name and path to private key.
         """
-        if not (self.path_to_public_key or self.path_to_private_key):
-            return
+        if not (self.path_to_public_key and self.path_to_private_key):
+            return (None, None)
         path_to_public_key = os.path.expanduser(self.path_to_public_key)
         path_to_private_key = os.path.expanduser(self.path_to_private_key)
         if (not os.path.exists(path_to_public_key) or
                 not os.path.exists(path_to_private_key)):
-            return
+            return (None, None)
         keypair_name = self.get_config_option("manila_service_keypair_name")
         keypairs = [k for k in self.compute_api.keypair_list(context)
                     if k.name == keypair_name]
@@ -365,6 +371,17 @@ class ServiceInstanceManager(object):
                 raise exception.ServiceInstanceException(
                     _('Neither service '
                       'instance password nor key are available.'))
+            if not key_path:
+                str_params = {
+                    'private_path': self.path_to_private_key,
+                    'public_path': self.path_to_public_key,
+                }
+                LOG.warning(_('No key path is available. May be non-existent '
+                              'key path is provided. Check path_to_private_key'
+                              ' (current value %(private_path)s) and '
+                              'path_to_public_key (current value '
+                              '%(public_path)s) in manila '
+                              'configuration file.') % str_params)
 
             security_group = self._get_or_create_security_group(context)
             network_data = self._setup_network_for_instance(neutron_net_id,
