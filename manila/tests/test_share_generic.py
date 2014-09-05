@@ -793,39 +793,53 @@ class NFSHelperTestCase(test.TestCase):
         self._execute = mock.Mock(return_value=('', ''))
         self._helper = generic.NFSHelper(self._execute, self._ssh_exec,
                                          self.fake_conf)
+        ip = '10.254.0.3'
+        self.server = fake_compute.FakeServer(
+            ip=ip, public_address=ip, instance_id='fake_instance_id')
 
     def test_create_export(self):
-        fake_server = fake_compute.FakeServer(public_address='10.254.0.3')
-        ret = self._helper.create_export(fake_server, 'volume-00001')
-        expected_location = ':'.join([fake_server['public_address'],
+        ret = self._helper.create_export(self.server, 'fake_share')
+        expected_location = ':'.join([self.server['public_address'],
                                       os.path.join(CONF.share_mount_path,
-                                                   'volume-00001')])
+                                                   'fake_share')])
         self.assertEqual(ret, expected_location)
 
     def test_allow_access(self):
-        fake_server = fake_compute.FakeServer(ip='10.254.0.3')
-        self._helper.allow_access(fake_server, 'volume-00001',
+        self.stubs.Set(self._helper, '_sync_nfs_temp_and_perm_files',
+                       mock.Mock())
+        self._helper.allow_access(self.server, 'fake_share',
                                   'ip', '10.0.0.2')
-        local_path = os.path.join(CONF.share_mount_path, 'volume-00001')
+        local_path = os.path.join(CONF.share_mount_path, 'fake_share')
         self._ssh_exec.assert_has_calls([
-            mock.call(fake_server, ['sudo', 'exportfs']),
-            mock.call(fake_server, ['sudo', 'exportfs', '-o',
+            mock.call(self.server, ['sudo', 'exportfs']),
+            mock.call(self.server, ['sudo', 'exportfs', '-o',
                                     'rw,no_subtree_check',
                                     ':'.join(['10.0.0.2', local_path])])
         ])
+        self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
+            self.server)
 
     def test_allow_access_no_ip(self):
-        self.assertRaises(exception.InvalidShareAccess,
-                          self._helper.allow_access, 'fake_server', 'share0',
-                          'fake', 'fakerule')
+        self.assertRaises(
+            exception.InvalidShareAccess,
+            self._helper.allow_access,
+            self.server, 'fake_share', 'fake', 'fakerule',
+        )
 
     def test_deny_access(self):
-        fake_server = fake_compute.FakeServer(ip='10.254.0.3')
-        local_path = os.path.join(CONF.share_mount_path, 'volume-00001')
-        self._helper.deny_access(fake_server, 'volume-00001', 'ip', '10.0.0.2')
+        self.stubs.Set(self._helper, '_sync_nfs_temp_and_perm_files',
+                       mock.Mock())
+        local_path = os.path.join(CONF.share_mount_path, 'fake_share')
+        self._helper.deny_access(self.server, 'fake_share', 'ip', '10.0.0.2')
         export_string = ':'.join(['10.0.0.2', local_path])
         expected_exec = ['sudo', 'exportfs', '-u', export_string]
-        self._ssh_exec.assert_called_once_with(fake_server, expected_exec)
+        self._ssh_exec.assert_called_once_with(self.server, expected_exec)
+        self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
+            self.server)
+
+    def test_sync_nfs_temp_and_perm_files(self):
+        self._helper._sync_nfs_temp_and_perm_files(self.server)
+        self._helper._ssh_exec.assert_called_once_with(self.server, mock.ANY)
 
 
 class CIFSHelperTestCase(test.TestCase):
