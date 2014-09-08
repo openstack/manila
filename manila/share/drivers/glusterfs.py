@@ -55,7 +55,7 @@ GlusterfsManilaShare_opts = [
     cfg.StrOpt('glusterfs_nfs_server_type',
                default='Gluster',
                help='Type of NFS server that mediate access to the Gluster '
-                    'volumes (for now: only Gluster).'),
+                    'volumes (Gluster or Ganesha).'),
     cfg.StrOpt('glusterfs_server_password',
                default=None,
                secret=True,
@@ -65,6 +65,18 @@ GlusterfsManilaShare_opts = [
     cfg.StrOpt('glusterfs_path_to_private_key',
                default=None,
                help='Path of Manila host\'s private SSH key file.'),
+    cfg.StrOpt('glusterfs_ganesha_server_ip',
+               default=None,
+               help="Remote Ganesha server node's IP address."),
+    cfg.StrOpt('glusterfs_ganesha_server_username',
+               default='root',
+               help="Remote Ganesha server node's username."),
+    cfg.StrOpt('glusterfs_ganesha_server_password',
+               default=None,
+               secret=True,
+               help="Remote Ganesha server node's login password. "
+                    "This is not required if 'glusterfs_path_to_private_key'"
+                    ' is configured.'),
 ]
 
 CONF = cfg.CONF
@@ -463,3 +475,32 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
                 ddict.pop(edir)
         self._manage_access(share['name'], access['access_type'],
                             access['access_to'], cbk)
+
+
+class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
+
+    def __init__(self, execute, config_object, **kwargs):
+        self.gluster_manager = kwargs.pop('gluster_manager')
+        if config_object.glusterfs_ganesha_server_ip:
+            execute = ganesha_utils.SSHExecutor(
+                config_object.glusterfs_ganesha_server_ip, 22, None,
+                config_object.glusterfs_ganesha_server_username,
+                password=config_object.glusterfs_ganesha_server_password,
+                privatekey=config_object.glusterfs_path_to_private_key)
+        else:
+            execute = ganesha_utils.RootExecutor(execute)
+        super(GaneshaNFSHelper, self).__init__(execute, config_object,
+                                               **kwargs)
+
+    def _default_config_hook(self):
+        """Callback to provide default export block."""
+        dconf = super(GaneshaNFSHelper, self)._default_config_hook()
+        conf_dir = ganesha_utils.path_from(__file__, "glusterfs", "conf")
+        ganesha_utils.patch(dconf, self._load_conf_dir(conf_dir))
+        return dconf
+
+    def _fsal_hook(self, base, share, access):
+        """Callback to create FSAL subblock."""
+        return {"Hostname": self.gluster_manager.host,
+                "Volume": self.gluster_manager.volume,
+                "Volpath": "/" + share['name']}

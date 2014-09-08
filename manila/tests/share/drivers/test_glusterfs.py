@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import errno
 import os
 
@@ -42,7 +43,6 @@ fake_gluster_manager_attrs = {
 }
 
 fake_local_share_path = '/mnt/nfs/testvol/fakename'
-
 
 fake_args = ('foo', 'bar')
 fake_kwargs = {'key1': 'value1', 'key2': 'value2'}
@@ -844,3 +844,81 @@ class GlusterNFSHelperTestCase(test.TestCase):
         self._helper._get_export_dir_dict.assert_called_once_with()
         self._helper.gluster_manager.gluster_call.assert_called_once_with(
             *args)
+
+
+class GaneshaNFSHelperTestCase(test.TestCase):
+    """Tests GaneshaNFSHelper."""
+
+    def setUp(self):
+        super(GaneshaNFSHelperTestCase, self).setUp()
+        self.gluster_manager = mock.Mock(**fake_gluster_manager_attrs)
+        self._execute = mock.Mock(return_value=('', ''))
+        self._root_execute = mock.Mock(return_value=('', ''))
+        self.access = fake_share.fake_access()
+        self.fake_conf = config.Configuration(None)
+        self.fake_template = {'key': 'value'}
+        self.share = fake_share.fake_share()
+        self.mock_object(glusterfs.ganesha_utils, 'RootExecutor',
+                         mock.Mock(return_value=self._root_execute))
+        self.mock_object(glusterfs.ganesha.GaneshaNASHelper, '__init__',
+                         mock.Mock())
+        self._helper = glusterfs.GaneshaNFSHelper(
+            self._execute, self.fake_conf,
+            gluster_manager=self.gluster_manager)
+
+    def test_init_local_ganesha_server(self):
+        glusterfs.ganesha_utils.RootExecutor.assert_called_once_with(
+            self._execute)
+        glusterfs.ganesha.GaneshaNASHelper.__init__.assert_has_calls(
+            [mock.call(self._root_execute, self.fake_conf)])
+
+    def test_init_remote_ganesha_server(self):
+        ssh_execute = mock.Mock(return_value=('', ''))
+        CONF.set_default('glusterfs_ganesha_server_ip', 'fakeip')
+        self.mock_object(glusterfs.ganesha_utils, 'SSHExecutor',
+                         mock.Mock(return_value=ssh_execute))
+        glusterfs.GaneshaNFSHelper(
+            self._execute, self.fake_conf,
+            gluster_manager=self.gluster_manager)
+        glusterfs.ganesha_utils.SSHExecutor.assert_called_once_with(
+            'fakeip', 22, None, 'root', password=None, privatekey=None)
+        glusterfs.ganesha.GaneshaNASHelper.__init__.assert_has_calls(
+            [mock.call(ssh_execute, self.fake_conf)])
+
+    def test_default_config_hook(self):
+        fake_conf_dict = {'key': 'value1'}
+        mock_ganesha_utils_patch = mock.Mock()
+
+        def fake_patch_run(tmpl1, tmpl2):
+            mock_ganesha_utils_patch(
+                copy.deepcopy(tmpl1), tmpl2)
+            tmpl1.update(tmpl2)
+
+        self.mock_object(glusterfs.ganesha.GaneshaNASHelper,
+                         '_default_config_hook',
+                         mock.Mock(return_value=self.fake_template))
+        self.mock_object(glusterfs.ganesha_utils, 'path_from',
+                         mock.Mock(return_value='/fakedir/glusterfs/conf'))
+        self.mock_object(self._helper, '_load_conf_dir',
+                         mock.Mock(return_value=fake_conf_dict))
+        self.mock_object(glusterfs.ganesha_utils, 'patch',
+                         mock.Mock(side_effect=fake_patch_run))
+        ret = self._helper._default_config_hook()
+        glusterfs.ganesha.GaneshaNASHelper._default_config_hook.\
+            assert_called_once_with()
+        glusterfs.ganesha_utils.path_from.assert_called_once_with(
+            glusterfs.__file__, 'glusterfs', 'conf')
+        self._helper._load_conf_dir.assert_called_once_with(
+            '/fakedir/glusterfs/conf')
+        glusterfs.ganesha_utils.patch.assert_called_once_with(
+            self.fake_template, fake_conf_dict)
+        self.assertEqual(fake_conf_dict, ret)
+
+    def test_fsal_hook(self):
+        output = {
+            'Hostname': '127.0.0.1',
+            'Volume': 'testvol',
+            'Volpath': '/fakename'
+        }
+        ret = self._helper._fsal_hook('/fakepath', self.share, self.access)
+        self.assertEqual(output, ret)
