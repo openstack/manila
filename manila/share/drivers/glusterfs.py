@@ -40,10 +40,10 @@ from oslo.config import cfg
 LOG = logging.getLogger(__name__)
 
 GlusterfsManilaShare_opts = [
-    cfg.StrOpt('glusterfs_volumes_config',
-               default='/etc/manila/glusterfs_volumes',
-               help='File with the list of Gluster volumes that can '
-                    'be used to create shares.'),
+    cfg.StrOpt('glusterfs_target',
+               help='Specifies the GlusterFS volume to be mounted on the '
+                    'Manila host. It is of the form '
+                    '[remoteuser@]<volserver>:<volid>.'),
     cfg.StrOpt('glusterfs_mount_point_base',
                default='$state_path/mnt',
                help='Base directory containing mount points for Gluster '
@@ -100,8 +100,12 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def do_setup(self, context):
         """Native mount the GlusterFS volume and tune it."""
         super(GlusterfsShareDriver, self).do_setup(context)
+        if not self.configuration.glusterfs_target:
+            raise exception.GlusterfsException(
+                _('glusterfs_target configuration that specifies the GlusterFS'
+                  ' volume to be mounted on the Manila host is not set.'))
         self.gluster_address = GlusterAddress(
-            self._read_gluster_vol_from_config()
+            self.configuration.glusterfs_target
         )
         try:
             self._execute('mount.glusterfs', check_exit_code=False)
@@ -158,17 +162,6 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         command = ['mount', '-t', 'glusterfs', self.gluster_address.export,
                    mount_path]
         self._do_mount(command, ensure)
-
-    def _read_gluster_vol_from_config(self):
-        config_file = self.configuration.glusterfs_volumes_config
-        if not os.access(config_file, os.R_OK):
-            msg = (_("Gluster config file %(config)s doesn't exist") %
-                   {'config': config_file})
-            LOG.error(msg)
-            raise exception.GlusterfsException(msg)
-
-        with open(config_file) as f:
-            return f.readline().strip()
 
     def _get_export_dir_dict(self):
         """Get the export entries of shares in the GlusterFS volume."""

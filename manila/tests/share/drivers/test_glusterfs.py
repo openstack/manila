@@ -111,6 +111,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._execute = fake_utils.fake_execute
         self._context = context.get_admin_context()
 
+        CONF.set_default('glusterfs_target', '127.0.0.1:/testvol')
         CONF.set_default('glusterfs_mount_point_base', '/mnt/nfs')
         CONF.set_default('reserved_share_percentage', 50)
 
@@ -128,8 +129,6 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         fake_utils.fake_execute_clear_log()
 
     def test_do_setup(self):
-        self._driver._read_gluster_vol_from_config =\
-            mock.Mock(return_value='127.0.0.1:/testvol')
         self._driver._ensure_gluster_vol_mounted = mock.Mock()
         exec_cmd1 = 'mount.glusterfs'
         exec_cmd2 = 'gluster volume set testvol nfs.export-volumes off'
@@ -138,9 +137,12 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver._ensure_gluster_vol_mounted.assert_called_once_with()
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
 
+    def test_do_setup_glusterfs_target_not_set(self):
+        self._driver.configuration.glusterfs_target = None
+        self.assertRaises(exception.GlusterfsException, self._driver.do_setup,
+                          self._context)
+
     def test_do_setup_mount_glusterfs_not_installed(self):
-        self._driver._read_gluster_vol_from_config =\
-            mock.Mock(return_value='127.0.0.1:/testvol')
         self._driver._ensure_gluster_vol_mounted = mock.Mock()
 
         def exec_runner(*ignore_args, **ignore_kwargs):
@@ -152,8 +154,6 @@ class GlusterfsShareDriverTestCase(test.TestCase):
                           self._context)
 
     def test_do_setup_mount_glusterfs_error_gluster_vol_set(self):
-        self._driver._read_gluster_vol_from_config =\
-            mock.Mock(return_value='127.0.0.1:/testvol')
         self._driver._ensure_gluster_vol_mounted = mock.Mock()
         glusterfs.LOG.error = mock.Mock()
 
