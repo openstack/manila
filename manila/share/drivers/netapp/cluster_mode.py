@@ -27,6 +27,7 @@ from oslo.config import cfg
 from oslo.utils import units
 import six
 
+from manila import context
 from manila import exception
 from manila.openstack.common import excutils
 from manila.openstack.common import log
@@ -83,8 +84,9 @@ def ensure_vserver(f):
         vserver_name = server['backend_details'].get('vserver_name') if \
             server.get('backend_details') else None
         if not vserver_name:
-            raise exception.NetAppException(_('Vserver name missing in '
-                                              'backend details.'))
+            msg = _('Vserver name is absent in backend details. Please '
+                    'check whether vserver was created properly or not.')
+            raise exception.NetAppException(msg)
         if not self._vserver_exists(vserver_name):
             raise exception.VserverUnavailable(vserver=vserver_name)
         return f(self, *args, **kwargs)
@@ -378,6 +380,12 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         """Creates vserver if not exists with given parameters."""
         vserver_name = (self.configuration.netapp_vserver_name_template %
                         network_info['server_id'])
+        context_adm = context.get_admin_context()
+        self.db.share_server_backend_details_set(
+            context_adm,
+            network_info['server_id'],
+            {'vserver_name': vserver_name},
+        )
         vserver_client = NetAppApiClient(
             self.api_version, vserver=vserver_name,
             configuration=self.configuration)
