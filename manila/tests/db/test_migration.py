@@ -20,9 +20,9 @@ from manila.db import migration
 from manila import test
 
 
-class AlembicCommandTestCase(test.TestCase):
+class MigrationTestCase(test.TestCase):
     def setUp(self):
-        super(AlembicCommandTestCase, self).setUp()
+        super(MigrationTestCase, self).setUp()
         self.config_patcher = mock.patch(
             'manila.db.migrations.alembic.migration._alembic_config')
         self.config = self.config_patcher.start()
