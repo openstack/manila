@@ -122,10 +122,17 @@ class ShareApiTest(test.TestCase):
         updated['name'] = 'new'
         db.security_service_get = mock.Mock(return_value=new)
         db.security_service_update = mock.Mock(return_value=updated)
+        db.share_network_get_all_by_security_service = mock.Mock(
+            return_value=[{
+                'id': 'fake_id',
+                'share_servers': 'fake_share_server'
+            }])
         body = {"security_service": {"name": "new"}}
         req = fakes.HTTPRequest.blank('/security_service/1')
         res_dict = self.controller.update(req, 1, body)['security_service']
         self.assertEqual(res_dict['name'], updated['name'])
+        db.share_network_get_all_by_security_service.assert_called_once_with(
+            req.environ['manila.context'], 1)
 
     def test_security_service_update_description(self):
         new = self.security_service.copy()
@@ -133,10 +140,66 @@ class ShareApiTest(test.TestCase):
         updated['description'] = 'new'
         db.security_service_get = mock.Mock(return_value=new)
         db.security_service_update = mock.Mock(return_value=updated)
+        db.share_network_get_all_by_security_service = mock.Mock(
+            return_value=[{
+                'id': 'fake_id',
+                'share_servers': 'fake_share_server'
+            }])
         body = {"security_service": {"description": "new"}}
         req = fakes.HTTPRequest.blank('/security_service/1')
         res_dict = self.controller.update(req, 1, body)['security_service']
         self.assertEqual(res_dict['description'], updated['description'])
+        db.share_network_get_all_by_security_service.assert_called_once_with(
+            req.environ['manila.context'], 1)
+
+    @mock.patch.object(db, 'security_service_get', mock.Mock())
+    @mock.patch.object(db, 'share_network_get_all_by_security_service',
+                       mock.Mock())
+    def test_security_service_update_invalid_keys_sh_server_exists(self):
+        db.share_network_get_all_by_security_service.return_value = [
+            {'id': 'fake_id', 'share_servers': 'fake_share_servers'},
+        ]
+        security_service = self.security_service.copy()
+        db.security_service_get.return_value = security_service
+        body = {'security_service': {'user_id': 'new_user'}}
+        req = fakes.HTTPRequest.blank('/security_services/1')
+        self.assertRaises(webob.exc.HTTPForbidden, self.controller.update,
+                          req, 1, body)
+        db.security_service_get.assert_called_once_with(
+            req.environ['manila.context'], 1)
+        db.share_network_get_all_by_security_service.assert_called_once_with(
+            req.environ['manila.context'], 1)
+
+    @mock.patch.object(db, 'security_service_get', mock.Mock())
+    @mock.patch.object(db, 'security_service_update', mock.Mock())
+    @mock.patch.object(db, 'share_network_get_all_by_security_service',
+                       mock.Mock())
+    def test_security_service_update_valid_keys_sh_server_exists(self):
+        db.share_network_get_all_by_security_service.return_value = [
+            {'id': 'fake_id', 'share_servers': 'fake_share_servers'},
+        ]
+        old = self.security_service.copy()
+        updated = self.security_service.copy()
+        updated['name'] = 'new name'
+        updated['description'] = 'new description'
+        db.security_service_get.return_value = old
+        db.security_service_update.return_value = updated
+        body = {
+            'security_service': {
+                'description': 'new description',
+                'name': 'new name',
+            },
+        }
+        req = fakes.HTTPRequest.blank('/security_services/1')
+        res_dict = self.controller.update(req, 1, body)['security_service']
+        self.assertEqual(res_dict['description'], updated['description'])
+        self.assertEqual(res_dict['name'], updated['name'])
+        db.security_service_get.assert_called_once_with(
+            req.environ['manila.context'], 1)
+        db.share_network_get_all_by_security_service.assert_called_once_with(
+            req.environ['manila.context'], 1)
+        db.security_service_update.assert_called_once_with(
+            req.environ['manila.context'], 1, body['security_service'])
 
     def test_security_service_list(self):
         db.security_service_get_all_by_project = mock.Mock(

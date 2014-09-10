@@ -252,17 +252,44 @@ class ShareNetworkAPITest(test.TestCase):
                           self.body)
 
     @mock.patch.object(db_api, 'share_network_get', mock.Mock())
-    def test_update_in_use(self):
+    def test_update_invalid_key_in_use(self):
         share_nw = fake_share_network.copy()
         share_nw['share_servers'] = [{'id': 1}]
 
         db_api.share_network_get.return_value = share_nw
-
+        body = {
+            share_networks.RESOURCE_NAME: {
+                'name': 'new name',
+                'user_id': 'new id',
+            },
+        }
         self.assertRaises(webob_exc.HTTPForbidden,
                           self.controller.update,
                           self.req,
                           share_nw['id'],
-                          self.body)
+                          body)
+
+    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
+    @mock.patch.object(db_api, 'share_network_update', mock.Mock())
+    def test_update_valid_keys_in_use(self):
+        share_nw = fake_share_network.copy()
+        share_nw['share_servers'] = [{'id': 1}]
+        updated_share_nw = share_nw.copy()
+        updated_share_nw['name'] = 'new name'
+        updated_share_nw['description'] = 'new description'
+
+        db_api.share_network_get.return_value = share_nw
+        body = {
+            share_networks.RESOURCE_NAME: {
+                'name': updated_share_nw['name'],
+                'description': updated_share_nw['description'],
+            },
+        }
+        self.controller.update(self.req, share_nw['id'], body)
+        db_api.share_network_get.assert_called_once_with(self.context,
+                                                         share_nw['id'])
+        db_api.share_network_update.assert_called_once_with(
+            self.context, share_nw['id'], body['share_network'])
 
     @mock.patch.object(db_api, 'share_network_get', mock.Mock())
     def test_update_db_api_exception(self):
@@ -334,6 +361,29 @@ class ShareNetworkAPITest(test.TestCase):
             self.controller.action(self.req, share_network_id, body)
             self.controller._remove_security_service.assert_called_once_with(
                 self.req, share_network_id, body['remove_security_service'])
+
+    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
+    @mock.patch.object(share_networks.policy, 'check_policy', mock.Mock())
+    def test_action_remove_security_service_forbidden(self):
+        share_network = fake_share_network.copy()
+        share_network['share_servers'] = 'fake share server'
+        db_api.share_network_get.return_value = share_network
+        body = {
+            'remove_security_service': {
+                'security_service_id': 'fake id',
+            },
+        }
+        self.assertRaises(webob_exc.HTTPForbidden,
+                          self.controller.action,
+                          self.req,
+                          share_network['id'],
+                          body)
+        db_api.share_network_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_network['id'])
+        share_networks.policy.check_policy.assert_called_once_with(
+            self.req.environ['manila.context'],
+            share_networks.RESOURCE_NAME,
+            'remove_security_service')
 
     def test_action_bad_request(self):
         share_network_id = 'fake network id'

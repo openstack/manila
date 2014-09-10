@@ -161,6 +161,15 @@ class SecurityServiceController(wsgi.Controller):
     def _get_security_services_search_options(self):
         return ('status', 'name', 'id', 'type', )
 
+    def _share_servers_dependent_on_sn_exist(self, context,
+                                             security_service_id):
+        share_networks = db.share_network_get_all_by_security_service(
+            context, security_service_id)
+        for sn in share_networks:
+            if sn['share_servers']:
+                return True
+        return False
+
     @wsgi.serializers(xml=SecurityServiceTemplate)
     def update(self, req, id, body):
         """Update a security service."""
@@ -184,6 +193,14 @@ class SecurityServiceController(wsgi.Controller):
 
         if security_service['status'].lower() in ['new', 'inactive']:
             update_dict = security_service_data
+            if self._share_servers_dependent_on_sn_exist(context, id):
+                for item in update_dict:
+                    if item not in valid_update_keys:
+                        msg = _("Cannot update security service %s. It is "
+                                "attached to share network with share server "
+                                "associated. Only 'name' and 'description' "
+                                "fields are available for update.") % id
+                        raise exc.HTTPForbidden(explanation=msg)
         else:
             update_dict = dict([(key, security_service_data[key])
                                 for key in valid_update_keys

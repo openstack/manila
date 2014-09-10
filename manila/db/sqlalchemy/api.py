@@ -1627,7 +1627,8 @@ def share_network_get_all_by_security_service(context, share_network_id):
         join(models.ShareNetworkSecurityServiceAssociation,
              models.ShareNetwork.id ==
              models.ShareNetworkSecurityServiceAssociation.share_network_id).\
-        filter_by(security_service_id=share_network_id, deleted=False).all()
+        filter_by(security_service_id=share_network_id, deleted=False).\
+        options(joinedload('share_servers')).all()
 
 
 @require_context

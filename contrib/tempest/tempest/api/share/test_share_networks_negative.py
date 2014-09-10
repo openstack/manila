@@ -53,6 +53,16 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
                           "", name="name")
 
     @test.attr(type=["gate", "smoke", "negative"])
+    def test_try_update_invalid_keys_sh_server_exists(self):
+        resp, share = self.create_share(cleanup_in_class=False)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        self.assertRaises(exceptions.Unauthorized,
+                          self.shares_client.update_share_network,
+                          self.shares_client.share_network_id,
+                          neutron_net_id="new_net_id")
+
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_deleted_share_network(self):
         data = self.generate_share_network_data()
         resp, sn = self.create_share_network(**data)

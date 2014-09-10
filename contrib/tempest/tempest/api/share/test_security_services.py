@@ -60,6 +60,36 @@ class SecurityServicesTest(base.BaseSharesTest):
         self.assertDictContainsSubset(upd_data, get)
 
     @test.attr(type=["gate", "smoke"])
+    def test_try_update_valid_keys_sh_server_exists(self):
+        ss_data = self.generate_security_service_data()
+        resp, ss = self.create_security_service(**ss_data)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        sn = self.shares_client.get_share_network(
+            self.os.shares_client.share_network_id)[1]
+        resp, fresh_sn = self.create_share_network(
+            neutron_net_id=sn["neutron_net_id"],
+            neutron_subnet_id=sn["neutron_subnet_id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        resp, body = self.shares_client.add_sec_service_to_share_network(
+            fresh_sn["id"], ss["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        resp, share = self.create_share(share_network_id=fresh_sn["id"],
+                                        cleanup_in_class=False)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        update_data = {
+            "name": "name",
+            "description": "new_description",
+        }
+        resp, updated = self.shares_client.update_security_service(
+            ss["id"], **update_data)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertDictContainsSubset(update_data, updated)
+
+    @test.attr(type=["gate", "smoke"])
     def test_list_security_services(self):
         data = self.generate_security_service_data()
         resp, ss = self.create_security_service(**data)
