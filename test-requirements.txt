@@ -11,6 +11,7 @@ fixtures>=0.3.14
 mock>=1.0
 MySQL-python
 oslotest>=1.1.0.0a1
+oslosphinx>=2.2.0.0a2
 psycopg2
 python-subunit>=0.0.18
 sphinx>=1.1.2,!=1.2.0,<1.3

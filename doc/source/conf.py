@@ -34,7 +34,9 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.coverage',
               'sphinx.ext.pngmath',
               'sphinx.ext.ifconfig',
-              'sphinx.ext.graphviz']
+              'sphinx.ext.graphviz',
+              'oslosphinx',
+              ]
 
 # autodoc generation is a bit aggressive and a nuisance
 # when doing heavy text edit cycles. Execute "export SPHINX_DEBUG=1"
@@ -132,13 +134,13 @@ man_pages = [
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-html_theme_path = ["."]
-html_theme = '_theme'
+# html_theme_path = ["."]
+# html_theme = '_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {'incubating': True}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
