@@ -247,6 +247,14 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertEqual(e.code, 404)
         self.assertIn(share_server_id, e.msg)
 
+    def test_share_server_not_found_by_filters(self):
+        # Verify response code for exception.ShareServerNotFoundByFilters
+        filters_description = "host = fakeHost"
+        e = exception.ShareServerNotFoundByFilters(
+            filters_description=filters_description)
+        self.assertEqual(e.code, 404)
+        self.assertIn(filters_description, e.msg)
+
     def test_service_not_found(self):
         # Verify response code for exception.ServiceNotFound
         service_id = "fake_service_id"

@@ -173,6 +173,11 @@ class ShareServerNotFound(NotFound):
     message = _("Share Server %(share_server_id)s could not be found.")
 
 
+class ShareServerNotFoundByFilters(ShareServerNotFound):
+    message = _("Share Server could not be found by "
+                "filters: %(filters_description)s.")
+
+
 class ShareServerInUse(InUse):
     message = _("Share Server %(share_server_id)s is in use.")
 
