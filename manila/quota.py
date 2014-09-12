@@ -41,8 +41,8 @@ quota_opts = [
                help='Number of share gigabytes (snapshots are also included) '
                     'allowed per project.'),
     cfg.IntOpt('quota_share_networks',
-               default=5,
-               help='Number of activated share-networks allowed per project.'),
+               default=10,
+               help='Number of share-networks allowed per project.'),
     cfg.IntOpt('reservation_expire',
                default=86400,
                help='Number of seconds until a reservation expires.'),
