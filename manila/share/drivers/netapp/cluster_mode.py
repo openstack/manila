@@ -19,8 +19,8 @@ This driver requires ONTAP Cluster mode storage system
 with installed CIFS and NFS licenses.
 """
 import abc
+import copy
 import hashlib
-import os
 import re
 
 from oslo.config import cfg
@@ -904,9 +904,21 @@ class NetAppNASHelperBase(object):
 class NetAppClusteredNFSHelper(NetAppNASHelperBase):
     """Netapp specific cluster-mode NFS sharing driver."""
 
+    def __init__(self):
+        super(NetAppClusteredNFSHelper, self).__init__()
+        # NOTE(vponomaryov): Different versions of Data ONTAP API has
+        # different behavior for API call "nfs-exportfs-append-rules-2", that
+        # can require prefix "/vol" or not for path to apply rules for.
+        # Following attr used by "add_rules" method to handle setting up nfs
+        # exports properly in long term.
+        self.nfs_exports_with_prefix = False
+
     def create_share(self, share_name, export_ip):
         """Creates NFS share."""
-        export_pathname = os.path.join('/', share_name)
+        arguments = {'is-style-cifs': 'false', 'volume': share_name}
+        export_pathname = self._client.send_request(
+            'volume-get-volume-path', arguments).get_child_by_name(
+                'junction').get_content()
         self.add_rules(export_pathname, ['localhost'])
         export_location = ':'.join([export_ip, export_pathname])
         return export_location
@@ -954,6 +966,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         self._client.send_request('volume-modify-iter', args)
 
     def add_rules(self, volume_path, rules):
+        req_bodies = []
         security_rule_args = {
             'security-rule-info': {
                 'read-write': {
@@ -974,7 +987,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
                 'name': 'localhost',
             }
         }
-        args = {
+        req_bodies.insert(0, {
             'rules': {
                 'exports-rule-info-2': {
                     'pathname': volume_path,
@@ -995,7 +1008,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
                     }
                 }
             }
-        }
+        })
         allowed_hosts_xml = []
 
         for ip in rules:
@@ -1006,11 +1019,36 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         security_rule = security_rule_args.copy()
         security_rule['security-rule-info']['read-write'] = allowed_hosts_xml
         security_rule['security-rule-info']['root'] = allowed_hosts_xml
-
-        args['rules']['exports-rule-info-2']['security-rules'] = security_rule
+        req_bodies[0]['rules']['exports-rule-info-2']['security-rules'] = (
+            security_rule)
+        req_bodies.insert(1, copy.deepcopy(req_bodies[0]))
+        req_bodies[1]['rules']['exports-rule-info-2']['pathname'] = (
+            '/vol' + volume_path)
 
         LOG.debug('Appending nfs rules %r' % rules)
-        self._client.send_request('nfs-exportfs-append-rules-2', args)
+        try:
+            if self.nfs_exports_with_prefix:
+                self._client.send_request(
+                    'nfs-exportfs-append-rules-2', req_bodies.pop(1))
+            else:
+                self._client.send_request(
+                    'nfs-exportfs-append-rules-2', req_bodies.pop(0))
+        except naapi.NaApiError as e:
+            if e.code == "13114":
+                # We expect getting here only in one case - when received first
+                # call of this method per backend, that is not covered by
+                # default value. Change its value, to send proper requests from
+                # first time.
+                self.nfs_exports_with_prefix = not self.nfs_exports_with_prefix
+                LOG.debug("Data ONTAP API 'nfs-exportfs-append-rules-2' "
+                          "compatibility action: remember behavior to send "
+                          "proper values with first attempt next times. "
+                          "Now trying send another request with changed value "
+                          "for 'pathname'.")
+                self._client.send_request(
+                    'nfs-exportfs-append-rules-2', req_bodies.pop(0))
+            else:
+                raise
 
     def delete_share(self, share):
         """Deletes NFS share."""

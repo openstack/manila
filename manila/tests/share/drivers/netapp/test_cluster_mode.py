@@ -780,11 +780,88 @@ class NetAppNFSHelperTestCase(test.TestCase):
         self.helper._client.send_request = mock.Mock()
 
     def test_create_share(self):
-        location = self.helper.create_share('share_name',
-                                            'fake-vserver-location')
+        export_ip = 'fake_export_ip'
+        junction = 'fake-vserver-location'
+        self.stubs.Set(self.helper._client, 'send_request', mock.Mock())
+        self.helper._client.send_request().get_child_by_name = mock.Mock()
+        self.helper._client.send_request().get_child_by_name().get_content = (
+            mock.Mock(side_effect=lambda: junction))
+        self.stubs.Set(self.helper, 'add_rules', mock.Mock())
+
+        location = self.helper.create_share(self.share['name'], export_ip)
+
+        self.helper._client.send_request.has_calls(
+            mock.call(
+                'volume-get-volume-path',
+                {'is-style-cifs': 'false', 'volume': self.share['name']},
+            ),
+        )
+        self.helper.add_rules.assert_called_once_with(
+            junction, ['localhost'])
+        self.assertEqual(location, export_ip + ':' + junction)
+
+    def test_add_rules(self):
+        volume_path = "fake_volume_path"
+        rules = ['1.2.3.4', '4.3.2.1']
+        self.helper.nfs_exports_with_prefix = False
+
+        self.helper.add_rules(volume_path, rules)
+
         self.helper._client.send_request.assert_called_once_with(
             'nfs-exportfs-append-rules-2', mock.ANY)
-        self.assertEqual(location, 'fake-vserver-location:/share_name')
+        self.assertEqual(self.helper.nfs_exports_with_prefix, False)
+
+    def test_add_rules_changed_pathname(self):
+        volume_path = "fake_volume_path"
+        rules = ['1.2.3.4', '4.3.2.1']
+        self.helper.nfs_exports_with_prefix = False
+
+        def raise_exception_13114(*args, **kwargs):
+            pathname = args[1]['rules']['exports-rule-info-2']['pathname']
+            if pathname.startswith(volume_path):
+                raise naapi.NaApiError('13114')
+
+        self.stubs.Set(self.helper._client, 'send_request',
+                       mock.Mock(side_effect=raise_exception_13114))
+
+        self.helper.add_rules(volume_path, rules)
+
+        self.helper._client.send_request.has_calls(
+            mock.call('nfs-exportfs-append-rules-2', mock.ANY),
+            mock.call('nfs-exportfs-append-rules-2', mock.ANY),
+        )
+        self.assertEqual(self.helper.nfs_exports_with_prefix, True)
+
+    def test_add_rules_verify_behavior_remembering(self):
+        volume_path = "fake_volume_path"
+        rules = ['1.2.3.4', '4.3.2.1']
+        self.helper.nfs_exports_with_prefix = False
+
+        def raise_exception_13114(*args, **kwargs):
+            pathname = args[1]['rules']['exports-rule-info-2']['pathname']
+            if (pathname.startswith(volume_path) and
+                    not self.helper.nfs_exports_with_prefix):
+                raise naapi.NaApiError('13114')
+
+        self.stubs.Set(self.helper._client, 'send_request',
+                       mock.Mock(side_effect=raise_exception_13114))
+
+        self.helper.add_rules(volume_path, rules)
+
+        self.helper._client.send_request.has_calls(
+            mock.call('nfs-exportfs-append-rules-2', mock.ANY),
+            mock.call('nfs-exportfs-append-rules-2', mock.ANY),
+        )
+        self.assertEqual(self.helper.nfs_exports_with_prefix, True)
+
+        self.helper.add_rules(volume_path, rules)
+
+        self.helper._client.send_request.has_calls(
+            mock.call('nfs-exportfs-append-rules-2', mock.ANY),
+            mock.call('nfs-exportfs-append-rules-2', mock.ANY),
+            mock.call('nfs-exportfs-append-rules-2', mock.ANY),
+        )
+        self.assertEqual(self.helper.nfs_exports_with_prefix, True)
 
     def test_delete_share(self):
         self.helper.delete_share(self.share)
