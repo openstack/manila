@@ -212,6 +212,25 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     return True
         return False
 
+    def _sync_mount_temp_and_perm_files(self, server_details):
+        """Sync temporary and permanent files for mounted filesystems."""
+        try:
+            self._ssh_exec(
+                server_details,
+                ['sudo', 'cp', const.MOUNT_FILE_TEMP, const.MOUNT_FILE],
+            )
+        except exception.ProcessExecutionError as e:
+            LOG.error(_("Failed to sync mount files on server '%s'."),
+                      server_details['instance_id'])
+            raise exception.ShareBackendException(msg=six.text_type(e))
+        try:
+            # Remount it to avoid postponed point of failure
+            self._ssh_exec(server_details, ['sudo', 'mount', '-a'])
+        except exception.ProcessExecutionError as e:
+            LOG.error(_("Failed to mount all shares on server '%s'."),
+                      server_details['instance_id'])
+            raise exception.ShareBackendException(msg=six.text_type(e))
+
     def _mount_device(self, share, server_details, volume):
         """Mounts block device to the directory on service vm.
 
@@ -219,7 +238,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         mounted yet.
         """
 
-        @utils.synchronized('generic_driver_mounts_%s' % share['id'])
+        @utils.synchronized('generic_driver_mounts_'
+                            '%s' % server_details['instance_id'])
         def _mount_device_with_lock():
             mount_path = self._get_mount_path(share)
             log_data = {
@@ -236,6 +256,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                       mount_path])
                     mount_cmd.extend(['&& sudo chmod 777', mount_path])
                     self._ssh_exec(server_details, mount_cmd)
+
+                    # Add mount permanently
+                    self._sync_mount_temp_and_perm_files(server_details)
                 else:
                     LOG.warning(_("Mount point '%(path)s' already exists on "
                                   "server '%(server)s'."), log_data)
@@ -246,7 +269,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def _unmount_device(self, share, server_details):
         """Unmounts block device from directory on service vm."""
 
-        @utils.synchronized('generic_driver_mounts_%s' % share['id'])
+        @utils.synchronized('generic_driver_mounts_'
+                            '%s' % server_details['instance_id'])
         def _unmount_device_with_lock():
             mount_path = self._get_mount_path(share)
             log_data = {
@@ -259,6 +283,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 unmount_cmd = ['sudo umount', mount_path, '&& sudo rmdir',
                                mount_path]
                 self._ssh_exec(server_details, unmount_cmd)
+                # Remove mount permanently
+                self._sync_mount_temp_and_perm_files(server_details)
             else:
                 LOG.warning(_("Mount point '%(path)s' does not exist on "
                               "server '%(server)s'."), log_data)

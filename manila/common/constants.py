@@ -28,6 +28,9 @@ SECURITY_SERVICES_ALLOWED_TYPES = ['active_directory', 'ldap', 'kerberos']
 NFS_EXPORTS_FILE = '/etc/exports'
 NFS_EXPORTS_FILE_TEMP = '/var/lib/nfs/etab'
 
+MOUNT_FILE = '/etc/fstab'
+MOUNT_FILE_TEMP = '/etc/mtab'
+
 # Below represented ports are ranges (from, to)
 CIFS_PORTS = (
     ("tcp", (445, 445)),
