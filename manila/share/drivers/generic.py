@@ -736,9 +736,10 @@ class CIFSHelper(NASHelperBase):
 
     def create_export(self, server, share_name, recreate=False):
         """Create share at samba server."""
+        share_path = os.path.join(self.configuration.share_mount_path,
+                                  share_name)
         create_cmd = [
-            'sudo', 'net', 'conf', 'addshare',
-            share_name, self.configuration.share_mount_path,
+            'sudo', 'net', 'conf', 'addshare', share_name, share_path,
             'writeable=y', 'guest_ok=y',
         ]
         try:
