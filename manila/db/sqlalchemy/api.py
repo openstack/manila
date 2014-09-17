@@ -1748,7 +1748,16 @@ def share_server_get_by_host_and_share_net_valid(context, host, share_net_id,
         .filter(models.ShareServer.status.in_(
             (constants.STATUS_CREATING, constants.STATUS_ACTIVE))).first()
     if result is None:
-        raise exception.ShareServerNotFound(share_server_id=id)
+        filters_description = ('share_network_id is "%(share_net_id)s",'
+                               ' host is "%(host)s" and status in'
+                               ' "%(status_cr)s" or "%(status_act)s"') % {
+            'share_net_id': share_net_id,
+            'host': host,
+            'status_cr': constants.STATUS_CREATING,
+            'status_act': constants.STATUS_ACTIVE,
+        }
+        raise exception.ShareServerNotFoundByFilters(
+            filters_description=filters_description)
     result['backend_details'] = share_server_backend_details_get(
         context, result['id'], session=session)
     return result
