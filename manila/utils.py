@@ -130,23 +130,18 @@ class SSHPool(pools.Pool):
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            if self.password:
-                ssh.connect(self.ip,
-                            port=self.port,
-                            username=self.login,
-                            password=self.password,
-                            timeout=self.conn_timeout)
-            elif self.privatekey:
+            if self.privatekey:
                 pkfile = os.path.expanduser(self.privatekey)
-                privatekey = paramiko.RSAKey.from_private_key_file(pkfile)
-                ssh.connect(self.ip,
-                            port=self.port,
-                            username=self.login,
-                            pkey=privatekey,
-                            timeout=self.conn_timeout)
-            else:
+                self.privatekey = paramiko.RSAKey.from_private_key_file(pkfile)
+            elif not self.password:
                 msg = _("Specify a password or private_key")
                 raise exception.ManilaException(msg)
+            ssh.connect(self.ip,
+                        port=self.port,
+                        username=self.login,
+                        password=self.password,
+                        pkey=self.privatekey,
+                        timeout=self.conn_timeout)
 
             # Paramiko by default sets the socket timeout to 0.1 seconds,
             # ignoring what we set thru the sshclient. This doesn't help for
