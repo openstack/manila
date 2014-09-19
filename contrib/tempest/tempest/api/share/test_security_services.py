@@ -13,8 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six  # noqa
+
 from tempest.api.share import base
+from tempest.openstack.common import log as logging
 from tempest import test
+
+LOG = logging.getLogger(__name__)
 
 
 class SecurityServicesTest(base.BaseSharesTest):
@@ -76,9 +81,19 @@ class SecurityServicesTest(base.BaseSharesTest):
             fresh_sn["id"], ss["id"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
-        resp, share = self.create_share(share_network_id=fresh_sn["id"],
-                                        cleanup_in_class=False)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        # Security service with fake data is used, so if we use backend driver
+        # that fails on wrong data, we expect error here.
+        # We require any share that uses our share-network.
+        try:
+            resp, share = self.create_share(share_network_id=fresh_sn["id"],
+                                            cleanup_in_class=False)
+        except Exception as e:
+            # we do wait for either 'error' or 'available' status because
+            # it is the only available statuses for proper deletion.
+            LOG.warning("Caught exception. It is expected in case backend "
+                        "fails having security-service with improper data "
+                        "that leads to share-server creation error. "
+                        "%s" % six.text_type(e))
 
         update_data = {
             "name": "name",
