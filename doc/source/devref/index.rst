@@ -76,6 +76,7 @@ Share backends
 .. toctree::
    :maxdepth: 3
 
+   cluster_mode_driver
    generic_driver
 
 Indices and tables
