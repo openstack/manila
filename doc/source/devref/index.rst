@@ -71,6 +71,12 @@ Module Reference
    fakes
    manila
 
+Share backends
+--------------
+.. toctree::
+   :maxdepth: 3
+
+   generic_driver
 
 Indices and tables
 ------------------
