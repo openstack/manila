@@ -31,7 +31,7 @@ The :mod:`manila.quota` Module
     :show-inheritance:
 
 The :mod:`manila.policy` Module
-------------------------------
+-------------------------------
 
 .. automodule:: manila.policy
     :noindex:
