@@ -26,8 +26,8 @@ from oslo.db.sqlalchemy import models
 import six
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import orm
 from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
-from sqlalchemy.orm import relationship, backref
 
 from manila.common import constants
 from manila.openstack.common import timeutils
@@ -163,7 +163,7 @@ class Reservation(BASE, ManilaBase):
     delta = Column(Integer)
     expire = Column(DateTime, nullable=False)
 
-#    usage = relationship(
+#    usage = orm.relationship(
 #        "QuotaUsage",
 #        foreign_keys=usage_id,
 #        primaryjoin='and_(Reservation.usage_id == QuotaUsage.id,'
@@ -207,12 +207,13 @@ class VolumeTypes(BASE, ManilaBase):
     __tablename__ = "volume_types"
     id = Column(String(36), primary_key=True)
     name = Column(String(255))
-    shares = relationship(Share,
-                          backref=backref('volume_type', uselist=False),
-                          foreign_keys=id,
-                          primaryjoin='and_('
-                          'Share.volume_type_id == VolumeTypes.id, '
-                          'VolumeTypes.deleted == False)')
+    shares = orm.relationship(Share,
+                              backref=orm.backref('volume_type',
+                                                  uselist=False),
+                              foreign_keys=id,
+                              primaryjoin='and_('
+                              'Share.volume_type_id == VolumeTypes.id, '
+                              'VolumeTypes.deleted == False)')
 
 
 class VolumeTypeExtraSpecs(BASE, ManilaBase):
@@ -224,7 +225,7 @@ class VolumeTypeExtraSpecs(BASE, ManilaBase):
     volume_type_id = Column(String(36),
                             ForeignKey('volume_types.id'),
                             nullable=False)
-    volume_type = relationship(
+    volume_type = orm.relationship(
         VolumeTypes,
         backref="extra_specs",
         foreign_keys=volume_type_id,
@@ -241,11 +242,11 @@ class ShareMetadata(BASE, ManilaBase):
     key = Column(String(255), nullable=False)
     value = Column(String(1023), nullable=False)
     share_id = Column(String(36), ForeignKey('shares.id'), nullable=False)
-    share = relationship(Share, backref="share_metadata",
-                         foreign_keys=share_id,
-                         primaryjoin='and_('
-                         'ShareMetadata.share_id == Share.id,'
-                         'ShareMetadata.deleted == 0)')
+    share = orm.relationship(Share, backref="share_metadata",
+                             foreign_keys=share_id,
+                             primaryjoin='and_('
+                             'ShareMetadata.share_id == Share.id,'
+                             'ShareMetadata.deleted == 0)')
 
 
 class ShareAccessMapping(BASE, ManilaBase):
@@ -292,11 +293,11 @@ class ShareSnapshot(BASE, ManilaBase):
     share_size = Column(Integer)
     share_proto = Column(String(255))
     export_location = Column(String(255))
-    share = relationship(Share, backref="snapshots",
-                         foreign_keys=share_id,
-                         primaryjoin='and_('
-                         'ShareSnapshot.share_id == Share.id,'
-                         'ShareSnapshot.deleted == "False")')
+    share = orm.relationship(Share, backref="snapshots",
+                             foreign_keys=share_id,
+                             primaryjoin='and_('
+                             'ShareSnapshot.share_id == Share.id,'
+                             'ShareSnapshot.deleted == "False")')
 
 
 class SecurityService(BASE, ManilaBase):
@@ -334,7 +335,7 @@ class ShareNetwork(BASE, ManilaBase):
     ip_version = Column(Integer, nullable=True)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
-    security_services = relationship(
+    security_services = orm.relationship(
         "SecurityService",
         secondary="share_network_security_service_association",
         backref="share_networks",
@@ -347,12 +348,12 @@ class ShareNetwork(BASE, ManilaBase):
         'SecurityService.id == '
         'ShareNetworkSecurityServiceAssociation.security_service_id,'
         'SecurityService.deleted == "False")')
-    shares = relationship("Share",
-                          backref='share_network',
-                          primaryjoin='and_('
-                          'ShareNetwork.id == Share.share_network_id,'
-                          'Share.deleted == "False")')
-    share_servers = relationship(
+    shares = orm.relationship("Share",
+                              backref='share_network',
+                              primaryjoin='and_('
+                              'ShareNetwork.id == Share.share_network_id,'
+                              'Share.deleted == "False")')
+    share_servers = orm.relationship(
         "ShareServer", backref='share_network',
         primaryjoin='and_(ShareNetwork.id == ShareServer.share_network_id,'
                     'ShareServer.deleted == "False")')
@@ -370,16 +371,16 @@ class ShareServer(BASE, ManilaBase):
                          constants.STATUS_ERROR, constants.STATUS_DELETING,
                          constants.STATUS_CREATING),
                     default=constants.STATUS_INACTIVE)
-    network_allocations = relationship(
+    network_allocations = orm.relationship(
         "NetworkAllocation",
         primaryjoin='and_('
                     'ShareServer.id == NetworkAllocation.share_server_id,'
                     'NetworkAllocation.deleted == "False")')
-    shares = relationship("Share",
-                          backref='share_server',
-                          primaryjoin='and_('
-                          'ShareServer.id == Share.share_server_id,'
-                          'Share.deleted == "False")')
+    shares = orm.relationship("Share",
+                              backref='share_server',
+                              primaryjoin='and_('
+                              'ShareServer.id == Share.share_server_id,'
+                              'Share.deleted == "False")')
 
 
 class ShareServerBackendDetails(BASE, ManilaBase):
