@@ -24,7 +24,7 @@ set +o xtrace
 # Defaults
 # --------
 
-MANILA_REPO_ROOT=stackforge
+MANILA_REPO_ROOT=openstack
 MANILA_GIT_BASE=${MANILA_GIT_BASE:-https://github.com}
 MANILA_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/manila.git
 MANILA_BRANCH=master
