@@ -89,7 +89,7 @@ Getting the code
 ----------------
 Grab the code from GitHub::
 
-    git clone https://github.com/stackforge/manila.git
+    git clone https://github.com/openstack/manila.git
     cd manila
 
 
