@@ -29,6 +29,9 @@ import pipes
 import re
 import xml.etree.cElementTree as etree
 
+from oslo.config import cfg
+import six
+
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -36,7 +39,6 @@ from manila.i18n import _LW
 from manila.openstack.common import log as logging
 from manila.share import driver
 
-from oslo.config import cfg
 
 LOG = logging.getLogger(__name__)
 
@@ -120,6 +122,32 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._ensure_gluster_vol_mounted()
         self._setup_gluster_vol()
 
+    def _get_gluster_vol_option(self, option):
+        try:
+            args, kw = self.gluster_address.make_gluster_args(
+                '--xml',
+                'volume',
+                'info',
+                self.gluster_address.volume
+            )
+            out, err = self._execute(*args, **kw)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_LE("Error retrieving volume info: %s"), exc.stderr)
+            raise exception.GlusterfsException(exc)
+
+        if not out:
+            raise exception.GlusterfsException(
+                'Empty answer from gluster command'
+            )
+
+        vix = etree.fromstring(out)
+        if int(vix.find('./volInfo/volumes/count').text) != 1:
+            raise exception.InvalidShare('Volume name ambiguity')
+        for e in vix.findall(".//option"):
+            o, v = (e.find(a).text for a in ('name', 'value'))
+            if o == option:
+                return v
+
     def _setup_gluster_vol(self):
         # exporting the whole volume must be prohibited
         # to not to defeat access control
@@ -129,8 +157,20 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error in gluster volume set: %s"), exc.stderr)
+            LOG.error(_LE("Error in disabling access to the entire GlusterFS "
+                          "volume: %s"), exc.stderr)
             raise
+        # enable quota options of a GlusteFS volume to allow
+        # creation of shares of specific size
+        args, kw = self.gluster_address.make_gluster_args(
+            'volume', 'quota', self.gluster_address.volume, 'enable')
+        try:
+            self._execute(*args, **kw)
+        except exception.ProcessExecutionError as exc:
+            if self._get_gluster_vol_option('features.quota') != 'on':
+                LOG.error(_LE("Error in enabling creation of shares of "
+                              "specific size: %s"), exc.stderr)
+                raise exception.GlusterfsException(exc)
 
     def check_for_setup_error(self):
         pass
@@ -166,33 +206,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _get_export_dir_dict(self):
         """Get the export entries of shares in the GlusterFS volume."""
-        try:
-            args, kw = self.gluster_address.make_gluster_args(
-                '--xml',
-                'volume',
-                'info',
-                self.gluster_address.volume
-            )
-            out, err = self._execute(*args, **kw)
-        except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error retrieving volume info: %s"), exc.stderr)
-            raise
-
-        if not out:
-            raise exception.GlusterfsException(
-                'Empty answer from gluster command'
-            )
-
-        vix = etree.fromstring(out)
-        if int(vix.find('./volInfo/volumes/count').text) != 1:
-            raise exception.InvalidShare('Volume name ambiguity')
-        export_dir = None
-        for o, v in \
-            ((e.find(a).text for a in ('name', 'value'))
-             for e in vix.findall(".//option")):
-            if o == NFS_EXPORT_DIR:
-                export_dir = v
-                break
+        export_dir = self._get_gluster_vol_option(NFS_EXPORT_DIR)
         edh = {}
         if export_dir:
             # see
@@ -267,17 +281,37 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def create_share(self, ctx, share, share_server=None):
         """Create a sub-directory/share in the GlusterFS volume."""
+        sizestr = six.text_type(share['size']) + 'GB'
+        share_dir = '/' + share['name']
         local_share_path = self._get_local_share_path(share)
         cmd = ['mkdir', local_share_path]
+        # set hard limit quota on the sub-directory/share
+        args, kw = self.gluster_address.make_gluster_args(
+            'volume', 'quota', self.gluster_address.volume, 'limit-usage',
+            share_dir, sizestr)
         try:
             self._execute(*cmd, run_as_root=True)
-        except exception.ProcessExecutionError:
+            self._execute(*args, **kw)
+        except exception.ProcessExecutionError as exc:
+            self._cleanup_create_share(local_share_path, share['name'])
             LOG.error(_LE('Unable to create share %s'), share['name'])
-            raise
+            raise exception.GlusterfsException(exc)
 
         export_location = os.path.join(self.gluster_address.qualified,
                                        share['name'])
         return export_location
+
+    def _cleanup_create_share(self, share_path, share_name):
+        """Cleanup share that errored out during its creation."""
+        if os.path.exists(share_path):
+            cmd = ['rm', '-rf', share_path]
+            try:
+                self._execute(*cmd, run_as_root=True)
+            except exception.ProcessExecutionError as exc:
+                LOG.error(_LE('Cannot cleanup share, %s, that errored out '
+                              'during its creation, but exists in GlusterFS '
+                              'volume.'), share_name)
+                raise exception.GlusterfsException(exc)
 
     def delete_share(self, context, share, share_server=None):
         """Remove a sub-directory/share from the GlusterFS volume."""
