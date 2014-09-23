@@ -46,15 +46,6 @@ The :mod:`manila.db.sqlalchemy.models` Module
     :undoc-members:
     :show-inheritance:
 
-The :mod:`manila.db.sqlalchemy.session` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.db.sqlalchemy.session
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Tests
 -----

@@ -39,19 +39,3 @@ The :mod:`manila.share.driver` Module
     :undoc-members:
     :show-inheritance:
     :exclude-members: FakeAOEDriver
-
-Tests
------
-
-The :mod:`test_share` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.tests.test_share
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-
-
