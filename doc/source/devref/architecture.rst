@@ -57,7 +57,10 @@ Further Challenges
 ------------------
 
 *   More efficient share/snapshot size calculation
-*   Integration with Nova for share automounts
-*   Non-vlan multitenancy
+*   Create a notion of "attached" shares with automation of mount operations
+*   Support for Nova-network as an alternative to Neutron
+*   Support for standalone operation (no dependency on Neutron/Nova-network)
+*   Allow admin-created share-servers and share-networks to be used by multiple tenants
+*   Support creation of new subnets for share servers (to connect VLANs with VXLAN/GRE/etc)
 *   Gateway mediated networking model with NFS-Ganesha
-*   Add support for bigger amount of backends
+*   Add support for more backends
