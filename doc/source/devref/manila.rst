@@ -18,8 +18,8 @@
 Common and Misc Libraries
 =========================
 
-Libraries common throughout Manila or just ones that haven't been categorized
-very well yet.
+Libraries common throughout Manila or just ones that haven't yet been
+categorized in depth.
 
 
 The :mod:`manila.context` Module
