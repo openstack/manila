@@ -14,19 +14,21 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-NetApp Cluster Mode (cDOT)
-==========================
+NetApp Clustered Data ONTAP
+===========================
 
 The Manila Shared Filesystem Management Service can be configured to use
-NetApp Data ONTAP 8.
+NetApp clustered Data ONTAP version 8.
 
 Network approach
 ----------------
 
-L3 connectivity between storage and Manila host should exist, VLAN segmentation
-should be configured.
-The Cluster mode driver creates vServers as representation of Manila share
-server interface, configures LIFs (Logical Interfaces) and stores shares there.
+L3 connectivity between the storage cluster and Manila host should exist, and
+VLAN segmentation should be configured.
+
+The clustered Data ONTAP driver creates storage virtual machines (SVM,
+previously known as vServers) as representations of Manila share server
+interface, configures logical interfaces (LIFs) and stores shares there.
 
 Supported shared filesystems
 ----------------------------
