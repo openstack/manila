@@ -78,6 +78,7 @@ Share backends
    :maxdepth: 3
 
    cluster_mode_driver
+   emc_vnx_driver
    generic_driver
 
 Indices and tables
