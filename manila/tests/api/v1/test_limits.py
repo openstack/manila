@@ -436,7 +436,7 @@ class LimiterTest(BaseLimitTestSuite):
         """Ensure 11th PUT will be delayed.
 
         Ensure the 11th PUT will result in a delay of 6.0 seconds until
-        the next request will be granced.
+        the next request will be granted.
         """
         expected = [None] * 10 + [6.0]
         results = list(self._check(11, "PUT", "/anything"))
@@ -555,7 +555,7 @@ class WsgiLimiterTest(BaseLimitTestSuite):
         self.app = limits.WsgiLimiter(TEST_LIMITS)
 
     def _request_data(self, verb, path):
-        """Get data decribing a limit request verb/path."""
+        """Get data describing a limit request verb/path."""
         return jsonutils.dumps({"verb": verb, "path": path})
 
     def _request(self, verb, url, username=None):
@@ -638,7 +638,7 @@ class FakeHttplibConnection(object):
         self.host = host
 
     def request(self, method, path, body="", headers=None):
-        """Transalate request to WSGI app.
+        """Translate request to WSGI app.
 
         Requests made via this connection actually get translated and routed
         into our WSGI app, we then wait for the response and turn it back into

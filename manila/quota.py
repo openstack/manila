@@ -1040,7 +1040,7 @@ class QuotaEngine(object):
                                                      project_id, user_id)
 
     def destroy_all_by_project(self, context, project_id):
-        """Destroy metadate associated with a project.
+        """Destroy metadata associated with a project.
 
         Destroy all quotas, usages, and reservations associated with a
         project.

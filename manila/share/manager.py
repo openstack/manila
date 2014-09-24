@@ -137,7 +137,7 @@ class ShareManager(manager.SchedulerDependentManager):
         with deletion of share_server.
 
         :returns: dict, dict -- first value is share_server, that
-                  has been choosen for share schedule. Second value is
+                  has been chosen for share schedule. Second value is
                   share updated with share_server_id.
         """
 

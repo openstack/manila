@@ -343,7 +343,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         return volume
 
     def _get_volume_snapshot(self, context, snapshot_id):
-        """Finds volume snaphots, associated to the specific share snaphots."""
+        """Find volume snapshot associated to the specific share snapshot."""
         volume_snapshot_name = (
             self.configuration.volume_snapshot_name_template % snapshot_id)
         volume_snapshot_list = self.volume_api.get_all_snapshots(
