@@ -62,6 +62,7 @@ Module Reference
 .. toctree::
    :maxdepth: 3
 
+   intro
    services
    database
    share
