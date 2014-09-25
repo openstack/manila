@@ -477,6 +477,98 @@ class ShareAPITestCase(test.TestCase):
             quota.QUOTAS.commit.assert_called_once_with(
                 self.context, 'reservation')
 
+    @mock.patch.object(quota.QUOTAS, 'reserve',
+                       mock.Mock(return_value='reservation'))
+    @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
+    def test_create_from_snapshot_with_volume_type_same(self):
+        # Prepare data for test
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        self.mock_utcnow.return_value = date
+        share_id = 'fake_share_id'
+        snapshot = fake_snapshot('fakesnapshotid',
+                                 share_id=share_id,
+                                 status='available')
+        volume_type = {'id': 'fake_volume_type'}
+        share = fake_share(share_id, user_id=self.context.user_id,
+                           project_id=self.context.project_id,
+                           snapshot_id=snapshot['id'], status='creating',
+                           volume_type_id=volume_type['id'])
+        options = share.copy()
+        for name in ('id', 'export_location', 'host', 'launched_at',
+                     'terminated_at'):
+            options.pop(name, None)
+        request_spec = {
+            'share_properties': options,
+            'share_proto': share['share_proto'],
+            'share_id': share_id,
+            'volume_type': volume_type,
+            'snapshot_id': share['snapshot_id'],
+        }
+        self.stubs.Set(db_driver, 'share_create',
+                       mock.Mock(return_value=share))
+        self.stubs.Set(db_driver, 'share_get', mock.Mock(return_value=share))
+
+        # Call tested method
+        self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
+                        snapshot=snapshot, availability_zone='fakeaz',
+                        volume_type=volume_type)
+
+        # Verify results
+        self.scheduler_rpcapi.create_share.assert_called_once_with(
+            self.context, 'manila-share', share_id,
+            share['snapshot_id'], request_spec=request_spec,
+            filter_properties={})
+        db_driver.share_create.assert_called_once_with(
+            self.context, options)
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'create')
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.context, gigabytes=1, shares=1)
+        quota.QUOTAS.commit.assert_called_once_with(
+            self.context, 'reservation')
+        db_driver.share_get.assert_called_once_with(
+            self.context, share_id)
+
+    @mock.patch.object(quota.QUOTAS, 'reserve',
+                       mock.Mock(return_value='reservation'))
+    @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
+    def test_create_from_snapshot_with_volume_type_different(self):
+        # Prepare data for test
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        self.mock_utcnow.return_value = date
+        share_id = 'fake_share_id'
+        snapshot = fake_snapshot('fakesnapshotid',
+                                 share_id=share_id,
+                                 status='available')
+        volume_type = {'id': 'fake_volume_type'}
+        share = fake_share(share_id, user_id=self.context.user_id,
+                           project_id=self.context.project_id,
+                           snapshot_id=snapshot['id'], status='creating',
+                           volume_type_id=volume_type['id'][1:])
+        options = share.copy()
+        for name in ('id', 'export_location', 'host', 'launched_at',
+                     'terminated_at'):
+            options.pop(name, None)
+        self.stubs.Set(db_driver, 'share_create',
+                       mock.Mock(return_value=share))
+        self.stubs.Set(db_driver, 'share_get', mock.Mock(return_value=share))
+
+        # Call tested method
+        self.assertRaises(exception.InvalidInput, self.api.create,
+                          self.context, 'nfs', '1', 'fakename', 'fakedesc',
+                          snapshot=snapshot, availability_zone='fakeaz',
+                          volume_type=volume_type)
+
+        # Verify results
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'create')
+        self.scheduler_rpcapi.create_share.assert_has_calls([])
+        db_driver.share_create.assert_has_calls([])
+        quota.QUOTAS.reserve.assert_has_calls([])
+        quota.QUOTAS.commit.assert_has_calls([])
+        db_driver.share_get.assert_called_once_with(
+            self.context, share_id)
+
     def test_get_snapshot(self):
         fake_get_snap = {'fake_key': 'fake_val'}
         with mock.patch.object(db_driver, 'share_snapshot_get',

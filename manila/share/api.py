@@ -84,7 +84,8 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         if snapshot and volume_type:
-            if volume_type['id'] != snapshot['volume_type_id']:
+            source_share = self.db.share_get(context, snapshot['share_id'])
+            if volume_type['id'] != source_share['volume_type_id']:
                 msg = _("Invalid volume_type provided (requested type "
                         "must match source snapshot, or be omitted). "
                         "You should omit the argument.")
