@@ -20,11 +20,11 @@ Jenkins performs tasks such as:
     Calculate test coverage metrics.
 
 `manila-docs`_
-    Build this documentation and push it to http://manila.openstack.org.
+    Build this documentation and push it to http://docs.openstack.org/developer/manila.
 
 `manila-tarball`_
     Do ``python setup.py sdist`` to create a tarball of the manila code and upload
-    it to http://manila.openstack.org/tarballs
+    it to http://tarballs.openstack.org/manila/
 
 .. _Jenkins: http://jenkins-ci.org
 .. _Launchpad: http://launchpad.net
