@@ -31,7 +31,17 @@ from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila.share import rpcapi as share_rpcapi
 
+share_api_opts = [
+    cfg.BoolOpt('use_scheduler_creating_share_from_snapshot',
+                default=False,
+                help='If set to False, then share creation from snapshot will '
+                     'be performed on the same host. '
+                     'If set to True, then scheduling step will be used.')
+]
+
 CONF = cfg.CONF
+CONF.register_opts(share_api_opts)
+
 LOG = logging.getLogger(__name__)
 GB = 1048576 * 1024
 QUOTAS = quota.QUOTAS
@@ -152,22 +162,40 @@ class API(base.Base):
                 finally:
                     QUOTAS.rollback(context, reservations)
 
-        request_spec = {'share_properties': options,
-                        'share_proto': share_proto,
-                        'share_id': share['id'],
-                        'snapshot_id': share['snapshot_id'],
-                        'volume_type': volume_type
-                        }
-
+        request_spec = {
+            'share_properties': options,
+            'share_proto': share_proto,
+            'share_id': share['id'],
+            'snapshot_id': snapshot_id,
+            'volume_type': volume_type,
+        }
         filter_properties = {}
 
-        self.scheduler_rpcapi.create_share(
-            context,
-            CONF.share_topic,
-            share['id'],
-            snapshot_id,
-            request_spec=request_spec,
-            filter_properties=filter_properties)
+        if (snapshot and not CONF.use_scheduler_creating_share_from_snapshot):
+            # Shares from snapshots with restriction - source host only.
+            # It is common situation for different types of backends.
+            host = snapshot['share']['host']
+            share = self.db.share_update(context, share['id'], {'host': host})
+            self.share_rpcapi.create_share(
+                context,
+                share,
+                host,
+                request_spec=request_spec,
+                filter_properties=filter_properties,
+                snapshot_id=snapshot_id,
+            )
+        else:
+            # Shares from scratch and from snapshots when source host is not
+            # the only allowed, it is possible, for example, in multibackend
+            # installation with Generic drivers only.
+            self.scheduler_rpcapi.create_share(
+                context,
+                CONF.share_topic,
+                share['id'],
+                snapshot_id,
+                request_spec=request_spec,
+                filter_properties=filter_properties,
+            )
 
         return share
 
