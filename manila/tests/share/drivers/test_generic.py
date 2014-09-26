@@ -921,6 +921,9 @@ class CIFSHelperTestCase(test.TestCase):
         expected_location = '//%s/%s' % (
             self.server_details['public_address'], self.share_name)
         self.assertEqual(ret, expected_location)
+        share_path = os.path.join(
+            self._helper.configuration.share_mount_path,
+            self.share_name)
         self._helper._ssh_exec.assert_has_calls([
             mock.call(
                 self.server_details,
@@ -930,8 +933,7 @@ class CIFSHelperTestCase(test.TestCase):
                 self.server_details,
                 [
                     'sudo', 'net', 'conf', 'addshare', self.share_name,
-                    self._helper.configuration.share_mount_path,
-                    'writeable=y', 'guest_ok=y',
+                    share_path, 'writeable=y', 'guest_ok=y',
                 ]
             ),
             mock.call(self.server_details, mock.ANY),
@@ -943,6 +945,9 @@ class CIFSHelperTestCase(test.TestCase):
         expected_location = '//%s/%s' % (
             self.server_details['public_address'], self.share_name)
         self.assertEqual(ret, expected_location)
+        share_path = os.path.join(
+            self._helper.configuration.share_mount_path,
+            self.share_name)
         self._helper._ssh_exec.assert_has_calls([
             mock.call(
                 self.server_details,
@@ -956,8 +961,7 @@ class CIFSHelperTestCase(test.TestCase):
                 self.server_details,
                 [
                     'sudo', 'net', 'conf', 'addshare', self.share_name,
-                    self._helper.configuration.share_mount_path,
-                    'writeable=y', 'guest_ok=y',
+                    share_path, 'writeable=y', 'guest_ok=y',
                 ]
             ),
             mock.call(self.server_details, mock.ANY),
