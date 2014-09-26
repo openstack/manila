@@ -18,6 +18,7 @@ import datetime
 import uuid
 
 import mock
+from oslo.config import cfg
 
 from manila import context
 from manila import db as db_driver
@@ -29,6 +30,8 @@ from manila.share import api as share_api
 from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila import utils
+
+CONF = cfg.CONF
 
 
 def fake_share(id, **kwargs):
@@ -73,7 +76,8 @@ def fake_snapshot(id, **kwargs):
         'progress': 'fakeprogress99%',
         'scheduled_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         'launched_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-        'terminated_at': datetime.datetime(1, 1, 1, 1, 1, 1)
+        'terminated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+        'share': {'host': 'fake_source_host'},
     }
     snapshot.update(kwargs)
     return snapshot
@@ -439,6 +443,7 @@ class ShareAPITestCase(test.TestCase):
                        mock.Mock(return_value='reservation'))
     @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
     def test_create_from_snapshot_available(self):
+        CONF.set_default("use_scheduler_creating_share_from_snapshot", False)
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
         self.mock_utcnow.return_value = date
         snapshot = fake_snapshot('fakesnapshotid',
@@ -460,28 +465,80 @@ class ShareAPITestCase(test.TestCase):
             'volume_type': None,
             'snapshot_id': share['snapshot_id'],
         }
-        with mock.patch.object(db_driver, 'share_create',
-                               mock.Mock(return_value=share)):
-            self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
-                            snapshot=snapshot, availability_zone='fakeaz')
-            self.scheduler_rpcapi.create_share.assert_called_once_with(
-                self.context, 'manila-share', share['id'],
-                share['snapshot_id'], request_spec=request_spec,
-                filter_properties={})
-            db_driver.share_create.assert_called_once_with(
-                self.context, options)
-            share_api.policy.check_policy.assert_called_once_with(
-                self.context, 'share', 'create')
-            quota.QUOTAS.reserve.assert_called_once_with(
-                self.context, gigabytes=1, shares=1)
-            quota.QUOTAS.commit.assert_called_once_with(
-                self.context, 'reservation')
+        self.stubs.Set(db_driver, 'share_create',
+                       mock.Mock(return_value=share))
+        self.stubs.Set(db_driver, 'share_update',
+                       mock.Mock(return_value=share))
+
+        self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
+                        snapshot=snapshot, availability_zone='fakeaz')
+
+        self.share_rpcapi.create_share.assert_called_once_with(
+            self.context, share, snapshot['share']['host'],
+            request_spec=request_spec, filter_properties={},
+            snapshot_id=snapshot['id'])
+        db_driver.share_create.assert_called_once_with(
+            self.context, options)
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'create')
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.context, gigabytes=1, shares=1)
+        quota.QUOTAS.commit.assert_called_once_with(
+            self.context, 'reservation')
+
+    @mock.patch.object(quota.QUOTAS, 'reserve',
+                       mock.Mock(return_value='reservation'))
+    @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
+    def test_create_from_snapshot_without_host_restriction(self):
+        CONF.set_default("use_scheduler_creating_share_from_snapshot", True)
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        self.mock_utcnow.return_value = date
+        snapshot = fake_snapshot('fakesnapshotid',
+                                 share_id='fakeshare_id',
+                                 status='available')
+        share = fake_share('fakeid',
+                           user_id=self.context.user_id,
+                           project_id=self.context.project_id,
+                           snapshot_id=snapshot['id'],
+                           status='creating')
+        options = share.copy()
+        for name in ('id', 'export_location', 'host', 'launched_at',
+                     'terminated_at'):
+            options.pop(name, None)
+        request_spec = {
+            'share_properties': options,
+            'share_proto': share['share_proto'],
+            'share_id': share['id'],
+            'volume_type': None,
+            'snapshot_id': share['snapshot_id'],
+        }
+        self.stubs.Set(db_driver, 'share_create',
+                       mock.Mock(return_value=share))
+        self.stubs.Set(db_driver, 'share_update',
+                       mock.Mock(return_value=share))
+
+        self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
+                        snapshot=snapshot, availability_zone='fakeaz')
+
+        self.scheduler_rpcapi.create_share.assert_called_once_with(
+            self.context, 'manila-share', share['id'],
+            share['snapshot_id'], request_spec=request_spec,
+            filter_properties={})
+        db_driver.share_create.assert_called_once_with(
+            self.context, options)
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'create')
+        quota.QUOTAS.reserve.assert_called_once_with(
+            self.context, gigabytes=1, shares=1)
+        quota.QUOTAS.commit.assert_called_once_with(
+            self.context, 'reservation')
 
     @mock.patch.object(quota.QUOTAS, 'reserve',
                        mock.Mock(return_value='reservation'))
     @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
     def test_create_from_snapshot_with_volume_type_same(self):
         # Prepare data for test
+        CONF.set_default("use_scheduler_creating_share_from_snapshot", False)
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
         self.mock_utcnow.return_value = date
         share_id = 'fake_share_id'
@@ -506,6 +563,8 @@ class ShareAPITestCase(test.TestCase):
         }
         self.stubs.Set(db_driver, 'share_create',
                        mock.Mock(return_value=share))
+        self.stubs.Set(db_driver, 'share_update',
+                       mock.Mock(return_value=share))
         self.stubs.Set(db_driver, 'share_get', mock.Mock(return_value=share))
 
         # Call tested method
@@ -514,10 +573,10 @@ class ShareAPITestCase(test.TestCase):
                         volume_type=volume_type)
 
         # Verify results
-        self.scheduler_rpcapi.create_share.assert_called_once_with(
-            self.context, 'manila-share', share_id,
-            share['snapshot_id'], request_spec=request_spec,
-            filter_properties={})
+        self.share_rpcapi.create_share.assert_called_once_with(
+            self.context, share, snapshot['share']['host'],
+            request_spec=request_spec, filter_properties={},
+            snapshot_id=snapshot['id'])
         db_driver.share_create.assert_called_once_with(
             self.context, options)
         share_api.policy.check_policy.assert_called_once_with(
@@ -528,6 +587,8 @@ class ShareAPITestCase(test.TestCase):
             self.context, 'reservation')
         db_driver.share_get.assert_called_once_with(
             self.context, share_id)
+        db_driver.share_update.assert_called_once_with(
+            self.context, share_id, {'host': snapshot['share']['host']})
 
     @mock.patch.object(quota.QUOTAS, 'reserve',
                        mock.Mock(return_value='reservation'))
