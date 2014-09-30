@@ -21,6 +21,7 @@ Handles all requests relating to shares.
 from oslo.config import cfg
 import six
 
+from manila.api import extensions
 from manila.db import base
 from manila import exception
 from manila.openstack.common import excutils
@@ -337,24 +338,60 @@ class API(base.Base):
         policy.check_policy(context, 'share', 'get', rv)
         return rv
 
-    def get_all(self, context, search_opts=None):
+    def get_all(self, context, search_opts=None, sort_key='created_at',
+                sort_dir='desc'):
         policy.check_policy(context, 'share', 'get_all')
+
         if search_opts is None:
             search_opts = {}
+
+        LOG.debug("Searching for shares by: %s", six.text_type(search_opts))
+
+        # Prepare filters
+        filters = {}
+        if 'metadata' in search_opts:
+            filters['metadata'] = search_opts.pop('metadata')
+            if not isinstance(filters['metadata'], dict):
+                msg = _("Wrong metadata filter provided: "
+                        "%s.") % six.text_type(filters['metadata'])
+                raise exception.InvalidInput(reason=msg)
+        if 'extra_specs' in search_opts:
+            # Verify policy for extra-specs access
+            extensions.extension_authorizer(
+                'share', 'types_extra_specs')(context)
+            filters['extra_specs'] = search_opts.pop('extra_specs')
+            if not isinstance(filters['extra_specs'], dict):
+                msg = _("Wrong extra specs filter provided: "
+                        "%s.") % six.text_type(filters['extra_specs'])
+                raise exception.InvalidInput(reason=msg)
+        if not (isinstance(sort_key, six.string_types) and sort_key):
+            msg = _("Wrong sort_key filter provided: "
+                    "'%s'.") % six.text_type(sort_key)
+            raise exception.InvalidInput(reason=msg)
+        if not (isinstance(sort_dir, six.string_types) and sort_dir):
+            msg = _("Wrong sort_dir filter provided: "
+                    "'%s'.") % six.text_type(sort_dir)
+            raise exception.InvalidInput(reason=msg)
+
+        # Get filtered list of shares
         if 'share_server_id' in search_opts:
             # NOTE(vponomaryov): this is project_id independent
             policy.check_policy(context, 'share', 'list_by_share_server_id')
             shares = self.db.share_get_all_by_share_server(
-                context, search_opts.pop('share_server_id'))
+                context, search_opts.pop('share_server_id'), filters=filters,
+                sort_key=sort_key, sort_dir=sort_dir)
         elif (context.is_admin and 'all_tenants' in search_opts):
-            shares = self.db.share_get_all(context)
+            shares = self.db.share_get_all(
+                context, filters=filters, sort_key=sort_key, sort_dir=sort_dir)
         else:
-            shares = self.db.share_get_all_by_project(context,
-                                                      context.project_id)
+            shares = self.db.share_get_all_by_project(
+                context, project_id=context.project_id, filters=filters,
+                sort_key=sort_key, sort_dir=sort_dir)
+
         # NOTE(vponomaryov): we do not need 'all_tenants' opt anymore
         search_opts.pop('all_tenants', None)
+
         if search_opts:
-            LOG.debug("Searching for shares by: %s", str(search_opts))
             results = []
             for s in shares:
                 # values in search_opts can be only strings

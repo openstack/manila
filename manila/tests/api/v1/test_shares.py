@@ -322,50 +322,67 @@ class ShareApiTest(test.TestCase):
                           req,
                           1)
 
-    def test_share_list_summary_with_search_opts_by_non_admin(self):
+    def _share_list_summary_with_search_opts(self, use_admin_context):
+        search_opts = {
+            'name': 'fake_name',
+            'status': 'available',
+            'share_server_id': 'fake_share_server_id',
+            'volume_type_id': 'fake_volume_type_id',
+            'snapshot_id': 'fake_snapshot_id',
+            'host': 'fake_host',
+            'share_network_id': 'fake_share_network_id',
+            'metadata': '%7B%27k1%27%3A+%27v1%27%7D',  # serialized k1=v1
+            'extra_specs': '%7B%27k2%27%3A+%27v2%27%7D',  # serialized k2=v2
+            'sort_key': 'fake_sort_key',
+            'sort_dir': 'fake_sort_dir',
+            'limit': '1',
+            'offset': '1',
+        }
         # fake_key should be filtered for non-admin
-        fake_key = 'fake_value'
-        name = 'fake_name'
-        status = 'available'
-        share_server_id = 'fake_share_server_id'
-        req = fakes.HTTPRequest.blank(
-            '/shares?fake_key=%s&name=%s&share_server_id=%s&'
-            'status=%s' % (fake_key, name, share_server_id, status),
-            use_admin_context=False,
-        )
-        self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
-        self.controller.index(req)
+        url = '/shares?fake_key=fake_value'
+        for k, v in search_opts.items():
+            url = url + '&' + k + '=' + v
+        req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
+
+        shares = [
+            {'id': 'id1', 'display_name': 'n1'},
+            {'id': 'id2', 'display_name': 'n2'},
+            {'id': 'id3', 'display_name': 'n3'},
+        ]
+        self.stubs.Set(share_api.API, 'get_all',
+                       mock.Mock(return_value=shares))
+
+        result = self.controller.index(req)
+
+        search_opts_expected = {
+            'display_name': search_opts['name'],
+            'status': search_opts['status'],
+            'share_server_id': search_opts['share_server_id'],
+            'volume_type_id': search_opts['volume_type_id'],
+            'snapshot_id': search_opts['snapshot_id'],
+            'host': search_opts['host'],
+            'share_network_id': search_opts['share_network_id'],
+            'metadata': {'k1': 'v1'},
+            'extra_specs': {'k2': 'v2'},
+        }
+        if use_admin_context:
+            search_opts_expected.update({'fake_key': 'fake_value'})
         share_api.API.get_all.assert_called_once_with(
             req.environ['manila.context'],
-            search_opts={
-                'display_name': name,
-                'share_server_id': share_server_id,
-                'status': status,
-            },
+            sort_key=search_opts['sort_key'],
+            sort_dir=search_opts['sort_dir'],
+            search_opts=search_opts_expected,
         )
+        self.assertEqual(1, len(result['shares']))
+        self.assertEqual(shares[1]['id'], result['shares'][0]['id'])
+        self.assertEqual(
+            shares[1]['display_name'], result['shares'][0]['name'])
+
+    def test_share_list_summary_with_search_opts_by_non_admin(self):
+        self._share_list_summary_with_search_opts(use_admin_context=False)
 
     def test_share_list_summary_with_search_opts_by_admin(self):
-        # none of search_opts should be filtered for admin
-        fake_key = 'fake_value'
-        name = 'fake_name'
-        status = 'available'
-        share_server_id = 'fake_share_server_id'
-        req = fakes.HTTPRequest.blank(
-            '/shares?fake_key=%s&name=%s&share_server_id=%s&'
-            'status=%s' % (fake_key, name, share_server_id, status),
-            use_admin_context=True,
-        )
-        self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
-        self.controller.index(req)
-        share_api.API.get_all.assert_called_once_with(
-            req.environ['manila.context'],
-            search_opts={
-                'display_name': name,
-                'fake_key': fake_key,
-                'share_server_id': share_server_id,
-                'status': status,
-            },
-        )
+        self._share_list_summary_with_search_opts(use_admin_context=True)
 
     def test_share_list_summary(self):
         self.stubs.Set(share_api.API, 'get_all',
@@ -392,50 +409,89 @@ class ShareApiTest(test.TestCase):
         }
         self.assertEqual(res_dict, expected)
 
-    def test_share_list_detail_with_search_opts_by_non_admin(self):
+    def _share_list_detail_with_search_opts(self, use_admin_context):
+        search_opts = {
+            'name': 'fake_name',
+            'status': 'available',
+            'share_server_id': 'fake_share_server_id',
+            'volume_type_id': 'fake_volume_type_id',
+            'snapshot_id': 'fake_snapshot_id',
+            'host': 'fake_host',
+            'share_network_id': 'fake_share_network_id',
+            'metadata': '%7B%27k1%27%3A+%27v1%27%7D',  # serialized k1=v1
+            'extra_specs': '%7B%27k2%27%3A+%27v2%27%7D',  # serialized k2=v2
+            'sort_key': 'fake_sort_key',
+            'sort_dir': 'fake_sort_dir',
+            'limit': '1',
+            'offset': '1',
+        }
         # fake_key should be filtered for non-admin
-        fake_key = 'fake_value'
-        name = 'fake_name'
-        status = 'available'
-        share_server_id = 'fake_share_server_id'
-        req = fakes.HTTPRequest.blank(
-            '/shares?fake_key=%s&name=%s&share_server_id=%s&'
-            'status=%s' % (fake_key, name, share_server_id, status),
-            use_admin_context=False,
-        )
-        self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
-        self.controller.detail(req)
+        url = '/shares/detail?fake_key=fake_value'
+        for k, v in search_opts.items():
+            url = url + '&' + k + '=' + v
+        req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
+
+        shares = [
+            {'id': 'id1', 'display_name': 'n1'},
+            {
+                'id': 'id2',
+                'display_name': 'n2',
+                'status': 'available',
+                'snapshot_id': 'fake_snapshot_id',
+                'volume_type_id': 'fake_volume_type_id',
+                'snapshot_id': 'fake_snapshot_id',
+                'host': 'fake_host',
+                'share_network_id': 'fake_share_network_id',
+            },
+            {'id': 'id3', 'display_name': 'n3'},
+        ]
+        self.stubs.Set(share_api.API, 'get_all',
+                       mock.Mock(return_value=shares))
+
+        result = self.controller.detail(req)
+
+        search_opts_expected = {
+            'display_name': search_opts['name'],
+            'status': search_opts['status'],
+            'share_server_id': search_opts['share_server_id'],
+            'volume_type_id': search_opts['volume_type_id'],
+            'snapshot_id': search_opts['snapshot_id'],
+            'host': search_opts['host'],
+            'share_network_id': search_opts['share_network_id'],
+            'metadata': {'k1': 'v1'},
+            'extra_specs': {'k2': 'v2'},
+        }
+        if use_admin_context:
+            search_opts_expected.update({'fake_key': 'fake_value'})
         share_api.API.get_all.assert_called_once_with(
             req.environ['manila.context'],
-            search_opts={
-                'display_name': name,
-                'share_server_id': share_server_id,
-                'status': status,
-            },
+            sort_key=search_opts['sort_key'],
+            sort_dir=search_opts['sort_dir'],
+            search_opts=search_opts_expected,
         )
+        self.assertEqual(1, len(result['shares']))
+        self.assertEqual(shares[1]['id'], result['shares'][0]['id'])
+        self.assertEqual(
+            shares[1]['display_name'], result['shares'][0]['name'])
+        self.assertEqual(
+            shares[1]['snapshot_id'], result['shares'][0]['snapshot_id'])
+        self.assertEqual(
+            shares[1]['status'], result['shares'][0]['status'])
+        self.assertEqual(
+            shares[1]['volume_type_id'], result['shares'][0]['volume_type'])
+        self.assertEqual(
+            shares[1]['snapshot_id'], result['shares'][0]['snapshot_id'])
+        self.assertEqual(
+            shares[1]['host'], result['shares'][0]['host'])
+        self.assertEqual(
+            shares[1]['share_network_id'],
+            result['shares'][0]['share_network_id'])
+
+    def test_share_list_detail_with_search_opts_by_non_admin(self):
+        self._share_list_detail_with_search_opts(use_admin_context=False)
 
     def test_share_list_detail_with_search_opts_by_admin(self):
-        # none of search_opts should be filtered for admin
-        fake_key = 'fake_value'
-        name = 'fake_name'
-        status = 'available'
-        share_server_id = 'fake_share_server_id'
-        req = fakes.HTTPRequest.blank(
-            '/shares?fake_key=%s&name=%s&share_server_id=%s&'
-            'status=%s' % (fake_key, name, share_server_id, status),
-            use_admin_context=True,
-        )
-        self.stubs.Set(share_api.API, 'get_all', mock.Mock(return_value=[]))
-        self.controller.detail(req)
-        share_api.API.get_all.assert_called_once_with(
-            req.environ['manila.context'],
-            search_opts={
-                'display_name': name,
-                'fake_key': fake_key,
-                'share_server_id': share_server_id,
-                'status': status,
-            },
-        )
+        self._share_list_detail_with_search_opts(use_admin_context=True)
 
     def test_share_list_detail(self):
         self.stubs.Set(share_api.API, 'get_all',

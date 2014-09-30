@@ -1,6 +1,7 @@
 # Copyright (c) 2011 X.commerce, a business unit of eBay Inc.
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
+# Copyright (c) 2014 Mirantis, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -1164,28 +1165,109 @@ def share_get(context, share_id, session=None):
     return result
 
 
-@require_admin_context
-def share_get_all(context):
-    return _share_get_query(context).all()
+@require_context
+def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
+                                host=None, filters=None,
+                                sort_key=None, sort_dir=None):
+    """Returns sorted list of shares that satisfies filters.
 
-
-@require_admin_context
-def share_get_all_by_host(context, host):
+    :param context: context to query under
+    :param project_id: project id that owns shares
+    :param share_server_id: share server that hosts shares
+    :param host: host name where shares [and share servers] are located
+    :param filters: dict of filters to specify share selection
+    :param sort_key: key of models.Share to be used for sorting
+    :param sort_dir: desired direction of sorting, can be 'asc' and 'desc'
+    :returns: list -- models.Share
+    :raises: exception.InvalidInput
+    """
+    if not sort_key:
+        sort_key = 'created_at'
+    if not sort_dir:
+        sort_dir = 'desc'
     query = _share_get_query(context)
-    return query.filter_by(host=host).all()
+    if project_id:
+        query = query.filter_by(project_id=project_id)
+    if share_server_id:
+        query = query.filter_by(share_server_id=share_server_id)
+    if host:
+        query = query.filter_by(host=host)
+
+    # Apply filters
+    if not filters:
+        filters = {}
+    if 'metadata' in filters:
+        for k, v in filters['metadata'].items():
+            query = query.filter(
+                or_(models.Share.share_metadata.any(  # pylint: disable=E1101
+                    key=k, value=v)))
+    if 'extra_specs' in filters:
+        query = query.join(
+            models.VolumeTypeExtraSpecs,
+            models.VolumeTypeExtraSpecs.volume_type_id ==
+            models.Share.volume_type_id)
+        for k, v in filters['extra_specs'].items():
+            query = query.filter(or_(models.VolumeTypeExtraSpecs.key == k,
+                                     models.VolumeTypeExtraSpecs.value == v))
+
+    # Apply sorting
+    try:
+        attr = getattr(models.Share, sort_key)
+    except AttributeError:
+        msg = _("Wrong sorting key provided - '%s'.") % sort_key
+        raise exception.InvalidInput(reason=msg)
+    if sort_dir.lower() == 'desc':
+        query = query.order_by(attr.desc())
+    elif sort_dir.lower() == 'asc':
+        query = query.order_by(attr.asc())
+    else:
+        msg = _("Wrong sorting data provided: sort key is '%(sort_key)s' "
+                "and sort direction is '%(sort_dir)s'.") % {
+                    "sort_key": sort_key, "sort_dir": sort_dir}
+        raise exception.InvalidInput(reason=msg)
+
+    # Returns list of shares that satisfy filters.
+    query = query.all()
+    return query
+
+
+@require_admin_context
+def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
+    query = _share_get_all_with_filters(
+        context, filters=filters, sort_key=sort_key, sort_dir=sort_dir)
+    return query
+
+
+@require_admin_context
+def share_get_all_by_host(context, host, filters=None,
+                          sort_key=None, sort_dir=None):
+    query = _share_get_all_with_filters(
+        context, host=host, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir,
+    )
+    return query
 
 
 @require_context
-def share_get_all_by_project(context, project_id):
+def share_get_all_by_project(context, project_id, filters=None,
+                             sort_key=None, sort_dir=None):
     """Returns list of shares with given project ID."""
-    return _share_get_query(context).filter_by(project_id=project_id).all()
+    query = _share_get_all_with_filters(
+        context, project_id=project_id, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir,
+    )
+    return query
 
 
 @require_context
-def share_get_all_by_share_server(context, share_server_id):
+def share_get_all_by_share_server(context, share_server_id, filters=None,
+                                  sort_key=None, sort_dir=None):
     """Returns list of shares with given share server."""
-    return _share_get_query(context).filter_by(
-        share_server_id=share_server_id).all()
+    query = _share_get_all_with_filters(
+        context, share_server_id=share_server_id, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir,
+    )
+    return query
 
 
 @require_context

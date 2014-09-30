@@ -86,7 +86,8 @@ def stub_snapshot_update(self, context, *args, **param):
     return share
 
 
-def stub_share_get_all_by_project(self, context, search_opts=None):
+def stub_share_get_all_by_project(self, context, sort_key=None, sort_dir=None,
+                                  search_opts={}):
     return [stub_share_get(self, context, '1')]
 
 

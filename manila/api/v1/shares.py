@@ -15,6 +15,8 @@
 
 """The shares api."""
 
+import ast
+
 import six
 import webob
 from webob import exc
@@ -110,15 +112,33 @@ class ShareController(wsgi.Controller):
         search_opts = {}
         search_opts.update(req.GET)
 
-        # NOTE(rushiagr): v2 API allows name instead of display_name
+        # Remove keys that are not related to share attrs
+        search_opts.pop('limit', None)
+        search_opts.pop('offset', None)
+        sort_key = search_opts.pop('sort_key', 'created_at')
+        sort_dir = search_opts.pop('sort_dir', 'desc')
+
+        # Deserialize dicts
+        if 'metadata' in search_opts:
+            search_opts['metadata'] = ast.literal_eval(search_opts['metadata'])
+        if 'extra_specs' in search_opts:
+            search_opts['extra_specs'] = ast.literal_eval(
+                search_opts['extra_specs'])
+
+        # NOTE(vponomaryov): Manila stores in DB key 'display_name', but
+        # allows to use both keys 'name' and 'display_name'. It is leftover
+        # from Cinder v1 and v2 APIs.
         if 'name' in search_opts:
-            search_opts['display_name'] = search_opts['name']
-            del search_opts['name']
+            search_opts['display_name'] = search_opts.pop('name')
+        if sort_key == 'name':
+            sort_key = 'display_name'
 
         common.remove_invalid_options(
             context, search_opts, self._get_share_search_options())
 
-        shares = self.share_api.get_all(context, search_opts=search_opts)
+        shares = self.share_api.get_all(
+            context, search_opts=search_opts, sort_key=sort_key,
+            sort_dir=sort_dir)
 
         limited_list = common.limited(shares, req)
 
@@ -132,7 +152,13 @@ class ShareController(wsgi.Controller):
         """Return share search options allowed by non-admin."""
         # NOTE(vponomaryov): share_server_id depends on policy, allow search
         #                    by it for non-admins in case policy changed.
-        return ('display_name', 'status', 'share_server_id', )
+        #                    Also allow search by extra_specs in case policy
+        #                    for it allows non-admin access.
+        return (
+            'display_name', 'status', 'share_server_id', 'volume_type_id',
+            'snapshot_id', 'host', 'share_network_id',
+            'metadata', 'extra_specs', 'sort_key', 'sort_dir',
+        )
 
     @wsgi.serializers(xml=ShareTemplate)
     def update(self, req, id, body):
