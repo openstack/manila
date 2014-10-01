@@ -51,6 +51,9 @@ Known restrictions
   share-network.
 - Share access rule by user for CIFS shares can be created only for existing
   user in active directory.
+- To be able to configure clients to security services, the time on these
+  external security services and storage should be synchronized. The maximum
+  allowed clock skew is 5 minutes.
 
 The :mod:`manila.share.drivers.netapp.api` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
