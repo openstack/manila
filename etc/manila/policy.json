@@ -45,6 +45,7 @@
     "security_service:show": [["rule:default"]],
     "security_service:index": [["rule:default"]],
     "security_service:detail": [["rule:default"]],
+    "security_service:get_all_security_services": [["rule:admin_api"]],
 
     "share_server:index": [["rule:admin_api"]],
     "share_server:show": [["rule:admin_api"]],

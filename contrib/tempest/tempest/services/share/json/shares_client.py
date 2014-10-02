@@ -436,13 +436,10 @@ class SharesClient(rest_client.RestClient):
         resp, body = self.get("security-services/%s" % ss_id)
         return resp, self._parse_resp(body)
 
-    def list_security_services(self):
-        resp, body = self.get("security-services")
-        return resp, self._parse_resp(body)
-
-    def list_security_services_with_detail(self, params=None):
-        """List the details of all shares."""
-        uri = "security-services/detail"
+    def list_security_services(self, detailed=False, params=None):
+        uri = "security-services"
+        if detailed:
+            uri += '/detail'
         if params:
             uri += "?%s" % urllib.urlencode(params)
         resp, body = self.get(uri)

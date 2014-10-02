@@ -120,3 +120,9 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_security_service,
                           ss["id"])
+
+    @test.attr(type=["gate", "smoke", "negative"])
+    def test_try_list_security_services_all_tenants(self):
+        self.assertRaises(exceptions.Unauthorized,
+                          self.shares_client.list_security_services,
+                          params={'all_tenants': 1})

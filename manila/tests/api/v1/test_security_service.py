@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+from six.moves.urllib import parse
 import webob
 
 from manila.api.v1 import security_service
@@ -30,7 +31,7 @@ class ShareApiTest(test.TestCase):
         super(ShareApiTest, self).setUp()
         self.controller = security_service.SecurityServiceController()
         self.maxDiff = None
-        self.security_service = {
+        self.ss_active_directory = {
             "created_at": "fake-time",
             "updated_at": "fake-time-2",
             "id": 1,
@@ -45,15 +46,55 @@ class ShareApiTest(test.TestCase):
             "status": "new",
             "project_id": "fake",
         }
-        security_service.policy.check_policy = mock.Mock()
+        self.ss_ldap = {
+            "created_at": "fake-time",
+            "updated_at": "fake-time-2",
+            "id": 2,
+            "name": "ss-ldap",
+            "description": "Fake Security Service Desc",
+            "type": constants.SECURITY_SERVICES_ALLOWED_TYPES[1],
+            "dns_ip": "2.2.2.2",
+            "server": "test-server",
+            "domain": "test-domain",
+            "user": "test-user",
+            "password": "test-password",
+            "status": "active",
+            "project_id": "fake",
+        }
+        self.valid_search_opts = {
+            'user': 'fake-user',
+            'server': 'fake-server',
+            'dns_ip': '1.1.1.1',
+            'domain': 'fake-domain',
+            'status': 'new',
+            'type': constants.SECURITY_SERVICES_ALLOWED_TYPES[0],
+        }
+        self.check_policy_patcher = mock.patch(
+            'manila.api.v1.security_service.policy.check_policy')
+        self.check_policy_patcher.start()
+        self.addCleanup(self._stop_started_patcher, self.check_policy_patcher)
+        self.security_service_list_expected_resp = {
+            'security_services': [{
+                'id': self.ss_active_directory['id'],
+                'name': self.ss_active_directory['name'],
+                'type': self.ss_active_directory['type'],
+                'status': self.ss_active_directory['status']
+            }, ]
+        }
+
+    def _stop_started_patcher(self, patcher):
+        if hasattr(patcher, 'is_local'):
+            patcher.stop()
 
     def test_security_service_show(self):
-        db.security_service_get = mock.Mock(return_value=self.security_service)
+        db.security_service_get = mock.Mock(
+            return_value=self.ss_active_directory)
         req = fakes.HTTPRequest.blank('/security-services/1')
         res_dict = self.controller.show(req, '1')
-        expected = self.security_service.copy()
+        expected = self.ss_active_directory.copy()
         expected.update()
-        self.assertEqual(res_dict, {'security_service': self.security_service})
+        self.assertEqual(res_dict,
+                         {'security_service': self.ss_active_directory})
 
     def test_security_service_show_not_found(self):
         db.security_service_get = mock.Mock(side_effect=exception.NotFound)
@@ -63,7 +104,7 @@ class ShareApiTest(test.TestCase):
                           req, '1')
 
     def test_security_service_create(self):
-        sec_service = self.security_service.copy()
+        sec_service = self.ss_active_directory.copy()
         create_stub = mock.Mock(
             return_value=sec_service)
         self.stubs.Set(db, 'security_service_create', create_stub)
@@ -71,11 +112,11 @@ class ShareApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/security-services')
         res_dict = self.controller.create(
             req, {"security_service": sec_service})
-        expected = self.security_service.copy()
+        expected = self.ss_active_directory.copy()
         self.assertEqual(res_dict, {'security_service': expected})
 
     def test_security_service_create_invalid_types(self):
-        sec_service = self.security_service.copy()
+        sec_service = self.ss_active_directory.copy()
         sec_service['type'] = 'invalid'
         req = fakes.HTTPRequest.blank('/security-services')
         self.assertRaises(exception.InvalidInput, self.controller.create, req,
@@ -117,8 +158,8 @@ class ShareApiTest(test.TestCase):
                           req, 1)
 
     def test_security_service_update_name(self):
-        new = self.security_service.copy()
-        updated = self.security_service.copy()
+        new = self.ss_active_directory.copy()
+        updated = self.ss_active_directory.copy()
         updated['name'] = 'new'
         db.security_service_get = mock.Mock(return_value=new)
         db.security_service_update = mock.Mock(return_value=updated)
@@ -135,8 +176,8 @@ class ShareApiTest(test.TestCase):
             req.environ['manila.context'], 1)
 
     def test_security_service_update_description(self):
-        new = self.security_service.copy()
-        updated = self.security_service.copy()
+        new = self.ss_active_directory.copy()
+        updated = self.ss_active_directory.copy()
         updated['description'] = 'new'
         db.security_service_get = mock.Mock(return_value=new)
         db.security_service_update = mock.Mock(return_value=updated)
@@ -159,7 +200,7 @@ class ShareApiTest(test.TestCase):
         db.share_network_get_all_by_security_service.return_value = [
             {'id': 'fake_id', 'share_servers': 'fake_share_servers'},
         ]
-        security_service = self.security_service.copy()
+        security_service = self.ss_active_directory.copy()
         db.security_service_get.return_value = security_service
         body = {'security_service': {'user_id': 'new_user'}}
         req = fakes.HTTPRequest.blank('/security_services/1')
@@ -178,8 +219,8 @@ class ShareApiTest(test.TestCase):
         db.share_network_get_all_by_security_service.return_value = [
             {'id': 'fake_id', 'share_servers': 'fake_share_servers'},
         ]
-        old = self.security_service.copy()
-        updated = self.security_service.copy()
+        old = self.ss_active_directory.copy()
+        updated = self.ss_active_directory.copy()
         updated['name'] = 'new name'
         updated['description'] = 'new description'
         db.security_service_get.return_value = old
@@ -203,14 +244,101 @@ class ShareApiTest(test.TestCase):
 
     def test_security_service_list(self):
         db.security_service_get_all_by_project = mock.Mock(
-            return_value=[self.security_service.copy()])
+            return_value=[self.ss_active_directory.copy()])
         req = fakes.HTTPRequest.blank('/security_services')
         res_dict = self.controller.index(req)
-        expected = {'security_services': [
-            {'id': self.security_service['id'],
-             'name': self.security_service['name'],
-             'type': self.security_service['type'],
-             'status': self.security_service['status']
-             }
-        ]}
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(self.security_service_list_expected_resp, res_dict)
+
+    @mock.patch.object(db, 'share_network_get', mock.Mock())
+    def test_security_service_list_filter_by_sn(self):
+        sn = {
+            'id': 'fake_sn_id',
+            'security_services': [self.ss_active_directory, ],
+        }
+        db.share_network_get.return_value = sn
+        req = fakes.HTTPRequest.blank(
+            '/security-services?share_network_id=fake_sn_id')
+        res_dict = self.controller.index(req)
+        self.assertEqual(self.security_service_list_expected_resp, res_dict)
+        db.share_network_get.assert_called_once_with(
+            req.environ['manila.context'],
+            sn['id'])
+
+    @mock.patch.object(db, 'security_service_get_all', mock.Mock())
+    def test_security_services_list_all_tenants_admin_context(self):
+        self.check_policy_patcher.stop()
+        db.security_service_get_all.return_value = [
+            self.ss_active_directory,
+            self.ss_ldap,
+        ]
+        req = fakes.HTTPRequest.blank(
+            '/security-services?all_tenants=1&name=fake-name',
+            use_admin_context=True)
+        res_dict = self.controller.index(req)
+        self.assertEqual(self.security_service_list_expected_resp, res_dict)
+        db.security_service_get_all.assert_called_once_with(
+            req.environ['manila.context'])
+
+    @mock.patch.object(db, 'security_service_get_all', mock.Mock())
+    def test_security_services_list_all_tenants_non_admin_context(self):
+        self.check_policy_patcher.stop()
+        db.security_service_get_all.return_value = [
+            self.ss_active_directory,
+            self.ss_ldap,
+        ]
+        req = fakes.HTTPRequest.blank(
+            '/security-services?all_tenants=1')
+        self.assertRaises(exception.PolicyNotAuthorized, self.controller.index,
+                          req)
+        self.assertFalse(db.security_service_get_all.called)
+
+    @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
+    def test_security_services_list_admin_context_invalid_opts(self):
+        db.security_service_get_all_by_project.return_value = [
+            self.ss_active_directory,
+            self.ss_ldap,
+        ]
+        req = fakes.HTTPRequest.blank(
+            '/security-services?fake_opt=fake_value',
+            use_admin_context=True)
+        res_dict = self.controller.index(req)
+        self.assertEqual({'security_services': []}, res_dict)
+        db.security_service_get_all_by_project.assert_called_once_with(
+            req.environ['manila.context'],
+            req.environ['manila.context'].project_id)
+
+    @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
+    def test_security_service_list_all_filter_opts_separately(self):
+        db.security_service_get_all_by_project.return_value = [
+            self.ss_active_directory,
+            self.ss_ldap,
+        ]
+        for opt, val in self.valid_search_opts.items():
+            for use_admin_context in [True, False]:
+                req = fakes.HTTPRequest.blank(
+                    '/security-services?' + opt + '=' + val,
+                    use_admin_context=use_admin_context)
+                res_dict = self.controller.index(req)
+                self.assertEqual(self.security_service_list_expected_resp,
+                                 res_dict)
+                db.security_service_get_all_by_project.assert_called_with(
+                    req.environ['manila.context'],
+                    req.environ['manila.context'].project_id)
+
+    @mock.patch.object(db, 'security_service_get_all_by_project', mock.Mock())
+    def test_security_service_list_all_filter_opts(self):
+        db.security_service_get_all_by_project.return_value = [
+            self.ss_active_directory,
+            self.ss_ldap,
+        ]
+        query_string = '/security-services?' + parse.urlencode(sorted(
+            [(k, v) for (k, v) in list(self.valid_search_opts.items())]))
+        for use_admin_context in [True, False]:
+            req = fakes.HTTPRequest.blank(query_string,
+                                          use_admin_context=use_admin_context)
+            res_dict = self.controller.index(req)
+            self.assertEqual(self.security_service_list_expected_resp,
+                             res_dict)
+            db.security_service_get_all_by_project.assert_called_with(
+                req.environ['manila.context'],
+                req.environ['manila.context'].project_id)
