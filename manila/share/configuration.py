@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-#
+
 # Copyright (c) 2012 Rackspace Hosting
 # Copyright (c) 2013 NetApp
 # All Rights Reserved.
