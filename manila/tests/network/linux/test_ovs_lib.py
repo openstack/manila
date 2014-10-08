@@ -19,7 +19,7 @@ from manila import test
 
 
 class OVS_Lib_Test(test.TestCase):
-    """A test suite to excercise the OVS libraries."""
+    """A test suite to exercise the OVS libraries."""
 
     def setUp(self):
         super(OVS_Lib_Test, self).setUp()

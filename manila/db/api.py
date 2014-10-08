@@ -524,7 +524,7 @@ def network_allocation_update(context, id, values):
 
 def network_allocations_get_for_share_server(context, share_server_id,
                                              session=None):
-    """Get netwwork allocation for share server."""
+    """Get network allocation for share server."""
     return IMPL.network_allocations_get_for_share_server(context,
                                                          share_server_id,
                                                          session=session)
