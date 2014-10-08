@@ -20,7 +20,6 @@ from tempest import test
 class AdminActionsTest(base.BaseSharesAdminTest):
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(AdminActionsTest, cls).setUpClass()
         cls.states = ["error", "available"]

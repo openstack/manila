@@ -25,7 +25,6 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
     protocol = "nfs"
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(ShareIpRulesForNFSNegativeTest, cls).setUpClass()
         if not (cls.protocol in CONF.share.enable_protocols and
@@ -114,7 +113,6 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
     protocol = "nfs"
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(ShareUserRulesForNFSNegativeTest, cls).setUpClass()
         if not (cls.protocol in CONF.share.enable_protocols and
@@ -183,7 +181,6 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
     # Tests independent from rule type and share protocol
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(ShareRulesNegativeTest, cls).setUpClass()
         if not (any(p in CONF.share.enable_ip_rules_for_protocols

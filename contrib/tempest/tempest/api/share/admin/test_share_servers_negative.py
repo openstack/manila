@@ -23,7 +23,6 @@ from tempest import test
 class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(ShareServersNegativeAdminTest, cls).setUpClass()
         cls.member_shares_client = clients.Manager().shares_client

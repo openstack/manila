@@ -25,7 +25,6 @@ class SharesQuotasNegativeTest(base.BaseSharesTest):
     force_tenant_isolation = True
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(SharesQuotasNegativeTest, cls).setUpClass()
 

@@ -20,7 +20,6 @@ from tempest import test
 class SharesMetadataTest(base.BaseSharesTest):
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(SharesMetadataTest, cls).setUpClass()
         __, cls.share = cls.create_share()

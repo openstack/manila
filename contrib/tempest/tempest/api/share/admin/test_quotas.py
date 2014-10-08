@@ -24,7 +24,6 @@ CONF = config.CONF
 class SharesAdminQuotasTest(base.BaseSharesAdminTest):
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         cls.os = clients.AdminManager(interface=cls._interface)
         super(SharesAdminQuotasTest, cls).setUpClass()
