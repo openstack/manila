@@ -188,7 +188,7 @@ class ShareSnapshotsController(wsgi.Controller):
             share,
             snapshot.get('display_name'),
             snapshot.get('display_description'))
-        return self._view_builder.summary(
+        return self._view_builder.detail(
             req, dict(six.iteritems(new_snapshot)))
 
 
