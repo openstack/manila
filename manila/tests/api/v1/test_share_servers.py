@@ -31,6 +31,7 @@ fake_share_server_list = {
             'status': constants.STATUS_ACTIVE,
             'updated_at': None,
             'host': 'fake_host',
+            'share_network_id': 'fake_sn_id',
             'share_network_name': 'fake_sn_name',
             'project_id': 'fake_project_id',
             'id': 'fake_server_id',
@@ -39,6 +40,7 @@ fake_share_server_list = {
             'status': constants.STATUS_ERROR,
             'updated_at': None,
             'host': 'fake_host_2',
+            'share_network_id': 'fake_sn_id_2',
             'share_network_name': 'fake_sn_id_2',
             'project_id': 'fake_project_id_2',
             'id': 'fake_server_id_2',
@@ -54,6 +56,7 @@ fake_share_server_get_result = {
         'updated_at': None,
         'host': 'fake_host',
         'share_network_name': 'fake_sn_name',
+        'share_network_id': 'fake_sn_id',
         'project_id': 'fake_project_id',
         'id': 'fake_server_id',
         'backend_details': {
