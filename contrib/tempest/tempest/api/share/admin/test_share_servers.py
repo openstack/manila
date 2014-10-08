@@ -28,7 +28,6 @@ CONF = config.CONF
 class ShareServersAdminTest(base.BaseSharesAdminTest):
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(ShareServersAdminTest, cls).setUpClass()
         if not CONF.share.multitenancy_enabled:

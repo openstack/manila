@@ -29,7 +29,6 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
         return vt
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(ExtraSpecsAdminNegativeTest, cls).setUpClass()
         cls.member_shares_client = clients.Manager().shares_client

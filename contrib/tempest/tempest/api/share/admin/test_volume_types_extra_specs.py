@@ -21,7 +21,6 @@ from tempest import test
 class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(ExtraSpecsAdminTest, cls).setUpClass()
         vol_type_name = data_utils.rand_name("volume-type")

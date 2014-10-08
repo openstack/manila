@@ -25,7 +25,6 @@ class SharesTest(base.BaseSharesTest):
     """Covers share functionality, that doesn't related to share type."""
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(SharesTest, cls).setUpClass()
         # create share
@@ -231,7 +230,6 @@ class SharesTest(base.BaseSharesTest):
 class SharesRenameTest(base.BaseSharesTest):
 
     @classmethod
-    @test.safe_setup
     def setUpClass(cls):
         super(SharesRenameTest, cls).setUpClass()
 
