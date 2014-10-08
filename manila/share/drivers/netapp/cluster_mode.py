@@ -224,7 +224,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
 
     def setup_server(self, network_info, metadata=None):
         """Creates and configures new vserver."""
-        LOG.debug('Creating server %s' % network_info['server_id'])
+        LOG.debug('Creating server %s', network_info['server_id'])
         vserver_name = self._vserver_create_if_not_exists(network_info)
         return {'vserver_name': vserver_name}
 
@@ -311,7 +311,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             self._client.send_request('net-vlan-create', args)
         except naapi.NaApiError as e:
             if e.code == '13130':
-                LOG.debug("Vlan %(vlan)s already exists on port %(port)s" %
+                LOG.debug("Vlan %(vlan)s already exists on port %(port)s",
                           {'vlan': vlan, 'port': port})
             else:
                 raise exception.NetAppException(
@@ -320,8 +320,8 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                     {'vlan': vlan, 'port': port, 'err_msg': e.message})
         iface_name = (self.configuration.netapp_lif_name_template %
                       {'node': node, 'net_allocation_id': allocation_id})
-        LOG.debug('Creating LIF %(lif)r for vserver %(vserver)s '
-                  % {'lif': iface_name, 'vserver': vserver_name})
+        LOG.debug('Creating LIF %(lif)r for vserver %(vserver)s ',
+                  {'lif': iface_name, 'vserver': vserver_name})
         args = {'address': ip,
                 'administrative-status': 'up',
                 'data-protocols': [
@@ -390,7 +390,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             self.api_version, vserver=vserver_name,
             configuration=self.configuration)
         if not self._vserver_exists(vserver_name):
-            LOG.debug('Vserver %s does not exist, creating' % vserver_name)
+            LOG.debug('Vserver %s does not exist, creating', vserver_name)
             self._create_vserver(vserver_name)
         nodes = self._get_cluster_nodes()
 
@@ -547,7 +547,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             'domain': sec_service_data['domain'],
         }
         try:
-            LOG.debug("Trying to setup cifs server with data: %s" % data)
+            LOG.debug("Trying to setup cifs server with data: %s", data)
             vserver_client.send_request('cifs-server-create', data)
         except naapi.NaApiError as e:
             msg = _("Failed to create CIFS server entry. %s.") % e.message
@@ -585,7 +585,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
 
     def get_available_aggregates_for_vserver(self, vserver, vserver_client):
         """Returns aggregate list for the vserver."""
-        LOG.debug('Finding available aggreagates for vserver %s' % vserver)
+        LOG.debug('Finding available aggreagates for vserver %s', vserver)
         response = vserver_client.send_request('vserver-get')
         vserver_info = response.get_child_by_name('attributes')\
             .get_child_by_name('vserver-info')
@@ -603,7 +603,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             aggr_name = aggr_elem.get_child_content('aggr-name')
             aggr_size = int(aggr_elem.get_child_content('aggr-availsize'))
             aggr_dict[aggr_name] = aggr_size
-        LOG.debug("Found available aggregates: %r" % aggr_dict)
+        LOG.debug("Found available aggregates: %r", aggr_dict)
         return aggr_dict
 
     @ensure_vserver
@@ -637,8 +637,8 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         aggregate = max(aggregates, key=lambda m: aggregates[m])
 
         LOG.debug('Creating volume %(share_name)s on '
-                  'aggregate %(aggregate)s'
-                  % {'share_name': share_name, 'aggregate': aggregate})
+                  'aggregate %(aggregate)s',
+                  {'share_name': share_name, 'aggregate': aggregate})
         args = {'containing-aggr-name': aggregate,
                 'size': str(share['size']) + 'g',
                 'volume': share_name,
@@ -653,7 +653,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         parent_share_name = self._get_valid_share_name(snapshot['share_id'])
         parent_snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
 
-        LOG.debug('Creating volume from snapshot %s' % snapshot['id'])
+        LOG.debug('Creating volume from snapshot %s', snapshot['id'])
         args = {'volume': share_name,
                 'parent-volume': parent_share_name,
                 'parent-snapshot': parent_snapshot_name,
@@ -686,14 +686,14 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         """Sends share offline. Required before deleting a share."""
         share_name = self._get_valid_share_name(share['id'])
         args = {'name': share_name}
-        LOG.debug('Offline volume %s' % share_name)
+        LOG.debug('Offline volume %s', share_name)
         vserver_client.send_request('volume-offline', args)
 
     def _delete_share(self, share, vserver_client):
         """Destroys share on a target OnTap device."""
         share_name = self._get_valid_share_name(share['id'])
         args = {'name': share_name}
-        LOG.debug('Deleting share %s' % share_name)
+        LOG.debug('Deleting share %s', share_name)
         vserver_client.send_request('volume-destroy', args)
 
     @ensure_vserver
@@ -741,7 +741,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
         args = {'volume': share_name,
                 'snapshot': snapshot_name}
-        LOG.debug('Creating snapshot %s' % snapshot_name)
+        LOG.debug('Creating snapshot %s', snapshot_name)
         vserver_client.send_request('snapshot-create', args)
 
     def _remove_export(self, share, vserver_client):
@@ -766,7 +766,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         self._is_snapshot_busy(share_name, snapshot_name, vserver_client)
         args = {'snapshot': snapshot_name,
                 'volume': share_name}
-        LOG.debug('Deleting snapshot %s' % snapshot_name)
+        LOG.debug('Deleting snapshot %s', snapshot_name)
         vserver_client.send_request('snapshot-delete', args)
 
     def _is_snapshot_busy(self, share_name, snapshot_name, vserver_client):
@@ -784,7 +784,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         """Unmounts share (required before deleting)."""
         share_name = self._get_valid_share_name(share['id'])
         args = {'volume-name': share_name}
-        LOG.debug('Unmounting volume %s' % share_name)
+        LOG.debug('Unmounting volume %s', share_name)
         vserver_client.send_request('volume-unmount', args)
 
     @ensure_vserver
@@ -1025,7 +1025,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         req_bodies[1]['rules']['exports-rule-info-2']['pathname'] = (
             '/vol' + volume_path)
 
-        LOG.debug('Appending nfs rules %r' % rules)
+        LOG.debug('Appending nfs rules %r', rules)
         try:
             if self.nfs_exports_with_prefix:
                 self._client.send_request(
@@ -1060,7 +1060,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
                 }
             }
         }
-        LOG.debug('Deleting NFS rules for share %s' % share['id'])
+        LOG.debug('Deleting NFS rules for share %s', share['id'])
         self._client.send_request('nfs-exportfs-delete-rules', args)
 
     def allow_access(self, context, share, access):
@@ -1123,8 +1123,8 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         for allowed_host in allowed_hosts:
             if 'exports-hostname-info' in allowed_host.get_name():
                 existing_rules.append(allowed_host.get_child_content('name'))
-        LOG.debug('Found existing rules %(rules)r for share %(share)s'
-                  % {'rules': existing_rules, 'share': share['id']})
+        LOG.debug('Found existing rules %(rules)r for share %(share)s',
+                  {'rules': existing_rules, 'share': share['id']})
 
         return existing_rules
 

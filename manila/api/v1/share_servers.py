@@ -143,7 +143,7 @@ class ShareServerController(wsgi.Controller):
             msg = _("Share server's actual status is %(status)s, allowed "
                     "statuses for deletion are %(allowed_statuses)s.") % (data)
             raise exc.HTTPForbidden(explanation=msg)
-        LOG.debug("Deleting share server with id: %s." % id)
+        LOG.debug("Deleting share server with id: %s.", id)
         try:
             self.share_api.delete_share_server(context, share_server)
         except exception.ShareServerInUse as e:

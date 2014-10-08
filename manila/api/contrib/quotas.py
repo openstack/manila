@@ -153,7 +153,7 @@ class QuotaSetsController(object):
                     LOG.warn(msg)
                     raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        LOG.debug("force update quotas: %s" % force_update)
+        LOG.debug("force update quotas: %s", force_update)
 
         if len(bad_keys) > 0:
             msg = _("Bad key(s) %s in quota_set") % ",".join(bad_keys)

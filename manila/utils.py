@@ -82,7 +82,7 @@ def find_config(config_path):
 
 
 def fetchfile(url, target):
-    LOG.debug('Fetching %s' % url)
+    LOG.debug('Fetching %s', url)
     execute('curl', '--fail', url, '-o', target)
 
 
