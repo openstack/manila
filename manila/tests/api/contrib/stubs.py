@@ -37,7 +37,8 @@ def stub_share(id, **kwargs):
         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         'snapshot_id': '2',
         'volume_type_id': '1',
-        'share_network_id': None
+        'share_network_id': None,
+        'share_server_id': 'fake_share_server_id',
     }
     share.update(kwargs)
     return share

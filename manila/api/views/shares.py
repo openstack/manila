@@ -41,6 +41,7 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, share):
         """Detailed view of a single share."""
+        context = request.environ['manila.context']
         metadata = share.get('share_metadata')
         if metadata:
             metadata = dict((item['key'], item['value']) for item in metadata)
@@ -51,26 +52,27 @@ class ViewBuilder(common.ViewBuilder):
         else:
             volume_type = share['volume_type_id']
 
-        return {
-            'share': {
-                'id': share.get('id'),
-                'size': share.get('size'),
-                'availability_zone': share.get('availability_zone'),
-                'created_at': share.get('created_at'),
-                'status': share.get('status'),
-                'name': share.get('display_name'),
-                'description': share.get('display_description'),
-                'project_id': share.get('project_id'),
-                'host': share.get('host'),
-                'snapshot_id': share.get('snapshot_id'),
-                'share_network_id': share.get('share_network_id'),
-                'share_proto': share.get('share_proto'),
-                'export_location': share.get('export_location'),
-                'metadata': metadata,
-                'volume_type': volume_type,
-                'links': self._get_links(request, share['id'])
-            }
+        share_dict = {
+            'id': share.get('id'),
+            'size': share.get('size'),
+            'availability_zone': share.get('availability_zone'),
+            'created_at': share.get('created_at'),
+            'status': share.get('status'),
+            'name': share.get('display_name'),
+            'description': share.get('display_description'),
+            'project_id': share.get('project_id'),
+            'host': share.get('host'),
+            'snapshot_id': share.get('snapshot_id'),
+            'share_network_id': share.get('share_network_id'),
+            'share_proto': share.get('share_proto'),
+            'export_location': share.get('export_location'),
+            'metadata': metadata,
+            'volume_type': volume_type,
+            'links': self._get_links(request, share['id'])
         }
+        if context.is_admin:
+            share_dict['share_server_id'] = share.get('share_server_id')
+        return {'share': share_dict}
 
     def _list_view(self, func, request, shares):
         """Provide a view for a list of shares."""
