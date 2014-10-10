@@ -449,6 +449,8 @@ class NaElement(object):
     def translate_struct(self, data_struct):
         """Convert list, tuple, dict to NaElement and appends.
 
+        ::
+
            Example usage:
            1.
            <root>

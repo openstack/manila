@@ -101,11 +101,12 @@ class ServiceInstanceManager(object):
     """Manages nova instances for various share drivers.
 
     This class provides two external methods:
+
     1. set_up_service_instance: creates instance and sets up share
-                                infrastructure
+       infrastructure.
     2. ensure_service_instance: ensure service instance is available.
     3. delete_service_instance: removes service instance and network
-                                infrastructure.
+       infrastructure.
     """
 
     def get_config_option(self, key):
