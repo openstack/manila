@@ -46,6 +46,7 @@ class ViewBuilder(common.ViewBuilder):
             'status': share_server.status,
             'host': share_server.host,
             'share_network_name': share_server.share_network_name,
+            'share_network_id': share_server.share_network_id,
         }
         if detailed:
             share_server_dict['created_at'] = share_server.created_at
