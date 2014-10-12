@@ -78,6 +78,9 @@ Known restrictions
   also creates service networks, but does not use availability zones for
   Nova VMs and volume types for Cinder block devices.
 
+- Juno version does not use security services data provided with share-network.
+  These data will be just ignored.
+
 The :mod:`manila.share.drivers.generic` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
