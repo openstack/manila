@@ -18,10 +18,10 @@
 """RequestContext: context for requests that persist through all of manila."""
 
 import copy
-import uuid
 
 import six
 
+from manila.openstack.common import context as common_context
 from manila.openstack.common import local
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
@@ -29,10 +29,6 @@ from manila import policy
 
 
 LOG = logging.getLogger(__name__)
-
-
-def generate_request_id():
-    return 'req-' + str(uuid.uuid4())
 
 
 class RequestContext(object):
@@ -84,7 +80,7 @@ class RequestContext(object):
             self.service_catalog = []
 
         if not request_id:
-            request_id = generate_request_id()
+            request_id = common_context.generate_request_id()
         self.request_id = request_id
         self.auth_token = auth_token
         self.quota_class = quota_class
