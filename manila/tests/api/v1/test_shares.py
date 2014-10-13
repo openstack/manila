@@ -49,7 +49,7 @@ class ShareApiTest(test.TestCase):
             "display_description": "Updated Display Desc",
         }
 
-    def _get_expected_share_detailed_response(self, values=None):
+    def _get_expected_share_detailed_response(self, values=None, admin=False):
         share = {
             'id': '1',
             'name': 'displayname',
@@ -81,6 +81,8 @@ class ShareApiTest(test.TestCase):
             share.update(values)
         if share.get('share_proto'):
             share['share_proto'] = share['share_proto'].upper()
+        if admin:
+            share['share_server_id'] = 'fake_share_server_id'
         return {'share': share}
 
     def test_share_create(self):
@@ -271,6 +273,12 @@ class ShareApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/shares/1')
         res_dict = self.controller.show(req, '1')
         expected = self._get_expected_share_detailed_response()
+        self.assertEqual(expected, res_dict)
+
+    def test_share_show_admin(self):
+        req = fakes.HTTPRequest.blank('/shares/1', use_admin_context=True)
+        res_dict = self.controller.show(req, '1')
+        expected = self._get_expected_share_detailed_response(admin=True)
         self.assertEqual(expected, res_dict)
 
     def test_share_show_no_share(self):
