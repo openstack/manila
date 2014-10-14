@@ -294,24 +294,37 @@ def share_get(context, share_id):
     return IMPL.share_get(context, share_id)
 
 
-def share_get_all(context):
+def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
     """Get all shares."""
-    return IMPL.share_get_all(context)
+    return IMPL.share_get_all(
+        context, filters=filters, sort_key=sort_key, sort_dir=sort_dir,
+    )
 
 
-def share_get_all_by_host(context, host):
+def share_get_all_by_host(context, host, filters=None, sort_key=None,
+                          sort_dir=None):
     """Returns all shares with given host."""
-    return IMPL.share_get_all_by_host(context, host)
+    return IMPL.share_get_all_by_host(
+        context, host, filters=filters, sort_key=sort_key, sort_dir=sort_dir,
+    )
 
 
-def share_get_all_by_project(context, project_id):
+def share_get_all_by_project(context, project_id, filters=None, sort_key=None,
+                             sort_dir=None):
     """Returns all shares with given project ID."""
-    return IMPL.share_get_all_by_project(context, project_id)
+    return IMPL.share_get_all_by_project(
+        context, project_id, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir,
+    )
 
 
-def share_get_all_by_share_server(context, share_server_id):
-    """Returns all shares with given share server."""
-    return IMPL.share_get_all_by_share_server(context, share_server_id)
+def share_get_all_by_share_server(context, share_server_id, filters=None,
+                                  sort_key=None, sort_dir=None):
+    """Returns all shares with given share server ID."""
+    return IMPL.share_get_all_by_share_server(
+        context, share_server_id, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir,
+    )
 
 
 def share_delete(context, share_id):

@@ -158,7 +158,9 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share', 'get_all')
         db_driver.share_get_all_by_project.assert_called_once_with(
-            ctx, 'fake_pid_1')
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_1', filters={},
+        )
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[0])
 
     def test_get_all_admin_filter_by_all_tenants(self):
@@ -168,7 +170,8 @@ class ShareAPITestCase(test.TestCase):
         shares = self.api.get_all(ctx, {'all_tenants': 1})
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share', 'get_all')
-        db_driver.share_get_all.assert_called_once_with(ctx)
+        db_driver.share_get_all.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at', filters={})
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES)
 
     def test_get_all_non_admin_filter_by_share_server(self):
@@ -206,7 +209,9 @@ class ShareAPITestCase(test.TestCase):
             mock.call(ctx, 'share', 'list_by_share_server_id'),
         ])
         db_driver.share_get_all_by_share_server.assert_called_once_with(
-            ctx, 'fake_server_3')
+            ctx, 'fake_server_3', sort_dir='desc', sort_key='created_at',
+            filters={},
+        )
         db_driver.share_get_all_by_project.assert_has_calls([])
         db_driver.share_get_all.assert_has_calls([])
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[2:])
@@ -220,7 +225,9 @@ class ShareAPITestCase(test.TestCase):
             mock.call(ctx, 'share', 'get_all'),
         ])
         db_driver.share_get_all_by_project.assert_called_once_with(
-            ctx, 'fake_pid_2')
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_2', filters={},
+        )
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1::2])
 
     def test_get_all_admin_filter_by_name_and_all_tenants(self):
@@ -231,7 +238,8 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
         ])
-        db_driver.share_get_all.assert_called_once_with(ctx)
+        db_driver.share_get_all.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at', filters={})
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[::2])
 
     def test_get_all_admin_filter_by_status(self):
@@ -243,7 +251,9 @@ class ShareAPITestCase(test.TestCase):
             mock.call(ctx, 'share', 'get_all'),
         ])
         db_driver.share_get_all_by_project.assert_called_once_with(
-            ctx, 'fake_pid_2')
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_2', filters={}
+        )
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[2::4])
 
     def test_get_all_admin_filter_by_status_and_all_tenants(self):
@@ -254,7 +264,8 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
         ])
-        db_driver.share_get_all.assert_called_once_with(ctx)
+        db_driver.share_get_all.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at', filters={})
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1::2])
 
     def test_get_all_non_admin_filter_by_all_tenants(self):
@@ -267,7 +278,9 @@ class ShareAPITestCase(test.TestCase):
             mock.call(ctx, 'share', 'get_all'),
         ])
         db_driver.share_get_all_by_project.assert_called_once_with(
-            ctx, 'fake_pid_2')
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_2', filters={},
+        )
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1:])
 
     def test_get_all_non_admin_with_name_and_status_filters(self):
@@ -279,7 +292,9 @@ class ShareAPITestCase(test.TestCase):
             mock.call(ctx, 'share', 'get_all'),
         ])
         db_driver.share_get_all_by_project.assert_called_once_with(
-            ctx, 'fake_pid_2')
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_2', filters={},
+        )
 
         # two items expected, one filtered
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1::2])
@@ -292,9 +307,85 @@ class ShareAPITestCase(test.TestCase):
             mock.call(ctx, 'share', 'get_all'),
         ])
         db_driver.share_get_all_by_project.assert_has_calls([
-            mock.call(ctx, 'fake_pid_2'),
-            mock.call(ctx, 'fake_pid_2'),
+            mock.call(ctx, sort_dir='desc', sort_key='created_at',
+                      project_id='fake_pid_2', filters={}),
+            mock.call(ctx, sort_dir='desc', sort_key='created_at',
+                      project_id='fake_pid_2', filters={}),
         ])
+
+    def test_get_all_with_sorting_valid(self):
+        self.stubs.Set(db_driver, 'share_get_all_by_project',
+                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
+        shares = self.api.get_all(ctx, sort_key='status', sort_dir='asc')
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all')
+        db_driver.share_get_all_by_project.assert_called_once_with(
+            ctx, sort_dir='asc', sort_key='status',
+            project_id='fake_pid_1', filters={},
+        )
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0], shares)
+
+    def test_get_all_sort_key_invalid(self):
+        self.stubs.Set(db_driver, 'share_get_all_by_project',
+                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api.get_all,
+            ctx,
+            sort_key=1,
+        )
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all')
+
+    def test_get_all_sort_dir_invalid(self):
+        self.stubs.Set(db_driver, 'share_get_all_by_project',
+                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api.get_all,
+            ctx,
+            sort_dir=1,
+        )
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all')
+
+    def _get_all_filter_metadata_or_extra_specs_valid(self, key):
+        self.stubs.Set(db_driver, 'share_get_all_by_project',
+                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
+        search_opts = {key: {'foo1': 'bar1', 'foo2': 'bar2'}}
+        shares = self.api.get_all(ctx, search_opts=search_opts.copy())
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all')
+        db_driver.share_get_all_by_project.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_1', filters=search_opts)
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0], shares)
+
+    def test_get_all_filter_by_metadata(self):
+        self._get_all_filter_metadata_or_extra_specs_valid(key='metadata')
+
+    def test_get_all_filter_by_extra_specs(self):
+        self._get_all_filter_metadata_or_extra_specs_valid(key='extra_specs')
+
+    def _get_all_filter_metadata_or_extra_specs_invalid(self, key):
+        self.stubs.Set(db_driver, 'share_get_all_by_project',
+                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
+        search_opts = {key: "{'foo': 'bar'}"}
+        self.assertRaises(exception.InvalidInput, self.api.get_all, ctx,
+                          search_opts=search_opts)
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all')
+
+    def test_get_all_filter_by_invalid_metadata(self):
+        self._get_all_filter_metadata_or_extra_specs_invalid(key='metadata')
+
+    def test_get_all_filter_by_invalid_extra_specs(self):
+        self._get_all_filter_metadata_or_extra_specs_invalid(key='extra_specs')
 
     def test_create(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)

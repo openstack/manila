@@ -80,17 +80,16 @@ class SharesClient(rest_client.RestClient):
     def delete_share(self, share_id):
         return self.delete("shares/%s" % share_id)
 
-    def list_shares(self):
-        resp, body = self.get("shares")
+    def list_shares(self, detailed=False, params=None):
+        """Get list of shares w/o filters."""
+        uri = 'shares/detail' if detailed else 'shares'
+        uri += '?%s' % urllib.urlencode(params) if params else ''
+        resp, body = self.get(uri)
         return resp, self._parse_resp(body)
 
     def list_shares_with_detail(self, params=None):
-        """List the details of all shares."""
-        uri = 'shares/detail'
-        if params:
-                uri += '?%s' % urllib.urlencode(params)
-        resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        """Get detailed list of shares w/o filters."""
+        return self.list_shares(detailed=True, params=params)
 
     def get_share(self, share_id):
         resp, body = self.get("shares/%s" % share_id)
