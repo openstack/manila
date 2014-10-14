@@ -11,24 +11,9 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Other Resources
+
+Admin Reference
 ---------------
-.. toctree::
-   :maxdepth: 3
-
-   launchpad
-   gerrit
-   jenkins
-
-Indices and tables
-------------------
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-Module reference
-----------------
 .. toctree::
    :maxdepth: 3
 

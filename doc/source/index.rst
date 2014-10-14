@@ -45,6 +45,14 @@ Developer Docs
    man/index
    api/autoindex
 
+Admin Docs
+==========
+
+.. toctree::
+   :maxdepth: 1
+
+   adminref/index
+
 API Extensions
 ==============
 
