@@ -34,6 +34,7 @@ see: https://wiki.openstack.org/wiki/Manila/Networking
 
 One of two possible configurations can be chosen for share provisioning
     using 'service_instance' module:
+
 - Service VM has one net interface from net that is connected to public router.
   For successful creation of share, user network should be connected to public
   router too.
@@ -51,6 +52,7 @@ Requirements for service image
 - 'exportfs' and 'net conf' libraries used for share actions
 - Following files will be used, so if their paths differ one needs to create at
     least symlinks for them:
+
   * /etc/exports (permanent file with NFS exports)
   * /var/lib/nfs/etab (temporary file with NFS exports used by 'exportfs')
   * /etc/fstab (permanent file with mounted filesystems)
