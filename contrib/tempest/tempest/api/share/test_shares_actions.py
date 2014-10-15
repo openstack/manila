@@ -318,6 +318,52 @@ class SharesActionsTest(base.BaseSharesTest):
         msg = "expected id lists %s times in share list" % (len(gen))
         self.assertEqual(len(gen), 1, msg)
 
+    @test.attr(type=["gate", ])
+    def test_list_snapshots_with_detail_use_limit(self):
+        for l, o in [('1', '1'), ('0', '1')]:
+            filters = {'limit': l, 'offset': o, 'share_id': self.share['id']}
+
+            # list snapshots
+            __, snaps = self.shares_client.list_snapshots_with_detail(
+                params=filters)
+
+            # Our snapshot should not be listed
+            self.assertEqual(0, len(snaps))
+
+        # Only our one snapshot should be listed
+        __, snaps = self.shares_client.list_snapshots_with_detail(
+            params={'limit': '1', 'offset': '0', 'share_id': self.share['id']})
+
+        self.assertEqual(1, len(snaps['snapshots']))
+        self.assertEqual(self.snap['id'], snaps['snapshots'][0]['id'])
+
+    @test.attr(type=["gate", ])
+    def test_list_snapshots_with_detail_filter_by_status_and_name(self):
+        filters = {'status': 'available', 'name': self.snap_name}
+
+        # list snapshots
+        __, snaps = self.shares_client.list_snapshots_with_detail(
+            params=filters)
+
+        # verify response
+        self.assertTrue(len(snaps) > 0)
+        for snap in snaps:
+            self.assertEqual(filters['status'], snap['status'])
+            self.assertEqual(filters['name'], snap['name'])
+
+    @test.attr(type=["gate", ])
+    def test_list_snapshots_with_detail_and_asc_sorting(self):
+        filters = {'sort_key': 'share_id', 'sort_dir': 'asc'}
+
+        # list snapshots
+        __, snaps = self.shares_client.list_snapshots_with_detail(
+            params=filters)
+
+        # verify response
+        self.assertTrue(len(snaps) > 0)
+        sorted_list = [snap['share_id'] for snap in snaps]
+        self.assertEqual(sorted_list, sorted(sorted_list))
+
 
 class SharesRenameTest(base.BaseSharesTest):
 

@@ -130,9 +130,6 @@ class SimpleReadOnlyManilaClientTest(manilaclient.ClientTestBase):
     def test_manila_snapshot_list_filter_by_status(self):
         self.manila('snapshot-list', params='--status status')
 
-    def test_manila_snapshot_list_filter_by_share_id(self):
-        self.manila('snapshot-list', params='--share-id share_id')
-
     def test_manila_credentials(self):
         self.manila('credentials')
 

@@ -107,16 +107,27 @@ class ShareSnapshotsController(wsgi.Controller):
         search_opts = {}
         search_opts.update(req.GET)
 
-        # NOTE(rushiagr): v2 API allows name instead of display_name
+        # Remove keys that are not related to share attrs
+        search_opts.pop('limit', None)
+        search_opts.pop('offset', None)
+        sort_key = search_opts.pop('sort_key', 'created_at')
+        sort_dir = search_opts.pop('sort_dir', 'desc')
+
+        # NOTE(vponomaryov): Manila stores in DB key 'display_name', but
+        # allows to use both keys 'name' and 'display_name'. It is leftover
+        # from Cinder v1 and v2 APIs.
         if 'name' in search_opts:
-            search_opts['display_name'] = search_opts['name']
-            del search_opts['name']
+            search_opts['display_name'] = search_opts.pop('name')
 
         common.remove_invalid_options(context, search_opts,
                                       self._get_snapshots_search_options())
 
-        snapshots = self.share_api.get_all_snapshots(context,
-                                                     search_opts=search_opts)
+        snapshots = self.share_api.get_all_snapshots(
+            context,
+            search_opts=search_opts,
+            sort_key=sort_key,
+            sort_dir=sort_dir,
+        )
         limited_list = common.limited(snapshots, req)
         if is_detail:
             snapshots = self._view_builder.detail_list(req, limited_list)
@@ -126,7 +137,7 @@ class ShareSnapshotsController(wsgi.Controller):
 
     def _get_snapshots_search_options(self):
         """Return share search options allowed by non-admin."""
-        return ('name', 'status', 'share_id')
+        return ('display_name', 'name', 'status', 'share_id', 'size')
 
     @wsgi.serializers(xml=SnapshotTemplate)
     def update(self, req, id, body):
