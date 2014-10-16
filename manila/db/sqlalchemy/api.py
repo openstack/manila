@@ -35,6 +35,7 @@ from sqlalchemy.sql import func
 from manila.common import constants
 from manila.db.sqlalchemy import models
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils
 

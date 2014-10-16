@@ -24,6 +24,7 @@ import six
 from manila.api import extensions
 from manila.db import base
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import excutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils

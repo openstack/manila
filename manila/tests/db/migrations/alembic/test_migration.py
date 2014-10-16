@@ -24,6 +24,7 @@ from oslo.db.sqlalchemy import test_migrations
 from sqlalchemy.sql import text
 
 from manila.db.migrations.alembic import migration
+from manila.i18n import _
 from manila.openstack.common import log as logging
 
 LOG = logging.getLogger('manila.tests.test_migrations')

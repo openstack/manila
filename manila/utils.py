@@ -43,6 +43,7 @@ import paramiko
 import six
 
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
 from manila.openstack.common import lockutils

@@ -23,6 +23,7 @@ from oslo.config import cfg
 
 from manila import db
 from manila import exception
+from manila.i18n import _
 from manila.scheduler import chance
 from manila.scheduler import driver
 from manila import utils

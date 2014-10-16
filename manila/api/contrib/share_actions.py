@@ -21,6 +21,7 @@ from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila.api import xmlutil
 from manila import exception
+from manila.i18n import _
 from manila import share
 
 

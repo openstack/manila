@@ -23,6 +23,7 @@ from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila import db
 from manila import exception
+from manila.i18n import _
 from manila import rpc
 from manila.share import volume_types
 

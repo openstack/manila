@@ -19,6 +19,7 @@ from webob import exc
 from manila.api import common
 from manila.api.openstack import wsgi
 from manila import exception
+from manila.i18n import _
 from manila import share
 
 

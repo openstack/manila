@@ -18,6 +18,7 @@ import six
 
 from manila import db as manila_db
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import excutils
 from manila.openstack.common import log
 from manila.share.drivers.emc.plugins import base as driver

@@ -30,6 +30,7 @@ import re
 import xml.etree.cElementTree as etree
 
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.share import driver
 

@@ -15,6 +15,7 @@
 #    under the License.
 
 from manila.api.middleware import sizelimit
+from manila.i18n import _
 from manila.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)

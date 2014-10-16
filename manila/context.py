@@ -21,6 +21,7 @@ import copy
 
 import six
 
+from manila.i18n import _
 from manila.openstack.common import context as common_context
 from manila.openstack.common import local
 from manila.openstack.common import log as logging

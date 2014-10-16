@@ -28,6 +28,7 @@ from alembic import op
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy import Integer, MetaData, String, Table, UniqueConstraint
 
+from manila.i18n import _
 from manila.openstack.common import log as logging
 
 

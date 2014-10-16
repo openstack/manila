@@ -16,6 +16,7 @@
 import netaddr
 import six
 
+from manila.i18n import _
 from manila import utils
 
 

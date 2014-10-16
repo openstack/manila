@@ -24,6 +24,7 @@ from manila.api.openstack import wsgi
 from manila.api.views import share_snapshots as snapshot_views
 from manila.api import xmlutil
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila import share
 

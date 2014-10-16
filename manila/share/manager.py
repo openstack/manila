@@ -25,6 +25,7 @@ import six
 from manila.common import constants
 from manila import context
 from manila import exception
+from manila.i18n import _
 from manila import manager
 from manila import network
 from manila.openstack.common import excutils

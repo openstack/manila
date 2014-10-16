@@ -22,6 +22,7 @@ import routes
 
 from manila.api.openstack import wsgi
 from manila.openstack.common import log as logging
+from manila.i18n import _
 from manila import utils
 from manila import wsgi as base_wsgi
 

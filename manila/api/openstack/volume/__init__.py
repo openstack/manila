@@ -15,6 +15,7 @@
 #    under the License.
 
 from manila.api.v1.router import APIRouter as v1_router
+from manila.i18n import _
 from manila.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)

@@ -19,6 +19,7 @@ from webob import exc
 from manila.api.openstack import wsgi
 from manila.api.views import types as views_types
 from manila import exception
+from manila.i18n import _
 from manila.share import volume_types
 
 

@@ -15,6 +15,7 @@
 import types
 import xml.dom.minidom
 
+from manila.i18n import _
 from manila.openstack.common import log
 
 

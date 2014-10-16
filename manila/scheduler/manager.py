@@ -24,6 +24,7 @@ from oslo.config import cfg
 from manila import context
 from manila import db
 from manila import exception
+from manila.i18n import _
 from manila import manager
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils

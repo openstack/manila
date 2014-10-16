@@ -30,6 +30,7 @@ import webob.exc
 from manila.api.openstack import wsgi
 from manila.api.views import limits as limits_views
 from manila.api import xmlutil
+from manila.i18n import _
 from manila.openstack.common import importutils
 from manila.openstack.common import jsonutils
 from manila import quota

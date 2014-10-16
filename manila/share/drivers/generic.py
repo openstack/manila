@@ -26,6 +26,7 @@ from manila.common import constants as const
 from manila import compute
 from manila import context
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import excutils
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging

@@ -37,6 +37,7 @@ import webob.dec
 import webob.exc
 
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 
 socket_opts = [

@@ -23,6 +23,7 @@ import webob
 
 from manila.api.openstack import wsgi
 from manila.api import xmlutil
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila import utils
 

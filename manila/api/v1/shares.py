@@ -26,6 +26,7 @@ from manila.api.openstack import wsgi
 from manila.api.views import shares as share_views
 from manila.api import xmlutil
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.openstack.common import uuidutils
 from manila import share

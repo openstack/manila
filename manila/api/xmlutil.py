@@ -18,6 +18,7 @@ import os.path
 from lxml import etree
 import six
 
+from manila.i18n import _
 from manila import utils
 
 

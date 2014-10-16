@@ -18,6 +18,7 @@
 
 import math
 
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 
