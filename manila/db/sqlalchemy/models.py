@@ -194,42 +194,41 @@ class Share(BASE, ManilaBase):
     export_location = Column(String(255))
     share_network_id = Column(String(36), ForeignKey('share_networks.id'),
                               nullable=True)
-    volume_type_id = Column(String(36), ForeignKey('volume_types.id'),
-                            nullable=True)
+    share_type_id = Column(String(36), ForeignKey('share_types.id'),
+                           nullable=True)
     share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                              nullable=True)
 
 
-class VolumeTypes(BASE, ManilaBase):
-    """Represent possible volume_types of volumes offered."""
-    __tablename__ = "volume_types"
+class ShareTypes(BASE, ManilaBase):
+    """Represent possible share_types of volumes offered."""
+    __tablename__ = "share_types"
     id = Column(String(36), primary_key=True)
     name = Column(String(255))
     shares = orm.relationship(Share,
-                              backref=orm.backref('volume_type',
+                              backref=orm.backref('share_type',
                                                   uselist=False),
                               foreign_keys=id,
                               primaryjoin='and_('
-                              'Share.volume_type_id == VolumeTypes.id, '
-                              'VolumeTypes.deleted == False)')
+                              'Share.share_type_id == ShareTypes.id, '
+                              'ShareTypes.deleted == False)')
 
 
-class VolumeTypeExtraSpecs(BASE, ManilaBase):
-    """Represents additional specs as key/value pairs for a volume_type."""
-    __tablename__ = 'volume_type_extra_specs'
+class ShareTypeExtraSpecs(BASE, ManilaBase):
+    """Represents additional specs as key/value pairs for a share_type."""
+    __tablename__ = 'share_type_extra_specs'
     id = Column(Integer, primary_key=True)
-    key = Column(String(255))
-    value = Column(String(255))
-    volume_type_id = Column(String(36),
-                            ForeignKey('volume_types.id'),
-                            nullable=False)
-    volume_type = orm.relationship(
-        VolumeTypes,
+    key = Column("spec_key", String(255))
+    value = Column("spec_value", String(255))
+    share_type_id = Column(String(36), ForeignKey('share_types.id'),
+                           nullable=False)
+    share_type = orm.relationship(
+        ShareTypes,
         backref="extra_specs",
-        foreign_keys=volume_type_id,
+        foreign_keys=share_type_id,
         primaryjoin='and_('
-        'VolumeTypeExtraSpecs.volume_type_id == VolumeTypes.id,'
-        'VolumeTypeExtraSpecs.deleted == False)'
+        'ShareTypeExtraSpecs.share_type_id == ShareTypes.id,'
+        'ShareTypeExtraSpecs.deleted == False)'
     )
 
 

@@ -390,8 +390,8 @@ class InvalidVolume(Invalid):
     message = _("Invalid volume.")
 
 
-class InvalidVolumeType(Invalid):
-    message = _("Invalid volume type: %(reason)s.")
+class InvalidShareType(Invalid):
+    message = _("Invalid share type: %(reason)s.")
 
 
 class VolumeNotFound(NotFound):
@@ -402,31 +402,31 @@ class VolumeSnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
 
 
-class VolumeTypeNotFound(NotFound):
-    message = _("Volume type %(volume_type_id)s could not be found.")
+class ShareTypeNotFound(NotFound):
+    message = _("Share type %(share_type_id)s could not be found.")
 
 
-class VolumeTypeNotFoundByName(VolumeTypeNotFound):
-    message = _("Volume type with name %(volume_type_name)s "
+class ShareTypeNotFoundByName(ShareTypeNotFound):
+    message = _("Share type with name %(share_type_name)s "
                 "could not be found.")
 
 
-class VolumeTypeExtraSpecsNotFound(NotFound):
-    message = _("Volume type %(volume_type_id)s has no extra specs with "
+class ShareTypeExtraSpecsNotFound(NotFound):
+    message = _("Share Type %(share_type_id)s has no extra specs with "
                 "key %(extra_specs_key)s.")
 
 
-class VolumeTypeInUse(ManilaException):
-    message = _("Volume type %(volume_type_id)s deletion is not allowed with "
-                "volumes present with the type.")
+class ShareTypeInUse(ManilaException):
+    message = _("Share Type %(share_type_id)s deletion is not allowed with "
+                "shares present with the type.")
 
 
-class VolumeTypeExists(ManilaException):
-    message = _("Volume type %(id)s already exists.")
+class ShareTypeExists(ManilaException):
+    message = _("Share Type %(id)s already exists.")
 
 
-class VolumeTypeCreateFailed(ManilaException):
-    message = _("Cannot create volume_type with "
+class ShareTypeCreateFailed(ManilaException):
+    message = _("Cannot create share_type with "
                 "name %(name)s and specs %(extra_specs)s.")
 
 

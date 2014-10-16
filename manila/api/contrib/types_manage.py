@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The volume types manage extension."""
+"""The share types manage extension."""
 
 import six
 import webob
@@ -22,85 +22,85 @@ from manila.api.openstack import wsgi
 from manila.api.views import types as views_types
 from manila import exception
 from manila import rpc
-from manila.share import volume_types
+from manila.share import share_types
 
 
 authorize = extensions.extension_authorizer('share', 'types_manage')
 
 
-class VolumeTypesManageController(wsgi.Controller):
-    """The volume types API controller for the OpenStack API."""
+class ShareTypesManageController(wsgi.Controller):
+    """The share types API controller for the OpenStack API."""
 
     _view_builder_class = views_types.ViewBuilder
 
-    def _notify_volume_type_error(self, context, method, payload):
-        rpc.get_notifier('volumeType').error(context, method, payload)
+    def _notify_share_type_error(self, context, method, payload):
+        rpc.get_notifier('shareType').error(context, method, payload)
 
     @wsgi.action("create")
     def _create(self, req, body):
-        """Creates a new volume type."""
+        """Creates a new share type."""
         context = req.environ['manila.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume_type'):
+        if not self.is_valid_body(body, 'share_type') and \
+                not self.is_valid_body(body, 'volume_type'):
             raise webob.exc.HTTPBadRequest()
 
-        vol_type = body['volume_type']
-        name = vol_type.get('name', None)
-        specs = vol_type.get('extra_specs', {})
+        elif self.is_valid_body(body, 'share_type'):
+            share_type = body['share_type']
+        else:
+            share_type = body['volume_type']
+        name = share_type.get('name', None)
+        specs = share_type.get('extra_specs', {})
 
         if name is None or name == "" or len(name) > 255:
             raise webob.exc.HTTPBadRequest()
 
         try:
-            volume_types.create(context, name, specs)
-            vol_type = volume_types.get_volume_type_by_name(context, name)
-            notifier_info = dict(volume_types=vol_type)
-            rpc.get_notifier('volumeType').info(
-                context, 'volume_type.create', notifier_info)
+            share_types.create(context, name, specs)
+            share_type = share_types.get_share_type_by_name(context, name)
+            notifier_info = dict(share_types=share_type)
+            rpc.get_notifier('shareType').info(
+                context, 'share_type.create', notifier_info)
 
-        except exception.VolumeTypeExists as err:
-            notifier_err = dict(volume_types=vol_type,
+        except exception.ShareTypeExists as err:
+            notifier_err = dict(share_types=share_type,
                                 error_message=six.text_type(err))
-            self._notify_volume_type_error(context,
-                                           'volume_type.create',
-                                           notifier_err)
+            self._notify_share_type_error(context, 'share_type.create',
+                                          notifier_err)
 
             raise webob.exc.HTTPConflict(explanation=six.text_type(err))
         except exception.NotFound as err:
-            notifier_err = dict(volume_types=vol_type,
+            notifier_err = dict(share_types=share_type,
                                 error_message=six.text_type(err))
-            self._notify_volume_type_error(context,
-                                           'volume_type.create',
-                                           notifier_err)
+            self._notify_share_type_error(context, 'share_type.create',
+                                          notifier_err)
             raise webob.exc.HTTPNotFound()
 
-        return self._view_builder.show(req, vol_type)
+        return self._view_builder.show(req, share_type)
 
     @wsgi.action("delete")
     def _delete(self, req, id):
-        """Deletes an existing volume type."""
+        """Deletes an existing share type."""
         context = req.environ['manila.context']
         authorize(context)
 
         try:
-            vol_type = volume_types.get_volume_type(context, id)
-            volume_types.destroy(context, vol_type['id'])
-            notifier_info = dict(volume_types=vol_type)
-            rpc.get_notifier('volumeType').info(
-                context, 'volume_type.delete', notifier_info)
-        except exception.VolumeTypeInUse as err:
+            share_type = share_types.get_share_type(context, id)
+            share_types.destroy(context, share_type['id'])
+            notifier_info = dict(share_types=share_type)
+            rpc.get_notifier('shareType').info(
+                context, 'share_type.delete', notifier_info)
+        except exception.ShareTypeInUse as err:
             notifier_err = dict(id=id, error_message=six.text_type(err))
-            self._notify_volume_type_error(context,
-                                           'volume_type.delete',
-                                           notifier_err)
-            msg = 'Target volume type is still in use.'
+            self._notify_share_type_error(context, 'share_type.delete',
+                                          notifier_err)
+            msg = 'Target share type is still in use.'
             raise webob.exc.HTTPBadRequest(explanation=msg)
         except exception.NotFound as err:
             notifier_err = dict(id=id, error_message=six.text_type(err))
-            self._notify_volume_type_error(context,
-                                           'volume_type.delete',
-                                           notifier_err)
+            self._notify_share_type_error(context, 'share_type.delete',
+                                          notifier_err)
 
             raise webob.exc.HTTPNotFound()
 
@@ -116,6 +116,6 @@ class Types_manage(extensions.ExtensionDescriptor):
     updated = "2011-08-24T00:00:00+00:00"
 
     def get_controller_extensions(self):
-        controller = VolumeTypesManageController()
+        controller = ShareTypesManageController()
         extension = extensions.ControllerExtension(self, 'types', controller)
         return [extension]

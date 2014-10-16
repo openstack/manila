@@ -623,34 +623,34 @@ def share_server_backend_details_get(context, share_server_id):
 ##################
 
 
-def volume_type_create(context, values):
-    """Create a new volume type."""
-    return IMPL.volume_type_create(context, values)
+def share_type_create(context, values):
+    """Create a new share type."""
+    return IMPL.share_type_create(context, values)
 
 
-def volume_type_get_all(context, inactive=False):
-    """Get all volume types."""
-    return IMPL.volume_type_get_all(context, inactive)
+def share_type_get_all(context, inactive=False):
+    """Get all share types."""
+    return IMPL.share_type_get_all(context, inactive)
 
 
-def volume_type_get(context, id, inactive=False):
-    """Get volume type by id."""
-    return IMPL.volume_type_get(context, id, inactive)
+def share_type_get(context, id, inactive=False):
+    """Get share type by id."""
+    return IMPL.share_type_get(context, id, inactive)
 
 
-def volume_type_get_by_name(context, name):
-    """Get volume type by name."""
-    return IMPL.volume_type_get_by_name(context, name)
+def share_type_get_by_name(context, name):
+    """Get share type by name."""
+    return IMPL.share_type_get_by_name(context, name)
 
 
-def volume_type_qos_specs_get(context, type_id):
-    """Get all qos specs for given volume type."""
-    return IMPL.volume_type_qos_specs_get(context, type_id)
+def share_type_qos_specs_get(context, type_id):
+    """Get all qos specs for given share type."""
+    return IMPL.share_type_qos_specs_get(context, type_id)
 
 
-def volume_type_destroy(context, id):
-    """Delete a volume type."""
-    return IMPL.volume_type_destroy(context, id)
+def share_type_destroy(context, id):
+    """Delete a share type."""
+    return IMPL.share_type_destroy(context, id)
 
 
 def volume_get_active_by_window(context, begin, end=None, project_id=None):
@@ -664,24 +664,23 @@ def volume_get_active_by_window(context, begin, end=None, project_id=None):
 ####################
 
 
-def volume_type_extra_specs_get(context, volume_type_id):
-    """Get all extra specs for a volume type."""
-    return IMPL.volume_type_extra_specs_get(context, volume_type_id)
+def share_type_extra_specs_get(context, share_type_id):
+    """Get all extra specs for a share type."""
+    return IMPL.share_type_extra_specs_get(context, share_type_id)
 
 
-def volume_type_extra_specs_delete(context, volume_type_id, key):
+def share_type_extra_specs_delete(context, share_type_id, key):
     """Delete the given extra specs item."""
-    return IMPL.volume_type_extra_specs_delete(context, volume_type_id, key)
+    return IMPL.share_type_extra_specs_delete(context, share_type_id, key)
 
 
-def volume_type_extra_specs_update_or_create(context,
-                                             volume_type_id,
-                                             extra_specs):
-    """Create or update volume type extra specs.
+def share_type_extra_specs_update_or_create(context, share_type_id,
+                                            extra_specs):
+    """Create or update share type extra specs.
 
     This adds or modifies the key/value pairs specified in the extra
     specs dict argument.
     """
-    return IMPL.volume_type_extra_specs_update_or_create(context,
-                                                         volume_type_id,
-                                                         extra_specs)
+    return IMPL.share_type_extra_specs_update_or_create(context,
+                                                        share_type_id,
+                                                        extra_specs)

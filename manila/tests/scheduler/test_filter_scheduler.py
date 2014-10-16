@@ -99,7 +99,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.flags(scheduler_max_attempts=1)
         sched = fakes.FakeFilterScheduler()
         request_spec = {
-            'volume_type': {'name': 'iSCSI'},
+            'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
         }
         filter_properties = {}
@@ -113,7 +113,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.flags(scheduler_max_attempts=2)
         sched = fakes.FakeFilterScheduler()
         request_spec = {
-            'volume_type': {'name': 'iSCSI'},
+            'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
         }
         filter_properties = {}
@@ -127,7 +127,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.flags(scheduler_max_attempts=2)
         sched = fakes.FakeFilterScheduler()
         request_spec = {
-            'volume_type': {'name': 'iSCSI'},
+            'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
         }
         retry = dict(num_attempts=1)
@@ -142,7 +142,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.flags(scheduler_max_attempts=2)
         sched = fakes.FakeFilterScheduler()
         request_spec = {
-            'volume_type': {'name': 'iSCSI'},
+            'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
         }
         retry = dict(num_attempts=2)

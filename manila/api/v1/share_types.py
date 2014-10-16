@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-"""The volume type & volume types extra specs extension."""
+"""The share type & share types extra specs extension."""
 
 from webob import exc
 
@@ -20,33 +20,33 @@ from manila.api.openstack import wsgi
 from manila.api.views import types as views_types
 from manila import exception
 from manila.i18n import _
-from manila.share import volume_types
+from manila.share import share_types
 
 
-class VolumeTypesController(wsgi.Controller):
-    """The volume types API controller for the OpenStack API."""
+class ShareTypesController(wsgi.Controller):
+    """The share types API controller for the OpenStack API."""
 
     _view_builder_class = views_types.ViewBuilder
 
     def index(self, req):
-        """Returns the list of volume types."""
+        """Returns the list of share types."""
         context = req.environ['manila.context']
-        vol_types = volume_types.get_all_types(context).values()
-        return self._view_builder.index(req, vol_types)
+        shr_types = share_types.get_all_types(context).values()
+        return self._view_builder.index(req, shr_types)
 
     def show(self, req, id):
-        """Return a single volume type item."""
+        """Return a single share type item."""
         context = req.environ['manila.context']
 
         try:
-            vol_type = volume_types.get_volume_type(context, id)
+            share_type = share_types.get_share_type(context, id)
         except exception.NotFound:
-            msg = _("Volume type not found.")
+            msg = _("Share type not found.")
             raise exc.HTTPNotFound(explanation=msg)
 
-        vol_type['id'] = str(vol_type['id'])
-        return self._view_builder.show(req, vol_type)
+        share_type['id'] = str(share_type['id'])
+        return self._view_builder.show(req, share_type)
 
 
 def create_resource():
-    return wsgi.Resource(VolumeTypesController())
+    return wsgi.Resource(ShareTypesController())

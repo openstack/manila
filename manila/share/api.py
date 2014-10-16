@@ -62,7 +62,7 @@ class API(base.Base):
 
     def create(self, context, share_proto, size, name, description,
                snapshot=None, availability_zone=None, metadata=None,
-               share_network_id=None, volume_type=None):
+               share_network_id=None, share_type=None):
         """Create new share."""
         policy.check_policy(context, 'share', 'create')
 
@@ -98,10 +98,10 @@ class API(base.Base):
                      "than snapshot size") % size)
             raise exception.InvalidInput(reason=msg)
 
-        if snapshot and volume_type:
+        if snapshot and share_type:
             source_share = self.db.share_get(context, snapshot['share_id'])
-            if volume_type['id'] != source_share['volume_type_id']:
-                msg = _("Invalid volume_type provided (requested type "
+            if share_type['id'] != source_share['share_type_id']:
+                msg = _("Invalid share_type provided (requested type "
                         "must match source snapshot, or be omitted). "
                         "You should omit the argument.")
                 raise exception.InvalidInput(reason=msg)
@@ -154,7 +154,7 @@ class API(base.Base):
                    'display_name': name,
                    'display_description': description,
                    'share_proto': share_proto,
-                   'volume_type_id': volume_type['id'] if volume_type else None
+                   'share_type_id': share_type['id'] if share_type else None
                    }
 
         try:
@@ -172,7 +172,7 @@ class API(base.Base):
             'share_proto': share_proto,
             'share_id': share['id'],
             'snapshot_id': snapshot_id,
-            'volume_type': volume_type,
+            'share_type': share_type,
         }
         filter_properties = {}
 

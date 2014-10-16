@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The volume types extra specs extension"""
+"""The share types extra specs extension"""
 
 import six
 import webob
@@ -25,16 +25,16 @@ from manila import db
 from manila import exception
 from manila.i18n import _
 from manila import rpc
-from manila.share import volume_types
+from manila.share import share_types
 
 authorize = extensions.extension_authorizer('share', 'types_extra_specs')
 
 
-class VolumeTypeExtraSpecsController(wsgi.Controller):
-    """The volume type extra specs API controller for the OpenStack API."""
+class ShareTypeExtraSpecsController(wsgi.Controller):
+    """The share type extra specs API controller for the OpenStack API."""
 
     def _get_extra_specs(self, context, type_id):
-        extra_specs = db.volume_type_extra_specs_get(context, type_id)
+        extra_specs = db.share_type_extra_specs_get(context, type_id)
         specs_dict = {}
         for key, value in six.iteritems(extra_specs):
             specs_dict[key] = value
@@ -42,7 +42,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
 
     def _check_type(self, context, type_id):
         try:
-            volume_types.get_volume_type(context, type_id)
+            share_types.get_share_type(context, type_id)
         except exception.NotFound as ex:
             raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
@@ -69,7 +69,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=expl)
 
     def index(self, req, type_id):
-        """Returns the list of extra specs for a given volume type."""
+        """Returns the list of extra specs for a given share type."""
         context = req.environ['manila.context']
         authorize(context)
         self._check_type(context, type_id)
@@ -86,12 +86,10 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._verify_extra_specs(body)
         specs = body['extra_specs']
         self._check_key_names(specs.keys())
-        db.volume_type_extra_specs_update_or_create(context,
-                                                    type_id,
-                                                    specs)
+        db.share_type_extra_specs_update_or_create(context, type_id, specs)
         notifier_info = dict(type_id=type_id, specs=specs)
-        notifier = rpc.get_notifier('volumeTypeExtraSpecs')
-        notifier.info(context, 'volume_type_extra_specs.create', notifier_info)
+        notifier = rpc.get_notifier('shareTypeExtraSpecs')
+        notifier.info(context, 'share_type_extra_specs.create', notifier_info)
         return body
 
     def update(self, req, type_id, id, body=None):
@@ -108,12 +106,10 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
             expl = _('Request body contains too many items')
             raise webob.exc.HTTPBadRequest(explanation=expl)
         self._verify_extra_specs(body)
-        db.volume_type_extra_specs_update_or_create(context,
-                                                    type_id,
-                                                    body)
+        db.share_type_extra_specs_update_or_create(context, type_id, body)
         notifier_info = dict(type_id=type_id, id=id)
-        notifier = rpc.get_notifier('volumeTypeExtraSpecs')
-        notifier.info(context, 'volume_type_extra_specs.update', notifier_info)
+        notifier = rpc.get_notifier('shareTypeExtraSpecs')
+        notifier.info(context, 'share_type_extra_specs.update', notifier_info)
         return body
 
     def show(self, req, type_id, id):
@@ -134,13 +130,13 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         authorize(context)
 
         try:
-            db.volume_type_extra_specs_delete(context, type_id, id)
-        except exception.VolumeTypeExtraSpecsNotFound as error:
+            db.share_type_extra_specs_delete(context, type_id, id)
+        except exception.ShareTypeExtraSpecsNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         notifier_info = dict(type_id=type_id, id=id)
-        notifier = rpc.get_notifier('volumeTypeExtraSpecs')
-        notifier.info(context, 'volume_type_extra_specs.delete', notifier_info)
+        notifier = rpc.get_notifier('shareTypeExtraSpecs')
+        notifier.info(context, 'share_type_extra_specs.delete', notifier_info)
         return webob.Response(status_int=202)
 
     def _check_key_names(self, keys):
@@ -163,7 +159,7 @@ class Types_extra_specs(extensions.ExtensionDescriptor):
         resources = []
         res = extensions.ResourceExtension(
             'extra_specs',
-            VolumeTypeExtraSpecsController(),
+            ShareTypeExtraSpecsController(),
             parent=dict(member_name='type',
                         collection_name='types')
         )

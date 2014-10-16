@@ -66,6 +66,7 @@ class ShareApiTest(test.TestCase):
             'snapshot_id': '2',
             'share_network_id': None,
             'status': 'fakestatus',
+            'share_type': '1',
             'volume_type': '1',
             'links': [
                 {
@@ -338,7 +339,7 @@ class ShareApiTest(test.TestCase):
             'name': 'fake_name',
             'status': 'available',
             'share_server_id': 'fake_share_server_id',
-            'volume_type_id': 'fake_volume_type_id',
+            'share_type_id': 'fake_share_type_id',
             'snapshot_id': 'fake_snapshot_id',
             'host': 'fake_host',
             'share_network_id': 'fake_share_network_id',
@@ -369,7 +370,7 @@ class ShareApiTest(test.TestCase):
             'display_name': search_opts['name'],
             'status': search_opts['status'],
             'share_server_id': search_opts['share_server_id'],
-            'volume_type_id': search_opts['volume_type_id'],
+            'share_type_id': search_opts['share_type_id'],
             'snapshot_id': search_opts['snapshot_id'],
             'host': search_opts['host'],
             'share_network_id': search_opts['share_network_id'],
@@ -425,7 +426,7 @@ class ShareApiTest(test.TestCase):
             'name': 'fake_name',
             'status': 'available',
             'share_server_id': 'fake_share_server_id',
-            'volume_type_id': 'fake_volume_type_id',
+            'share_type_id': 'fake_share_type_id',
             'snapshot_id': 'fake_snapshot_id',
             'host': 'fake_host',
             'share_network_id': 'fake_share_network_id',
@@ -449,7 +450,7 @@ class ShareApiTest(test.TestCase):
                 'display_name': 'n2',
                 'status': 'available',
                 'snapshot_id': 'fake_snapshot_id',
-                'volume_type_id': 'fake_volume_type_id',
+                'share_type_id': 'fake_share_type_id',
                 'snapshot_id': 'fake_snapshot_id',
                 'host': 'fake_host',
                 'share_network_id': 'fake_share_network_id',
@@ -465,7 +466,7 @@ class ShareApiTest(test.TestCase):
             'display_name': search_opts['name'],
             'status': search_opts['status'],
             'share_server_id': search_opts['share_server_id'],
-            'volume_type_id': search_opts['volume_type_id'],
+            'share_type_id': search_opts['share_type_id'],
             'snapshot_id': search_opts['snapshot_id'],
             'host': search_opts['host'],
             'share_network_id': search_opts['share_network_id'],
@@ -489,7 +490,7 @@ class ShareApiTest(test.TestCase):
         self.assertEqual(
             shares[1]['status'], result['shares'][0]['status'])
         self.assertEqual(
-            shares[1]['volume_type_id'], result['shares'][0]['volume_type'])
+            shares[1]['share_type_id'], result['shares'][0]['share_type'])
         self.assertEqual(
             shares[1]['snapshot_id'], result['shares'][0]['snapshot_id'])
         self.assertEqual(
@@ -527,6 +528,7 @@ class ShareApiTest(test.TestCase):
                     'share_network_id': None,
                     'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                     'size': 1,
+                    'share_type': '1',
                     'volume_type': '1',
                     'links': [
                         {
@@ -542,6 +544,8 @@ class ShareApiTest(test.TestCase):
             ]
         }
         self.assertEqual(expected, res_dict)
+        self.assertEqual(res_dict['shares'][0]['volume_type'],
+                         res_dict['shares'][0]['share_type'])
 
     def test_remove_invalid_options(self):
         ctx = context.RequestContext('fakeuser', 'fakeproject', is_admin=False)

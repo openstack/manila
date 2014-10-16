@@ -20,15 +20,19 @@ class ViewBuilder(common.ViewBuilder):
 
     _collection_name = 'types'
 
-    def show(self, request, volume_type, brief=False):
-        """Trim away extraneous volume type attributes."""
-        trimmed = dict(id=volume_type.get('id'),
-                       name=volume_type.get('name'),
-                       extra_specs=volume_type.get('extra_specs'))
-        return trimmed if brief else dict(volume_type=trimmed)
+    def show(self, request, share_type, brief=False):
+        """Trim away extraneous share type attributes."""
+        trimmed = dict(id=share_type.get('id'),
+                       name=share_type.get('name'),
+                       extra_specs=share_type.get('extra_specs'))
+        if brief:
+            return trimmed
+        else:
+            return dict(volume_type=trimmed, share_type=trimmed)
 
-    def index(self, request, volume_types):
-        """Index over trimmed volume types."""
-        volume_types_list = [self.show(request, volume_type, True)
-                             for volume_type in volume_types]
-        return dict(volume_types=volume_types_list)
+    def index(self, request, share_types):
+        """Index over trimmed share types."""
+        share_types_list = [self.show(request, share_type, True)
+                            for share_type in share_types]
+        return dict(volume_types=share_types_list,
+                    share_types=share_types_list)

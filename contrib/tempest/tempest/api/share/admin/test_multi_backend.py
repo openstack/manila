@@ -34,22 +34,23 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
         elif any(not name for name in CONF.share.backend_names):
             raise cls.skipException("Share backend names can not be empty. "
                                     "Skipping.")
-        cls.vts = []
+        cls.sts = []
         cls.shares = []
         share_data_list = []
 
-        # Create volume types
+        # Create share types
         for i in [0, 1]:
-            vt_name = data_utils.rand_name("volume-type-%s" % str(i))
+            st_name = data_utils.rand_name("share-type-%s" % str(i))
             extra_specs = {
                 "share_backend_name": CONF.share.backend_names[i],
             }
-            __, vt = cls.create_volume_type(name=vt_name,
-                                            extra_specs=extra_specs)
-            cls.vts.append(vt)
-            share_data_list.append({"kwargs": {"volume_type_id": vt["id"]}})
+            __, st = cls.create_share_type(name=st_name,
+                                           extra_specs=extra_specs)
+            cls.sts.append(st["share_type"])
+            st_id = st["share_type"]["id"]
+            share_data_list.append({"kwargs": {"share_type_id": st_id}})
 
-        # Create shares using precreated volume types
+        # Create shares using precreated share types
         cls.shares = cls.create_shares(share_data_list)
 
     @test.attr(type=["gate", "smoke", ])
@@ -60,11 +61,11 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
             self.assertTrue(len(get["host"].split("@")) == 2)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_share_volume_type(self):
-        # Volume type should be the same as provided with share creation
+    def test_share_share_type(self):
+        # Share type should be the same as provided with share creation
         for i in [0, 1]:
             __, get = self.shares_client.get_share(self.shares[i]['id'])
-            self.assertEqual(get["volume_type"], self.vts[i]["name"])
+            self.assertEqual(get["share_type"], self.sts[i]["name"])
 
     @test.attr(type=["gate", ])
     def test_share_export_locations(self):
