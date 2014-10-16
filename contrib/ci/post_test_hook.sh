@@ -38,4 +38,4 @@ if [[ ! "$ZUUL_PROJECT" =~ python-manilaclient ]]; then
 fi
 
 echo "Running tempest manila test suites"
-sudo -H -u jenkins tox -evenv bash tools/pretty_tox.sh \"$MANILA_TESTS -- --concurrency=$TEMPEST_CONCURRENCY\"
+sudo -H -u jenkins tox -eall $MANILA_TESTS -- --concurrency=$TEMPEST_CONCURRENCY
