@@ -14,6 +14,7 @@
 #    under the License.
 
 import netaddr
+import six
 
 from manila import utils
 
@@ -414,7 +415,7 @@ def device_exists(device_name, namespace=None):
     try:
         address = IPDevice(device_name, namespace).link.address
     except Exception as e:
-        if 'does not exist' in str(e):
+        if 'does not exist' in six.text_type(e):
             return False
         raise
     return bool(address)

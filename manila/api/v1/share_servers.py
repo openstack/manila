@@ -110,8 +110,7 @@ class ShareServerController(wsgi.Controller):
             else:
                 server.share_network_name = server.share_network_id
         except exception.ShareServerNotFound as e:
-            msg = "%s" % e
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exc.HTTPNotFound(explanation=six.text_type(e))
         return self._view_builder.build_share_server(server)
 
     def details(self, req, id):
@@ -121,8 +120,7 @@ class ShareServerController(wsgi.Controller):
         try:
             db_api.share_server_get(context, id)
         except exception.ShareServerNotFound as e:
-            msg = "%s" % e
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exc.HTTPNotFound(explanation=six.text_type(e))
         details = db_api.share_server_backend_details_get(context, id)
         return self._view_builder.build_share_server_details(details)
 
@@ -133,7 +131,7 @@ class ShareServerController(wsgi.Controller):
         try:
             share_server = db_api.share_server_get(context, id)
         except exception.ShareServerNotFound as e:
-            raise exc.HTTPNotFound(explanation=str(e))
+            raise exc.HTTPNotFound(explanation=six.text_type(e))
         allowed_statuses = [constants.STATUS_ERROR, constants.STATUS_ACTIVE]
         if share_server['status'] not in allowed_statuses:
             data = {
@@ -147,7 +145,7 @@ class ShareServerController(wsgi.Controller):
         try:
             self.share_api.delete_share_server(context, share_server)
         except exception.ShareServerInUse as e:
-            raise exc.HTTPConflict(explanation=str(e))
+            raise exc.HTTPConflict(explanation=six.text_type(e))
         return webob.Response(status_int=202)
 
 
