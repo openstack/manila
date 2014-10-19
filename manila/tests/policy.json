@@ -35,5 +35,8 @@
     "share_extension:types_manage": [],
     "share_extension:types_extra_specs": [],
 
+     "security_service:index": [],
+     "security_service:get_all_security_services": [["rule:admin_api"]],
+
     "limits_extension:used_limits": []
 }

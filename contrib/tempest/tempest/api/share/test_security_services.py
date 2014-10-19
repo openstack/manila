@@ -22,7 +22,110 @@ from tempest import test
 LOG = logging.getLogger(__name__)
 
 
-class SecurityServicesTest(base.BaseSharesTest):
+class SecurityServiceListMixin(object):
+
+    @test.attr(type=["gate", "smoke"])
+    def test_list_security_services(self):
+        resp, listed = self.shares_client.list_security_services()
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
+        self.assertTrue(any(self.ss_kerberos['id'] == ss['id']
+                            for ss in listed))
+
+        # verify keys
+        keys = ["name", "id", "status", "type", ]
+        [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
+
+    @test.attr(type=["gate", "smoke"])
+    def test_list_security_services_with_detail(self):
+        resp, listed = self.shares_client.list_security_services(detailed=True)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
+        self.assertTrue(any(self.ss_kerberos['id'] == ss['id']
+                            for ss in listed))
+
+        # verify keys
+        keys = [
+            "name", "id", "status", "description",
+            "domain", "server", "dns_ip", "user", "password", "type",
+            "created_at", "updated_at", "project_id",
+        ]
+        [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
+
+    @test.attr(type=["gate", "smoke"])
+    def test_list_security_services_filter_by_share_network(self):
+        sn = self.shares_client.get_share_network(
+            self.os.shares_client.share_network_id)[1]
+        fresh_sn = []
+        for i in range(2):
+            resp, sn = self.create_share_network(
+                neutron_net_id=sn["neutron_net_id"],
+                neutron_subnet_id=sn["neutron_subnet_id"])
+            fresh_sn.append(sn)
+            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        resp, body = self.shares_client.add_sec_service_to_share_network(
+            fresh_sn[0]["id"], self.ss_ldap["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        resp, body = self.shares_client.add_sec_service_to_share_network(
+            fresh_sn[1]["id"], self.ss_kerberos["id"])
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+        resp, listed = self.shares_client.list_security_services(
+            params={'share_network_id': fresh_sn[0]['id']})
+        self.assertEqual(1, len(listed))
+        self.assertEqual(self.ss_ldap['id'], listed[0]['id'])
+
+        keys = ["name", "id", "status", "type", ]
+        [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
+
+    @test.attr(type=["gate", "smoke"])
+    def test_list_security_services_filter_by_ss_attributes(self):
+        search_opts = {
+            'status': 'NEW',
+            'name': 'ss_ldap',
+            'type': 'ldap',
+            'user': 'fake_user',
+            'server': 'fake_server_1',
+            'dns_ip': '1.1.1.1',
+            'domain': 'fake_domain_1',
+        }
+        resp, listed = self.shares_client.list_security_services(
+            params=search_opts)
+        self.assertEqual(1, len(listed))
+        self.assertEqual(self.ss_ldap['id'], listed[0]['id'])
+
+        keys = ["name", "id", "status", "type", ]
+        [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
+
+
+class SecurityServicesTest(base.BaseSharesTest,
+                           SecurityServiceListMixin):
+    def setUp(self):
+        super(SecurityServicesTest, self).setUp()
+        ss_ldap_data = {
+            'name': 'ss_ldap',
+            'dns_ip': '1.1.1.1',
+            'server': 'fake_server_1',
+            'domain': 'fake_domain_1',
+            'user': 'fake_user',
+            'password': 'pass',
+        }
+        ss_kerberos_data = {
+            'name': 'ss_kerberos',
+            'dns_ip': '2.2.2.2',
+            'server': 'fake_server_2',
+            'domain': 'fake_domain_2',
+            'user': 'test_user',
+            'password': 'word',
+        }
+        resp, self.ss_ldap = self.create_security_service('ldap',
+                                                          **ss_ldap_data)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        resp, self.ss_kerberos = self.create_security_service(
+            'kerberos',
+            **ss_kerberos_data)
+        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
     @test.attr(type=["gate", "smoke"])
     def test_create_delete_security_service(self):
@@ -105,35 +208,10 @@ class SecurityServicesTest(base.BaseSharesTest):
         self.assertDictContainsSubset(update_data, updated)
 
     @test.attr(type=["gate", "smoke"])
-    def test_list_security_services(self):
-        data = self.generate_security_service_data()
-        resp, ss = self.create_security_service(**data)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertDictContainsSubset(data, ss)
-
-        resp, listed = self.shares_client.list_security_services()
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        any(ss["id"] in ss["id"] for ss in listed)
-
-        # verify keys
-        keys = ["name", "id", "status", "type", ]
-        [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
-
-    @test.attr(type=["gate", "smoke"])
-    def test_list_security_services_with_detail(self):
-        data = self.generate_security_service_data()
-        resp, ss = self.create_security_service(**data)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertDictContainsSubset(data, ss)
-
-        resp, listed = self.shares_client.list_security_services_with_detail()
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        any(ss["id"] in ss["id"] for ss in listed)
-
-        # verify keys
-        keys = [
-            "name", "id", "status", "description",
-            "domain", "server", "dns_ip", "user", "password", "type",
-            "created_at", "updated_at", "project_id",
-        ]
-        [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
+    def test_list_security_services_filter_by_invalid_opt(self):
+        resp, listed = self.shares_client.list_security_services(
+            params={'fake_opt': 'some_value'})
+        self.assertIn(int(resp['status']), test.HTTP_SUCCESS)
+        self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
+        self.assertTrue(any(self.ss_kerberos['id'] == ss['id']
+                            for ss in listed))

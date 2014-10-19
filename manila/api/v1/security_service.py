@@ -103,11 +103,15 @@ class SecurityServiceController(wsgi.Controller):
     @wsgi.serializers(xml=SecurityServicesTemplate)
     def index(self, req):
         """Returns a summary list of security services."""
+        policy.check_policy(req.environ['manila.context'], RESOURCE_NAME,
+                            'index')
         return self._get_security_services(req, is_detail=False)
 
     @wsgi.serializers(xml=SecurityServicesTemplate)
     def detail(self, req):
         """Returns a detailed list of security services."""
+        policy.check_policy(req.environ['manila.context'], RESOURCE_NAME,
+                            'detail')
         return self._get_security_services(req, is_detail=True)
 
     def _get_security_services(self, req, is_detail):
@@ -116,8 +120,6 @@ class SecurityServiceController(wsgi.Controller):
         The list gets transformed through view builder.
         """
         context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME,
-                            'get_all_security_services')
 
         search_opts = {}
         search_opts.update(req.GET)
@@ -126,40 +128,47 @@ class SecurityServiceController(wsgi.Controller):
             share_nw = db.share_network_get(context,
                                             search_opts['share_network_id'])
             security_services = share_nw['security_services']
+            del search_opts['share_network_id']
         else:
-            common.remove_invalid_options(
-                context,
-                search_opts,
-                self._get_security_services_search_options())
             if 'all_tenants' in search_opts:
+                policy.check_policy(context, RESOURCE_NAME,
+                                    'get_all_security_services')
                 security_services = db.security_service_get_all(context)
-                del search_opts['all_tenants']
             else:
                 security_services = db.security_service_get_all_by_project(
                     context, context.project_id)
-            if search_opts:
-                results = []
-                not_found = object()
-                for service in security_services:
-                    for opt, value in six.iteritems(search_opts):
-                        if service.get(opt, not_found) != value:
-                            break
-                    else:
-                        results.append(service)
-                security_services = results
+        search_opts.pop('all_tenants', None)
+        common.remove_invalid_options(
+            context,
+            search_opts,
+            self._get_security_services_search_options())
+        if search_opts:
+            results = []
+            not_found = object()
+            for ss in security_services:
+                if all(ss.get(opt, not_found) == value for opt, value in
+                       six.iteritems(search_opts)):
+                    results.append(ss)
+            security_services = results
 
         limited_list = common.limited(security_services, req)
 
         if is_detail:
             security_services = self._view_builder.detail_list(
                 req, limited_list)
+            for ss in security_services['security_services']:
+                share_networks = db.share_network_get_all_by_security_service(
+                    context,
+                    ss['id'])
+                ss['share_networks'] = [sn['id'] for sn in share_networks]
         else:
             security_services = self._view_builder.summary_list(
                 req, limited_list)
         return security_services
 
     def _get_security_services_search_options(self):
-        return ('status', 'name', 'id', 'type', )
+        return ('status', 'name', 'id', 'type', 'user',
+                'server', 'dns_ip', 'domain', )
 
     def _share_servers_dependent_on_sn_exist(self, context,
                                              security_service_id):
