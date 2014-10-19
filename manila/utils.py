@@ -39,17 +39,17 @@ from xml.sax import saxutils
 from eventlet import pools
 import netaddr
 from oslo.config import cfg
+from oslo.utils import excutils
+from oslo.utils import importutils
+from oslo.utils import timeutils
 import paramiko
 import six
 
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import excutils
-from manila.openstack.common import importutils
 from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import processutils
-from manila.openstack.common import timeutils
 
 
 CONF = cfg.CONF

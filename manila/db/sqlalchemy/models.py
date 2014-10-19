@@ -21,6 +21,7 @@ SQLAlchemy models for Manila data.
 
 from oslo.config import cfg
 from oslo.db.sqlalchemy import models
+from oslo.utils import timeutils
 import six
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -28,7 +29,6 @@ from sqlalchemy import orm
 from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
 
 from manila.common import constants
-from manila.openstack.common import timeutils
 
 CONF = cfg.CONF
 BASE = declarative_base()

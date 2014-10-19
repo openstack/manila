@@ -29,12 +29,12 @@ import eventlet
 import greenlet
 from oslo.config import cfg
 from oslo import messaging
+from oslo.utils import importutils
 
 from manila import context
 from manila import db
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import loopingcall
 from manila import rpc

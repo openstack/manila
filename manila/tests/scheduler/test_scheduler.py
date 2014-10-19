@@ -19,11 +19,11 @@ Tests For Scheduler
 
 import mock
 from oslo.config import cfg
+from oslo.utils import timeutils
 
 from manila import context
 from manila import db
 from manila import exception
-from manila.openstack.common import timeutils
 from manila.scheduler import driver
 from manila.scheduler import manager
 from manila.scheduler import simple

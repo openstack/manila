@@ -22,6 +22,7 @@ import time
 
 import netaddr
 from oslo.config import cfg
+from oslo.utils import importutils
 import six
 
 from manila.common import constants
@@ -31,7 +32,6 @@ from manila import exception
 from manila.i18n import _
 from manila.network.linux import ip_lib
 from manila.network.neutron import api as neutron
-from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 from manila import utils
 

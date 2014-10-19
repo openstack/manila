@@ -26,6 +26,7 @@ from oslo.config import cfg
 from oslo.db import exception as db_exception
 from oslo.db import options as db_options
 from oslo.db.sqlalchemy import session
+from oslo.utils import timeutils
 import six
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -37,7 +38,6 @@ from manila.db.sqlalchemy import models
 from manila import exception
 from manila.i18n import _
 from manila.openstack.common import log as logging
-from manila.openstack.common import timeutils
 
 
 CONF = cfg.CONF

@@ -18,6 +18,7 @@ import datetime
 
 import mock
 from oslo.config import cfg
+from oslo.utils import timeutils
 import testtools
 
 from manila import context
@@ -25,7 +26,6 @@ from manila import db
 from manila.db.sqlalchemy import api as sqa_api
 from manila.db.sqlalchemy import models as sqa_models
 from manila import exception
-from manila.openstack.common import timeutils
 from manila import quota
 from manila import share
 from manila import test

@@ -17,6 +17,7 @@
 import os
 
 from oslo.config import cfg
+from oslo.utils import importutils
 import six
 import webob.dec
 import webob.exc
@@ -26,7 +27,6 @@ from manila.api.openstack import wsgi
 from manila.api import xmlutil
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 import manila.policy
 

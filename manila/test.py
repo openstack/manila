@@ -29,6 +29,7 @@ import fixtures
 import mock
 from oslo.config import cfg
 from oslo.messaging import conffixture as messaging_conffixture
+from oslo.utils import timeutils
 import six
 import testtools
 
@@ -36,7 +37,6 @@ from manila.db import migration
 from manila.db.sqlalchemy import api as db_api
 from manila.db.sqlalchemy import models as db_models
 from manila.openstack.common import log as logging
-from manila.openstack.common import timeutils
 from manila import rpc
 from manila import service
 from manila.tests import conf_fixture

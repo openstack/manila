@@ -19,15 +19,15 @@ Handles all requests relating to shares.
 """
 
 from oslo.config import cfg
+from oslo.utils import excutils
+from oslo.utils import timeutils
 import six
 
 from manila.api import extensions
 from manila.db import base
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import excutils
 from manila.openstack.common import log as logging
-from manila.openstack.common import timeutils
 from manila import policy
 from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi

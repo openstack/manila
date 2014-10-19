@@ -19,14 +19,14 @@
 import datetime
 
 from oslo.config import cfg
+from oslo.utils import importutils
+from oslo.utils import timeutils
 import six
 
 from manila import db
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
-from manila.openstack.common import timeutils
 
 LOG = logging.getLogger(__name__)
 

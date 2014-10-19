@@ -16,13 +16,13 @@
 """Test of Share Manager for Manila."""
 
 import mock
+from oslo.utils import importutils
 
 from manila.common import constants
 from manila import context
 from manila import db
 from manila.db.sqlalchemy import models
 from manila import exception
-from manila.openstack.common import importutils
 from manila.share import manager
 from manila import test
 from manila import utils

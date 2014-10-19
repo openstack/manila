@@ -16,9 +16,9 @@
 """Test of Base Manager for Manila."""
 
 import mock
+from oslo.utils import importutils
 
 from manila import manager
-from manila.openstack.common import importutils
 from manila import test
 
 

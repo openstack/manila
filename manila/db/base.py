@@ -17,9 +17,7 @@
 """Base class for classes that need modular database access."""
 
 from oslo.config import cfg
-
-
-from manila.openstack.common import importutils
+from oslo.utils import importutils
 
 db_driver_opt = cfg.StrOpt('db_driver',
                            default='manila.db',

@@ -15,9 +15,8 @@
 
 import datetime
 
+from oslo.utils import timeutils
 import six
-
-from manila.openstack.common import timeutils
 
 
 class ViewBuilder(object):

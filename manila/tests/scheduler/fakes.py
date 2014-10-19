@@ -16,9 +16,9 @@
 Fakes For Scheduler tests.
 """
 
+from oslo.utils import timeutils
 import six
 
-from manila.openstack.common import timeutils
 from manila.scheduler import filter_scheduler
 from manila.scheduler import host_manager
 

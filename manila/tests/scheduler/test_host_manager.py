@@ -17,11 +17,11 @@ Tests For HostManager
 """
 import mock
 from oslo.config import cfg
+from oslo.utils import timeutils
 
 from manila import db
 from manila import exception
 from manila.openstack.common.scheduler import filters
-from manila.openstack.common import timeutils
 from manila.scheduler import host_manager
 from manila import test
 from manila.tests.scheduler import fakes

@@ -20,11 +20,11 @@ Scheduler base class that all Schedulers should inherit from
 """
 
 from oslo.config import cfg
+from oslo.utils import importutils
+from oslo.utils import timeutils
 
 from manila import db
 from manila.i18n import _
-from manila.openstack.common import importutils
-from manila.openstack.common import timeutils
 from manila.share import rpcapi as share_rpcapi
 from manila import utils
 

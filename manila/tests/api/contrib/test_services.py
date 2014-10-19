@@ -17,11 +17,12 @@
 
 import datetime
 
+from oslo.utils import timeutils
+
 from manila.api.contrib import services
 from manila import context
 from manila import db
 from manila import exception
-from manila.openstack.common import timeutils
 from manila import policy
 from manila import test
 from manila.tests.api import fakes

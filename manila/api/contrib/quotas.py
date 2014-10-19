@@ -15,6 +15,7 @@
 
 import urlparse
 
+from oslo.utils import strutils
 import webob
 
 from manila.api import extensions
@@ -25,7 +26,6 @@ from manila.db.sqlalchemy import api as sqlalchemy_api
 from manila import exception
 from manila.i18n import _
 from manila.openstack.common import log as logging
-from manila.openstack.common import strutils
 from manila import quota
 
 

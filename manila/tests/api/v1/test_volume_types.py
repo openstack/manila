@@ -13,12 +13,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from oslo.utils import timeutils
 import webob
 
 from manila.api.v1 import volume_types as types
 from manila.api.views import types as views_types
 from manila import exception
-from manila.openstack.common import timeutils
 from manila.share import volume_types
 from manila import test
 from manila.tests.api import fakes

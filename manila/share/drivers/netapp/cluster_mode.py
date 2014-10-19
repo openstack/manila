@@ -24,13 +24,13 @@ import hashlib
 import re
 
 from oslo.config import cfg
+from oslo.utils import excutils
 from oslo.utils import units
 import six
 
 from manila import context
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import excutils
 from manila.openstack.common import log
 from manila.share import driver
 from manila.share.drivers.netapp import api as naapi

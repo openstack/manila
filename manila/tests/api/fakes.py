@@ -15,6 +15,7 @@
 
 import uuid
 
+from oslo.utils import timeutils
 import routes
 import six
 import webob
@@ -30,7 +31,6 @@ from manila.api.v1 import router
 from manila.api import versions
 from manila import context
 from manila import exception as exc
-from manila.openstack.common import timeutils
 from manila import wsgi
 
 

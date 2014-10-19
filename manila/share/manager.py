@@ -20,6 +20,9 @@
 """
 
 from oslo.config import cfg
+from oslo.utils import excutils
+from oslo.utils import importutils
+from oslo.utils import timeutils
 import six
 
 from manila.common import constants
@@ -28,10 +31,7 @@ from manila import exception
 from manila.i18n import _
 from manila import manager
 from manila import network
-from manila.openstack.common import excutils
-from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
-from manila.openstack.common import timeutils
 from manila import quota
 import manila.share.configuration
 from manila import utils

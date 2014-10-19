@@ -20,6 +20,7 @@ Manage hosts in the current zone.
 import UserDict
 
 from oslo.config import cfg
+from oslo.utils import timeutils
 import six
 
 from manila import db
@@ -28,7 +29,6 @@ from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common.scheduler import weights
-from manila.openstack.common import timeutils
 from manila import utils
 
 host_manager_opts = [

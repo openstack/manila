@@ -19,11 +19,11 @@ import uuid
 
 import mock
 from oslo.config import cfg
+from oslo.utils import timeutils
 
 from manila import context
 from manila import db as db_driver
 from manila import exception
-from manila.openstack.common import timeutils
 from manila import quota
 from manila import share
 from manila.share import api as share_api

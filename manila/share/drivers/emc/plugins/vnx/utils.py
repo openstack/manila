@@ -15,9 +15,9 @@
 import types
 
 from oslo.config import cfg
+from oslo.utils import timeutils
 
 from manila.openstack.common import log
-from manila.openstack.common import timeutils
 
 
 CONF = cfg.CONF

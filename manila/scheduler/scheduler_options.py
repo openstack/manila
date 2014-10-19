@@ -24,11 +24,11 @@ import datetime
 import os
 
 from oslo.config import cfg
+from oslo.utils import timeutils
 
 from manila.i18n import _
 from manila.openstack.common import jsonutils
 from manila.openstack.common import log as logging
-from manila.openstack.common import timeutils
 
 scheduler_json_config_location_opt = cfg.StrOpt(
     'scheduler_json_config_location',
