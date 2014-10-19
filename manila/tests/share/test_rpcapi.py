@@ -19,11 +19,11 @@ Unit Tests for manila.share.rpcapi.
 import copy
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import six
 
 from manila import context
 from manila import db
-from manila.openstack.common import jsonutils
 from manila.share import rpcapi as share_rpcapi
 from manila import test
 

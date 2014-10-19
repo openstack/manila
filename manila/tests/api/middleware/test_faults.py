@@ -15,13 +15,13 @@
 
 from xml.dom import minidom
 
+from oslo.serialization import jsonutils
 import webob
 import webob.dec
 import webob.exc
 
 from manila.api import common
 from manila.api.openstack import wsgi
-from manila.openstack.common import jsonutils
 from manila import test
 
 

@@ -17,11 +17,11 @@
 import iso8601
 from lxml import etree
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import webob
 
 from manila.api.v1 import router
 from manila.api import xmlutil
-from manila.openstack.common import jsonutils
 from manila import test
 
 CONF = cfg.CONF

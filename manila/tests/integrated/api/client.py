@@ -15,8 +15,9 @@
 import httplib
 import urlparse
 
+from oslo.serialization import jsonutils
+
 from manila.i18n import _
-from manila.openstack.common import jsonutils
 from manila.openstack.common import log as logging
 
 

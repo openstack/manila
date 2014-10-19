@@ -16,13 +16,13 @@
 import uuid
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import webob
 
 from manila.api.v1 import share_metadata
 from manila.api.v1 import shares
 import manila.db
 from manila import exception
-from manila.openstack.common import jsonutils
 from manila import test
 from manila.tests.api import fakes
 

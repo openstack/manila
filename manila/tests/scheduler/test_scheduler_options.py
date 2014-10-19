@@ -18,9 +18,9 @@ Tests For PickledScheduler.
 
 import datetime
 
+from oslo.serialization import jsonutils
 import six
 
-from manila.openstack.common import jsonutils
 from manila.scheduler import scheduler_options
 from manila import test
 

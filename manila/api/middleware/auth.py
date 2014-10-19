@@ -19,13 +19,13 @@ Common Auth Middleware.
 import os
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import webob.dec
 import webob.exc
 
 from manila.api.openstack import wsgi
 from manila import context
 from manila.i18n import _
-from manila.openstack.common import jsonutils
 from manila.openstack.common import log as logging
 from manila import wsgi as base_wsgi
 

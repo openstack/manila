@@ -17,12 +17,12 @@ import shutil
 import tempfile
 
 from oslo.config import cfg
+from oslo.serialization import jsonutils
 import webob
 
 from manila import context
 from manila import db
 from manila import exception
-from manila.openstack.common import jsonutils
 from manila.share import api as share_api
 from manila import test
 from manila.tests.api.contrib import stubs

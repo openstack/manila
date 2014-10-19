@@ -21,6 +21,7 @@ import httplib
 from xml.dom import minidom
 
 from lxml import etree
+from oslo.serialization import jsonutils
 import six
 import webob
 
@@ -28,7 +29,6 @@ from manila.api.v1 import limits
 from manila.api import views
 from manila.api import xmlutil
 import manila.context
-from manila.openstack.common import jsonutils
 from manila import test
 
 
