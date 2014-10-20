@@ -251,8 +251,7 @@ class ShareController(wsgi.Controller):
                     context,
                     share_network_id)
             except exception.ShareNetworkNotFound as e:
-                msg = "%s" % e
-                raise exc.HTTPNotFound(explanation=msg)
+                raise exc.HTTPNotFound(explanation=six.text_type(e))
             kwargs['share_network_id'] = share_network_id
 
         display_name = share.get('display_name')

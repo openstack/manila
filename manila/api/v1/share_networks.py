@@ -90,8 +90,7 @@ class ShareNetworkController(wsgi.Controller):
         try:
             share_network = db_api.share_network_get(context, id)
         except exception.ShareNetworkNotFound as e:
-            msg = "%s" % e
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exc.HTTPNotFound(explanation=six.text_type(e))
 
         return self._view_builder.build_share_network(share_network)
 
@@ -103,8 +102,7 @@ class ShareNetworkController(wsgi.Controller):
         try:
             share_network = db_api.share_network_get(context, id)
         except exception.ShareNetworkNotFound as e:
-            msg = "%s" % e
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exc.HTTPNotFound(explanation=six.text_type(e))
         if share_network['share_servers']:
             msg = _("Cannot delete share network %s. "
                     "There are share servers using it") % id
@@ -167,8 +165,7 @@ class ShareNetworkController(wsgi.Controller):
         try:
             share_network = db_api.share_network_get(context, id)
         except exception.ShareNetworkNotFound as e:
-            msg = "%s" % e
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exc.HTTPNotFound(explanation=six.text_type(e))
 
         update_values = body[RESOURCE_NAME]
 
@@ -272,11 +269,9 @@ class ShareNetworkController(wsgi.Controller):
             msg = "Malformed request body"
             raise exc.HTTPBadRequest(explanation=msg)
         except exception.NotFound as e:
-            msg = "%s" % e
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exc.HTTPNotFound(explanation=six.text_type(e))
         except exception.ShareNetworkSecurityServiceAssociationError as e:
-            msg = "%s" % e
-            raise exc.HTTPBadRequest(explanation=msg)
+            raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
         return self._view_builder.build_share_network(share_network)
 
@@ -297,11 +292,9 @@ class ShareNetworkController(wsgi.Controller):
             msg = "Malformed request body"
             raise exc.HTTPBadRequest(explanation=msg)
         except exception.NotFound as e:
-            msg = "%s" % e
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exc.HTTPNotFound(explanation=six.text_type(e))
         except exception.ShareNetworkSecurityServiceDissociationError as e:
-            msg = "%s" % e
-            raise exc.HTTPBadRequest(explanation=msg)
+            raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
         return self._view_builder.build_share_network(share_network)
 

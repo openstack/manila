@@ -40,6 +40,7 @@ from eventlet import pools
 import netaddr
 from oslo.config import cfg
 import paramiko
+import six
 
 from manila import exception
 from manila.openstack.common import excutils
@@ -797,7 +798,7 @@ def tempdir(**kwargs):
         try:
             shutil.rmtree(tmpdir)
         except OSError as e:
-            LOG.debug('Could not remove tmpdir: %s', str(e))
+            LOG.debug('Could not remove tmpdir: %s', six.text_type(e))
 
 
 def strcmp_const_time(s1, s2):

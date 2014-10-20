@@ -14,6 +14,7 @@
 
 """The volume types manage extension."""
 
+import six
 import webob
 
 from manila.api import extensions
@@ -59,14 +60,16 @@ class VolumeTypesManageController(wsgi.Controller):
                 context, 'volume_type.create', notifier_info)
 
         except exception.VolumeTypeExists as err:
-            notifier_err = dict(volume_types=vol_type, error_message=str(err))
+            notifier_err = dict(volume_types=vol_type,
+                                error_message=six.text_type(err))
             self._notify_volume_type_error(context,
                                            'volume_type.create',
                                            notifier_err)
 
-            raise webob.exc.HTTPConflict(explanation=str(err))
+            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
         except exception.NotFound as err:
-            notifier_err = dict(volume_types=vol_type, error_message=str(err))
+            notifier_err = dict(volume_types=vol_type,
+                                error_message=six.text_type(err))
             self._notify_volume_type_error(context,
                                            'volume_type.create',
                                            notifier_err)
@@ -87,14 +90,14 @@ class VolumeTypesManageController(wsgi.Controller):
             rpc.get_notifier('volumeType').info(
                 context, 'volume_type.delete', notifier_info)
         except exception.VolumeTypeInUse as err:
-            notifier_err = dict(id=id, error_message=str(err))
+            notifier_err = dict(id=id, error_message=six.text_type(err))
             self._notify_volume_type_error(context,
                                            'volume_type.delete',
                                            notifier_err)
             msg = 'Target volume type is still in use.'
             raise webob.exc.HTTPBadRequest(explanation=msg)
         except exception.NotFound as err:
-            notifier_err = dict(id=id, error_message=str(err))
+            notifier_err = dict(id=id, error_message=six.text_type(err))
             self._notify_volume_type_error(context,
                                            'volume_type.delete',
                                            notifier_err)
