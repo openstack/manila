@@ -29,6 +29,7 @@ import socket
 
 from oslo.config import cfg
 
+from manila.i18n import _
 
 CONF = cfg.CONF
 

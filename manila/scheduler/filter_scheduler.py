@@ -23,6 +23,7 @@ Weighing Functions.
 from oslo.config import cfg
 
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.scheduler import driver
 from manila.scheduler import scheduler_options

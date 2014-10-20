@@ -29,6 +29,7 @@ import six
 
 from manila import context
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import excutils
 from manila.openstack.common import log
 from manila.share import driver

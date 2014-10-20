@@ -20,6 +20,7 @@ import time
 import webob
 
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import jsonutils
 from manila.openstack.common import log as logging
 from manila import utils

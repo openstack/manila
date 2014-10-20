@@ -22,6 +22,7 @@ from six.moves.urllib import error as url_error  # pylint: disable=E0611
 from six.moves.urllib import request as url_request  # pylint: disable=E0611
 
 import manila.exception
+from manila.i18n import _
 from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila.share.drivers.emc.plugins.vnx import constants

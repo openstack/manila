@@ -26,6 +26,7 @@ from oslo.config import cfg
 import six
 import webob.exc
 
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.openstack.common import processutils
 

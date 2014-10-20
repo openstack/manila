@@ -22,6 +22,7 @@ import urllib2
 
 from lxml import etree
 
+from manila.i18n import _
 from manila.openstack.common import log
 
 

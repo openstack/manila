@@ -23,6 +23,7 @@ from manila.api import xmlutil
 from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila import policy
 from manila import share

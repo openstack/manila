@@ -55,6 +55,7 @@ from oslo.config import cfg
 import six
 
 from manila.db import base
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import version

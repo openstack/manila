@@ -25,6 +25,7 @@ import os
 
 from oslo.config import cfg
 
+from manila.i18n import _
 from manila.openstack.common import jsonutils
 from manila.openstack.common import log as logging
 from manila.openstack.common import timeutils

@@ -23,6 +23,7 @@ from manila.api import xmlutil
 from manila import db
 from manila.db.sqlalchemy import api as sqlalchemy_api
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.openstack.common import strutils
 from manila import quota

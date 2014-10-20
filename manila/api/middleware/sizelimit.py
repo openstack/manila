@@ -21,6 +21,7 @@ import webob.dec
 import webob.exc
 
 
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila import wsgi
 

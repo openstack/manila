@@ -25,6 +25,7 @@ import manila.api.openstack
 from manila.api.openstack import wsgi
 from manila.api import xmlutil
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import importutils
 from manila.openstack.common import log as logging
 import manila.policy

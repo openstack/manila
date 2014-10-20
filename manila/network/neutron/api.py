@@ -19,6 +19,7 @@ from oslo.config import cfg
 from manila import context
 from manila.db import base
 from manila import exception
+from manila.i18n import _
 from manila.network import neutron
 from manila.network.neutron import constants as neutron_constants
 from manila.openstack.common import log as logging

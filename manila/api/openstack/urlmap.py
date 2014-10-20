@@ -16,6 +16,7 @@
 
 from manila.api import urlmap
 from manila.openstack.common import log as logging
+from manila.i18n import _
 
 
 LOG = logging.getLogger(__name__)

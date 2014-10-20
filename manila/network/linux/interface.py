@@ -20,6 +20,7 @@ from oslo.config import cfg
 import six
 
 from manila import exception
+from manila.i18n import _
 from manila.network.linux import ip_lib
 from manila.network.linux import ovs_lib
 from manila.openstack.common import log as logging

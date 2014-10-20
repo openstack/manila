@@ -24,6 +24,7 @@ import six
 
 from manila import db
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common.scheduler import weights

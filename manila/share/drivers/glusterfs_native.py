@@ -34,6 +34,7 @@ from oslo.config import cfg
 import six
 
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 from manila.share import driver
 from manila.share.drivers import glusterfs
