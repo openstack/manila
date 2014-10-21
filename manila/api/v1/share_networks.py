@@ -16,10 +16,12 @@
 """The shares api."""
 
 from oslo.db import exception as db_exception
+from oslo.utils import timeutils
 import six
 import webob
 from webob import exc
 
+from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import share_networks as share_networks_views
 from manila.api import xmlutil
@@ -126,32 +128,82 @@ class ShareNetworkController(wsgi.Controller):
     def _get_share_networks(self, req, is_detail=True):
         """Returns a list of share networks."""
         context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'index')
-
         search_opts = {}
         search_opts.update(req.GET)
 
-        if search_opts.pop('all_tenants', None):
+        if ('all_tenants' in search_opts or
+            ('project_id' in search_opts and
+             search_opts['project_id'] != context.project_id)):
+                policy.check_policy(context, RESOURCE_NAME,
+                                    'get_all_share_networks')
+
+        if 'security_service_id' in search_opts:
+            networks = db_api.share_network_get_all_by_security_service(
+                context, search_opts['security_service_id'])
+        elif ('project_id' in search_opts and
+              search_opts['project_id'] != context.project_id):
+            networks = db_api.share_network_get_all_by_project(
+                context, search_opts['project_id'])
+        elif 'all_tenants' in search_opts:
             networks = db_api.share_network_get_all(context)
         else:
             networks = db_api.share_network_get_all_by_project(
                 context,
                 context.project_id)
 
+        date_parsing_error_msg = '''%s is not in yyyy-mm-dd format.'''
+        if 'created_since' in search_opts:
+            try:
+                created_since = timeutils.parse_strtime(
+                    search_opts['created_since'],
+                    fmt="%Y-%m-%d")
+            except ValueError:
+                msg = date_parsing_error_msg % search_opts['created_since']
+                raise exc.HTTPBadRequest(explanation=msg)
+            networks = [network for network in networks
+                        if network['created_at'] >= created_since]
+        if 'created_before' in search_opts:
+            try:
+                created_before = timeutils.parse_strtime(
+                    search_opts['created_before'],
+                    fmt="%Y-%m-%d")
+            except ValueError:
+                msg = date_parsing_error_msg % search_opts['created_before']
+                raise exc.HTTPBadRequest(explanation=msg)
+            networks = [network for network in networks
+                        if network['created_at'] <= created_before]
+        opts_to_remove = [
+            'all_tenants',
+            'created_since',
+            'created_before',
+            'limit',
+            'offset',
+            'security_service_id',
+        ]
+        for opt in opts_to_remove:
+            search_opts.pop(opt, None)
         if search_opts:
             for key, value in six.iteritems(search_opts):
+                if key in ['ip_version', 'segmentation_id']:
+                    value = int(value)
                 networks = [network for network in networks
                             if network[key] == value]
-        return self._view_builder.build_share_networks(networks, is_detail)
+
+        limited_list = common.limited(networks, req)
+        return self._view_builder.build_share_networks(limited_list, is_detail)
 
     @wsgi.serializers(xml=ShareNetworksTemplate)
     def index(self, req):
         """Returns a summary list of share networks."""
+        policy.check_policy(req.environ['manila.context'], RESOURCE_NAME,
+                            'index')
         return self._get_share_networks(req, is_detail=False)
 
     @wsgi.serializers(xml=ShareNetworksTemplate)
     def detail(self, req):
         """Returns a detailed list of share networks."""
+        policy.check_policy(req.environ['manila.context'], RESOURCE_NAME,
+                            'detail')
         return self._get_share_networks(req)
 
     @wsgi.serializers(xml=ShareNetworkTemplate)

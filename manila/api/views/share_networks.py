@@ -35,7 +35,6 @@ class ViewBuilder(common.ViewBuilder):
         sn = {
             'id': share_network.get('id'),
             'name': share_network.get('name'),
-            'status': share_network.get('status'),
         }
         if is_detail:
             sn.update({

@@ -76,3 +76,29 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
         self.assertRaises(exceptions.NotFound,
                           self.shares_client.get_security_service,
                           sn["id"])
+
+    @test.attr(type=["gate", "smoke", "negative"])
+    def test_try_list_share_networks_all_tenants(self):
+        self.assertRaises(exceptions.Unauthorized,
+                          self.shares_client.list_share_networks_with_detail,
+                          params={'all_tenants': 1})
+
+    @test.attr(type=["gate", "smoke", "negative"])
+    def test_try_list_share_networks_project_id(self):
+        self.assertRaises(exceptions.Unauthorized,
+                          self.shares_client.list_share_networks_with_detail,
+                          params={'project_id': 'some_project'})
+
+    @test.attr(type=["gate", "smoke", "negative"])
+    def test_try_list_share_networks_wrong_created_since_value(self):
+        self.assertRaises(
+            exceptions.BadRequest,
+            self.shares_client.list_share_networks_with_detail,
+            params={'created_since': '2014-10-23T08:31:58.000000'})
+
+    @test.attr(type=["gate", "smoke", "negative"])
+    def test_try_list_share_networks_wrong_created_before_value(self):
+        self.assertRaises(
+            exceptions.BadRequest,
+            self.shares_client.list_share_networks_with_detail,
+            params={'created_before': '2014-10-23T08:31:58.000000'})
