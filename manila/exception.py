@@ -71,8 +71,9 @@ class ManilaException(Exception):
     headers = {}
     safe = False
 
-    def __init__(self, message=None, **kwargs):
+    def __init__(self, message=None, detail_data={}, **kwargs):
         self.kwargs = kwargs
+        self.detail_data = detail_data
 
         if 'code' not in self.kwargs:
             try:
