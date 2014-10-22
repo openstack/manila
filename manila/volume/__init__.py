@@ -14,8 +14,7 @@
 #    under the License.
 
 import oslo.config.cfg
-
-import manila.openstack.common.importutils
+import oslo.utils.importutils
 
 _volume_opts = [
     oslo.config.cfg.StrOpt('volume_api_class',
@@ -28,7 +27,7 @@ oslo.config.cfg.CONF.register_opts(_volume_opts)
 
 
 def API():
-    importutils = manila.openstack.common.importutils
+    importutils = oslo.utils.importutils
     volume_api_class = oslo.config.cfg.CONF.volume_api_class
     cls = importutils.import_class(volume_api_class)
     return cls()
