@@ -17,7 +17,7 @@
 Filter support
 """
 
-from manila.openstack.common.gettextutils import _LI
+from manila.openstack.common._i18n import _LI
 from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import base_handler
 

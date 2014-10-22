@@ -15,9 +15,9 @@
 
 import operator
 
+from oslo.serialization import jsonutils
 import six
 
-from manila.openstack.common import jsonutils
 from manila.openstack.common.scheduler import filters
 
 

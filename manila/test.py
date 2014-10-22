@@ -23,6 +23,7 @@ inline callbacks.
 
 import os
 import shutil
+import tempfile
 import uuid
 
 import fixtures
@@ -128,6 +129,8 @@ class TestCase(testtools.TestCase):
         self.start = timeutils.utcnow()
 
         self.log_fixture = self.useFixture(fixtures.FakeLogger())
+        self.useFixture(fixtures.NestedTempfile())
+        self.useFixture(fixtures.TempHomeDir())
 
         global _DB_CACHE
         if not _DB_CACHE:
@@ -144,6 +147,8 @@ class TestCase(testtools.TestCase):
         self.injected = []
         self._services = []
         CONF.set_override('fatal_exception_format_errors', True)
+        # This will be cleaned up by the NestedTempfile fixture
+        CONF.set_override('lock_path', tempfile.mkdtemp())
 
         rpc.add_extra_exmods('manila.tests')
         self.addCleanup(rpc.clear_extra_exmods)

@@ -38,14 +38,12 @@ from eventlet import event
 from oslo.config import cfg
 
 from manila.openstack.common import eventlet_backdoor
-from manila.openstack.common.gettextutils import _LE, _LI, _LW
-from manila.openstack.common import importutils
+from manila.openstack.common._i18n import _LE, _LI, _LW
 from manila.openstack.common import log as logging
 from manila.openstack.common import systemd
 from manila.openstack.common import threadgroup
 
 
-rpc = importutils.try_import('manila.openstack.common.rpc')
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
@@ -180,12 +178,6 @@ class ServiceLauncher(Launcher):
             status = exc.code
         finally:
             self.stop()
-            if rpc:
-                try:
-                    rpc.cleanup()
-                except Exception:
-                    # We're shutting down, so it doesn't matter at this point.
-                    LOG.exception(_LE('Exception during rpc cleanup.'))
 
         return status, signo
 
