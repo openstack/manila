@@ -33,3 +33,4 @@ Module reference
    :maxdepth: 3
 
    intro
+   multi_backends
