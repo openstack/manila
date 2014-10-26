@@ -10,7 +10,7 @@ discover
 fixtures>=0.3.14
 mock>=1.0
 MySQL-python
-oslotest>=1.1.0  # Apache-2.0
+oslotest>=1.2.0  # Apache-2.0
 oslosphinx>=2.2.0  # Apache-2.0
 psycopg2
 python-subunit>=0.0.18
