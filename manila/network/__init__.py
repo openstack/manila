@@ -15,8 +15,7 @@
 import abc
 
 from oslo.config import cfg
-
-import manila.openstack.common.importutils
+import oslo.utils.importutils
 
 network_opts = [
     cfg.StrOpt('network_api_class',
@@ -29,7 +28,7 @@ cfg.CONF.register_opts(network_opts)
 
 
 def API():
-    importutils = manila.openstack.common.importutils
+    importutils = oslo.utils.importutils
     network_api_class = cfg.CONF.network_api_class
     cls = importutils.import_class(network_api_class)
     return cls()
