@@ -15,7 +15,7 @@
 #    under the License.
 
 from manila.api.middleware import sizelimit
-from manila.i18n import _
+from manila.i18n import _LW
 from manila.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ LOG = logging.getLogger(__name__)
 
 class RequestBodySizeLimiter(sizelimit.RequestBodySizeLimiter):
     def __init__(self, *args, **kwargs):
-        LOG.warn(_('manila.api.sizelimit:RequestBodySizeLimiter is '
-                   'deprecated. Please use manila.api.middleware.sizelimit:'
-                   'RequestBodySizeLimiter instead'))
+        LOG.warn(_LW('manila.api.sizelimit:RequestBodySizeLimiter is '
+                     'deprecated. Please use manila.api.middleware.sizelimit: '
+                     'RequestBodySizeLimiter instead'))
         super(RequestBodySizeLimiter, self).__init__(*args, **kwargs)

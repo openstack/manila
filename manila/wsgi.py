@@ -38,6 +38,7 @@ import webob.exc
 
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LI
 from manila.openstack.common import log as logging
 
 socket_opts = [
@@ -216,7 +217,7 @@ class Server(object):
                                         backlog=backlog)
         self._server = eventlet.spawn(self._start)
         (self._host, self._port) = self._socket.getsockname()[0:2]
-        LOG.info(_("Started %(name)s on %(_host)s:%(_port)s"), self.__dict__)
+        LOG.info(_LI("Started %(name)s on %(_host)s:%(_port)s"), self.__dict__)
 
     @property
     def host(self):
@@ -235,7 +236,7 @@ class Server(object):
         :returns: None
 
         """
-        LOG.info(_("Stopping WSGI server."))
+        LOG.info(_LI("Stopping WSGI server."))
         self._server.kill()
 
     def wait(self):
@@ -249,7 +250,7 @@ class Server(object):
         try:
             self._server.wait()
         except greenlet.GreenletExit:
-            LOG.info(_("WSGI server has stopped."))
+            LOG.info(_LI("WSGI server has stopped."))
 
 
 class Request(webob.Request):

@@ -20,7 +20,7 @@ Drivers for shares.
 import time
 
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _LE
 from manila.openstack.common import log as logging
 from manila import utils
 
@@ -73,8 +73,8 @@ class ExecuteMixin(object):
                 tries += 1
                 if tries >= self.configuration.num_shell_tries:
                     raise
-                LOG.exception(_("Recovering from a failed execute. "
-                                "Try number %s"), tries)
+                LOG.exception(_LE("Recovering from a failed execute. "
+                                  "Try number %s"), tries)
                 time.sleep(tries ** 2)
 
 

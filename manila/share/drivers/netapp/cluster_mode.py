@@ -31,6 +31,8 @@ import six
 from manila import context
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LI
 from manila.openstack.common import log
 from manila.share import driver
 from manila.share.drivers.netapp import api as naapi
@@ -163,7 +165,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         try:
             licenses = self._client.send_request('license-v2-list-info')
         except naapi.NaApiError as e:
-            LOG.error(_("Could not get licenses list. %s."), e)
+            LOG.error(_LE("Could not get licenses list. %s."), e)
         else:
             self._licenses = sorted([
                 l.get_child_content('package').lower()
@@ -173,8 +175,8 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                 'backend': self.backend_name,
                 'licenses': ', '.join(self._licenses),
             }
-            LOG.info(_("Available licenses on '%(backend)s' "
-                       "are %(licenses)s."), log_data)
+            LOG.info(_LI("Available licenses on '%(backend)s' "
+                         "are %(licenses)s."), log_data)
         return self._licenses
 
     def _get_valid_share_name(self, share_id):
@@ -407,7 +409,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                     ip, netmask, vserver_client)
         except naapi.NaApiError:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Failed to create network interface"))
+                LOG.error(_LE("Failed to create network interface"))
                 self._delete_vserver(vserver_name, vserver_client)
 
         self._enable_nfs(vserver_client)
@@ -488,7 +490,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             vserver_client.send_request('net-dns-create', args)
         except naapi.NaApiError as e:
             if e.code == '13130':
-                LOG.error(_("DNS exists for vserver."))
+                LOG.error(_LE("DNS exists for vserver."))
             else:
                 raise exception.NetAppException(
                     _("Failed to configure DNS. %s") % e.message)
@@ -709,7 +711,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             self._remove_export(share, vserver_client)
             self._deallocate_container(share, vserver_client)
         else:
-            LOG.info(_("Share %s does not exist."), share['id'])
+            LOG.info(_LI("Share %s does not exist."), share['id'])
 
     def _create_export(self, share, vserver, vserver_client):
         """Creates NAS storage."""
@@ -819,7 +821,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         Deletes vserver.
         """
         if not self._vserver_exists(vserver_name):
-            LOG.error(_("Vserver %s does not exist."), vserver_name)
+            LOG.error(_LE("Vserver %s does not exist."), vserver_name)
             return
         volumes_data = vserver_client.send_request('volume-get-iter')
         volumes_count = int(volumes_data.get_child_content('num-records'))
@@ -830,7 +832,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                     {'name': self.configuration.netapp_root_volume_name})
             except naapi.NaApiError as e:
                 if e.code == '13042':
-                    LOG.error(_("Volume %s is already offline."),
+                    LOG.error(_LE("Volume %s is already offline."),
                               self.configuration.netapp_root_volume_name)
                 else:
                     raise e
@@ -854,8 +856,8 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                                                     args)
                     except naapi.NaApiError as e:
                         if e.code == "15661":
-                            LOG.error(_("CIFS server does not exist for"
-                                        " vserver %s"), vserver_name)
+                            LOG.error(_LE("CIFS server does not exist for"
+                                          " vserver %s"), vserver_name)
                         else:
                             vserver_client.send_request('cifs-server-delete')
         self._client.send_request('vserver-destroy',
@@ -1182,9 +1184,9 @@ class NetAppClusteredCIFSHelper(NetAppNASHelperBase):
             self._restrict_access(user, share_name)
         except naapi.NaApiError as e:
             if e.code == "22":
-                LOG.error(_("User %s does not exist."), user)
+                LOG.error(_LE("User %s does not exist."), user)
             elif e.code == "15661":
-                LOG.error(_("Rule %s does not exist."), user)
+                LOG.error(_LE("Rule %s does not exist."), user)
             else:
                 raise e
 

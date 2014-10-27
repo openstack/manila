@@ -16,13 +16,13 @@
 
 from manila.api import urlmap
 from manila.openstack.common import log as logging
-from manila.i18n import _
+from manila.i18n import _LW
 
 
 LOG = logging.getLogger(__name__)
 
 
 def urlmap_factory(loader, global_conf, **local_conf):
-    LOG.warn(_('manila.api.openstack.urlmap:urlmap_factory is deprecated. '
-             'Please use manila.api.urlmap:urlmap_factory instead.'))
+    LOG.warn(_LW('manila.api.openstack.urlmap:urlmap_factory is deprecated. '
+                 'Please use manila.api.urlmap:urlmap_factory instead.'))
     urlmap.urlmap_factory(loader, global_conf, **local_conf)

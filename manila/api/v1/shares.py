@@ -27,6 +27,7 @@ from manila.api.views import shares as share_views
 from manila.api import xmlutil
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LI
 from manila.openstack.common import log as logging
 from manila.openstack.common import uuidutils
 from manila import share
@@ -84,7 +85,7 @@ class ShareController(wsgi.Controller):
         """Delete a share."""
         context = req.environ['manila.context']
 
-        LOG.info(_("Delete share with id: %s"), id, context=context)
+        LOG.info(_LI("Delete share with id: %s"), id, context=context)
 
         try:
             share = self.share_api.get(context, id)
@@ -212,7 +213,7 @@ class ShareController(wsgi.Controller):
         size = share['size']
         share_proto = share['share_proto'].upper()
 
-        msg = (_("Create %(share_proto)s share of %(size)s GB") %
+        msg = (_LI("Create %(share_proto)s share of %(size)s GB") %
                {'share_proto': share_proto, 'size': size})
         LOG.info(msg, context=context)
 

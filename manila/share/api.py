@@ -27,6 +27,8 @@ from manila.api import extensions
 from manila.db import base
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LW
 from manila.openstack.common import log as logging
 from manila import policy
 from manila import quota
@@ -120,20 +122,20 @@ class API(base.Base):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
             if 'gigabytes' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG share (%(d_consumed)dG of %(d_quota)dG "
-                        "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                's_size': size,
-                                'd_consumed': _consumed('gigabytes'),
-                                'd_quota': quotas['gigabytes']})
+                LOG.warn(_LW("Quota exceeded for %(s_pid)s, tried to create "
+                             "%(s_size)sG share (%(d_consumed)dG of "
+                             "%(d_quota)dG already consumed)"), {
+                                 's_pid': context.project_id,
+                                 's_size': size,
+                                 'd_consumed': _consumed('gigabytes'),
+                                 'd_quota': quotas['gigabytes']})
                 raise exception.ShareSizeExceedsAvailableQuota()
             elif 'shares' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "share (%(d_consumed)d shares "
-                        "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                'd_consumed': _consumed('shares')})
+                LOG.warn(_LW("Quota exceeded for %(s_pid)s, tried to create "
+                             "share (%(d_consumed)d shares "
+                             "already consumed)"), {
+                                 's_pid': context.project_id,
+                                 'd_consumed': _consumed('shares')})
                 raise exception.ShareLimitExceeded(allowed=quotas['shares'])
 
         if availability_zone is None:
@@ -218,7 +220,7 @@ class API(base.Base):
                                               gigabytes=-share['size'])
             except Exception:
                 reservations = None
-                LOG.exception(_("Failed to update quota for deleting share"))
+                LOG.exception(_LE("Failed to update quota for deleting share"))
             self.db.share_delete(context.elevated(), share_id)
 
             if reservations:
@@ -274,20 +276,20 @@ class API(base.Base):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
             if 'gigabytes' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG snapshot (%(d_consumed)dG of "
-                        "%(d_quota)dG already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                's_size': size,
-                                'd_consumed': _consumed('gigabytes'),
-                                'd_quota': quotas['gigabytes']})
+                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                          "%(s_size)sG snapshot (%(d_consumed)dG of "
+                          "%(d_quota)dG already consumed)")
+                LOG.warn(msg, {'s_pid': context.project_id,
+                               's_size': size,
+                               'd_consumed': _consumed('gigabytes'),
+                               'd_quota': quotas['gigabytes']})
                 raise exception.ShareSizeExceedsAvailableQuota()
             elif 'snapshots' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "snapshot (%(d_consumed)d snapshots "
-                        "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                'd_consumed': _consumed('snapshots')})
+                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                          "snapshot (%(d_consumed)d snapshots "
+                          "already consumed)")
+                LOG.warn(msg, {'s_pid': context.project_id,
+                               'd_consumed': _consumed('snapshots')})
                 raise exception.SnapshotLimitExceeded(
                     allowed=quotas['snapshots'])
         options = {'share_id': share['id'],

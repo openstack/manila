@@ -24,6 +24,7 @@ from oslo.config import cfg
 
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
 from manila.openstack.common import log as logging
 from manila.scheduler import driver
 from manila.scheduler import scheduler_options
@@ -208,13 +209,12 @@ class FilterScheduler(driver.Scheduler):
             return  # no previously attempted hosts, skip
 
         last_host = hosts[-1]
-        msg = _("Error scheduling %(share_id)s from last share-service: "
-                "%(last_host)s : %(exc)s") % {
-                    "share_id": share_id,
-                    "last_host": last_host,
-                    "exc": "exc"
-        }
-        LOG.error(msg)
+        LOG.error(_LE("Error scheduling %(share_id)s from last share-service: "
+                      "%(last_host)s : %(exc)s"), {
+                          "share_id": share_id,
+                          "last_host": last_host,
+                          "exc": "exc"
+        })
 
     def populate_filter_properties_share(self, request_spec,
                                          filter_properties):

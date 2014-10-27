@@ -27,6 +27,7 @@ import six
 import webob.exc
 
 from manila.i18n import _
+from manila.i18n import _LE
 from manila.openstack.common import log as logging
 from manila.openstack.common import processutils
 
@@ -89,9 +90,10 @@ class ManilaException(Exception):
             except Exception as e:
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception(_('Exception in string format operation.'))
+                LOG.exception(_LE('Exception in string format operation.'))
                 for name, value in six.iteritems(kwargs):
-                    LOG.error("%s: %s" % (name, value))
+                    LOG.error(_LE("%(name)s: %(value)s"), {
+                        'name': name, 'value': value})
                 if CONF.fatal_exception_format_errors:
                     raise e
                 else:

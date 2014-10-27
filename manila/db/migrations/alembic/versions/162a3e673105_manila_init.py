@@ -28,7 +28,7 @@ from alembic import op
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy import Integer, MetaData, String, Table, UniqueConstraint
 
-from manila.i18n import _
+from manila.i18n import _LE
 from manila.openstack.common import log as logging
 
 
@@ -400,7 +400,7 @@ def upgrade():
                 table.create()
             except Exception:
                 LOG.info(repr(table))
-                LOG.exception(_('Exception while creating table.'))
+                LOG.exception(_LE('Exception while creating table.'))
                 raise
 
     if migrate_engine.name == "mysql":

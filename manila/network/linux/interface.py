@@ -21,6 +21,8 @@ import six
 
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LW
 from manila.network.linux import ip_lib
 from manila.network.linux import ovs_lib
 from manila.openstack.common import log as logging
@@ -154,7 +156,7 @@ class OVSInterfaceDriver(LinuxInterfaceDriver):
                 namespace_obj.add_device_to_namespace(ns_dev)
 
         else:
-            LOG.warn(_("Device %s already exists"), device_name)
+            LOG.warn(_LW("Device %s already exists"), device_name)
         ns_dev.link.set_up()
 
     @device_name_synchronized
@@ -170,7 +172,7 @@ class OVSInterfaceDriver(LinuxInterfaceDriver):
         try:
             ovs.delete_port(tap_name)
         except RuntimeError:
-            LOG.error(_("Failed unplugging interface '%s'"),
+            LOG.error(_LE("Failed unplugging interface '%s'"),
                       device_name)
 
 
@@ -199,7 +201,7 @@ class BridgeInterfaceDriver(LinuxInterfaceDriver):
         else:
             ns_veth = ip.device(device_name)
             root_veth = ip.device(tap_name)
-            LOG.warn(_("Device %s already exists"), device_name)
+            LOG.warn(_LW("Device %s already exists"), device_name)
 
         root_veth.link.set_up()
         ns_veth.link.set_up()
@@ -212,5 +214,5 @@ class BridgeInterfaceDriver(LinuxInterfaceDriver):
             device.link.delete()
             LOG.debug("Unplugged interface '%s'", device_name)
         except RuntimeError:
-            LOG.error(_("Failed unplugging interface '%s'"),
+            LOG.error(_LE("Failed unplugging interface '%s'"),
                       device_name)

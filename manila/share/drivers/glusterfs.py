@@ -31,6 +31,8 @@ import xml.etree.cElementTree as etree
 
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LW
 from manila.openstack.common import log as logging
 from manila.share import driver
 
@@ -127,7 +129,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_("Error in gluster volume set: %s"), exc.stderr)
+            LOG.error(_LE("Error in gluster volume set: %s"), exc.stderr)
             raise
 
     def check_for_setup_error(self):
@@ -148,7 +150,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError as exc:
             if ensure and 'already mounted' in exc.stderr:
-                LOG.warn(_("%s is already mounted"),
+                LOG.warn(_LW("%s is already mounted"),
                          self.gluster_address.export)
             else:
                 raise exception.GlusterfsException(
@@ -173,7 +175,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             )
             out, err = self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_("Error retrieving volume info: %s"), exc.stderr)
+            LOG.error(_LE("Error retrieving volume info: %s"), exc.stderr)
             raise
 
         if not out:
@@ -212,7 +214,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             self._mount_gluster_vol(mount_path, ensure=True)
         except exception.GlusterfsException:
-            LOG.error('Could not mount the Gluster volume %s',
+            LOG.error(_LE('Could not mount the Gluster volume %s'),
                       self.gluster_address.volume)
             raise
 
@@ -270,7 +272,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             self._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError:
-            LOG.error('Unable to create share %s', share['name'])
+            LOG.error(_LE('Unable to create share %s'), share['name'])
             raise
 
         export_location = os.path.join(self.gluster_address.qualified,
@@ -284,7 +286,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             self._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError:
-            LOG.error('Unable to delete share %s', share['name'])
+            LOG.error(_LE('Unable to delete share %s'), share['name'])
             raise
 
     def create_snapshot(self, context, snapshot, share_server=None):
@@ -343,7 +345,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             self._execute(*args, **kw)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_("Error in gluster volume set: %s"), exc.stderr)
+            LOG.error(_LE("Error in gluster volume set: %s"), exc.stderr)
             raise
 
     def allow_access(self, context, share, access, share_server=None):

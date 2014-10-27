@@ -23,6 +23,9 @@ from six.moves.urllib import request as url_request  # pylint: disable=E0611
 
 import manila.exception
 from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LI
+from manila.i18n import _LW
 from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila.share.drivers.emc.plugins.vnx import constants
@@ -84,10 +87,10 @@ class XMLAPIConnector(object):
         headers = six.text_type(resp.headers).replace('\n', '\\n')
         if failed_req:
             LOG.error(
-                _('REQ: [%(method)s] %(url)s %(req_hdrs)s\n'
-                  'REQ BODY: %(req_b)s\n'
-                  'RESP: [%(code)s] %(resp_hdrs)s\n'
-                  'RESP BODY: %(resp_b)s\n'),
+                _LE('REQ: [%(method)s] %(url)s %(req_hdrs)s\n'
+                    'REQ BODY: %(req_b)s\n'
+                    'RESP: [%(code)s] %(resp_hdrs)s\n'
+                    'RESP BODY: %(resp_b)s\n'),
                 {
                     'method': failed_req.get_method(),
                     'url': failed_req.get_full_url(),
@@ -171,8 +174,8 @@ class XMLAPIHelper(object):
         else:
             status = constants.STATUS_ERROR
 
-        LOG.warn(_("Translated status from %(old)s to %(new)s. "
-                   "Message: %(info)s."),
+        LOG.warn(_LW("Translated status from %(old)s to %(new)s. "
+                     "Message: %(info)s."),
                  {'old': status_before,
                   'new': status,
                   'info': info})
@@ -1154,7 +1157,7 @@ class SSHConnector(object):
                         greenthread.sleep(random.randint(20, 500) / 100.0)
 
         except Exception:
-            LOG.error(_("Error running SSH command: %s"), command)
+            LOG.error(_LE("Error running SSH command: %s"), command)
 
         return stdout, stderr
 
@@ -1187,8 +1190,8 @@ class NASCommandHelper(object):
         lines = out.strip().split('\n')
         for line in lines:
             if line.strip().split() == header:
-                LOG.info(_('Found the header of the command '
-                           '/nas/bin/nas_cel -interconnect -l'))
+                LOG.info(_LI('Found the header of the command '
+                             '/nas/bin/nas_cel -interconnect -l'))
             else:
                 interconn = line.strip().split()
                 if interconn[2] == src and interconn[4] == dest:

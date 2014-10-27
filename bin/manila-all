@@ -43,7 +43,7 @@ from manila import i18n
 i18n.enable_lazy()
 
 from manila.common import config  # Need to register global_opts  # noqa
-from manila.i18n import _
+from manila.i18n import _LE
 from manila.openstack.common import log as logging
 from manila import service
 from manila import utils
@@ -63,12 +63,12 @@ if __name__ == '__main__':
     try:
         servers.append(service.WSGIService('osapi_share'))
     except (Exception, SystemExit):
-        LOG.exception(_('Failed to load osapi_share'))
+        LOG.exception(_LE('Failed to load osapi_share'))
 
     for binary in ['manila-share', 'manila-scheduler', 'manila-api']:
         try:
             servers.append(service.Service.create(binary=binary))
         except (Exception, SystemExit):
-            LOG.exception(_('Failed to load %s'), binary)
+            LOG.exception(_LE('Failed to load %s'), binary)
     service.serve(*servers)
     service.wait()

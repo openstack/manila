@@ -24,7 +24,7 @@ from manila.api.openstack import wsgi
 from manila.api.views import share_snapshots as snapshot_views
 from manila.api import xmlutil
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _LI
 from manila.openstack.common import log as logging
 from manila import share
 
@@ -82,7 +82,7 @@ class ShareSnapshotsController(wsgi.Controller):
         """Delete a snapshot."""
         context = req.environ['manila.context']
 
-        LOG.info(_("Delete snapshot with id: %s"), id, context=context)
+        LOG.info(_LI("Delete snapshot with id: %s"), id, context=context)
 
         try:
             snapshot = self.share_api.get_snapshot(context, id)
@@ -181,8 +181,8 @@ class ShareSnapshotsController(wsgi.Controller):
 
         share_id = snapshot['share_id']
         share = self.share_api.get(context, share_id)
-        msg = _("Create snapshot from share %s")
-        LOG.info(msg, share_id, context=context)
+        LOG.info(_LI("Create snapshot from share %s"),
+                 share_id, context=context)
 
         # NOTE(rushiagr): v2 API allows name instead of display_name
         if 'name' in snapshot:

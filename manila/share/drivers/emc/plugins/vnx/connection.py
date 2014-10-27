@@ -20,6 +20,8 @@ import six
 from manila import db as manila_db
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LW
 from manila.openstack.common import log
 from manila.share.drivers.emc.plugins import base as driver
 import manila.share.drivers.emc.plugins.registry
@@ -190,9 +192,9 @@ class VNXStorageConnection(driver.StorageConnection):
                      share_server=None):
         """Is called to remove share."""
         if share_server is None:
-            LOG.warn(_("Driver does not support share deletion without share "
-                       "network specified. "
-                       "Return directly because there is nothing to clean"))
+            LOG.warn(_LW("Driver does not support share deletion without "
+                         "share network specified. "
+                         "Return directly because there is nothing to clean"))
             return
 
         if share['share_proto'].startswith('NFS'):
@@ -212,7 +214,7 @@ class VNXStorageConnection(driver.StorageConnection):
         mover_id = self._get_vdm_id(share_server)
         status, share_obj = self._XMLAPI_helper.get_cifs_share_by_name(name)
         if constants.STATUS_NOT_FOUND == status:
-            LOG.warn(_("CIFS share %s not found. Skip the deletion"), name)
+            LOG.warn(_LW("CIFS share %s not found. Skip the deletion"), name)
         else:
             mover_id = share_obj['mover']
             # Delete CIFS export
@@ -245,7 +247,7 @@ class VNXStorageConnection(driver.StorageConnection):
             path,
             mover_name)
         if constants.STATUS_NOT_FOUND == status:
-            LOG.warn(_("NFS share %s not found. Skip the deletion"), name)
+            LOG.warn(_LW("NFS share %s not found. Skip the deletion"), name)
         else:
             # Delete NFS export if it is present
             status, out = self._NASCmd_helper.delete_nfs_share(
@@ -278,18 +280,17 @@ class VNXStorageConnection(driver.StorageConnection):
                 'true')
             if constants.STATUS_OK != status:
                 if self._XMLAPI_helper._is_mount_point_unexist_error(out):
-                    LOG.warn(_("Mount point %(path)s on %(vdm)s not found."),
+                    LOG.warn(_LW("Mount point %(path)s on %(vdm)s not found."),
                              {'path': path, 'vdm': vdm_name})
                 else:
-                    msg = (_("Deleting mount point %(path)s on "
-                             "%(mover_name)s failed. Reason: %(err)s")
-                           % {'path': path,
+                    LOG.warn(_LW("Deleting mount point %(path)s on "
+                                 "%(mover_name)s failed. Reason: %(err)s"),
+                             {'path': path,
                               'mover_name': vdm_name,
                               'err': out})
-                    LOG.warn(msg)
         else:
-            LOG.warn(_("Failed to find the VDM. Try to "
-                       "delete the file system"))
+            LOG.warn(_LW("Failed to find the VDM. Try to "
+                         "delete the file system"))
 
         self._delete_filesystem(name)
 
@@ -299,7 +300,7 @@ class VNXStorageConnection(driver.StorageConnection):
                                                    allow_absence=True)
 
         if not filesystem:
-            LOG.warn(_("File system %s not found. Skip the deletion"), name)
+            LOG.warn(_LW("File system %s not found. Skip the deletion"), name)
             return
 
         # Delete file system
@@ -320,14 +321,12 @@ class VNXStorageConnection(driver.StorageConnection):
 
         status, ckpt = self._XMLAPI_helper.get_check_point_by_name(ckpt_name)
         if constants.STATUS_OK != status:
-            message = _("Check point not found. Reason: %s.") % status
-            LOG.warn(message)
+            LOG.warn(_LW("Check point not found. Reason: %s."), status)
             return
 
         if ckpt['id'] == '':
-            message = _("Snapshot: %(name)s not found. "
-                        "Skip the deletion.") % {'name': snapshot['name']}
-            LOG.warn(message)
+            LOG.warn(_LW("Snapshot: %(name)s not found. "
+                         "Skip the deletion.") % {'name': snapshot['name']})
             return
 
         status, out = self._XMLAPI_helper.delete_check_point(ckpt['id'])
@@ -566,8 +565,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         except Exception as ex:
             with excutils.save_and_reraise_exception():
-                message = _('Could not setup server. Reason: %s.') % ex
-                LOG.error(message)
+                LOG.error(_LE('Could not setup server. Reason: %s.'), ex)
                 server_details = self._contruct_backend_details(
                     vdm_name, vdmRef, interface_info)
                 self.teardown_server(None, server_details, sec_services)
@@ -689,9 +687,8 @@ class VNXStorageConnection(driver.StorageConnection):
                 status, cifs_servers = self._XMLAPI_helper.get_cifs_servers(
                     vdm_id)
                 if constants.STATUS_OK != status:
-                    message = (_('Could not find CIFS server by name: %s.')
-                               % vdm_name)
-                    LOG.error(message)
+                    LOG.error(_LE('Could not find CIFS server by name: %s.'),
+                              vdm_name)
 
                 for server in cifs_servers:
                     # Unjoin CIFS Server from domain
@@ -735,8 +732,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         status, out = self._XMLAPI_helper.list_storage_pool()
         if constants.STATUS_OK != status:
-            message = _("Could not get storage pool list.")
-            LOG.error(message)
+            LOG.error(_LE("Could not get storage pool list."))
 
         for pool in out:
             if name == pool['name']:
@@ -863,9 +859,7 @@ class VNXStorageConnection(driver.StorageConnection):
     def _get_mount_point_by_filesystem(self, filesystem, mover):
         status, out = self._XMLAPI_helper.get_mount_point(mover['id'])
         if constants.STATUS_OK != status:
-            message = (_("Could not get mount point. Reason: %s.") % out)
-
-            LOG.error(message)
+            LOG.error(_LE("Could not get mount point. Reason: %s."), out)
 
         for mount in out:
             if mount['fs_id'] == filesystem['id']:

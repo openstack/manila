@@ -15,7 +15,7 @@
 #    under the License.
 
 from manila.api.v1.router import APIRouter as v1_router
-from manila.i18n import _
+from manila.i18n import _LW
 from manila.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -23,6 +23,6 @@ LOG = logging.getLogger(__name__)
 
 class APIRouter(v1_router):
     def __init__(self, ext_mgr=None):
-        LOG.warn(_('manila.api.openstack.volume:APIRouter is deprecated. '
-                 'Please use manila.api.v1.router:APIRouter instead.'))
+        LOG.warn(_LW('manila.api.openstack.volume:APIRouter is deprecated. '
+                     'Please use manila.api.v1.router:APIRouter instead.'))
         super(APIRouter, self).__init__(ext_mgr)

@@ -18,7 +18,8 @@
 
 import math
 
-from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LW
 from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 
@@ -35,8 +36,8 @@ class CapacityFilter(filters.BaseHostFilter):
 
         if host_state.free_capacity_gb is None:
             # Fail Safe
-            LOG.error(_("Free capacity not set: "
-                        "volume node info collection broken."))
+            LOG.error(_LE("Free capacity not set: "
+                          "volume node info collection broken."))
             return False
 
         free_space = host_state.free_capacity_gb
@@ -49,9 +50,9 @@ class CapacityFilter(filters.BaseHostFilter):
         reserved = float(host_state.reserved_percentage) / 100
         free = math.floor(free_space * (1 - reserved))
         if free < volume_size:
-            LOG.warning(_("Insufficient free space for volume creation "
-                          "(requested / avail): "
-                          "%(requested)s/%(available)s"),
+            LOG.warning(_LW("Insufficient free space for volume creation "
+                            "(requested / avail): "
+                            "%(requested)s/%(available)s"),
                         {'requested': volume_size,
                          'available': free})
 

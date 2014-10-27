@@ -34,7 +34,9 @@ from oslo.utils import importutils
 from manila import context
 from manila import db
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LI
+from manila.i18n import _LW
 from manila.openstack.common import log as logging
 from manila.openstack.common import loopingcall
 from manila import rpc
@@ -120,7 +122,7 @@ class Launcher(object):
 
         """
         def sigterm(sig, frame):
-            LOG.info(_("SIGTERM received"))
+            LOG.info(_LI("SIGTERM received"))
             # NOTE(jk0): Raise a ^C which is caught by the caller and cleanly
             # shuts down the service. This does not yet handle eventlet
             # threads.
@@ -170,7 +172,7 @@ class ProcessLauncher(object):
         # dies unexpectedly
         self.readpipe.read()
 
-        LOG.info(_('Parent process has died unexpectedly, exiting'))
+        LOG.info(_LI('Parent process has died unexpectedly, exiting'))
 
         sys.exit(1)
 
@@ -209,7 +211,7 @@ class ProcessLauncher(object):
             # start up quickly but ensure we don't fork off children that
             # die instantly too quickly.
             if time.time() - wrap.forktimes[0] < wrap.workers:
-                LOG.info(_('Forking too fast, sleeping'))
+                LOG.info(_LI('Forking too fast, sleeping'))
                 time.sleep(1)
 
             wrap.forktimes.pop(0)
@@ -227,19 +229,19 @@ class ProcessLauncher(object):
             except SignalExit as exc:
                 signame = {signal.SIGTERM: 'SIGTERM',
                            signal.SIGINT: 'SIGINT'}[exc.signo]
-                LOG.info(_('Caught %s, exiting'), signame)
+                LOG.info(_LI('Caught %s, exiting'), signame)
                 status = exc.code
             except SystemExit as exc:
                 status = exc.code
             except BaseException:
-                LOG.exception(_('Unhandled exception'))
+                LOG.exception(_LE('Unhandled exception'))
                 status = 2
             finally:
                 wrap.server.stop()
 
             os._exit(status)
 
-        LOG.info(_('Started child %d'), pid)
+        LOG.info(_LI('Started child %d'), pid)
 
         wrap.children.add(pid)
         self.children[pid] = wrap
@@ -249,7 +251,7 @@ class ProcessLauncher(object):
     def launch_server(self, server, workers=1):
         wrap = ServerWrapper(server, workers)
         self.totalwrap = self.totalwrap + 1
-        LOG.info(_('Starting %d workers'), wrap.workers)
+        LOG.info(_LI('Starting %d workers'), wrap.workers)
         while (self.running and len(wrap.children) < wrap.workers
                and not wrap.failed):
             self._start_child(wrap)
@@ -268,13 +270,15 @@ class ProcessLauncher(object):
         code = 0
         if os.WIFSIGNALED(status):
             sig = os.WTERMSIG(status)
-            LOG.info(_('Child %(pid)d killed by signal %(sig)d'), locals())
+            LOG.info(_LI('Child %(pid)d killed by signal %(sig)d'),
+                     {'pid': pid, 'sig': sig})
         else:
             code = os.WEXITSTATUS(status)
-            LOG.info(_('Child %(pid)d exited with status %(code)d'), locals())
+            LOG.info(_LI('Child %(pid)d exited with status %(code)d'),
+                     {'pid': pid, 'code': code})
 
         if pid not in self.children:
-            LOG.warning(_('pid %d not in child list'), pid)
+            LOG.warning(_LW('pid %d not in child list'), pid)
             return None
 
         wrap = self.children.pop(pid)
@@ -282,7 +286,7 @@ class ProcessLauncher(object):
         if 2 == code:
             wrap.failed = True
             self.failedwrap = self.failedwrap + 1
-            LOG.info(_('_wait_child %d'), self.failedwrap)
+            LOG.info(_LI('_wait_child %d'), self.failedwrap)
             if self.failedwrap == self.totalwrap:
                 self.running = False
         return wrap
@@ -298,7 +302,7 @@ class ProcessLauncher(object):
                 eventlet.greenthread.sleep(.01)
                 continue
 
-            LOG.info(_('wait wrap.failed %s'), wrap.failed)
+            LOG.info(_LI('wait wrap.failed %s'), wrap.failed)
             while (self.running and len(wrap.children) < wrap.workers
                    and not wrap.failed):
                 self._start_child(wrap)
@@ -306,7 +310,7 @@ class ProcessLauncher(object):
         if self.sigcaught:
             signame = {signal.SIGTERM: 'SIGTERM',
                        signal.SIGINT: 'SIGINT'}[self.sigcaught]
-            LOG.info(_('Caught %s, stopping children'), signame)
+            LOG.info(_LI('Caught %s, stopping children'), signame)
 
         for pid in self.children:
             try:
@@ -317,7 +321,7 @@ class ProcessLauncher(object):
 
         # Wait for children to die
         if self.children:
-            LOG.info(_('Waiting on %d children to exit'), len(self.children))
+            LOG.info(_LI('Waiting on %d children to exit'), len(self.children))
             while self.children:
                 self._wait_child()
 
@@ -352,7 +356,7 @@ class Service(object):
 
     def start(self):
         version_string = version.version_string()
-        LOG.info(_('Starting %(topic)s node (version %(version_string)s)'),
+        LOG.info(_LI('Starting %(topic)s node (version %(version_string)s)'),
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
         ctxt = context.get_admin_context()
@@ -449,7 +453,7 @@ class Service(object):
         try:
             db.service_destroy(context.get_admin_context(), self.service_id)
         except exception.NotFound:
-            LOG.warn(_('Service killed that has no database entry'))
+            LOG.warn(_LW('Service killed that has no database entry'))
 
     def stop(self):
         # Try to shut the connection down, but if we get any sort of
@@ -501,13 +505,13 @@ class Service(object):
             # TODO(termie): make this pattern be more elegant.
             if getattr(self, 'model_disconnected', False):
                 self.model_disconnected = False
-                LOG.error(_('Recovered model server connection!'))
+                LOG.error(_LE('Recovered model server connection!'))
 
         # TODO(vish): this should probably only catch connection errors
         except Exception:  # pylint: disable=W0702
             if not getattr(self, 'model_disconnected', False):
                 self.model_disconnected = True
-                LOG.exception(_('model server went away'))
+                LOG.exception(_LE('model server went away'))
 
 
 class WSGIService(object):

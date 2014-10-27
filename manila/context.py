@@ -23,6 +23,7 @@ from oslo.utils import timeutils
 import six
 
 from manila.i18n import _
+from manila.i18n import _LW
 from manila.openstack.common import context as common_context
 from manila.openstack.common import local
 from manila.openstack.common import log as logging
@@ -56,7 +57,7 @@ class RequestContext(object):
             because they possibly came in from older rpc messages.
         """
         if kwargs:
-            LOG.warn(_('Arguments dropped when creating context: %s'),
+            LOG.warn(_LW('Arguments dropped when creating context: %s'),
                      str(kwargs))
 
         self.user_id = user_id

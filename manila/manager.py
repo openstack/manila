@@ -55,7 +55,7 @@ from oslo.config import cfg
 import six
 
 from manila.db import base
-from manila.i18n import _
+from manila.i18n import _LE
 from manila.openstack.common import log as logging
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import version
@@ -160,8 +160,8 @@ class Manager(base.Base):
             except Exception as e:
                 if raise_on_error:
                     raise
-                LOG.exception(_("Error during %(full_task_name)s: %(e)s"),
-                              locals())
+                LOG.exception(_LE("Error during %(full_task_name)s: %(e)s"),
+                              {'full_task_name': full_task_name, 'e': e})
 
     def init_host(self):
         """Handle initialization if this is a standalone service.

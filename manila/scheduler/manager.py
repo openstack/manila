@@ -26,7 +26,7 @@ from oslo.utils import importutils
 from manila import context
 from manila import db
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _LW
 from manila import manager
 from manila.openstack.common import log as logging
 from manila import rpc
@@ -90,7 +90,7 @@ class SchedulerManager(manager.Manager):
 
     def _set_share_error_state_and_notify(self, method, context, ex,
                                           request_spec):
-        LOG.warning(_("Failed to schedule_%(method)s: %(ex)s"),
+        LOG.warning(_LW("Failed to schedule_%(method)s: %(ex)s"),
                     {"method": method, "ex": ex})
 
         share_state = {'status': 'error'}

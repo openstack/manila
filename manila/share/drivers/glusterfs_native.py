@@ -35,6 +35,7 @@ import six
 
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LI
 from manila.openstack.common import log as logging
 from manila.share import driver
 from manila.share.drivers import glusterfs
@@ -99,8 +100,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        LOG.info(_("Number of gluster volumes read from config: "
-                   "%(numvols)s"),
+        LOG.info(_LI("Number of gluster volumes read from config: "
+                     "%(numvols)s"),
                  {'numvols': len(self.configuration.glusterfs_targets)})
 
         try:
@@ -126,9 +127,9 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                      "with in the glusterfs_targets configuration parameter."))
             LOG.warn(msg)
         else:
-            LOG.info(_("Number of gluster volumes in use: %(inuse-numvols)s. "
-                       "Number of gluster volumes available for use as share: "
-                       "%(unused-numvols)s"),
+            LOG.info(_LI("Number of gluster volumes in use:  "
+                         "%(inuse-numvols)s. Number of gluster volumes "
+                         "available for use as share: %(unused-numvols)s"),
                      {'inuse-numvols': len(self.gluster_used_vols_dict),
                      'unused-numvols': len(self.gluster_unused_vols_dict)})
 
@@ -390,8 +391,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # For native protocol, the export_location should be of the form:
         # server:/volname
-        LOG.info(_("export_location sent back from create_share: %s"),
-                  (export_location,))
+        LOG.info(_LI("export_location sent back from create_share: %s"),
+                 (export_location,))
         return export_location
 
     def delete_share(self, context, share, share_server=None):

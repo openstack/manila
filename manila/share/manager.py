@@ -28,7 +28,8 @@ import six
 from manila.common import constants
 from manila import context
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LI
 from manila import manager
 from manila import network
 from manila.openstack.common import log as logging
@@ -88,8 +89,8 @@ class ShareManager(manager.SchedulerDependentManager):
                         ctxt, share, share_server=share_server)
                 except Exception as e:
                     LOG.error(
-                        _("Caught exception trying ensure share '%(s_id)s'. "
-                          "Exception: \n%(e)s."),
+                        _LE("Caught exception trying ensure share '%(s_id)s'. "
+                            "Exception: \n%(e)s."),
                         {'s_id': share['id'], 'e': six.text_type(e)},
                     )
                     continue
@@ -105,11 +106,11 @@ class ShareManager(manager.SchedulerDependentManager):
                             pass
                         except Exception as e:
                             LOG.error(
-                                _("Unexpected exception during share access"
-                                  " allow operation. Share id is '%(s_id)s'"
-                                  ", access rule type is '%(ar_type)s', "
-                                  "access rule id is '%(ar_id)s', exception"
-                                  " is '%(e)s'."),
+                                _LE("Unexpected exception during share access"
+                                    " allow operation. Share id is '%(s_id)s'"
+                                    ", access rule type is '%(ar_type)s', "
+                                    "access rule id is '%(ar_id)s', exception"
+                                    " is '%(e)s'."),
                                 {'s_id': share['id'],
                                  'ar_type': access_ref['access_type'],
                                  'ar_id': access_ref['id'],
@@ -117,8 +118,8 @@ class ShareManager(manager.SchedulerDependentManager):
                             )
             else:
                 LOG.info(
-                    _("Share %(name)s: skipping export, because it has "
-                      "'%(status)s' status."),
+                    _LI("Share %(name)s: skipping export, because it has "
+                        "'%(status)s' status."),
                     {'name': share['name'], 'status': share['status']},
                 )
 
@@ -171,10 +172,11 @@ class ShareManager(manager.SchedulerDependentManager):
             if not exist:
                 # Create share server on backend with data from db
                 share_server = self._setup_server(context, share_server)
-                LOG.info(_("Share server created successfully."))
+                LOG.info(_LI("Share server created successfully."))
             else:
-                LOG.info(_("Used already existed share server '%(share_server"
-                           "_id)s'"), {'share_server_id': share_server['id']})
+                LOG.info(_LI("Used already existed share server "
+                             "'%(share_server_id)s'"),
+                         {'share_server_id': share_server['id']})
             return share_server, share_ref
 
         return _provide_share_server_for_share()
@@ -213,7 +215,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_id, {'share_server_id': share_server['id']})
             except exception.ShareServerNotFound:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_("Share server %s does not exist."),
+                    LOG.error(_LE("Share server %s does not exist."),
                               parent_share_server_id)
                     self.db.share_update(context, share_id,
                                          {'status': 'error'})
@@ -223,8 +225,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_network_id, share_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_("Failed to get share server"
-                                " for share creation."))
+                    LOG.error(_LE("Failed to get share server"
+                                  " for share creation."))
                     self.db.share_update(context, share_id,
                                          {'status': 'error'})
         else:
@@ -242,10 +244,10 @@ class ShareManager(manager.SchedulerDependentManager):
                                  {'export_location': export_location})
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Share %s failed on creation."), share_id)
+                LOG.error(_LE("Share %s failed on creation."), share_id)
                 self.db.share_update(context, share_id, {'status': 'error'})
         else:
-            LOG.info(_("Share created successfully."))
+            LOG.info(_LI("Share created successfully."))
             self.db.share_update(context, share_id,
                                  {'status': 'available',
                                   'launched_at': timeutils.utcnow()})
@@ -277,10 +279,10 @@ class ShareManager(manager.SchedulerDependentManager):
                                           gigabytes=-share_ref['size'])
         except Exception:
             reservations = None
-            LOG.exception(_("Failed to update usages deleting share"))
+            LOG.exception(_LE("Failed to update usages deleting share"))
 
         self.db.share_delete(context, share_id)
-        LOG.info(_("Share %s: deleted successfully."), share_ref['name'])
+        LOG.info(_LI("Share %s: deleted successfully."), share_ref['name'])
 
         if reservations:
             QUOTAS.commit(context, reservations, project_id=project_id)
@@ -351,7 +353,7 @@ class ShareManager(manager.SchedulerDependentManager):
                                               gigabytes=-snapshot_ref['size'])
             except Exception:
                 reservations = None
-                LOG.exception(_("Failed to update usages deleting snapshot"))
+                LOG.exception(_LE("Failed to update usages deleting snapshot"))
 
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
@@ -394,7 +396,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
     @manager.periodic_task
     def _report_driver_status(self, context):
-        LOG.info(_('Updating share status'))
+        LOG.info(_LI('Updating share status'))
         share_stats = self.driver.get_share_stats(refresh=True)
         if share_stats:
             self.update_service_capabilities(share_stats)
@@ -480,7 +482,7 @@ class ShareManager(manager.SchedulerDependentManager):
                                             security_services=sec_services)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_("Share server %s failed on deletion."),
+                    LOG.error(_LE("Share server %s failed on deletion."),
                               share_server['id'])
                     self.db.share_server_update(
                         context, share_server['id'],
@@ -489,5 +491,5 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_server_delete(context, share_server['id'])
 
         _teardown_server()
-        LOG.info(_("Share server deleted successfully."))
+        LOG.info(_LI("Share server deleted successfully."))
         self.network_api.deallocate_network(context, share_server)

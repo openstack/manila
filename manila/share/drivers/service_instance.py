@@ -30,6 +30,7 @@ from manila import compute
 from manila import context
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LW
 from manila.network.linux import ip_lib
 from manila.network.neutron import api as neutron
 from manila.openstack.common import log as logging
@@ -220,8 +221,8 @@ class ServiceInstanceManager(object):
         name = name or self.get_config_option(
             "service_instance_security_group")
         if not name:
-            LOG.warning(_("Name for service instance security group is not "
-                          "provided. Skipping security group step."))
+            LOG.warning(_LW("Name for service instance security group is not "
+                            "provided. Skipping security group step."))
             return None
         s_groups = [s for s in self.compute_api.security_group_list(context)
                     if s.name == name]
@@ -255,7 +256,7 @@ class ServiceInstanceManager(object):
             inst = self.compute_api.server_get(self.admin_context,
                                                server['instance_id'])
         except exception.InstanceNotFound:
-            LOG.warning(_("Service instance %s does not exist."),
+            LOG.warning(_LW("Service instance %s does not exist."),
                         server['instance_id'])
             return False
         if inst['status'] == 'ACTIVE':
@@ -378,12 +379,13 @@ class ServiceInstanceManager(object):
                     'private_path': self.path_to_private_key,
                     'public_path': self.path_to_public_key,
                 }
-                LOG.warning(_('No key path is available. May be non-existent '
-                              'key path is provided. Check path_to_private_key'
-                              ' (current value %(private_path)s) and '
-                              'path_to_public_key (current value '
-                              '%(public_path)s) in manila '
-                              'configuration file.') % str_params)
+                LOG.warning(_LW('No key path is available. May be '
+                                'non-existent key path is provided. Check '
+                                'path_to_private_key (current value '
+                                '%(private_path)s) and '
+                                'path_to_public_key (current value '
+                                '%(public_path)s) in manila '
+                                'configuration file.'), str_params)
 
             security_group = self._get_or_create_security_group(context)
             network_data = self._setup_network_for_instance(neutron_net_id,

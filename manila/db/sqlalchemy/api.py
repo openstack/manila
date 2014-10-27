@@ -37,6 +37,8 @@ from manila.common import constants
 from manila.db.sqlalchemy import models
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LW
 from manila.openstack.common import log as logging
 
 
@@ -945,8 +947,8 @@ def quota_reserve(context, resources, project_quotas, user_quotas, deltas,
             session.add(usage_ref)
 
     if unders:
-        LOG.warning(_("Change will make usage less than 0 for the following "
-                      "resources: %s"), unders)
+        LOG.warning(_LW("Change will make usage less than 0 for the following "
+                        "resources: %s"), unders)
     if overs:
         if project_quotas == user_quotas:
             usages = project_usages
@@ -2115,8 +2117,8 @@ def volume_type_destroy(context, id):
         results = model_query(context, models.Share, session=session). \
             filter_by(volume_type_id=id).all()
         if results:
-            msg = _('VolumeType %s deletion failed, VolumeType in use.') % id
-            LOG.error(msg)
+            LOG.error(_LE('VolumeType %s deletion failed, VolumeType in use.'),
+                      id)
             raise exception.VolumeTypeInUse(volume_type_id=id)
         model_query(context, models.VolumeTypeExtraSpecs, session=session).\
             filter_by(volume_type_id=id).update(

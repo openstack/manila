@@ -27,6 +27,7 @@ from manila.common import constants
 from manila import db
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LI
 from manila.openstack.common import log as logging
 from manila import policy
 
@@ -81,7 +82,7 @@ class SecurityServiceController(wsgi.Controller):
         """Delete a security service."""
         context = req.environ['manila.context']
 
-        LOG.info(_("Delete security service with id: %s"),
+        LOG.info(_LI("Delete security service with id: %s"),
                  id, context=context)
 
         try:

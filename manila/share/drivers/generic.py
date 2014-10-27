@@ -29,6 +29,8 @@ from manila import compute
 from manila import context
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LW
 from manila.openstack.common import log as logging
 from manila.openstack.common import processutils
 from manila.share import driver
@@ -221,14 +223,14 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 ['sudo', 'cp', const.MOUNT_FILE_TEMP, const.MOUNT_FILE],
             )
         except exception.ProcessExecutionError as e:
-            LOG.error(_("Failed to sync mount files on server '%s'."),
+            LOG.error(_LE("Failed to sync mount files on server '%s'."),
                       server_details['instance_id'])
             raise exception.ShareBackendException(msg=six.text_type(e))
         try:
             # Remount it to avoid postponed point of failure
             self._ssh_exec(server_details, ['sudo', 'mount', '-a'])
         except exception.ProcessExecutionError as e:
-            LOG.error(_("Failed to mount all shares on server '%s'."),
+            LOG.error(_LE("Failed to mount all shares on server '%s'."),
                       server_details['instance_id'])
             raise exception.ShareBackendException(msg=six.text_type(e))
 
@@ -261,8 +263,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     # Add mount permanently
                     self._sync_mount_temp_and_perm_files(server_details)
                 else:
-                    LOG.warning(_("Mount point '%(path)s' already exists on "
-                                  "server '%(server)s'."), log_data)
+                    LOG.warning(_LW("Mount point '%(path)s' already exists on "
+                                    "server '%(server)s'."), log_data)
             except exception.ProcessExecutionError as e:
                 raise exception.ShareBackendException(msg=six.text_type(e))
         return _mount_device_with_lock()
@@ -287,8 +289,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 # Remove mount permanently
                 self._sync_mount_temp_and_perm_files(server_details)
             else:
-                LOG.warning(_("Mount point '%(path)s' does not exist on "
-                              "server '%(server)s'."), log_data)
+                LOG.warning(_LW("Mount point '%(path)s' does not exist on "
+                                "server '%(server)s'."), log_data)
         return _unmount_device_with_lock()
 
     def _get_mount_path(self, share):
@@ -600,8 +602,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def teardown_server(self, server_details, security_services=None):
         instance_id = server_details.get("instance_id")
-        msg = "Removing share infrastructure for service instance '%s'."
-        LOG.debug(msg % instance_id)
+        LOG.debug("Removing share infrastructure for service instance '%s'.",
+                  instance_id)
         try:
             self.service_instance_manager.delete_service_instance(
                 self.admin_context,
@@ -786,8 +788,8 @@ class CIFSHelper(NASHelperBase):
             self._ssh_exec(
                 server, ['sudo', 'net', 'conf', 'delshare', share_name])
         except exception.ProcessExecutionError as e:
-            LOG.warning(_("Caught error trying delete share: %(error)s, try"
-                          "ing delete it forcibly."), {'error': e.stderr})
+            LOG.warning(_LW("Caught error trying delete share: %(error)s, try"
+                            "ing delete it forcibly."), {'error': e.stderr})
             self._ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
                                     share_name])
 

@@ -15,7 +15,7 @@
 import types
 import xml.dom.minidom
 
-from manila.i18n import _
+from manila.i18n import _LW
 from manila.openstack.common import log
 
 
@@ -821,19 +821,18 @@ def one_child(tt, acceptable):
     k = kids(tt)
 
     if len(k) != 1:
-        message = (_('Expected just one %(item)s, got %(more)s.')
-                   % {'item': acceptable,
-                      'more': " ".join([t[0] for t in k])})
-        LOG.warn(message)
+        LOG.warn(_LW('Expected just one %(item)s, got %(more)s.'),
+                 {'item': acceptable,
+                  'more': " ".join([t[0] for t in k])})
 
     child = k[0]
 
     if name(child) not in acceptable:
-        message = (_('Expected one of %(item)s, got %(child)s '
-                     'under %(parent)s.')
-                   % {'item': acceptable,
-                      'child': name(child),
-                      'parent': name(tt)})
+        LOG.warn(_LW('Expected one of %(item)s, got %(child)s '
+                     'under %(parent)s.'),
+                 {'item': acceptable,
+                  'child': name(child),
+                  'parent': name(tt)})
 
     return parse_any(child)
 
@@ -852,8 +851,7 @@ def parse_any(tt):
     fn_name = 'parse_' + node_name.lower()
     fn = globals().get(fn_name)
     if fn is None:
-        message = _('No parser for node type %s.') % name(tt)
-        LOG.warn(message)
+        LOG.warn(_LW('No parser for node type %s.'), name(tt))
     else:
         return fn(tt)
 
@@ -880,9 +878,8 @@ def check_node(tt, nodename, required_attrs=None, optional_attrs=None,
         required_attrs = []
 
     if name(tt) != nodename:
-        message = (_('Expected node type %(expected)s, not %(actual)s.')
-                   % {'expected': nodename, 'actual': name(tt)})
-        LOG.warn(message)
+        LOG.warn(_LW('Expected node type %(expected)s, not %(actual)s.'),
+                 {'expected': nodename, 'actual': name(tt)})
 
     # Check we have all the required attributes, and no unexpected ones
     tt_attrs = {}
@@ -891,12 +888,11 @@ def check_node(tt, nodename, required_attrs=None, optional_attrs=None,
 
     for attr in required_attrs:
         if attr not in tt_attrs:
-            message = (_('Expected %(attr)s attribute on %(node)s node,'
-                         ' but only have %(attrs)s.')
-                       % {'attr': attr,
-                          'node': name(tt),
-                          'attrs': attrs(tt).keys()})
-            LOG.warn(message)
+            LOG.warn(_LW('Expected %(attr)s attribute on %(node)s node,'
+                         ' but only have %(attrs)s.'),
+                     {'attr': attr,
+                      'node': name(tt),
+                      'attrs': attrs(tt).keys()})
         else:
             del tt_attrs[attr]
 
@@ -905,28 +901,25 @@ def check_node(tt, nodename, required_attrs=None, optional_attrs=None,
             del tt_attrs[attr]
 
     if len(tt_attrs.keys()) > 0:
-        message = _('Invalid extra attributes %s.') % tt_attrs.keys()
-        LOG.warn(message)
+        LOG.warn(_LW('Invalid extra attributes %s.'), tt_attrs.keys())
 
     if allowed_children is not None:
         for c in kids(tt):
             if name(c) not in allowed_children:
-                message = (_('Unexpected node %(node)s under %(parent)s;'
-                             ' wanted %(expected)s.')
-                           % {'node': name(c),
-                              'parent': name(tt),
-                              'expected': allowed_children})
-                LOG.warn(message)
+                LOG.warn(_LW('Unexpected node %(node)s under %(parent)s;'
+                             ' wanted %(expected)s.'),
+                         {'node': name(c),
+                          'parent': name(tt),
+                          'expected': allowed_children})
 
     if not allow_pcdata:
         for c in tt[2]:
             if isinstance(c, types.StringTypes):
                 if c.lstrip(' \t\n') != '':
-                    message = (_('Unexpected non-blank pcdata node %(node)s'
-                                 ' under %(parent)s.')
-                               % {'node': repr(c),
-                                  'parent': name(tt)})
-                    LOG.warn(message)
+                    LOG.warn(_LW('Unexpected non-blank pcdata node %(node)s'
+                                 ' under %(parent)s.'),
+                             {'node': repr(c),
+                              'parent': name(tt)})
 
 
 def optional_child(tt, allowed):
@@ -935,10 +928,9 @@ def optional_child(tt, allowed):
     k = kids(tt)
 
     if len(k) > 1:
-        message = (_('Expected either zero or one of %(node)s '
-                     'under %(parent)s.') % {'node': allowed,
-                                             'parent': tt})
-        LOG.warn(message)
+        LOG.warn(_LW('Expected either zero or one of %(node)s '
+                     'under %(parent)s.'), {'node': allowed,
+                                            'parent': tt})
     elif len(k) == 1:
         return one_child(tt, allowed)
     else:
@@ -956,12 +948,11 @@ def list_of_various(tt, acceptable):
 
     for child in kids(tt):
         if name(child) not in acceptable:
-            message = (_('Expected one of %(expected)s under'
-                         ' %(parent)s, got %(actual)s.')
-                       % {'expected': acceptable,
-                          'parent': name(tt),
-                          'actual': repr(name(child))})
-            LOG.warn(message)
+            LOG.warn(_LW('Expected one of %(expected)s under'
+                         ' %(parent)s, got %(actual)s.'),
+                     {'expected': acceptable,
+                      'parent': name(tt),
+                      'actual': repr(name(child))})
         result = parse_any(child)
         if result is not None:
             r.append(result)

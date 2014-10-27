@@ -19,7 +19,7 @@ from oslo.config import cfg
 from manila import context
 from manila.db import base
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _LE
 from manila.network import neutron
 from manila.network.neutron import constants as neutron_constants
 from manila.openstack.common import log as logging
@@ -129,7 +129,7 @@ class API(base.Base):
             port = self.client.create_port(port_req_body).get('port', {})
             return port
         except neutron_client_exc.NeutronClientException as e:
-            LOG.exception(_('Neutron error creating port on network %s') %
+            LOG.exception(_LE('Neutron error creating port on network %s'),
                           network_id)
             if e.status_code == 409:
                 raise exception.PortLimitExceeded()

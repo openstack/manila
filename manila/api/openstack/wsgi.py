@@ -22,6 +22,8 @@ import webob
 
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
+from manila.i18n import _LI
 from manila.openstack.common import log as logging
 from manila import utils
 from manila import wsgi
@@ -578,14 +580,14 @@ class ResourceExceptionHandler(object):
                 code=ex_value.code, explanation=six.text_type(ex_value)))
         elif isinstance(ex_value, TypeError):
             exc_info = (ex_type, ex_value, ex_traceback)
-            LOG.error(_('Exception handling resource: %s'),
+            LOG.error(_LE('Exception handling resource: %s'),
                       ex_value, exc_info=exc_info)
             raise Fault(webob.exc.HTTPBadRequest())
         elif isinstance(ex_value, Fault):
-            LOG.info(_("Fault thrown: %s"), six.text_type(ex_value))
+            LOG.info(_LI("Fault thrown: %s"), six.text_type(ex_value))
             raise ex_value
         elif isinstance(ex_value, webob.exc.HTTPException):
-            LOG.info(_("HTTP exception thrown: %s"), six.text_type(ex_value))
+            LOG.info(_LI("HTTP exception thrown: %s"), six.text_type(ex_value))
             raise Fault(ex_value)
 
         # We didn't handle the exception
