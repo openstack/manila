@@ -54,6 +54,6 @@ class ProjectTestCase(test.TestCase):
                     fname = os.path.basename(path)
                     missing_downgrade.append(fname)
 
-        helpful_msg = (_("The following migrations are missing a downgrade:"
-                         "\n\t%s") % '\n\t'.join(sorted(missing_downgrade)))
+        helpful_msg = ("The following migrations are missing a downgrade:"
+                       "\n\t%s") % '\n\t'.join(sorted(missing_downgrade))
         self.assertTrue(not missing_downgrade, helpful_msg)

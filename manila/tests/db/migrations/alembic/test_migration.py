@@ -24,7 +24,6 @@ from oslo.db.sqlalchemy import test_migrations
 from sqlalchemy.sql import text
 
 from manila.db.migrations.alembic import migration
-from manila.i18n import _
 from manila.openstack.common import log as logging
 
 LOG = logging.getLogger('manila.tests.test_migrations')
@@ -132,11 +131,11 @@ class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin):
                 if check:
                     check(self.engine, data)
         except Exception as e:
-            LOG.error(_("Failed to migrate to version %(version)s on engine "
-                        "%(engine)s. Exception while running the migration: "
-                        "%(exception)s"), {'version': version,
-                                           'engine': self.engine,
-                                           'exception': e})
+            LOG.error("Failed to migrate to version %(version)s on engine "
+                      "%(engine)s. Exception while running the migration: "
+                      "%(exception)s", {'version': version,
+                                        'engine': self.engine,
+                                        'exception': e})
             raise
 
     def test_walk_versions(self):

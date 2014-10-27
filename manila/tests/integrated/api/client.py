@@ -17,7 +17,6 @@ import urlparse
 
 from oslo.serialization import jsonutils
 
-from manila.i18n import _
 from manila.openstack.common import log as logging
 
 
@@ -34,11 +33,11 @@ class OpenStackApiException(Exception):
             _status = response.status
             _body = response.read()
 
-            message = _('%(message)s\nStatus Code: %(_status)s\n'
-                        'Body: %(_body)s') % {
-                            "message": message,
-                            "_status": _status,
-                            "_body": _body
+            message = ('%(message)s\nStatus Code: %(_status)s\n'
+                       'Body: %(_body)s') % {
+                           "message": message,
+                           "_status": _status,
+                           "_body": _body
             }
 
         super(OpenStackApiException, self).__init__(message)
@@ -47,7 +46,7 @@ class OpenStackApiException(Exception):
 class OpenStackApiAuthenticationException(OpenStackApiException):
     def __init__(self, response=None, message=None):
         if not message:
-            message = _("Authentication error")
+            message = "Authentication error"
         super(OpenStackApiAuthenticationException, self).__init__(message,
                                                                   response)
 
@@ -55,7 +54,7 @@ class OpenStackApiAuthenticationException(OpenStackApiException):
 class OpenStackApiAuthorizationException(OpenStackApiException):
     def __init__(self, response=None, message=None):
         if not message:
-            message = _("Authorization error")
+            message = "Authorization error"
         super(OpenStackApiAuthorizationException, self).__init__(message,
                                                                  response)
 
@@ -63,7 +62,7 @@ class OpenStackApiAuthorizationException(OpenStackApiException):
 class OpenStackApiNotFoundException(OpenStackApiException):
     def __init__(self, response=None, message=None):
         if not message:
-            message = _("Item not found")
+            message = "Item not found"
         super(OpenStackApiNotFoundException, self).__init__(message, response)
 
 
@@ -105,10 +104,10 @@ class TestOpenStackClient(object):
         relative_url = parsed_url.path
         if parsed_url.query:
             relative_url = relative_url + "?" + parsed_url.query
-        LOG.info(_("Doing %(method)s on %(relative_url)s"),
+        LOG.info("Doing %(method)s on %(relative_url)s",
                  {"method": method, "relative_url": relative_url})
         if body:
-            LOG.info(_("Body: %s"), body)
+            LOG.info("Body: %s", body)
 
         conn.request(method, relative_url, body, _headers)
         response = conn.getresponse()
@@ -164,7 +163,7 @@ class TestOpenStackClient(object):
                     raise OpenStackApiAuthorizationException(response=response)
                 else:
                     raise OpenStackApiException(
-                        message=_("Unexpected status code"),
+                        message="Unexpected status code",
                         response=response)
 
         return response
