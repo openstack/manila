@@ -1422,29 +1422,84 @@ def share_snapshot_get(context, snapshot_id, session=None):
     return result
 
 
+def _share_snapshot_get_all_with_filters(context, project_id=None,
+                                         share_id=None, filters=None,
+                                         sort_key=None, sort_dir=None):
+    # Init data
+    sort_key = sort_key or 'share_id'
+    sort_dir = sort_dir or 'desc'
+    filters = filters or {}
+    query = model_query(context, models.ShareSnapshot)
+
+    if project_id:
+        query = query.filter_by(project_id=project_id)
+    if share_id:
+        query = query.filter_by(share_id=share_id)
+    query = query.options(joinedload('share'))
+
+    # Apply filters
+    if 'usage' in filters:
+        usage_filter_keys = ['any', 'used', 'unused']
+        if filters['usage'] == 'any':
+            pass
+        elif filters['usage'] == 'used':
+            query = query.filter(or_(models.Share.snapshot_id == (
+                models.ShareSnapshot.id)))
+        elif filters['usage'] == 'unused':
+            query = query.filter(or_(models.Share.snapshot_id != (
+                models.ShareSnapshot.id)))
+        else:
+            msg = _("Wrong 'usage' key provided - '%(key)s'. "
+                    "Expected keys are '%(ek)s'.") % {
+                        'key': filters['usage'],
+                        'ek': six.text_type(usage_filter_keys)}
+            raise exception.InvalidInput(reason=msg)
+
+    # Apply sorting
+    try:
+        attr = getattr(models.ShareSnapshot, sort_key)
+    except AttributeError:
+        msg = _("Wrong sorting key provided - '%s'.") % sort_key
+        raise exception.InvalidInput(reason=msg)
+    if sort_dir.lower() == 'desc':
+        query = query.order_by(attr.desc())
+    elif sort_dir.lower() == 'asc':
+        query = query.order_by(attr.asc())
+    else:
+        msg = _("Wrong sorting data provided: sort key is '%(sort_key)s' "
+                "and sort direction is '%(sort_dir)s'.") % {
+                    "sort_key": sort_key, "sort_dir": sort_dir}
+        raise exception.InvalidInput(reason=msg)
+
+    # Returns list of shares that satisfy filters
+    return query.all()
+
+
 @require_admin_context
-def share_snapshot_get_all(context):
-    return model_query(context, models.ShareSnapshot).\
-        options(joinedload('share')).\
-        all()
+def share_snapshot_get_all(context, filters=None, sort_key=None,
+                           sort_dir=None):
+    return _share_snapshot_get_all_with_filters(
+        context, filters=filters, sort_key=sort_key, sort_dir=sort_dir,
+    )
 
 
 @require_context
-def share_snapshot_get_all_by_project(context, project_id):
+def share_snapshot_get_all_by_project(context, project_id, filters=None,
+                                      sort_key=None, sort_dir=None):
     authorize_project_context(context, project_id)
-    return model_query(context, models.ShareSnapshot).\
-        filter_by(project_id=project_id).\
-        options(joinedload('share')).\
-        all()
+    return _share_snapshot_get_all_with_filters(
+        context, project_id=project_id,
+        filters=filters, sort_key=sort_key, sort_dir=sort_dir,
+    )
 
 
 @require_context
-def share_snapshot_get_all_for_share(context, share_id):
-    return model_query(context, models.ShareSnapshot, read_deleted='no',
-                       project_only=True).\
-        filter_by(share_id=share_id).\
-        options(joinedload('share')).\
-        all()
+def share_snapshot_get_all_for_share(context, share_id, filters=None,
+                                     sort_key=None, sort_dir=None):
+    return _share_snapshot_get_all_with_filters(
+        context, share_id=share_id,
+        filters=filters, sort_key=sort_key, sort_dir=sort_dir,
+    )
 
 
 @require_context

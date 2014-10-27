@@ -118,5 +118,6 @@ def stub_snapshot_delete(self, context, *args, **param):
     pass
 
 
-def stub_snapshot_get_all_by_project(self, context, search_opts=None):
+def stub_snapshot_get_all_by_project(self, context, search_opts=None,
+                                     sort_key=None, sort_dir=None):
     return [stub_snapshot_get(self, context, 2)]

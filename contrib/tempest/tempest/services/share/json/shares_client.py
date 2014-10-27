@@ -143,17 +143,16 @@ class SharesClient(rest_client.RestClient):
         resp, body = self.get("snapshots/%s" % snapshot_id)
         return resp, self._parse_resp(body)
 
-    def list_snapshots(self):
-        resp, body = self.get("snapshots")
+    def list_snapshots(self, detailed=False, params=None):
+        """Get list of share snapshots w/o filters."""
+        uri = 'snapshots/detail' if detailed else 'snapshots'
+        uri += '?%s' % urllib.urlencode(params) if params else ''
+        resp, body = self.get(uri)
         return resp, self._parse_resp(body)
 
     def list_snapshots_with_detail(self, params=None):
-        """List the details of all shares."""
-        uri = 'snapshots/detail'
-        if params:
-            uri += '?%s' % urllib.urlencode(params)
-        resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        """Get detailed list of share snapshots w/o filters."""
+        return self.list_snapshots(detailed=True, params=params)
 
     def delete_snapshot(self, snap_id):
         return self.delete("snapshots/%s" % snap_id)

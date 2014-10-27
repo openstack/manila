@@ -406,22 +406,37 @@ class API(base.Base):
         rv = self.db.share_snapshot_get(context, snapshot_id)
         return dict(six.iteritems(rv))
 
-    def get_all_snapshots(self, context, search_opts=None):
+    def get_all_snapshots(self, context, search_opts=None,
+                          sort_key='share_id', sort_dir='desc'):
         policy.check_policy(context, 'share', 'get_all_snapshots')
 
         search_opts = search_opts or {}
+        LOG.debug("Searching for snapshots by: %s", six.text_type(search_opts))
 
-        if (context.is_admin and 'all_tenants' in search_opts):
-            # Need to remove all_tenants to pass the filtering below.
-            del search_opts['all_tenants']
-            snapshots = self.db.share_snapshot_get_all(context)
+        # Read and remove key 'all_tenants' if was provided
+        all_tenants = search_opts.pop('all_tenants', None)
+
+        string_args = {'sort_key': sort_key, 'sort_dir': sort_dir}
+        string_args.update(search_opts)
+        for k, v in string_args.items():
+            if not (isinstance(v, six.string_types) and v):
+                msg = _("Wrong '%(k)s' filter provided: "
+                        "'%(v)s'.") % {'k': k, 'v': string_args[k]}
+                raise exception.InvalidInput(reason=msg)
+
+        if (context.is_admin and all_tenants):
+            snapshots = self.db.share_snapshot_get_all(
+                context, filters=search_opts,
+                sort_key=sort_key, sort_dir=sort_dir)
         else:
             snapshots = self.db.share_snapshot_get_all_by_project(
-                context, context.project_id)
+                context, context.project_id, filters=search_opts,
+                sort_key=sort_key, sort_dir=sort_dir)
+
+        # Remove key 'usage' if provided
+        search_opts.pop('usage', None)
 
         if search_opts:
-            LOG.debug("Searching by: %s", str(search_opts))
-
             results = []
             not_found = object()
             for snapshot in snapshots:

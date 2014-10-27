@@ -128,6 +128,34 @@ _FAKE_LIST_OF_ALL_SHARES = [
 ]
 
 
+_FAKE_LIST_OF_ALL_SNAPSHOTS = [
+    {
+        'name': 'foo',
+        'status': 'available',
+        'project_id': 'fake_pid_1',
+        'share_id': 'fake_server_1',
+    },
+    {
+        'name': 'bar',
+        'status': 'error',
+        'project_id': 'fake_pid_2',
+        'share_id': 'fake_server_2',
+    },
+    {
+        'name': 'foo',
+        'status': 'available',
+        'project_id': 'fake_pid_2',
+        'share_id': 'fake_share_id_3',
+    },
+    {
+        'name': 'bar',
+        'status': 'error',
+        'project_id': 'fake_pid_2',
+        'share_id': 'fake_share_id_3',
+    },
+]
+
+
 class ShareAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -818,7 +846,7 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share', 'get_all_snapshots')
         db_driver.share_snapshot_get_all_by_project.assert_called_once_with(
-            ctx, 'fakepid')
+            ctx, 'fakepid', sort_dir='desc', sort_key='share_id', filters={})
 
     @mock.patch.object(db_driver, 'share_snapshot_get_all', mock.Mock())
     def test_get_all_snapshots_admin_all_tenants(self):
@@ -826,7 +854,8 @@ class ShareAPITestCase(test.TestCase):
                                    search_opts={'all_tenants': 1})
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'get_all_snapshots')
-        db_driver.share_snapshot_get_all.assert_called_once_with(self.context)
+        db_driver.share_snapshot_get_all.assert_called_once_with(
+            self.context, sort_dir='desc', sort_key='share_id', filters={})
 
     @mock.patch.object(db_driver, 'share_snapshot_get_all_by_project',
                        mock.Mock())
@@ -836,21 +865,61 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share', 'get_all_snapshots')
         db_driver.share_snapshot_get_all_by_project.assert_called_once_with(
-            ctx, 'fakepid')
+            ctx, 'fakepid', sort_dir='desc', sort_key='share_id', filters={})
 
     def test_get_all_snapshots_not_admin_search_opts(self):
         search_opts = {'size': 'fakesize'}
         fake_objs = [{'name': 'fakename1'}, search_opts]
         ctx = context.RequestContext('fakeuid', 'fakepid', is_admin=False)
-        with mock.patch.object(db_driver,
-                               'share_snapshot_get_all_by_project',
-                               mock.Mock(return_value=fake_objs)):
-            result = self.api.get_all_snapshots(ctx, search_opts)
-            self.assertEqual([search_opts], result)
-            share_api.policy.check_policy.assert_called_once_with(
-                ctx, 'share', 'get_all_snapshots')
-            db_driver.share_snapshot_get_all_by_project.\
-                assert_called_once_with(ctx, 'fakepid')
+        self.stubs.Set(db_driver, 'share_snapshot_get_all_by_project',
+                       mock.Mock(return_value=fake_objs))
+
+        result = self.api.get_all_snapshots(ctx, search_opts)
+
+        self.assertEqual([search_opts], result)
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all_snapshots')
+        db_driver.share_snapshot_get_all_by_project.assert_called_once_with(
+            ctx, 'fakepid', sort_dir='desc', sort_key='share_id',
+            filters=search_opts)
+
+    def test_get_all_snapshots_with_sorting_valid(self):
+        self.stubs.Set(db_driver, 'share_snapshot_get_all_by_project',
+                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SNAPSHOTS[0]))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
+        snapshots = self.api.get_all_snapshots(
+            ctx, sort_key='status', sort_dir='asc')
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all_snapshots')
+        db_driver.share_snapshot_get_all_by_project.assert_called_once_with(
+            ctx, 'fake_pid_1', sort_dir='asc', sort_key='status', filters={})
+        self.assertEqual(_FAKE_LIST_OF_ALL_SNAPSHOTS[0], snapshots)
+
+    def test_get_all_snapshots_sort_key_invalid(self):
+        self.stubs.Set(db_driver, 'share_snapshot_get_all_by_project',
+                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SNAPSHOTS[0]))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api.get_all_snapshots,
+            ctx,
+            sort_key=1,
+        )
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all_snapshots')
+
+    def test_get_all_snapshots_sort_dir_invalid(self):
+        self.stubs.Set(db_driver, 'share_snapshot_get_all_by_project',
+                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SNAPSHOTS[0]))
+        ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
+        self.assertRaises(
+            exception.InvalidInput,
+            self.api.get_all_snapshots,
+            ctx,
+            sort_dir=1,
+        )
+        share_api.policy.check_policy.assert_called_once_with(
+            ctx, 'share', 'get_all_snapshots')
 
     def test_allow_access(self):
         share = fake_share('fakeid', status='available')
