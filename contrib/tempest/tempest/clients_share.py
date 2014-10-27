@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest import auth
 from tempest import clients
 from tempest import config_share as config
 from tempest.services.share.json import shares_client
@@ -29,18 +30,14 @@ class Manager(clients.Manager):
             self.shares_client = shares_client.SharesClient(auth_provider)
 
 
-class AltManager(clients.AltManager):
+class AltManager(Manager):
     def __init__(self, interface='json', service=None):
-        super(AltManager, self).__init__(interface=interface, service=service)
-        auth_provider = self.get_auth_provider(self.credentials)
-        if interface == 'json':
-            self.shares_client = shares_client.SharesClient(auth_provider)
+        self.credentials = auth.get_credentials('alt_user')
+        super(AltManager, self).__init__(self.credentials, interface, service)
 
 
-class AdminManager(clients.AdminManager):
+class AdminManager(Manager):
     def __init__(self, interface='json', service=None):
-        super(AdminManager, self).__init__(interface=interface,
-                                           service=service)
-        auth_provider = self.get_auth_provider(self.credentials)
-        if interface == 'json':
-            self.shares_client = shares_client.SharesClient(auth_provider)
+        self.credentials = auth.get_credentials('identity_admin')
+        super(AdminManager, self).__init__(
+            self.credentials, interface, service)
