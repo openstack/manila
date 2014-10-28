@@ -33,8 +33,9 @@ possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
 if os.path.exists(os.path.join(possible_topdir, 'manila', '__init__.py')):
     sys.path.insert(0, possible_topdir)
 
-from manila.openstack.common import gettextutils
-gettextutils.install('manila')
+from manila import i18n
+i18n.enable_lazy()
+
 from manila.common import config  # Need to register global_opts  # noqa
 from manila.openstack.common import log as logging
 from manila import service

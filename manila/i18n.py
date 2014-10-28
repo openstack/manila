@@ -20,8 +20,6 @@ See http://docs.openstack.org/developer/oslo.i18n/usage.html .
 
 from oslo import i18n
 
-from manila.openstack.common import gettextutils
-
 DOMAIN = 'manila'
 
 _translators = i18n.TranslatorFactory(domain=DOMAIN)
@@ -50,22 +48,3 @@ def translate(value, user_locale):
 
 def get_available_languages():
     return i18n.get_available_languages(DOMAIN)
-
-
-# Parts in oslo-incubator are still using gettextutils._(), _LI(), etc., from
-# oslo-incubator. Until these parts are changed to use oslo.i18n, Manila
-# needs to do something to allow them to work. One option is to continue to
-# initialize gettextutils, but with the way that manila has initialization
-# spread out over multiple entry points, we'll monkey-patch
-# gettextutils._(), _LI(), etc., to use our oslo.i18n versions.
-
-# FIXME(jaegerandi): Remove the monkey-patching and update
-# openstack-common.conf and do a sync with oslo-incubator to remove
-# gettextutils once oslo-incubator isn't using oslo-incubator
-# gettextutils any more.
-
-gettextutils._ = _
-gettextutils._LI = _LI
-gettextutils._LW = _LW
-gettextutils._LE = _LE
-gettextutils._LC = _LC
