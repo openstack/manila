@@ -18,3 +18,4 @@ Admin Reference
    :maxdepth: 3
 
    intro
+   multi_backends
