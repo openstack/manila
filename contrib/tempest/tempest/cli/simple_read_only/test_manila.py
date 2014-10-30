@@ -15,9 +15,10 @@
 
 import re
 
+from tempest_lib import exceptions  # noqa
+
 from tempest.cli import manilaclient
 from tempest import config_share as config
-from tempest import exceptions
 
 CONF = config.CONF
 
