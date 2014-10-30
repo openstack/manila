@@ -102,7 +102,7 @@ lock = threading.Lock()
 class ServiceInstanceManager(object):
     """Manages nova instances for various share drivers.
 
-    This class provides two external methods:
+    This class provides following external methods:
 
     1. set_up_service_instance: creates instance and sets up share
        infrastructure.
