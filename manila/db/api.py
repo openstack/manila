@@ -511,10 +511,10 @@ def share_network_get_all_by_project(context, project_id):
     return IMPL.share_network_get_all_by_project(context, project_id)
 
 
-def share_network_get_all_by_security_service(context, share_network_id):
+def share_network_get_all_by_security_service(context, security_service_id):
     """Get all share network DB records for the given project."""
     return IMPL.share_network_get_all_by_security_service(
-        context, share_network_id)
+        context, security_service_id)
 
 
 def share_network_add_security_service(context, id, security_service_id):

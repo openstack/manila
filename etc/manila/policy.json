@@ -59,5 +59,6 @@
     "share_network:detail": [["rule:default"]],
     "share_network:show": [["rule:default"]],
     "share_network:add_security_service": [["rule:default"]],
-    "share_network:remove_security_service": [["rule:default"]]
+    "share_network:remove_security_service": [["rule:default"]],
+    "share_network:get_all_share_networks": [["rule:admin_api"]]
 }

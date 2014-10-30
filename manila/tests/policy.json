@@ -16,9 +16,11 @@
 
     "share_network:create": [],
     "share_network:index": [],
+    "share_network:detail": [],
     "share_network:show": [],
     "share_network:update": [],
     "share_network:delete": [],
+    "share_network:get_all_share_networks": [["rule:admin_api"]],
 
     "share_server:index": [["rule:admin_api"]],
     "share_server:show": [["rule:admin_api"]],
