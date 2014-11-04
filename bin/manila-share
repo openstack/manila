@@ -54,7 +54,8 @@ if __name__ == '__main__':
         for backend in CONF.enabled_share_backends:
             host = "%s@%s" % (CONF.host, backend)
             server = service.Service.create(host=host,
-                                            service_name=backend)
+                                            service_name=backend,
+                                            binary='manila-share')
             launcher.launch_server(server)
     else:
         server = service.Service.create(binary='manila-share')
