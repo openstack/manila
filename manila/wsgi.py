@@ -227,7 +227,8 @@ class Server(object):
                                         backlog=backlog)
         self._server = eventlet.spawn(self._start)
         (self._host, self._port) = self._socket.getsockname()[0:2]
-        LOG.info(_LI("Started %(name)s on %(_host)s:%(_port)s"), self.__dict__)
+        LOG.info(_LI("Started %(name)s on %(_host)s:%(_port)s"),
+                 {'name': self.name, '_host': self._host, '_port': self._port})
 
     @property
     def host(self):
