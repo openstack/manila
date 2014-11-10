@@ -74,6 +74,16 @@ class CinderApiTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.api.create, self.ctx, 1, '', '')
 
+    def test_create_not_found_error(self):
+        cinder.cinderclient.side_effect = cinder_exception.NotFound(404)
+        self.assertRaises(exception.NotFound,
+                          self.api.create, self.ctx, 1, '', '')
+
+    def test_create_failed_exception(self):
+        cinder.cinderclient.side_effect = Exception("error msg")
+        self.assertRaises(exception.ManilaException,
+                          self.api.create, self.ctx, 1, '', '')
+
     def test_get_all(self):
         cinder._untranslate_volume_summary_view.return_value = ['id1', 'id2']
         self.assertEqual([{'id': 'id1'}, {'id': 'id2'}],

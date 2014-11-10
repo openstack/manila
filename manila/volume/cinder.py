@@ -303,6 +303,13 @@ class API(base.Base):
             return _untranslate_volume_summary_view(context, item)
         except cinder_exception.BadRequest as e:
             raise exception.InvalidInput(reason=e.message)
+        except cinder_exception.NotFound:
+            raise exception.NotFound(
+                _("Error in creating cinder "
+                  "volume. Cinder volume type %s not exist. Check parameter "
+                  "cinder_volume_type in configuration file.") % volume_type)
+        except Exception as e:
+            raise exception.ManilaException(e.message)
 
     @translate_volume_exception
     def delete(self, context, volume_id):
