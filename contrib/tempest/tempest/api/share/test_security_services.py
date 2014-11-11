@@ -80,7 +80,7 @@ class SecurityServiceListMixin(object):
         [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
 
     @test.attr(type=["gate", "smoke"])
-    def test_list_security_services_filter_by_ss_attributes(self):
+    def test_list_security_services_detailed_filter_by_ss_attributes(self):
         search_opts = {
             'status': 'NEW',
             'name': 'ss_ldap',
@@ -91,12 +91,12 @@ class SecurityServiceListMixin(object):
             'domain': 'fake_domain_1',
         }
         resp, listed = self.shares_client.list_security_services(
+            detailed=True,
             params=search_opts)
-        self.assertEqual(1, len(listed))
-        self.assertEqual(self.ss_ldap['id'], listed[0]['id'])
-
-        keys = ["name", "id", "status", "type", ]
-        [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
+        self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
+        for ss in listed:
+            self.assertTrue(all(ss[key] == value for key, value
+                                in six.iteritems(search_opts)))
 
 
 class SecurityServicesTest(base.BaseSharesTest,
