@@ -100,7 +100,7 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertRaises(exceptions.Unauthorized,
                           self.cl.remove_sec_service_from_share_network,
-                          self.shares_client.share_network_id,
+                          fresh_sn["id"],
                           self.ss["id"])
 
     @test.attr(type=["gate", "smoke", "negative"])
