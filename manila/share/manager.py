@@ -30,6 +30,7 @@ from manila import context
 from manila import exception
 from manila.i18n import _LE
 from manila.i18n import _LI
+from manila.i18n import _LW
 from manila import manager
 from manila import network
 from manila.openstack.common import log as logging
@@ -242,9 +243,20 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, share_ref, share_server=share_server)
             self.db.share_update(context, share_id,
                                  {'export_location': export_location})
-        except Exception:
+        except Exception as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Share %s failed on creation."), share_id)
+                detail_data = getattr(e, 'detail_data', {})
+                if (isinstance(detail_data, dict) and
+                        detail_data.get('export_location')):
+                    self.db.share_update(
+                        context, share_id,
+                        {'export_location': detail_data['export_location']})
+                else:
+                    LOG.warning(_LW('Share information in exception '
+                                    'can not be written to db because it '
+                                    'contains %s and it is not a dictionary.'),
+                                detail_data)
                 self.db.share_update(context, share_id, {'status': 'error'})
         else:
             LOG.info(_LI("Share created successfully."))
@@ -447,8 +459,23 @@ class ShareManager(manager.SchedulerDependentManager):
             return self.db.share_server_update(
                 context, share_server['id'],
                 {'status': constants.STATUS_ACTIVE})
-        except Exception:
+        except Exception as e:
             with excutils.save_and_reraise_exception():
+                detail_data = getattr(e, 'detail_data', {})
+                if (type(detail_data) is dict and
+                        detail_data.get('server_details')):
+
+                    server_details = detail_data['server_details']
+
+                    if isinstance(server_details, dict):
+                        self.db.share_server_backend_details_set(
+                            context, share_server['id'], server_details)
+                    else:
+                        LOG.warning(_LW('Server Information in '
+                                        'exception can not be written to db '
+                                        'because it contains %s and it is not '
+                                        'a dictionary.'), server_details)
+
                 self.db.share_server_update(context, share_server['id'],
                                             {'status': constants.STATUS_ERROR})
                 self.network_api.deallocate_network(context, share_network)
