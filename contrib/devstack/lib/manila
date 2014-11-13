@@ -154,16 +154,17 @@ function configure_manila {
     sudo mv $TEMPFILE /etc/sudoers.d/manila-rootwrap
 
     cp $MANILA_DIR/etc/manila/api-paste.ini $MANILA_API_PASTE_INI
-    iniset $MANILA_API_PASTE_INI filter:authtoken auth_host $KEYSTONE_AUTH_HOST
-    iniset $MANILA_API_PASTE_INI filter:authtoken auth_port $KEYSTONE_AUTH_PORT
-    iniset $MANILA_API_PASTE_INI filter:authtoken auth_protocol $KEYSTONE_AUTH_PROTOCOL
-    iniset $MANILA_API_PASTE_INI filter:authtoken admin_tenant_name $SERVICE_TENANT_NAME
-    iniset $MANILA_API_PASTE_INI filter:authtoken admin_user manila
-    iniset $MANILA_API_PASTE_INI filter:authtoken admin_password $SERVICE_PASSWORD
-    iniset $MANILA_API_PASTE_INI filter:authtoken signing_dir $MANILA_AUTH_CACHE_DIR
 
     # Remove old conf file if exists
     rm -f $MANILA_CONF
+
+    iniset $MANILA_CONF keystone_authtoken auth_host $KEYSTONE_AUTH_HOST
+    iniset $MANILA_CONF keystone_authtoken auth_port $KEYSTONE_AUTH_PORT
+    iniset $MANILA_CONF keystone_authtoken auth_protocol $KEYSTONE_AUTH_PROTOCOL
+    iniset $MANILA_CONF keystone_authtoken admin_tenant_name $SERVICE_TENANT_NAME
+    iniset $MANILA_CONF keystone_authtoken admin_user manila
+    iniset $MANILA_CONF keystone_authtoken admin_password $SERVICE_PASSWORD
+    iniset $MANILA_CONF keystone_authtoken signing_dir $MANILA_AUTH_CACHE_DIR
 
     iniset $MANILA_CONF DEFAULT auth_strategy keystone
     iniset $MANILA_CONF DEFAULT debug True
