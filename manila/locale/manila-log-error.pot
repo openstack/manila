@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev79.g6c84cf0\n"
+"Project-Id-Version: manila 2015.1.dev88.ga2b1757\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-10-31 06:14+0000\n"
+"POT-Creation-Date: 2014-11-14 06:14+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,85 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
+
+#: manila/exception.py:94
+msgid "Exception in string format operation."
+msgstr ""
+
+#: manila/exception.py:96
+#, python-format
+msgid "%(name)s: %(value)s"
+msgstr ""
+
+#: manila/manager.py:163
+#, python-format
+msgid "Error during %(full_task_name)s: %(e)s"
+msgstr ""
+
+#: manila/quota.py:983
+#, python-format
+msgid "Failed to commit reservations %s"
+msgstr ""
+
+#: manila/quota.py:1007
+#, python-format
+msgid "Failed to roll back reservations %s"
+msgstr ""
+
+#: manila/service.py:237 manila/openstack/common/service.py:269
+msgid "Unhandled exception"
+msgstr ""
+
+#: manila/service.py:508
+msgid "Recovered model server connection!"
+msgstr ""
+
+#: manila/service.py:514
+msgid "model server went away"
+msgstr ""
+
+#: manila/api/extensions.py:246
+#, python-format
+msgid "Exception loading extension: %s"
+msgstr ""
+
+#: manila/api/middleware/fault.py:46
+#, python-format
+msgid "Caught error: %s"
+msgstr ""
+
+#: manila/api/openstack/wsgi.py:583
+#, python-format
+msgid "Exception handling resource: %s"
+msgstr ""
+
+#: manila/api/v1/share_networks.py:122
+msgid "Failed to update usages deleting share-network."
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/162a3e673105_manila_init.py:403
+msgid "Exception while creating table."
+msgstr ""
+
+#: manila/db/sqlalchemy/api.py:2120
+#, python-format
+msgid "VolumeType %s deletion failed, VolumeType in use."
+msgstr ""
+
+#: manila/network/linux/interface.py:175 manila/network/linux/interface.py:217
+#, python-format
+msgid "Failed unplugging interface '%s'"
+msgstr ""
+
+#: manila/network/linux/ovs_lib.py:48
+#, python-format
+msgid "Unable to execute %(cmd)s. Exception: %(exception)s"
+msgstr ""
+
+#: manila/network/neutron/api.py:132
+#, python-format
+msgid "Neutron error creating port on network %s"
+msgstr ""
 
 #: manila/openstack/common/lockutils.py:117
 #, python-format
@@ -40,7 +119,193 @@ msgstr ""
 msgid "No handler for matches of kind %s"
 msgstr ""
 
-#: manila/openstack/common/service.py:269
-msgid "Unhandled exception"
+#: manila/scheduler/filter_scheduler.py:212
+#, python-format
+msgid ""
+"Error scheduling %(share_id)s from last share-service: %(last_host)s : "
+"%(exc)s"
+msgstr ""
+
+#: manila/scheduler/scheduler_options.py:68
+#, python-format
+msgid "Could not stat scheduler options file %(filename)s: '%(e)s'"
+msgstr ""
+
+#: manila/scheduler/scheduler_options.py:78
+#, python-format
+msgid "Could not decode scheduler options: '%(e)s'"
+msgstr ""
+
+#: manila/scheduler/filters/capacity_filter.py:39
+msgid "Free capacity not set: volume node info collection broken."
+msgstr ""
+
+#: manila/share/api.py:223
+msgid "Failed to update quota for deleting share"
+msgstr ""
+
+#: manila/share/driver.py:76
+#, python-format
+msgid "Recovering from a failed execute. Try number %s"
+msgstr ""
+
+#: manila/share/manager.py:93
+#, python-format
+msgid ""
+"Caught exception trying ensure share '%(s_id)s'. Exception: \n"
+"%(e)s."
+msgstr ""
+
+#: manila/share/manager.py:110
+#, python-format
+msgid ""
+"Unexpected exception during share access allow operation. Share id is "
+"'%(s_id)s', access rule type is '%(ar_type)s', access rule id is "
+"'%(ar_id)s', exception is '%(e)s'."
+msgstr ""
+
+#: manila/share/manager.py:219
+#, python-format
+msgid "Share server %s does not exist."
+msgstr ""
+
+#: manila/share/manager.py:229
+msgid "Failed to get share server for share creation."
+msgstr ""
+
+#: manila/share/manager.py:248
+#, python-format
+msgid "Share %s failed on creation."
+msgstr ""
+
+#: manila/share/manager.py:294
+msgid "Failed to update usages deleting share"
+msgstr ""
+
+#: manila/share/manager.py:368
+msgid "Failed to update usages deleting snapshot"
+msgstr ""
+
+#: manila/share/manager.py:512
+#, python-format
+msgid "Share server %s failed on deletion."
+msgstr ""
+
+#: manila/share/volume_types.py:40
+#, python-format
+msgid "DB error: %s"
+msgstr ""
+
+#: manila/share/volume_types.py:126
+#, python-format
+msgid ""
+"Default volume type is not found, please check default_volume_type "
+"config: %s"
+msgstr ""
+
+#: manila/share/drivers/generic.py:226
+#, python-format
+msgid "Failed to sync mount files on server '%s'."
+msgstr ""
+
+#: manila/share/drivers/generic.py:233
+#, python-format
+msgid "Failed to mount all shares on server '%s'."
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:132 manila/share/drivers/glusterfs.py:348
+#, python-format
+msgid "Error in gluster volume set: %s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:178
+#, python-format
+msgid "Error retrieving volume info: %s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:217
+#, python-format
+msgid "Could not mount the Gluster volume %s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:275
+#, python-format
+msgid "Unable to create share %s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:289
+#, python-format
+msgid "Unable to delete share %s"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:568
+#, python-format
+msgid "Could not setup server. Reason: %s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:690
+#, python-format
+msgid "Could not find CIFS server by name: %s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:735
+msgid "Could not get storage pool list."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:862
+#, python-format
+msgid "Could not get mount point. Reason: %s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/helper.py:90
+#, python-format
+msgid ""
+"REQ: [%(method)s] %(url)s %(req_hdrs)s\n"
+"REQ BODY: %(req_b)s\n"
+"RESP: [%(code)s] %(resp_hdrs)s\n"
+"RESP BODY: %(resp_b)s\n"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/helper.py:1160
+#, python-format
+msgid "Error running SSH command: %s"
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:168
+#, python-format
+msgid "Could not get licenses list. %s."
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:412
+msgid "Failed to create network interface"
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:493
+msgid "DNS exists for vserver."
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:824
+#, python-format
+msgid "Vserver %s does not exist."
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:835
+#, python-format
+msgid "Volume %s is already offline."
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:859
+#, python-format
+msgid "CIFS server does not exist for vserver %s"
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:1187
+#, python-format
+msgid "User %s does not exist."
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:1189
+#, python-format
+msgid "Rule %s does not exist."
 msgstr ""
 

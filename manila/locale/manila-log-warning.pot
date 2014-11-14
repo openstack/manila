@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev79.g6c84cf0\n"
+"Project-Id-Version: manila 2015.1.dev88.ga2b1757\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-10-31 06:14+0000\n"
+"POT-Creation-Date: 2014-11-14 06:14+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,107 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
+
+#: manila/context.py:60
+#, python-format
+msgid "Arguments dropped when creating context: %s"
+msgstr ""
+
+#: manila/service.py:281 manila/openstack/common/service.py:356
+#, python-format
+msgid "pid %d not in child list"
+msgstr ""
+
+#: manila/service.py:456
+msgid "Service killed that has no database entry"
+msgstr ""
+
+#: manila/api/auth.py:27
+msgid ""
+"manila.api.auth:ManilaKeystoneContext is deprecated. Please use "
+"manila.api.middleware.auth:ManilaKeystoneContext instead."
+msgstr ""
+
+#: manila/api/auth.py:35
+msgid ""
+"manila.api.auth:pipeline_factory is deprecated. Please use "
+"manila.api.middleware.auth:pipeline_factory instead."
+msgstr ""
+
+#: manila/api/extensions.py:281
+#, python-format
+msgid "osapi_share_extension is set to deprecated path: %s"
+msgstr ""
+
+#: manila/api/extensions.py:284
+#, python-format
+msgid ""
+"Please set your flag or manila.conf settings for osapi_share_extension "
+"to: %s"
+msgstr ""
+
+#: manila/api/extensions.py:293
+#, python-format
+msgid "Failed to load extension %(ext_factory)s: %(exc)s"
+msgstr ""
+
+#: manila/api/extensions.py:362
+#, python-format
+msgid "Failed to load extension %(classpath)s: %(exc)s"
+msgstr ""
+
+#: manila/api/extensions.py:387
+#, python-format
+msgid "Failed to load extension %(ext_name)s: %(exc)s"
+msgstr ""
+
+#: manila/api/sizelimit.py:26
+msgid ""
+"manila.api.sizelimit:RequestBodySizeLimiter is deprecated. Please use "
+"manila.api.middleware.sizelimit: RequestBodySizeLimiter instead"
+msgstr ""
+
+#: manila/api/openstack/__init__.py:111
+#, python-format
+msgid ""
+"Extension %(ext_name)s: Cannot extend resource %(collection)s: No such "
+"resource"
+msgstr ""
+
+#: manila/api/openstack/__init__.py:130
+msgid ""
+"manila.api.openstack:FaultWrapper is deprecated. Please use "
+"manila.api.middleware.fault:FaultWrapper instead."
+msgstr ""
+
+#: manila/api/openstack/urlmap.py:26
+msgid ""
+"manila.api.openstack.urlmap:urlmap_factory is deprecated. Please use "
+"manila.api.urlmap:urlmap_factory instead."
+msgstr ""
+
+#: manila/api/openstack/volume/__init__.py:26
+msgid ""
+"manila.api.openstack.volume:APIRouter is deprecated. Please use "
+"manila.api.v1.router:APIRouter instead."
+msgstr ""
+
+#: manila/api/v1/share_networks.py:269
+#, python-format
+msgid ""
+"Quota exceeded for %(s_pid)s, tried to create share-network "
+"(%(d_consumed)d of %(d_quota)d already consumed)"
+msgstr ""
+
+#: manila/db/sqlalchemy/api.py:950
+#, python-format
+msgid "Change will make usage less than 0 for the following resources: %s"
+msgstr ""
+
+#: manila/network/linux/interface.py:159 manila/network/linux/interface.py:204
+#, python-format
+msgid "Device %s already exists"
+msgstr ""
 
 #: manila/openstack/common/loopingcall.py:87
 #, python-format
@@ -27,8 +128,201 @@ msgstr ""
 msgid "Can not find policy directories %s"
 msgstr ""
 
-#: manila/openstack/common/service.py:356
+#: manila/scheduler/host_manager.py:270
+msgid "service is down or disabled."
+msgstr ""
+
+#: manila/scheduler/manager.py:93
 #, python-format
-msgid "pid %d not in child list"
+msgid "Failed to schedule_%(method)s: %(ex)s"
+msgstr ""
+
+#: manila/scheduler/filters/capacity_filter.py:53
+#, python-format
+msgid ""
+"Insufficient free space for volume creation (requested / avail): "
+"%(requested)s/%(available)s"
+msgstr ""
+
+#: manila/share/api.py:125
+#, python-format
+msgid ""
+"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG share "
+"(%(d_consumed)dG of %(d_quota)dG already consumed)"
+msgstr ""
+
+#: manila/share/api.py:134
+#, python-format
+msgid ""
+"Quota exceeded for %(s_pid)s, tried to create share (%(d_consumed)d "
+"shares already consumed)"
+msgstr ""
+
+#: manila/share/api.py:279
+#, python-format
+msgid ""
+"Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
+"(%(d_consumed)dG of %(d_quota)dG already consumed)"
+msgstr ""
+
+#: manila/share/api.py:288
+#, python-format
+msgid ""
+"Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
+"snapshots already consumed)"
+msgstr ""
+
+#: manila/share/manager.py:256
+#, python-format
+msgid ""
+"Share information in exception can not be written to db because it "
+"contains %s and it is not a dictionary."
+msgstr ""
+
+#: manila/share/manager.py:474
+#, python-format
+msgid ""
+"Server Information in exception can not be written to db because it "
+"contains %s and it is not a dictionary."
+msgstr ""
+
+#: manila/share/drivers/generic.py:266
+#, python-format
+msgid "Mount point '%(path)s' already exists on server '%(server)s'."
+msgstr ""
+
+#: manila/share/drivers/generic.py:292
+#, python-format
+msgid "Mount point '%(path)s' does not exist on server '%(server)s'."
+msgstr ""
+
+#: manila/share/drivers/generic.py:791
+#, python-format
+msgid "Caught error trying delete share: %(error)s, trying delete it forcibly."
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:153
+#, python-format
+msgid "%s is already mounted"
+msgstr ""
+
+#: manila/share/drivers/service_instance.py:224
+msgid ""
+"Name for service instance security group is not provided. Skipping "
+"security group step."
+msgstr ""
+
+#: manila/share/drivers/service_instance.py:259
+#, python-format
+msgid "Service instance %s does not exist."
+msgstr ""
+
+#: manila/share/drivers/service_instance.py:382
+#, python-format
+msgid ""
+"No key path is available. May be non-existent key path is provided. Check"
+" path_to_private_key (current value %(private_path)s) and "
+"path_to_public_key (current value %(public_path)s) in manila "
+"configuration file."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:195
+msgid ""
+"Driver does not support share deletion without share network specified. "
+"Return directly because there is nothing to clean"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:217
+#, python-format
+msgid "CIFS share %s not found. Skip the deletion"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:250
+#, python-format
+msgid "NFS share %s not found. Skip the deletion"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:283
+#, python-format
+msgid "Mount point %(path)s on %(vdm)s not found."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:286
+#, python-format
+msgid "Deleting mount point %(path)s on %(mover_name)s failed. Reason: %(err)s"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:292
+msgid "Failed to find the VDM. Try to delete the file system"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:303
+#, python-format
+msgid "File system %s not found. Skip the deletion"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:324
+#, python-format
+msgid "Check point not found. Reason: %s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:328
+#, python-format
+msgid "Snapshot: %(name)s not found. Skip the deletion."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/helper.py:177
+#, python-format
+msgid "Translated status from %(old)s to %(new)s. Message: %(info)s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:824
+#, python-format
+msgid "Expected just one %(item)s, got %(more)s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:831
+#, python-format
+msgid "Expected one of %(item)s, got %(child)s under %(parent)s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:854
+#, python-format
+msgid "No parser for node type %s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:881
+#, python-format
+msgid "Expected node type %(expected)s, not %(actual)s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:891
+#, python-format
+msgid "Expected %(attr)s attribute on %(node)s node, but only have %(attrs)s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:904
+#, python-format
+msgid "Invalid extra attributes %s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:909
+#, python-format
+msgid "Unexpected node %(node)s under %(parent)s; wanted %(expected)s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:919
+#, python-format
+msgid "Unexpected non-blank pcdata node %(node)s under %(parent)s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:931
+#, python-format
+msgid "Expected either zero or one of %(node)s under %(parent)s."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:951
+#, python-format
+msgid "Expected one of %(expected)s under %(parent)s, got %(actual)s."
 msgstr ""
 

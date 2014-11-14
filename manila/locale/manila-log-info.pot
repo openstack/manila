@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev79.g6c84cf0\n"
+"Project-Id-Version: manila 2015.1.dev88.ga2b1757\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-10-31 06:14+0000\n"
+"POT-Creation-Date: 2014-11-14 06:14+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,130 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
+
+#: manila/service.py:125
+msgid "SIGTERM received"
+msgstr ""
+
+#: manila/service.py:175 manila/openstack/common/service.py:232
+msgid "Parent process has died unexpectedly, exiting"
+msgstr ""
+
+#: manila/service.py:214 manila/openstack/common/service.py:302
+msgid "Forking too fast, sleeping"
+msgstr ""
+
+#: manila/service.py:232 manila/openstack/common/service.py:174
+#, python-format
+msgid "Caught %s, exiting"
+msgstr ""
+
+#: manila/service.py:244 manila/openstack/common/service.py:321
+#, python-format
+msgid "Started child %d"
+msgstr ""
+
+#: manila/service.py:254 manila/openstack/common/service.py:331
+#, python-format
+msgid "Starting %d workers"
+msgstr ""
+
+#: manila/service.py:273 manila/openstack/common/service.py:348
+#, python-format
+msgid "Child %(pid)d killed by signal %(sig)d"
+msgstr ""
+
+#: manila/service.py:277
+#, python-format
+msgid "Child %(pid)d exited with status %(code)d"
+msgstr ""
+
+#: manila/service.py:289
+#, python-format
+msgid "_wait_child %d"
+msgstr ""
+
+#: manila/service.py:305
+#, python-format
+msgid "wait wrap.failed %s"
+msgstr ""
+
+#: manila/service.py:313 manila/openstack/common/service.py:391
+#, python-format
+msgid "Caught %s, stopping children"
+msgstr ""
+
+#: manila/service.py:324 manila/openstack/common/service.py:416
+#, python-format
+msgid "Waiting on %d children to exit"
+msgstr ""
+
+#: manila/service.py:359
+#, python-format
+msgid "Starting %(topic)s node (version %(version_string)s)"
+msgstr ""
+
+#: manila/wsgi.py:220
+#, python-format
+msgid "Started %(name)s on %(_host)s:%(_port)s"
+msgstr ""
+
+#: manila/wsgi.py:239
+msgid "Stopping WSGI server."
+msgstr ""
+
+#: manila/wsgi.py:253
+msgid "WSGI server has stopped."
+msgstr ""
+
+#: manila/api/extensions.py:185
+msgid "Initializing extension manager."
+msgstr ""
+
+#: manila/api/extensions.py:201
+#, python-format
+msgid "Loaded extension: %s"
+msgstr ""
+
+#: manila/api/middleware/fault.py:55
+#, python-format
+msgid "%(url)s returned with HTTP %(status)d"
+msgstr ""
+
+#: manila/api/openstack/wsgi.py:587
+#, python-format
+msgid "Fault thrown: %s"
+msgstr ""
+
+#: manila/api/openstack/wsgi.py:590
+#, python-format
+msgid "HTTP exception thrown: %s"
+msgstr ""
+
+#: manila/api/v1/security_service.py:85
+#, python-format
+msgid "Delete security service with id: %s"
+msgstr ""
+
+#: manila/api/v1/share_snapshots.py:85
+#, python-format
+msgid "Delete snapshot with id: %s"
+msgstr ""
+
+#: manila/api/v1/share_snapshots.py:184
+#, python-format
+msgid "Create snapshot from share %s"
+msgstr ""
+
+#: manila/api/v1/shares.py:88
+#, python-format
+msgid "Delete share with id: %s"
+msgstr ""
+
+#: manila/api/v1/shares.py:216
+#, python-format
+msgid "Create %(share_proto)s share of %(size)s GB"
+msgstr ""
 
 #: manila/openstack/common/eventlet_backdoor.py:140
 #, python-format
@@ -32,37 +156,9 @@ msgstr ""
 msgid "Failed to remove file %(file)s"
 msgstr ""
 
-#: manila/openstack/common/service.py:174
-#, python-format
-msgid "Caught %s, exiting"
-msgstr ""
-
-#: manila/openstack/common/service.py:232
-msgid "Parent process has died unexpectedly, exiting"
-msgstr ""
-
 #: manila/openstack/common/service.py:263
 #, python-format
 msgid "Child caught %s, exiting"
-msgstr ""
-
-#: manila/openstack/common/service.py:302
-msgid "Forking too fast, sleeping"
-msgstr ""
-
-#: manila/openstack/common/service.py:321
-#, python-format
-msgid "Started child %d"
-msgstr ""
-
-#: manila/openstack/common/service.py:331
-#, python-format
-msgid "Starting %d workers"
-msgstr ""
-
-#: manila/openstack/common/service.py:348
-#, python-format
-msgid "Child %(pid)d killed by signal %(sig)d"
 msgstr ""
 
 #: manila/openstack/common/service.py:352
@@ -70,22 +166,73 @@ msgstr ""
 msgid "Child %(pid)s exited with status %(code)d"
 msgstr ""
 
-#: manila/openstack/common/service.py:391
-#, python-format
-msgid "Caught %s, stopping children"
-msgstr ""
-
 #: manila/openstack/common/service.py:400
 msgid "Wait called after thread killed.  Cleaning up."
-msgstr ""
-
-#: manila/openstack/common/service.py:416
-#, python-format
-msgid "Waiting on %d children to exit"
 msgstr ""
 
 #: manila/openstack/common/scheduler/base_filter.py:89
 #, python-format
 msgid "Filter %(cls_name)s returned %(obj_len)d host(s)"
+msgstr ""
+
+#: manila/share/manager.py:122
+#, python-format
+msgid "Share %(name)s: skipping export, because it has '%(status)s' status."
+msgstr ""
+
+#: manila/share/manager.py:176
+msgid "Share server created successfully."
+msgstr ""
+
+#: manila/share/manager.py:178
+#, python-format
+msgid "Used already existed share server '%(share_server_id)s'"
+msgstr ""
+
+#: manila/share/manager.py:262
+msgid "Share created successfully."
+msgstr ""
+
+#: manila/share/manager.py:297
+#, python-format
+msgid "Share %s: deleted successfully."
+msgstr ""
+
+#: manila/share/manager.py:411
+msgid "Updating share status"
+msgstr ""
+
+#: manila/share/manager.py:521
+msgid "Share server deleted successfully."
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:103
+#, python-format
+msgid "Number of gluster volumes read from config: %(numvols)s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:130
+msgid ""
+"Number of gluster volumes in use:  %(inuse-numvols)s. Number of gluster "
+"volumes available for use as share: %(unused-numvols)s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:394
+#, python-format
+msgid "export_location sent back from create_share: %s"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/helper.py:1193
+msgid "Found the header of the command /nas/bin/nas_cel -interconnect -l"
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:178
+#, python-format
+msgid "Available licenses on '%(backend)s' are %(licenses)s."
+msgstr ""
+
+#: manila/share/drivers/netapp/cluster_mode.py:714
+#, python-format
+msgid "Share %s does not exist."
 msgstr ""
 
