@@ -30,6 +30,7 @@ import eventlet
 import eventlet.wsgi
 import greenlet
 from oslo.config import cfg
+from oslo.utils import netutils
 from paste import deploy
 import routes.middleware
 import six
@@ -46,9 +47,19 @@ socket_opts = [
                default=4096,
                help="Number of backlog requests to configure the socket "
                     "with."),
+    cfg.BoolOpt('tcp_keepalive',
+                default=True,
+                help="Sets the value of TCP_KEEPALIVE (True/False) for each "
+                     "server socket."),
     cfg.IntOpt('tcp_keepidle',
                default=600,
                help="Sets the value of TCP_KEEPIDLE in seconds for each "
+                    "server socket. Not supported on OS X."),
+    cfg.IntOpt('tcp_keepalive_interval',
+               help="Sets the value of TCP_KEEPINTVL in seconds for each "
+                    "server socket. Not supported on OS X."),
+    cfg.IntOpt('tcp_keepalive_count',
+               help="Sets the value of TCP_KEEPCNT for each "
                     "server socket. Not supported on OS X."),
     cfg.StrOpt('ssl_ca_file',
                default=None,
@@ -177,14 +188,13 @@ class Server(object):
                                "after trying for 30 seconds") %
                                {'host': host, 'port': port})
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # sockets can hang around forever without keepalive
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
-        # This option isn't available in the OS X version of eventlet
-        if hasattr(socket, 'TCP_KEEPIDLE'):
-            sock.setsockopt(socket.IPPROTO_TCP,
-                            socket.TCP_KEEPIDLE,
-                            CONF.tcp_keepidle)
+        # sockets can hang around forever without keepalive
+        netutils.set_tcp_keepalive(sock,
+                                   CONF.tcp_keepalive,
+                                   CONF.tcp_keepidle,
+                                   CONF.tcp_keepalive_interval,
+                                   CONF.tcp_keepalive_count)
 
         return sock
 
