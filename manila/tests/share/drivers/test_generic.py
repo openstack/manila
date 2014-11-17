@@ -18,13 +18,13 @@
 import os
 
 import mock
+from oslo.concurrency import processutils
 from oslo.config import cfg
 
 from manila.common import constants as const
 from manila import compute
 from manila import context
 from manila import exception
-from manila.openstack.common import processutils
 import manila.share.configuration
 from manila.share.drivers import generic
 from manila import test
