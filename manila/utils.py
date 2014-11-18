@@ -38,6 +38,7 @@ from xml.sax import saxutils
 
 from eventlet import pools
 import netaddr
+from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import importutils
@@ -49,7 +50,6 @@ from manila import exception
 from manila.i18n import _
 from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
-from manila.openstack.common import processutils
 
 
 CONF = cfg.CONF

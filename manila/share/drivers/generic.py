@@ -19,6 +19,7 @@ import os
 import re
 import time
 
+from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import importutils
@@ -32,7 +33,6 @@ from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LW
 from manila.openstack.common import log as logging
-from manila.openstack.common import processutils
 from manila.share import driver
 from manila.share.drivers import service_instance
 from manila import utils
