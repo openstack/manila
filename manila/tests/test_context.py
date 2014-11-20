@@ -18,6 +18,16 @@ from manila import test
 
 class ContextTestCase(test.TestCase):
 
+    def test_request_context_elevated(self):
+        user_context = context.RequestContext(
+            'fake_user', 'fake_project', admin=False)
+        self.assertFalse(user_context.is_admin)
+        admin_context = user_context.elevated()
+        self.assertFalse(user_context.is_admin)
+        self.assertTrue(admin_context.is_admin)
+        self.assertFalse('admin' in user_context.roles)
+        self.assertTrue('admin' in admin_context.roles)
+
     def test_request_context_sets_is_admin(self):
         ctxt = context.RequestContext('111',
                                       '222',
