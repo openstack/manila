@@ -22,8 +22,8 @@ SHOULD include dedicated exception logging.
 
 """
 
-from oslo.concurrency import processutils
 from oslo.config import cfg
+from oslo_concurrency import processutils
 import six
 import webob.exc
 

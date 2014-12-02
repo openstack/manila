@@ -38,11 +38,11 @@ from xml.sax import saxutils
 
 from eventlet import pools
 import netaddr
-from oslo.concurrency import processutils
 from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import importutils
 from oslo.utils import timeutils
+from oslo_concurrency import processutils
 import paramiko
 import six
 
