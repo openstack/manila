@@ -43,8 +43,21 @@ share_opts = [
                help='The backend name for a given driver implementation.'),
 ]
 
+ssh_opts = [
+    cfg.IntOpt('ssh_conn_timeout',
+               default=60,
+               help='Backend server SSH connection timeout.'),
+    cfg.IntOpt('ssh_min_pool_conn',
+               default=1,
+               help='Minimum number of connections in the SSH pool.'),
+    cfg.IntOpt('ssh_max_pool_conn',
+               default=10,
+               help='Maximum number of connections in the SSH pool.'),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(share_opts)
+CONF.register_opts(ssh_opts)
 
 
 class ExecuteMixin(object):
@@ -55,6 +68,7 @@ class ExecuteMixin(object):
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(share_opts)
+            self.configuration.append_config_values(ssh_opts)
         self.set_execute(kwargs.pop('execute', utils.execute))
 
     def set_execute(self, execute):
