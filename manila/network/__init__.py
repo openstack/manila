@@ -41,7 +41,7 @@ class NetworkBaseAPI(object):
         pass
 
     @abc.abstractmethod
-    def deallocate_network(self, context, share_network):
+    def deallocate_network(self, context, share_server_id):
         pass
 
     @abc.abstractmethod

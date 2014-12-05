@@ -64,18 +64,18 @@ class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
 
         return ports
 
-    def deallocate_network(self, context, share_server):
-        """Deallocate neutron network resources for the given network info.
+    def deallocate_network(self, context, share_server_id):
+        """Deallocate neutron network resources for the given share server.
 
         Delete previously allocated neutron ports, delete manila db
         records for deleted ports.
 
         :param context: RequestContext object
-        :param share_network: share network data
+        :param share_server_id: id of share server
         :rtype: None
         """
         ports = self.db.network_allocations_get_for_share_server(
-            context, share_server['id'])
+            context, share_server_id)
 
         for port in ports:
             self._delete_port(context, port)

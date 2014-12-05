@@ -76,7 +76,9 @@ class FakeShareDriver(driver.ShareDriver):
         pass
 
     def get_network_allocations_number(self):
-        pass
+        # NOTE(vponomaryov): Simulate drivers that use share servers and
+        # do not use 'service_instance' module.
+        return 2
 
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
