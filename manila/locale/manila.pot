@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev88.ga2b1757\n"
+"Project-Id-Version: manila 2015.1.dev114.g2023930\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-11-14 06:14+0000\n"
+"POT-Creation-Date: 2014-12-05 06:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -416,6 +416,14 @@ msgstr ""
 msgid "Vserver %(vserver)s is not available."
 msgstr ""
 
+#: manila/exception.py:462
+msgid "GPFS exception occurred."
+msgstr ""
+
+#: manila/exception.py:466
+msgid "GPFS Ganesha exception occurred."
+msgstr ""
+
 #: manila/utils.py:137
 msgid "Specify a password or private_key"
 msgstr ""
@@ -450,33 +458,33 @@ msgstr ""
 msgid "Invalid cidr supplied %s"
 msgstr ""
 
-#: manila/wsgi.py:134 manila/openstack/common/sslutils.py:47
+#: manila/wsgi.py:145 manila/openstack/common/sslutils.py:47
 #, python-format
 msgid "Unable to find cert_file : %s"
 msgstr ""
 
-#: manila/wsgi.py:137 manila/openstack/common/sslutils.py:50
+#: manila/wsgi.py:148 manila/openstack/common/sslutils.py:50
 #, python-format
 msgid "Unable to find ca_file : %s"
 msgstr ""
 
-#: manila/wsgi.py:140 manila/openstack/common/sslutils.py:53
+#: manila/wsgi.py:151 manila/openstack/common/sslutils.py:53
 #, python-format
 msgid "Unable to find key_file : %s"
 msgstr ""
 
-#: manila/wsgi.py:143 manila/openstack/common/sslutils.py:56
+#: manila/wsgi.py:154 manila/openstack/common/sslutils.py:56
 msgid ""
 "When running server in SSL mode, you must specify both a cert_file and "
 "key_file option value in your configuration file"
 msgstr ""
 
-#: manila/wsgi.py:176
+#: manila/wsgi.py:187
 #, python-format
 msgid "Could not bind to %(host)s:%(port)s after trying for 30 seconds"
 msgstr ""
 
-#: manila/wsgi.py:322
+#: manila/wsgi.py:333
 msgid "You must implement __call__"
 msgstr ""
 
@@ -810,47 +818,6 @@ msgstr ""
 #: manila/openstack/common/policy.py:213
 #, python-format
 msgid "Rules must be an instance of dict or Rules, got %s instead"
-msgstr ""
-
-#: manila/openstack/common/processutils.py:59
-msgid "Unexpected error while running command."
-msgstr ""
-
-#: manila/openstack/common/processutils.py:62
-#, python-format
-msgid ""
-"%(description)s\n"
-"Command: %(cmd)s\n"
-"Exit code: %(exit_code)s\n"
-"Stdout: %(stdout)r\n"
-"Stderr: %(stderr)r"
-msgstr ""
-
-#: manila/openstack/common/processutils.py:143
-#, python-format
-msgid "Got unknown keyword args: %r"
-msgstr ""
-
-#: manila/openstack/common/processutils.py:148
-msgid "Command requested root, but did not specify a root helper."
-msgstr ""
-
-#: manila/openstack/common/processutils.py:158
-#, python-format
-msgid "Running cmd (subprocess): %s"
-msgstr ""
-
-#: manila/openstack/common/processutils.py:206
-#, python-format
-msgid "%r failed. Retrying."
-msgstr ""
-
-#: manila/openstack/common/processutils.py:248
-msgid "Environment not supported over SSH"
-msgstr ""
-
-#: manila/openstack/common/processutils.py:252
-msgid "process_input not supported over SSH"
 msgstr ""
 
 #: manila/openstack/common/sslutils.py:95
@@ -1457,6 +1424,182 @@ msgstr ""
 #: manila/share/drivers/emc/plugins/vnx/helper.py:130
 #, python-format
 msgid "The request is invalid. Reason: %(reason)s"
+msgstr ""
+
+#: manila/share/drivers/ibm/ganesha_utils.py:152
+#, python-format
+msgid ""
+"Invalid export config file %(configpath)s: %(exports)s export clauses "
+"found, but %(export_ids)s export_ids."
+msgstr ""
+
+#: manila/share/drivers/ibm/ganesha_utils.py:204
+#, python-format
+msgid "Invalid IP access string %s."
+msgstr ""
+
+#: manila/share/drivers/ibm/ganesha_utils.py:243
+#: manila/share/drivers/ibm/ganesha_utils.py:254
+#, python-format
+msgid "Failed while publishing ganesha config locally. Error: %s."
+msgstr ""
+
+#: manila/share/drivers/ibm/ganesha_utils.py:272
+#, python-format
+msgid "Failed while publishing ganesha config locally.Error: %s."
+msgstr ""
+
+#: manila/share/drivers/ibm/ganesha_utils.py:285
+#, python-format
+msgid "Failed while publishing ganesha config on remote server. Error: %s."
+msgstr ""
+
+#: manila/share/drivers/ibm/ganesha_utils.py:335
+#, python-format
+msgid "Could not restart service %(service)s on %(server)s: %(excmsg)s"
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:202
+#, python-format
+msgid "Error running SSH command: %(cmd)s. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:212 manila/share/drivers/ibm/gpfs.py:221
+#, python-format
+msgid "Failed to check GPFS state. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:234
+#, python-format
+msgid "%(path)s is not a directory. Error: %(excmsg)s"
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:245
+#, python-format
+msgid "%(dir)s is not on GPFS filesystem. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:271
+#, python-format
+msgid "Failed to get GPFS device for %(fspath)s.Error: %(excmsg)s"
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:297
+#, python-format
+msgid ""
+"Failed to create fileset on %(fsdev)s for the share %(sharename)s. Error:"
+" %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:308
+#, python-format
+msgid "Failed to link fileset for the share %(sharename)s. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:318
+#, python-format
+msgid "Failed to set quota for the share %(sharename)s. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:327
+#, python-format
+msgid "Failed to set permissions for share %(sharename)s. Error: %(excmsg)."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:342
+#, python-format
+msgid "Failed unlink fileset for share %(sharename)s. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:351
+#, python-format
+msgid "Failed delete fileset for share %(sharename)s. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:362
+#, python-format
+msgid "Failed to check available capacity for %(path)s.Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:385
+#, python-format
+msgid "Failed to create snapshot %(snapshot)s. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:400
+#, python-format
+msgid "Failed to delete snapshot %(snapshot)s. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:414
+#, python-format
+msgid ""
+"Failed to create share %(share)s from snapshot %(snapshot)s. Error: "
+"%(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:470
+msgid "GPFS is not active."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:475
+msgid "gpfs_share_export_ip must be specified."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:481
+#, python-format
+msgid "%s must be an absolute path."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:486
+#, python-format
+msgid "%s is not a directory."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:491
+#, python-format
+msgid "%s is not on GPFS. Perhaps GPFS not mounted."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:497
+#, python-format
+msgid ""
+"Invalid gpfs_nfs_server_type value: %s. Valid values are: \"KNFS\", "
+"\"GNFS\"."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:504
+msgid "Missing value for gpfs_nfs_server_list."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:545
+#, python-format
+msgid "Share protocol %s not supported by GPFS driver."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:598
+#, python-format
+msgid "NFS server not found. Error: %s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:628
+#, python-format
+msgid "Unknown metadata key %s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:650
+#, python-format
+msgid "Failed to check exports on the systems.  Error: %s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:668
+#, python-format
+msgid "Failed to allow access for share %(sharename)s. Error: %(excmsg)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:682
+#, python-format
+msgid "Failed to deny access for share %(sharename)s. Error: %excmsg)s."
 msgstr ""
 
 #: manila/share/drivers/netapp/api.py:424

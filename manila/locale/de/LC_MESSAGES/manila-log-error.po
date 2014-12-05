@@ -8,9 +8,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Manila\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-11-14 06:14+0000\n"
-"PO-Revision-Date: 2014-11-01 07:05+0000\n"
-"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
+"POT-Creation-Date: 2014-12-05 06:11+0000\n"
+"PO-Revision-Date: 2014-12-03 15:25+0000\n"
+"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/manila/language/"
 "de/)\n"
 "Language: de\n"
@@ -147,7 +147,7 @@ msgstr ""
 msgid "Failed to update quota for deleting share"
 msgstr ""
 
-#: manila/share/driver.py:76
+#: manila/share/driver.py:90
 #, python-format
 msgid "Recovering from a failed execute. Try number %s"
 msgstr ""
@@ -271,6 +271,11 @@ msgstr ""
 #: manila/share/drivers/emc/plugins/vnx/helper.py:1160
 #, python-format
 msgid "Error running SSH command: %s"
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:712
+#, python-format
+msgid "Invalid metadata %(attr)s for share %(share)s."
 msgstr ""
 
 #: manila/share/drivers/netapp/cluster_mode.py:168
