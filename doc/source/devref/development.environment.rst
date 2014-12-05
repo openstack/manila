@@ -87,7 +87,7 @@ or Mac OS X 10.7 (OpenSSL 0.9.8r) works fine with Manila.
 
 Getting the code
 ----------------
-Grab the code from GitHub::
+Grab the code::
 
     git clone https://github.com/openstack/manila.git
     cd manila
@@ -146,4 +146,4 @@ into trunk unless you are listed in the Authors file. Manila uses the Gerrit
 code review system. For information on how to submit your branch to Gerrit,
 see GerritWorkflow_.
 
-.. _GerritWorkflow: http://wiki.openstack.org/GerritWorkflow
+.. _GerritWorkflow: http://docs.openstack.org/infra/manual/developers.html#development-workflow
