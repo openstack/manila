@@ -558,6 +558,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_allocate_container(self):
         fake_vol = fake_volume.FakeVolume()
+        self.fake_conf.cinder_volume_type = 'fake_volume_type'
         self.stubs.Set(self._driver.volume_api, 'create',
                        mock.Mock(return_value=fake_vol))
 
@@ -568,7 +569,8 @@ class GenericShareDriverTestCase(test.TestCase):
             self.share['size'],
             CONF.volume_name_template % self.share['id'],
             '',
-            snapshot=None)
+            snapshot=None,
+            volume_type='fake_volume_type')
 
     def test_allocate_container_with_snaphot(self):
         fake_vol = fake_volume.FakeVolume()
@@ -587,7 +589,8 @@ class GenericShareDriverTestCase(test.TestCase):
             self.share['size'],
             CONF.volume_name_template % self.share['id'],
             '',
-            snapshot=fake_vol_snap)
+            snapshot=fake_vol_snap,
+            volume_type=None)
 
     def test_allocate_container_error(self):
         fake_vol = fake_volume.FakeVolume(status='error')

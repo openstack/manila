@@ -74,6 +74,10 @@ share_opts = [
                default='ext4',
                choices=['ext4', 'ext3'],
                help='Filesystem type of the share volume.'),
+    cfg.StrOpt('cinder_volume_type',
+               default=None,
+               help='Name or id of cinder volume type which will be used '
+                    'for all volumes created by driver.'),
 ]
 
 CONF = cfg.CONF
@@ -395,11 +399,13 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if snapshot:
             volume_snapshot = self._get_volume_snapshot(context,
                                                         snapshot['id'])
+
         volume = self.volume_api.create(
             context,
             share['size'],
             self.configuration.volume_name_template % share['id'], '',
-            snapshot=volume_snapshot)
+            snapshot=volume_snapshot,
+            volume_type=self.configuration.cinder_volume_type)
 
         t = time.time()
         while time.time() - t < self.configuration.max_time_to_create_volume:
