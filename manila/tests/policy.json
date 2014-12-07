@@ -40,5 +40,6 @@
      "security_service:index": [],
      "security_service:get_all_security_services": [["rule:admin_api"]],
 
-    "limits_extension:used_limits": []
+    "limits_extension:used_limits": [],
+    "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api"
 }

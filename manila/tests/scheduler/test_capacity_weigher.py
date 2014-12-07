@@ -22,6 +22,7 @@ from oslo_config import cfg
 from manila import context
 from manila.openstack.common.scheduler import weights
 from manila.scheduler.weights import capacity
+from manila.share import utils
 from manila import test
 from manila.tests.scheduler import fakes
 
@@ -64,7 +65,8 @@ class CapacityWeigherTestCase(test.TestCase):
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
         self.assertEqual(weighed_host.weight, 1.0)
-        self.assertEqual(weighed_host.obj.host, 'host1')
+        self.assertEqual(
+            'host1', utils.extract_host(weighed_host.obj.host))
 
     def test_capacity_weight_multiplier1(self):
         self.flags(capacity_weight_multiplier=-1.0)
@@ -78,7 +80,8 @@ class CapacityWeigherTestCase(test.TestCase):
         # so, host4 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
         self.assertEqual(weighed_host.weight, 0.0)
-        self.assertEqual(weighed_host.obj.host, 'host4')
+        self.assertEqual(
+            'host4', utils.extract_host(weighed_host.obj.host))
 
     def test_capacity_weight_multiplier2(self):
         self.flags(capacity_weight_multiplier=2.0)
@@ -92,4 +95,5 @@ class CapacityWeigherTestCase(test.TestCase):
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
         self.assertEqual(weighed_host.weight, 2.0)
-        self.assertEqual(weighed_host.obj.host, 'host1')
+        self.assertEqual(
+            'host1', utils.extract_host(weighed_host.obj.host))

@@ -1,4 +1,5 @@
 # Copyright (c) 2011 OpenStack, LLC.
+# Copyright (c) 2015 Rushil Chugh
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -29,6 +30,7 @@ from manila.i18n import _LI
 from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common.scheduler import weights
+from manila.share import utils as share_utils
 from manila import utils
 
 host_manager_opts = [
@@ -89,6 +91,8 @@ class HostState(object):
     """Mutable and immutable information tracked for a host."""
 
     def __init__(self, host, capabilities=None, service=None):
+        self.capabilities = None
+        self.service = None
         self.host = host
         self.update_capabilities(capabilities, service)
 
@@ -103,6 +107,8 @@ class HostState(object):
         self.free_capacity_gb = None
         self.reserved_percentage = 0
 
+        # PoolState for all pools
+        self.pools = {}
         self.updated = None
 
     def update_capabilities(self, capabilities=None, service=None):
@@ -115,23 +121,142 @@ class HostState(object):
             service = {}
         self.service = ReadOnlyDict(service)
 
-    def update_from_share_capability(self, capability):
-        """Update information about a host from its volume_node info."""
+    def update_from_share_capability(self, capability, service=None):
+        """Update information about a host from its share_node info.
+
+        'capability' is the status info reported by share backend, a typical
+        capability looks like this:
+
+        capability = {
+            'share_backend_name': 'Local NFS',    #\
+            'vendor_name': 'OpenStack',           #  backend level
+            'driver_version': '1.0',              #  mandatory/fixed
+            'storage_protocol': 'NFS',            #/ stats&capabilities
+
+            'active_shares': 10,                  #\
+            'IOPS_provisioned': 30000,            #  optional custom
+            'fancy_capability_1': 'eat',          #  stats & capabilities
+            'fancy_capability_2': 'drink',        #/
+
+            'pools': [
+                {'pool_name': '1st pool',         #\
+                 'total_capacity_gb': 500,        #  mandatory stats for
+                 'free_capacity_gb': 230,         #  pools
+                 'allocated_capacity_gb': 270,    # |
+                 'QoS_support': 'False',          # |
+                 'reserved_percentage': 0,        #/
+
+                 'dying_disks': 100,              #\
+                 'super_hero_1': 'spider-man',    #  optional custom
+                 'super_hero_2': 'flash',         #  stats & capabilities
+                 'super_hero_3': 'neoncat'        #/
+                 },
+                {'pool_name': '2nd pool',
+                 'total_capacity_gb': 1024,
+                 'free_capacity_gb': 1024,
+                 'allocated_capacity_gb': 0,
+                 'QoS_support': 'False',
+                 'reserved_percentage': 0,
+
+                 'dying_disks': 200,
+                 'super_hero_1': 'superman',
+                 'super_hero_2': ' ',
+                 'super_hero_2': 'Hulk',
+                 }
+            ]
+        }
+        """
+        self.update_capabilities(capability, service)
+
         if capability:
             if self.updated and self.updated > capability['timestamp']:
                 return
 
-            self.share_backend = capability.get('share_backend_name', None)
-            self.vendor_name = capability.get('vendor_name', None)
-            self.driver_version = capability.get('driver_version', None)
-            self.storage_protocol = capability.get('storage_protocol', None)
-            self.QoS_support = capability.get('QoS_support', False)
+            # Update backend level info
+            self.update_backend(capability)
 
-            self.total_capacity_gb = capability['total_capacity_gb']
-            self.free_capacity_gb = capability['free_capacity_gb']
-            self.reserved_percentage = capability['reserved_percentage']
+            # Update pool level info
+            self.update_pools(capability, service)
 
-            self.updated = capability['timestamp']
+    def update_pools(self, capability, service):
+        """Update storage pools information from backend reported info."""
+        if not capability:
+            return
+
+        pools = capability.get('pools', None)
+        active_pools = set()
+        if pools and isinstance(pools, list):
+            # Update all pools stats according to information from list
+            # of pools in share capacity
+            for pool_cap in pools:
+                pool_name = pool_cap['pool_name']
+                self._append_backend_info(pool_cap)
+                cur_pool = self.pools.get(pool_name, None)
+                if not cur_pool:
+                    # Add new pool
+                    cur_pool = PoolState(self.host, pool_cap, pool_name)
+                    self.pools[pool_name] = cur_pool
+                cur_pool.update_from_share_capability(pool_cap, service)
+
+                active_pools.add(pool_name)
+        elif pools is None:
+            # To handle legacy driver that doesn't report pool
+            # information in the capability, we have to prepare
+            # a pool from backend level info, or to update the one
+            # we created in self.pools.
+            pool_name = self.share_backend_name
+            if pool_name is None:
+                # To get DEFAULT_POOL_NAME
+                pool_name = share_utils.extract_host(self.host, 'pool', True)
+
+            if len(self.pools) == 0:
+                # No pool was there
+                single_pool = PoolState(self.host, capability, pool_name)
+                self._append_backend_info(capability)
+                self.pools[pool_name] = single_pool
+            else:
+                # This is a update from legacy driver
+                try:
+                    single_pool = self.pools[pool_name]
+                except KeyError:
+                    single_pool = PoolState(self.host, capability, pool_name)
+                    self._append_backend_info(capability)
+                    self.pools[pool_name] = single_pool
+
+            single_pool.update_from_share_capability(capability, service)
+            active_pools.add(pool_name)
+
+        # Remove non-active pools from self.pools
+        nonactive_pools = set(self.pools.keys()) - active_pools
+        for pool in nonactive_pools:
+            LOG.debug("Removing non-active pool %(pool)s @ %(host)s "
+                      "from scheduler cache.",
+                      {'pool': pool, 'host': self.host})
+            del self.pools[pool]
+
+    def _append_backend_info(self, pool_cap):
+        # Fill backend level info to pool if needed.
+        if not pool_cap.get('share_backend_name'):
+            pool_cap['share_backend_name'] = self.share_backend_name
+
+        if not pool_cap.get('storage_protocol'):
+            pool_cap['storage_protocol'] = self.storage_protocol
+
+        if not pool_cap.get('vendor_name'):
+            pool_cap['vendor_name'] = self.vendor_name
+
+        if not pool_cap.get('driver_version'):
+            pool_cap['driver_version'] = self.driver_version
+
+        if not pool_cap.get('timestamp'):
+            pool_cap['timestamp'] = self.updated
+
+    def update_backend(self, capability):
+        self.share_backend_name = capability.get('share_backend_name')
+        self.vendor_name = capability.get('vendor_name')
+        self.driver_version = capability.get('driver_version')
+        self.storage_protocol = capability.get('storage_protocol')
+        self.updated = capability['timestamp']
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""
@@ -145,6 +270,41 @@ class HostState(object):
         else:
             self.free_capacity_gb -= share_gb
         self.updated = timeutils.utcnow()
+
+    def __repr__(self):
+        return ("host: '%(host)s', free_capacity_gb: %(free)s, "
+                "pools: %(pools)s" % {'host': self.host,
+                                      'free': self.free_capacity_gb,
+                                      'pools': self.pools}
+                )
+
+
+class PoolState(HostState):
+    def __init__(self, host, capabilities, pool_name):
+        new_host = share_utils.append_host(host, pool_name)
+        super(PoolState, self).__init__(new_host, capabilities)
+        self.pool_name = pool_name
+        # No pools in pool
+        self.pools = None
+
+    def update_from_share_capability(self, capability, service=None):
+        """Update information about a pool from its share_node info."""
+        self.update_capabilities(capability, service)
+        if capability:
+            if self.updated and self.updated > capability['timestamp']:
+                return
+            self.update_backend(capability)
+
+            self.total_capacity_gb = capability['total_capacity_gb']
+            self.free_capacity_gb = capability['free_capacity_gb']
+            self.allocated_capacity_gb = capability.get(
+                'allocated_capacity_gb', 0)
+            self.QoS_support = capability.get('QoS_support', False)
+            self.reserved_percentage = capability['reserved_percentage']
+
+    def update_pools(self, capability):
+        # Do nothing, since we don't have pools within pool, yet
+        pass
 
 
 class HostManager(object):
@@ -243,13 +403,15 @@ class HostManager(object):
                       {'service_name': service_name, 'host': host})
             return
 
-        LOG.debug("Received %(service_name)s service update from "
-                  "%(host)s.", {"service_name": service_name, "host": host})
-
         # Copy the capabilities, so we don't modify the original dict
         capab_copy = dict(capabilities)
         capab_copy["timestamp"] = timeutils.utcnow()  # Reported time
         self.service_states[host] = capab_copy
+
+        LOG.debug("Received %(service_name)s service update from "
+                  "%(host)s: %(cap)s" %
+                  {'service_name': service_name, 'host': host,
+                   'cap': capabilities})
 
     def get_all_host_states_share(self, context):
         """Get all hosts and their states.
@@ -263,6 +425,7 @@ class HostManager(object):
         """
 
         # Get resource usage across the available share nodes:
+        all_pools = {}
         topic = CONF.share_topic
         share_services = db.service_get_all_by_topic(context, topic)
         for service in share_services:
@@ -274,17 +437,36 @@ class HostManager(object):
                 continue
             capabilities = self.service_states.get(host, None)
             host_state = self.host_state_map.get(host)
-            if host_state:
-                # copy capabilities to host_state.capabilities
-                host_state.update_capabilities(capabilities,
-                                               dict(six.iteritems(service)))
-            else:
+            if not host_state:
                 host_state = self.host_state_cls(
                     host,
                     capabilities=capabilities,
                     service=dict(six.iteritems(service)))
                 self.host_state_map[host] = host_state
-            # update host_state
-            host_state.update_from_share_capability(capabilities)
+            # Update host_state
+            host_state.update_from_share_capability(
+                capabilities, service=dict(six.iteritems(service)))
+            # Build a pool_state map and return that instead of host_state_map
+            state = self.host_state_map[host]
+            for key in state.pools:
+                pool = state.pools[key]
+                # Use host.pool_name to make sure key is unique
+                pool_key = '.'.join([host, pool.pool_name])
+                all_pools[pool_key] = pool
 
-        return self.host_state_map.itervalues()
+        return six.itervalues(all_pools)
+
+    def get_pools(self, context):
+        """Returns a dict of all pools on all hosts HostManager knows about."""
+
+        all_pools = []
+        for host, state in self.host_state_map.items():
+            for key in state.pools:
+                pool = state.pools[key]
+                # Use host.pool_name to make sure key is unique
+                pool_key = share_utils.append_host(host, pool.pool_name)
+                new_pool = dict(name=pool_key)
+                new_pool.update(dict(capabilities=pool.capabilities))
+                all_pools.append(new_pool)
+
+        return all_pools

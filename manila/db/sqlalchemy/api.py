@@ -1193,8 +1193,13 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
         query = query.filter_by(project_id=project_id)
     if share_server_id:
         query = query.filter_by(share_server_id=share_server_id)
-    if host:
-        query = query.filter_by(host=host)
+    if host and isinstance(host, six.string_types):
+        session = get_session()
+        with session.begin():
+            host_attr = getattr(models.Share, 'host')
+            conditions = [host_attr == host,
+                          host_attr.op('LIKE')(host + '#%')]
+            query = query.filter(or_(*conditions))
 
     # Apply filters
     if not filters:
@@ -1244,6 +1249,7 @@ def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
 @require_admin_context
 def share_get_all_by_host(context, host, filters=None,
                           sort_key=None, sort_dir=None):
+    """Retrieves all shares hosted on a host."""
     query = _share_get_all_with_filters(
         context, host=host, filters=filters,
         sort_key=sort_key, sort_dir=sort_dir,

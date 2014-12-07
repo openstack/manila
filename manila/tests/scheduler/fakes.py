@@ -65,6 +65,10 @@ class FakeHostManager(host_manager.HostManager):
                       'free_capacity_gb': 200,
                       'reserved_percentage': 5,
                       'timestamp': None},
+            'host5': {'total_capacity_gb': 2048,
+                      'free_capacity_gb': 500,
+                      'reserved_percentage': 5,
+                      'timestamp': None},
         }
 
 
@@ -85,9 +89,8 @@ def mock_host_manager_db_calls(mock_obj, disabled=None):
              availability_zone='zone2', updated_at=timeutils.utcnow()),
         dict(id=4, host='host4', topic='share', disabled=False,
              availability_zone='zone3', updated_at=timeutils.utcnow()),
-        # service on host5 is disabled
-        dict(id=5, host='host5', topic='share', disabled=True,
-             availability_zone='zone4', updated_at=timeutils.utcnow()),
+        dict(id=5, host='host5', topic='share', disabled=False,
+             availability_zone='zone3', updated_at=timeutils.utcnow()),
     ]
     if disabled is None:
         mock_obj.return_value = services

@@ -97,6 +97,16 @@ class SchedulerManagerTestCase(test.TestCase):
             self.manager.driver.schedule_create_share.assert_called_once_with(
                 self.context, request_spec, {})
 
+    def test_get_pools(self):
+        """Ensure get_pools exists and calls driver.get_pools."""
+        mock_get_pools = self.mock_object(self.manager.driver, 'get_pools',
+                                          mock.Mock(return_value='fake_pools'))
+
+        result = self.manager.get_pools(self.context, filters='fake_filters')
+
+        mock_get_pools.assert_called_once_with(self.context, 'fake_filters')
+        self.assertEqual('fake_pools', result)
+
 
 class SchedulerTestCase(test.TestCase):
     """Test case for base scheduler driver class."""

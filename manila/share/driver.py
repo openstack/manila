@@ -174,6 +174,9 @@ class ShareDriver(object):
         """
         super(ShareDriver, self).__init__()
         self.configuration = kwargs.get('configuration', None)
+        self._stats = {}
+
+        self.pools = {}
         if self.configuration:
             self.configuration.append_config_values(share_opts)
             network_config_group = (self.configuration.network_config_group or
@@ -242,6 +245,12 @@ class ShareDriver(object):
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Is called to remove snapshot."""
         raise NotImplementedError()
+
+    def get_pool(self, share):
+        """Return pool name where the share resides on.
+
+        :param share: The share hosted by the driver.
+        """
 
     def ensure_share(self, context, share, share_server=None):
         """Invoked to sure that share is exported."""
