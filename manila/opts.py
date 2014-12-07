@@ -108,6 +108,7 @@ _global_opt_lists = [
     manila.share.drivers.glusterfs.GlusterfsManilaShare_opts,
     manila.share.drivers.glusterfs_native.glusterfs_native_manila_share_opts,
     manila.share.drivers.hds.sop.hdssop_share_opts,
+    manila.share.drivers.hp.hp_3par_driver.HP3PAR_OPTS,
     manila.share.drivers.huawei.huawei_nas.huawei_opts,
     manila.share.drivers.ibm.gpfs.gpfs_share_opts,
     manila.share.drivers.netapp.cluster_mode.NETAPP_NAS_OPTS,
