@@ -231,7 +231,6 @@ class TestBridgeInterfaceDriver(TestBase):
         with mock.patch('manila.network.linux.interface.LOG.debug') as log:
             br = interface.BridgeInterfaceDriver()
             br.unplug('tap0')
-            log.assert_called_once()
-
+            self.assertTrue(log.called)
         self.ip_dev.assert_has_calls([mock.call('tap0', None),
                                       mock.call().link.delete()])
