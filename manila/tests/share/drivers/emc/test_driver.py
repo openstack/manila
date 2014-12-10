@@ -14,13 +14,12 @@
 #    under the License.
 
 import mock
+from stevedore import extension
 
 from manila.openstack.common import log as logging
 from manila.share import configuration as conf
 from manila.share.drivers.emc import driver as emcdriver
 from manila.share.drivers.emc.plugins import base
-from manila.share.drivers.emc.plugins import \
-    registry as emc_plugins_registry
 from manila import test
 
 LOG = logging.getLogger(__name__)
@@ -89,8 +88,20 @@ class FakeConnection(base.StorageConnection):
 FAKE_BACKEND = 'fake_backend'
 
 
+class FakeEMCExtensionManager():
+    def __init__(self):
+        self.extensions = []
+        self.extensions.append(
+            extension.Extension(name=FAKE_BACKEND,
+                                plugin=FakeConnection,
+                                entry_point=None,
+                                obj=None))
+
+
 class EMCShareFrameworkTestCase(test.TestCase):
 
+    @mock.patch('stevedore.extension.ExtensionManager',
+                mock.Mock(return_value=FakeEMCExtensionManager()))
     def setUp(self):
         super(EMCShareFrameworkTestCase, self).setUp()
         self.configuration = conf.Configuration(None)
@@ -101,18 +112,15 @@ class EMCShareFrameworkTestCase(test.TestCase):
             configuration=self.configuration)
 
     def test_driver_setup(self):
-        emc_plugins_registry.register_storage_backend(
-            FAKE_BACKEND, FakeConnection)
-
         FakeConnection.connect = mock.Mock()
         self.driver.do_setup(None)
-        self.assertIsInstance(self.driver._storage_conn, FakeConnection,
+        self.assertIsInstance(self.driver.plugin, FakeConnection,
                               "Not an instance of FakeConnection")
         FakeConnection.connect.assert_called_with(self.driver, None)
 
     def test_update_share_stats(self):
         data = {}
-        self.driver._storage_conn = mock.Mock()
+        self.driver.plugin = mock.Mock()
         self.driver._update_share_stats()
         data["share_backend_name"] = FAKE_BACKEND
         data["vendor_name"] = 'EMC'
@@ -122,8 +130,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['free_capacity_gb'] = 'infinite'
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
-        self.driver._storage_conn.\
-            update_share_stats.assert_called_with(data)
+        self.driver.plugin.update_share_stats.assert_called_with(data)
 
     def _fake_safe_get(self, value):
         if value in ['emc_share_backend', 'share_backend_name']:

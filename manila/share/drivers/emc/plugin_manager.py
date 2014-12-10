@@ -12,20 +12,20 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 """EMC Share Driver Plugin Framework."""
-
-g_registered_storage_backends = {}
-
-
-def register_storage_backend(share_backend_name, storage_conn_class):
-    """register a backend storage plugins."""
-    g_registered_storage_backends[
-        share_backend_name.upper()] = storage_conn_class
+from stevedore import extension
 
 
-def create_storage_connection(share_backend_name, logger):
-    """create an instance of plugins."""
-    storage_conn_class = g_registered_storage_backends[
-        share_backend_name.upper()]
-    return storage_conn_class(logger)
+class EMCPluginManager(object):
+    def __init__(self, namespace):
+        self.namespace = namespace
+
+        self.extension_manager = extension.ExtensionManager(namespace)
+
+    def load_plugin(self, name, logger=None):
+        for ext in self.extension_manager.extensions:
+            if ext.name == name:
+                storage_conn = ext.plugin(logger)
+                return storage_conn
+
+        return None

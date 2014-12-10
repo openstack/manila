@@ -24,10 +24,7 @@ from oslo.config import cfg
 
 from manila.openstack.common import log
 from manila.share import driver
-from manila.share.drivers.emc.plugins import \
-    registry as emc_plugins_registry
-# TODO(jay.xu): Implement usage of stevedore for plugins.
-from manila.share.drivers.emc.plugins.vnx import connection    # noqa
+from manila.share.drivers.emc import plugin_manager as manager
 
 
 LOG = log.getLogger(__name__)
@@ -71,50 +68,53 @@ class EMCShareDriver(driver.ShareDriver):
         if self.configuration:
             self.configuration.append_config_values(EMC_NAS_OPTS)
 
-        self._storage_conn = None
+        self.plugin_manager = manager.EMCPluginManager(
+            namespace='manila.share.drivers.emc.plugins')
+
+        self.plugin = None
 
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
-        location = self._storage_conn.create_share(self, context, share,
-                                                   share_server)
+        location = self.plugin.create_share(self, context, share,
+                                            share_server)
 
         return location
 
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Is called to create share from snapshot."""
-        location = self._storage_conn.create_share_from_snapshot(
+        location = self.plugin.create_share_from_snapshot(
             self, context, share, snapshot, share_server)
 
         return location
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Is called to create snapshot."""
-        self._storage_conn.create_snapshot(self, context, snapshot,
-                                           share_server)
+        self.plugin.create_snapshot(self, context, snapshot,
+                                    share_server)
 
     def delete_share(self, context, share, share_server=None):
         """Is called to remove share."""
-        self._storage_conn.delete_share(self, context, share, share_server)
+        self.plugin.delete_share(self, context, share, share_server)
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Is called to remove snapshot."""
-        self._storage_conn.delete_snapshot(self, context, snapshot,
-                                           share_server)
+        self.plugin.delete_snapshot(self, context, snapshot,
+                                    share_server)
 
     def ensure_share(self, context, share, share_server=None):
         """Invoked to sure that share is exported."""
-        self._storage_conn.ensure_share(self, context, share, share_server)
+        self.plugin.ensure_share(self, context, share, share_server)
 
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
-        self._storage_conn.allow_access(self, context, share, access,
-                                        share_server)
+        self.plugin.allow_access(self, context, share, access,
+                                 share_server)
 
     def deny_access(self, context, share, access, share_server=None):
         """Deny access to the share."""
-        self._storage_conn.deny_access(self, context, share, access,
-                                       share_server)
+        self.plugin.deny_access(self, context, share, access,
+                                share_server)
 
     def check_for_setup_error(self):
         """Check for setup error."""
@@ -122,9 +122,11 @@ class EMCShareDriver(driver.ShareDriver):
 
     def do_setup(self, context):
         """Any initialization the share driver does while starting."""
-        self._storage_conn = emc_plugins_registry.create_storage_connection(
-            self.configuration.safe_get('emc_share_backend'), LOG)
-        self._storage_conn.connect(self, context)
+        backend_name = self.configuration.safe_get('emc_share_backend')
+
+        self.plugin = self.plugin_manager.load_plugin(backend_name, LOG)
+
+        self.plugin.connect(self, context)
 
     def get_share_stats(self, refresh=False):
         """Get share stats.
@@ -152,19 +154,19 @@ class EMCShareDriver(driver.ShareDriver):
         data['free_capacity_gb'] = 'infinite'
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
-        self._storage_conn.update_share_stats(data)
+        self.plugin.update_share_stats(data)
         self._stats = data
 
     def get_network_allocations_number(self):
         """Returns number of network allocations for creating VIFs."""
-        return self._storage_conn.get_network_allocations_number(self)
+        return self.plugin.get_network_allocations_number(self)
 
     def setup_server(self, network_info, metadata=None):
         """Set up and configures share server with given network parameters."""
-        return self._storage_conn.setup_server(self, network_info, metadata)
+        return self.plugin.setup_server(self, network_info, metadata)
 
     def teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
-        return self._storage_conn.teardown_server(self,
-                                                  server_details,
-                                                  security_services)
+        return self.plugin.teardown_server(self,
+                                           server_details,
+                                           security_services)
