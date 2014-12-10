@@ -371,7 +371,7 @@ class GenericUtilsTestCase(test.TestCase):
             self.assertTrue(utils.is_ipv6_configured())
 
             open.assert_called_once_with('/proc/net/if_inet6')
-            fake_fd.read.assert_called_once()
+            fake_fd.read.assert_called_once_with(32)
 
     def test_is_ipv6_configured1(self):
         fake_fd = mock.Mock()
@@ -396,7 +396,7 @@ class GenericUtilsTestCase(test.TestCase):
         with mock.patch.dict('sys.modules', {
                 'eventlet.support.greendns': fake_dns}):
             self.assertTrue(utils.is_eventlet_bug105())
-            fake_dns.getaddrinfo.assert_called_once()
+            self.assertTrue(fake_dns.getaddrinfo.called)
 
     def test_is_eventlet_bug105_neg(self):
         fake_dns = mock.Mock()
@@ -406,7 +406,7 @@ class GenericUtilsTestCase(test.TestCase):
         with mock.patch.dict('sys.modules', {
                 'eventlet.support.greendns': fake_dns}):
             self.assertFalse(utils.is_eventlet_bug105())
-            fake_dns.getaddrinfo.assert_called_once()
+            fake_dns.getaddrinfo.assert_called_once_with('::1', 80)
 
 
 class MonkeyPatchTestCase(test.TestCase):

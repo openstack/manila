@@ -557,7 +557,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         ret = self._driver.allow_access(self._context, self.share, access,
                                         share_server)
         self.assertEqual(ret, None)
-        self._driver._manage_access.assert_called_once()
+        self._driver._manage_access.assert_called_once_with(
+            self._context, self.share, access, mock.ANY)
 
     def test_deny_access_with_share_having_noaccess(self):
         access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
@@ -587,4 +588,5 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         ret = self._driver.deny_access(self._context, self.share, access,
                                        share_server)
         self.assertEqual(ret, None)
-        self._driver._manage_access.assert_called_once()
+        self._driver._manage_access.assert_called_once_with(
+            self._context, self.share, access, mock.ANY)
