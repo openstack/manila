@@ -436,9 +436,14 @@ class ShareManager(manager.SchedulerDependentManager):
         return network_info
 
     def _setup_server(self, context, share_server, metadata=None):
-        share_network = self.db.share_network_get(
-            context, share_server['share_network_id'])
+        # NOTE(vponomaryov): set network_allocations to 0 before 'try' block
+        # for case we get exception calling appropriate method. This value will
+        # be used in exception handling and for case 'setup_server' method was
+        # not called we won't make redundant actions.
+        allocation_number = 0
         try:
+            share_network = self.db.share_network_get(
+                context, share_server['share_network_id'])
             allocation_number = self.driver.get_network_allocations_number()
             if allocation_number:
                 self.network_api.allocate_network(
@@ -478,7 +483,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
                 self.db.share_server_update(context, share_server['id'],
                                             {'status': constants.STATUS_ERROR})
-                self.network_api.deallocate_network(context, share_network)
+                if allocation_number:
+                    self.network_api.deallocate_network(
+                        context, share_server['id'])
 
     def delete_share_server(self, context, share_server):
 
@@ -519,4 +526,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
         _teardown_server()
         LOG.info(_LI("Share server deleted successfully."))
-        self.network_api.deallocate_network(context, share_server)
+        # NOTE(vponomaryov): share servers created by Nova do not need
+        # explicit network allocations release. It is done by Nova itself.
+        # So, all drivers that use 'service_instance' module do not need
+        # following operation.
+        if self.driver.get_network_allocations_number():
+            self.network_api.deallocate_network(context, share_server['id'])
