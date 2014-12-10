@@ -24,7 +24,7 @@ from manila.i18n import _LE
 from manila.i18n import _LW
 from manila.openstack.common import log
 from manila.share.drivers.emc.plugins import base as driver
-import manila.share.drivers.emc.plugins.registry
+from manila.share.drivers.emc.plugins import registry
 from manila.share.drivers.emc.plugins.vnx import constants
 from manila.share.drivers.emc.plugins.vnx import helper
 from manila.share.drivers.emc.plugins.vnx import utils as vnx_utils
@@ -64,7 +64,7 @@ class VNXStorageConnection(driver.StorageConnection):
         elif share['share_proto'].startswith('CIFS'):
             location = self._create_cifs_share(share_name, vdm)
         else:
-            raise manila.exception.InvalidShare(
+            raise exception.InvalidShare(
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share['share_proto']))
 
@@ -164,7 +164,7 @@ class VNXStorageConnection(driver.StorageConnection):
         elif share['share_proto'].startswith('CIFS'):
             location = self._create_cifs_share(share_name, vdm_ref)
         else:
-            raise manila.exception.InvalidShare(
+            raise exception.InvalidShare(
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share['share_proto']))
 
@@ -202,7 +202,7 @@ class VNXStorageConnection(driver.StorageConnection):
         elif share['share_proto'].startswith('CIFS'):
             self._delete_cifs_share(share, share_server)
         else:
-            raise manila.exception.InvalidShare(
+            raise exception.InvalidShare(
                 reason='Unsupported share type')
 
     @vnx_utils.log_enter_exit
@@ -350,7 +350,7 @@ class VNXStorageConnection(driver.StorageConnection):
         elif share['share_proto'].startswith('CIFS'):
             self._cifs_allow_access(context, share, access, share_server)
         else:
-            raise manila.exception.InvalidShare(
+            raise exception.InvalidShare(
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share['share_proto']))
 
@@ -385,7 +385,7 @@ class VNXStorageConnection(driver.StorageConnection):
         access_type = access['access_type']
         if access_type != 'ip':
             reason = _('Only ip access type allowed.')
-            raise manila.exception.InvalidShareAccess(reason)
+            raise exception.InvalidShareAccess(reason)
 
         host_ip = access['access_to']
         mover_name = self._get_vdm_name(share_server)
@@ -405,7 +405,7 @@ class VNXStorageConnection(driver.StorageConnection):
         elif share['share_proto'].startswith('CIFS'):
             self._cifs_deny_access(context, share, access, share_server)
         else:
-            raise manila.exception.InvalidShare(
+            raise exception.InvalidShare(
                 reason=_('Unsupported share type'))
 
     @vnx_utils.log_enter_exit
@@ -440,7 +440,7 @@ class VNXStorageConnection(driver.StorageConnection):
         access_type = access['access_type']
         if access_type != 'ip':
             reason = _('Only ip access type allowed.')
-            raise manila.exception.InvalidShareAccess(reason)
+            raise exception.InvalidShareAccess(reason)
 
         host_ip = access['access_to']
 
@@ -743,7 +743,7 @@ class VNXStorageConnection(driver.StorageConnection):
             message = (_("Could not find the storage pool by name: %s.")
                        % name)
             LOG.error(message)
-            raise manila.exception.InvalidParameterValue(err=message)
+            raise exception.InvalidParameterValue(err=message)
 
         return self._pool
 
@@ -752,7 +752,7 @@ class VNXStorageConnection(driver.StorageConnection):
         if constants.STATUS_ERROR == status:
             message = _("Could not find Data Mover by name: %s.") % name
             LOG.error(message)
-            raise manila.exception.InvalidParameterValue(err=message)
+            raise exception.InvalidParameterValue(err=message)
 
         return mover
 
@@ -765,7 +765,7 @@ class VNXStorageConnection(driver.StorageConnection):
                 message = (_("Could not find Virtual Data Mover by name: %s.")
                            % name)
                 LOG.error(message)
-                raise manila.exception.InvalidParameterValue(err=message)
+                raise exception.InvalidParameterValue(err=message)
 
         return vdm
 
@@ -774,7 +774,7 @@ class VNXStorageConnection(driver.StorageConnection):
         if constants.STATUS_OK != status:
             message = _("Could not find Data Mover by id: %s.") % mover_id
             LOG.error(message)
-            raise manila.exception.InvalidParameterValue(err=message)
+            raise exception.InvalidParameterValue(err=message)
 
         return mover
 
@@ -920,5 +920,4 @@ class VNXStorageConnection(driver.StorageConnection):
             raise exception.EMCVnxXMLAPIError(err=msg)
 
 
-manila.share.drivers.emc.plugins.registry.register_storage_backend(
-    "vnx", VNXStorageConnection)
+registry.register_storage_backend("vnx", VNXStorageConnection)
