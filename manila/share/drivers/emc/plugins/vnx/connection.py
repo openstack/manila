@@ -24,7 +24,6 @@ from manila.i18n import _LE
 from manila.i18n import _LW
 from manila.openstack.common import log
 from manila.share.drivers.emc.plugins import base as driver
-from manila.share.drivers.emc.plugins import registry
 from manila.share.drivers.emc.plugins.vnx import constants
 from manila.share.drivers.emc.plugins.vnx import helper
 from manila.share.drivers.emc.plugins.vnx import utils as vnx_utils
@@ -918,6 +917,3 @@ class VNXStorageConnection(driver.StorageConnection):
             msg = _("Only single security service with "
                     "type 'active_directory' supported")
             raise exception.EMCVnxXMLAPIError(err=msg)
-
-
-registry.register_storage_backend("vnx", VNXStorageConnection)

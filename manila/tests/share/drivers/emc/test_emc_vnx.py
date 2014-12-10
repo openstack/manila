@@ -1201,7 +1201,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         ]
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
         helper.XMLAPIConnector.do_setup.assert_called_once_with()
-        pool_id = self.driver._storage_conn._pool['id']
+        pool_id = self.driver.plugin._pool['id']
         self.assertEqual(pool_id, TD.storage_pool_id_default,
                          "Storage pool id parse error")
 
