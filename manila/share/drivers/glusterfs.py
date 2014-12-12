@@ -265,6 +265,9 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         data['free_capacity_gb'] = (smpv.f_bavail * smpv.f_frsize) >> 30
         self._stats = data
 
+    def get_network_allocations_number(self):
+        return 0
+
     def create_share(self, ctx, share, share_server=None):
         """Create a sub-directory/share in the GlusterFS volume."""
         local_share_path = self._get_local_share_path(share)

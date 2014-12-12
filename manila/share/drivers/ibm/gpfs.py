@@ -418,6 +418,9 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
+    def get_network_allocations_number(self):
+        return 0
+
     def create_share(self, ctx, share, share_server=None):
         """Create GPFS directory that will be represented as share."""
         self._create_share(share)

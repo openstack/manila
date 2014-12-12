@@ -63,7 +63,7 @@ CONF.register_opts(EMC_NAS_OPTS)
 class EMCShareDriver(driver.ShareDriver):
     """EMC specific NAS driver. Allows for NFS and CIFS NAS storage usage."""
     def __init__(self, *args, **kwargs):
-        super(EMCShareDriver, self).__init__()
+        super(EMCShareDriver, self).__init__(*args, **kwargs)
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(EMC_NAS_OPTS)

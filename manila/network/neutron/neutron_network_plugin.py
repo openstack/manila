@@ -13,25 +13,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.config import cfg
-
 from manila.common import constants
-from manila.db import base as db_base
 from manila import exception
-from manila import network as manila_network
+from manila import network
 from manila.network.neutron import api as neutron_api
 from manila.network.neutron import constants as neutron_constants
 from manila.openstack.common import log as logging
 
-CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-class NeutronNetworkPlugin(manila_network.NetworkBaseAPI, db_base.Base):
+class NeutronNetworkPlugin(network.NetworkBaseAPI):
 
-    def __init__(self):
-        super(NeutronNetworkPlugin, self).__init__()
-        self.neutron_api = neutron_api.API()
+    def __init__(self, *args, **kwargs):
+        db_driver = kwargs.pop('db_driver', None)
+        super(NeutronNetworkPlugin, self).__init__(db_driver=db_driver)
+        self.neutron_api = neutron_api.API(*args, **kwargs)
 
     def allocate_network(self, context, share_server, share_network, **kwargs):
         """Allocate network resources using given network information.

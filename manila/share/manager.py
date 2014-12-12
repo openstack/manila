@@ -32,7 +32,6 @@ from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
 from manila import manager
-from manila import network
 from manila.openstack.common import log as logging
 from manila import quota
 import manila.share.configuration
@@ -71,7 +70,6 @@ class ShareManager(manager.SchedulerDependentManager):
             share_driver = self.configuration.share_driver
         self.driver = importutils.import_object(
             share_driver, self.db, configuration=self.configuration)
-        self.network_api = network.API()
 
     def init_host(self):
         """Initialization for a standalone service."""
@@ -436,22 +434,14 @@ class ShareManager(manager.SchedulerDependentManager):
         return network_info
 
     def _setup_server(self, context, share_server, metadata=None):
-        # NOTE(vponomaryov): set network_allocations to 0 before 'try' block
-        # for case we get exception calling appropriate method. This value will
-        # be used in exception handling and for case 'setup_server' method was
-        # not called we won't make redundant actions.
-        allocation_number = 0
         try:
             share_network = self.db.share_network_get(
                 context, share_server['share_network_id'])
-            allocation_number = self.driver.get_network_allocations_number()
-            if allocation_number:
-                self.network_api.allocate_network(
-                    context, share_server, share_network,
-                    count=allocation_number)
-                # If we reach here, then share_network was updated
-                share_network = self.db.share_network_get(
-                    context, share_server['share_network_id'])
+            self.driver.allocate_network(context, share_server, share_network)
+
+            # Get share_network again in case it was updated.
+            share_network = self.db.share_network_get(
+                context, share_server['share_network_id'])
 
             network_info = self._form_server_setup_info(context, share_server,
                                                         share_network)
@@ -483,9 +473,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
                 self.db.share_server_update(context, share_server['id'],
                                             {'status': constants.STATUS_ERROR})
-                if allocation_number:
-                    self.network_api.deallocate_network(
-                        context, share_server['id'])
+                self.driver.deallocate_network(context, share_server['id'])
 
     def delete_share_server(self, context, share_server):
 
@@ -526,9 +514,4 @@ class ShareManager(manager.SchedulerDependentManager):
 
         _teardown_server()
         LOG.info(_LI("Share server deleted successfully."))
-        # NOTE(vponomaryov): share servers created by Nova do not need
-        # explicit network allocations release. It is done by Nova itself.
-        # So, all drivers that use 'service_instance' module do not need
-        # following operation.
-        if self.driver.get_network_allocations_number():
-            self.network_api.deallocate_network(context, share_server['id'])
+        self.driver.deallocate_network(context, share_server['id'])

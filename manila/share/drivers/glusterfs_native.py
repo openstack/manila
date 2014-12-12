@@ -373,6 +373,9 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         self._restart_gluster_vol(gluster_addr)
 
+    def get_network_allocations_number(self):
+        return 0
+
     def create_share(self, context, share, share_server=None):
         """Create a share using GlusterFS volume.
 
