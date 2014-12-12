@@ -30,6 +30,7 @@
 # drivers. By default they are equal. Also be attentive, if you modify both,
 # make sure 'MANILA_CONFIGURE_GROUPS' contains all values from
 # 'MANILA_ENABLED_BACKENDS'.
+# DEFAULT group is always defined, no need to specify it within 'MANILA_CONFIGURE_GROUPS'.
 #
 # 3) Two default backends are used for compatibility with previous approach.
 # They have same configuration except name of backend. Both use generic driver.
@@ -143,6 +144,24 @@ function configure_default_backends {
     done
 }
 
+function set_config_opts {
+    # expects only one param - name of config group(s) as list separated by commas
+    GROUP_NAMES=$1
+    if [[ -n "$GROUP_NAMES" ]]; then
+        for be in ${GROUP_NAMES//,/ }; do
+            # get backend_specific opt values
+            prefix=MANILA_OPTGROUP_$be\_
+            ( set -o posix ; set ) | grep ^$prefix | while read -r line ; do
+                # parse it to opt names and values
+                opt=${line#$prefix}
+                opt_name=${opt%%=*}
+                opt_value=${opt##*=}
+                iniset $MANILA_CONF $be $opt_name $opt_value
+            done
+        done
+    fi
+}
+
 # configure_manila - Set config files, create data dirs, etc
 function configure_manila {
     setup_develop $MANILA_DIR
@@ -254,19 +273,8 @@ function configure_manila {
     fi
 
     MANILA_CONFIGURE_GROUPS=${MANILA_CONFIGURE_GROUPS:-"$MANILA_ENABLED_BACKENDS"}
-    if [[ -n "$MANILA_CONFIGURE_GROUPS" ]]; then
-        for be in ${MANILA_CONFIGURE_GROUPS//,/ }; do
-            # get backend_specific opt values
-            prefix=MANILA_OPTGROUP_$be\_
-            compgen -v | grep $prefix | while read -r line ; do
-                # parse it to opt names and values
-                opt=${line#$prefix}
-                opt_name=${opt%%=*}
-                opt_value=${opt##*=}
-                iniset $MANILA_CONF $be $opt_name $opt_value
-            done
-        done
-    fi
+    set_config_opts $MANILA_CONFIGURE_GROUPS
+    set_config_opts DEFAULT
 }
 
 function create_manila_service_flavor {
