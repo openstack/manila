@@ -525,7 +525,7 @@ class API(base.Base):
             metadata = {}
 
         for k, v in six.iteritems(metadata):
-            if len(k) == 0:
+            if not k:
                 msg = _("Metadata property key is blank")
                 LOG.warn(msg)
                 raise exception.InvalidShareMetadata(message=msg)
@@ -533,6 +533,10 @@ class API(base.Base):
                 msg = _("Metadata property key is greater than 255 characters")
                 LOG.warn(msg)
                 raise exception.InvalidShareMetadataSize(message=msg)
+            if not v:
+                msg = _("Metadata property value is blank")
+                LOG.warn(msg)
+                raise exception.InvalidShareMetadata(message=msg)
             if len(v) > 1023:
                 msg = _("Metadata property value is "
                         "greater than 1023 characters")

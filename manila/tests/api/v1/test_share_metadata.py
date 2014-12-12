@@ -15,6 +15,7 @@
 
 import uuid
 
+import ddt
 from oslo.config import cfg
 from oslo.serialization import jsonutils
 import webob
@@ -83,6 +84,7 @@ def fake_update_share_metadata(self, context, share, diff):
     pass
 
 
+@ddt.ddt
 class ShareMetaDataTest(test.TestCase):
 
     def setUp(self):
@@ -293,13 +295,17 @@ class ShareMetaDataTest(test.TestCase):
                           self.controller.update_all, req, self.req_id,
                           expected)
 
-    def test_update_all_malformed_data(self):
+    @ddt.data(['asdf'],
+              {'key': None},
+              {None: 'value'},
+              {None: None})
+    def test_update_all_malformed_data(self, metadata):
         self.stubs.Set(manila.db, 'share_metadata_update',
                        return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
-        expected = {'metadata': ['asdf']}
+        expected = {'metadata': metadata}
         req.body = jsonutils.dumps(expected)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
