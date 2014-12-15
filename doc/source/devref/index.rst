@@ -40,6 +40,7 @@ Background Concepts for Manila
    threading
    il8n
    rpc
+   pool-aware-manila-scheduler
 
 Other Resources
 ---------------
