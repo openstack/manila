@@ -92,8 +92,8 @@ class ShareController(wsgi.Controller):
             self.share_api.delete(context, share)
         except exception.NotFound:
             raise exc.HTTPNotFound()
-        except exception.InvalidShare:
-            raise exc.HTTPForbidden()
+        except exception.InvalidShare as e:
+            raise exc.HTTPForbidden(explanation=six.text_type(e))
 
         return webob.Response(status_int=202)
 
