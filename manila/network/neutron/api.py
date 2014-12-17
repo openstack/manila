@@ -1,4 +1,5 @@
 # Copyright 2013 OpenStack Foundation
+# Copyright 2014 Mirantis Inc.
 # All Rights Reserved
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,77 +15,111 @@
 #    under the License.
 
 from neutronclient.common import exceptions as neutron_client_exc
+from neutronclient.v2_0 import client as clientv20
 from oslo.config import cfg
 
 from manila import context
 from manila.db import base
 from manila import exception
 from manila.i18n import _LE
-from manila.network import neutron
 from manila.network.neutron import constants as neutron_constants
 from manila.openstack.common import log as logging
 
 neutron_opts = [
-    cfg.StrOpt('neutron_url',
-               default='http://127.0.0.1:9696',
-               deprecated_name='quantum_url',
-               help='URL for connecting to neutron.'),
-    cfg.IntOpt('neutron_url_timeout',
-               default=30,
-               deprecated_name='quantum_url_timeout',
-               help='Timeout value for connecting to neutron in seconds.'),
-    cfg.StrOpt('neutron_admin_username',
-               default='neutron',
-               deprecated_name='quantum_admin_username',
-               help='Username for connecting to neutron in admin context.'),
-    cfg.StrOpt('neutron_admin_password',
-               deprecated_name='quantum_admin_password',
-               help='Password for connecting to neutron in admin context.',
-               secret=True),
-    cfg.StrOpt('neutron_admin_tenant_name',
-               default='service',
-               deprecated_name='quantum_admin_tenant_name',
-               help='Tenant name for connecting to neutron in admin context.'),
-    cfg.StrOpt('neutron_region_name',
-               deprecated_name='quantum_region_name',
-               help='Region name for connecting to neutron in admin context.'),
-    cfg.StrOpt('neutron_admin_auth_url',
-               deprecated_name='quantum_admin_auth_url',
-               default='http://localhost:5000/v2.0',
-               help='Auth URL for connecting to neutron in admin context.'),
-    cfg.BoolOpt('neutron_api_insecure',
-                default=False,
-                deprecated_name='quantum_api_insecure',
-                help='If set, ignore any SSL validation issues.'),
-    cfg.StrOpt('neutron_auth_strategy',
-               default='keystone',
-               deprecated_name='quantum_auth_strategy',
-               help='Auth strategy for connecting to '
-                    'neutron in admin context.'),
-    # TODO(berrange) temporary hack until Neutron can pass over the
-    # name of the OVS bridge it is configured with
-    cfg.StrOpt('neutron_ovs_bridge',
-               default='br-int',
-               deprecated_name='quantum_ovs_bridge',
-               help='Name of integration bridge used by Open vSwitch.'),
-    cfg.StrOpt('neutron_ca_certificates_file',
-               help='Location of CA certificates file to use for '
-                    'neutron client requests.'),
+    cfg.StrOpt(
+        'neutron_url',
+        default='http://127.0.0.1:9696',
+        deprecated_group='DEFAULT',
+        help='URL for connecting to neutron.'),
+    cfg.IntOpt(
+        'neutron_url_timeout',
+        default=30,
+        deprecated_group='DEFAULT',
+        help='Timeout value for connecting to neutron in seconds.'),
+    cfg.StrOpt(
+        'neutron_admin_username',
+        default='neutron',
+        deprecated_group='DEFAULT',
+        help='Username for connecting to neutron in admin context.'),
+    cfg.StrOpt(
+        'neutron_admin_password',
+        help='Password for connecting to neutron in admin context.',
+        deprecated_group='DEFAULT',
+        secret=True),
+    cfg.StrOpt(
+        'neutron_admin_tenant_name',
+        default='service',
+        deprecated_group='DEFAULT',
+        help='Tenant name for connecting to neutron in admin context.'),
+    cfg.StrOpt(
+        'neutron_admin_auth_url',
+        default='http://localhost:5000/v2.0',
+        deprecated_group='DEFAULT',
+        help='Auth URL for connecting to neutron in admin context.'),
+    cfg.BoolOpt(
+        'neutron_api_insecure',
+        default=False,
+        deprecated_group='DEFAULT',
+        help='If set, ignore any SSL validation issues.'),
+    cfg.StrOpt(
+        'neutron_auth_strategy',
+        default='keystone',
+        deprecated_group='DEFAULT',
+        help='Auth strategy for connecting to neutron in admin context.'),
+    cfg.StrOpt(
+        'neutron_ca_certificates_file',
+        deprecated_group='DEFAULT',
+        help='Location of CA certificates file to use for '
+             'neutron client requests.'),
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(neutron_opts)
 LOG = logging.getLogger(__name__)
 
 
 class API(base.Base):
-    """API for interacting with the neutron 2.x API."""
+    """API for interacting with the neutron 2.x API.
 
-    def __init__(self):
+    :param configuration: instance of config or config group.
+    """
+
+    def __init__(self, config_group_name=None):
         super(API, self).__init__()
+        if config_group_name is None:
+            config_group_name = 'DEFAULT'
+        CONF.register_opts(neutron_opts, group=config_group_name)
+        self.configuration = getattr(CONF, config_group_name, CONF)
         self.last_neutron_extension_sync = None
         self.extensions = {}
-        self.client = neutron.get_client(context.get_admin_context())
+        self.client = self.get_client(context.get_admin_context())
+
+    def _get_client(self, token=None):
+        params = {
+            'endpoint_url': self.configuration.neutron_url,
+            'timeout': self.configuration.neutron_url_timeout,
+            'insecure': self.configuration.neutron_api_insecure,
+            'ca_cert': self.configuration.neutron_ca_certificates_file,
+        }
+        if token:
+            params['token'] = token
+            params['auth_strategy'] = None
+        else:
+            params['username'] = self.configuration.neutron_admin_username
+            params['tenant_name'] = (
+                self.configuration.neutron_admin_tenant_name)
+            params['password'] = self.configuration.neutron_admin_password
+            params['auth_url'] = self.configuration.neutron_admin_auth_url
+            params['auth_strategy'] = self.configuration.neutron_auth_strategy
+        return clientv20.Client(**params)
+
+    def get_client(self, context):
+        if context.is_admin:
+            token = None
+        elif not context.auth_token:
+            raise neutron_client_exc.Unauthorized()
+        else:
+            token = context.auth_token
+        return self._get_client(token=token)
 
     @property
     def admin_tenant_id(self):

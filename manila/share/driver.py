@@ -19,40 +19,53 @@ Drivers for shares.
 
 import time
 
-from manila import exception
-from manila.i18n import _LE
-from manila.openstack.common import log as logging
-from manila import utils
-
 from oslo.config import cfg
 
+from manila import exception
+from manila.i18n import _LE
+from manila import network
+from manila.openstack.common import log as logging
+from manila import utils
 
 LOG = logging.getLogger(__name__)
 
 share_opts = [
     # NOTE(rushiagr): Reasonable to define this option at only one place.
-    cfg.IntOpt('num_shell_tries',
-               default=3,
-               help='Number of times to attempt to run flakey shell '
-               'commands.'),
-    cfg.IntOpt('reserved_share_percentage',
-               default=0,
-               help='The percentage of backend capacity reserved.'),
-    cfg.StrOpt('share_backend_name',
-               default=None,
-               help='The backend name for a given driver implementation.'),
+    cfg.IntOpt(
+        'num_shell_tries',
+        default=3,
+        help='Number of times to attempt to run flakey shell commands.'),
+    cfg.IntOpt(
+        'reserved_share_percentage',
+        default=0,
+        help='The percentage of backend capacity reserved.'),
+    cfg.StrOpt(
+        'share_backend_name',
+        default=None,
+        help='The backend name for a given driver implementation.'),
+    cfg.StrOpt(
+        'network_config_group',
+        default=None,
+        help="Name of the configuration group in the Manila conf file "
+             "to look for network config options."
+             "If not set, the share backend's config group will be used."
+             "If an option is not found within provided group, then"
+             "'DEFAULT' group will be used for search of option."),
 ]
 
 ssh_opts = [
-    cfg.IntOpt('ssh_conn_timeout',
-               default=60,
-               help='Backend server SSH connection timeout.'),
-    cfg.IntOpt('ssh_min_pool_conn',
-               default=1,
-               help='Minimum number of connections in the SSH pool.'),
-    cfg.IntOpt('ssh_max_pool_conn',
-               default=10,
-               help='Maximum number of connections in the SSH pool.'),
+    cfg.IntOpt(
+        'ssh_conn_timeout',
+        default=60,
+        help='Backend server SSH connection timeout.'),
+    cfg.IntOpt(
+        'ssh_min_pool_conn',
+        default=1,
+        help='Minimum number of connections in the SSH pool.'),
+    cfg.IntOpt(
+        'ssh_max_pool_conn',
+        default=10,
+        help='Maximum number of connections in the SSH pool.'),
 ]
 
 CONF = cfg.CONF
@@ -100,6 +113,11 @@ class ShareDriver(object):
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(share_opts)
+            network_config_group = (self.configuration.network_config_group or
+                                    self.configuration.config_group)
+        else:
+            network_config_group = None
+        self.network_api = network.API(config_group_name=network_config_group)
 
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
@@ -153,8 +171,30 @@ class ShareDriver(object):
         return self._stats
 
     def get_network_allocations_number(self):
-        """Returns number of network allocations for creating VIFs."""
-        pass
+        """Returns number of network allocations for creating VIFs.
+
+        Drivers that use Nova for share servers should return zero (0) here
+        same as Generic driver does.
+        Because Nova will handle network resources allocation.
+        Drivers that handle networking itself should calculate it according
+        to their own requirements. It can have 1+ network interfaces.
+        """
+        raise NotImplementedError()
+
+    def allocate_network(self, context, share_server, share_network,
+                         count=None, **kwargs):
+        """Allocate network resources using given network information."""
+        if count is None:
+            count = self.get_network_allocations_number()
+        if count:
+            kwargs.update(count=count)
+            self.network_api.allocate_network(
+                context, share_server, share_network, **kwargs)
+
+    def deallocate_network(self, context, share_server_id):
+        """Deallocate network resources for the given share server."""
+        if self.get_network_allocations_number():
+            self.network_api.deallocate_network(context, share_server_id)
 
     def setup_server(self, network_info, metadata=None):
         """Set up and configures share server with given network parameters."""
