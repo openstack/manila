@@ -15,6 +15,7 @@
 #    under the License.
 """Unit tests for the Share driver module."""
 
+import os
 import time
 
 import mock
@@ -54,6 +55,21 @@ class ShareDriverTestCase(test.TestCase):
             configuration=configuration.Configuration(None))
         self.assertRaises(exception.ProcessExecutionError,
                           execute_mixin._try_execute)
+
+    def test_verify_share_driver_mode_option_type(self):
+        with utils.tempdir() as tmpdir:
+            tmpfilename = os.path.join(tmpdir, 'share_driver_mode.conf')
+            with open(tmpfilename, "w") as configfile:
+                configfile.write("""[DEFAULT]\nshare_driver_mode = fake""")
+
+            # Add config file with updated opt
+            driver.CONF.default_config_files = [configfile.name]
+
+            # Reload config instance to use redefined opt
+            driver.CONF.reload_config_files()
+
+            share_driver = driver.ShareDriver()
+            self.assertEqual('fake', share_driver.mode)
 
     def _instantiate_share_driver(self, network_config_group):
         self.stubs.Set(network, 'API', mock.Mock())
