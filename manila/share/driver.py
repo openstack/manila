@@ -53,7 +53,7 @@ share_opts = [
              "If not set, the share backend's config group will be used."
              "If an option is not found within provided group, then"
              "'DEFAULT' group will be used for search of option."),
-    cfg.ListOpt(
+    cfg.StrOpt(
         'share_driver_mode',
         default=None,
         help="One specific mode for driver to use. Available values: "
