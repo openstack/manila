@@ -105,6 +105,7 @@ _global_opt_lists = [
     manila.share.drivers.ibm.gpfs.gpfs_share_opts,
     manila.share.drivers.netapp.cluster_mode.NETAPP_NAS_OPTS,
     manila.share.drivers.service_instance.server_opts,
+    manila.share.drivers.zfssa.zfssashare.ZFSSA_OPTS,
     manila.share.manager.share_manager_opts,
     manila.volume._volume_opts,
     manila.volume.cinder.cinder_opts,
