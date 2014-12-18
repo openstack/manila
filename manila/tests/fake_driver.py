@@ -15,6 +15,7 @@
 
 import mock
 
+from manila.common import constants
 from manila.openstack.common import log as logging
 from manila.share import driver
 
@@ -28,6 +29,7 @@ class FakeShareDriver(driver.ShareDriver):
         super(FakeShareDriver, self).__init__(execute=self.fake_execute,
                                               *args, **kwargs)
         self.db = mock.Mock()
+        self.mode = constants.MULTI_SVM_MODE
 
         def share_network_update(*args, **kwargs):
             pass

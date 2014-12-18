@@ -20,7 +20,9 @@ Drivers for shares.
 import time
 
 from oslo.config import cfg
+import six
 
+from manila.common import constants
 from manila import exception
 from manila.i18n import _LE
 from manila import network
@@ -51,6 +53,13 @@ share_opts = [
              "If not set, the share backend's config group will be used."
              "If an option is not found within provided group, then"
              "'DEFAULT' group will be used for search of option."),
+    cfg.ListOpt(
+        'share_driver_mode',
+        default=None,
+        help="One specific mode for driver to use. Available values: "
+             "%s. What modes are supported and can be used is "
+             "up to driver. If set None then default will be used." %
+             six.text_type(constants.VALID_SHARE_DRIVER_MODES)),
 ]
 
 ssh_opts = [
@@ -76,11 +85,8 @@ CONF.register_opts(ssh_opts)
 class ExecuteMixin(object):
     """Provides an executable functionality to a driver class."""
 
-    def __init__(self, *args, **kwargs):
-        self.db = None
-        self.configuration = kwargs.get('configuration', None)
+    def init_execute_mixin(self, *args, **kwargs):
         if self.configuration:
-            self.configuration.append_config_values(share_opts)
             self.configuration.append_config_values(ssh_opts)
         self.set_execute(kwargs.pop('execute', utils.execute))
 
@@ -115,9 +121,57 @@ class ShareDriver(object):
             self.configuration.append_config_values(share_opts)
             network_config_group = (self.configuration.network_config_group or
                                     self.configuration.config_group)
+            self.mode = self.configuration.safe_get('share_driver_mode')
         else:
             network_config_group = None
+            self.mode = CONF.share_driver_mode
+
+        if hasattr(self, 'init_execute_mixin'):
+            # Instance with 'ExecuteMixin'
+            self.init_execute_mixin(*args, **kwargs)  # pylint: disable=E1101
         self.network_api = network.API(config_group_name=network_config_group)
+
+    def _validate_driver_mode(self, mode):
+        valid = constants.VALID_SHARE_DRIVER_MODES
+        if mode not in valid:
+            data = {'mode': mode, 'valid': valid}
+            msg = ("Provided unsupported driver mode '%(mode)s'. List of "
+                   "valid driver modes is %(valid)s." % data)
+            LOG.error(msg)
+            raise exception.InvalidParameterValue(msg)
+        return mode
+
+    def get_driver_mode(self, supported_driver_modes):
+        """Verify and return driver mode.
+
+        Call this method within share driver to get value for 'mode' attr,
+
+        :param supported_driver_modes: list of supported modes by share driver,
+            see list of available values in
+            manila.common.constants.VALID_SHARE_DRIVER_MODES
+        :returns: text_type -- name of enabled driver mode.
+        :raises: exception.InvalidParameterValue
+        """
+        msg = None
+        if not len(supported_driver_modes):
+            msg = "At least one mode should be supported by share driver."
+        elif self.mode:
+            if self.mode not in supported_driver_modes:
+                data = {'mode': self.mode, 'supported': supported_driver_modes}
+                msg = ("Unsupported driver mode '%(mode)s' is provided. "
+                       "List of supported is %(supported)s." % data)
+            else:
+                return self._validate_driver_mode(self.mode)
+        elif len(supported_driver_modes) > 1:
+            msg = ("Driver mode was not specified explicitly and amount of "
+                   "supported driver modes %s is bigger than one, please "
+                   "specify it using config option 'share_driver_mode'." %
+                   six.text_type(supported_driver_modes))
+
+        if msg:
+            LOG.error(msg)
+            raise exception.InvalidParameterValue(msg)
+        return self._validate_driver_mode(supported_driver_modes[0])
 
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""

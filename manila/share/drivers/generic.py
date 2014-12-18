@@ -114,6 +114,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.db = db
         self.configuration.append_config_values(share_opts)
         self.configuration.append_config_values(service_instance.server_opts)
+        self.mode = self.get_driver_mode([const.MULTI_SVM_MODE, ])
         self._helpers = {}
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "Cinder_Volumes"

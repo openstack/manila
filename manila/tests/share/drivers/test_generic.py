@@ -878,6 +878,34 @@ class GenericShareDriverTestCase(test.TestCase):
         )
         self.assertEqual(ssh_output, result)
 
+    @mock.patch.object(
+        generic.service_instance, 'ServiceInstanceManager', mock.Mock())
+    def test_driver_mode_valid_value(self):
+        mode = const.MULTI_SVM_MODE
+        CONF.set_override('share_driver_mode', mode)
+
+        driver = generic.GenericShareDriver(
+            self._db, execute=self._execute, configuration=self.fake_conf)
+
+        self.assertEqual(mode, driver.mode)
+        generic.service_instance.ServiceInstanceManager.\
+            assert_called_once_with(self._db, driver_config=self.fake_conf)
+
+    def test_driver_mode_invalid_value(self):
+        mode = const.SINGLE_SVM_MODE
+        CONF.set_override('share_driver_mode', mode)
+
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            generic.GenericShareDriver,
+            self._db,
+            execute=self._execute,
+            configuration=self.fake_conf)
+
+    def test_driver_mode_default_share_driver_modes(self):
+        mode = const.MULTI_SVM_MODE
+        self.assertEqual(mode, self._driver.mode)
+
 
 class NFSHelperTestCase(test.TestCase):
     """Test case for NFS helper of generic driver."""

@@ -19,6 +19,7 @@ import time
 
 import mock
 
+from manila.common import constants
 from manila import exception
 from manila import network
 from manila.share import configuration
@@ -35,6 +36,10 @@ def fake_sleep(duration):
     pass
 
 
+class ShareDriverWithExecuteMixin(driver.ShareDriver, driver.ExecuteMixin):
+    pass
+
+
 class ShareDriverTestCase(test.TestCase):
 
     def setUp(self):
@@ -45,7 +50,7 @@ class ShareDriverTestCase(test.TestCase):
         self.stubs.Set(self.time, 'sleep', fake_sleep)
 
     def test__try_execute(self):
-        execute_mixin = driver.ExecuteMixin(
+        execute_mixin = ShareDriverWithExecuteMixin(
             configuration=configuration.Configuration(None))
         self.assertRaises(exception.ProcessExecutionError,
                           execute_mixin._try_execute)
@@ -67,6 +72,8 @@ class ShareDriverTestCase(test.TestCase):
         else:
             network.API.assert_called_once_with(
                 config_group_name=config.config_group)
+        self.assertTrue(hasattr(share_driver, 'mode'))
+        return share_driver
 
     def test_instantiate_share_driver(self):
         self._instantiate_share_driver(None)
@@ -81,3 +88,79 @@ class ShareDriverTestCase(test.TestCase):
 
         self.assertEqual(None, share_driver.configuration)
         network.API.assert_called_once_with(config_group_name=None)
+
+    def test_get_driver_mode_empty_list(self):
+        share_driver = self._instantiate_share_driver(None)
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            share_driver.get_driver_mode, [])
+
+    def test_get_driver_mode_one_value_in_list_mode_is_not_set(self):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = None
+
+        mode = share_driver.get_driver_mode([constants.SINGLE_SVM_MODE, ])
+
+        self.assertEqual(constants.SINGLE_SVM_MODE, mode)
+
+    def test_get_driver_mode_one_value_in_list_mode_is_set_and_equal(self):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = constants.SINGLE_SVM_MODE
+
+        mode = share_driver.get_driver_mode([constants.SINGLE_SVM_MODE, ])
+
+        self.assertEqual(constants.SINGLE_SVM_MODE, mode)
+
+    def test_get_driver_mode_one_value_in_list_mode_is_set_and_not_equal(self):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = constants.SINGLE_SVM_MODE
+
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            share_driver.get_driver_mode,
+            [constants.MULTI_SVM_MODE, ])
+
+    def test_get_driver_mode_two_values_in_list_mode_is_not_set(self):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = None
+
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            share_driver.get_driver_mode,
+            [constants.SINGLE_SVM_MODE, constants.MULTI_SVM_MODE])
+
+    def test_get_driver_mode_two_values_in_list_mode_is_set(self):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = constants.MULTI_SVM_MODE
+
+        mode = share_driver.get_driver_mode(
+            [constants.SINGLE_SVM_MODE, constants.MULTI_SVM_MODE, ])
+
+        self.assertEqual(constants.MULTI_SVM_MODE, mode)
+
+    def test_get_driver_mode_one_invalid_value_in_list_mode_is_not_set(self):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = None
+
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            share_driver.get_driver_mode,
+            ['fake', ])
+
+    def test_get_driver_mode_one_valid_value_in_list_mode_is_invalid(self):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = 'fake'
+
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            share_driver.get_driver_mode,
+            [constants.MULTI_SVM_MODE, ])
+
+    def test_get_driver_mode_two_values_in_list_invalid_mode_set(self):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = 'fake'
+
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            share_driver.get_driver_mode,
+            [constants.SINGLE_SVM_MODE, constants.MULTI_SVM_MODE, ])
