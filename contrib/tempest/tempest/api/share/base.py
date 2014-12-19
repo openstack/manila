@@ -182,7 +182,7 @@ class BaseSharesTest(test.BaseTestCase):
 
             # Search for networks, created in previous runs
             service_net_name = "share-service"
-            __, networks = network_client.list_networks()
+            networks = network_client.list_networks()
             if "networks" in networks.keys():
                 networks = networks["networks"]
             for network in networks:
