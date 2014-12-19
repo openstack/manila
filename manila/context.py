@@ -20,11 +20,11 @@
 import copy
 
 from oslo.utils import timeutils
+from oslo_context import context as common_context
 import six
 
 from manila.i18n import _
 from manila.i18n import _LW
-from manila.openstack.common import context as common_context
 from manila.openstack.common import local
 from manila.openstack.common import log as logging
 from manila import policy
