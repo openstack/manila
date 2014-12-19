@@ -5,7 +5,7 @@
 # pbr should be first
 pbr>=0.6,!=0.7,<1.0
 
-alembic>=0.6.4
+alembic>=0.7.1
 anyjson>=0.3.3
 argparse
 Babel>=1.3
