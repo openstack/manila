@@ -7,6 +7,7 @@ if is_service_enabled manila; then
     elif [[ "$1" == "stack" && "$2" == "install" ]]; then
         echo_summary "Installing Manila"
         install_manila
+        set_cinder_quotas
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configuring Manila"
         configure_manila

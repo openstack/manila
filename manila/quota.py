@@ -32,10 +32,10 @@ LOG = logging.getLogger(__name__)
 
 quota_opts = [
     cfg.IntOpt('quota_shares',
-               default=10,
+               default=50,
                help='Number of shares allowed per project.'),
     cfg.IntOpt('quota_snapshots',
-               default=10,
+               default=50,
                help='Number of share snapshots allowed per project.'),
     cfg.IntOpt('quota_gigabytes',
                default=1000,
