@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev114.g2023930\n"
+"Project-Id-Version: manila 2015.1.dev9\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-12-05 06:11+0000\n"
+"POT-Creation-Date: 2014-12-20 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -91,7 +91,7 @@ msgstr ""
 msgid "Unable to execute %(cmd)s. Exception: %(exception)s"
 msgstr ""
 
-#: manila/network/neutron/api.py:132
+#: manila/network/neutron/api.py:167
 #, python-format
 msgid "Neutron error creating port on network %s"
 msgstr ""
@@ -144,19 +144,19 @@ msgstr ""
 msgid "Failed to update quota for deleting share"
 msgstr ""
 
-#: manila/share/driver.py:90
+#: manila/share/driver.py:140
 #, python-format
 msgid "Recovering from a failed execute. Try number %s"
 msgstr ""
 
-#: manila/share/manager.py:93
+#: manila/share/manager.py:91
 #, python-format
 msgid ""
 "Caught exception trying ensure share '%(s_id)s'. Exception: \n"
 "%(e)s."
 msgstr ""
 
-#: manila/share/manager.py:110
+#: manila/share/manager.py:108
 #, python-format
 msgid ""
 "Unexpected exception during share access allow operation. Share id is "
@@ -164,29 +164,29 @@ msgid ""
 "'%(ar_id)s', exception is '%(e)s'."
 msgstr ""
 
-#: manila/share/manager.py:219
+#: manila/share/manager.py:217
 #, python-format
 msgid "Share server %s does not exist."
 msgstr ""
 
-#: manila/share/manager.py:229
+#: manila/share/manager.py:227
 msgid "Failed to get share server for share creation."
 msgstr ""
 
-#: manila/share/manager.py:248
+#: manila/share/manager.py:246
 #, python-format
 msgid "Share %s failed on creation."
 msgstr ""
 
-#: manila/share/manager.py:294
+#: manila/share/manager.py:292
 msgid "Failed to update usages deleting share"
 msgstr ""
 
-#: manila/share/manager.py:368
+#: manila/share/manager.py:366
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: manila/share/manager.py:512
+#: manila/share/manager.py:507
 #, python-format
 msgid "Share server %s failed on deletion."
 msgstr ""
@@ -203,56 +203,73 @@ msgid ""
 "config: %s"
 msgstr ""
 
-#: manila/share/drivers/generic.py:226
+#: manila/share/drivers/generic.py:231
 #, python-format
 msgid "Failed to sync mount files on server '%s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:233
+#: manila/share/drivers/generic.py:238
 #, python-format
 msgid "Failed to mount all shares on server '%s'."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:132 manila/share/drivers/glusterfs.py:348
-#, python-format
-msgid "Error in gluster volume set: %s"
-msgstr ""
-
-#: manila/share/drivers/glusterfs.py:178
+#: manila/share/drivers/glusterfs.py:135
 #, python-format
 msgid "Error retrieving volume info: %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:217
+#: manila/share/drivers/glusterfs.py:160
+#, python-format
+msgid "Error in disabling access to the entire GlusterFS volume: %s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:171
+#, python-format
+msgid "Error in enabling creation of shares of specific size: %s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:231
 #, python-format
 msgid "Could not mount the Gluster volume %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:275
+#: manila/share/drivers/glusterfs.py:300
 #, python-format
 msgid "Unable to create share %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:289
+#: manila/share/drivers/glusterfs.py:314
+#, python-format
+msgid ""
+"Cannot cleanup share, %s, that errored out during its creation, but "
+"exists in GlusterFS volume."
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:326
 #, python-format
 msgid "Unable to delete share %s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:568
+#: manila/share/drivers/glusterfs.py:385
+#, python-format
+msgid "Error in gluster volume set: %s"
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/vnx/connection.py:567
 #, python-format
 msgid "Could not setup server. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:690
+#: manila/share/drivers/emc/plugins/vnx/connection.py:689
 #, python-format
 msgid "Could not find CIFS server by name: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:735
+#: manila/share/drivers/emc/plugins/vnx/connection.py:734
 msgid "Could not get storage pool list."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:862
+#: manila/share/drivers/emc/plugins/vnx/connection.py:861
 #, python-format
 msgid "Could not get mount point. Reason: %s."
 msgstr ""
@@ -271,7 +288,17 @@ msgstr ""
 msgid "Error running SSH command: %s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:712
+#: manila/share/drivers/ganesha/manager.py:191
+#, python-format
+msgid "Error while executing management command on Ganesha node %(tag)s: %(msg)s."
+msgstr ""
+
+#: manila/share/drivers/ganesha/manager.py:330
+#, python-format
+msgid "Invalid export database on Ganesha node %(tag)s: %(db)s."
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:703
 #, python-format
 msgid "Invalid metadata %(attr)s for share %(share)s."
 msgstr ""
@@ -312,5 +339,17 @@ msgstr ""
 #: manila/share/drivers/netapp/cluster_mode.py:1189
 #, python-format
 msgid "Rule %s does not exist."
+msgstr ""
+
+#: manila/share/drivers/zfssa/zfssarest.py:237
+#, python-format
+msgid ""
+"Error Deleting Share: %(share)s to Pool: %(pool)s Project: %(project)s  "
+"Return code: %(ret.status)d Message: %(ret.data)s."
+msgstr ""
+
+#: manila/share/drivers/zfssa/zfssashare.py:264
+#, python-format
+msgid "snapshot %s: has clones"
 msgstr ""
 
