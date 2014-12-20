@@ -37,6 +37,10 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         __, cls.share = cls.create_share()
         __, cls.share_network = cls.shares_client.get_share_network(
             cls.shares_client.share_network_id)
+        if not cls.share_network["name"]:
+            sn_id = cls.share_network["id"]
+            __, cls.share_network = cls.shares_client.update_share_network(
+                sn_id, name="sn_%s" % sn_id)
         cls.sn_name_and_id = [
             cls.share_network["name"],
             cls.share_network["id"],
