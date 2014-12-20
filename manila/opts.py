@@ -52,8 +52,10 @@ import manila.share.drivers.emc.driver
 import manila.share.drivers.generic
 import manila.share.drivers.glusterfs
 import manila.share.drivers.glusterfs_native
+import manila.share.drivers.ibm.gpfs
 import manila.share.drivers.netapp.cluster_mode
 import manila.share.drivers.service_instance
+import manila.share.drivers.zfssa.zfssashare
 import manila.share.manager
 import manila.volume
 import manila.volume.cinder
