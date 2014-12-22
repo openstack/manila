@@ -26,7 +26,6 @@ _POLICY_PATH = os.path.abspath(os.path.join(CONF.state_path,
 
 
 def set_defaults(conf):
-    _safe_set_of_opts(conf, 'connection_type', 'fake')
     _safe_set_of_opts(conf, 'verbose', True)
     _safe_set_of_opts(conf, 'connection', "sqlite://", group='database')
     _safe_set_of_opts(conf, 'sqlite_synchronous', False)
