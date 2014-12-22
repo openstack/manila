@@ -25,7 +25,7 @@ import six
 
 from manila import db
 from manila import exception
-from manila.i18n import _LW
+from manila.i18n import _LI
 from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common.scheduler import weights
@@ -266,10 +266,12 @@ class HostManager(object):
         topic = CONF.share_topic
         share_services = db.service_get_all_by_topic(context, topic)
         for service in share_services:
-            if not utils.service_is_up(service) or service['disabled']:
-                LOG.warn(_LW("service is down or disabled."))
-                continue
             host = service['host']
+            if not utils.service_is_up(service) or service['disabled']:
+                LOG.info(_LI("Removing non-active host: %(host)s from "
+                             "scheduler cache.") % {'host': host})
+                self.host_state_map.pop(host, None)
+                continue
             capabilities = self.service_states.get(host, None)
             host_state = self.host_state_map.get(host)
             if host_state:

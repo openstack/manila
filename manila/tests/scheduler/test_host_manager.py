@@ -15,6 +15,8 @@
 """
 Tests For HostManager
 """
+import datetime
+
 import mock
 from oslo.config import cfg
 from oslo.utils import timeutils
@@ -25,7 +27,6 @@ from manila.openstack.common.scheduler import filters
 from manila.scheduler import host_manager
 from manila import test
 from manila.tests.scheduler import fakes
-
 
 CONF = cfg.CONF
 
@@ -63,12 +64,12 @@ class HostManagerTestCase(test.TestCase):
 
         # Test 'volume' returns 1 correct function
         filter_classes = self.host_manager._choose_host_filters(None)
-        self.assertEqual(len(filter_classes), 1)
-        self.assertEqual(filter_classes[0].__name__, 'FakeFilterClass2')
+        self.assertEqual(1, len(filter_classes))
+        self.assertEqual('FakeFilterClass2', filter_classes[0].__name__)
 
     def _verify_result(self, info, result):
         for x in info['got_fprops']:
-            self.assertEqual(x, info['expected_fprops'])
+            self.assertEqual(info['expected_fprops'], x)
         self.assertEqual(set(info['expected_objs']), set(info['got_objs']))
         self.assertEqual(set(result), set(info['got_objs']))
 
@@ -119,9 +120,9 @@ class HostManagerTestCase(test.TestCase):
             timeutils.utcnow.assert_called_once_with()
 
         # Make sure dictionary isn't re-assigned
-        self.assertEqual(self.host_manager.service_states, service_states)
+        self.assertEqual(service_states, self.host_manager.service_states)
         # Make sure original dictionary wasn't copied
-        self.assertEqual(host1_share_capabs['timestamp'], 1)
+        self.assertEqual(1, host1_share_capabs['timestamp'])
 
         host1_share_capabs['timestamp'] = 31337
         host2_share_capabs['timestamp'] = 31338
@@ -138,19 +139,49 @@ class HostManagerTestCase(test.TestCase):
         context = 'fake_context'
         topic = CONF.share_topic
         ret_services = fakes.SHARE_SERVICES
+
         with mock.patch.object(db, 'service_get_all_by_topic',
                                mock.Mock(return_value=ret_services)):
             # Disabled service
             self.host_manager.get_all_host_states_share(context)
             host_state_map = self.host_manager.host_state_map
 
-            self.assertEqual(len(host_state_map), 4)
+            self.assertEqual(4, len(host_state_map))
             # Check that service is up
             for i in xrange(4):
                 share_node = fakes.SHARE_SERVICES[i]
                 host = share_node['host']
-                self.assertEqual(host_state_map[host].service, share_node)
+                self.assertEqual(share_node, host_state_map[host].service)
             db.service_get_all_by_topic.assert_called_once_with(context, topic)
+
+    def test_get_all_host_states_share_after_host_status_change(self):
+        context = 'fake_context'
+        ret_services = fakes.SHARE_SERVICES
+
+        with mock.patch.object(db, 'service_get_all_by_topic',
+                               mock.Mock(return_value=ret_services)):
+
+            self.host_manager.get_all_host_states_share(context)
+            host_state_map = self.host_manager.host_state_map
+
+            delta_time = datetime.timedelta(0, CONF.service_down_time + 10)
+            # disable host4
+            ret_services[3]['disabled'] = True
+            # down host3
+            ret_services[2]['updated_at'] -= delta_time
+            # disabled and down host2
+            ret_services[1]['disabled'] = True
+            ret_services[1]['updated_at'] -= delta_time
+
+            self.host_manager.get_all_host_states_share(context)
+            host_state_map = self.host_manager.host_state_map
+
+            # only 1 host is up and active.
+            self.assertEqual(1, len(host_state_map))
+            # The up and active host is host1
+            share_node = fakes.SHARE_SERVICES[0]
+            host = share_node['host']
+            self.assertEqual(share_node, host_state_map[host].service)
 
 
 class HostStateTestCase(test.TestCase):
@@ -158,7 +189,7 @@ class HostStateTestCase(test.TestCase):
 
     def test_update_from_share_capability(self):
         fake_host = host_manager.HostState('host1')
-        self.assertEqual(fake_host.free_capacity_gb, None)
+        self.assertEqual(None, fake_host.free_capacity_gb)
 
         share_capability = {'total_capacity_gb': 1024,
                             'free_capacity_gb': 512,
@@ -166,11 +197,11 @@ class HostStateTestCase(test.TestCase):
                             'timestamp': None}
 
         fake_host.update_from_share_capability(share_capability)
-        self.assertEqual(fake_host.free_capacity_gb, 512)
+        self.assertEqual(512, fake_host.free_capacity_gb)
 
     def test_update_from_share_infinite_capability(self):
         fake_host = host_manager.HostState('host1')
-        self.assertEqual(fake_host.free_capacity_gb, None)
+        self.assertEqual(None, fake_host.free_capacity_gb)
 
         share_capability = {'total_capacity_gb': 'infinite',
                             'free_capacity_gb': 'infinite',
@@ -178,12 +209,12 @@ class HostStateTestCase(test.TestCase):
                             'timestamp': None}
 
         fake_host.update_from_share_capability(share_capability)
-        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
-        self.assertEqual(fake_host.free_capacity_gb, 'infinite')
+        self.assertEqual('infinite', fake_host.total_capacity_gb)
+        self.assertEqual('infinite', fake_host.free_capacity_gb)
 
     def test_update_from_share_unknown_capability(self):
         fake_host = host_manager.HostState('host1')
-        self.assertEqual(fake_host.free_capacity_gb, None)
+        self.assertEqual(None, fake_host.free_capacity_gb)
 
         share_capability = {
             'total_capacity_gb': 'infinite',
@@ -193,8 +224,8 @@ class HostStateTestCase(test.TestCase):
         }
 
         fake_host.update_from_share_capability(share_capability)
-        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
-        self.assertEqual(fake_host.free_capacity_gb, 'unknown')
+        self.assertEqual('infinite', fake_host.total_capacity_gb)
+        self.assertEqual('unknown', fake_host.free_capacity_gb)
 
     def test_consume_from_share_capability(self):
         fake_host = host_manager.HostState('host1')
@@ -211,8 +242,8 @@ class HostStateTestCase(test.TestCase):
 
         fake_host.update_from_share_capability(share_capability)
         fake_host.consume_from_share(fake_share)
-        self.assertEqual(fake_host.free_capacity_gb,
-                         free_capacity - share_size)
+        self.assertEqual(free_capacity - share_size,
+                         fake_host.free_capacity_gb)
 
     def test_consume_from_share_infinite_capability(self):
         fake_host = host_manager.HostState('host1')
@@ -228,8 +259,8 @@ class HostStateTestCase(test.TestCase):
 
         fake_host.update_from_share_capability(share_capability)
         fake_host.consume_from_share(fake_share)
-        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
-        self.assertEqual(fake_host.free_capacity_gb, 'infinite')
+        self.assertEqual('infinite', fake_host.total_capacity_gb)
+        self.assertEqual('infinite', fake_host.free_capacity_gb)
 
     def test_consume_from_share_unknown_capability(self):
         fake_host = host_manager.HostState('host1')
@@ -245,5 +276,5 @@ class HostStateTestCase(test.TestCase):
 
         fake_host.update_from_share_capability(share_capability)
         fake_host.consume_from_share(fake_share)
-        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
-        self.assertEqual(fake_host.free_capacity_gb, 'unknown')
+        self.assertEqual('infinite', fake_host.total_capacity_gb)
+        self.assertEqual('unknown', fake_host.free_capacity_gb)
