@@ -162,6 +162,19 @@ function set_config_opts {
     fi
 }
 
+function set_cinder_quotas {
+    # Update Cinder configuration to make sure default quotas are enough
+    # for Manila using Generic driver with parallel testing.
+    if is_service_enabled cinder; then
+        if [[ ! "$CINDER_CONF" ]]; then
+            CINDER_CONF=/etc/cinder/cinder.conf
+        fi
+        iniset $CINDER_CONF DEFAULT quota_volumes 50
+        iniset $CINDER_CONF DEFAULT quota_snapshots 50
+        iniset $CINDER_CONF DEFAULT quota_gigabytes 1000
+    fi
+}
+
 # configure_manila - Set config files, create data dirs, etc
 function configure_manila {
     setup_develop $MANILA_DIR

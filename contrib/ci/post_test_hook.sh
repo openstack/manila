@@ -31,7 +31,7 @@ fi
 set +o errexit
 cd $BASE/new/tempest
 
-export TEMPEST_CONCURRENCY=6
+export TEMPEST_CONCURRENCY=12
 export MANILA_TESTS='tempest.cli.*manila*'
 if [[ ! "$ZUUL_PROJECT" =~ python-manilaclient ]]; then
     MANILA_TESTS+=' tempest.api.share*';
