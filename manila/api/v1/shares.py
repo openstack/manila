@@ -17,6 +17,7 @@
 
 import ast
 
+from oslo.utils import uuidutils
 import six
 import webob
 from webob import exc
@@ -29,7 +30,6 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
 from manila.openstack.common import log as logging
-from manila.openstack.common import uuidutils
 from manila import share
 from manila.share import volume_types
 
