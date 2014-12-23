@@ -77,13 +77,10 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             # Project id is not empty
             self.assertTrue(len(server["project_id"]) > 0)
 
+        # Do not verify statuses because we get all share servers from whole
+        # cluster and here can be servers with any state.
         # Server we used is present.
-        # Use 'allowed_statuses' to cover possible statuses of share servers
-        # in general, because we get info for whole cluster.
-        allowed_statuses = ["active", "creating", "deleting"]
-        any((s["share_network_name"] in self.sn_name_and_id and
-             self.assertIn(s["status"].lower(),
-                           allowed_statuses)) for s in servers)
+        any(s["share_network_name"] in self.sn_name_and_id for s in servers)
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_servers_with_host_filter(self):
