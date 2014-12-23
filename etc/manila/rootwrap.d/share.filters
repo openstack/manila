@@ -4,23 +4,23 @@
 [Filters]
 # manila/share/drivers/glusterfs.py: 'mkdir', '%s'
 # manila/share/drivers/ganesha/manager.py: 'mkdir', '-p', '%s'
-mkdir: CommandFilter, /usr/bin/mkdir, root
+mkdir: CommandFilter, mkdir, root
 
 # manila/share/drivers/glusterfs.py: 'rm', '-rf', '%s'
-rm: CommandFilter, /usr/bin/rm, root
+rm: CommandFilter, rm, root
 
 # manila/share/drivers/glusterfs.py: 'gluster', '--xml', 'volume', 'info', '%s'
 # manila/share/drivers/glusterfs.py: 'gluster', 'volume', 'set', '%s', 'nfs.export-dir', '%s'
-gluster: CommandFilter, /usr/sbin/gluster, root
+gluster: CommandFilter, gluster, root
 
 # manila/network/linux/ip_lib.py: 'ip', 'netns', 'exec', '%s', '%s'
-ip: CommandFilter, /sbin/ip, root
+ip: CommandFilter, ip, root
 
 # manila/network/linux/interface.py: 'ovs-vsctl', 'add-port', '%s', '%s'
-ovs-vsctl: CommandFilter, /usr/bin/ovs-vsctl, root
+ovs-vsctl: CommandFilter, ovs-vsctl, root
 
 # manila/share/drivers/glusterfs_native.py: 'find', '%s', '-mindepth', '1', '-delete'
-find_del: RegExpFilter, /bin/find, root, find, .*, -mindepth, 1, -delete
+find_del: RegExpFilter, find, root, find, .*, -mindepth, 1, -delete
 
 # manila/share/drivers/glusterfs_native.py: 'umount', '%s'
 umount: CommandFilter, umount, root
@@ -45,35 +45,35 @@ mmcrsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmcrsnapshot, root
 # manila/share/drivers/ibm/gpfs.py: 'mmdelsnapshot', '%s', '%s', '-j', '%s'
 mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
 # manila/share/drivers/ibm/gpfs.py: 'rsync', '-rp', '%s', '%s'
-rsync: CommandFilter, /usr/bin/rsync, root
+rsync: CommandFilter, rsync, root
 # manila/share/drivers/ibm/gpfs.py: 'exportfs'
-exportfs: CommandFilter, /usr/sbin/exportfs, root
+exportfs: CommandFilter, exportfs, root
 # Ganesha commands
 # manila/share/drivers/ibm/ganesha_utils.py: 'mv', '%s', '%s'
 # manila/share/drivers/ganesha/manager.py: 'mv', '%s', '%s'
-mv: CommandFilter, /bin/mv, root
+mv: CommandFilter, mv, root
 # manila/share/drivers/ibm/ganesha_utils.py: 'cp', '%s', '%s'
-cp: CommandFilter, /bin/cp, root
+cp: CommandFilter, cp, root
 # manila/share/drivers/ibm/ganesha_utils.py: 'scp', '-i', '%s', '%s', '%s'
-scp: CommandFilter, /usr/bin/scp, root
+scp: CommandFilter, scp, root
 # manila/share/drivers/ibm/ganesha_utils.py: 'ssh', '%s', '%s'
-ssh: CommandFilter, /usr/bin/ssh, root
+ssh: CommandFilter, ssh, root
 # manila/share/drivers/ibm/ganesha_utils.py: 'chmod', '%s', '%s'
-chmod: CommandFilter, /bin/chmod, root
+chmod: CommandFilter, chmod, root
 # manila/share/drivers/ibm/ganesha_utils.py: 'service', '%s', 'restart'
-service: CommandFilter, /sbin/service, root
+service: CommandFilter, service, root
 
 # manila/share/drivers/ganesha/manager.py: 'mktemp', '-p', '%s', '-t', '%s'
-mktemp: CommandFilter, /bin/mktemp, root
+mktemp: CommandFilter, mktemp, root
 
 # manila/share/drivers/ganesha/manager.py:
-shcat: RegExpFilter, /bin/sh, root, sh, -c, cat > /.*
+shcat: RegExpFilter, sh, root, sh, -c, cat > /.*
 
 # manila/share/drivers/ganesha/manager.py:
-dbus-addexport: RegExpFilter, /usr/bin/dbus-send, root, dbus-send, --print-reply, --system, --dest=org\.ganesha\.nfsd, /org/ganesha/nfsd/ExportMgr, org\.ganesha\.nfsd\.exportmgr\.(Add|Remove)Export, .*, .*
+dbus-addexport: RegExpFilter, dbus-send, root, dbus-send, --print-reply, --system, --dest=org\.ganesha\.nfsd, /org/ganesha/nfsd/ExportMgr, org\.ganesha\.nfsd\.exportmgr\.(Add|Remove)Export, .*, .*
 
 # manila/share/drivers/ganesha/manager.py:
-dbus-removeexport: RegExpFilter, /usr/bin/dbus-send, root, dbus-send, --print-reply, --system, --dest=org\.ganesha\.nfsd, /org/ganesha/nfsd/ExportMgr, org\.ganesha\.nfsd\.exportmgr\.(Add|Remove)Export, .*
+dbus-removeexport: RegExpFilter, dbus-send, root, dbus-send, --print-reply, --system, --dest=org\.ganesha\.nfsd, /org/ganesha/nfsd/ExportMgr, org\.ganesha\.nfsd\.exportmgr\.(Add|Remove)Export, .*
 
 # manila/share/drivers/ganesha/manager.py:
-rmconf: RegExpFilter, /bin/sh, root, sh, -c, rm /.*/\*\.conf$
+rmconf: RegExpFilter, sh, root, sh, -c, rm /.*/\*\.conf$
