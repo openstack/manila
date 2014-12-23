@@ -89,6 +89,11 @@ ShareGroup = [
                default=500,
                help="Timeout in seconds to wait for a share to become"
                     "available."),
+    cfg.BoolOpt("suppress_errors_in_cleanup",
+                default=False,
+                help="Whether to suppress errors with clean up operation "
+                     "or not. There are cases when we may want to skip "
+                     "such errors and catch only test errors."),
 ]
 
 
