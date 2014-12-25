@@ -47,8 +47,7 @@ class ShareManagerTestCase(test.TestCase):
 
     def setUp(self):
         super(ShareManagerTestCase, self).setUp()
-        self.flags(connection_type='fake',
-                   share_driver='manila.tests.fake_driver.FakeShareDriver')
+        self.flags(share_driver='manila.tests.fake_driver.FakeShareDriver')
         # Define class directly, because this test suite dedicated
         # to specific manager.
         self.share_manager = importutils.import_object(
