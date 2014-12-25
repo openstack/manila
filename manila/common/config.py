@@ -24,7 +24,6 @@ stepping stone.
 
 """
 
-import os
 import socket
 
 from oslo.config import cfg
@@ -65,16 +64,8 @@ core_opts = [
     cfg.StrOpt('api_paste_config',
                default="api-paste.ini",
                help='File name for the paste.deploy config for manila-api.'),
-    cfg.StrOpt('pybasedir',
-               default=os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                    '..',
-                                                    '..')),
-               help='Directory where the manila python module is installed.'),
-    cfg.StrOpt('bindir',
-               default='$pybasedir/bin',
-               help='Directory where manila binaries are installed.'),
     cfg.StrOpt('state_path',
-               default='$pybasedir',
+               default='/var/lib/manila',
                help="Top-level directory for maintaining manila's state."), ]
 
 debug_opts = [

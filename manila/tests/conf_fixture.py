@@ -19,18 +19,22 @@ import os
 from manila.common import config
 
 CONF = config.CONF
-_API_PASTE_PATH = os.path.abspath(os.path.join(CONF.state_path,
-                                               'etc/manila/api-paste.ini'))
-_POLICY_PATH = os.path.abspath(os.path.join(CONF.state_path,
-                                            'manila/tests/policy.json'))
 
 
 def set_defaults(conf):
     _safe_set_of_opts(conf, 'verbose', True)
+    _safe_set_of_opts(conf, 'state_path', os.path.abspath(
+        os.path.join(os.path.dirname(__file__),
+                     '..',
+                     '..')))
     _safe_set_of_opts(conf, 'connection', "sqlite://", group='database')
     _safe_set_of_opts(conf, 'sqlite_synchronous', False)
+    _POLICY_PATH = os.path.abspath(os.path.join(CONF.state_path,
+                                                'manila/tests/policy.json'))
     _safe_set_of_opts(conf, 'policy_file', _POLICY_PATH)
     _safe_set_of_opts(conf, 'service_instance_user', 'fake_user')
+    _API_PASTE_PATH = os.path.abspath(os.path.join(CONF.state_path,
+                                                   'etc/manila/api-paste.ini'))
     _safe_set_of_opts(conf, 'api_paste_config', _API_PASTE_PATH)
     _safe_set_of_opts(conf, 'share_driver',
                       'manila.tests.fake_driver.FakeShareDriver')
