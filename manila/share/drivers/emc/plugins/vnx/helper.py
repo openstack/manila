@@ -26,7 +26,6 @@ from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
-from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 from manila.share.drivers.emc.plugins.vnx import constants
 from manila.share.drivers.emc.plugins.vnx import utils as vnx_utils
@@ -1410,7 +1409,7 @@ class NASCommandHelper(object):
     def allow_nfs_share_access(self, path, host_ip, mover_name):
         sharename = path.strip('/')
 
-        @lockutils.synchronized('emc-shareaccess-' + sharename)
+        @utils.synchronized('emc-shareaccess-' + sharename)
         def do_allow_access(path, host_ip, mover_name):
             ok = (constants.STATUS_OK, '')
             status, share = self.get_nfs_share_by_path(path, mover_name)
@@ -1450,7 +1449,7 @@ class NASCommandHelper(object):
     def deny_nfs_share_access(self, path, host_ip, mover_name):
         sharename = path.strip('/')
 
-        @lockutils.synchronized('emc-shareaccess-' + sharename)
+        @utils.synchronized('emc-shareaccess-' + sharename)
         def do_deny_access(path, host_ip, mover_name):
             ok = (constants.STATUS_OK, '')
             status, share = self.get_nfs_share_by_path(path, mover_name)

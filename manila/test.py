@@ -23,14 +23,15 @@ inline callbacks.
 
 import os
 import shutil
-import tempfile
 import uuid
 
 import fixtures
 import mock
 from oslo.config import cfg
+from oslo.config import fixture as config_fixture
 from oslo.messaging import conffixture as messaging_conffixture
 from oslo.utils import timeutils
+from oslo_concurrency import lockutils
 import six
 import testtools
 
@@ -146,9 +147,13 @@ class TestCase(testtools.TestCase):
         self.stubs = StubOutForTesting(self)
         self.injected = []
         self._services = []
-        CONF.set_override('fatal_exception_format_errors', True)
+        self.flags(fatal_exception_format_errors=True)
         # This will be cleaned up by the NestedTempfile fixture
-        CONF.set_override('lock_path', tempfile.mkdtemp())
+        lock_path = self.useFixture(fixtures.TempDir()).path
+        self.fixture = self.useFixture(config_fixture.Config(lockutils.CONF))
+        self.fixture.config(lock_path=lock_path, group='oslo_concurrency')
+        self.fixture.config(
+            disable_process_locking=True, group='oslo_concurrency')
 
         rpc.add_extra_exmods('manila.tests')
         self.addCleanup(rpc.clear_extra_exmods)

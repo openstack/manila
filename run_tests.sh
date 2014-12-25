@@ -180,7 +180,7 @@ function run_pep8 {
   bash -c "${wrapper} flake8"
 }
 
-TESTRTESTS="python -m manila.openstack.common.lockutils python setup.py testr"
+TESTRTESTS="python setup.py testr"
 
 if [ $never_venv -eq 0 ]
 then

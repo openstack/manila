@@ -13,9 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import shutil
-import tempfile
-
 from oslo.config import cfg
 from oslo.serialization import jsonutils
 import webob
@@ -43,16 +40,10 @@ class AdminActionsTest(test.TestCase):
 
     def setUp(self):
         super(AdminActionsTest, self).setUp()
-        self.tempdir = tempfile.mkdtemp()
         self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
-        self.flags(lock_path=self.tempdir)
         self.share_api = share_api.API()
         self.admin_context = context.RequestContext('admin', 'fake', True)
         self.member_context = context.RequestContext('fake', 'fake')
-
-    def tearDown(self):
-        shutil.rmtree(self.tempdir)
-        super(AdminActionsTest, self).tearDown()
 
     def test_reset_status_as_admin(self):
         # current status is available
