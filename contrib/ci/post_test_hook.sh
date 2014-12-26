@@ -30,6 +30,9 @@ if [[ "$1" =~ "multibackend" ]]; then
     iniset $BASE/new/tempest/etc/tempest.conf share suppress_errors_in_cleanup True
 fi
 
+# Set two retries for CI jobs
+iniset $BASE/new/tempest/etc/tempest.conf share share_creation_retry_number 2
+
 # let us control if we die or not
 set +o errexit
 cd $BASE/new/tempest

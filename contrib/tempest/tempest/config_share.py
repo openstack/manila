@@ -82,6 +82,11 @@ ShareGroup = [
                 default=[],
                 help="Names of share backends, that will be used with "
                      "multibackend tests. Tempest will use first two values."),
+    cfg.IntOpt("share_creation_retry_number",
+               default=0,
+               help="Defines number of retries for share creation. "
+                    "It is useful to avoid failures caused by unstable "
+                    "environment."),
     cfg.IntOpt("build_interval",
                default=3,
                help="Time in seconds between share availability checks."),

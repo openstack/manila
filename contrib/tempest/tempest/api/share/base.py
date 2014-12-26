@@ -22,6 +22,7 @@ from tempest import config_share as config
 from tempest import exceptions
 from tempest.openstack.common import lockutils
 from tempest.openstack.common import log as logging
+from tempest import share_exceptions
 from tempest import test
 
 CONF = config.CONF
@@ -231,29 +232,46 @@ class BaseSharesTest(test.BaseTestCase):
                      share_network_id=None, volume_type_id=None,
                      client=None, cleanup_in_class=True,
                      wait_for_active=True):
-        if client is None:
-            client = cls.shares_client
-        if description is None:
-            description = "Tempest's share"
+        client = client or cls.shares_client
+        description = description or "Tempest's share"
         share_network_id = share_network_id or client.share_network_id or None
-        r, s = client.create_share(share_protocol=share_protocol, size=size,
-                                   name=name, snapshot_id=snapshot_id,
-                                   description=description,
-                                   metadata=metadata,
-                                   share_network_id=share_network_id,
-                                   volume_type_id=volume_type_id, )
-        resource = {
-            "type": "share",
-            "id": s["id"],
-            "client": client,
+        kw = {
+            'share_protocol': share_protocol,
+            'size': size,
+            'name': name,
+            'snapshot_id': snapshot_id,
+            'description': description,
+            'metadata': metadata,
+            'share_network_id': share_network_id,
+            'volume_type_id': volume_type_id,
         }
-        if cleanup_in_class:
-            cls.class_resources.insert(0, resource)
-        else:
-            cls.method_resources.insert(0, resource)
+
+        def _create_share(**kwargs):
+            resp, share = client.create_share(**kwargs)
+            resource = {"type": "share", "id": share["id"], "client": client}
+            cleanup_list = (cls.class_resources if cleanup_in_class else
+                            cls.method_resources)
+            cleanup_list.insert(0, resource)
+            return resp, share
+
+        resp, share = _create_share(**kw)
         if wait_for_active:
-            client.wait_for_share_status(s["id"], "available")
-        return r, s
+            cnt = 0
+            while True:
+                if cnt > 0:
+                    resp, share = _create_share(**kw)
+                try:
+                    client.wait_for_share_status(share["id"], "available")
+                except (share_exceptions.ShareBuildErrorException,
+                        exceptions.TimeoutException) as e:
+                    if CONF.share.share_creation_retry_number > cnt:
+                        cnt += 1
+                        continue
+                    else:
+                        raise e
+                else:
+                    break
+        return resp, share
 
     @classmethod
     def create_snapshot_wait_for_active(cls, share_id, name=None,
