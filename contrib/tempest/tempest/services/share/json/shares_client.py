@@ -17,6 +17,8 @@ import json
 import time
 import urllib
 
+import six  # noqa
+
 from tempest.common import rest_client
 from tempest.common.utils.data_utils import rand_name
 from tempest import config_share as config
@@ -267,62 +269,43 @@ class SharesClient(rest_client.RestClient):
         return resp, self._parse_resp(body)
 
     def is_resource_deleted(self, *args, **kwargs):
-        """Verifies deleted resource or not.
+        """Verifies whether provided resource deleted or not.
 
-        :param kwargs: expected keys are 'share_id', 'rule_id',
-        :param kwargs: 'snapshot_id', 'sn_id', 'ss_id', 'vt_id' and 'server_id'
+        :param kwargs: dict with expected keys 'share_id', 'snapshot_id',
+        :param kwargs: 'sn_id', 'ss_id', 'vt_id' and 'server_id'
         :raises share_exceptions.InvalidResource
         """
-
         if "share_id" in kwargs:
-            share_id = kwargs.get("share_id")
-            if "rule_id" in kwargs:
-                __, rules = self.list_share_access_rules(share_id)
-                for rule in rules:
-                    if rule["id"] in kwargs.get("rule_id"):
-                        return False
-                return True
-            else:
-                try:
-                    self.get_share(share_id)
-                except exceptions.NotFound:
-                    return True
+            return self._is_resource_deleted(
+                self.get_share, kwargs.get("share_id"))
         elif "snapshot_id" in kwargs:
-            try:
-                self.get_snapshot(kwargs.get("snapshot_id"))
-            except exceptions.NotFound:
-                return True
+            return self._is_resource_deleted(
+                self.get_snapshot, kwargs.get("snapshot_id"))
         elif "sn_id" in kwargs:
-            sn_id = kwargs.get("sn_id")
-            if "ss_id" in kwargs:
-                __, ss_list = self.list_sec_services_for_share_network(sn_id)
-                for ss in ss_list:
-                    if ss["id"] in kwargs.get("ss_id"):
-                        return False
-                return True
-            else:
-                try:
-                    self.get_share_network(sn_id)
-                except exceptions.NotFound:
-                    return True
+            return self._is_resource_deleted(
+                self.get_share_network, kwargs.get("sn_id"))
         elif "ss_id" in kwargs:
-            try:
-                self.get_security_service(kwargs.get("sn_id"))
-            except exceptions.NotFound:
-                return True
+            return self._is_resource_deleted(
+                self.get_security_service, kwargs.get("ss_id"))
         elif "vt_id" in kwargs:
-            try:
-                self.get_volume_type(kwargs.get("vt_id"))
-            except exceptions.NotFound:
-                return True
+            return self._is_resource_deleted(
+                self.get_volume_type, kwargs.get("vt_id"))
         elif "server_id" in kwargs:
-            # Whether share server deleted or not
-            try:
-                self.show_share_server(kwargs.get("server_id"))
-            except exceptions.NotFound:
-                return True
+            return self._is_resource_deleted(
+                self.show_share_server, kwargs.get("server_id"))
         else:
-            raise share_exceptions.InvalidResource(message=str(kwargs))
+            raise share_exceptions.InvalidResource(
+                message=six.text_type(kwargs))
+
+    def _is_resource_deleted(self, func, res_id):
+        try:
+            r, s = func(res_id)
+        except exceptions.NotFound:
+            return True
+        if (func.__name__ == 'get_share' and s['status'] == 'error_deleting'):
+            # Share has "error_deleting" status and can not be deleted.
+            raise share_exceptions.ResourceReleaseFailed(
+                res_type='share', res_id=res_id)
         return False
 
     def wait_for_resource_deletion(self, *args, **kwargs):

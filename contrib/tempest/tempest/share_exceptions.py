@@ -42,3 +42,7 @@ class NoAvailableNetwork(exceptions.TempestException):
 
 class InvalidResource(exceptions.TempestException):
     message = "Provided invalid resource: %(message)s"
+
+
+class ResourceReleaseFailed(exceptions.TempestException):
+    message = "Failed to release resource '%(res_type)s' with id '%(res_id)s'."
