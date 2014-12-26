@@ -31,7 +31,10 @@ from pylint.reporters import text
 ignore_codes = ["E1103"]
 # Note(maoy): the error message is the pattern of E0202. It should be ignored
 # for manila.tests modules
-ignore_messages = ["An attribute affected in manila.tests"]
+# Note(chen): the second error message is the pattern of [E0611]
+# It should be ignored because use six module to keep py3.X compatibility.
+ignore_messages = ["An attribute affected in manila.tests",
+                   "No name 'urllib' in module '_MovedItems'"]
 # Note(maoy): we ignore all errors in openstack.common because it should be
 # checked elsewhere. We also ignore manila.tests for now due to high false
 # positive rate.

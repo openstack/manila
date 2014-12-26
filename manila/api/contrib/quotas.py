@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import urlparse
 
 from oslo.utils import strutils
+from six.moves.urllib import parse
 import webob
 
 from manila.api import extensions
@@ -95,7 +95,7 @@ class QuotaSetsController(object):
     def show(self, req, id):
         context = req.environ['manila.context']
         authorize_show(context)
-        params = urlparse.parse_qs(req.environ.get('QUERY_STRING', ''))
+        params = parse.parse_qs(req.environ.get('QUERY_STRING', ''))
         user_id = None
         if self.ext_mgr.is_loaded('os-user-quotas'):
             user_id = params.get('user_id', [None])[0]
@@ -127,7 +127,7 @@ class QuotaSetsController(object):
         user_id = None
         if self.ext_mgr.is_loaded('os-user-quotas'):
             # Update user quotas only if the extended is loaded
-            params = urlparse.parse_qs(req.environ.get('QUERY_STRING', ''))
+            params = parse.parse_qs(req.environ.get('QUERY_STRING', ''))
             user_id = params.get('user_id', [None])[0]
 
         try:
@@ -220,7 +220,7 @@ class QuotaSetsController(object):
         if self.ext_mgr.is_loaded('os-extended-quotas'):
             context = req.environ['manila.context']
             authorize_delete(context)
-            params = urlparse.parse_qs(req.environ.get('QUERY_STRING', ''))
+            params = parse.parse_qs(req.environ.get('QUERY_STRING', ''))
             user_id = params.get('user_id', [None])[0]
             if user_id and not self.ext_mgr.is_loaded('os-user-quotas'):
                 raise webob.exc.HTTPNotFound()
