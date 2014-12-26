@@ -21,9 +21,11 @@ from tempest.common.utils import data_utils
 from tempest import config_share as config
 from tempest import exceptions
 from tempest.openstack.common import lockutils
+from tempest.openstack.common import log as logging
 from tempest import test
 
 CONF = config.CONF
+LOG = logging.getLogger(__name__)
 
 
 class BaseSharesTest(test.BaseTestCase):
@@ -378,6 +380,12 @@ class BaseSharesTest(test.BaseTestCase):
                     pass
                 except exceptions.Unauthorized:
                     pass
+                except Exception as e:
+                    # Catch all other exceptions
+                    if not CONF.share.suppress_errors_in_cleanup:
+                        raise e
+                    else:
+                        LOG.error("Suppressed cleanup error: %s" % e)
                 res["deleted"] = True
 
     @classmethod
