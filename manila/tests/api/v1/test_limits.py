@@ -23,6 +23,7 @@ from xml.dom import minidom
 from lxml import etree
 from oslo.serialization import jsonutils
 import six
+from six import moves
 import webob
 
 from manila.api.v1 import limits
@@ -407,7 +408,7 @@ class LimiterTest(BaseLimitTestSuite):
 
     def _check(self, num, verb, url, username=None):
         """Check and yield results from checks."""
-        for x in xrange(num):
+        for x in moves.range(num):
             yield self.limiter.check_for_delay(verb, url, username)[0]
 
     def _check_sum(self, num, verb, url, username=None):

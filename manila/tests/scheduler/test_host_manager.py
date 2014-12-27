@@ -20,6 +20,7 @@ import datetime
 import mock
 from oslo.config import cfg
 from oslo.utils import timeutils
+from six import moves
 
 from manila import db
 from manila import exception
@@ -48,7 +49,7 @@ class HostManagerTestCase(test.TestCase):
         super(HostManagerTestCase, self).setUp()
         self.host_manager = host_manager.HostManager()
         self.fake_hosts = [host_manager.HostState('fake_host%s' % x)
-                           for x in xrange(1, 5)]
+                           for x in moves.range(1, 5)]
 
     def test_choose_host_filters_not_found(self):
         self.flags(scheduler_default_filters='FakeFilterClass3')
@@ -148,7 +149,7 @@ class HostManagerTestCase(test.TestCase):
 
             self.assertEqual(4, len(host_state_map))
             # Check that service is up
-            for i in xrange(4):
+            for i in moves.range(4):
                 share_node = fakes.SHARE_SERVICES[i]
                 host = share_node['host']
                 self.assertEqual(share_node, host_state_map[host].service)
