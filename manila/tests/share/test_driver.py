@@ -18,6 +18,7 @@
 import os
 import time
 
+import ddt
 import mock
 
 from manila.common import constants
@@ -41,6 +42,7 @@ class ShareDriverWithExecuteMixin(driver.ShareDriver, driver.ExecuteMixin):
     pass
 
 
+@ddt.ddt
 class ShareDriverTestCase(test.TestCase):
 
     def setUp(self):
@@ -49,6 +51,10 @@ class ShareDriverTestCase(test.TestCase):
         self.stubs.Set(self.utils, 'execute', fake_execute_with_raise)
         self.time = time
         self.stubs.Set(self.time, 'sleep', fake_sleep)
+
+        self.fake_valid_modes = ('v1', 'v2', )
+        self.stubs.Set(
+            constants, 'VALID_SHARE_DRIVER_MODES', self.fake_valid_modes)
 
     def test__try_execute(self):
         execute_mixin = ShareDriverWithExecuteMixin(
@@ -105,78 +111,54 @@ class ShareDriverTestCase(test.TestCase):
         self.assertEqual(None, share_driver.configuration)
         network.API.assert_called_once_with(config_group_name=None)
 
-    def test_get_driver_mode_empty_list(self):
-        share_driver = self._instantiate_share_driver(None)
-        self.assertRaises(
-            exception.InvalidParameterValue,
-            share_driver.get_driver_mode, [])
-
-    def test_get_driver_mode_one_value_in_list_mode_is_not_set(self):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = None
-
-        mode = share_driver.get_driver_mode([constants.SINGLE_SVM_MODE, ])
-
-        self.assertEqual(constants.SINGLE_SVM_MODE, mode)
-
-    def test_get_driver_mode_one_value_in_list_mode_is_set_and_equal(self):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = constants.SINGLE_SVM_MODE
-
-        mode = share_driver.get_driver_mode([constants.SINGLE_SVM_MODE, ])
-
-        self.assertEqual(constants.SINGLE_SVM_MODE, mode)
-
-    def test_get_driver_mode_one_value_in_list_mode_is_set_and_not_equal(self):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = constants.SINGLE_SVM_MODE
-
-        self.assertRaises(
-            exception.InvalidParameterValue,
-            share_driver.get_driver_mode,
-            [constants.MULTI_SVM_MODE, ])
-
-    def test_get_driver_mode_two_values_in_list_mode_is_not_set(self):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = None
-
-        self.assertRaises(
-            exception.InvalidParameterValue,
-            share_driver.get_driver_mode,
-            [constants.SINGLE_SVM_MODE, constants.MULTI_SVM_MODE])
-
-    def test_get_driver_mode_two_values_in_list_mode_is_set(self):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = constants.MULTI_SVM_MODE
-
-        mode = share_driver.get_driver_mode(
-            [constants.SINGLE_SVM_MODE, constants.MULTI_SVM_MODE, ])
-
-        self.assertEqual(constants.MULTI_SVM_MODE, mode)
-
-    def test_get_driver_mode_one_invalid_value_in_list_mode_is_not_set(self):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = None
-
-        self.assertRaises(
-            exception.InvalidParameterValue,
-            share_driver.get_driver_mode,
-            ['fake', ])
-
-    def test_get_driver_mode_one_valid_value_in_list_mode_is_invalid(self):
+    @ddt.data(
+        '', 'v1', 'v2', 'fake1', None,
+        [], ['v1'], ['v2'], ['v1', 'v2'], ['fake1'], ['fake1', 'fake2'],
+        (), ('v1'), ('v2'), ('v1', 'v2'), ('fake1', ), ('fake1', 'fake2'))
+    def test_get_driver_mode_invalid_opt(self, driver_modes):
         share_driver = self._instantiate_share_driver(None)
         share_driver.mode = 'fake'
-
         self.assertRaises(
             exception.InvalidParameterValue,
-            share_driver.get_driver_mode,
-            [constants.MULTI_SVM_MODE, ])
+            share_driver.get_driver_mode, driver_modes)
 
-    def test_get_driver_mode_two_values_in_list_invalid_mode_set(self):
+    @ddt.data(
+        (), [], ('v1', 'v2'), ['v1', 'v2'], ('v1', 'fake1'), ['v1', 'fake1'],
+        ('fake1', 'fake2'), ['fake1', 'fake2'], ('fake1', ), ['fake1'], '',
+        'fake1', {}, {'v1': 'v2'}, None)
+    def test_get_driver_mode_none_opt_invalid_cases(self, driver_modes):
         share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = 'fake'
-
+        share_driver.mode = None
         self.assertRaises(
             exception.InvalidParameterValue,
-            share_driver.get_driver_mode,
-            [constants.SINGLE_SVM_MODE, constants.MULTI_SVM_MODE, ])
+            share_driver.get_driver_mode, driver_modes)
+
+    @ddt.data('v2', ('v2', ), ['v2', ])
+    def test_get_driver_mode_none_opt_valid_cases(self, driver_modes):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = None
+
+        mode = share_driver.get_driver_mode(driver_modes)
+
+        self.assertEqual('v2', mode)
+
+    @ddt.data(
+        (), [], '', 'fake1', 'v1', ('v1', ), ['v1'], {}, {'v1': 'v2'}, None,
+        ('fake1', ), ['fake2'], ['fake1', 'fake2'], ('fake2', 'fake1'))
+    def test_get_driver_mode_valid_opt_invalid_cases(self, driver_modes):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = 'v2'
+        self.assertRaises(
+            exception.InvalidParameterValue,
+            share_driver.get_driver_mode, driver_modes)
+
+    @ddt.data(
+        'v2', ('v2', ), ['v2'], ('v2', 'v1'), ['v2', 'v1'],
+        ('v2', 'fake2'), ['v2', 'fake1'])
+    def test_get_driver_mode_valid_opt_valid_cases(self, driver_modes):
+        share_driver = self._instantiate_share_driver(None)
+        share_driver.mode = 'v2'
+
+        mode = share_driver.get_driver_mode(driver_modes)
+
+        self.assertEqual('v2', mode)

@@ -188,14 +188,21 @@ class ShareDriver(object):
 
         Call this method within share driver to get value for 'mode' attr,
 
-        :param supported_driver_modes: list of supported modes by share driver,
-            see list of available values in
-            manila.common.constants.VALID_SHARE_DRIVER_MODES
+        :param supported_driver_modes: text value or list/tuple of text values
+            with supported modes by share driver, see list of available values
+            in manila.common.constants.VALID_SHARE_DRIVER_MODES
         :returns: text_type -- name of enabled driver mode.
         :raises: exception.InvalidParameterValue
         """
         msg = None
-        if not len(supported_driver_modes):
+
+        if isinstance(supported_driver_modes, six.string_types):
+            supported_driver_modes = [supported_driver_modes, ]
+
+        if not isinstance(supported_driver_modes, (tuple, list)):
+            msg = ("Provided param 'supported_driver_modes' has unexpected "
+                   "type - '%s'." % type(supported_driver_modes))
+        elif not len(supported_driver_modes):
             msg = "At least one mode should be supported by share driver."
         elif self.mode:
             if self.mode not in supported_driver_modes:
@@ -213,6 +220,7 @@ class ShareDriver(object):
         if msg:
             LOG.error(msg)
             raise exception.InvalidParameterValue(msg)
+
         return self._validate_driver_mode(supported_driver_modes[0])
 
     def create_share(self, context, share, share_server=None):
