@@ -444,25 +444,12 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                       'deleted in %ss. Giving up')
                     % self.configuration.max_time_to_create_volume)
 
-    def get_share_stats(self, refresh=False):
-        """Get share status.
+    def _update_share_stats(self):
+        """Retrieve stats info from share volume group."""
 
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_share_status()
-
-        return self._stats
-
-    def _update_share_status(self):
-        """Retrieve status info from share volume group."""
-
-        LOG.debug("Updating share status")
+        LOG.debug("Updating share stats")
         data = {}
 
-        # Note(zhiteng): These information are driver/backend specific,
-        # each driver may define these values in its own config options
-        # or fetch from driver specific configuration file.
         data["share_backend_name"] = self.backend_name
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'

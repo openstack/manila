@@ -299,9 +299,9 @@ class ZFSSAShareDriver(driver.ShareDriver):
         elif share['share_proto'].startswith('CIFS'):
             return
 
-    def _update_share_status(self):
-        """Retrieve status info from a share."""
-        LOG.debug("Updating share status...")
+    def _update_share_stats(self):
+        """Retrieve stats info from a share."""
+        LOG.debug("Updating share stats...")
         data = {}
         backend_name = self.configuration.safe_get('share_backend_name')
         data["share_backend_name"] = backend_name or self.__class__.__name__

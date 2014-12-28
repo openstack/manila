@@ -494,20 +494,10 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             LOG.error(msg)
             raise exception.InvalidParameterValue(err=msg)
 
-    def get_share_stats(self, refresh=False):
-        """Get share status.
+    def _update_share_stats(self):
+        """Retrieve stats info from share volume group."""
 
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_share_status()
-
-        return self._stats
-
-    def _update_share_status(self):
-        """Retrieve status info from share volume group."""
-
-        LOG.debug("Updating share status")
+        LOG.debug("Updating share stats")
         data = {}
 
         data["share_backend_name"] = self.backend_name

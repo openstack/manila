@@ -262,7 +262,7 @@ class ShareDriver(object):
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
-            self._update_share_status()
+            self._update_share_stats()
 
         return self._stats
 
@@ -300,12 +300,15 @@ class ShareDriver(object):
         """Teardown share server."""
         pass
 
-    def _update_share_status(self):
-        """Retrieve status info from share group."""
+    def _update_share_stats(self):
+        """Retrieve stats info from share group."""
 
-        LOG.debug("Updating share status")
+        LOG.debug("Updating share stats")
         data = {}
         backend_name = self.configuration.safe_get('share_backend_name')
+        # Note(zhiteng): These information are driver/backend specific,
+        # each driver may define these values in its own config options
+        # or fetch from driver specific configuration file.
         data["share_backend_name"] = backend_name or 'Generic_NFS'
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'

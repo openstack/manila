@@ -188,10 +188,10 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         """Get snapshot name according to snapshot name template."""
         return 'share_snapshot_' + snapshot_id.replace('-', '_')
 
-    def _update_share_status(self):
-        """Retrieve status info from Cluster Mode backend."""
+    def _update_share_stats(self):
+        """Retrieve stats info from Cluster Mode backend."""
 
-        LOG.debug("Updating share status")
+        LOG.debug("Updating share stats")
         data = {}
         data["share_backend_name"] = self.backend_name
         data["vendor_name"] = 'NetApp'
