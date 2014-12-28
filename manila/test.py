@@ -47,9 +47,7 @@ test_opts = [
     cfg.StrOpt('sqlite_clean_db',
                default='clean.sqlite',
                help='File name of clean sqlite database.'),
-    cfg.BoolOpt('fake_tests',
-                default=True,
-                help='Whether to use everything for testing.'), ]
+]
 
 CONF = cfg.CONF
 CONF.register_opts(test_opts)
