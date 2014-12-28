@@ -932,6 +932,30 @@ class GenericShareDriverTestCase(test.TestCase):
         )
         self.assertEqual(ssh_output, result)
 
+    def test_get_share_stats_refresh_false(self):
+        self._driver._stats = {'fake_key': 'fake_value'}
+
+        result = self._driver.get_share_stats(False)
+
+        self.assertEqual(self._driver._stats, result)
+
+    def test_get_share_stats_refresh_true(self):
+        fake_stats = {'fake_key': 'fake_value'}
+        self._driver._stats = fake_stats
+        expected_keys = [
+            'QoS_support', 'driver_version', 'share_backend_name',
+            'free_capacity_gb', 'share_driver_mode', 'total_capacity_gb',
+            'reserved_percentage', 'vendor_name', 'storage_protocol',
+        ]
+
+        result = self._driver.get_share_stats(True)
+
+        self.assertNotEqual(fake_stats, result)
+        for key in expected_keys:
+            self.assertIn(key, result)
+        self.assertEqual(self._driver.mode, result['share_driver_mode'])
+        self.assertEqual('Open Source', result['vendor_name'])
+
     @mock.patch.object(
         generic.service_instance, 'ServiceInstanceManager', mock.Mock())
     def test_driver_mode_valid_value(self):

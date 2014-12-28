@@ -140,6 +140,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
 
         expected = {}
         expected["share_backend_name"] = self.driver.backend_name
+        expected["share_driver_mode"] = self.driver.mode
         expected["vendor_name"] = 'NetApp'
         expected["driver_version"] = '1.0'
         expected["storage_protocol"] = 'NFS_CIFS'
@@ -147,7 +148,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         expected['free_capacity_gb'] = 3
         expected['reserved_percentage'] = 0
         expected['QoS_support'] = False
-        self.assertDictMatch(res, expected)
+        self.assertDictMatch(expected, res)
 
     def test_setup_server(self):
         self.driver._vserver_create_if_not_exists = mock.Mock(

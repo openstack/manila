@@ -792,6 +792,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     def test_update_share_stats(self):
         test_data = {
             'share_backend_name': 'GlusterFS-Native',
+            'share_driver_mode': self._driver.mode,
             'vendor_name': 'Red Hat',
             'driver_version': '1.1',
             'storage_protocol': 'glusterfs',

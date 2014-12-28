@@ -25,6 +25,8 @@ class StorageConnection(object):
 
     def __init__(self, logger):
         self.logger = logger
+        # NOTE(vponomaryov): redefine 'supported_driver_modes' within plugin.
+        self.supported_driver_modes = None
 
     @abc.abstractmethod
     def create_share(self, emc_share_driver, context, share, share_server):

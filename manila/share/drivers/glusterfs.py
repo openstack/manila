@@ -32,6 +32,7 @@ import xml.etree.cElementTree as etree
 from oslo.config import cfg
 import six
 
+from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -99,6 +100,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.configuration.append_config_values(GlusterfsManilaShare_opts)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'GlusterFS'
+        self.mode = self.get_driver_mode(const.SINGLE_SVM_MODE)
 
     def do_setup(self, context):
         """Native mount the GlusterFS volume and tune it."""
@@ -267,6 +269,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         data = {}
 
         data["share_backend_name"] = self.backend_name
+        data["share_driver_mode"] = self.mode
         data["vendor_name"] = 'Red Hat'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS'

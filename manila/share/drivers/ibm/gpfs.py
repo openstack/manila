@@ -43,6 +43,7 @@ from oslo.utils import units
 from oslo_concurrency import processutils
 import six
 
+from manila.common import constants as const
 from manila import exception
 from manila.i18n import _, _LE, _LI
 from manila.openstack.common import log as logging
@@ -129,6 +130,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self.configuration.append_config_values(gpfs_share_opts)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "IBM Storage System"
+        self.mode = self.get_driver_mode(const.SINGLE_SVM_MODE)
         self.sshpool = None
         self.ssh_connections = {}
         self._gpfs_execute = None
@@ -501,6 +503,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         data = {}
 
         data["share_backend_name"] = self.backend_name
+        data["share_driver_mode"] = self.mode
         data["vendor_name"] = 'IBM'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS'

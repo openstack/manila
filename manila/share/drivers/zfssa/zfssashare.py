@@ -20,6 +20,7 @@ import base64
 from oslo.config import cfg
 from oslo.utils import units
 
+from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -121,6 +122,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
             'quota_snap': self.configuration.zfssa_nas_quota_snap,
             'reservation_snap': self.configuration.zfssa_nas_quota_snap,
         }
+        self.mode = self.get_driver_mode(const.SINGLE_SVM_MODE)
 
     def do_setup(self, context):
         """Login, create project, no sharing option enabled."""
@@ -305,6 +307,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
         data = {}
         backend_name = self.configuration.safe_get('share_backend_name')
         data["share_backend_name"] = backend_name or self.__class__.__name__
+        data["share_driver_mode"] = self.mode
         data["vendor_name"] = 'Oracle'
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = self.PROTOCOL

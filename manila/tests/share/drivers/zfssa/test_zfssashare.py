@@ -17,6 +17,7 @@ Unit tests for Oracle's ZFSSA Manila driver.
 import mock
 from oslo.config import cfg
 
+from manila.common import constants as const
 from manila import context
 from manila import exception
 from manila.share import configuration as conf
@@ -70,7 +71,11 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         self._driver.do_setup(self._context)
 
     def _create_fake_config(self):
+        def _safe_get(opt):
+            return getattr(self.configuration, opt)
+
         self.configuration = mock.Mock(spec=conf.Configuration)
+        self.configuration.safe_get = mock.Mock(side_effect=_safe_get)
         self.configuration.zfssa_host = '1.1.1.1'
         self.configuration.zfssa_data_ip = '1.1.1.1'
         self.configuration.zfssa_auth_user = 'user'
@@ -86,6 +91,7 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         self.configuration.zfssa_nas_quota_snap = 'true'
         self.configuration.zfssa_rest_timeout = 60
         self.configuration.network_config_group = 'fake_network_config_group'
+        self.configuration.share_driver_mode = const.SINGLE_SVM_MODE
 
     def test_create_share(self):
         self.stubs.Set(self._driver.zfssa, 'create_share', mock.Mock())

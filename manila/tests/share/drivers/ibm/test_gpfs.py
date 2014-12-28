@@ -128,6 +128,28 @@ class GPFSShareDriverTestCase(test.TestCase):
                           ['127.0.0.1', self.local_ip])
         ))
 
+    def test_get_share_stats_refresh_false(self):
+        self._driver._stats = {'fake_key': 'fake_value'}
+        result = self._driver.get_share_stats(False)
+        self.assertEqual(self._driver._stats, result)
+
+    def test_get_share_stats_refresh_true(self):
+        self.stubs.Set(
+            self._driver, '_get_available_capacity',
+            mock.Mock(return_value=(11111.0, 12345.0)))
+        result = self._driver.get_share_stats(True)
+        expected_keys = [
+            'QoS_support', 'driver_version', 'share_backend_name',
+            'free_capacity_gb', 'share_driver_mode', 'total_capacity_gb',
+            'reserved_percentage', 'vendor_name', 'storage_protocol',
+        ]
+        for key in expected_keys:
+            self.assertIn(key, result)
+        self.assertEqual(self._driver.mode, result['share_driver_mode'])
+        self.assertEqual('IBM', result['vendor_name'])
+        self._driver._get_available_capacity.assert_called_once_with(
+            self._driver.configuration.gpfs_mount_point_base)
+
     def test_do_setup(self):
         self.stubs.Set(self._driver, '_setup_helpers', mock.Mock())
         self._driver.do_setup(self._context)

@@ -318,6 +318,7 @@ class ShareDriver(object):
         # each driver may define these values in its own config options
         # or fetch from driver specific configuration file.
         data["share_backend_name"] = backend_name or 'Generic_NFS'
+        data["share_driver_mode"] = self.mode
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = None

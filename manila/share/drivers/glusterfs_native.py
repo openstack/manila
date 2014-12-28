@@ -33,6 +33,7 @@ import tempfile
 from oslo.config import cfg
 import six
 
+from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
@@ -84,6 +85,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             glusterfs_native_manila_share_opts)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'GlusterFS-Native'
+        self.mode = self.get_driver_mode(const.SINGLE_SVM_MODE)
 
     def do_setup(self, context):
         """Setup the GlusterFS volumes."""
@@ -505,6 +507,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         data = {}
 
         data["share_backend_name"] = self.backend_name
+        data["share_driver_mode"] = self.mode
         data["vendor_name"] = 'Red Hat'
         data["driver_version"] = '1.1'
         data["storage_protocol"] = 'glusterfs'

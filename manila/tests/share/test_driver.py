@@ -111,6 +111,32 @@ class ShareDriverTestCase(test.TestCase):
         self.assertEqual(None, share_driver.configuration)
         network.API.assert_called_once_with(config_group_name=None)
 
+    def test_get_share_stats_refresh_false(self):
+        share_driver = driver.ShareDriver(configuration=None)
+        share_driver._stats = {'fake_key': 'fake_value'}
+
+        result = share_driver.get_share_stats(False)
+
+        self.assertEqual(share_driver._stats, result)
+
+    def test_get_share_stats_refresh_true(self):
+        conf = configuration.Configuration(None)
+        expected_keys = [
+            'QoS_support', 'driver_version', 'share_backend_name',
+            'free_capacity_gb', 'share_driver_mode', 'total_capacity_gb',
+            'reserved_percentage', 'vendor_name', 'storage_protocol',
+        ]
+        share_driver = driver.ShareDriver(configuration=conf)
+        fake_stats = {'fake_key': 'fake_value'}
+        share_driver._stats = fake_stats
+
+        result = share_driver.get_share_stats(True)
+
+        self.assertNotEqual(fake_stats, result)
+        for key in expected_keys:
+            self.assertIn(key, result)
+        self.assertEqual('Open Source', result['vendor_name'])
+
     @ddt.data(
         '', 'v1', 'v2', 'fake1', None,
         [], ['v1'], ['v2'], ['v1', 'v2'], ['fake1'], ['fake1', 'fake2'],

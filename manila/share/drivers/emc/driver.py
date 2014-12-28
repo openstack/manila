@@ -125,6 +125,7 @@ class EMCShareDriver(driver.ShareDriver):
         backend_name = self.configuration.safe_get('emc_share_backend')
 
         self.plugin = self.plugin_manager.load_plugin(backend_name, LOG)
+        self.mode = self.get_driver_mode(self.plugin.supported_driver_modes)
 
         self.plugin.connect(self, context)
 
@@ -136,6 +137,7 @@ class EMCShareDriver(driver.ShareDriver):
         backend_name = self.configuration.safe_get(
             'share_backend_name') or "EMC_NAS_Storage"
         data["share_backend_name"] = backend_name
+        data["share_driver_mode"] = self.mode
         data["vendor_name"] = 'EMC'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS_CIFS'

@@ -17,6 +17,7 @@ from oslo.utils import excutils
 from oslo.utils import units
 import six
 
+from manila.common import constants as const
 from manila import db as manila_db
 from manila import exception
 from manila.i18n import _
@@ -47,6 +48,7 @@ class VNXStorageConnection(driver.StorageConnection):
         self._pool_name = None
         self._pool = None
         self._filesystems = {}
+        self.supported_driver_modes = const.MULTI_SVM_MODE
 
     def create_share(self, emc_share_driver, context, share,
                      share_server=None):

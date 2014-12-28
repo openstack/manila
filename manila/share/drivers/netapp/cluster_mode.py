@@ -28,6 +28,7 @@ from oslo.utils import excutils
 from oslo.utils import units
 import six
 
+from manila.common import constants as const
 from manila import context
 from manila import exception
 from manila.i18n import _
@@ -144,6 +145,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         self.api_version = (1, 15)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "NetApp_Cluster_Mode"
+        self.mode = self.get_driver_mode(const.MULTI_SVM_MODE)
 
     def do_setup(self, context):
         """Prepare once the driver.
@@ -194,6 +196,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         LOG.debug("Updating share stats")
         data = {}
         data["share_backend_name"] = self.backend_name
+        data["share_driver_mode"] = self.mode
         data["vendor_name"] = 'NetApp'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS_CIFS'
