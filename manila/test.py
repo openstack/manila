@@ -30,10 +30,9 @@ import mock
 from oslo.config import cfg
 from oslo.config import fixture as config_fixture
 from oslo.messaging import conffixture as messaging_conffixture
-from oslo.utils import timeutils
 from oslo_concurrency import lockutils
+import oslotest.base as base_test
 import six
-import testtools
 
 from manila.db import migration
 from manila.db.sqlalchemy import api as db_api
@@ -112,7 +111,7 @@ class StubOutForTesting(object):
         self.parent.addCleanup(stub.stop)
 
 
-class TestCase(testtools.TestCase):
+class TestCase(base_test.BaseTestCase):
     """Test case base class for all unit tests."""
 
     def setUp(self):
@@ -121,15 +120,6 @@ class TestCase(testtools.TestCase):
 
         conf_fixture.set_defaults(CONF)
         CONF([], default_config_files=[])
-
-        # NOTE(vish): We need a better method for creating fixtures for tests
-        #             now that we have some required db setup for the system
-        #             to work properly.
-        self.start = timeutils.utcnow()
-
-        self.log_fixture = self.useFixture(fixtures.FakeLogger())
-        self.useFixture(fixtures.NestedTempfile())
-        self.useFixture(fixtures.TempHomeDir())
 
         global _DB_CACHE
         if not _DB_CACHE:
