@@ -20,6 +20,7 @@ import os
 
 import mock
 from oslo.config import cfg
+import six
 
 from manila import context
 from manila import exception
@@ -858,8 +859,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             CONF.service_network_cidr)
         fake_division_mask = CONF.service_network_division_mask
         cidrs = serv_cidr.subnet(fake_division_mask)
-        cidr1 = str(cidrs.next())
-        cidr2 = str(cidrs.next())
+        cidr1 = six.text_type(next(cidrs))
+        cidr2 = six.text_type(next(cidrs))
         self.stubs.Set(self._manager, '_get_all_service_subnets',
                        mock.Mock(return_value=[]))
         result = self._manager._get_cidr_for_subnet()
