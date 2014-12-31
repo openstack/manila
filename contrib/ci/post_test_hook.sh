@@ -18,9 +18,11 @@ sudo chown -R jenkins:stack $BASE/new/tempest
 sudo chown -R jenkins:stack $BASE/data/tempest
 sudo chmod -R o+rx $BASE/new/devstack/files
 
+# Import devstack function 'iniset'
+source $BASE/new/devstack/functions
+
 if [[ "$1" =~ "multibackend" ]]; then
     # if arg $1 has "multibackend", then we assume multibackend installation
-    source $BASE/new/devstack/functions
     iniset $BASE/new/tempest/etc/tempest.conf share multi_backend True
 
     # backend names are defined in pre_test_hook
