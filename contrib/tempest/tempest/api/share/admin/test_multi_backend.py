@@ -36,6 +36,7 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
                                     "Skipping.")
         cls.vts = []
         cls.shares = []
+        share_data_list = []
 
         # Create volume types
         for i in [0, 1]:
@@ -46,16 +47,10 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
             __, vt = cls.create_volume_type(name=vt_name,
                                             extra_specs=extra_specs)
             cls.vts.append(vt)
+            share_data_list.append({"kwargs": {"volume_type_id": vt["id"]}})
 
-        # Create shares
-        for vt in cls.vts:
-            __, share = cls.create_share(volume_type_id=vt["id"],
-                                         wait_for_active=False)
-            cls.shares.append(share)
-
-        # Wait for active statuses of shares
-        for share in cls.shares:
-            cls.shares_client.wait_for_share_status(share["id"], "available")
+        # Create shares using precreated volume types
+        cls.shares = cls.create_shares(share_data_list)
 
     @test.attr(type=["gate", "smoke", ])
     def test_share_backend_name_reporting(self):

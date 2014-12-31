@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import inspect
 
 from tempest import clients_share as clients
@@ -227,15 +228,15 @@ class BaseSharesTest(test.BaseTestCase):
         return share_network_id
 
     @classmethod
-    def create_share(cls, share_protocol=None, size=1, name=None,
-                     snapshot_id=None, description=None, metadata={},
-                     share_network_id=None, volume_type_id=None,
-                     client=None, cleanup_in_class=True,
-                     wait_for_active=True):
+    def _create_share(cls, share_protocol=None, size=1, name=None,
+                      snapshot_id=None, description=None, metadata=None,
+                      share_network_id=None, volume_type_id=None,
+                      client=None, cleanup_in_class=True):
         client = client or cls.shares_client
         description = description or "Tempest's share"
         share_network_id = share_network_id or client.share_network_id or None
-        kw = {
+        metadata = metadata or {}
+        kwargs = {
             'share_protocol': share_protocol,
             'size': size,
             'name': name,
@@ -245,33 +246,83 @@ class BaseSharesTest(test.BaseTestCase):
             'share_network_id': share_network_id,
             'volume_type_id': volume_type_id,
         }
+        resp, share = client.create_share(**kwargs)
+        resource = {"type": "share", "id": share["id"], "client": client}
+        cleanup_list = (cls.class_resources if cleanup_in_class else
+                        cls.method_resources)
+        cleanup_list.insert(0, resource)
+        return resp, share
 
-        def _create_share(**kwargs):
-            resp, share = client.create_share(**kwargs)
-            resource = {"type": "share", "id": share["id"], "client": client}
-            cleanup_list = (cls.class_resources if cleanup_in_class else
-                            cls.method_resources)
-            cleanup_list.insert(0, resource)
-            return resp, share
+    @classmethod
+    def create_share(cls, *args, **kwargs):
+        """Create one share and wait for available state. Retry if allowed."""
+        result = cls.create_shares(
+            [{"args": args, "kwargs": kwargs}], with_resp=True)
+        return result[0]
 
-        resp, share = _create_share(**kw)
-        if wait_for_active:
-            cnt = 0
-            while True:
-                if cnt > 0:
-                    resp, share = _create_share(**kw)
+    @classmethod
+    def create_shares(cls, share_data_list, with_resp=False):
+        """Creates several shares in parallel with retries.
+
+        Use this method when you want to create more than one share at same
+        time. Especially if config option 'share.share_creation_retry_number'
+        has value more than zero (0).
+        All shares will be expected to have 'available' status with or without
+        recreation else error will be raised.
+
+        :param share_data_list: list -- list of dictionaries with 'args' and
+            'kwargs' for '_create_share' method of this base class.
+            example of data:
+                share_data_list=[{'args': ['quuz'], 'kwargs': {'foo': 'bar'}}}]
+        :param with_resp: boolean -- whether to return list of
+            tuples (resp, share) or just list of shares.
+        :returns: list -- list of shares created using provided data.
+        """
+
+        data = [copy.deepcopy(d) for d in share_data_list]
+        for d in data:
+            if not isinstance(d, dict):
+                raise exceptions.TempestException(
+                    "Expected 'dict', got '%s'" % type(d))
+            if "args" not in d:
+                d["args"] = []
+            if "kwargs" not in d:
+                d["kwargs"] = {}
+            if len(d) > 2:
+                raise exceptions.TempestException(
+                    "Expected only 'args' and 'kwargs' keys. "
+                    "Provided %s" % list(d))
+            d["kwargs"]["client"] = d["kwargs"].get(
+                "client", cls.shares_client)
+            d["resp"], d["share"] = cls._create_share(
+                *d["args"], **d["kwargs"])
+            d["cnt"] = 0
+            d["available"] = False
+
+        while not all(d["available"] for d in data):
+            for d in data:
+                if d["available"]:
+                    continue
                 try:
-                    client.wait_for_share_status(share["id"], "available")
+                    d["kwargs"]["client"].wait_for_share_status(
+                        d["share"]["id"], "available")
+                    d["available"] = True
                 except (share_exceptions.ShareBuildErrorException,
                         exceptions.TimeoutException) as e:
-                    if CONF.share.share_creation_retry_number > cnt:
-                        cnt += 1
-                        continue
+                    if CONF.share.share_creation_retry_number > d["cnt"]:
+                        d["cnt"] += 1
+                        msg = ("Share '%(id)s' failed to be built. "
+                               "Trying create another." % d["share"]["id"])
+                        LOG.error(msg)
+                        LOG.error(e)
+                        d["resp"], d["share"] = cls._create_share(
+                            *d["args"], **d["kwargs"])
                     else:
                         raise e
-                else:
-                    break
-        return resp, share
+
+        if with_resp:
+            return [(d["resp"], d["share"]) for d in data]
+        return [d["share"] for d in data]
 
     @classmethod
     def create_snapshot_wait_for_active(cls, share_id, name=None,
