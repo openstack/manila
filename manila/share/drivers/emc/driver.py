@@ -128,16 +128,6 @@ class EMCShareDriver(driver.ShareDriver):
 
         self.plugin.connect(self, context)
 
-    def get_share_stats(self, refresh=False):
-        """Get share stats.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_share_stats()
-
-        return self._stats
-
     def _update_share_stats(self):
         """Retrieve stats info from share."""
 

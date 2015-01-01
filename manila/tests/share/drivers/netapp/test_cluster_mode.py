@@ -135,7 +135,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         fake_aggr2.translate_struct(fake_aggr2_struct)
         self.driver._find_match_aggregates = mock.Mock(
             return_value=[fake_aggr1, fake_aggr2])
-        self.driver._update_share_status()
+        self.driver._update_share_stats()
         res = self.driver._stats
 
         expected = {}
