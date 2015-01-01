@@ -36,13 +36,13 @@ import netaddr
 from oslo.config import cfg
 from oslo.utils import importutils
 from oslo.utils import timeutils
+from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 import paramiko
 import six
 
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import lockutils
 from manila.openstack.common import log as logging
 
 

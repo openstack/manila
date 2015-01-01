@@ -20,6 +20,7 @@ __all__ = [
 import copy
 import itertools
 
+import oslo_concurrency.opts
 
 import manila.api.middleware.auth
 import manila.api.middleware.sizelimit
@@ -33,7 +34,6 @@ import manila.network
 import manila.network.linux.interface
 import manila.network.neutron.api
 import manila.openstack.common.eventlet_backdoor
-import manila.openstack.common.lockutils
 import manila.openstack.common.log
 import manila.openstack.common.policy
 import manila.openstack.common.sslutils
@@ -79,7 +79,6 @@ _global_opt_lists = [
     manila.network.network_opts,
     manila.network.neutron.api.neutron_opts,
     manila.openstack.common.eventlet_backdoor.eventlet_backdoor_opts,
-    manila.openstack.common.lockutils.util_opts,
     manila.openstack.common.log.common_cli_opts,
     manila.openstack.common.log.generic_log_opts,
     manila.openstack.common.log.log_opts,
@@ -120,6 +119,8 @@ _opts = [
     # ssl namespace:
     ("ssl", manila.openstack.common.sslutils.ssl_opts)
 ]
+
+_opts.extend(oslo_concurrency.opts.list_opts())
 
 
 def list_opts():
