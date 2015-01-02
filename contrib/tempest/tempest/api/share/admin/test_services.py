@@ -29,6 +29,9 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertNotEqual(0, len(services))
 
+        for service in services:
+            self.assertIsNotNone(service['id'])
+
     @test.attr(type=["gate", "smoke", ])
     def test_get_services_by_host_name(self):
         host = self.services[0]["host"]

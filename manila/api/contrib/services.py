@@ -64,6 +64,7 @@ class ServiceController(object):
         services = []
         for service in all_services:
             service = {
+                'id': service['id'],
                 'binary': service['binary'],
                 'host': service['host'],
                 'zone': service['availability_zone'],

@@ -68,6 +68,7 @@ fake_services_list = [
 
 fake_response_service_list = {'services': [
     {
+        'id': 1,
         'binary': 'manila-scheduler',
         'host': 'host1',
         'zone': 'manila1',
@@ -75,6 +76,7 @@ fake_response_service_list = {'services': [
         'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
     },
     {
+        'id': 2,
         'binary': 'manila-share',
         'host': 'host1',
         'zone': 'manila1',
@@ -83,6 +85,7 @@ fake_response_service_list = {'services': [
         'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
     },
     {
+        'id': 3,
         'binary': 'manila-scheduler',
         'host': 'host2',
         'zone': 'manila2',
@@ -91,6 +94,7 @@ fake_response_service_list = {'services': [
         'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
     },
     {
+        'id': 4,
         'binary': 'manila-share',
         'host': 'host2',
         'zone': 'manila2',
