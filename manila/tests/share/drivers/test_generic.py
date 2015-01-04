@@ -678,6 +678,60 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._deallocate_container.assert_called_once_with(
             self._driver.admin_context, self.share)
 
+    def test_delete_share_without_share_server(self):
+        self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
+        self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
+        self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
+
+        self._driver.delete_share(
+            self._context, self.share, share_server=None)
+
+        self.assertFalse(self._helper_nfs.remove_export.called)
+        self.assertFalse(self._driver._unmount_device.called)
+        self.assertFalse(self._driver._detach_volume.called)
+        self._driver._deallocate_container.assert_called_once_with(
+            self._driver.admin_context, self.share)
+
+    def test_delete_share_without_server_backend_details(self):
+        self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
+        self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
+        self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
+
+        fake_share_server = {
+            'instance_id': 'fake_instance_id',
+            'ip': 'fake_ip',
+            'username': 'fake_username',
+            'password': 'fake_password',
+            'pk_path': 'fake_pk_path',
+            'backend_details': {}
+        }
+
+        self._driver.delete_share(
+            self._context, self.share, share_server=fake_share_server)
+
+        self.assertFalse(self._helper_nfs.remove_export.called)
+        self.assertFalse(self._driver._unmount_device.called)
+        self.assertFalse(self._driver._detach_volume.called)
+        self._driver._deallocate_container.assert_called_once_with(
+            self._driver.admin_context, self.share)
+
+    def test_delete_share_without_server_availability(self):
+        self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
+        self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
+        self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
+
+        with mock.patch.object(self._driver.service_instance_manager,
+                               'ensure_service_instance',
+                               mock.Mock(return_value=False)):
+            self._driver.delete_share(
+                self._context, self.share, share_server=self.server)
+
+            self.assertFalse(self._helper_nfs.remove_export.called)
+            self.assertFalse(self._driver._unmount_device.called)
+            self.assertFalse(self._driver._detach_volume.called)
+            self._driver._deallocate_container.assert_called_once_with(
+                self._driver.admin_context, self.share)
+
     def test_create_snapshot(self):
         fake_vol = fake_volume.FakeVolume()
         fake_vol_snap = fake_volume.FakeVolumeSnapshot(share_id=fake_vol['id'])

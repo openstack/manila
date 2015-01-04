@@ -428,6 +428,10 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Deletes cinder volume."""
         volume = self._get_volume(context, share['id'])
         if volume:
+            if volume['status'] == 'in-use':
+                raise exception.ManilaException(
+                    _('Volume is still in use and '
+                      'cannot be deleted now.'))
             self.volume_api.delete(context, volume['id'])
             t = time.time()
             while (time.time() - t <
@@ -477,14 +481,25 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             share['name'])
         return location
 
-    @ensure_server
+    def _is_share_server_active(self, context, share_server):
+        """Check if the share server is active."""
+        has_active_share_server = (
+            share_server and share_server.get('backend_details') and
+            self.service_instance_manager.ensure_service_instance(
+                context, share_server['backend_details']))
+        return has_active_share_server
+
     def delete_share(self, context, share, share_server=None):
         """Deletes share."""
-        self._get_helper(share).remove_export(share_server['backend_details'],
-                                              share['name'])
-        self._unmount_device(share, share_server['backend_details'])
-        self._detach_volume(self.admin_context, share,
-                            share_server['backend_details'])
+        if self._is_share_server_active(context, share_server):
+            self._get_helper(share).remove_export(
+                share_server['backend_details'], share['name'])
+            self._unmount_device(share, share_server['backend_details'])
+            self._detach_volume(self.admin_context, share,
+                                share_server['backend_details'])
+
+        # Note(jun): It is an intended breakage to deal with the cases
+        # with any reason that caused absence of Nova instances.
         self._deallocate_container(self.admin_context, share)
 
     @ensure_server
