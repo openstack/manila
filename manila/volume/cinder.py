@@ -22,7 +22,7 @@ import sys
 
 from cinderclient import exceptions as cinder_exception
 from cinderclient import service_catalog
-from cinderclient.v1 import client as cinder_client
+from cinderclient.v2 import client as cinder_client
 from oslo.config import cfg
 
 from manila.db import base
@@ -136,8 +136,8 @@ def _untranslate_volume_summary_view(context, vol):
     else:
         d['attach_status'] = 'detached'
 
-    d['display_name'] = vol.display_name
-    d['display_description'] = vol.display_description
+    d['name'] = vol.name
+    d['description'] = vol.description
 
     d['volume_type_id'] = vol.volume_type
     d['snapshot_id'] = vol.snapshot_id
@@ -161,8 +161,8 @@ def _untranslate_snapshot_summary_view(context, snapshot):
     d['progress'] = snapshot.progress
     d['size'] = snapshot.size
     d['created_at'] = snapshot.created_at
-    d['display_name'] = snapshot.display_name
-    d['display_description'] = snapshot.display_description
+    d['name'] = snapshot.name
+    d['description'] = snapshot.description
     d['volume_id'] = snapshot.volume_id
     d['project_id'] = snapshot.project_id
     d['volume_size'] = snapshot.size
@@ -289,8 +289,8 @@ class API(base.Base):
             snapshot_id = None
 
         kwargs = dict(snapshot_id=snapshot_id,
-                      display_name=name,
-                      display_description=description,
+                      name=name,
+                      description=description,
                       volume_type=volume_type,
                       user_id=context.user_id,
                       project_id=context.project_id,

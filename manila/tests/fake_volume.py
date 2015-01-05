@@ -28,7 +28,6 @@ class FakeVolume(object):
         self.id = kwargs.pop('id', 'fake_vol_id')
         self.status = kwargs.pop('status', 'available')
         self.device = kwargs.pop('device', '')
-        self.display_name = kwargs.pop('display_name', 'fake_vol_name')
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -40,7 +39,6 @@ class FakeVolumeSnapshot(object):
     def __init__(self, **kwargs):
         self.id = kwargs.pop('id', 'fake_volsnap_id')
         self.status = kwargs.pop('status', 'available')
-        self.display_name = kwargs.pop('display_name', 'fake_volsnap_name')
         for key, value in kwargs.items():
             setattr(self, key, value)
 
