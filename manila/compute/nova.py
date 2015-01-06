@@ -246,7 +246,7 @@ class API(base.Base):
 
         for volume in volumes:
             volume_data = cinder.cinderclient(context).volumes.get(volume.id)
-            volume.name = volume_data.display_name
+            volume.name = volume_data.name
 
         return volumes
 

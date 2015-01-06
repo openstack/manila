@@ -26,7 +26,7 @@ from manila.volume import cinder
 class Volume(object):
     def __init__(self, volume_id):
         self.id = volume_id
-        self.display_name = volume_id
+        self.name = volume_id
 
 
 class FakeNovaClient(object):
