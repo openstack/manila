@@ -20,6 +20,7 @@ manila.egg-info
 cover/*
 covhtml
 dist/*
+etc/manila/manila.conf.sample
 instances
 keeper
 keys
