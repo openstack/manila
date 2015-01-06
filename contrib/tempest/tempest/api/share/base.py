@@ -311,7 +311,7 @@ class BaseSharesTest(test.BaseTestCase):
                         exceptions.TimeoutException) as e:
                     if CONF.share.share_creation_retry_number > d["cnt"]:
                         d["cnt"] += 1
-                        msg = ("Share '%(id)s' failed to be built. "
+                        msg = ("Share '%s' failed to be built. "
                                "Trying create another." % d["share"]["id"])
                         LOG.error(msg)
                         LOG.error(e)
