@@ -45,7 +45,7 @@ class MigrationTestCase(test.TestCase):
         downgrade.assert_called_once_with('fake_config', 'version_1')
 
     @mock.patch('alembic.command.downgrade')
-    def test_downgrade_none_verison(self, downgrade):
+    def test_downgrade_none_version(self, downgrade):
         migration.downgrade(None)
         downgrade.assert_called_once_with('fake_config', 'base')
 
