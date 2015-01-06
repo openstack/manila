@@ -36,7 +36,6 @@ import manila.network.neutron.api
 import manila.openstack.common.eventlet_backdoor
 import manila.openstack.common.log
 import manila.openstack.common.policy
-import manila.openstack.common.sslutils
 import manila.quota
 import manila.scheduler.driver
 import manila.scheduler.host_manager
@@ -116,8 +115,6 @@ _global_opt_lists = [
 
 _opts = [
     (None, list(itertools.chain(*_global_opt_lists))),
-    # ssl namespace:
-    ("ssl", manila.openstack.common.sslutils.ssl_opts)
 ]
 
 _opts.extend(oslo_concurrency.opts.list_opts())
