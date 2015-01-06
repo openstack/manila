@@ -195,14 +195,20 @@ class ShareManager(manager.SchedulerDependentManager):
             filter_properties = {}
 
         share_ref = self.db.share_get(context, share_id)
+        share_network_id = share_ref.get('share_network_id', None)
+
+        if share_network_id and self.driver.mode == constants.SINGLE_SVM_MODE:
+            self.db.share_update(context, share_id, {'status': 'error'})
+            raise exception.ManilaException(
+                "Driver with single SVM mode does not expect share-network "
+                "to be provided.")
+
         if snapshot_id is not None:
             snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
             parent_share_server_id = snapshot_ref['share']['share_server_id']
         else:
             snapshot_ref = None
             parent_share_server_id = None
-
-        share_network_id = share_ref.get('share_network_id', None)
 
         if parent_share_server_id:
             try:

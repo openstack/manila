@@ -460,6 +460,27 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(models.ShareSnapshot),
             share_server=None)
 
+    def test_create_share_with_share_network_using_single_svm_driver(self):
+        share_id = 'fake_share_id'
+        share_network_id = 'fake_sn'
+        self.stubs.Set(
+            self.share_manager.db, 'share_get',
+            mock.Mock(return_value=self._create_share(
+                share_network_id=share_network_id)))
+        self.stubs.Set(self.share_manager.db, 'share_update', mock.Mock())
+        self.stubs.Set(
+            self.share_manager.driver, 'mode', constants.SINGLE_SVM_MODE)
+
+        self.assertRaises(
+            exception.ManilaException,
+            self.share_manager.create_share, self.context, share_id)
+
+        self.share_manager.db.share_get.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share_id)
+        self.share_manager.db.share_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share_id,
+            {'status': 'error'})
+
     def test_create_share_with_share_network_server_not_exists(self):
         """Test share can be created without share server."""
 
