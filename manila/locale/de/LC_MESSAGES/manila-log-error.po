@@ -1,5 +1,5 @@
 # Translations template for manila.
-# Copyright (C) 2014 ORGANIZATION
+# Copyright (C) 2015 ORGANIZATION
 # This file is distributed under the same license as the manila project.
 #
 # Translators:
@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Manila\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-12-20 06:12+0000\n"
-"PO-Revision-Date: 2014-12-18 18:18+0000\n"
+"POT-Creation-Date: 2015-01-07 06:12+0000\n"
+"PO-Revision-Date: 2015-01-01 04:37+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/manila/language/"
 "de/)\n"
@@ -98,11 +98,6 @@ msgstr ""
 #, python-format
 msgid "Neutron error creating port on network %s"
 msgstr ""
-
-#: manila/openstack/common/lockutils.py:117
-#, python-format
-msgid "Could not release the acquired lock `%s`"
-msgstr "Konnte den Lock `%s` nicht freigeben."
 
 #: manila/openstack/common/loopingcall.py:95
 msgid "in fixed duration looping call"
@@ -215,68 +210,68 @@ msgstr ""
 msgid "Failed to mount all shares on server '%s'."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:135
+#: manila/share/drivers/glusterfs.py:137
 #, python-format
 msgid "Error retrieving volume info: %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:160
+#: manila/share/drivers/glusterfs.py:162
 #, python-format
 msgid "Error in disabling access to the entire GlusterFS volume: %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:171
+#: manila/share/drivers/glusterfs.py:173
 #, python-format
 msgid "Error in enabling creation of shares of specific size: %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:231
+#: manila/share/drivers/glusterfs.py:233
 #, python-format
 msgid "Could not mount the Gluster volume %s"
 msgstr "Konnte Gluster Volume %s nicht mounten"
 
-#: manila/share/drivers/glusterfs.py:300
+#: manila/share/drivers/glusterfs.py:303
 #, python-format
 msgid "Unable to create share %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:314
+#: manila/share/drivers/glusterfs.py:317
 #, python-format
 msgid ""
 "Cannot cleanup share, %s, that errored out during its creation, but exists "
 "in GlusterFS volume."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:326
+#: manila/share/drivers/glusterfs.py:329
 #, python-format
 msgid "Unable to delete share %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:385
+#: manila/share/drivers/glusterfs.py:388
 #, python-format
 msgid "Error in gluster volume set: %s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:567
+#: manila/share/drivers/emc/plugins/vnx/connection.py:569
 #, python-format
 msgid "Could not setup server. Reason: %s."
 msgstr "Kann Server nicht aufsetzen. Grund: %s."
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:689
+#: manila/share/drivers/emc/plugins/vnx/connection.py:691
 #, python-format
 msgid "Could not find CIFS server by name: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:734
+#: manila/share/drivers/emc/plugins/vnx/connection.py:736
 msgid "Could not get storage pool list."
 msgstr "Storage Pool Liste konnte nicht abgerufen werden."
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:861
+#: manila/share/drivers/emc/plugins/vnx/connection.py:863
 #, python-format
 msgid "Could not get mount point. Reason: %s."
 msgstr "Mountpunkt konnten nicht abgerufen werden. Grund: %s."
 
-#: manila/share/drivers/emc/plugins/vnx/helper.py:90
+#: manila/share/drivers/emc/plugins/vnx/helper.py:89
 #, python-format
 msgid ""
 "REQ: [%(method)s] %(url)s %(req_hdrs)s\n"
@@ -285,7 +280,7 @@ msgid ""
 "RESP BODY: %(resp_b)s\n"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/helper.py:1160
+#: manila/share/drivers/emc/plugins/vnx/helper.py:1159
 #, python-format
 msgid "Error running SSH command: %s"
 msgstr ""
@@ -301,45 +296,45 @@ msgstr ""
 msgid "Invalid export database on Ganesha node %(tag)s: %(db)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:703
+#: manila/share/drivers/ibm/gpfs.py:696
 #, python-format
 msgid "Invalid metadata %(attr)s for share %(share)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:168
+#: manila/share/drivers/netapp/cluster_mode.py:170
 #, python-format
 msgid "Could not get licenses list. %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:412
+#: manila/share/drivers/netapp/cluster_mode.py:415
 msgid "Failed to create network interface"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:493
+#: manila/share/drivers/netapp/cluster_mode.py:496
 msgid "DNS exists for vserver."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:824
+#: manila/share/drivers/netapp/cluster_mode.py:827
 #, python-format
 msgid "Vserver %s does not exist."
 msgstr "Vserver %s existiert nicht."
 
-#: manila/share/drivers/netapp/cluster_mode.py:835
+#: manila/share/drivers/netapp/cluster_mode.py:838
 #, python-format
 msgid "Volume %s is already offline."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:859
+#: manila/share/drivers/netapp/cluster_mode.py:862
 #, python-format
 msgid "CIFS server does not exist for vserver %s"
 msgstr "CIFS Server existiert nicht für Vserver %s"
 
-#: manila/share/drivers/netapp/cluster_mode.py:1187
+#: manila/share/drivers/netapp/cluster_mode.py:1190
 #, python-format
 msgid "User %s does not exist."
 msgstr "Benutzer %s existiert nicht."
 
-#: manila/share/drivers/netapp/cluster_mode.py:1189
+#: manila/share/drivers/netapp/cluster_mode.py:1192
 #, python-format
 msgid "Rule %s does not exist."
 msgstr "Regel %s existiert nicht."
@@ -351,7 +346,7 @@ msgid ""
 "Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
 
-#: manila/share/drivers/zfssa/zfssashare.py:264
+#: manila/share/drivers/zfssa/zfssashare.py:266
 #, python-format
 msgid "snapshot %s: has clones"
 msgstr ""

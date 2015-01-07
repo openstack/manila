@@ -1,14 +1,14 @@
 # Translations template for manila.
-# Copyright (C) 2014 ORGANIZATION
+# Copyright (C) 2015 ORGANIZATION
 # This file is distributed under the same license as the manila project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2014.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2015.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev9\n"
+"Project-Id-Version: manila 2015.1.dev63\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-12-20 06:12+0000\n"
+"POT-Creation-Date: 2015-01-07 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -146,16 +146,6 @@ msgstr ""
 msgid "Eventlet backdoor listening on %(port)s for process %(pid)d"
 msgstr ""
 
-#: manila/openstack/common/lockutils.py:82
-#, python-format
-msgid "Created lock path: %s"
-msgstr ""
-
-#: manila/openstack/common/lockutils.py:194
-#, python-format
-msgid "Failed to remove file %(file)s"
-msgstr ""
-
 #: manila/openstack/common/service.py:263
 #, python-format
 msgid "Child caught %s, exiting"
@@ -173,6 +163,11 @@ msgstr ""
 #: manila/openstack/common/scheduler/base_filter.py:89
 #, python-format
 msgid "Filter %(cls_name)s returned %(obj_len)d host(s)"
+msgstr ""
+
+#: manila/scheduler/host_manager.py:271
+#, python-format
+msgid "Removing non-active host: %(host)s from scheduler cache."
 msgstr ""
 
 #: manila/share/manager.py:120
@@ -206,23 +201,23 @@ msgstr ""
 msgid "Share server deleted successfully."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:103
+#: manila/share/drivers/glusterfs_native.py:105
 #, python-format
 msgid "Number of gluster volumes read from config: %(numvols)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:130
+#: manila/share/drivers/glusterfs_native.py:132
 msgid ""
 "Number of gluster volumes in use:  %(inuse-numvols)s. Number of gluster "
 "volumes available for use as share: %(unused-numvols)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:397
+#: manila/share/drivers/glusterfs_native.py:399
 #, python-format
 msgid "export_location sent back from create_share: %s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/helper.py:1193
+#: manila/share/drivers/emc/plugins/vnx/helper.py:1192
 msgid "Found the header of the command /nas/bin/nas_cel -interconnect -l"
 msgstr ""
 
@@ -246,47 +241,47 @@ msgstr ""
 msgid "Restart service %(service)s on %(server)s to force a config file reload"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:740
+#: manila/share/drivers/ibm/gpfs.py:733
 #, python-format
 msgid "Add %(share)s with access from %(access)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:751
+#: manila/share/drivers/ibm/gpfs.py:744
 #, python-format
 msgid "Update %(share)s with access from %(access)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:756
+#: manila/share/drivers/ibm/gpfs.py:749
 #, python-format
 msgid "Do not update %(share)s, access from %(access)s already defined"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:770
+#: manila/share/drivers/ibm/gpfs.py:763
 #, python-format
 msgid "Update %(share)s removing access from %(access)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:775
+#: manila/share/drivers/ibm/gpfs.py:768
 #, python-format
 msgid "Do not update %(share)s, access from %(access)s already removed"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:784
+#: manila/share/drivers/ibm/gpfs.py:777
 #, python-format
 msgid "Remove export for %s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:786
+#: manila/share/drivers/ibm/gpfs.py:779
 #, python-format
 msgid "Export for %s is not defined in Ganesha config."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:178
+#: manila/share/drivers/netapp/cluster_mode.py:180
 #, python-format
 msgid "Available licenses on '%(backend)s' are %(licenses)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:714
+#: manila/share/drivers/netapp/cluster_mode.py:717
 #, python-format
 msgid "Share %s does not exist."
 msgstr ""

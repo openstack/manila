@@ -1,14 +1,14 @@
 # Translations template for manila.
-# Copyright (C) 2014 ORGANIZATION
+# Copyright (C) 2015 ORGANIZATION
 # This file is distributed under the same license as the manila project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2014.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2015.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev88.ga2b1757\n"
+"Project-Id-Version: manila 2015.1.dev63\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-11-14 06:14+0000\n"
+"POT-Creation-Date: 2015-01-07 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -128,10 +128,6 @@ msgstr ""
 msgid "Can not find policy directories %s"
 msgstr ""
 
-#: manila/scheduler/host_manager.py:270
-msgid "service is down or disabled."
-msgstr ""
-
 #: manila/scheduler/manager.py:93
 #, python-format
 msgid "Failed to schedule_%(method)s: %(ex)s"
@@ -172,36 +168,36 @@ msgid ""
 "snapshots already consumed)"
 msgstr ""
 
-#: manila/share/manager.py:256
+#: manila/share/manager.py:254
 #, python-format
 msgid ""
 "Share information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/manager.py:474
+#: manila/share/manager.py:469
 #, python-format
 msgid ""
 "Server Information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/drivers/generic.py:266
+#: manila/share/drivers/generic.py:271
 #, python-format
 msgid "Mount point '%(path)s' already exists on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:292
+#: manila/share/drivers/generic.py:297
 #, python-format
 msgid "Mount point '%(path)s' does not exist on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:791
+#: manila/share/drivers/generic.py:801
 #, python-format
 msgid "Caught error trying delete share: %(error)s, trying delete it forcibly."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:153
+#: manila/share/drivers/glusterfs.py:195
 #, python-format
 msgid "%s is already mounted"
 msgstr ""
@@ -226,52 +222,52 @@ msgid ""
 "configuration file."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:195
+#: manila/share/drivers/emc/plugins/vnx/connection.py:196
 msgid ""
 "Driver does not support share deletion without share network specified. "
 "Return directly because there is nothing to clean"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:217
+#: manila/share/drivers/emc/plugins/vnx/connection.py:218
 #, python-format
 msgid "CIFS share %s not found. Skip the deletion"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:250
+#: manila/share/drivers/emc/plugins/vnx/connection.py:251
 #, python-format
 msgid "NFS share %s not found. Skip the deletion"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:283
+#: manila/share/drivers/emc/plugins/vnx/connection.py:284
 #, python-format
 msgid "Mount point %(path)s on %(vdm)s not found."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:286
+#: manila/share/drivers/emc/plugins/vnx/connection.py:287
 #, python-format
 msgid "Deleting mount point %(path)s on %(mover_name)s failed. Reason: %(err)s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:292
+#: manila/share/drivers/emc/plugins/vnx/connection.py:293
 msgid "Failed to find the VDM. Try to delete the file system"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:303
+#: manila/share/drivers/emc/plugins/vnx/connection.py:304
 #, python-format
 msgid "File system %s not found. Skip the deletion"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:324
+#: manila/share/drivers/emc/plugins/vnx/connection.py:325
 #, python-format
 msgid "Check point not found. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:328
+#: manila/share/drivers/emc/plugins/vnx/connection.py:329
 #, python-format
 msgid "Snapshot: %(name)s not found. Skip the deletion."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/helper.py:177
+#: manila/share/drivers/emc/plugins/vnx/helper.py:176
 #, python-format
 msgid "Translated status from %(old)s to %(new)s. Message: %(info)s."
 msgstr ""
