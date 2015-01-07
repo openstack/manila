@@ -88,7 +88,7 @@ class ShareNetworkAdminTest(
                             for sn in listed))
 
     @test.attr(type=["gate", "smoke", ])
-    def test_list_share_networks_filter_by_porject_ip(self):
+    def test_list_share_networks_filter_by_project_id(self):
         resp, listed = self.shares_client.list_share_networks_with_detail(
             {'project_id': self.sn_with_kerberos_ss['project_id']})
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
