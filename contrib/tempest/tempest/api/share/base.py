@@ -30,6 +30,26 @@ CONF = config.CONF
 LOG = logging.getLogger(__name__)
 
 
+def network_synchronized(f):
+
+    def wrapped_func(self, *args, **kwargs):
+        with_isolated_creds = True if len(args) > 2 else False
+        no_lock_required = kwargs.get(
+            "isolated_creds_client", with_isolated_creds)
+        if no_lock_required:
+            # Usage of not reusable network. No need in lock.
+            return f(self, *args, **kwargs)
+
+        # Use lock assuming reusage of common network.
+        @lockutils.synchronized("manila_network_lock", external=True)
+        def source_func(self, *args, **kwargs):
+            return f(self, *args, **kwargs)
+
+        return source_func(self, *args, **kwargs)
+
+    return wrapped_func
+
+
 class BaseSharesTest(test.BaseTestCase):
     """Base test case class for all Manila API tests."""
 
@@ -76,7 +96,8 @@ class BaseSharesTest(test.BaseTestCase):
         elif "alt" in type_of_creds:
             creds = ic.get_alt_creds()
         else:
-            creds = ic.get_primary_creds()
+            creds = ic.self.get_credentials(type_of_creds)
+        ic.type_of_creds = type_of_creds
 
         # create client with isolated creds
         os = clients.Manager(credentials=creds, interface=cls._interface)
@@ -106,7 +127,7 @@ class BaseSharesTest(test.BaseTestCase):
             if not CONF.service_available.neutron:
                 raise cls.skipException("Neutron support is required")
             nc = os.network_client
-            share_network_id = cls.provide_share_network(client, nc)
+            share_network_id = cls.provide_share_network(client, nc, ic)
             client.share_network_id = share_network_id
             resource = {
                 "type": "share_network",
@@ -160,8 +181,9 @@ class BaseSharesTest(test.BaseTestCase):
         cls.clear_isolated_creds(cls.class_isolated_creds)
 
     @classmethod
-    @lockutils.synchronized("service_vm", external=True, lock_path="tempest")
-    def provide_share_network(cls, shares_client, network_client):
+    @network_synchronized
+    def provide_share_network(cls, shares_client, network_client,
+                              isolated_creds_client=None):
         """Used for finding/creating share network for multitenant driver.
 
         This method creates/gets entity share-network for one tenant. This
@@ -169,6 +191,9 @@ class BaseSharesTest(test.BaseTestCase):
 
         :param shares_client: shares client, which requires share-network
         :param network_client: network client from same tenant as shares
+        :param isolated_creds_client: IsolatedCreds instance
+            If provided, then its networking will be used if needed.
+            If not provided, then common network will be used if needed.
         :returns: str -- share network id for shares_client tenant
         :returns: None -- if single-tenant driver used
         """
@@ -184,36 +209,44 @@ class BaseSharesTest(test.BaseTestCase):
         else:
             net_id = subnet_id = share_network_id = None
 
-            # Search for networks, created in previous runs
-            service_net_name = "share-service"
-            networks = network_client.list_networks()
-            if "networks" in networks.keys():
-                networks = networks["networks"]
-            for network in networks:
-                if service_net_name in network["name"]:
+            if not isolated_creds_client:
+                # Search for networks, created in previous runs
+                service_net_name = "share-service"
+                networks = network_client.list_networks()
+                if "networks" in networks.keys():
+                    networks = networks["networks"]
+                for network in networks:
+                    if service_net_name in network["name"]:
+                        net_id = network["id"]
+                        if len(network["subnets"]) > 0:
+                            subnet_id = network["subnets"][0]
+                            break
+
+                # Create suitable network
+                if (net_id is None or subnet_id is None):
+                    ic = isolated_creds.IsolatedCreds(service_net_name)
+                    identity_client = cls._get_identity_admin_client()
+                    tenant = identity_client.\
+                        get_tenant_by_name(sc.auth_params["tenant"])
+                    net_data = ic._create_network_resources(tenant["id"])
+                    network, subnet, router = net_data
                     net_id = network["id"]
-                    if len(network["subnets"]) > 0:
-                        subnet_id = network["subnets"][0]
+                    subnet_id = subnet["id"]
+
+                # Try get suitable share-network
+                __, share_networks = sc.list_share_networks_with_detail()
+                for share_network in share_networks:
+                    if (net_id == share_network["neutron_net_id"] and
+                            subnet_id == share_network["neutron_subnet_id"]):
+                        share_network_id = share_network["id"]
                         break
-
-            # Create suitable network
-            if (net_id is None or subnet_id is None):
-                ic = isolated_creds.IsolatedCreds(service_net_name)
-                identity_client = cls._get_identity_admin_client()
-                tenant = identity_client.\
-                    get_tenant_by_name(sc.auth_params["tenant"])
-                net_data = ic._create_network_resources(tenant["id"])
-                network, subnet, router = net_data
-                net_id = network["id"]
-                subnet_id = subnet["id"]
-
-            # Try get suitable share-network
-            __, share_networks = sc.list_share_networks_with_detail()
-            for share_network in share_networks:
-                if (net_id == share_network["neutron_net_id"] and
-                        subnet_id == share_network["neutron_subnet_id"]):
-                    share_network_id = share_network["id"]
-                    break
+            else:
+                # Use precreated network and subnet from isolated creds
+                net_resources = (
+                    isolated_creds_client.isolated_net_resources[
+                        isolated_creds_client.type_of_creds])
+                net_id = net_resources[0]["id"]
+                subnet_id = net_resources[1]["id"]
 
             # Create suitable share-network
             if share_network_id is None:
