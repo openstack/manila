@@ -1,14 +1,14 @@
 # Translations template for manila.
-# Copyright (C) 2014 ORGANIZATION
+# Copyright (C) 2015 ORGANIZATION
 # This file is distributed under the same license as the manila project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2014.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2015.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev9\n"
+"Project-Id-Version: manila 2015.1.dev63\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-12-20 06:12+0000\n"
+"POT-Creation-Date: 2015-01-07 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -432,56 +432,41 @@ msgstr ""
 msgid "Invalid Sqlite database."
 msgstr ""
 
-#: manila/utils.py:137
+#: manila/utils.py:94
 msgid "Specify a password or private_key"
 msgstr ""
 
-#: manila/utils.py:159
+#: manila/utils.py:116
 #, python-format
 msgid "Error connecting via ssh: %s"
 msgstr ""
 
-#: manila/utils.py:360
-#, python-format
-msgid "Link Local address is not found.:%s"
-msgstr ""
-
-#: manila/utils.py:363
-#, python-format
-msgid "Couldn't get Link Local IP of %(interface)s :%(ex)s"
-msgstr ""
-
-#: manila/utils.py:392
+#: manila/utils.py:173
 #, python-format
 msgid "Invalid backend: %s"
 msgstr ""
 
-#: manila/utils.py:911
-#, python-format
-msgid "Unknown byte multiplier: %s"
-msgstr ""
-
-#: manila/utils.py:923
+#: manila/utils.py:493
 #, python-format
 msgid "Invalid cidr supplied %s"
 msgstr ""
 
-#: manila/wsgi.py:145 manila/openstack/common/sslutils.py:47
+#: manila/wsgi.py:145
 #, python-format
 msgid "Unable to find cert_file : %s"
 msgstr ""
 
-#: manila/wsgi.py:148 manila/openstack/common/sslutils.py:50
+#: manila/wsgi.py:148
 #, python-format
 msgid "Unable to find ca_file : %s"
 msgstr ""
 
-#: manila/wsgi.py:151 manila/openstack/common/sslutils.py:53
+#: manila/wsgi.py:151
 #, python-format
 msgid "Unable to find key_file : %s"
 msgstr ""
 
-#: manila/wsgi.py:154 manila/openstack/common/sslutils.py:56
+#: manila/wsgi.py:154
 msgid ""
 "When running server in SSL mode, you must specify both a cert_file and "
 "key_file option value in your configuration file"
@@ -739,11 +724,11 @@ msgstr ""
 msgid "Volume type not found"
 msgstr ""
 
-#: manila/common/config.py:102
+#: manila/common/config.py:80
 msgid "Deploy v1 of the Manila API."
 msgstr ""
 
-#: manila/common/config.py:105
+#: manila/common/config.py:83
 msgid "Deploy v2 of the Manila API."
 msgstr ""
 
@@ -779,11 +764,6 @@ msgstr ""
 
 #: manila/network/linux/ip_lib.py:395
 msgid "No namespace defined for parent"
-msgstr ""
-
-#: manila/openstack/common/lockutils.py:101
-#, python-format
-msgid "Unable to acquire lock on `%(filename)s` due to %(exception)s"
 msgstr ""
 
 #: manila/openstack/common/log.py:287
@@ -826,11 +806,6 @@ msgstr ""
 #: manila/openstack/common/policy.py:213
 #, python-format
 msgid "Rules must be an instance of dict or Rules, got %s instead"
-msgstr ""
-
-#: manila/openstack/common/sslutils.py:95
-#, python-format
-msgid "Invalid SSL version : %s"
 msgstr ""
 
 #: manila/scheduler/chance.py:50 manila/scheduler/simple.py:90
@@ -1010,72 +985,76 @@ msgstr ""
 msgid "Volume have not been created in %ss. Giving up"
 msgstr ""
 
-#: manila/share/drivers/generic.py:443
+#: manila/share/drivers/generic.py:433
+msgid "Volume is still in use and cannot be deleted now."
+msgstr ""
+
+#: manila/share/drivers/generic.py:447
 #, python-format
 msgid "Volume have not been deleted in %ss. Giving up"
 msgstr ""
 
-#: manila/share/drivers/generic.py:516
+#: manila/share/drivers/generic.py:519
 msgid "Failed to create volume snapshot"
 msgstr ""
 
-#: manila/share/drivers/generic.py:524
+#: manila/share/drivers/generic.py:527
 #, python-format
 msgid "Volume snapshot have not been created in %ss. Giving up"
 msgstr ""
 
-#: manila/share/drivers/generic.py:548
+#: manila/share/drivers/generic.py:551
 #, python-format
 msgid "Volume snapshot have not been deleted in %ss. Giving up"
 msgstr ""
 
-#: manila/share/drivers/generic.py:683
+#: manila/share/drivers/generic.py:686
 #, python-format
 msgid "NFS server is not installed on %s"
 msgstr ""
 
-#: manila/share/drivers/generic.py:774
+#: manila/share/drivers/generic.py:777
 #, python-format
 msgid "Share section %s already defined."
 msgstr ""
 
-#: manila/share/drivers/generic.py:806
-#: manila/share/drivers/emc/plugins/vnx/connection.py:386
-#: manila/share/drivers/emc/plugins/vnx/connection.py:441
+#: manila/share/drivers/generic.py:809
+#: manila/share/drivers/emc/plugins/vnx/connection.py:388
+#: manila/share/drivers/emc/plugins/vnx/connection.py:443
 #: manila/share/drivers/zfssa/zfssarest.py:326
 #: manila/share/drivers/zfssa/zfssarest.py:362
 msgid "Only ip access type allowed."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:108
+#: manila/share/drivers/glusterfs.py:110
 msgid ""
 "glusterfs_target configuration that specifies the GlusterFS volume to be "
 "mounted on the Manila host is not set."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:118
+#: manila/share/drivers/glusterfs.py:120
 msgid "mount.glusterfs is not installed"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:261
+#: manila/share/drivers/glusterfs.py:263
 msgid "GlusterFS control mount is not available"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:96
+#: manila/share/drivers/glusterfs_native.py:98
 msgid ""
 "glusterfs_targets list seems to be empty! Add one or more gluster volumes"
 " to work with in the glusterfs_targets configuration parameter."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:111
+#: manila/share/drivers/glusterfs_native.py:113
 msgid "mount.glusterfs is not installed."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:115
+#: manila/share/drivers/glusterfs_native.py:117
 msgid "Error running mount.glusterfs."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:124
+#: manila/share/drivers/glusterfs_native.py:126
 msgid ""
 "No unused gluster volumes available for use as share! Create share won't "
 "be supported unless existing shares are deleted or add one or more "
@@ -1083,93 +1062,93 @@ msgid ""
 "parameter."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:178
-#: manila/share/drivers/glusterfs_native.py:192
-#: manila/share/drivers/glusterfs_native.py:206
+#: manila/share/drivers/glusterfs_native.py:180
+#: manila/share/drivers/glusterfs_native.py:194
+#: manila/share/drivers/glusterfs_native.py:208
 #, python-format
 msgid ""
 "Error in gluster volume set during volume setup. Volume: %(volname)s, "
 "Option: %(option)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:224
+#: manila/share/drivers/glusterfs_native.py:226
 #, python-format
 msgid "Error stopping gluster volume. Volume: %(volname)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:235
+#: manila/share/drivers/glusterfs_native.py:237
 #, python-format
 msgid "Error starting gluster volume. Volume: %(volname)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:246
+#: manila/share/drivers/glusterfs_native.py:248
 msgid "Couldn't find a free gluster volume to use."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:258
+#: manila/share/drivers/glusterfs_native.py:260
 msgid "Couldn't find the share in used list."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:270
+#: manila/share/drivers/glusterfs_native.py:272
 #, python-format
 msgid ""
 "Unable to mount gluster volume. gluster_export: %(export)s, Error: "
 "%(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:282
+#: manila/share/drivers/glusterfs_native.py:284
 #, python-format
 msgid "Unable to unmount gluster volume. mount_dir: %(mntdir)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:297
-#: manila/share/drivers/glusterfs_native.py:311
-#: manila/share/drivers/glusterfs_native.py:352
-#: manila/share/drivers/glusterfs_native.py:366
+#: manila/share/drivers/glusterfs_native.py:299
+#: manila/share/drivers/glusterfs_native.py:313
+#: manila/share/drivers/glusterfs_native.py:354
+#: manila/share/drivers/glusterfs_native.py:368
 #, python-format
 msgid ""
 "Error in gluster volume set during _wipe_gluster_vol. Volume: "
 "%(volname)s, Option: %(option)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:335
+#: manila/share/drivers/glusterfs_native.py:337
 #, python-format
 msgid ""
 "Error trying to wipe gluster volume. gluster_export: %(export)s, Error: "
 "%(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:388
+#: manila/share/drivers/glusterfs_native.py:390
 #, python-format
 msgid "Error creating share %(share_id)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:412
+#: manila/share/drivers/glusterfs_native.py:414
 #, python-format
 msgid "Invalid request. Ignoring delete_share request for share %(share_id)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:421
+#: manila/share/drivers/glusterfs_native.py:423
 #, python-format
 msgid "Error during delete_share request for share %(share_id)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:435
+#: manila/share/drivers/glusterfs_native.py:437
 msgid "Only 'cert' access type allowed"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:446
+#: manila/share/drivers/glusterfs_native.py:448
 #, python-format
 msgid ""
 "Error in gluster volume set during allow access. Volume: %(volname)s, "
 "Option: %(option)s, access_to: %(access_to)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:466
+#: manila/share/drivers/glusterfs_native.py:468
 msgid "Only 'cert' access type allowed for access removal."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:478
+#: manila/share/drivers/glusterfs_native.py:480
 #, python-format
 msgid ""
 "Error in gluster volume reset during deny access. Volume: %(volname)s, "
@@ -1259,183 +1238,183 @@ msgstr ""
 msgid "Ambiguous service subnets."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:67
-#: manila/share/drivers/emc/plugins/vnx/connection.py:167
-#: manila/share/drivers/emc/plugins/vnx/connection.py:353
+#: manila/share/drivers/emc/plugins/vnx/connection.py:69
+#: manila/share/drivers/emc/plugins/vnx/connection.py:169
+#: manila/share/drivers/emc/plugins/vnx/connection.py:355
 #, python-format
 msgid "Invalid NAS protocol supplied: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:84
+#: manila/share/drivers/emc/plugins/vnx/connection.py:86
 msgid "No share server found."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:95
+#: manila/share/drivers/emc/plugins/vnx/connection.py:97
 #, python-format
 msgid "Could not create file system for %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:112
+#: manila/share/drivers/emc/plugins/vnx/connection.py:114
 #, python-format
 msgid "Could not create CIFS share. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:119
+#: manila/share/drivers/emc/plugins/vnx/connection.py:121
 #, python-format
 msgid "Could not disable share access. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:124
+#: manila/share/drivers/emc/plugins/vnx/connection.py:126
 #, python-format
 msgid "CIFS server %s doesn't have interface, so the share is inaccessible."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:142
+#: manila/share/drivers/emc/plugins/vnx/connection.py:144
 #, python-format
 msgid "Could not create NFS export for share %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:185
+#: manila/share/drivers/emc/plugins/vnx/connection.py:187
 #, python-format
 msgid "Could not create check point. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:226
+#: manila/share/drivers/emc/plugins/vnx/connection.py:228
 #, python-format
 msgid "Deleting CIFS share %(share_name)s on %(mover)s failed. Reason: %(err)s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:255
+#: manila/share/drivers/emc/plugins/vnx/connection.py:257
 #, python-format
 msgid ""
 "Deleting NFS share %(share_name)s on %(mover_name)s failed. Reason: "
 "%(err)s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:308
+#: manila/share/drivers/emc/plugins/vnx/connection.py:310
 #, python-format
 msgid "Failed to delete file system %(fsid)s. Reason: %(err)s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:333
+#: manila/share/drivers/emc/plugins/vnx/connection.py:335
 #, python-format
 msgid "Could not delete check point. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:376
+#: manila/share/drivers/emc/plugins/vnx/connection.py:378
 #, python-format
 msgid "Could not allow CIFS access. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:394
+#: manila/share/drivers/emc/plugins/vnx/connection.py:396
 #, python-format
 msgid "Could not allow access to NFS share. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:408
+#: manila/share/drivers/emc/plugins/vnx/connection.py:410
 msgid "Unsupported share type"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:430
+#: manila/share/drivers/emc/plugins/vnx/connection.py:432
 #, python-format
 msgid "Could not deny access to CIFS share. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:450
+#: manila/share/drivers/emc/plugins/vnx/connection.py:452
 #, python-format
 msgid "Could not deny access to NFS share. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:519
+#: manila/share/drivers/emc/plugins/vnx/connection.py:521
 #, python-format
 msgid "Could not get Share Server by name %(name)s. Reason: %(err)s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:545
+#: manila/share/drivers/emc/plugins/vnx/connection.py:547
 #, python-format
 msgid "Interface creation failed. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:601
+#: manila/share/drivers/emc/plugins/vnx/connection.py:603
 #, python-format
 msgid "Could not create VDM %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:610
+#: manila/share/drivers/emc/plugins/vnx/connection.py:612
 #, python-format
 msgid "Could not get physical device port on mover (id:%s)."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:638
+#: manila/share/drivers/emc/plugins/vnx/connection.py:640
 #, python-format
 msgid "Failed to create cifs server %(name)s.Reason: %(err)s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:653
+#: manila/share/drivers/emc/plugins/vnx/connection.py:655
 #, python-format
 msgid "Could not create DNS domain. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:742
+#: manila/share/drivers/emc/plugins/vnx/connection.py:744
 #, python-format
 msgid "Could not find the storage pool by name: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:752
+#: manila/share/drivers/emc/plugins/vnx/connection.py:754
 #, python-format
 msgid "Could not find Data Mover by name: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:764
+#: manila/share/drivers/emc/plugins/vnx/connection.py:766
 #, python-format
 msgid "Could not find Virtual Data Mover by name: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:774
+#: manila/share/drivers/emc/plugins/vnx/connection.py:776
 #, python-format
 msgid "Could not find Data Mover by id: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:783
+#: manila/share/drivers/emc/plugins/vnx/connection.py:785
 #, python-format
 msgid "Could not get CIFS server list for %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:788
+#: manila/share/drivers/emc/plugins/vnx/connection.py:790
 #, python-format
 msgid "Could not find the CIFS servers on VDM: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:802
+#: manila/share/drivers/emc/plugins/vnx/connection.py:804
 #, python-format
 msgid "Could not get file system by name: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:833
+#: manila/share/drivers/emc/plugins/vnx/connection.py:835
 #, python-format
 msgid "Copy content from checkpoint to file system failed. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:853
+#: manila/share/drivers/emc/plugins/vnx/connection.py:855
 #, python-format
 msgid "Extend the file system failed. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:903
+#: manila/share/drivers/emc/plugins/vnx/connection.py:905
 msgid ""
 "Unsupported Security Services. Only support single security service and "
 "only support type 'active_directory'"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:911
+#: manila/share/drivers/emc/plugins/vnx/connection.py:913
 msgid "Only user access type allowed for cifs share"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:917
+#: manila/share/drivers/emc/plugins/vnx/connection.py:919
 msgid "Only single security service with type 'active_directory' supported"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/helper.py:130
+#: manila/share/drivers/emc/plugins/vnx/helper.py:129
 #, python-format
 msgid "The request is invalid. Reason: %(reason)s"
 msgstr ""
@@ -1478,145 +1457,145 @@ msgstr ""
 msgid "Could not restart service %(service)s on %(server)s: %(excmsg)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:188
+#: manila/share/drivers/ibm/gpfs.py:190
 #, python-format
 msgid "Error running SSH command: %(cmd)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:198 manila/share/drivers/ibm/gpfs.py:207
+#: manila/share/drivers/ibm/gpfs.py:200 manila/share/drivers/ibm/gpfs.py:209
 #, python-format
 msgid "Failed to check GPFS state. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:220
+#: manila/share/drivers/ibm/gpfs.py:222
 #, python-format
 msgid "%(path)s is not a directory. Error: %(excmsg)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:231
+#: manila/share/drivers/ibm/gpfs.py:233
 #, python-format
 msgid "%(dir)s is not on GPFS filesystem. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:257
+#: manila/share/drivers/ibm/gpfs.py:259
 #, python-format
 msgid "Failed to get GPFS device for %(fspath)s.Error: %(excmsg)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:283
+#: manila/share/drivers/ibm/gpfs.py:285
 #, python-format
 msgid ""
 "Failed to create fileset on %(fsdev)s for the share %(sharename)s. Error:"
 " %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:294
+#: manila/share/drivers/ibm/gpfs.py:296
 #, python-format
 msgid "Failed to link fileset for the share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:304
+#: manila/share/drivers/ibm/gpfs.py:306
 #, python-format
 msgid "Failed to set quota for the share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:313
+#: manila/share/drivers/ibm/gpfs.py:315
 #, python-format
 msgid "Failed to set permissions for share %(sharename)s. Error: %(excmsg)."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:328
+#: manila/share/drivers/ibm/gpfs.py:330
 #, python-format
 msgid "Failed unlink fileset for share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:337
+#: manila/share/drivers/ibm/gpfs.py:339
 #, python-format
 msgid "Failed delete fileset for share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:348
+#: manila/share/drivers/ibm/gpfs.py:350
 #, python-format
 msgid "Failed to check available capacity for %(path)s.Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:371
+#: manila/share/drivers/ibm/gpfs.py:373
 #, python-format
 msgid "Failed to create snapshot %(snapshot)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:386
+#: manila/share/drivers/ibm/gpfs.py:388
 #, python-format
 msgid "Failed to delete snapshot %(snapshot)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:400
+#: manila/share/drivers/ibm/gpfs.py:402
 #, python-format
 msgid ""
 "Failed to create share %(share)s from snapshot %(snapshot)s. Error: "
 "%(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:459
+#: manila/share/drivers/ibm/gpfs.py:461
 msgid "GPFS is not active."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:464
+#: manila/share/drivers/ibm/gpfs.py:466
 msgid "gpfs_share_export_ip must be specified."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:470
+#: manila/share/drivers/ibm/gpfs.py:472
 #, python-format
 msgid "%s must be an absolute path."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:475
+#: manila/share/drivers/ibm/gpfs.py:477
 #, python-format
 msgid "%s is not a directory."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:480
+#: manila/share/drivers/ibm/gpfs.py:482
 #, python-format
 msgid "%s is not on GPFS. Perhaps GPFS not mounted."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:486
+#: manila/share/drivers/ibm/gpfs.py:488
 #, python-format
 msgid ""
 "Invalid gpfs_nfs_server_type value: %s. Valid values are: \"KNFS\", "
 "\"GNFS\"."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:493
+#: manila/share/drivers/ibm/gpfs.py:495
 msgid "Missing value for gpfs_nfs_server_list."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:534
+#: manila/share/drivers/ibm/gpfs.py:527
 #, python-format
 msgid "Share protocol %s not supported by GPFS driver."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:587
+#: manila/share/drivers/ibm/gpfs.py:580
 #, python-format
 msgid "NFS server not found. Error: %s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:617
+#: manila/share/drivers/ibm/gpfs.py:610
 #, python-format
 msgid "Unknown metadata key %s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:639
+#: manila/share/drivers/ibm/gpfs.py:632
 #, python-format
 msgid "Failed to check exports on the systems.  Error: %s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:657
+#: manila/share/drivers/ibm/gpfs.py:650
 #, python-format
 msgid "Failed to allow access for share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:671
+#: manila/share/drivers/ibm/gpfs.py:664
 #, python-format
 msgid "Failed to deny access for share %(sharename)s. Error: %excmsg)s."
 msgstr ""
@@ -1638,85 +1617,85 @@ msgstr ""
 msgid "Type cannot be converted into NaElement."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:86
+#: manila/share/drivers/netapp/cluster_mode.py:87
 msgid "Share server is not provided."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:90
+#: manila/share/drivers/netapp/cluster_mode.py:91
 msgid ""
 "Vserver name is absent in backend details. Please check whether vserver "
 "was created properly or not."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:104
+#: manila/share/drivers/netapp/cluster_mode.py:105
 msgid "NetApp configuration missing."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:261
+#: manila/share/drivers/netapp/cluster_mode.py:264
 #, python-format
 msgid "Data port does not exist for node %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:290
+#: manila/share/drivers/netapp/cluster_mode.py:293
 #, python-format
 msgid "Have not found aggregates match pattern %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:321
+#: manila/share/drivers/netapp/cluster_mode.py:324
 #, python-format
 msgid "Failed to create vlan %(vlan)s on port %(port)s. %(err_msg)"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:360
+#: manila/share/drivers/netapp/cluster_mode.py:363
 #, python-format
 msgid "There is no license for %s at Ontap"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:368
+#: manila/share/drivers/netapp/cluster_mode.py:371
 #, python-format
 msgid "Invalid NAS protocol supplied: %s. "
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:444
+#: manila/share/drivers/netapp/cluster_mode.py:447
 #, python-format
 msgid "Unsupported protocol %s for NetApp driver"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:496
+#: manila/share/drivers/netapp/cluster_mode.py:499
 #, python-format
 msgid "Failed to configure DNS. %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:518
+#: manila/share/drivers/netapp/cluster_mode.py:521
 #, python-format
 msgid "Failed to configure Kerberos. %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:525
+#: manila/share/drivers/netapp/cluster_mode.py:528
 msgid "Cannot set up kerberos. There are no lifs configured"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:556
+#: manila/share/drivers/netapp/cluster_mode.py:559
 #, python-format
 msgid "Failed to create CIFS server entry. %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:599
+#: manila/share/drivers/netapp/cluster_mode.py:602
 #, python-format
 msgid "No aggregate assigned to vserver %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:729
+#: manila/share/drivers/netapp/cluster_mode.py:732
 #, python-format
 msgid "Cannot find network interfaces for vserver %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:843
+#: manila/share/drivers/netapp/cluster_mode.py:846
 #, python-format
 msgid "Error deleting vserver. Vserver %s has shares."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:1161
+#: manila/share/drivers/netapp/cluster_mode.py:1164
 msgid ""
 "Cluster Mode supports only 'user' type for share access rules with CIFS "
 "protocol."
@@ -1804,17 +1783,17 @@ msgid ""
 "%(ret.data)s."
 msgstr ""
 
-#: manila/share/drivers/zfssa/zfssashare.py:102
+#: manila/share/drivers/zfssa/zfssashare.py:103
 #, python-format
 msgid "%s is required in manila.conf"
 msgstr ""
 
-#: manila/share/drivers/zfssa/zfssashare.py:172
+#: manila/share/drivers/zfssa/zfssashare.py:174
 #, python-format
 msgid "Protocol %s is not supported."
 msgstr ""
 
-#: manila/share/drivers/zfssa/zfssashare.py:277
+#: manila/share/drivers/zfssa/zfssashare.py:279
 #, python-format
 msgid "Share %s doesn't exists."
 msgstr ""
