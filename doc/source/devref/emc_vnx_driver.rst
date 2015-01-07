@@ -261,15 +261,6 @@ The :mod:`manila.share.drivers.emc.driver` Module
     :undoc-members:
     :show-inheritance:
 
-The :mod:`manila.share.drivers.emc.plugins.registry` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.share.drivers.emc.plugins.registry
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 The :mod:`manila.share.drivers.emc.plugins.vnx.connection` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
