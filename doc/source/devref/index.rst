@@ -77,7 +77,7 @@ Share backends
 .. toctree::
    :maxdepth: 3
 
-   cluster_mode_driver
+   netapp_cluster_mode_driver
    emc_vnx_driver
    generic_driver
    huawei_nas_driver

@@ -21,6 +21,7 @@ import platform
 import mock
 from oslo_concurrency import processutils as putils
 
+from manila import exception
 from manila.share.drivers.netapp import utils as na_utils
 from manila import test
 from manila import version
@@ -82,6 +83,39 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         result = self._trace_test_method()
         self.assertEqual('OK', result)
         self.assertEqual(2, na_utils.LOG.debug.call_count)
+
+    def test_validate_instantiation_proxy(self):
+        kwargs = {'netapp_mode': 'proxy'}
+
+        na_utils.validate_instantiation(**kwargs)
+
+        self.assertEqual(0, na_utils.LOG.warning.call_count)
+
+    def test_validate_instantiation_no_proxy(self):
+        self.mock_object(na_utils, 'LOG')
+        kwargs = {'netapp_mode': 'asdf'}
+
+        na_utils.validate_instantiation(**kwargs)
+
+        self.assertEqual(1, na_utils.LOG.warning.call_count)
+
+    def test_check_flags(self):
+        configuration = type('Fake',
+                             (object,),
+                             {'flag1': 'value1', 'flag2': 'value2'})
+
+        self.assertIsNone(na_utils.check_flags(['flag1', 'flag2'],
+                                               configuration))
+
+    def test_check_flags_missing_flag(self):
+        configuration = type('Fake',
+                             (object,),
+                             {'flag1': 'value1', 'flag3': 'value3'})
+
+        self.assertRaises(exception.InvalidInput,
+                          na_utils.check_flags,
+                          ['flag1', 'flag2'],
+                          configuration)
 
 
 class OpenstackInfoTestCase(test.TestCase):

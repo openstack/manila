@@ -55,19 +55,10 @@ Known restrictions
   external security services and storage should be synchronized. The maximum
   allowed clock skew is 5 minutes.
 
-The :mod:`manila.share.drivers.netapp.api` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`manila.share.drivers.netapp.dataontap.cluster_mode.drv_multi_svm.py` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.netapp.api
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`manila.share.drivers.netapp.cluster_mode` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: manila.share.drivers.netapp.cluster_mode
+.. automodule:: manila.share.drivers.netapp.dataontap.cluster_mode.drv_multi_svm
     :noindex:
     :members:
     :undoc-members:
