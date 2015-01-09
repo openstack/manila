@@ -614,15 +614,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         instance_id = server_details.get("instance_id")
         LOG.debug("Removing share infrastructure for service instance '%s'.",
                   instance_id)
-        try:
-            self.service_instance_manager.delete_service_instance(
-                self.admin_context,
-                server_details['instance_id'],
-                server_details['subnet_id'],
-                server_details['router_id']
-            )
-        except Exception as e:
-            LOG.warning(e)
+        self.service_instance_manager.delete_service_instance(
+            self.admin_context, instance_id, server_details['subnet_id'],
+            server_details['router_id'])
 
 
 class NASHelperBase(object):

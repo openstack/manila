@@ -77,6 +77,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             'NFS': self._helper_nfs,
         }
         self.share = fake_share()
+        self.instance_id = 'fake_instance_id'
 
     def test_get_service_network_net_exists(self):
         net1 = copy.copy(fake_network.API.network)
@@ -870,6 +871,71 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        mock.Mock(return_value=[fake_subnet]))
         result = self._manager._get_cidr_for_subnet()
         self.assertEqual(result, cidr2)
+
+    def test__delete_server_not_found(self):
+        self.stubs.Set(self._manager.compute_api, 'server_delete', mock.Mock())
+        self.stubs.Set(
+            self._manager.compute_api, 'server_get',
+            mock.Mock(side_effect=exception.InstanceNotFound(
+                instance_id=self.instance_id)))
+
+        self._manager._delete_server(self._context, self.instance_id)
+
+        self.assertFalse(self._manager.compute_api.server_delete.called)
+        self._manager.compute_api.server_get.assert_called_once_with(
+            self._context, self.instance_id)
+
+    def test__delete_server(self):
+        def fake_server_get(*args, **kwargs):
+            ctx = args[0]
+            if not hasattr(ctx, 'called'):
+                ctx.called = True
+                return
+            else:
+                raise exception.InstanceNotFound(instance_id=self.instance_id)
+
+        self.stubs.Set(self._manager.compute_api, 'server_delete', mock.Mock())
+        self.stubs.Set(self._manager.compute_api, 'server_get',
+                       mock.Mock(side_effect=fake_server_get))
+
+        self._manager._delete_server(self._context, self.instance_id)
+
+        self._manager.compute_api.server_delete.assert_called_once_with(
+            self._context, self.instance_id)
+        self._manager.compute_api.server_get.assert_has_calls([
+            mock.call(self._context, self.instance_id),
+            mock.call(self._context, self.instance_id)])
+
+    def test__delete_server_found_always(self):
+        self.fake_time = 0
+
+        def fake_time():
+            return self.fake_time
+
+        def fake_sleep(time):
+            self.fake_time += 1
+
+        self.stubs.Set(self._manager.compute_api, 'server_delete', mock.Mock())
+        self.stubs.Set(self._manager.compute_api, 'server_get', mock.Mock())
+        self.stubs.Set(service_instance, 'time', mock.Mock())
+        self.stubs.Set(
+            service_instance.time, 'time', mock.Mock(side_effect=fake_time))
+        self.stubs.Set(
+            service_instance.time, 'sleep', mock.Mock(side_effect=fake_sleep))
+        self.stubs.Set(self._manager, 'max_time_to_build_instance', 2)
+
+        self.assertRaises(
+            exception.ServiceInstanceException, self._manager._delete_server,
+            self._context, self.instance_id)
+
+        self._manager.compute_api.server_delete.assert_called_once_with(
+            self._context, self.instance_id)
+        service_instance.time.sleep.assert_has_calls(
+            [mock.call(mock.ANY) for i in 1, 2])
+        service_instance.time.time.assert_has_calls(
+            [mock.call() for i in 1, 2, 3, 4])
+        self._manager.compute_api.server_get.assert_has_calls(
+            [mock.call(self._context, self.instance_id) for i in 1, 2, 3])
 
     def test_delete_service_instance(self):
         instance_id = 'fake_instance_id'

@@ -265,20 +265,29 @@ class ServiceInstanceManager(object):
 
     def _delete_server(self, context, server_id):
         """Deletes the server."""
+        try:
+            self.compute_api.server_get(context, server_id)
+        except exception.InstanceNotFound:
+            LOG.debug("Service instance '%s' was not found. "
+                      "Nothing to delete, skipping.", server_id)
+            return
+
         self.compute_api.server_delete(context, server_id)
+
         t = time.time()
         while time.time() - t < self.max_time_to_build_instance:
             try:
                 self.compute_api.server_get(context, server_id)
             except exception.InstanceNotFound:
-                LOG.debug('Service instance was deleted succesfully.')
+                LOG.debug("Service instance '%s' was deleted "
+                          "succesfully.", server_id)
                 break
-            time.sleep(1)
+            time.sleep(2)
         else:
             raise exception.ServiceInstanceException(
-                _('Instance have not '
-                  'been deleted in %ss. Giving up.') %
-                self.max_time_to_build_instance)
+                _("Instance '%(id)s' has not been deleted in %(s)ss. "
+                  "Giving up.") % {
+                      'id': server_id, 's': self.max_time_to_build_instance})
 
     def set_up_service_instance(self, context, instance_name, neutron_net_id,
                                 neutron_subnet_id):
