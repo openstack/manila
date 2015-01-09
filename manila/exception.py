@@ -170,7 +170,7 @@ class InUse(ManilaException):
 
 
 class ShareNetworkNotFound(NotFound):
-    message = _("Network %(share_network_id)s could not be found.")
+    message = _("Share Network %(share_network_id)s could not be found.")
 
 
 class ShareServerNotFound(NotFound):
