@@ -15,6 +15,7 @@
 
 import copy
 import inspect
+import traceback
 
 from tempest import clients_share as clients
 from tempest.common import isolated_creds
@@ -28,6 +29,29 @@ from tempest import test
 
 CONF = config.CONF
 LOG = logging.getLogger(__name__)
+
+
+class handle_cleanup_exceptions(object):
+    """Handle exceptions raised with cleanup operations.
+
+    Always suppress errors when exceptions.NotFound or exceptions.Unauthorized
+    are raised.
+    Suppress all other exceptions only in case config opt
+    'suppress_errors_in_cleanup' in config group 'share' is True.
+    """
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if not (isinstance(exc_value,
+                           (exceptions.NotFound, exceptions.Unauthorized)) or
+                CONF.share.suppress_errors_in_cleanup):
+            return False  # Do not suppress error if any
+        if exc_traceback:
+            LOG.error("Suppressed cleanup error in Manila: "
+                      "\n%s" % traceback.format_exc())
+        return True  # Suppress error if any
 
 
 def network_synchronized(f):
@@ -437,7 +461,8 @@ class BaseSharesTest(test.BaseTestCase):
             if "deleted" not in ic.keys():
                 ic["deleted"] = False
             if not ic["deleted"]:
-                ic["method"]()
+                with handle_cleanup_exceptions():
+                    ic["method"]()
                 ic["deleted"] = True
 
     @classmethod
@@ -462,7 +487,7 @@ class BaseSharesTest(test.BaseTestCase):
             if not(res["deleted"]):
                 res_id = res['id']
                 client = res["client"]
-                try:
+                with handle_cleanup_exceptions():
                     if res["type"] is "share":
                         client.delete_share(res_id)
                         client.wait_for_resource_deletion(share_id=res_id)
@@ -478,16 +503,9 @@ class BaseSharesTest(test.BaseTestCase):
                     elif res["type"] is "volume_type":
                         client.delete_volume_type(res_id)
                         client.wait_for_resource_deletion(vt_id=res_id)
-                except exceptions.NotFound:
-                    pass
-                except exceptions.Unauthorized:
-                    pass
-                except Exception as e:
-                    # Catch all other exceptions
-                    if not CONF.share.suppress_errors_in_cleanup:
-                        raise e
                     else:
-                        LOG.error("Suppressed cleanup error: %s" % e)
+                        LOG.warn("Provided unsupported resource type for "
+                                 "cleanup '%s'. Skipping." % res["type"])
                 res["deleted"] = True
 
     @classmethod
