@@ -38,7 +38,7 @@ fi
 
 # Go to Tempest dir and checkout stable commit to avoid possible
 # incompatibilities for plugin stored in Manila repo.
-TEMPEST_COMMIT="128bbed7"  # 23 Dec, 2014
+TEMPEST_COMMIT="b5fa11db"  # 8 Jan, 2015
 cd $BASE/new/tempest
 git checkout $TEMPEST_COMMIT
 

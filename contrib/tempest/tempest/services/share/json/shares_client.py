@@ -35,8 +35,11 @@ class SharesClient(rest_client.RestClient):
     """
 
     def __init__(self, auth_provider):
-        super(SharesClient, self).__init__(auth_provider)
-        self.service = CONF.share.catalog_type
+        super(SharesClient, self).__init__(
+            auth_provider,
+            CONF.share.catalog_type,
+            CONF.share.region or CONF.identity.region,
+            endpoint_type=CONF.share.endpoint_type)
         self.share_protocol = None
         if CONF.share.enable_protocols:
             self.share_protocol = CONF.share.enable_protocols[0]
@@ -44,10 +47,6 @@ class SharesClient(rest_client.RestClient):
         self.build_interval = CONF.share.build_interval
         self.build_timeout = CONF.share.build_timeout
         self.auth_params = auth_provider._auth_params()
-
-    def _get_endpoint_type(self, service):
-        # This is workaround for rest_client, that uses main config
-        return CONF.share.endpoint_type
 
     def create_share(self, share_protocol=None, size=1,
                      name=None, snapshot_id=None, description=None,

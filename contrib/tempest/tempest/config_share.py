@@ -31,6 +31,12 @@ ServiceAvailableGroup = [
 share_group = cfg.OptGroup(name="share", title="Share Service Options")
 
 ShareGroup = [
+    cfg.StrOpt("region",
+               default="",
+               help="The share region name to use. If empty, the value "
+                    "of identity.region is used instead. If no such region "
+                    "is found in the service catalog, the first found one is "
+                    "used."),
     cfg.StrOpt("catalog_type",
                default="share",
                help="Catalog type of the Share service."),
