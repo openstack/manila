@@ -5,6 +5,7 @@
 # hacking should be first
 hacking>=0.9.2,<0.10
 
+bashate>=0.2  # Apache-2.0
 coverage>=3.6
 ddt>=0.4.0
 discover
