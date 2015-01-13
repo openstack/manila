@@ -240,7 +240,8 @@ class BaseSharesTest(test.BaseTestCase):
                 if "networks" in networks.keys():
                     networks = networks["networks"]
                 for network in networks:
-                    if service_net_name in network["name"]:
+                    if (service_net_name in network["name"] and
+                            sc.tenant_id == network['tenant_id']):
                         net_id = network["id"]
                         if len(network["subnets"]) > 0:
                             subnet_id = network["subnets"][0]
