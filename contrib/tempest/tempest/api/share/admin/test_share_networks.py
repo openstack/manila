@@ -23,8 +23,8 @@ class ShareNetworkAdminTest(
         test_share_networks.ShareNetworkListMixin):
 
     @classmethod
-    def setUpClass(cls):
-        super(ShareNetworkAdminTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(ShareNetworkAdminTest, cls).resource_setup()
         ss_data = cls.generate_security_service_data()
         resp, cls.ss_ldap = cls.create_security_service(**ss_data)
 

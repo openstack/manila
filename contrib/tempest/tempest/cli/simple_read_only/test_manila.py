@@ -32,8 +32,8 @@ class SimpleReadOnlyManilaClientTest(manilaclient.ClientTestBase):
     """
 
     @classmethod
-    def setUpClass(cls):
-        super(SimpleReadOnlyManilaClientTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SimpleReadOnlyManilaClientTest, cls).resource_setup()
         if not CONF.service_available.manila:
             raise cls.skipException("Manila not available")
 

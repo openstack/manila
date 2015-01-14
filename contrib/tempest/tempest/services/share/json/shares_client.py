@@ -20,7 +20,7 @@ import urllib
 import six  # noqa
 
 from tempest.common import rest_client
-from tempest.common.utils.data_utils import rand_name
+from tempest.common.utils import data_utils
 from tempest import config_share as config
 from tempest import exceptions
 from tempest import share_exceptions
@@ -50,12 +50,13 @@ class SharesClient(rest_client.RestClient):
 
     def create_share(self, share_protocol=None, size=1,
                      name=None, snapshot_id=None, description=None,
-                     metadata={}, share_network_id=None,
+                     metadata=None, share_network_id=None,
                      volume_type_id=None, ):
+        metadata = metadata or {}
         if name is None:
-            name = rand_name("tempest-created-share")
+            name = data_utils.rand_name("tempest-created-share")
         if description is None:
-            description = rand_name("tempest-created-share-desc")
+            description = data_utils.rand_name("tempest-created-share-desc")
         if share_protocol is None:
             share_protocol = self.share_protocol
         if share_protocol is None:
@@ -125,9 +126,10 @@ class SharesClient(rest_client.RestClient):
     def create_snapshot(self, share_id, name=None, description=None,
                         force=False):
         if name is None:
-            name = rand_name("tempest-created-share-snap")
+            name = data_utils.rand_name("tempest-created-share-snap")
         if description is None:
-            description = rand_name("tempest-created-share-snap-desc")
+            description = data_utils.rand_name(
+                "tempest-created-share-snap-desc")
         post_body = {
             "snapshot": {
                 "name": name,

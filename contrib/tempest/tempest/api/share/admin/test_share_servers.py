@@ -28,8 +28,8 @@ CONF = config.CONF
 class ShareServersAdminTest(base.BaseSharesAdminTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(ShareServersAdminTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(ShareServersAdminTest, cls).resource_setup()
         if not CONF.share.multitenancy_enabled:
             msg = ("Share servers can be tested only with multitenant drivers."
                    " Skipping.")

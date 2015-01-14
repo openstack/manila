@@ -23,8 +23,8 @@ from tempest import test
 class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(ShareServersNegativeAdminTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(ShareServersNegativeAdminTest, cls).resource_setup()
         cls.member_shares_client = clients.Manager().shares_client
 
     @test.attr(type=["gate", "smoke", "negative", ])

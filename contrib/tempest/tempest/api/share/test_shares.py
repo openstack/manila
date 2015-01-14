@@ -28,8 +28,8 @@ class SharesNFSTest(base.BaseSharesTest):
     protocol = "nfs"
 
     @classmethod
-    def setUpClass(cls):
-        super(SharesNFSTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SharesNFSTest, cls).resource_setup()
         if cls.protocol not in CONF.share.enable_protocols:
             message = "%s tests are disabled" % cls.protocol
             raise cls.skipException(message)

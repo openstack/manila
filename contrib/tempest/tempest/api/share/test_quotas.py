@@ -20,8 +20,8 @@ from tempest import test
 class SharesQuotasTest(base.BaseSharesTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(SharesQuotasTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SharesQuotasTest, cls).resource_setup()
 
         # Get tenant and user
         cls.identity_client = cls._get_identity_admin_client()

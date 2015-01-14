@@ -20,8 +20,8 @@ from tempest import test
 class SecurityServicesMappingTest(base.BaseSharesTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(SecurityServicesMappingTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SecurityServicesMappingTest, cls).resource_setup()
         cls.cl = cls.shares_client
 
     def setUp(self):

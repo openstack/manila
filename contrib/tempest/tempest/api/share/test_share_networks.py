@@ -90,8 +90,8 @@ class ShareNetworkListMixin(object):
 class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
 
     @classmethod
-    def setUpClass(cls):
-        super(ShareNetworksTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(ShareNetworksTest, cls).resource_setup()
         ss_data = cls.generate_security_service_data()
         resp, cls.ss_ldap = cls.create_security_service(**ss_data)
 

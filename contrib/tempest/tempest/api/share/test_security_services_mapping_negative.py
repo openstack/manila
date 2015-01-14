@@ -21,8 +21,8 @@ from tempest import test
 class SecServicesMappingNegativeTest(base.BaseSharesTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(SecServicesMappingNegativeTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SecServicesMappingNegativeTest, cls).resource_setup()
         __, cls.sn = cls.create_share_network(cleanup_in_class=True)
         __, cls.ss = cls.create_security_service(cleanup_in_class=True)
         cls.cl = cls.shares_client

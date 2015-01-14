@@ -24,9 +24,9 @@ CONF = config.CONF
 class SharesAdminQuotasTest(base.BaseSharesAdminTest):
 
     @classmethod
-    def setUpClass(cls):
+    def resource_setup(cls):
         cls.os = clients.AdminManager(interface=cls._interface)
-        super(SharesAdminQuotasTest, cls).setUpClass()
+        super(SharesAdminQuotasTest, cls).resource_setup()
 
         # Get tenant and user
         cls.identity_client = cls._get_identity_admin_client()

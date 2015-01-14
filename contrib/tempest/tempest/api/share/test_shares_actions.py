@@ -25,8 +25,8 @@ class SharesActionsTest(base.BaseSharesTest):
     """Covers share functionality, that doesn't related to share type."""
 
     @classmethod
-    def setUpClass(cls):
-        super(SharesActionsTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SharesActionsTest, cls).resource_setup()
 
         # create share
         cls.share_name = data_utils.rand_name("tempest-share-name")
@@ -368,8 +368,8 @@ class SharesActionsTest(base.BaseSharesTest):
 class SharesRenameTest(base.BaseSharesTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(SharesRenameTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SharesRenameTest, cls).resource_setup()
 
         # create share
         cls.share_name = data_utils.rand_name("tempest-share-name")

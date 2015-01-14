@@ -20,8 +20,8 @@ from tempest import test
 class SharesMetadataTest(base.BaseSharesTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(SharesMetadataTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SharesMetadataTest, cls).resource_setup()
         __, cls.share = cls.create_share()
 
     @test.attr(type=["gate", ])
