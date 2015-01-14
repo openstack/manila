@@ -14,7 +14,7 @@
 """
 ZFS Storage Appliance Proxy
 """
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 
 from manila import exception
 from manila.i18n import _

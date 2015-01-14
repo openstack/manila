@@ -13,22 +13,22 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import oslo.config.cfg
-import oslo.utils.importutils
+import oslo_config.cfg
+import oslo_utils.importutils
 
 
 _compute_opts = [
-    oslo.config.cfg.StrOpt('compute_api_class',
+    oslo_config.cfg.StrOpt('compute_api_class',
                            default='manila.compute.nova.API',
                            help='The full class name of the '
                                 'Compute API class to use.'),
 ]
 
-oslo.config.cfg.CONF.register_opts(_compute_opts)
+oslo_config.cfg.CONF.register_opts(_compute_opts)
 
 
 def API():
-    importutils = oslo.utils.importutils
-    compute_api_class = oslo.config.cfg.CONF.compute_api_class
+    importutils = oslo_utils.importutils
+    compute_api_class = oslo_config.cfg.CONF.compute_api_class
     cls = importutils.import_class(compute_api_class)
     return cls()

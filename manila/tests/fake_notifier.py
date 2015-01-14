@@ -16,7 +16,7 @@ import collections
 import functools
 
 from oslo import messaging
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 
 from manila import rpc
 

@@ -19,7 +19,7 @@ import copy
 import os
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 from manila import context

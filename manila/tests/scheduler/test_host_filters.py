@@ -15,7 +15,7 @@
 Tests For Scheduler Host Filters.
 """
 
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 
 from manila import context
 from manila.openstack.common.scheduler import filters

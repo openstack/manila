@@ -23,7 +23,7 @@ from novaclient import service_catalog
 from novaclient.v1_1 import client as nova_client
 from novaclient.v1_1.contrib import assisted_volume_snapshots
 from novaclient.v1_1 import servers as nova_servers
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila.db import base
 from manila import exception

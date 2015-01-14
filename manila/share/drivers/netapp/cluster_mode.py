@@ -24,9 +24,9 @@ import copy
 import hashlib
 import re
 
-from oslo.config import cfg
-from oslo.utils import excutils
-from oslo.utils import units
+from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import units
 import six
 
 from manila import context

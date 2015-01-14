@@ -22,11 +22,11 @@ import sys
 import uuid
 import warnings
 
-from oslo.config import cfg
-from oslo.db import exception as db_exception
-from oslo.db import options as db_options
-from oslo.db.sqlalchemy import session
-from oslo.utils import timeutils
+from oslo_config import cfg
+from oslo_db import exception as db_exception
+from oslo_db import options as db_options
+from oslo_db.sqlalchemy import session
+from oslo_utils import timeutils
 import six
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload

@@ -21,8 +21,8 @@ import threading
 import time
 
 import netaddr
-from oslo.config import cfg
-from oslo.utils import importutils
+from oslo_config import cfg
+from oslo_utils import importutils
 import six
 
 from manila.common import constants

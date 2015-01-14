@@ -20,7 +20,7 @@ backend. Use the Manila configuration variable "share_backend_name"
 to specify, which backend plugins to use.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila.openstack.common import log
 from manila.share import driver

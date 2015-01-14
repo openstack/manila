@@ -17,7 +17,7 @@
 import mock
 from neutronclient.common import exceptions as neutron_client_exc
 from neutronclient.v2_0 import client as clientv20
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila import context
 from manila.db import base

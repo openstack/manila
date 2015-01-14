@@ -18,7 +18,7 @@ Windows storage classes to be used in testing.
 
 import os
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 # Check needed for unit testing on Unix
 if os.name == 'nt':

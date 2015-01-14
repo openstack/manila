@@ -15,7 +15,7 @@
 
 """Tests for the ShareServer and ShareServerBackendDetails tables."""
 
-from oslo.utils import uuidutils
+from oslo_utils import uuidutils
 
 from manila import context
 from manila import db

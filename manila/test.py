@@ -27,10 +27,10 @@ import uuid
 
 import fixtures
 import mock
-from oslo.config import cfg
-from oslo.config import fixture as config_fixture
 from oslo.messaging import conffixture as messaging_conffixture
 from oslo_concurrency import lockutils
+from oslo_config import cfg
+from oslo_config import fixture as config_fixture
 import oslotest.base as base_test
 import six
 

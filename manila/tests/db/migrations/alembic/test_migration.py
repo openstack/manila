@@ -19,8 +19,8 @@ Tests for database migrations.
 
 from alembic import script
 import mock
-from oslo.db.sqlalchemy import test_base
-from oslo.db.sqlalchemy import test_migrations
+from oslo_db.sqlalchemy import test_base
+from oslo_db.sqlalchemy import test_migrations
 from sqlalchemy.sql import text
 
 from manila.db.migrations.alembic import migration

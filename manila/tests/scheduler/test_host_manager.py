@@ -18,8 +18,8 @@ Tests For HostManager
 import datetime
 
 import mock
-from oslo.config import cfg
-from oslo.utils import timeutils
+from oslo_config import cfg
+from oslo_utils import timeutils
 from six import moves
 
 from manila import db

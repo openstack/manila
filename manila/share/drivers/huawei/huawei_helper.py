@@ -16,8 +16,8 @@
 import base64
 from xml import etree
 
-from oslo.serialization import jsonutils
-from oslo.utils import units
+from oslo_serialization import jsonutils
+from oslo_utils import units
 import six
 from six.moves import http_cookiejar
 from six.moves.urllib import request as urlreq  # pylint: disable=E0611

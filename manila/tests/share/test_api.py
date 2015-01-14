@@ -18,8 +18,12 @@ import datetime
 import uuid
 
 import mock
-from oslo.config import cfg
-from oslo.utils import timeutils
+# NOTE(vponomaryov): import from oslo.utils.timeutils is workaround for
+# mocking same object but from different namespaces. Remove it when all
+# oslo libs use same namespace for same things.
+from oslo.utils import timeutils as timeutils_old  # noqa
+from oslo_config import cfg
+from oslo_utils import timeutils
 
 from manila import context
 from manila import db as db_driver
@@ -168,15 +172,10 @@ class ShareAPITestCase(test.TestCase):
         self.stubs.Set(self.api, 'share_rpcapi', self.share_rpcapi)
         self.stubs.Set(quota.QUOTAS, 'reserve', lambda *args, **kwargs: None)
 
-        self.patcher = mock.patch.object(timeutils, 'utcnow')
-        self.mock_utcnow = self.patcher.start()
-        self.mock_utcnow.return_value = datetime.datetime.utcnow()
-        self.addCleanup(self.patcher.stop)
-
-        self.policy_patcher = mock.patch.object(share_api.policy,
-                                                'check_policy')
-        self.policy_patcher.start()
-        self.addCleanup(self.policy_patcher.stop)
+        dt_utc = datetime.datetime.utcnow()
+        self.stubs.Set(timeutils, 'utcnow', mock.Mock(return_value=dt_utc))
+        self.stubs.Set(timeutils_old, 'utcnow', mock.Mock(return_value=dt_utc))
+        self.stubs.Set(share_api.policy, 'check_policy', mock.Mock())
 
     def test_get_all_admin_no_filters(self):
         self.stubs.Set(db_driver, 'share_get_all_by_project',
@@ -417,7 +416,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_create(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         share = fake_share('fakeid',
                            user_id=self.context.user_id,
                            project_id=self.context.project_id,
@@ -435,7 +434,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_create_glusterfs(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         share = fake_share('fakeid',
                            user_id=self.context.user_id,
                            project_id=self.context.project_id,
@@ -457,7 +456,7 @@ class ShareAPITestCase(test.TestCase):
     @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
     def test_create_snapshot(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         share = fake_share('fakeid', status='available')
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id=share['id'],
@@ -519,7 +518,7 @@ class ShareAPITestCase(test.TestCase):
     @mock.patch.object(db_driver, 'share_snapshot_update', mock.Mock())
     def test_delete_snapshot(self):
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         share = fake_share('fakeid')
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id=share['id'],
@@ -564,7 +563,7 @@ class ShareAPITestCase(test.TestCase):
     def test_create_from_snapshot_available(self):
         CONF.set_default("use_scheduler_creating_share_from_snapshot", False)
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id='fakeshare_id',
                                  status='available')
@@ -611,7 +610,7 @@ class ShareAPITestCase(test.TestCase):
     def test_create_from_snapshot_without_host_restriction(self):
         CONF.set_default("use_scheduler_creating_share_from_snapshot", True)
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id='fakeshare_id',
                                  status='available')
@@ -659,7 +658,7 @@ class ShareAPITestCase(test.TestCase):
         # Prepare data for test
         CONF.set_default("use_scheduler_creating_share_from_snapshot", False)
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         share_id = 'fake_share_id'
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id=share_id,
@@ -715,7 +714,7 @@ class ShareAPITestCase(test.TestCase):
     def test_create_from_snapshot_with_volume_type_different(self):
         # Prepare data for test
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         share_id = 'fake_share_id'
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id=share_id,
@@ -787,7 +786,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_delete_available(self):
         date = datetime.datetime(2, 2, 2, 2, 2, 2)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         share = fake_share('fakeid', status='available')
         options = {'status': 'deleting', 'terminated_at': date}
         deleting_share = share.copy()
@@ -802,7 +801,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_delete_error(self):
         date = datetime.datetime(2, 2, 2, 2, 2, 2)
-        self.mock_utcnow.return_value = date
+        timeutils.utcnow.return_value = date
         share = fake_share('fakeid', status='error')
         options = {'status': 'deleting', 'terminated_at': date}
         deleting_share = share.copy()

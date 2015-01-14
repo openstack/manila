@@ -16,7 +16,7 @@
 """Test of Base Manager for Manila."""
 
 import mock
-from oslo.utils import importutils
+from oslo_utils import importutils
 
 from manila import manager
 from manila import test

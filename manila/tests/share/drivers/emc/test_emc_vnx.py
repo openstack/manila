@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import mock
-from oslo.utils import units
+from oslo_utils import units
 
 import manila.db
 from manila import exception

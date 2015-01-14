@@ -14,7 +14,7 @@
 
 import httplib
 
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 from six.moves.urllib import parse
 
 from manila.openstack.common import log as logging

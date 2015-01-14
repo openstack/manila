@@ -17,7 +17,7 @@
 
 import datetime
 
-from oslo.utils import timeutils
+from oslo_utils import timeutils
 
 from manila.api.contrib import services
 from manila import context

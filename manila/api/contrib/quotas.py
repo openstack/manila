@@ -14,7 +14,7 @@
 #    under the License.
 
 
-from oslo.utils import strutils
+from oslo_utils import strutils
 from six.moves.urllib import parse
 import webob
 

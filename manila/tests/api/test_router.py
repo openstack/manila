@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila.api.openstack import wsgi
 from manila.api.v1 import router

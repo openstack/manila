@@ -15,8 +15,8 @@
 """Built-in volume type properties."""
 
 
-from oslo.config import cfg
-from oslo.db import exception as db_exception
+from oslo_config import cfg
+from oslo_db import exception as db_exception
 import six
 
 from manila import context

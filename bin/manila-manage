@@ -70,8 +70,8 @@ if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'manila', '__init__.py')):
 from manila import i18n
 i18n.enable_lazy()
 
-from oslo.config import cfg
-from oslo.utils import uuidutils
+from oslo_config import cfg
+from oslo_utils import uuidutils
 
 from manila.common import config  # Need to register global_opts  # noqa
 from manila import context

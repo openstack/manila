@@ -15,7 +15,7 @@
 import platform
 
 import mock
-from oslo.concurrency import processutils as putils
+from oslo_concurrency import processutils as putils
 
 from manila.share.drivers.netapp import utils as na_utils
 from manila import test

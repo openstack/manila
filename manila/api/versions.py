@@ -16,7 +16,7 @@
 import datetime
 
 from lxml import etree
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila.api.openstack import wsgi
 from manila.api.views import versions as views_versions

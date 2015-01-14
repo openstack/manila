@@ -27,7 +27,7 @@ from manila import service
 from manila import test  # For the flags
 from manila.tests.integrated.api import client
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)

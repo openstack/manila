@@ -23,9 +23,9 @@ dynamic configuration.
 import datetime
 import os
 
-from oslo.config import cfg
-from oslo.serialization import jsonutils
-from oslo.utils import timeutils
+from oslo_config import cfg
+from oslo_serialization import jsonutils
+from oslo_utils import timeutils
 
 from manila.i18n import _LE
 from manila.openstack.common import log as logging

@@ -17,8 +17,8 @@ ZFS Storage Appliance Manila Share Driver
 
 import base64
 
-from oslo.config import cfg
-from oslo.utils import units
+from oslo_config import cfg
+from oslo_utils import units
 
 from manila import exception
 from manila.i18n import _

@@ -51,7 +51,7 @@ This module provides Manager, a base class for managers.
 
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 from manila.db import base

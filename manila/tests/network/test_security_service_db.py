@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.db import exception as db_exception
+from oslo_db import exception as db_exception
 
 from manila.common import constants
 from manila import context

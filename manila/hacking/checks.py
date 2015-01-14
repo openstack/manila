@@ -52,6 +52,9 @@ string_translation = re.compile(r"[^_]*_\(\s*('|\")")
 underscore_import_check = re.compile(r"(.)*import _(.)*")
 # We need this for cases where they have created their own _ function.
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
+# TODO(toabctl): Remove the oslo.messaging exception when package
+#                moved away from namespace
+oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](?!messaging)(.*)")
 
 
 class BaseASTChecker(ast.NodeVisitor):
@@ -221,9 +224,20 @@ class CheckForTransAdd(BaseASTChecker):
         super(CheckForTransAdd, self).generic_visit(node)
 
 
+def check_oslo_namespace_imports(logical_line, physical_line, filename):
+    if pep8.noqa(physical_line):
+        return
+    if re.match(oslo_namespace_imports, logical_line):
+        msg = ("N333: '%s' must be used instead of '%s'.") % (
+            logical_line.replace('oslo.', 'oslo_'),
+            logical_line)
+        yield(0, msg)
+
+
 def factory(register):
     register(validate_log_translations)
     register(check_explicit_underscore_import)
     register(no_translate_debug_logs)
     register(CheckForStrExc)
     register(CheckForTransAdd)
+    register(check_oslo_namespace_imports)

@@ -21,7 +21,7 @@ Chance (Random) Scheduler implementation
 
 import random
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila import exception
 from manila.i18n import _

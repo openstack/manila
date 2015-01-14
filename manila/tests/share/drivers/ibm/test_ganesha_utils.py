@@ -18,7 +18,7 @@ import socket
 import time
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila import exception
 import manila.share.drivers.ibm.ganesha_utils as ganesha_utils

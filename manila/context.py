@@ -19,8 +19,8 @@
 
 import copy
 
-from oslo.utils import timeutils
 from oslo_context import context as common_context
+from oslo_utils import timeutils
 import six
 
 from manila.i18n import _

@@ -22,7 +22,7 @@ Unit Tests for remote procedure calls using queue
 """
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila import context
 from manila import db

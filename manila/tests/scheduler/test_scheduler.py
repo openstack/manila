@@ -18,8 +18,8 @@ Tests For Scheduler
 """
 
 import mock
-from oslo.config import cfg
-from oslo.utils import timeutils
+from oslo_config import cfg
+from oslo_utils import timeutils
 
 from manila import context
 from manila import db

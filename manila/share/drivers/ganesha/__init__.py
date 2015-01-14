@@ -18,7 +18,7 @@ import errno
 import os
 import re
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 from manila import exception

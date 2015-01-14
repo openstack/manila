@@ -42,7 +42,7 @@ option group. This is due to the way cfg works. All cfg options must be defined
 and registered in the group in which they are used.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila.openstack.common import log as logging
 

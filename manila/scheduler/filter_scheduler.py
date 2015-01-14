@@ -20,7 +20,7 @@ You can customize this scheduler by specifying your own share Filters and
 Weighing Functions.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila import exception
 from manila.i18n import _

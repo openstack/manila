@@ -18,8 +18,8 @@ Unit Tests for manila.share.rpcapi.
 
 import copy
 
-from oslo.config import cfg
-from oslo.serialization import jsonutils
+from oslo_config import cfg
+from oslo_serialization import jsonutils
 import six
 
 from manila import context

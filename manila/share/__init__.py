@@ -16,7 +16,7 @@
 
 # Importing full names to not pollute the namespace and cause possible
 # collisions with use of 'from manila.share import <foo>' elsewhere.
-import oslo.utils.importutils as import_utils
+import oslo_utils.importutils as import_utils
 
 from manila.common import config
 

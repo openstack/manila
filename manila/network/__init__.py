@@ -15,8 +15,8 @@
 #    under the License.
 import abc
 
-from oslo.config import cfg
-from oslo.utils import importutils
+from oslo_config import cfg
+from oslo_utils import importutils
 
 from manila.db import base as db_base
 

@@ -19,7 +19,7 @@ Unit Tests for manila.scheduler.rpcapi
 import copy
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila import context
 from manila.scheduler import rpcapi as scheduler_rpcapi

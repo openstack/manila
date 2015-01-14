@@ -23,7 +23,7 @@ import shutil
 import tempfile
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila import context
 from manila import exception

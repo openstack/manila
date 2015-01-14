@@ -16,7 +16,7 @@
 """Test of Share Manager for Manila."""
 
 import mock
-from oslo.utils import importutils
+from oslo_utils import importutils
 
 from manila.common import constants
 from manila import context

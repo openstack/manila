@@ -27,9 +27,9 @@ import time
 
 import eventlet
 import greenlet
-from oslo.config import cfg
 from oslo import messaging
-from oslo.utils import importutils
+from oslo_config import cfg
+from oslo_utils import importutils
 
 from manila import context
 from manila import db

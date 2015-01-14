@@ -14,8 +14,8 @@
 #    under the License.
 
 import mock
-from oslo.db import exception as db_exception
-from oslo.utils import timeutils
+from oslo_db import exception as db_exception
+from oslo_utils import timeutils
 from six.moves.urllib import parse
 from webob import exc as webob_exc
 

@@ -29,7 +29,7 @@ import re
 import sys
 import xml.etree.cElementTree as etree
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 
 from manila import exception

@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """VNX backend for the EMC Manila driver."""
-from oslo.utils import excutils
-from oslo.utils import units
+from oslo_utils import excutils
+from oslo_utils import units
 import six
 
 from manila import db as manila_db

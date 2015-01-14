@@ -21,7 +21,7 @@ TODO(diemtran): this module needs to be placed in a library common to OpenStack
 import httplib
 import time
 
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 import six
 # pylint: disable=E0611,F0401
 from six.moves.urllib import error as urlerror

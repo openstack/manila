@@ -16,7 +16,7 @@
 Fakes For Scheduler tests.
 """
 
-from oslo.utils import timeutils
+from oslo_utils import timeutils
 import six
 
 from manila.scheduler import filter_scheduler

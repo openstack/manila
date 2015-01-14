@@ -19,9 +19,9 @@
 SQLAlchemy models for Manila data.
 """
 
-from oslo.config import cfg
-from oslo.db.sqlalchemy import models
-from oslo.utils import timeutils
+from oslo_config import cfg
+from oslo_db.sqlalchemy import models
+from oslo_utils import timeutils
 import six
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base

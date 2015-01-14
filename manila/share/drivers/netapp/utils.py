@@ -22,8 +22,8 @@ import copy
 import platform
 import socket
 
-from oslo.concurrency import processutils as putils
-from oslo.utils import timeutils
+from oslo_concurrency import processutils as putils
+from oslo_utils import timeutils
 
 from manila.i18n import _LI, _LW
 from manila.openstack.common import log as logging

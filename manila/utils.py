@@ -33,11 +33,11 @@ from xml.sax import expatreader
 
 from eventlet import pools
 import netaddr
-from oslo.config import cfg
-from oslo.utils import importutils
-from oslo.utils import timeutils
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_utils import importutils
+from oslo_utils import timeutils
 import paramiko
 import six
 

@@ -26,7 +26,7 @@ stepping stone.
 
 import socket
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila.i18n import _
 

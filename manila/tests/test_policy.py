@@ -18,7 +18,7 @@
 import os.path
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 from six.moves.urllib import request as urlrequest
 

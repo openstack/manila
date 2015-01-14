@@ -19,7 +19,7 @@
 Simple Scheduler
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from manila import db
 from manila import exception

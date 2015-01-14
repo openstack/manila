@@ -17,7 +17,7 @@ import contextlib
 import re
 
 import mock
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 import six
 
 from manila import exception

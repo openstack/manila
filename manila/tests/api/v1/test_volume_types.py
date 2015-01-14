@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from oslo.utils import timeutils
+from oslo_utils import timeutils
 import webob
 
 from manila.api.v1 import volume_types as types

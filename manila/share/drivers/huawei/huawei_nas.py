@@ -16,9 +16,9 @@
 """Huawei Nas Driver for Huawei OceanStor V3 storage arrays."""
 import time
 
-from oslo.config import cfg
-from oslo.utils import excutils
-from oslo.utils import units
+from oslo_config import cfg
+from oslo_utils import excutils
+from oslo_utils import units
 
 from manila import exception
 from manila.i18n import _, _LI, _LW

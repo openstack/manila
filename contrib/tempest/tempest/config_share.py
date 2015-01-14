@@ -15,7 +15,7 @@
 
 from __future__ import print_function
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from tempest import config  # noqa
 

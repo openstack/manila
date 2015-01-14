@@ -15,7 +15,7 @@
 
 from xml.dom import minidom
 
-from oslo.serialization import jsonutils
+from oslo_serialization import jsonutils
 import webob
 import webob.dec
 import webob.exc

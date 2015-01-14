@@ -15,8 +15,8 @@
 
 """The shares api."""
 
-from oslo.db import exception as db_exception
-from oslo.utils import timeutils
+from oslo_db import exception as db_exception
+from oslo_utils import timeutils
 import six
 import webob
 from webob import exc

@@ -20,7 +20,7 @@ import os.path
 import tempfile
 import urllib2
 
-from oslo.config import cfg
+from oslo_config import cfg
 import six
 import testtools
 import webob
