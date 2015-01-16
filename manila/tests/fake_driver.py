@@ -15,7 +15,6 @@
 
 import mock
 
-from manila.common import constants
 from manila.openstack.common import log as logging
 from manila.share import driver
 
@@ -26,16 +25,20 @@ class FakeShareDriver(driver.ShareDriver):
     """Fake share driver."""
 
     def __init__(self, *args, **kwargs):
-        super(FakeShareDriver, self).__init__(execute=self.fake_execute,
-                                              *args, **kwargs)
+        super(FakeShareDriver, self).__init__(True, *args, **kwargs)
         self.db = mock.Mock()
-        self.mode = constants.MULTI_SVM_MODE
 
         def share_network_update(*args, **kwargs):
             pass
 
         self.db.share_network_update = mock.Mock(
             side_effect=share_network_update)
+
+    @property
+    def driver_handles_share_servers(self):
+        if not isinstance(self.configuration.safe_get(
+                'driver_handles_share_servers'), bool):
+            return True
 
     def create_snapshot(self, context, snapshot, share_server=None):
         pass
@@ -81,9 +84,3 @@ class FakeShareDriver(driver.ShareDriver):
         # NOTE(vponomaryov): Simulate drivers that use share servers and
         # do not use 'service_instance' module.
         return 2
-
-    @staticmethod
-    def fake_execute(cmd, *_args, **_kwargs):
-        """Execute that simply logs the command."""
-        LOG.debug("FAKE EXECUTE: %s", cmd)
-        return (None, None)

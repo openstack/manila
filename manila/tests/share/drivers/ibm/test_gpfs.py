@@ -79,6 +79,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._gpfs_execute = mock.Mock(return_value=('', ''))
 
         self._helper_fake = mock.Mock()
+        CONF.set_default('driver_handles_share_servers', False)
         self.fake_conf = config.Configuration(None)
         self._db = mock.Mock()
         self._driver = gpfs.GPFSShareDriver(self._db,
@@ -140,12 +141,13 @@ class GPFSShareDriverTestCase(test.TestCase):
         result = self._driver.get_share_stats(True)
         expected_keys = [
             'QoS_support', 'driver_version', 'share_backend_name',
-            'free_capacity_gb', 'share_driver_mode', 'total_capacity_gb',
+            'free_capacity_gb', 'total_capacity_gb',
+            'driver_handles_share_servers',
             'reserved_percentage', 'vendor_name', 'storage_protocol',
         ]
         for key in expected_keys:
             self.assertIn(key, result)
-        self.assertEqual(self._driver.mode, result['share_driver_mode'])
+        self.assertEqual(False, result['driver_handles_share_servers'])
         self.assertEqual('IBM', result['vendor_name'])
         self._driver._get_available_capacity.assert_called_once_with(
             self._driver.configuration.gpfs_mount_point_base)

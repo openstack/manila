@@ -88,6 +88,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._helper_cifs = mock.Mock()
         self._helper_nfs = mock.Mock()
+        CONF.set_default('driver_handles_share_servers', True)
         self.fake_conf = manila.share.configuration.Configuration(None)
         self._db = mock.Mock()
         with mock.patch.object(
@@ -944,7 +945,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._stats = fake_stats
         expected_keys = [
             'QoS_support', 'driver_version', 'share_backend_name',
-            'free_capacity_gb', 'share_driver_mode', 'total_capacity_gb',
+            'free_capacity_gb', 'total_capacity_gb',
+            'driver_handles_share_servers',
             'reserved_percentage', 'vendor_name', 'storage_protocol',
         ]
 
@@ -953,36 +955,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertNotEqual(fake_stats, result)
         for key in expected_keys:
             self.assertIn(key, result)
-        self.assertEqual(self._driver.mode, result['share_driver_mode'])
+        self.assertEqual(True, result['driver_handles_share_servers'])
         self.assertEqual('Open Source', result['vendor_name'])
-
-    @mock.patch.object(
-        generic.service_instance, 'ServiceInstanceManager', mock.Mock())
-    def test_driver_mode_valid_value(self):
-        mode = const.MULTI_SVM_MODE
-        CONF.set_override('share_driver_mode', mode)
-
-        driver = generic.GenericShareDriver(
-            self._db, execute=self._execute, configuration=self.fake_conf)
-
-        self.assertEqual(mode, driver.mode)
-        generic.service_instance.ServiceInstanceManager.\
-            assert_called_once_with(self._db, driver_config=self.fake_conf)
-
-    def test_driver_mode_invalid_value(self):
-        mode = const.SINGLE_SVM_MODE
-        CONF.set_override('share_driver_mode', mode)
-
-        self.assertRaises(
-            exception.InvalidParameterValue,
-            generic.GenericShareDriver,
-            self._db,
-            execute=self._execute,
-            configuration=self.fake_conf)
-
-    def test_driver_mode_default_share_driver_modes(self):
-        mode = const.MULTI_SVM_MODE
-        self.assertEqual(mode, self._driver.mode)
 
 
 class NFSHelperTestCase(test.TestCase):

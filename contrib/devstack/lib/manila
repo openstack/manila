@@ -142,6 +142,7 @@ function configure_default_backends {
         iniset $MANILA_CONF $group_name service_image_name $MANILA_SERVICE_IMAGE_NAME
         iniset $MANILA_CONF $group_name service_instance_user $MANILA_SERVICE_INSTANCE_USER
         iniset $MANILA_CONF $group_name service_instance_password $MANILA_SERVICE_INSTANCE_PASSWORD
+        iniset $MANILA_CONF $group_name driver_handles_share_servers True
     done
 }
 

@@ -20,7 +20,6 @@ from oslo.config import cfg
 from oslo.utils import excutils
 from oslo.utils import units
 
-from manila.common import constants as const
 from manila import exception
 from manila.i18n import _, _LI, _LW
 from manila.openstack.common import log as logging
@@ -51,14 +50,13 @@ class HuaweiNasDriver(driver.ShareDriver):
     def __init__(self, *args, **kwargs):
         """Do initialization."""
         LOG.debug("Enter into init function.")
-        super(HuaweiNasDriver, self).__init__(*args, **kwargs)
+        super(HuaweiNasDriver, self).__init__(False, *args, **kwargs)
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(huawei_opts)
             self.helper = huawei_helper.RestHelper(self.configuration)
         else:
             raise exception.InvalidShare(_("Huawei configuration missing."))
-        self.mode = self.get_driver_mode(const.SINGLE_SVM_MODE)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -111,13 +109,6 @@ class HuaweiNasDriver(driver.ShareDriver):
         location = ':'.join([target_ip, share_path])
 
         return location
-
-    def get_share_stats(self, refresh=False):
-        """Get a share stats."""
-        LOG.debug("Get a share stats.")
-        data = self._update_share_stats()
-
-        return data
 
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
@@ -195,28 +186,15 @@ class HuaweiNasDriver(driver.ShareDriver):
     def _update_share_stats(self):
         """Retrieve status info from share group."""
 
-        capacity = self.helper._get_capacity()
-
-        # Note(zhiteng): These information are driver/backend specific,
-        # each driver may define these values in its own config options
-        # or fetch from driver specific configuration file.
-        data = {}
-
         backend_name = self.configuration.safe_get('share_backend_name')
-
-        data["share_backend_name"] = backend_name or 'HUAWEI_NAS_Driver'
-        data["vendor_name"] = 'Huawei'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS_CIFS'
-
-        data['total_capacity_gb'] = capacity['total_capacity']
-        data['free_capacity_gb'] = capacity['free_capacity']
-
-        data['reserved_percentage'] = 0
-        data["share_driver_mode"] = self.mode
-        data['QoS_support'] = False
-
-        return data
+        capacity = self.helper._get_capacity()
+        data = dict(
+            share_backend_name=backend_name or 'HUAWEI_NAS_Driver',
+            vendor_name='Huawei',
+            storage_protocol='NFS_CIFS',
+            total_capacity_gb=capacity['total_capacity'],
+            free_capacity_gb=capacity['free_capacity'])
+        super(HuaweiNasDriver, self)._update_share_stats(data)
 
     def _get_wait_interval(self):
         """Get wait interval from huawei conf file."""

@@ -460,7 +460,11 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(models.ShareSnapshot),
             share_server=None)
 
-    def test_create_share_with_share_network_using_single_svm_driver(self):
+    def test_create_share_with_share_network_driver_not_handles_servers(self):
+        manager.CONF.set_default('driver_handles_share_servers', False)
+        self.stubs.Set(
+            self.share_manager.driver.configuration, 'safe_get',
+            mock.Mock(return_value=False))
         share_id = 'fake_share_id'
         share_network_id = 'fake_sn'
         self.stubs.Set(
@@ -468,8 +472,6 @@ class ShareManagerTestCase(test.TestCase):
             mock.Mock(return_value=self._create_share(
                 share_network_id=share_network_id)))
         self.stubs.Set(self.share_manager.db, 'share_update', mock.Mock())
-        self.stubs.Set(
-            self.share_manager.driver, 'mode', constants.SINGLE_SVM_MODE)
 
         self.assertRaises(
             exception.ManilaException,

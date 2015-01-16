@@ -21,7 +21,6 @@ import time
 import ddt
 import mock
 
-from manila.common import constants
 from manila import exception
 from manila import network
 from manila.share import configuration
@@ -51,22 +50,20 @@ class ShareDriverTestCase(test.TestCase):
         self.stubs.Set(self.utils, 'execute', fake_execute_with_raise)
         self.time = time
         self.stubs.Set(self.time, 'sleep', fake_sleep)
-
-        self.fake_valid_modes = ('v1', 'v2', )
-        self.stubs.Set(
-            constants, 'VALID_SHARE_DRIVER_MODES', self.fake_valid_modes)
+        self.stubs.Set(driver.CONF, 'driver_handles_share_servers', True)
 
     def test__try_execute(self):
         execute_mixin = ShareDriverWithExecuteMixin(
-            configuration=configuration.Configuration(None))
+            True, configuration=configuration.Configuration(None))
         self.assertRaises(exception.ProcessExecutionError,
                           execute_mixin._try_execute)
 
     def test_verify_share_driver_mode_option_type(self):
+        opt_name = 'driver_handles_share_servers'
         with utils.tempdir() as tmpdir:
-            tmpfilename = os.path.join(tmpdir, 'share_driver_mode.conf')
+            tmpfilename = os.path.join(tmpdir, '%s.conf' % opt_name)
             with open(tmpfilename, "w") as configfile:
-                configfile.write("""[DEFAULT]\nshare_driver_mode = fake""")
+                configfile.write("""[DEFAULT]\n%s = True""" % opt_name)
 
             # Add config file with updated opt
             driver.CONF.default_config_files = [configfile.name]
@@ -74,17 +71,19 @@ class ShareDriverTestCase(test.TestCase):
             # Reload config instance to use redefined opt
             driver.CONF.reload_config_files()
 
-            share_driver = driver.ShareDriver()
-            self.assertEqual('fake', share_driver.mode)
+            share_driver = driver.ShareDriver([True, False])
+            self.assertEqual(True, share_driver.driver_handles_share_servers)
 
-    def _instantiate_share_driver(self, network_config_group):
+    def _instantiate_share_driver(self, network_config_group,
+                                  driver_handles_share_servers):
         self.stubs.Set(network, 'API', mock.Mock())
         config = mock.Mock()
         config.append_config_values = mock.Mock()
         config.config_group = 'fake_config_group'
         config.network_config_group = network_config_group
+        config.safe_get = mock.Mock(return_value=driver_handles_share_servers)
 
-        share_driver = driver.ShareDriver(configuration=config)
+        share_driver = driver.ShareDriver([True, False], configuration=config)
 
         self.assertTrue(hasattr(share_driver, 'configuration'))
         config.append_config_values.assert_called_once_with(driver.share_opts)
@@ -94,25 +93,24 @@ class ShareDriverTestCase(test.TestCase):
         else:
             network.API.assert_called_once_with(
                 config_group_name=config.config_group)
-        self.assertTrue(hasattr(share_driver, 'mode'))
         return share_driver
 
     def test_instantiate_share_driver(self):
-        self._instantiate_share_driver(None)
+        self._instantiate_share_driver(None, True)
 
     def test_instantiate_share_driver_another_config_group(self):
-        self._instantiate_share_driver("fake_network_config_group")
+        self._instantiate_share_driver("fake_network_config_group", True)
 
     def test_instantiate_share_driver_no_configuration(self):
         self.stubs.Set(network, 'API', mock.Mock())
 
-        share_driver = driver.ShareDriver(configuration=None)
+        share_driver = driver.ShareDriver(True, configuration=None)
 
         self.assertEqual(None, share_driver.configuration)
         network.API.assert_called_once_with(config_group_name=None)
 
     def test_get_share_stats_refresh_false(self):
-        share_driver = driver.ShareDriver(configuration=None)
+        share_driver = driver.ShareDriver(True, configuration=None)
         share_driver._stats = {'fake_key': 'fake_value'}
 
         result = share_driver.get_share_stats(False)
@@ -123,10 +121,11 @@ class ShareDriverTestCase(test.TestCase):
         conf = configuration.Configuration(None)
         expected_keys = [
             'QoS_support', 'driver_version', 'share_backend_name',
-            'free_capacity_gb', 'share_driver_mode', 'total_capacity_gb',
+            'free_capacity_gb', 'total_capacity_gb',
+            'driver_handles_share_servers',
             'reserved_percentage', 'vendor_name', 'storage_protocol',
         ]
-        share_driver = driver.ShareDriver(configuration=conf)
+        share_driver = driver.ShareDriver(True, configuration=conf)
         fake_stats = {'fake_key': 'fake_value'}
         share_driver._stats = fake_stats
 
@@ -138,53 +137,61 @@ class ShareDriverTestCase(test.TestCase):
         self.assertEqual('Open Source', result['vendor_name'])
 
     @ddt.data(
-        '', 'v1', 'v2', 'fake1', None,
-        [], ['v1'], ['v2'], ['v1', 'v2'], ['fake1'], ['fake1', 'fake2'],
-        (), ('v1'), ('v2'), ('v1', 'v2'), ('fake1', ), ('fake1', 'fake2'))
-    def test_get_driver_mode_invalid_opt(self, driver_modes):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = 'fake'
-        self.assertRaises(
-            exception.InvalidParameterValue,
-            share_driver.get_driver_mode, driver_modes)
+        {'opt': True, 'allowed': True},
+        {'opt': True, 'allowed': (True, False)},
+        {'opt': True, 'allowed': [True, False]},
+        {'opt': True, 'allowed': set([True, False])},
+        {'opt': False, 'allowed': False},
+        {'opt': False, 'allowed': (True, False)},
+        {'opt': False, 'allowed': [True, False]},
+        {'opt': False, 'allowed': set([True, False])})
+    @ddt.unpack
+    def test__verify_share_server_handling_valid_cases(self, opt, allowed):
+        conf = configuration.Configuration(None)
+        self.stubs.Set(conf, 'safe_get', mock.Mock(return_value=opt))
+        share_driver = driver.ShareDriver(allowed, configuration=conf)
+        self.assertTrue(conf.safe_get.celled)
+        self.assertEqual(opt, share_driver.driver_handles_share_servers)
 
     @ddt.data(
-        (), [], ('v1', 'v2'), ['v1', 'v2'], ('v1', 'fake1'), ['v1', 'fake1'],
-        ('fake1', 'fake2'), ['fake1', 'fake2'], ('fake1', ), ['fake1'], '',
-        'fake1', {}, {'v1': 'v2'}, None)
-    def test_get_driver_mode_none_opt_invalid_cases(self, driver_modes):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = None
+        {'opt': False, 'allowed': True},
+        {'opt': True, 'allowed': False},
+        {'opt': None, 'allowed': True},
+        {'opt': 'True', 'allowed': True},
+        {'opt': 'False', 'allowed': False},
+        {'opt': [], 'allowed': True},
+        {'opt': True, 'allowed': []},
+        {'opt': True, 'allowed': ['True']},
+        {'opt': False, 'allowed': ['False']})
+    @ddt.unpack
+    def test__verify_share_server_handling_invalid_cases(self, opt, allowed):
+        conf = configuration.Configuration(None)
+        self.stubs.Set(conf, 'safe_get', mock.Mock(return_value=opt))
         self.assertRaises(
-            exception.InvalidParameterValue,
-            share_driver.get_driver_mode, driver_modes)
+            exception.ManilaException,
+            driver.ShareDriver, allowed, configuration=conf)
+        self.assertTrue(conf.safe_get.celled)
 
-    @ddt.data('v2', ('v2', ), ['v2', ])
-    def test_get_driver_mode_none_opt_valid_cases(self, driver_modes):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = None
+    def test_setup_server_handling_disabled(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        # We expect successful execution, nothing to assert
+        share_driver.setup_server('Nothing is expected to happen.')
 
-        mode = share_driver.get_driver_mode(driver_modes)
-
-        self.assertEqual('v2', mode)
-
-    @ddt.data(
-        (), [], '', 'fake1', 'v1', ('v1', ), ['v1'], {}, {'v1': 'v2'}, None,
-        ('fake1', ), ['fake2'], ['fake1', 'fake2'], ('fake2', 'fake1'))
-    def test_get_driver_mode_valid_opt_invalid_cases(self, driver_modes):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = 'v2'
+    def test_setup_server_handling_enabled(self):
+        share_driver = self._instantiate_share_driver(None, True)
         self.assertRaises(
-            exception.InvalidParameterValue,
-            share_driver.get_driver_mode, driver_modes)
+            NotImplementedError,
+            share_driver.setup_server,
+            'fake_network_info')
 
-    @ddt.data(
-        'v2', ('v2', ), ['v2'], ('v2', 'v1'), ['v2', 'v1'],
-        ('v2', 'fake2'), ['v2', 'fake1'])
-    def test_get_driver_mode_valid_opt_valid_cases(self, driver_modes):
-        share_driver = self._instantiate_share_driver(None)
-        share_driver.mode = 'v2'
+    def test_teardown_server_handling_disabled(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        # We expect successful execution, nothing to assert
+        share_driver.teardown_server('Nothing is expected to happen.')
 
-        mode = share_driver.get_driver_mode(driver_modes)
-
-        self.assertEqual('v2', mode)
+    def test_teardown_server_handling_enabled(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        self.assertRaises(
+            NotImplementedError,
+            share_driver.teardown_server,
+            'fake_share_server_details')

@@ -33,7 +33,6 @@ import tempfile
 from oslo.config import cfg
 import six
 
-from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
@@ -76,7 +75,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     """
 
     def __init__(self, db, *args, **kwargs):
-        super(GlusterfsNativeShareDriver, self).__init__(*args, **kwargs)
+        super(GlusterfsNativeShareDriver, self).__init__(
+            False, *args, **kwargs)
         self.db = db
         self._helpers = None
         self.gluster_unused_vols_dict = {}
@@ -85,7 +85,6 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             glusterfs_native_manila_share_opts)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'GlusterFS-Native'
-        self.mode = self.get_driver_mode(const.SINGLE_SVM_MODE)
 
     def do_setup(self, context):
         """Setup the GlusterFS volumes."""
@@ -489,32 +488,15 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # set dynamically.
         self._restart_gluster_vol(gluster_addr)
 
-    def get_share_stats(self, refresh=False):
-        """Get share stats.
-
-        If 'refresh' is True, update the stats first.
-        """
-        if refresh:
-            self._update_share_stats()
-
-        return self._stats
-
     def _update_share_stats(self):
         """Send stats info for the GlusterFS volume."""
 
-        LOG.debug("Updating share stats")
-
-        data = {}
-
-        data["share_backend_name"] = self.backend_name
-        data["share_driver_mode"] = self.mode
-        data["vendor_name"] = 'Red Hat'
-        data["driver_version"] = '1.1'
-        data["storage_protocol"] = 'glusterfs'
-
-        data['reserved_percentage'] = (
-            self.configuration.reserved_share_percentage)
-        data['QoS_support'] = False
+        data = dict(
+            share_backend_name=self.backend_name,
+            vendor_name='Red Hat',
+            driver_version='1.1',
+            storage_protocol='glusterfs',
+            reserved_percentage=self.configuration.reserved_share_percentage)
 
         # We don't use a service mount to get stats data.
         # Instead we use glusterfs quota feature and use that to limit
@@ -524,7 +506,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # specific stats via the gluster cli.
         data['total_capacity_gb'] = 'infinite'
         data['free_capacity_gb'] = 'infinite'
-        self._stats = data
+
+        super(GlusterfsNativeShareDriver, self)._update_share_stats(data)
 
     def ensure_share(self, context, share, share_server=None):
         """Invoked to ensure that share is exported."""

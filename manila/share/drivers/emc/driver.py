@@ -63,15 +63,19 @@ CONF.register_opts(EMC_NAS_OPTS)
 class EMCShareDriver(driver.ShareDriver):
     """EMC specific NAS driver. Allows for NFS and CIFS NAS storage usage."""
     def __init__(self, *args, **kwargs):
-        super(EMCShareDriver, self).__init__(*args, **kwargs)
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(EMC_NAS_OPTS)
-
+            self.backend_name = self.configuration.safe_get(
+                'emc_share_backend')
+        else:
+            self.backend_name = CONF.emc_share_backend
+        self.backend_name = self.backend_name or 'EMC_NAS_Storage'
         self.plugin_manager = manager.EMCPluginManager(
             namespace='manila.share.drivers.emc.plugins')
-
-        self.plugin = None
+        self.plugin = self.plugin_manager.load_plugin(self.backend_name, LOG)
+        super(EMCShareDriver, self).__init__(
+            self.plugin.driver_handles_share_servers, *args, **kwargs)
 
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
@@ -122,42 +126,29 @@ class EMCShareDriver(driver.ShareDriver):
 
     def do_setup(self, context):
         """Any initialization the share driver does while starting."""
-        backend_name = self.configuration.safe_get('emc_share_backend')
-
-        self.plugin = self.plugin_manager.load_plugin(backend_name, LOG)
-        self.mode = self.get_driver_mode(self.plugin.supported_driver_modes)
-
         self.plugin.connect(self, context)
 
     def _update_share_stats(self):
         """Retrieve stats info from share."""
 
-        LOG.debug("Updating share stats.")
-        data = {}
         backend_name = self.configuration.safe_get(
             'share_backend_name') or "EMC_NAS_Storage"
-        data["share_backend_name"] = backend_name
-        data["share_driver_mode"] = self.mode
-        data["vendor_name"] = 'EMC'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS_CIFS'
-
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 0
-        data['QoS_support'] = False
+        data = dict(
+            share_backend_name=backend_name,
+            vendor_name='EMC',
+            storage_protocol='NFS_CIFS')
         self.plugin.update_share_stats(data)
-        self._stats = data
+        super(EMCShareDriver, self)._update_share_stats(data)
 
     def get_network_allocations_number(self):
         """Returns number of network allocations for creating VIFs."""
         return self.plugin.get_network_allocations_number(self)
 
-    def setup_server(self, network_info, metadata=None):
+    def _setup_server(self, network_info, metadata=None):
         """Set up and configures share server with given network parameters."""
         return self.plugin.setup_server(self, network_info, metadata)
 
-    def teardown_server(self, server_details, security_services=None):
+    def _teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
         return self.plugin.teardown_server(self,
                                            server_details,

@@ -109,12 +109,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def __init__(self, db, *args, **kwargs):
         """Do initialization."""
-        super(GenericShareDriver, self).__init__(*args, **kwargs)
+        super(GenericShareDriver, self).__init__(True, *args, **kwargs)
         self.admin_context = context.get_admin_context()
         self.db = db
         self.configuration.append_config_values(share_opts)
         self.configuration.append_config_values(service_instance.server_opts)
-        self.mode = self.get_driver_mode(const.MULTI_SVM_MODE)
         self._helpers = {}
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "Cinder_Volumes"
@@ -450,23 +449,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _update_share_stats(self):
         """Retrieve stats info from share volume group."""
-
-        LOG.debug("Updating share stats")
-        data = {}
-
-        data["share_backend_name"] = self.backend_name
-        data["share_driver_mode"] = self.mode
-        data["vendor_name"] = 'Open Source'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS_CIFS'
-
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = (self.configuration.
-                                       reserved_share_percentage)
-        data['QoS_support'] = False
-
-        self._stats = data
+        data = dict(
+            share_backend_name=self.backend_name,
+            storage_protocol='NFS_CIFS',
+            reserved_percentage=(self.configuration.reserved_share_percentage))
+        super(GenericShareDriver, self)._update_share_stats(data)
 
     @ensure_server
     def create_share_from_snapshot(self, context, share, snapshot,
@@ -597,7 +584,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # use service instance provided by Nova.
         return 0
 
-    def setup_server(self, network_info, metadata=None):
+    def _setup_server(self, network_info, metadata=None):
         msg = "Creating share server '%s'."
         LOG.debug(msg % network_info['server_id'])
         server = self.service_instance_manager.set_up_service_instance(
@@ -610,7 +597,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             helper.init_helper(server)
         return server
 
-    def teardown_server(self, server_details, security_services=None):
+    def _teardown_server(self, server_details, security_services=None):
         instance_id = server_details.get("instance_id")
         LOG.debug("Removing share infrastructure for service instance '%s'.",
                   instance_id)

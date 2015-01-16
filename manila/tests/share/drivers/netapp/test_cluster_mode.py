@@ -34,6 +34,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         super(NetAppClusteredDrvTestCase, self).setUp()
         self._context = context.get_admin_context()
         self._db = mock.Mock()
+        driver.CONF.set_default('driver_handles_share_servers', True)
         self.driver = driver.NetAppClusteredShareDriver(
             self._db, configuration=configuration.Configuration(None))
         self.driver._client = mock.Mock()
@@ -140,7 +141,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
 
         expected = {}
         expected["share_backend_name"] = self.driver.backend_name
-        expected["share_driver_mode"] = self.driver.mode
+        expected["driver_handles_share_servers"] = True
         expected["vendor_name"] = 'NetApp'
         expected["driver_version"] = '1.0'
         expected["storage_protocol"] = 'NFS_CIFS'

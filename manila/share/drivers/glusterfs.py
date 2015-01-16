@@ -32,7 +32,6 @@ import xml.etree.cElementTree as etree
 from oslo.config import cfg
 import six
 
-from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -93,14 +92,13 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     """Execute commands relating to Shares."""
 
     def __init__(self, db, *args, **kwargs):
-        super(GlusterfsShareDriver, self).__init__(*args, **kwargs)
+        super(GlusterfsShareDriver, self).__init__(False, *args, **kwargs)
         self.db = db
         self._helpers = None
         self.gluster_address = None
         self.configuration.append_config_values(GlusterfsManilaShare_opts)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'GlusterFS'
-        self.mode = self.get_driver_mode(const.SINGLE_SVM_MODE)
 
     def do_setup(self, context):
         """Native mount the GlusterFS volume and tune it."""
@@ -242,16 +240,6 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                                local_vol_path)
         return os.path.join(local_vol_path, share['name'])
 
-    def get_share_stats(self, refresh=False):
-        """Get share stats.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_share_stats()
-
-        return self._stats
-
     def _update_share_stats(self):
         """Retrieve stats info from the GlusterFS volume."""
 
@@ -264,23 +252,14 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             )
         smpv = os.statvfs(self._get_mount_point_for_gluster_vol())
 
-        LOG.debug("Updating share stats")
-
-        data = {}
-
-        data["share_backend_name"] = self.backend_name
-        data["share_driver_mode"] = self.mode
-        data["vendor_name"] = 'Red Hat'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS'
-
-        data['reserved_percentage'] = \
-            self.configuration.reserved_share_percentage
-        data['QoS_support'] = False
-
-        data['total_capacity_gb'] = (smpv.f_blocks * smpv.f_frsize) >> 30
-        data['free_capacity_gb'] = (smpv.f_bavail * smpv.f_frsize) >> 30
-        self._stats = data
+        data = dict(
+            storage_protocol='NFS',
+            vendor_name='Red Hat',
+            share_backend_name=self.backend_name,
+            reserved_percentage=self.configuration.reserved_share_percentage,
+            total_capacity_gb=(smpv.f_blocks * smpv.f_frsize) >> 30,
+            free_capacity_gb=(smpv.f_bavail * smpv.f_frsize) >> 30)
+        super(GlusterfsShareDriver, self)._update_share_stats(data)
 
     def get_network_allocations_number(self):
         return 0

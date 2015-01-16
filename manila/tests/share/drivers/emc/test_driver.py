@@ -16,7 +16,6 @@
 import mock
 from stevedore import extension
 
-from manila.common import constants as const
 from manila.openstack.common import log as logging
 from manila.share import configuration as conf
 from manila.share.drivers.emc import driver as emcdriver
@@ -29,7 +28,10 @@ LOG = logging.getLogger(__name__)
 class FakeConnection(base.StorageConnection):
     def __init__(self, logger):
         self.logger = logger
-        self.supported_driver_modes = const.MULTI_SVM_MODE
+
+    @property
+    def driver_handles_share_servers(self):
+        return True
 
     def create_share(self, emc_share_driver, context, share, share_server):
         """Is called to create share."""
@@ -125,7 +127,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         self.driver.plugin = mock.Mock()
         self.driver._update_share_stats()
         data["share_backend_name"] = FAKE_BACKEND
-        data["share_driver_mode"] = self.driver.mode
+        data["driver_handles_share_servers"] = True
         data["vendor_name"] = 'EMC'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS_CIFS'
@@ -133,9 +135,11 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['free_capacity_gb'] = 'infinite'
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
-        self.driver.plugin.update_share_stats.assert_called_with(data)
+        self.assertEqual(data, self.driver._stats)
 
     def _fake_safe_get(self, value):
         if value in ['emc_share_backend', 'share_backend_name']:
             return FAKE_BACKEND
+        elif value == 'driver_handles_share_servers':
+            return True
         return None

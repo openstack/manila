@@ -28,7 +28,6 @@ from oslo.utils import excutils
 from oslo.utils import units
 import six
 
-from manila.common import constants as const
 from manila import context
 from manila import exception
 from manila.i18n import _
@@ -135,7 +134,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
     """
 
     def __init__(self, db, *args, **kwargs):
-        super(NetAppClusteredShareDriver, self).__init__(*args, **kwargs)
+        super(NetAppClusteredShareDriver, self).__init__(True, *args, **kwargs)
         self.db = db
         self._helpers = None
         self._licenses = []
@@ -145,7 +144,6 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         self.api_version = (1, 15)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "NetApp_Cluster_Mode"
-        self.mode = self.get_driver_mode(const.MULTI_SVM_MODE)
 
     def do_setup(self, context):
         """Prepare once the driver.
@@ -192,23 +190,14 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
 
     def _update_share_stats(self):
         """Retrieve stats info from Cluster Mode backend."""
-
-        LOG.debug("Updating share stats")
-        data = {}
-        data["share_backend_name"] = self.backend_name
-        data["share_driver_mode"] = self.mode
-        data["vendor_name"] = 'NetApp'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = 'NFS_CIFS'
-
         total, free = self._calculate_capacity()
-        data['total_capacity_gb'] = total / units.Gi
-        data['free_capacity_gb'] = free / units.Gi
-
-        data['reserved_percentage'] = 0
-        data['QoS_support'] = False
-
-        self._stats = data
+        data = dict(
+            share_backend_name=self.backend_name,
+            vendor_name='NetApp',
+            storage_protocol='NFS_CIFS',
+            total_capacity_gb=(total / units.Gi),
+            free_capacity_gb=(free / units.Gi))
+        super(NetAppClusteredShareDriver, self)._update_share_stats(data)
 
     def check_for_setup_error(self):
         """Raises error if prerequisites are not met."""
@@ -228,7 +217,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                     for aggr in aggr_space_attrs])
         return total, free
 
-    def setup_server(self, network_info, metadata=None):
+    def _setup_server(self, network_info, metadata=None):
         """Creates and configures new vserver."""
         LOG.debug('Creating server %s', network_info['server_id'])
         vserver_name = self._vserver_create_if_not_exists(network_info)
@@ -866,7 +855,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         self._client.send_request('vserver-destroy',
                                   {'vserver-name': vserver_name})
 
-    def teardown_server(self, server_details, security_services=None):
+    def _teardown_server(self, server_details, security_services=None):
         """Teardown share network."""
         vserver_name = server_details['vserver_name']
         vserver_client = NetAppApiClient(

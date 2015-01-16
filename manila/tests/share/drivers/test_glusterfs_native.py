@@ -85,6 +85,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.gluster_target2 = 'root@host2:/gv2'
         CONF.set_default('glusterfs_targets',
                          [self.gluster_target1, self.gluster_target2])
+        CONF.set_default('driver_handles_share_servers', False)
 
         self.fake_conf = config.Configuration(None)
         self._db = mock.Mock()
@@ -792,7 +793,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     def test_update_share_stats(self):
         test_data = {
             'share_backend_name': 'GlusterFS-Native',
-            'share_driver_mode': self._driver.mode,
+            'driver_handles_share_servers': False,
             'vendor_name': 'Red Hat',
             'driver_version': '1.1',
             'storage_protocol': 'glusterfs',

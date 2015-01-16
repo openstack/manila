@@ -1,4 +1,5 @@
 # Copyright 2012 NetApp
+# Copyright 2015 Mirantis inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,9 +21,7 @@ Drivers for shares.
 import time
 
 from oslo.config import cfg
-import six
 
-from manila.common import constants
 from manila import exception
 from manila.i18n import _LE
 from manila import network
@@ -53,13 +52,15 @@ share_opts = [
              "If not set, the share backend's config group will be used."
              "If an option is not found within provided group, then"
              "'DEFAULT' group will be used for search of option."),
-    cfg.StrOpt(
-        'share_driver_mode',
-        default=None,
-        help="One specific mode for driver to use. Available values: "
-             "%s. What modes are supported and can be used is "
-             "up to driver. If set None then default will be used." %
-             six.text_type(constants.VALID_SHARE_DRIVER_MODES)),
+    cfg.BoolOpt(
+        'driver_handles_share_servers',
+        help="There are two possible approaches for share drivers in Manila. "
+             "First is when share driver is able to handle share-servers and "
+             "second when not. Drivers can support either both or only one "
+             "of these approaches. So, set this opt to True if share driver "
+             "is able to handle share servers and it is desired mode else set "
+             "False. It is set to None by default to make this choice "
+             "intentional."),
 ]
 
 ssh_opts = [
@@ -153,17 +154,32 @@ class GaneshaMixin(object):
 class ShareDriver(object):
     """Class defines interface of NAS driver."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, driver_handles_share_servers, *args, **kwargs):
+        """Implements base functionality for share drivers.
+
+        :param driver_handles_share_servers: expected boolean value or
+            tuple/list/set of boolean values.
+            There are two possible approaches for share drivers in Manila.
+            First is when share driver is able to handle share-servers and
+            second when not.
+            Drivers can support either both or only one of these approaches.
+            So, it is allowed to be 'True' when share driver does support
+            handling of share servers and allowed to be 'False' when does
+            support usage of unhandled share-servers that are not tracked by
+            Manila.
+            Share drivers are allowed to work only in one of two possible
+            driver modes, that is why only one should be chosen.
+        """
         super(ShareDriver, self).__init__()
         self.configuration = kwargs.get('configuration', None)
         if self.configuration:
             self.configuration.append_config_values(share_opts)
             network_config_group = (self.configuration.network_config_group or
                                     self.configuration.config_group)
-            self.mode = self.configuration.safe_get('share_driver_mode')
         else:
             network_config_group = None
-            self.mode = CONF.share_driver_mode
+
+        self._verify_share_server_handling(driver_handles_share_servers)
 
         if hasattr(self, 'init_execute_mixin'):
             # Instance with 'ExecuteMixin'
@@ -173,55 +189,36 @@ class ShareDriver(object):
             self.init_execute_mixin(*args, **kwargs)  # pylint: disable=E1101
         self.network_api = network.API(config_group_name=network_config_group)
 
-    def _validate_driver_mode(self, mode):
-        valid = constants.VALID_SHARE_DRIVER_MODES
-        if mode not in valid:
-            data = {'mode': mode, 'valid': valid}
-            msg = ("Provided unsupported driver mode '%(mode)s'. List of "
-                   "valid driver modes is %(valid)s." % data)
-            LOG.error(msg)
-            raise exception.InvalidParameterValue(msg)
-        return mode
+    @property
+    def driver_handles_share_servers(self):
+        if self.configuration:
+            return self.configuration.safe_get('driver_handles_share_servers')
+        return CONF.driver_handles_share_servers
 
-    def get_driver_mode(self, supported_driver_modes):
-        """Verify and return driver mode.
+    def _verify_share_server_handling(self, driver_handles_share_servers):
+        if not isinstance(self.driver_handles_share_servers, bool):
+            raise exception.ManilaException(
+                "Config opt 'driver_handles_share_servers' has improper "
+                "value - '%s'. Please define it as boolean." %
+                self.driver_handles_share_servers)
+        elif isinstance(driver_handles_share_servers, bool):
+            driver_handles_share_servers = [driver_handles_share_servers]
+        elif not isinstance(driver_handles_share_servers, (tuple, list, set)):
+            raise exception.ManilaException(
+                "Improper data provided for 'driver_handles_share_servers' - "
+                "%s" % driver_handles_share_servers)
 
-        Call this method within share driver to get value for 'mode' attr,
+        if any(not isinstance(v, bool) for v in driver_handles_share_servers):
+            raise exception.ManilaException(
+                "Provided wrong data: %s" % driver_handles_share_servers)
 
-        :param supported_driver_modes: text value or list/tuple of text values
-            with supported modes by share driver, see list of available values
-            in manila.common.constants.VALID_SHARE_DRIVER_MODES
-        :returns: text_type -- name of enabled driver mode.
-        :raises: exception.InvalidParameterValue
-        """
-        msg = None
-
-        if isinstance(supported_driver_modes, six.string_types):
-            supported_driver_modes = [supported_driver_modes, ]
-
-        if not isinstance(supported_driver_modes, (tuple, list)):
-            msg = ("Provided param 'supported_driver_modes' has unexpected "
-                   "type - '%s'." % type(supported_driver_modes))
-        elif not len(supported_driver_modes):
-            msg = "At least one mode should be supported by share driver."
-        elif self.mode:
-            if self.mode not in supported_driver_modes:
-                data = {'mode': self.mode, 'supported': supported_driver_modes}
-                msg = ("Unsupported driver mode '%(mode)s' is provided. "
-                       "List of supported is %(supported)s." % data)
-            else:
-                return self._validate_driver_mode(self.mode)
-        elif len(supported_driver_modes) > 1:
-            msg = ("Driver mode was not specified explicitly and amount of "
-                   "supported driver modes %s is bigger than one, please "
-                   "specify it using config option 'share_driver_mode'." %
-                   six.text_type(supported_driver_modes))
-
-        if msg:
-            LOG.error(msg)
-            raise exception.InvalidParameterValue(msg)
-
-        return self._validate_driver_mode(supported_driver_modes[0])
+        if (self.driver_handles_share_servers not in
+                driver_handles_share_servers):
+            raise exception.ManilaException(
+                "Driver does not support mode 'driver_handles_share_servers="
+                "%(actual)s'. It can be used only with value '%(allowed)s'." %
+                {'actual': self.driver_handles_share_servers,
+                 'allowed': driver_handles_share_servers})
 
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
@@ -258,11 +255,9 @@ class ShareDriver(object):
 
     def check_for_setup_error(self):
         """Check for setup error."""
-        pass
 
     def do_setup(self, context):
         """Any initialization the share driver does while starting."""
-        pass
 
     def get_share_stats(self, refresh=False):
         """Get share status.
@@ -300,31 +295,61 @@ class ShareDriver(object):
         if self.get_network_allocations_number():
             self.network_api.deallocate_network(context, share_server_id)
 
-    def setup_server(self, network_info, metadata=None):
-        """Set up and configures share server with given network parameters."""
-        pass
+    def setup_server(self, *args, **kwargs):
+        if self.driver_handles_share_servers:
+            return self._setup_server(*args, **kwargs)
+        else:
+            LOG.debug(
+                "Skipping step 'setup share server', because driver is "
+                "enabled with mode when Manila does not handle share servers.")
 
-    def teardown_server(self, server_details, security_services=None):
-        """Teardown share server."""
-        pass
+    def _setup_server(self, network_info, metadata=None):
+        """Sets up and configures share server with given network parameters.
 
-    def _update_share_stats(self):
-        """Retrieve stats info from share group."""
+        Redefine it within share driver when it is going to handle share
+        servers.
+        """
+        raise NotImplementedError()
 
-        LOG.debug("Updating share stats")
-        data = {}
-        backend_name = self.configuration.safe_get('share_backend_name')
+    def teardown_server(self, *args, **kwargs):
+        if self.driver_handles_share_servers:
+            return self._teardown_server(*args, **kwargs)
+        else:
+            LOG.debug(
+                "Skipping step 'teardown share server', because driver is "
+                "enabled with mode when Manila does not handle share servers.")
+
+    def _teardown_server(self, server_details, security_services=None):
+        """Tears down share server.
+
+        Redefine it within share driver when it is going to handle share
+        servers.
+        """
+        raise NotImplementedError()
+
+    def _update_share_stats(self, data=None):
+        """Retrieve stats info from share group.
+
+        :param data: dict -- dict with key-value pairs to redefine common ones.
+        """
+
+        LOG.debug("Updating share stats.")
+        backend_name = (self.configuration.safe_get('share_backend_name') or
+                        CONF.share_backend_name)
+
         # Note(zhiteng): These information are driver/backend specific,
         # each driver may define these values in its own config options
         # or fetch from driver specific configuration file.
-        data["share_backend_name"] = backend_name or 'Generic_NFS'
-        data["share_driver_mode"] = self.mode
-        data["vendor_name"] = 'Open Source'
-        data["driver_version"] = '1.0'
-        data["storage_protocol"] = None
-
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
-        data['reserved_percentage'] = 0
-        data['QoS_support'] = False
-        self._stats = data
+        common = dict(
+            share_backend_name=backend_name or 'Generic_NFS',
+            driver_handles_share_servers=self.driver_handles_share_servers,
+            vendor_name='Open Source',
+            driver_version='1.0',
+            storage_protocol=None,
+            total_capacity_gb='infinite',
+            free_capacity_gb='infinite',
+            reserved_percentage=0,
+            QoS_support=False)
+        if isinstance(data, dict):
+            common.update(data)
+        self._stats = common

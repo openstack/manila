@@ -116,6 +116,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         CONF.set_default('glusterfs_target', '127.0.0.1:/testvol')
         CONF.set_default('glusterfs_mount_point_base', '/mnt/nfs')
         CONF.set_default('reserved_share_percentage', 50)
+        CONF.set_default('driver_handles_share_servers', False)
 
         self.fake_conf = config.Configuration(None)
         self._db = mock.Mock()
@@ -447,7 +448,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
     def test_update_share_stats(self):
         test_data = {
             'share_backend_name': 'GlusterFS',
-            'share_driver_mode': self._driver.mode,
+            'driver_handles_share_servers': False,
             'vendor_name': 'Red Hat',
             'driver_version': '1.0',
             'storage_protocol': 'NFS',

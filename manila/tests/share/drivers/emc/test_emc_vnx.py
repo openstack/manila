@@ -1650,4 +1650,6 @@ class EMCShareDriverVNXTestCase(test.TestCase):
     def _fake_safe_get(self, value):
         if value == "emc_share_backend":
             return "vnx"
+        elif value == 'driver_handles_share_servers':
+            return True
         return None

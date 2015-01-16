@@ -25,7 +25,6 @@ import xml.dom.minidom
 import mock
 from oslo.serialization import jsonutils
 
-from manila.common import constants as const
 from manila import context
 from manila import exception
 from manila.share import configuration as conf
@@ -257,7 +256,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.configuration.safe_get = mock.Mock(side_effect=_safe_get)
         self.configuration.network_config_group = 'fake_network_config_group'
         self.configuration.share_backend_name = 'fake_share_backend_name'
-        self.configuration.share_driver_mode = const.SINGLE_SVM_MODE
+        self.configuration.driver_handles_share_servers = False
         self.configuration.manila_huawei_conf_file = self.fake_conf_file
         self.stubs.Set(time, 'sleep', fake_sleep)
         driver = FakeHuaweiNasDriver(configuration=self.configuration)
@@ -421,13 +420,20 @@ class HuaweiShareDriverTestCase(test.TestCase):
                                  self.share_server)
         self.assertTrue(self.driver.helper.delete_flag)
 
-    def test_get_share_stats(self):
+    def test_get_share_stats_refresh_false(self):
+        self.driver._stats = {'fake_key': 'fake_value'}
+
+        result = self.driver.get_share_stats(False)
+
+        self.assertEqual(self.driver._stats, result)
+
+    def test_get_share_stats_refresh_true(self):
         self.driver.helper.login()
-        data = self.driver.get_share_stats()
+        data = self.driver.get_share_stats(True)
 
         expected = {}
         expected["share_backend_name"] = "fake_share_backend_name"
-        expected["share_driver_mode"] = self.driver.mode
+        expected["driver_handles_share_servers"] = False
         expected["vendor_name"] = 'Huawei'
         expected["driver_version"] = '1.0'
         expected["storage_protocol"] = 'NFS_CIFS'
