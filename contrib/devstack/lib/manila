@@ -102,7 +102,7 @@ MANILA_SERVICE_VM_FLAVOR_DISK=${MANILA_SERVICE_VM_FLAVOR_DISK:-0}
 MANILA_SERVICE_VM_FLAVOR_VCPUS=${MANILA_SERVICE_VM_FLAVOR_VCPUS:-1}
 
 # Support for multi backend configuration (default is no support)
-MANILA_MULTI_BACKEND=$(trueorfalse False $MANILA_MULTI_BACKEND)
+MANILA_MULTI_BACKEND=$(trueorfalse False MANILA_MULTI_BACKEND)
 DEPRECATED_TEXT="$DEPRECATED_TEXT\n'MANILA_MULTI_BACKEND' is deprecated,
                  it makes influence only when is set to True and 'MANILA_ENABLED_BACKENDS' is not set.
                  Use 'MANILA_ENABLED_BACKENDS' instead if you want to use custom setting.
