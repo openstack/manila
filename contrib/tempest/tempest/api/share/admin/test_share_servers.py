@@ -224,35 +224,43 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         # Create server with share
         __, share = self.create_share(share_network_id=new_sn['id'])
 
-        # List share servers, filtered by share_network_id,
-        # list with only one item is expected - our share server.
+        # List share servers, filtered by share_network_id
         search_opts = {"share_network": new_sn["id"]}
         __, servers = self.shares_client.list_share_servers(search_opts)
-        self.assertEqual(len(servers), 1)
 
-        # List shares by share server id, we expect only one share
-        params = {"share_server_id": servers[0]["id"]}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertEqual(len(shares), 1)
-        self.assertEqual(shares[0]["id"], share["id"])
+        # There can be more than one share server for share network when retry
+        # was used and share was created successfully not from first time.
+        # So, iterate all share-servers, release all created resources. It will
+        # allow share network to be deleted in cleanup.
+        for serv in servers:
+            # Verify that filtering worked as expected.
+            self.assertEqual(new_sn["id"], serv["share_network_id"])
 
-        # Delete share, so we will have share server without shares
-        self.shares_client.delete_share(share["id"])
+            # List shares by share server id
+            params = {"share_server_id": serv["id"]}
+            resp, shares = self.shares_client.list_shares_with_detail(params)
+            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+            for s in shares:
+                self.assertEqual(new_sn["id"], s["share_network_id"])
+            self.assertTrue(any(share["id"] == s["id"] for s in shares))
 
-        # Wait for share deletion
-        self.shares_client.wait_for_resource_deletion(share_id=share["id"])
+            # Delete shares, so we will have share server without shares
+            for s in shares:
+                self.shares_client.delete_share(s["id"])
 
-        # List shares by share server id, we expect empty list
-        params = {"share_server_id": servers[0]["id"]}
-        resp, empty_list = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
-        self.assertEqual(len(empty_list), 0)
+            # Wait for shares deletion
+            for s in shares:
+                self.shares_client.wait_for_resource_deletion(share_id=s["id"])
 
-        # Delete share server
-        resp, server = self.shares_client.delete_share_server(servers[0]["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+            # List shares by share server id, we expect empty list
+            params = {"share_server_id": serv["id"]}
+            resp, empty = self.shares_client.list_shares_with_detail(params)
+            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+            self.assertEqual(len(empty), 0)
 
-        # Wait for share server deletion
-        self.shares_client.wait_for_resource_deletion(
-            server_id=servers[0]["id"])
+            # Delete share server
+            resp, __ = self.shares_client.delete_share_server(serv["id"])
+            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+
+            # Wait for share server deletion
+            self.shares_client.wait_for_resource_deletion(server_id=serv["id"])
