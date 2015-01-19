@@ -300,21 +300,20 @@ class ServiceInstanceManager(object):
         :returns: dict with service instance details
         :raises: exception.ServiceInstanceException
         """
-        server = self._create_service_instance(context,
-                                               instance_name,
-                                               neutron_net_id,
-                                               neutron_subnet_id)
+        server = self._create_service_instance(
+            context, instance_name, neutron_net_id, neutron_subnet_id)
 
-        instance_details = {'instance_id': server['id'],
-                            'ip': server['ip'],
-                            'pk_path': server['pk_path'],
-                            'subnet_id': server['subnet_id'],
-                            'router_id': server['router_id'],
-                            'password': self.get_config_option(
-                                'service_instance_password'),
-                            'username': self.get_config_option(
-                                'service_instance_user'),
-                            'public_address': server['public_address']}
+        instance_details = {
+            'instance_id': server['id'],
+            'ip': server['ip'],
+            'pk_path': server['pk_path'],
+            'subnet_id': server['subnet_id'],
+            'password': self.get_config_option('service_instance_password'),
+            'username': self.get_config_option('service_instance_user'),
+            'public_address': server['public_address'],
+        }
+        if 'router_id' in server:
+            instance_details['router_id'] = server['router_id']
         for key in ('password', 'pk_path'):
             if not instance_details[key]:
                 instance_details.pop(key)
@@ -445,16 +444,12 @@ class ServiceInstanceManager(object):
                 context,
                 service_instance["id"], security_group.id)
 
-        router, service_subnet, service_port = (
-            network_data['router'], network_data['service_subnet'],
-            network_data['service_port']
-        )
-
         service_instance['ip'] = self._get_server_ip(service_instance)
         service_instance['pk_path'] = key_path
-        service_instance['router_id'] = router['id']
-        service_instance['subnet_id'] = service_subnet['id']
-        service_instance['port_id'] = service_port['id']
+        if 'router' in network_data and 'id' in network_data['router']:
+            service_instance['router_id'] = network_data['router']['id']
+        service_instance['subnet_id'] = network_data['service_subnet']['id']
+        service_instance['port_id'] = network_data['service_port']['id']
 
         try:
             public_ip = network_data['public_port']
@@ -494,48 +489,44 @@ class ServiceInstanceManager(object):
         """Sets up network for service vm."""
 
         network_data = dict()
+        subnet_name = ('service_subnet_for_handling_of_share_server_for_'
+                       'tenant_subnet_%s' % neutron_subnet_id)
 
-        # We get/create subnet for service instance that is routed to
-        # subnet provided in args.
-        subnet_name = "routed_to_%s" % neutron_subnet_id
-        service_subnet = self._get_service_subnet(subnet_name)
-        if not service_subnet:
-            service_subnet = self.neutron_api.subnet_create(
+        network_data['service_subnet'] = self._get_service_subnet(subnet_name)
+        if not network_data['service_subnet']:
+            network_data['service_subnet'] = self.neutron_api.subnet_create(
                 self.service_tenant_id,
                 self.service_network_id,
                 subnet_name,
-                self._get_cidr_for_subnet()
-            )
+                self._get_cidr_for_subnet())
 
-        network_data['service_subnet'] = service_subnet
-        network_data['router'] = router = self._get_private_router(
-            neutron_net_id, neutron_subnet_id)
-        try:
-            self.neutron_api.router_add_interface(router['id'],
-                                                  service_subnet['id'])
-        except exception.NetworkException as e:
-            if e.kwargs['code'] != 400:
-                raise
-            LOG.debug('Subnet %(subnet_id)s is already attached to the '
-                      'router %(router_id)s.',
-                      {'subnet_id': service_subnet['id'],
-                       'router_id': router['id']})
+        if not self.connect_share_server_to_tenant_network:
+            network_data['router'] = self._get_private_router(
+                neutron_net_id, neutron_subnet_id)
+            try:
+                self.neutron_api.router_add_interface(
+                    network_data['router']['id'],
+                    network_data['service_subnet']['id'])
+            except exception.NetworkException as e:
+                if e.kwargs['code'] != 400:
+                    raise
+                LOG.debug('Subnet %(subnet_id)s is already attached to the '
+                          'router %(router_id)s.',
+                          {'subnet_id': network_data['service_subnet']['id'],
+                           'router_id': network_data['router']['id']})
 
         network_data['service_port'] = self.neutron_api.create_port(
-            self.service_tenant_id, self.service_network_id,
-            subnet_id=service_subnet['id'], device_owner='manila')
+            self.service_tenant_id,
+            self.service_network_id,
+            subnet_id=network_data['service_subnet']['id'],
+            device_owner='manila')
 
+        network_data['ports'] = [network_data['service_port']]
         if self.connect_share_server_to_tenant_network:
             network_data['public_port'] = self.neutron_api.create_port(
                 self.service_tenant_id, neutron_net_id,
                 subnet_id=neutron_subnet_id, device_owner='manila')
-
-        network_data['ports'] = ports = list()
-        ports.append(network_data['service_port'])
-        try:
-            ports.append(network_data['public_port'])
-        except KeyError:
-            pass
+            network_data['ports'].append(network_data['public_port'])
 
         return network_data
 
@@ -671,7 +662,7 @@ class ServiceInstanceManager(object):
             raise exception.ServiceInstanceException(_('No available cidrs.'))
 
     def delete_service_instance(self, context, instance_id, subnet_id,
-                                router_id):
+                                router_id=None):
         """Removes share infrastructure.
 
         Deletes service vm and subnet, associated to share network.

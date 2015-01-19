@@ -611,7 +611,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                           'fake-neutron-net',
                           'fake-neutron-subnet')
 
-    def test_setup_network_for_instance0(self):
+    def test_setup_network_for_instance_using_router(self):
         fake_service_net = fake_network.FakeNetwork(subnets=[])
         fake_service_subnet = fake_network.\
             FakeSubnet(name=self.share['share_network_id'])
@@ -646,7 +646,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.neutron_api.subnet_create.assert_called_once_with(
             self._manager.service_tenant_id,
             self._manager.service_network_id,
-            'routed_to_fake-subnet',
+            mock.ANY,
             'fake_cidr')
         self._manager.neutron_api.create_port.assert_called_once_with(
             self._manager.service_tenant_id,
@@ -660,11 +660,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertNotIn('public_port', network_data)
         self.assertEqual(network_data.get('ports'), [fake_port])
 
-    def test_setup_network_for_instance1(self):
+    def test_setup_network_for_instance_direct_connection(self):
         fake_service_net = fake_network.FakeNetwork(subnets=[])
-        fake_service_subnet = fake_network. \
-            FakeSubnet(name=self.share['share_network_id'])
-        fake_router = fake_network.FakeRouter()
+        fake_service_subnet = fake_network.FakeSubnet(
+            name=self.share['share_network_id'])
         fake_ports = [
             fake_network.FakePort(fixed_ips=[{'ip_address': '1.2.3.4'}]),
             fake_network.FakePort(fixed_ips=[{'ip_address': '5.6.7.8'}]),
@@ -675,28 +674,20 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                        mock.Mock(return_value=fake_service_net))
         self.stubs.Set(self._manager.neutron_api, 'subnet_create',
                        mock.Mock(return_value=fake_service_subnet))
-        self.stubs.Set(self._manager, '_get_private_router',
-                       mock.Mock(return_value=fake_router))
-        self.stubs.Set(self._manager.neutron_api, 'router_add_interface',
-                       mock.Mock())
         self.stubs.Set(self._manager.neutron_api, 'create_port',
                        mock.Mock(side_effect=fake_ports))
         self.stubs.Set(self._manager, '_get_cidr_for_subnet',
                        mock.Mock(return_value='fake_cidr'))
 
-        network_data = self._manager._setup_network_for_instance('fake-net',
-                                                                 'fake-subnet')
+        network_data = self._manager._setup_network_for_instance(
+            'fake-net', 'fake-subnet')
 
-        self._manager.neutron_api.get_network. \
-            assert_called_once_with(self._manager.service_network_id)
-        self._manager._get_private_router. \
-            assert_called_once_with('fake-net', 'fake-subnet')
-        self._manager.neutron_api.router_add_interface. \
-            assert_called_once_with('fake_router_id', 'fake_subnet_id')
+        self._manager.neutron_api.get_network.assert_called_once_with(
+            self._manager.service_network_id)
         self._manager.neutron_api.subnet_create.assert_called_once_with(
             self._manager.service_tenant_id,
             self._manager.service_network_id,
-            'routed_to_fake-subnet',
+            mock.ANY,
             'fake_cidr')
         self.assertEqual(self._manager.neutron_api.create_port.call_args_list,
                          [((self._manager.service_tenant_id,
@@ -708,9 +699,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                            {'subnet_id': 'fake-subnet',
                             'device_owner': 'manila'})])
         self._manager._get_cidr_for_subnet.assert_called_once_with()
-
         self.assertIs(network_data.get('service_subnet'), fake_service_subnet)
-        self.assertIs(network_data.get('router'), fake_router)
+        self.assertIs(network_data.get('router'), None)
         self.assertIs(network_data.get('service_port'), fake_ports[0])
         self.assertIs(network_data.get('public_port'), fake_ports[1])
         self.assertEqual(network_data.get('ports'), fake_ports)

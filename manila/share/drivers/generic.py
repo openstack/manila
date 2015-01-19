@@ -603,7 +603,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                   instance_id)
         self.service_instance_manager.delete_service_instance(
             self.admin_context, instance_id, server_details['subnet_id'],
-            server_details['router_id'])
+            server_details.get('router_id'))
 
 
 class NASHelperBase(object):
