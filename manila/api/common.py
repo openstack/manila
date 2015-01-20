@@ -15,10 +15,10 @@
 
 import os
 import re
-import urlparse
 
 from oslo.config import cfg
 import six
+from six.moves.urllib import parse
 import webob
 
 from manila.api.openstack import wsgi
@@ -159,7 +159,7 @@ def remove_version_from_href(href):
     Returns: 'http://www.manila.com'
 
     """
-    parsed_url = urlparse.urlsplit(href)
+    parsed_url = parse.urlsplit(href)
     url_parts = parsed_url.path.split('/', 2)
 
     # NOTE: this should match vX.X or vX
@@ -176,7 +176,7 @@ def remove_version_from_href(href):
 
     parsed_url = list(parsed_url)
     parsed_url[2] = new_path
-    return urlparse.urlunsplit(parsed_url)
+    return parse.urlunsplit(parsed_url)
 
 
 def dict_to_query_str(params):
@@ -249,10 +249,10 @@ class ViewBuilder(object):
     def _update_link_prefix(self, orig_url, prefix):
         if not prefix:
             return orig_url
-        url_parts = list(urlparse.urlsplit(orig_url))
-        prefix_parts = list(urlparse.urlsplit(prefix))
+        url_parts = list(parse.urlsplit(orig_url))
+        prefix_parts = list(parse.urlsplit(prefix))
         url_parts[0:2] = prefix_parts[0:2]
-        return urlparse.urlunsplit(url_parts)
+        return parse.urlunsplit(url_parts)
 
 
 class MetadataDeserializer(wsgi.MetadataXMLDeserializer):

@@ -13,9 +13,9 @@
 #    under the License.
 
 import httplib
-import urlparse
 
 from oslo.serialization import jsonutils
+from six.moves.urllib import parse
 
 from manila.openstack.common import log as logging
 
@@ -87,7 +87,7 @@ class TestOpenStackClient(object):
         _headers = {'Content-Type': 'application/json'}
         _headers.update(headers or {})
 
-        parsed_url = urlparse.urlparse(url)
+        parsed_url = parse.urlparse(url)
         port = parsed_url.port
         hostname = parsed_url.hostname
         scheme = parsed_url.scheme
