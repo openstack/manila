@@ -415,7 +415,7 @@ class FakeSSHClient(object):
         pass
 
     def connect(self, ip, port=22, username=None, password=None,
-                pkey=None, timeout=10):
+                key_filename=None, look_for_keys=None, timeout=10):
         pass
 
     def get_transport(self):
@@ -473,28 +473,44 @@ class SSHPoolTestCase(test.TestCase):
 
             fake_ssh_client.connect.assert_called_once_with(
                 "127.0.0.1", port=22, username="test",
-                password="test", pkey=None, timeout=10)
+                password="test", key_filename=None, look_for_keys=False,
+                timeout=10)
 
     def test_create_ssh_with_key(self):
-        key = os.path.expanduser("fake_key")
+        path_to_private_key = "/fakepath/to/privatekey"
         fake_ssh_client = mock.Mock()
         ssh_pool = utils.SSHPool("127.0.0.1", 22, 10, "test",
-                                 privatekey="fake_key")
+                                 privatekey="/fakepath/to/privatekey")
         with mock.patch.object(paramiko, "SSHClient",
                                return_value=fake_ssh_client):
-            with mock.patch.object(paramiko.RSAKey, "from_private_key_file",
-                                   return_value=key) as from_private_key_mock:
-
-                ssh_pool.create()
-                from_private_key_mock.assert_called_once_with(key)
-                fake_ssh_client.connect.assert_called_once_with(
-                    "127.0.0.1", port=22, username="test",
-                    password=None, pkey=key, timeout=10)
+            ssh_pool.create()
+            fake_ssh_client.connect.assert_called_once_with(
+                "127.0.0.1", port=22, username="test", password=None,
+                key_filename=path_to_private_key, look_for_keys=False,
+                timeout=10)
 
     def test_create_ssh_with_nothing(self):
+        fake_ssh_client = mock.Mock()
         ssh_pool = utils.SSHPool("127.0.0.1", 22, 10, "test")
-        with mock.patch.object(paramiko, "SSHClient"):
-            self.assertRaises(paramiko.SSHException, ssh_pool.create)
+        with mock.patch.object(paramiko, "SSHClient",
+                               return_value=fake_ssh_client):
+            ssh_pool.create()
+            fake_ssh_client.connect.assert_called_once_with(
+                "127.0.0.1", port=22, username="test", password=None,
+                key_filename=None, look_for_keys=True,
+                timeout=10)
+
+    def test_create_ssh_error_connecting(self):
+        attrs = {'connect.side_effect': paramiko.SSHException, }
+        fake_ssh_client = mock.Mock(**attrs)
+        ssh_pool = utils.SSHPool("127.0.0.1", 22, 10, "test")
+        with mock.patch.object(paramiko, "SSHClient",
+                               return_value=fake_ssh_client):
+            self.assertRaises(exception.SSHException, ssh_pool.create)
+            fake_ssh_client.connect.assert_called_once_with(
+                "127.0.0.1", port=22, username="test", password=None,
+                key_filename=None, look_for_keys=True,
+                timeout=10)
 
     def test_closed_reopend_ssh_connections(self):
         with mock.patch.object(paramiko, "SSHClient",
