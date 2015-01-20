@@ -353,13 +353,13 @@ class IpRouteCommand(IpDeviceCommandBase):
                                                 'match', subnet).split('\n')
             for subnet_route_line in subnet_route_list_lines:
                 i = iter(subnet_route_line.split())
-                while(i.next() != 'dev'):
+                while(next(i) != 'dev'):
                     pass
-                device = i.next()
+                device = next(i)
                 try:
-                    while(i.next() != 'src'):
+                    while(next(i) != 'src'):
                         pass
-                    src = i.next()
+                    src = next(i)
                 except Exception:
                     src = ''
                 if device != interface_name:

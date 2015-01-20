@@ -688,9 +688,9 @@ class ResourceTest(test.TestCase):
             called.append(2)
 
         ext1 = extension1(None)
-        ext1.next()
+        next(ext1)
         ext2 = extension2(None)
-        ext2.next()
+        next(ext2)
 
         response = resource.post_process_extensions([ext2, ext1],
                                                     None, None, {})
@@ -718,9 +718,9 @@ class ResourceTest(test.TestCase):
             yield 'foo'
 
         ext1 = extension1(None)
-        ext1.next()
+        next(ext1)
         ext2 = extension2(None)
-        ext2.next()
+        next(ext2)
 
         response = resource.post_process_extensions([ext2, ext1],
                                                     None, None, {})
