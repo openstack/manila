@@ -2,12 +2,21 @@
 # This file should be owned by (and only-writeable by) the root user
 
 [Filters]
+# manila/utils.py : 'chown', '%s', '%s'
+chown: CommandFilter, chown, root
+# manila/utils.py : 'cat', '%s'
+cat: CommandFilter, cat, root
+
 # manila/share/drivers/glusterfs.py: 'mkdir', '%s'
 # manila/share/drivers/ganesha/manager.py: 'mkdir', '-p', '%s'
 mkdir: CommandFilter, mkdir, root
 
 # manila/share/drivers/glusterfs.py: 'rm', '-rf', '%s'
 rm: CommandFilter, rm, root
+
+# manila/share/drivers/glusterfs.py: 'mount', '-t', 'glusterfs', '%s', '%s'
+# manila/share/drivers/glusterfs_native.py: 'mount', '-t', 'glusterfs', '%s', '%s'
+mount: CommandFilter, mount, root
 
 # manila/share/drivers/glusterfs.py: 'gluster', '--xml', 'volume', 'info', '%s'
 # manila/share/drivers/glusterfs.py: 'gluster', 'volume', 'set', '%s', 'nfs.export-dir', '%s'
@@ -48,6 +57,7 @@ mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
 rsync: CommandFilter, rsync, root
 # manila/share/drivers/ibm/gpfs.py: 'exportfs'
 exportfs: CommandFilter, exportfs, root
+
 # Ganesha commands
 # manila/share/drivers/ibm/ganesha_utils.py: 'mv', '%s', '%s'
 # manila/share/drivers/ganesha/manager.py: 'mv', '%s', '%s'
