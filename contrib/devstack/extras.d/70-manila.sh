@@ -11,7 +11,7 @@ if is_service_enabled manila; then
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
         echo_summary "Configuring Manila"
         configure_manila
-        echo_summary "Initialing Manila"
+        echo_summary "Initializing Manila"
         init_manila
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Creating Manila entities for auth service"
