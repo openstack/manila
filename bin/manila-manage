@@ -224,7 +224,14 @@ class DbCommands(object):
         """Print the current database version."""
         print(migration.version())
 
-    @args('version', nargs='?', default=None,
+    # NOTE(imalinovskiy):
+    # Manila init migration hardcoded here,
+    # because alembic has strange behaviour:
+    # downgrade base = downgrade from head(162a3e673105) -> base(162a3e673105)
+    #                = downgrade from 162a3e673105 -> (empty) [ERROR]
+    # downgrade 162a3e673105 = downgrade from head(162a3e673105)->162a3e673105
+    #                        = do nothing [OK]
+    @args('version', nargs='?', default='162a3e673105',
           help='Version to downgrade')
     def downgrade(self, version=None):
         """Downgrade database to the given version."""
