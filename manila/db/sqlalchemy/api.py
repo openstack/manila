@@ -1172,7 +1172,7 @@ def share_get(context, share_id, session=None):
 @require_context
 def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
                                 share_network_id=None, host=None, filters=None,
-                                sort_key=None, sort_dir=None):
+                                is_public=False, sort_key=None, sort_dir=None):
     """Returns sorted list of shares that satisfies filters.
 
     :param context: context to query under
@@ -1181,6 +1181,8 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     :param share_network_id: share network that was used for shares
     :param host: host name where shares [and share servers] are located
     :param filters: dict of filters to specify share selection
+    :param is_public: public shares from other projects will be added
+                      to result if True
     :param sort_key: key of models.Share to be used for sorting
     :param sort_dir: desired direction of sorting, can be 'asc' and 'desc'
     :returns: list -- models.Share
@@ -1192,7 +1194,11 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
         sort_dir = 'desc'
     query = _share_get_query(context)
     if project_id:
-        query = query.filter_by(project_id=project_id)
+        if is_public:
+            query = query.filter(or_(models.Share.project_id == project_id,
+                                     models.Share.is_public))
+        else:
+            query = query.filter_by(project_id=project_id)
     if share_server_id:
         query = query.filter_by(share_server_id=share_server_id)
     if share_network_id:
@@ -1263,10 +1269,10 @@ def share_get_all_by_host(context, host, filters=None,
 
 @require_context
 def share_get_all_by_project(context, project_id, filters=None,
-                             sort_key=None, sort_dir=None):
+                             is_public=False, sort_key=None, sort_dir=None):
     """Returns list of shares with given project ID."""
     query = _share_get_all_with_filters(
-        context, project_id=project_id, filters=filters,
+        context, project_id=project_id, filters=filters, is_public=is_public,
         sort_key=sort_key, sort_dir=sort_dir,
     )
     return query

@@ -54,6 +54,7 @@ class ShareApiTest(test.TestCase):
             "display_description": "Share Test Desc",
             "share_proto": "fakeproto",
             "availability_zone": "zone1:host1",
+            "is_public": False,
         }
         self.create_mock = mock.Mock(
             return_value=stubs.stub_share(
@@ -88,6 +89,7 @@ class ShareApiTest(test.TestCase):
             'status': 'fakestatus',
             'share_type': '1',
             'volume_type': '1',
+            'is_public': False,
             'links': [
                 {
                     'href': 'http://localhost/v1/fake/shares/1',
@@ -336,16 +338,17 @@ class ShareApiTest(test.TestCase):
         resp = self.controller.delete(req, 1)
         self.assertEqual(resp.status_int, 202)
 
-    def test_share_updates_description(self):
-        req = fakes.HTTPRequest.blank('/share/1')
-        res_dict = self.controller.update(req, 1, {"share": self.share})
-        self.assertEqual(res_dict["share"]["name"], self.share["display_name"])
+    def test_share_update(self):
+        shr = self.share
+        body = {"share": shr}
 
-    def test_share_updates_display_descr(self):
         req = fakes.HTTPRequest.blank('/share/1')
-        res_dict = self.controller.update(req, 1, {"share": self.share})
-        self.assertEqual(res_dict['share']["description"],
-                         self.share["display_description"])
+        res_dict = self.controller.update(req, 1, body)
+        self.assertEqual(shr["display_name"], res_dict['share']["name"])
+        self.assertEqual(shr["display_description"],
+                         res_dict['share']["description"])
+        self.assertEqual(shr['is_public'],
+                         res_dict['share']['is_public'])
 
     def test_share_not_updates_size(self):
         req = fakes.HTTPRequest.blank('/share/1')
@@ -376,6 +379,7 @@ class ShareApiTest(test.TestCase):
             'sort_dir': 'fake_sort_dir',
             'limit': '1',
             'offset': '1',
+            'is_public': 'False',
         }
         # fake_key should be filtered for non-admin
         url = '/shares?fake_key=fake_value'
@@ -403,6 +407,7 @@ class ShareApiTest(test.TestCase):
             'share_network_id': search_opts['share_network_id'],
             'metadata': {'k1': 'v1'},
             'extra_specs': {'k2': 'v2'},
+            'is_public': 'False',
         }
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
@@ -463,6 +468,7 @@ class ShareApiTest(test.TestCase):
             'sort_dir': 'fake_sort_dir',
             'limit': '1',
             'offset': '1',
+            'is_public': 'False',
         }
         # fake_key should be filtered for non-admin
         url = '/shares/detail?fake_key=fake_value'
@@ -498,6 +504,7 @@ class ShareApiTest(test.TestCase):
             'share_network_id': search_opts['share_network_id'],
             'metadata': {'k1': 'v1'},
             'extra_specs': {'k2': 'v2'},
+            'is_public': 'False',
         }
         if use_admin_context:
             search_opts_expected.update({'fake_key': 'fake_value'})
@@ -556,6 +563,7 @@ class ShareApiTest(test.TestCase):
                     'size': 1,
                     'share_type': '1',
                     'volume_type': '1',
+                    'is_public': False,
                     'links': [
                         {
                             'href': 'http://localhost/v1/fake/shares/1',

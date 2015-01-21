@@ -73,7 +73,8 @@ def stub_max_share_metadata():
 def return_share(context, share_id):
     return {'id': '0cc3346e-9fef-4445-abe6-5d2b2690ec64',
             'name': 'fake',
-            'metadata': {}}
+            'metadata': {},
+            'is_public': False}
 
 
 def return_share_nonexistent(context, share_id):

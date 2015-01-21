@@ -45,12 +45,14 @@ class SharesNFSTest(base.BaseSharesTest):
                              'description', 'export_location', 'project_id',
                              'host', 'created_at', 'share_proto', 'metadata',
                              'size', 'snapshot_id', 'share_network_id',
-                             'status', 'share_type', 'volume_type', 'links'}
+                             'status', 'share_type', 'volume_type', 'links',
+                             'is_public'}
         self.assertTrue(detailed_elements.issubset(share.keys()),
                         'At least one expected element missing from share '
                         'response. Expected %(expected)s, got %(actual)s.' % {
                             "expected": detailed_elements,
                             "actual": share.keys()})
+        self.assertFalse(share['is_public'])
 
         # delete share
         resp, __ = self.shares_client.delete_share(share['id'])

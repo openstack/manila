@@ -39,6 +39,7 @@ def stub_share(id, **kwargs):
         'share_type_id': '1',
         'share_network_id': None,
         'share_server_id': 'fake_share_server_id',
+        'is_public': False,
     }
     share.update(kwargs)
     return share
@@ -69,7 +70,7 @@ def stub_share_get(self, context, share_id, **kwargs):
     return stub_share(share_id, **kwargs)
 
 
-def stub_share_get_notfound(self, context, share_id):
+def stub_share_get_notfound(self, context, share_id, **kwargs):
     raise exc.NotFound
 
 

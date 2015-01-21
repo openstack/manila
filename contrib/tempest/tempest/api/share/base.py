@@ -297,7 +297,7 @@ class BaseSharesTest(test.BaseTestCase):
     def _create_share(cls, share_protocol=None, size=1, name=None,
                       snapshot_id=None, description=None, metadata=None,
                       share_network_id=None, share_type_id=None,
-                      client=None, cleanup_in_class=True):
+                      client=None, cleanup_in_class=True, is_public=False):
         client = client or cls.shares_client
         description = description or "Tempest's share"
         share_network_id = share_network_id or client.share_network_id or None
@@ -311,6 +311,7 @@ class BaseSharesTest(test.BaseTestCase):
             'metadata': metadata,
             'share_network_id': share_network_id,
             'share_type_id': share_type_id,
+            'is_public': is_public,
         }
         resp, share = client.create_share(**kwargs)
         resource = {"type": "share", "id": share["id"], "client": client}

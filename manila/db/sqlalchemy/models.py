@@ -198,6 +198,7 @@ class Share(BASE, ManilaBase):
                            nullable=True)
     share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                              nullable=True)
+    is_public = Column(Boolean, default=False)
 
 
 class ShareTypes(BASE, ManilaBase):

@@ -256,6 +256,41 @@ class SharesActionsTest(base.BaseSharesTest):
             self.assertEqual(share["project_id"], project_id)
 
     @test.attr(type=["gate", ])
+    def test_list_shares_public_with_detail(self):
+        resp, public_share = self.shares_client.create_share(
+            name='public_share',
+            description='public_share_desc',
+            size=1,
+            is_public=True
+        )
+        resp, private_share = self.shares_client.create_share(
+            name='private_share',
+            description='private_share_desc',
+            size=1,
+            is_public=False
+        )
+
+        params = {"is_public": True}
+        isolated_client = self.get_client_with_isolated_creds(
+            type_of_creds='alt')
+        resp, shares = isolated_client.list_shares_with_detail(params)
+
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+
+        keys = [
+            "status", "description", "links", "availability_zone",
+            "created_at", "export_location", "share_proto", "host",
+            "name", "snapshot_id", "id", "size", "project_id", "is_public",
+        ]
+        [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
+
+        gen = [sid["id"] for sid in shares if sid["id"] == public_share["id"]]
+        msg = "expected id lists %s times in share list" % (len(gen))
+        self.assertEqual(1, len(gen), msg)
+
+        self.assertFalse(any([s["id"] == private_share["id"] for s in shares]))
+
+    @test.attr(type=["gate", ])
     def test_get_snapshot(self):
 
         # get snapshot
@@ -390,27 +425,31 @@ class SharesRenameTest(base.BaseSharesTest):
                                                            cls.snap_desc)
 
     @test.attr(type=["gate", ])
-    def test_rename_share(self):
+    def test_update_share(self):
 
         # get share
         __, share = self.shares_client.get_share(self.share['id'])
         self.assertEqual(self.share_name, share["name"])
         self.assertEqual(self.share_desc, share["description"])
+        self.assertFalse(share["is_public"])
 
-        # rename share
+        # update share
         new_name = data_utils.rand_name("tempest-new-name")
         new_desc = data_utils.rand_name("tempest-new-description")
-        resp, renamed = self.shares_client.rename(share["id"],
-                                                  new_name,
-                                                  new_desc)
+        resp, updated = self.shares_client.update_share(share["id"],
+                                                        new_name,
+                                                        new_desc,
+                                                        is_public=True)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(new_name, renamed["name"])
-        self.assertEqual(new_desc, renamed["description"])
+        self.assertEqual(new_name, updated["name"])
+        self.assertEqual(new_desc, updated["description"])
+        self.assertTrue(updated["is_public"])
 
         # get share
         resp, share = self.shares_client.get_share(self.share['id'])
         self.assertEqual(new_name, share["name"])
         self.assertEqual(new_desc, share["description"])
+        self.assertTrue(share["is_public"])
 
     @test.attr(type=["gate", ])
     def test_rename_snapshot(self):

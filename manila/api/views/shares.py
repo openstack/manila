@@ -69,7 +69,8 @@ class ViewBuilder(common.ViewBuilder):
             'metadata': metadata,
             'share_type': share_type,
             'volume_type': share_type,
-            'links': self._get_links(request, share['id'])
+            'links': self._get_links(request, share['id']),
+            'is_public': share.get('is_public'),
         }
         if context.is_admin:
             share_dict['share_server_id'] = share.get('share_server_id')

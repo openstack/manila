@@ -309,12 +309,12 @@ def share_get_all_by_host(context, host, filters=None, sort_key=None,
     )
 
 
-def share_get_all_by_project(context, project_id, filters=None, sort_key=None,
-                             sort_dir=None):
+def share_get_all_by_project(context, project_id, filters=None,
+                             is_public=False, sort_key=None, sort_dir=None):
     """Returns all shares with given project ID."""
     return IMPL.share_get_all_by_project(
-        context, project_id, filters=filters, sort_key=sort_key,
-        sort_dir=sort_dir,
+        context, project_id, filters=filters, is_public=is_public,
+        sort_key=sort_key, sort_dir=sort_dir,
     )
 
 

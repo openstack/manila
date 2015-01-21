@@ -21,6 +21,7 @@ Handles all requests relating to shares.
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 import six
 
@@ -62,7 +63,7 @@ class API(base.Base):
 
     def create(self, context, share_proto, size, name, description,
                snapshot=None, availability_zone=None, metadata=None,
-               share_network_id=None, share_type=None):
+               share_network_id=None, share_type=None, is_public=False):
         """Create new share."""
         policy.check_policy(context, 'share', 'create')
 
@@ -147,6 +148,11 @@ class API(base.Base):
         if availability_zone is None:
             availability_zone = CONF.storage_availability_zone
 
+        try:
+            is_public = strutils.bool_from_string(is_public, strict=True)
+        except ValueError as e:
+            raise exception.InvalidParameterValue(e.message)
+
         options = {'size': size,
                    'user_id': context.user_id,
                    'project_id': context.project_id,
@@ -159,7 +165,8 @@ class API(base.Base):
                    'display_name': name,
                    'display_description': description,
                    'share_proto': share_proto,
-                   'share_type_id': share_type['id'] if share_type else None
+                   'share_type_id': share_type['id'] if share_type else None,
+                   'is_public': is_public,
                    }
 
         try:
@@ -336,6 +343,12 @@ class API(base.Base):
 
     @policy.wrap_check_policy('share')
     def update(self, context, share, fields):
+        if 'is_public' in fields:
+            try:
+                fields['is_public'] = strutils.bool_from_string(
+                    fields['is_public'], strict=True)
+            except ValueError as e:
+                raise exception.InvalidParameterValue(e.message)
         return self.db.share_update(context, share['id'], fields)
 
     @policy.wrap_check_policy('share')
@@ -344,7 +357,8 @@ class API(base.Base):
 
     def get(self, context, share_id):
         rv = self.db.share_get(context, share_id)
-        policy.check_policy(context, 'share', 'get', rv)
+        if not rv['is_public']:
+            policy.check_policy(context, 'share', 'get', rv)
         return rv
 
     def get_all(self, context, search_opts=None, sort_key='created_at',
@@ -382,6 +396,9 @@ class API(base.Base):
                     "'%s'.") % six.text_type(sort_dir)
             raise exception.InvalidInput(reason=msg)
 
+        is_public = search_opts.pop('is_public', False)
+        is_public = strutils.bool_from_string(is_public, strict=True)
+
         # Get filtered list of shares
         if 'share_server_id' in search_opts:
             # NOTE(vponomaryov): this is project_id independent
@@ -395,7 +412,7 @@ class API(base.Base):
         else:
             shares = self.db.share_get_all_by_project(
                 context, project_id=context.project_id, filters=filters,
-                sort_key=sort_key, sort_dir=sort_dir)
+                is_public=is_public, sort_key=sort_key, sort_dir=sort_dir)
 
         # NOTE(vponomaryov): we do not need 'all_tenants' opt anymore
         search_opts.pop('all_tenants', None)

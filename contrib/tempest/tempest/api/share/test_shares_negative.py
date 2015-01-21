@@ -26,12 +26,33 @@ CONF = config.CONF
 
 
 class SharesNegativeTest(base.BaseSharesTest):
+    @classmethod
+    def resource_setup(cls):
+        super(SharesNegativeTest, cls).resource_setup()
+        resp, cls.share = cls.shares_client.create_share(
+            name='public_share',
+            description='public_share_desc',
+            size=1,
+            is_public=True,
+            metadata={'key': 'value'}
+        )
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_create_share_with_invalid_protocol(self):
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.create_share,
                           share_protocol="nonexistent_protocol")
+
+    @test.attr(type=["negative", "smoke", "gate", ])
+    def test_create_share_with_wrong_public_value(self):
+        self.assertRaises(exceptions.BadRequest,
+                          self.shares_client.create_share, is_public='truebar')
+
+    @test.attr(type=["negative", "smoke", "gate", ])
+    def test_update_share_with_wrong_public_value(self):
+        self.assertRaises(exceptions.BadRequest,
+                          self.shares_client.update_share, self.share["id"],
+                          is_public="truebar")
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_get_share_with_wrong_id(self):
@@ -167,3 +188,45 @@ class SharesNegativeTest(base.BaseSharesTest):
             share_network_id=new_duplicated_sn["id"],
             snapshot_id=snap["id"],
         )
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_update_other_tenants_public_share(self):
+        isolated_client = self.get_client_with_isolated_creds(
+            type_of_creds='alt')
+        self.assertRaises(lib_exc.Unauthorized, isolated_client.update_share,
+                          self.share["id"], name="new_name")
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_delete_other_tenants_public_share(self):
+        isolated_client = self.get_client_with_isolated_creds(
+            type_of_creds='alt')
+        self.assertRaises(lib_exc.Unauthorized,
+                          isolated_client.delete_share,
+                          self.share['id'])
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_set_metadata_of_other_tenants_public_share(self):
+        isolated_client = self.get_client_with_isolated_creds(
+            type_of_creds='alt')
+        self.assertRaises(lib_exc.Unauthorized,
+                          isolated_client.set_metadata,
+                          self.share['id'],
+                          {'key': 'value'})
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_update_metadata_of_other_tenants_public_share(self):
+        isolated_client = self.get_client_with_isolated_creds(
+            type_of_creds='alt')
+        self.assertRaises(lib_exc.Unauthorized,
+                          isolated_client.update_all_metadata,
+                          self.share['id'],
+                          {'key': 'value'})
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_delete_metadata_of_other_tenants_public_share(self):
+        isolated_client = self.get_client_with_isolated_creds(
+            type_of_creds='alt')
+        self.assertRaises(lib_exc.Unauthorized,
+                          isolated_client.delete_metadata,
+                          self.share['id'],
+                          'key')

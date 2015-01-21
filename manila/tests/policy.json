@@ -1,13 +1,15 @@
 {
     "context_is_admin": [["role:admin"]],
     "admin_api": [["is_admin:True"]],
+    "admin_or_owner": [["is_admin:True"], ["project_id:%(project_id)s"]],
+    "default": [["rule:admin_or_owner"]],
 
     "share:create": [],
     "share:list_by_share_server_id": [["rule:admin_api"]],
     "share:get": [],
     "share:get_all": [],
-    "share:delete": [],
-    "share:update": [],
+    "share:delete": [["rule:default"]],
+    "share:update": [["rule:default"]],
     "share:snapshot_update": [],
     "share:create_snapshot": [],
     "share:delete_snapshot": [],

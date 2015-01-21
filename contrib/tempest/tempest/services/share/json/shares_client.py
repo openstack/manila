@@ -52,7 +52,7 @@ class SharesClient(service_client.ServiceClient):
     def create_share(self, share_protocol=None, size=1,
                      name=None, snapshot_id=None, description=None,
                      metadata=None, share_network_id=None,
-                     share_type_id=None, ):
+                     share_type_id=None, is_public=False):
         metadata = metadata or {}
         if name is None:
             name = data_utils.rand_name("tempest-created-share")
@@ -70,6 +70,7 @@ class SharesClient(service_client.ServiceClient):
                 "name": name,
                 "size": size,
                 "metadata": metadata,
+                "is_public": is_public,
             }
         }
         if share_network_id:
@@ -330,10 +331,14 @@ class SharesClient(service_client.ServiceClient):
         resp, extensions = self.get("extensions")
         return resp, self._parse_resp(extensions)
 
-    def rename(self, share_id, name, desc=None):
-        body = {"share": {"display_name": name}}
+    def update_share(self, share_id, name=None, desc=None, is_public=None):
+        body = {"share": {}}
+        if name is not None:
+            body["share"].update({"display_name": name})
         if desc is not None:
             body["share"].update({"display_description": desc})
+        if is_public is not None:
+            body["share"].update({"is_public": is_public})
         body = json.dumps(body)
         resp, body = self.put("shares/%s" % share_id, body)
         return resp, self._parse_resp(body)

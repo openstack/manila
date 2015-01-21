@@ -158,7 +158,7 @@ class ShareController(wsgi.Controller):
         return (
             'display_name', 'status', 'share_server_id', 'volume_type_id',
             'share_type_id', 'snapshot_id', 'host', 'share_network_id',
-            'metadata', 'extra_specs', 'sort_key', 'sort_dir',
+            'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
         )
 
     @wsgi.serializers(xml=ShareTemplate)
@@ -173,6 +173,7 @@ class ShareController(wsgi.Controller):
         valid_update_keys = (
             'display_name',
             'display_description',
+            'is_public',
         )
 
         update_dict = dict([(key, share_data[key])
@@ -216,10 +217,11 @@ class ShareController(wsgi.Controller):
                {'share_proto': share_proto, 'size': size})
         LOG.info(msg, context=context)
 
-        kwargs = {}
-        kwargs['availability_zone'] = share.get('availability_zone')
-
-        kwargs['metadata'] = share.get('metadata', None)
+        kwargs = {
+            'availability_zone': share.get('availability_zone'),
+            'metadata': share.get('metadata'),
+            'is_public': share.get('is_public', False),
+        }
 
         snapshot_id = share.get('snapshot_id')
         if snapshot_id:

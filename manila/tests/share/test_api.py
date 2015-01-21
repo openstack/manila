@@ -58,6 +58,7 @@ def fake_share(id, **kwargs):
         'share_proto': 'nfs',
         'export_location': 'fake_location',
         'host': 'fakehost',
+        'is_public': False,
         'scheduled_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         'launched_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         'terminated_at': datetime.datetime(1, 1, 1, 1, 1, 1)
@@ -192,7 +193,7 @@ class ShareAPITestCase(test.TestCase):
             ctx, 'share', 'get_all')
         db_driver.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at',
-            project_id='fake_pid_1', filters={},
+            project_id='fake_pid_1', filters={}, is_public=False
         )
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[0])
 
@@ -259,7 +260,7 @@ class ShareAPITestCase(test.TestCase):
         ])
         db_driver.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at',
-            project_id='fake_pid_2', filters={},
+            project_id='fake_pid_2', filters={}, is_public=False
         )
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1::2])
 
@@ -285,7 +286,7 @@ class ShareAPITestCase(test.TestCase):
         ])
         db_driver.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at',
-            project_id='fake_pid_2', filters={}
+            project_id='fake_pid_2', filters={}, is_public=False
         )
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[2::4])
 
@@ -312,7 +313,7 @@ class ShareAPITestCase(test.TestCase):
         ])
         db_driver.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at',
-            project_id='fake_pid_2', filters={},
+            project_id='fake_pid_2', filters={}, is_public=False
         )
         self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1:])
 
@@ -326,7 +327,7 @@ class ShareAPITestCase(test.TestCase):
         ])
         db_driver.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at',
-            project_id='fake_pid_2', filters={},
+            project_id='fake_pid_2', filters={}, is_public=False
         )
 
         # two items expected, one filtered
@@ -341,9 +342,51 @@ class ShareAPITestCase(test.TestCase):
         ])
         db_driver.share_get_all_by_project.assert_has_calls([
             mock.call(ctx, sort_dir='desc', sort_key='created_at',
-                      project_id='fake_pid_2', filters={}),
+                      project_id='fake_pid_2', filters={}, is_public=False),
             mock.call(ctx, sort_dir='desc', sort_key='created_at',
-                      project_id='fake_pid_2', filters={}),
+                      project_id='fake_pid_2', filters={}, is_public=False),
+        ])
+
+    @ddt.data('True', 'true', '1', 'yes', 'y', 'on', 't', True)
+    def test_get_all_non_admin_public(self, is_public):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_2',
+                                     is_admin=False)
+        self.mock_object(db_driver, 'share_get_all_by_project', mock.Mock(
+            return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
+        shares = self.api.get_all(ctx, {'is_public': is_public})
+        share_api.policy.check_policy.assert_has_calls([
+            mock.call(ctx, 'share', 'get_all'),
+        ])
+        db_driver.share_get_all_by_project.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_2', filters={}, is_public=True
+        )
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[1:], shares)
+
+    @ddt.data('False', 'false', '0', 'no', 'n', 'off', 'f', False)
+    def test_get_all_non_admin_not_public(self, is_public):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_2',
+                                     is_admin=False)
+        self.mock_object(db_driver, 'share_get_all_by_project', mock.Mock(
+            return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
+        shares = self.api.get_all(ctx, {'is_public': is_public})
+        share_api.policy.check_policy.assert_has_calls([
+            mock.call(ctx, 'share', 'get_all'),
+        ])
+        db_driver.share_get_all_by_project.assert_called_once_with(
+            ctx, sort_dir='desc', sort_key='created_at',
+            project_id='fake_pid_2', filters={}, is_public=False
+        )
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[1:], shares)
+
+    @ddt.data('truefoo', 'bartrue')
+    def test_get_all_invalid_public_value(self, is_public):
+        ctx = context.RequestContext('fake_uid', 'fake_pid_2',
+                                     is_admin=False)
+        self.assertRaises(ValueError, self.api.get_all,
+                          ctx, {'is_public': is_public})
+        share_api.policy.check_policy.assert_has_calls([
+            mock.call(ctx, 'share', 'get_all'),
         ])
 
     def test_get_all_with_sorting_valid(self):
@@ -355,7 +398,7 @@ class ShareAPITestCase(test.TestCase):
             ctx, 'share', 'get_all')
         db_driver.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='asc', sort_key='status',
-            project_id='fake_pid_1', filters={},
+            project_id='fake_pid_1', filters={}, is_public=False
         )
         self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0], shares)
 
@@ -395,7 +438,7 @@ class ShareAPITestCase(test.TestCase):
             ctx, 'share', 'get_all')
         db_driver.share_get_all_by_project.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at',
-            project_id='fake_pid_1', filters=search_opts)
+            project_id='fake_pid_1', filters=search_opts, is_public=False)
         self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0], shares)
 
     def test_get_all_filter_by_metadata(self):
@@ -419,6 +462,32 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_filter_by_invalid_extra_specs(self):
         self._get_all_filter_metadata_or_extra_specs_invalid(key='extra_specs')
+
+    @ddt.data(True, False)
+    def test_create_public_and_private_share(self, is_public):
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        timeutils.utcnow.return_value = date
+        share = fake_share('fakeid',
+                           user_id=self.context.user_id,
+                           project_id=self.context.project_id,
+                           status='creating', is_public=is_public)
+        options = share.copy()
+        for name in ('id', 'export_location', 'host', 'launched_at',
+                     'terminated_at'):
+            options.pop(name, None)
+        with mock.patch.object(db_driver, 'share_create',
+                               mock.Mock(return_value=share)):
+            self.api.create(self.context, 'nfs', '1', 'fakename',
+                            'fakedesc', availability_zone='fakeaz',
+                            is_public=is_public)
+            db_driver.share_create.assert_called_once_with(
+                self.context, options)
+
+    @ddt.data('', 'fake', 'Truebar', 'Bartrue')
+    def test_create_share_with_invalid_is_public_value(self, is_public):
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.api.create, self.context, 'nfs', '1',
+                          'fakename', 'fakedesc', is_public=is_public)
 
     @ddt.data(*constants.SUPPORTED_SHARE_PROTOCOLS)
     def test_create_share_valid_protocol(self, proto):
@@ -842,13 +911,20 @@ class ShareAPITestCase(test.TestCase):
         db_driver.share_delete.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), 'fakeid')
 
+    @ddt.data('', 'fake', 'Truebar', 'Bartrue')
+    def test_update_share_with_invalid_is_public_value(self, is_public):
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.api.update, self.context, 'fakeid',
+                          {'is_public': is_public})
+
     def test_get(self):
+        share = fake_share('fakeid')
         with mock.patch.object(db_driver, 'share_get',
-                               mock.Mock(return_value='fakeshare')):
+                               mock.Mock(return_value=share)):
             result = self.api.get(self.context, 'fakeid')
-            self.assertEqual(result, 'fakeshare')
+            self.assertEqual(result, share)
             share_api.policy.check_policy.assert_called_once_with(
-                self.context, 'share', 'get', 'fakeshare')
+                self.context, 'share', 'get', share)
             db_driver.share_get.assert_called_once_with(
                 self.context, 'fakeid')
 
@@ -1092,3 +1168,30 @@ class ShareAPITestCase(test.TestCase):
                                         metadata2, True)
         self.assertEqual(should_be,
                          db_driver.share_metadata_get(self.context, share_id))
+
+
+class OtherTenantsShareActionsTestCase(test.TestCase):
+    def setUp(self):
+        super(OtherTenantsShareActionsTestCase, self).setUp()
+        self.api = share.API()
+
+    def test_delete_other_tenants_public_share(self):
+        share = fake_share('fakeid', is_public=True)
+        ctx = context.RequestContext(user_id='1111', project_id='2222')
+        self.assertRaises(exception.PolicyNotAuthorized, self.api.delete, ctx,
+                          share)
+
+    def test_update_other_tenants_public_share(self):
+        share = fake_share('fakeid', is_public=True)
+        ctx = context.RequestContext(user_id='1111', project_id='2222')
+        self.assertRaises(exception.PolicyNotAuthorized, self.api.update, ctx,
+                          share, {'display_name': 'newname'})
+
+    def test_get_other_tenants_public_share(self):
+        share = fake_share('fakeid', is_public=True)
+        ctx = context.RequestContext(user_id='1111', project_id='2222')
+        self.mock_object(db_driver, 'share_get',
+                         mock.Mock(return_value=share))
+        result = self.api.get(ctx, 'fakeid')
+        self.assertEqual(share, result)
+        db_driver.share_get.assert_called_once_with(ctx, 'fakeid')
