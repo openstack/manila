@@ -59,7 +59,7 @@ Manila Db
 
     Stamp database with given revision.
 
-``manila-manage db revision <message> <authogenerate>``
+``manila-manage db revision <message> <autogenerate>``
 
     Generate new migration.
 

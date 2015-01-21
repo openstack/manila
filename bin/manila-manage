@@ -231,7 +231,7 @@ class DbCommands(object):
         return migration.downgrade(version)
 
     @args('--message', help='Revision message')
-    @args('--authogenerate', help='Autogenerate migration from schema')
+    @args('--autogenerate', help='Autogenerate migration from schema')
     def revision(self, message, autogenerate):
         """Generate new migration."""
         return migration.revision(message, autogenerate)
