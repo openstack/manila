@@ -52,6 +52,10 @@ share_manager_opts = [
 CONF = cfg.CONF
 CONF.register_opts(share_manager_opts)
 
+MAPPING = {
+    'manila.share.drivers.netapp.cluster_mode.NetAppClusteredShareDriver':
+    'manila.share.drivers.netapp.common.NetAppDriver', }
+
 QUOTAS = quota.QUOTAS
 
 
@@ -68,6 +72,13 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if not share_driver:
             share_driver = self.configuration.share_driver
+        if share_driver in MAPPING:
+            msg_args = {'old': share_driver, 'new': MAPPING[share_driver]}
+            LOG.warning(_LW("Driver path %(old)s is deprecated, update your "
+                            "configuration to the new path %(new)s"),
+                        msg_args)
+            share_driver = MAPPING[share_driver]
+
         self.driver = importutils.import_object(
             share_driver, self.db, configuration=self.configuration)
 
