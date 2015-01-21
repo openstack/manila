@@ -174,6 +174,6 @@ global_opts = [
                      'with its options.'),
     cfg.BoolOpt('no_snapshot_gb_quota',
                 default=False,
-                help='Whether snapshots count against GigaByte quota.'), ]
+                help='Whether snapshots count against Gigabyte quota.'), ]
 
 CONF.register_opts(global_opts)
