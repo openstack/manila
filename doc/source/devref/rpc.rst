@@ -55,7 +55,7 @@ Figure 2 shows the following internal elements:
 RPC Calls
 ---------
 
-The diagram below shows the message flow during an rp.call operation:
+The diagram below shows the message flow during an rpc.call operation:
 
     1. a Topic Publisher is instantiated to send the message request to the queuing system; immediately before the publishing operation, a Direct Consumer is instantiated to wait for the response message.
     2. once the message is dispatched by the exchange, it is fetched by the Topic Consumer dictated by the routing key (such as 'topic.host') and passed to the Worker in charge of the task.
