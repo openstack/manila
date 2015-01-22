@@ -155,9 +155,10 @@ class HuaweiNasDriver(driver.ShareDriver):
                      snap_name)
             return
 
-        snapshot_id = self.helper._get_snapshot_id_by_name(sharefsid,
-                                                           snap_name)
-        if snapshot_id is not None:
+        snapshot_id = self.helper._get_snapshot_id(sharefsid, snap_name)
+        snapshot_flag = self.helper._check_snapshot_id_exist(snapshot_id)
+
+        if snapshot_flag is True:
             self.helper._delete_snapshot(snapshot_id)
         else:
             LOG.warn(_LW("Can not find snapshot %s in array."), snap_name)
