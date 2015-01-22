@@ -57,6 +57,10 @@ mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
 rsync: CommandFilter, rsync, root
 # manila/share/drivers/ibm/gpfs.py: 'exportfs'
 exportfs: CommandFilter, exportfs, root
+# manila/share/drivers/ibm/gpfs.py: 'stat', '--format=%F', '%s'
+stat: CommandFilter, stat, root
+# manila/share/drivers/ibm/gpfs.py: 'df', '-P', '-B', '1', '%s'
+df: CommandFilter, df, root
 
 # Ganesha commands
 # manila/share/drivers/ibm/ganesha_utils.py: 'mv', '%s', '%s'
