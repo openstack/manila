@@ -85,22 +85,35 @@ CONF.register_opts(share_opts)
 
 
 def ensure_server(f):
+
     def wrap(self, *args, **kwargs):
-        server = kwargs.get('share_server')
         context = args[0]
-        if not server:
-            # For now generic driver does not support flat networking.
-            # When we implement flat networking in generic driver
-            # we will not need share server to be passed and
-            # will change this logic.
-            raise exception.ManilaException(_('Share server not found.'))
+        server = kwargs.get('share_server')
+
+        if not self.driver_handles_share_servers:
+            if not server:
+                server = self.service_instance_manager.get_common_server()
+                kwargs['share_server'] = server
+            else:
+                raise exception.ManilaException(
+                    _("Share server handling is not available. "
+                      "But 'share_server' was provided. '%s'. "
+                      "Share network should not be used.") % server['id'])
+        elif not server:
+            raise exception.ManilaException(
+                _("Share server handling is enabled. But 'share_server' "
+                  "is not provided. Make sure you used 'share_network'."))
+
         if not server.get('backend_details'):
-            raise exception.ManilaException(_('Share server backend '
-                                              'details missing.'))
+            raise exception.ManilaException(
+                _("Share server '%s' does not have backend details.") %
+                server['id'])
         if not self.service_instance_manager.ensure_service_instance(
                 context, server['backend_details']):
             raise exception.ServiceInstanceUnavailable()
+
         return f(self, *args, **kwargs)
+
     return wrap
 
 
@@ -109,11 +122,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def __init__(self, db, *args, **kwargs):
         """Do initialization."""
-        super(GenericShareDriver, self).__init__(True, *args, **kwargs)
+        super(GenericShareDriver, self).__init__(
+            [False, True], *args, **kwargs)
         self.admin_context = context.get_admin_context()
         self.db = db
         self.configuration.append_config_values(share_opts)
-        self.configuration.append_config_values(service_instance.server_opts)
         self._helpers = {}
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "Cinder_Volumes"
@@ -479,6 +492,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def delete_share(self, context, share, share_server=None):
         """Deletes share."""
+        if not self.driver_handles_share_servers:
+            share_server = self.service_instance_manager.get_common_server()
         if self._is_share_server_active(context, share_server):
             self._get_helper(share).remove_export(
                 share_server['backend_details'], share['name'])
@@ -490,7 +505,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # with any reason that caused absence of Nova instances.
         self._deallocate_container(self.admin_context, share)
 
-    @ensure_server
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""
         volume = self._get_volume(self.admin_context, snapshot['share_id'])
@@ -515,7 +529,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                   'created in %ss. Giving up') %
                 self.configuration.max_time_to_create_volume)
 
-    @ensure_server
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot."""
         volume_snapshot = self._get_volume_snapshot(self.admin_context,

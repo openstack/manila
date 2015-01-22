@@ -1,4 +1,5 @@
 # Copyright (c) 2014 NetApp, Inc.
+# Copyright (c) 2015 Mirantis, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -25,7 +26,7 @@ from oslo_config import cfg
 from oslo_utils import importutils
 import six
 
-from manila.common import constants
+from manila.common import constants as const
 from manila import compute
 from manila import context
 from manila import exception
@@ -39,7 +40,7 @@ from manila import utils
 
 LOG = logging.getLogger(__name__)
 
-server_opts = [
+share_servers_handling_mode_opts = [
     cfg.StrOpt('service_image_name',
                default='manila-service-image',
                help="Name of image in glance, that will be used to create "
@@ -47,11 +48,6 @@ server_opts = [
     cfg.StrOpt('service_instance_name_template',
                default='manila_service_instance_%s',
                help="Name of service instance."),
-    cfg.StrOpt('service_instance_user',
-               help="User in service instance."),
-    cfg.StrOpt('service_instance_password',
-               default=None,
-               help="Password to service instance user."),
     cfg.StrOpt('manila_service_keypair_name',
                default='manila-service',
                help="Name of keypair that will be created and used "
@@ -59,12 +55,6 @@ server_opts = [
     cfg.StrOpt('path_to_public_key',
                default='~/.ssh/id_rsa.pub',
                help="Path to hosts public key."),
-    cfg.StrOpt('path_to_private_key',
-               default='~/.ssh/id_rsa',
-               help="Path to hosts private key."),
-    cfg.IntOpt('max_time_to_build_instance',
-               default=300,
-               help="Maximum time to wait for creating service instance."),
     cfg.StrOpt('service_instance_security_group',
                default="manila-service",
                help="Name of security group, that will be used for "
@@ -93,8 +83,48 @@ server_opts = [
                 help='Attach share server directly to share network.'),
 ]
 
+no_share_servers_handling_mode_opts = [
+    cfg.StrOpt(
+        "service_instance_name_or_id",
+        help="Name or ID of service instance in Nova to use for share "
+             "exports. Used only when share servers handling is disabled."),
+    cfg.StrOpt(
+        "service_net_name_or_ip",
+        help="Can be either name of network that is used by service "
+             "instance within Nova to get IP address or IP address itself "
+             "for managing shares there. "
+             "Used only when share servers handling is disabled."),
+    cfg.StrOpt(
+        "tenant_net_name_or_ip",
+        help="Can be either name of network that is used by service "
+             "instance within Nova to get IP address or IP address itself "
+             "for exporting shares. "
+             "Used only when share servers handling is disabled."),
+]
+
+common_opts = [
+    cfg.StrOpt(
+        "service_instance_user",
+        help="User in service instance that will be used for authentication."),
+    cfg.StrOpt(
+        "service_instance_password",
+        default=None,
+        secret=True,
+        help="Password for service instance user."),
+    cfg.StrOpt(
+        "path_to_private_key",
+        default="~/.ssh/id_rsa",
+        help="Path to host's private key."),
+    cfg.IntOpt(
+        "max_time_to_build_instance",
+        default=300,
+        help="Maximum time in seconds to wait for creating service instance."),
+]
+
 CONF = cfg.CONF
-CONF.register_opts(server_opts)
+CONF.register_opts(common_opts)
+CONF.register_opts(no_share_servers_handling_mode_opts)
+CONF.register_opts(share_servers_handling_mode_opts)
 
 lock = threading.Lock()
 
@@ -126,20 +156,45 @@ class ServiceInstanceManager(object):
             value = CONF.get(key)
         return value
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, db, driver_config):
         """Do initialization."""
         super(ServiceInstanceManager, self).__init__()
-        self.driver_config = None
-        if "driver_config" in kwargs:
-            self.driver_config = kwargs["driver_config"]
+        self.db = db
+        self.driver_config = driver_config
+
+        self.driver_config.append_config_values(common_opts)
+        if self.get_config_option("driver_handles_share_servers"):
+            self.driver_config.append_config_values(
+                share_servers_handling_mode_opts)
+        else:
+            self.driver_config.append_config_values(
+                no_share_servers_handling_mode_opts)
+
         if not self.get_config_option("service_instance_user"):
-            raise exception.ServiceInstanceException(_('Service instance user '
-                                                       'is not specified'))
+            raise exception.ServiceInstanceException(
+                _('Service instance user is not specified.'))
         self.admin_context = context.get_admin_context()
         self._execute = utils.execute
         self.compute_api = compute.API()
-        self.neutron_api = neutron.API()
-        self.db = db
+        self.path_to_private_key = self.get_config_option(
+            "path_to_private_key")
+        self.max_time_to_build_instance = self.get_config_option(
+            "max_time_to_build_instance")
+
+        if self.get_config_option("driver_handles_share_servers"):
+            self.neutron_api = neutron.API()
+            self.path_to_public_key = self.get_config_option(
+                "path_to_public_key")
+            self.connect_share_server_to_tenant_network = (
+                self.get_config_option(
+                    'connect_share_server_to_tenant_network'))
+            self._get_service_tenant_id()
+            self.service_network_id = self._get_service_network()
+            self.vif_driver = importutils.import_class(
+                self.get_config_option("interface_driver"))()
+            self._setup_connectivity_with_service_instances()
+
+    def _get_service_tenant_id(self):
         attempts = 5
         while attempts:
             try:
@@ -152,17 +207,57 @@ class ServiceInstanceManager(object):
         else:
             raise exception.ServiceInstanceException(_('Can not receive '
                                                        'service tenant id.'))
-        self.service_network_id = self._get_service_network()
-        self.vif_driver = importutils.import_class(
-            self.get_config_option("interface_driver"))()
-        self._setup_connectivity_with_service_instances()
-        self.max_time_to_build_instance = self.get_config_option(
-            "max_time_to_build_instance")
-        self.path_to_private_key = self.get_config_option(
-            "path_to_private_key")
-        self.path_to_public_key = self.get_config_option("path_to_public_key")
-        self.connect_share_server_to_tenant_network = self.get_config_option(
-            'connect_share_server_to_tenant_network')
+
+    def get_common_server(self):
+        data = {
+            'public_address': None,
+            'private_address': None,
+            'service_net_name_or_ip': self.get_config_option(
+                'service_net_name_or_ip'),
+            'tenant_net_name_or_ip': self.get_config_option(
+                'tenant_net_name_or_ip'),
+        }
+
+        data['instance'] = self.compute_api.server_get_by_name_or_id(
+            self.admin_context,
+            self.get_config_option('service_instance_name_or_id'))
+
+        if netaddr.valid_ipv4(data['service_net_name_or_ip']):
+            data['private_address'] = [data['service_net_name_or_ip']]
+        else:
+            data['private_address'] = self._get_addresses_by_network_name(
+                data['service_net_name_or_ip'], data['instance'])
+
+        if netaddr.valid_ipv4(data['tenant_net_name_or_ip']):
+            data['public_address'] = [data['tenant_net_name_or_ip']]
+        else:
+            data['public_address'] = self._get_addresses_by_network_name(
+                data['tenant_net_name_or_ip'], data['instance'])
+
+        if not (data['public_address'] and data['private_address']):
+            raise exception.ManilaException(
+                "Can not find one of net addresses for service instance. "
+                "Instance: %(instance)s, "
+                "private_address: %(private_address)s, "
+                "public_address: %(public_address)s." % data)
+
+        share_server = {
+            'username': self.get_config_option('service_instance_user'),
+            'password': self.get_config_option('service_instance_password'),
+            'pk_path': self.path_to_private_key,
+            'ip': data['private_address'][0],  # for handling
+            'public_address': data['public_address'][0],  # for exports
+            'instance_id': data['instance']['id'],
+        }
+        return {'backend_details': share_server}
+
+    def _get_addresses_by_network_name(self, net_name, server):
+        net_ips = []
+        if 'networks' in server and net_name in server['networks']:
+            net_ips = server['networks'][net_name]
+        elif 'addresses' in server and net_name in server['addresses']:
+            net_ips = [addr['addr'] for addr in server['addresses'][net_name]]
+        return net_ips
 
     @utils.synchronized("service_instance_get_service_network", external=True)
     def _get_service_network(self):
@@ -193,11 +288,7 @@ class ServiceInstanceManager(object):
     def _get_server_ip(self, server):
         """Returns service vms ip address."""
         net_name = self.get_config_option("service_network_name")
-        net_ips = []
-        if 'networks' in server and net_name in server['networks']:
-            net_ips = server['networks'][net_name]
-        elif 'addresses' in server and net_name in server['addresses']:
-            net_ips = [addr['addr'] for addr in server['addresses'][net_name]]
+        net_ips = self._get_addresses_by_network_name(net_name, server)
         if not net_ips:
             msg = _("Failed to get service instance ip address. "
                     "Service network name is '%(net_name)s' "
@@ -234,7 +325,7 @@ class ServiceInstanceManager(object):
             LOG.debug("Creating security group with name '%s'.", name)
             sg = self.compute_api.security_group_create(
                 context, name, description)
-            for protocol, ports in constants.SERVICE_INSTANCE_SECGROUP_DATA:
+            for protocol, ports in const.SERVICE_INSTANCE_SECGROUP_DATA:
                 self.compute_api.security_group_rule_create(
                     context,
                     parent_group_id=sg.id,

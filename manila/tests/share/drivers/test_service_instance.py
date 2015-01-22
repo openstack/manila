@@ -18,12 +18,15 @@
 import copy
 import os
 
+import ddt
 import mock
 from oslo_config import cfg
+from oslo_utils import importutils
 import six
 
 from manila import context
 from manila import exception
+from manila.share import configuration
 from manila.share.drivers import service_instance
 from manila import test
 from manila.tests import fake_compute
@@ -34,23 +37,60 @@ from manila import utils
 CONF = cfg.CONF
 
 
+def fake_get_config_option(key):
+    if key == 'driver_handles_share_servers':
+        return True
+    elif key == 'service_instance_password':
+        return None
+    elif key == 'service_instance_user':
+        return 'fake_user'
+    elif key == 'service_network_name':
+        return 'fake_service_network_name'
+    elif key == 'service_instance_flavor_id':
+        return 100
+    elif key == 'service_instance_name_template':
+        return 'fake_manila_service_instance_%s'
+    elif key == 'service_image_name':
+        return 'fake_service_image_name'
+    elif key == 'manila_service_keypair_name':
+        return 'fake_manila_service_keypair_name'
+    elif key == 'path_to_private_key':
+        return 'fake_path_to_private_key'
+    elif key == 'path_to_public_key':
+        return 'fake_path_to_public_key'
+    elif key == 'max_time_to_build_instance':
+        return 500
+    elif key == 'connect_share_server_to_tenant_network':
+        return False
+    elif key == 'service_network_cidr':
+        return '99.254.0.0/16'
+    elif key == 'service_network_division_mask':
+        return 25
+    else:
+        return mock.Mock()
+
+
+@ddt.ddt
 class ServiceInstanceManagerTestCase(test.TestCase):
     """Tests InstanceManager."""
 
     def setUp(self):
         super(ServiceInstanceManagerTestCase, self).setUp()
         self._context = context.get_admin_context()
+        self.config = configuration.Configuration(None)
+        self.config.safe_get = mock.Mock(side_effect=fake_get_config_option)
 
         self._helper_cifs = mock.Mock()
         self._helper_nfs = mock.Mock()
         self._db = mock.Mock()
         self.stubs.Set(service_instance.neutron, 'API', fake_network.API)
         self.stubs.Set(service_instance.compute, 'API', fake_compute.API)
+        self.stubs.Set(importutils, 'import_class', mock.Mock())
         with mock.patch.object(service_instance.ServiceInstanceManager,
                                '_setup_connectivity_with_service_instances',
                                mock.Mock()):
-            self._manager = service_instance.ServiceInstanceManager(self._db,
-                                                                    {})
+            self._manager = service_instance.ServiceInstanceManager(
+                self._db, self.config)
         self._manager.service_tenant_id = 'service tenant id'
         self._manager.service_network_id = 'service network id'
         self._manager.admin_context = self._context
@@ -70,12 +110,12 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_get_service_network_net_exists(self):
         net1 = copy.copy(fake_network.API.network)
         net2 = copy.copy(fake_network.API.network)
-        net1['name'] = CONF.service_network_name
+        net1['name'] = self._manager.get_config_option('service_network_name')
         net1['id'] = 'fake service network id'
         self.stubs.Set(self._manager.neutron_api, 'get_all_tenant_networks',
                        mock.Mock(return_value=[net1, net2]))
         result = self._manager._get_service_network()
-        self.assertEqual(result, net1['id'])
+        self.assertEqual(net1['id'], result)
 
     def test_get_service_network_net_does_not_exists(self):
         net = fake_network.FakeNetwork()
@@ -84,10 +124,11 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.stubs.Set(self._manager.neutron_api, 'network_create',
                        mock.Mock(return_value=net))
         result = self._manager._get_service_network()
-        self.assertEqual(result, net['id'])
+        self.assertEqual(net['id'], result)
 
     def test_get_service_network_ambiguos(self):
-        net = fake_network.FakeNetwork(name=CONF.service_network_name)
+        net = fake_network.FakeNetwork(
+            name=self._manager.get_config_option('service_network_name'))
         self.stubs.Set(self._manager.neutron_api, 'get_all_tenant_networks',
                        mock.Mock(return_value=[net, net]))
         self.assertRaises(exception.ManilaException,
@@ -96,14 +137,14 @@ class ServiceInstanceManagerTestCase(test.TestCase):
     def test_get_service_instance_name(self):
         result = self._manager._get_service_instance_name(
             'fake_share_network_id')
-        self.assertEqual(result, CONF.service_instance_name_template %
-                         'fake_share_network_id')
+        self.assertEqual(
+            'fake_manila_service_instance_None_fake_share_network_id', result)
 
     def test_get_server_ip_found_in_networks_section(self):
         ip = '10.0.0.1'
         fake_server = {
             'networks': {
-                CONF.service_network_name: [ip],
+                self._manager.get_config_option('service_network_name'): [ip],
             }
         }
         result = self._manager._get_server_ip(fake_server)
@@ -113,7 +154,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         ip = '10.0.0.1'
         fake_server = {
             'addresses': {
-                CONF.service_network_name: [
+                self._manager.get_config_option('service_network_name'): [
                     {'addr': ip, 'version': 4, }
                 ],
             }
@@ -311,8 +352,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertFalse(result)
 
     def test_get_key_create_new(self):
-        fake_keypair = fake_compute.FakeKeypair(
-            name=CONF.manila_service_keypair_name)
+        keypair_name = self._manager.get_config_option(
+            'manila_service_keypair_name')
+        fake_keypair = fake_compute.FakeKeypair(name=keypair_name)
         self.stubs.Set(self._manager.compute_api, 'keypair_list',
                        mock.Mock(return_value=[]))
         self.stubs.Set(self._manager.compute_api, 'keypair_import',
@@ -320,17 +362,20 @@ class ServiceInstanceManagerTestCase(test.TestCase):
 
         result = self._manager._get_key(self._context)
 
-        self.assertEqual(result,
-                         (fake_keypair.name,
-                          os.path.expanduser(CONF.path_to_private_key)))
+        self.assertEqual(
+            (fake_keypair.name,
+             os.path.expanduser(self._manager.get_config_option(
+                 'path_to_private_key'))),
+            result)
         self._manager.compute_api.keypair_list.assert_called_once_with(
             self._context)
         self._manager.compute_api.keypair_import.assert_called_once_with(
-            self._context, 'manila-service', '')
+            self._context, keypair_name, '')
 
     def test_get_key_exists(self):
         fake_keypair = fake_compute.FakeKeypair(
-            name=CONF.manila_service_keypair_name,
+            name=self._manager.get_config_option(
+                'manila_service_keypair_name'),
             public_key='fake_public_key')
         self.stubs.Set(self._manager.compute_api, 'keypair_list',
                        mock.Mock(return_value=[fake_keypair]))
@@ -344,13 +389,16 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.compute_api.keypair_list.assert_called_once_with(
             self._context)
         self.assertFalse(self._manager.compute_api.keypair_import.called)
-        self.assertEqual(result,
-                         (fake_keypair.name,
-                          os.path.expanduser(CONF.path_to_private_key)))
+        self.assertEqual(
+            (fake_keypair.name,
+             os.path.expanduser(self._manager.get_config_option(
+                 'path_to_private_key'))),
+            result)
 
     def test_get_key_exists_recreate(self):
         fake_keypair = fake_compute.FakeKeypair(
-            name=CONF.manila_service_keypair_name,
+            name=self._manager.get_config_option(
+                'manila_service_keypair_name'),
             public_key='fake_public_key1')
         self.stubs.Set(self._manager.compute_api, 'keypair_list',
                        mock.Mock(return_value=[fake_keypair]))
@@ -369,9 +417,11 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._context, fake_keypair.id)
         self._manager.compute_api.keypair_import.assert_called_once_with(
             self._context, fake_keypair.name, 'fake_public_key2')
-        self.assertEqual(result,
-                         (fake_keypair.name,
-                          os.path.expanduser(CONF.path_to_private_key)))
+        self.assertEqual(
+            (fake_keypair.name,
+             os.path.expanduser(self._manager.get_config_option(
+                 'path_to_private_key'))),
+            result)
 
     def test_get_key_keypath_to_public_not_set(self):
         self._manager.path_to_public_key = None
@@ -414,14 +464,15 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                 self.assertEqual(result, (None, None))
 
     def test_get_service_image(self):
-        fake_image1 = fake_compute.FakeImage(name=CONF.service_image_name)
+        fake_image1 = fake_compute.FakeImage(
+            name=self._manager.get_config_option('service_image_name'))
         fake_image2 = fake_compute.FakeImage(name='another-image')
         self.stubs.Set(self._manager.compute_api, 'image_list',
                        mock.Mock(return_value=[fake_image1, fake_image2]))
 
         result = self._manager._get_service_image(self._context)
 
-        self.assertEqual(result, fake_image1.id)
+        self.assertEqual(fake_image1.id, result)
 
     def test_get_service_image_not_found(self):
         self.stubs.Set(self._manager.compute_api, 'image_list',
@@ -834,8 +885,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
 
     def test_get_cidr_for_subnet(self):
         serv_cidr = service_instance.netaddr.IPNetwork(
-            CONF.service_network_cidr)
-        fake_division_mask = CONF.service_network_division_mask
+            self._manager.get_config_option('service_network_cidr'))
+        fake_division_mask = self._manager.get_config_option(
+            'service_network_division_mask')
         cidrs = serv_cidr.subnet(fake_division_mask)
         cidr1 = six.text_type(next(cidrs))
         cidr2 = six.text_type(next(cidrs))
@@ -936,3 +988,79 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.neutron_api.update_subnet.assert_has_calls([
             mock.call(subnet_id, ''),
         ])
+
+    @ddt.data(
+        {'s': 'fake_net_s', 't': 'fake_net_t'},
+        {'s': 'fake_net_s', 't': '12.34.56.78'},
+        {'s': '98.76.54.123', 't': 'fake_net_t'},
+        {'s': '98.76.54.123', 't': '12.34.56.78'})
+    @ddt.unpack
+    def test_get_common_server_valid_cases(self, s, t):
+        self._get_common_server(s, t, True)
+
+    @ddt.data(
+        {'s': 'fake_net_s', 't': 'fake'},
+        {'s': 'fake', 't': 'fake_net_t'},
+        {'s': 'fake', 't': 'fake'},
+        {'s': '98.76.54.123', 't': '12.12.12.1212'},
+        {'s': '12.12.12.1212', 't': '12.34.56.78'},
+        {'s': '12.12.12.1212', 't': '12.12.12.1212'})
+    @ddt.unpack
+    def test_get_common_server_invalid_cases(self, s, t):
+        self._get_common_server(s, t, False)
+
+    def _get_common_server(self, s, t, is_valid=True):
+        fake_instance_id = 'fake_instance_id'
+        fake_user = 'fake_user'
+        fake_pass = 'fake_pass'
+        fake_net_s = 'fake_net_s'
+        fake_addr_s = '98.76.54.123'
+        fake_net_t = 'fake_net_t'
+        fake_addr_t = '12.34.56.78'
+        fake_server = {
+            'id': fake_instance_id,
+            'networks': {fake_net_s: [fake_addr_s], fake_net_t: [fake_addr_t]},
+            'addresses': {fake_net_s: {'addr': fake_addr_s},
+                          fake_net_t: {'addr': fake_addr_t}},
+        }
+        expected = {
+            'backend_details': {
+                'username': fake_user,
+                'password': fake_pass,
+                'pk_path': self._manager.path_to_private_key,
+                'ip': fake_addr_s,
+                'public_address': fake_addr_t,
+                'instance_id': fake_instance_id,
+            }
+        }
+
+        def fake_get_config_option(attr):
+            if attr == 'service_net_name_or_ip':
+                return s
+            elif attr == 'tenant_net_name_or_ip':
+                return t
+            elif attr == 'service_instance_name_or_id':
+                return fake_instance_id
+            elif attr == 'service_instance_user':
+                return fake_user
+            elif attr == 'service_instance_password':
+                return fake_pass
+            else:
+                raise exception.ManilaException("Wrong test data provided.")
+
+        self.mock_object(
+            self._manager.compute_api, 'server_get_by_name_or_id',
+            mock.Mock(return_value=fake_server))
+        self.mock_object(
+            self._manager, 'get_config_option',
+            mock.Mock(side_effect=fake_get_config_option))
+
+        if is_valid:
+            actual = self._manager.get_common_server()
+            self.assertEqual(expected, actual)
+        else:
+            self.assertRaises(
+                exception.ManilaException,
+                self._manager.get_common_server)
+        self.assertTrue(
+            self._manager.compute_api.server_get_by_name_or_id.called)
