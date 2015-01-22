@@ -1,4 +1,5 @@
-#    Copyright 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2015 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -11,6 +12,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+"""
+Mock unit tests for the NetApp driver utility module
+"""
 
 import platform
 
@@ -20,6 +24,64 @@ from oslo_concurrency import processutils as putils
 from manila.share.drivers.netapp import utils as na_utils
 from manila import test
 from manila import version
+
+
+class NetAppDriverUtilsTestCase(test.TestCase):
+
+    def setUp(self):
+        super(NetAppDriverUtilsTestCase, self).setUp()
+        self.mock_object(na_utils, 'LOG')
+        na_utils.setup_tracing(None)
+
+    def test_setup_tracing(self):
+        self.mock_object(na_utils, 'LOG')
+
+        na_utils.setup_tracing(None)
+        self.assertFalse(na_utils.TRACE_API)
+        self.assertFalse(na_utils.TRACE_METHOD)
+        self.assertEqual(0, na_utils.LOG.warning.call_count)
+
+        na_utils.setup_tracing('method')
+        self.assertFalse(na_utils.TRACE_API)
+        self.assertTrue(na_utils.TRACE_METHOD)
+        self.assertEqual(0, na_utils.LOG.warning.call_count)
+
+        na_utils.setup_tracing('method,api')
+        self.assertTrue(na_utils.TRACE_API)
+        self.assertTrue(na_utils.TRACE_METHOD)
+        self.assertEqual(0, na_utils.LOG.warning.call_count)
+
+    def test_setup_tracing_invalid_key(self):
+        self.mock_object(na_utils, 'LOG')
+
+        na_utils.setup_tracing('method,fake')
+
+        self.assertFalse(na_utils.TRACE_API)
+        self.assertTrue(na_utils.TRACE_METHOD)
+        self.assertEqual(1, na_utils.LOG.warning.call_count)
+
+    @na_utils.trace
+    def _trace_test_method(*args, **kwargs):
+        return 'OK'
+
+    def test_trace_no_tracing(self):
+        self.mock_object(na_utils, 'LOG')
+
+        result = self._trace_test_method()
+
+        self.assertEqual('OK', result)
+        self.assertEqual(0, na_utils.LOG.debug.call_count)
+
+        na_utils.setup_tracing('method')
+
+    def test_trace_method_tracing(self):
+        self.mock_object(na_utils, 'LOG')
+
+        na_utils.setup_tracing('method')
+
+        result = self._trace_test_method()
+        self.assertEqual('OK', result)
+        self.assertEqual(2, na_utils.LOG.debug.call_count)
 
 
 class OpenstackInfoTestCase(test.TestCase):

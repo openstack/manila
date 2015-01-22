@@ -75,7 +75,12 @@ NETAPP_NAS_OPTS = [
                help='Name of aggregate to create root volume on.'),
     cfg.StrOpt('netapp_root_volume_name',
                default='root',
-               help='Root volume name.')
+               help='Root volume name.'),
+    cfg.StrOpt('netapp_trace_flags',
+               default=None,
+               help='Comma-separated list of options that control which '
+                    'trace info is written to the debug logs.  Values '
+                    'include method and api.'),
 ]
 
 
@@ -114,6 +119,7 @@ class NetAppApiClient(object):
             username=self.configuration.netapp_nas_login,
             password=self.configuration.netapp_nas_password,
             transport_type=self.configuration.netapp_nas_transport_type,
+            trace=na_utils.TRACE_API
         )
         self._client.set_api_version(*version)
         if vserver:
@@ -154,7 +160,9 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         self.api_version = (1, 15)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or "NetApp_Cluster_Mode"
+        na_utils.setup_tracing(self.configuration.netapp_trace_flags)
 
+    @na_utils.trace
     def do_setup(self, context):
         """Prepare once the driver.
 
@@ -166,10 +174,12 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                                        configuration=self.configuration)
         self._setup_helpers()
 
+    @na_utils.trace
     def ensure_share(self, context, share, share_server=None):
         """Invoked to ensure that share is exported."""
         pass
 
+    @na_utils.trace
     def _check_licenses(self):
         self._licenses = []
         try:
@@ -198,6 +208,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         """Get snapshot name according to snapshot name template."""
         return 'share_snapshot_' + snapshot_id.replace('-', '_')
 
+    @na_utils.trace
     def _update_share_stats(self):
         """Retrieve stats info from Cluster Mode backend."""
         total, free = self._calculate_capacity()
@@ -215,6 +226,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         """Raises error if prerequisites are not met."""
         self._check_licenses()
 
+    @na_utils.trace
     def _calculate_capacity(self):
         """Calculates capacity
 
@@ -229,12 +241,14 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                     for aggr in aggr_space_attrs])
         return total, free
 
+    @na_utils.trace
     def _setup_server(self, network_info, metadata=None):
         """Creates and configures new vserver."""
         LOG.debug('Creating server %s', network_info['server_id'])
         vserver_name = self._vserver_create_if_not_exists(network_info)
         return {'vserver_name': vserver_name}
 
+    @na_utils.trace
     def _get_cluster_nodes(self):
         """Get all available cluster nodes."""
         response = self._client.send_request('system-node-get-iter')
@@ -245,6 +259,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                  in nodes_info_list]
         return nodes
 
+    @na_utils.trace
     def _get_node_data_port(self, node):
         """Get data port on the node."""
         args = {
@@ -267,6 +282,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             raise exception.NetAppException(msg)
         return port
 
+    @na_utils.trace
     def _create_vserver(self, vserver_name):
         """Creates new vserver and assigns aggregates."""
         create_args = {'vserver-name': vserver_name,
@@ -284,6 +300,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                        'vserver-name': vserver_name}
         self._client.send_request('vserver-modify', modify_args)
 
+    @na_utils.trace
     def _find_match_aggregates(self):
         """Find all aggregates match pattern."""
         pattern = self.configuration.netapp_aggregate_name_search_pattern
@@ -298,11 +315,13 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             pattern, aggr.get_child_content('aggregate-name'))]
         return aggr_list
 
+    @na_utils.trace
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
         return int(self._client.send_request(
             'system-node-get-iter').get_child_content('num-records'))
 
+    @na_utils.trace
     def _create_net_iface(self, ip, netmask, vlan, node, port, vserver_name,
                           allocation_id):
         """Creates lif on vlan port."""
@@ -344,17 +363,20 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                 }
         self._client.send_request('net-interface-create', args)
 
+    @na_utils.trace
     def _delete_net_iface(self, iface_name):
         """Deletes lif."""
         args = {'vserver': None,
                 'interface-name': iface_name}
         self._client.send_request('net-interface-delete', args)
 
+    @na_utils.trace
     def _setup_helpers(self):
         """Initializes protocol-specific NAS drivers."""
         self._helpers = {'CIFS': NetAppClusteredCIFSHelper(),
                          'NFS': NetAppClusteredNFSHelper()}
 
+    @na_utils.trace
     def _get_helper(self, share):
         """Returns driver which implements share protocol."""
         share_proto = share['share_proto']
@@ -373,6 +395,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
 
         raise exception.NetAppException(err_msg)
 
+    @na_utils.trace
     def _vserver_exists(self, vserver_name):
         args = {'query': {'vserver-info': {'vserver-name': vserver_name}}}
 
@@ -383,6 +406,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         else:
             return False
 
+    @na_utils.trace
     def _vserver_create_if_not_exists(self, network_info):
         """Creates vserver if not exists with given parameters."""
         vserver_name = (self.configuration.netapp_vserver_name_template %
@@ -424,6 +448,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                                           vserver_name)
         return vserver_name
 
+    @na_utils.trace
     def _setup_security_services(self, security_services, vserver_client,
                                  vserver_name):
         modify_args = {
@@ -448,6 +473,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                     _('Unsupported protocol %s for NetApp driver')
                     % security_service['type'])
 
+    @na_utils.trace
     def _enable_nfs(self, vserver_client):
         """Enables NFS on vserver."""
         vserver_client.send_request('nfs-enable')
@@ -465,6 +491,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         }
         vserver_client.send_request('export-rule-create', args)
 
+    @na_utils.trace
     def _configure_ldap(self, data, vserver_client):
         """Configures LDAP on vserver."""
         config_name = hashlib.md5(data['id']).hexdigest()
@@ -480,6 +507,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                 'client-enabled': 'true'}
         vserver_client.send_request('ldap-config-create', args)
 
+    @na_utils.trace
     def _configure_dns(self, data, vserver_client):
         args = {
             'domains': {
@@ -499,6 +527,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                 raise exception.NetAppException(
                     _("Failed to configure DNS. %s") % e.message)
 
+    @na_utils.trace
     def _configure_kerberos(self, vserver, data, vserver_client):
         """Configures Kerberos for NFS on vServer."""
         args = {'admin-server-ip': data['server'],
@@ -539,6 +568,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             }
         vserver_client.send_request('kerberos-config-modify', args)
 
+    @na_utils.trace
     def _configure_active_directory(self, sec_service_data, vserver_client,
                                     vserver_name):
         """Configures AD on vserver."""
@@ -560,6 +590,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             msg = _("Failed to create CIFS server entry. %s.") % e.message
             raise exception.NetAppException(msg)
 
+    @na_utils.trace
     def _get_lifs(self, vserver_client):
         lifs_info = vserver_client.send_request('net-interface-get-iter')
         try:
@@ -570,6 +601,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             lif_names = []
         return lif_names
 
+    @na_utils.trace
     def _create_lif_if_not_exists(self, vserver_name, allocation_id, vlan,
                                   node, port, ip, netmask, vserver_client):
         """Creates lif for vserver."""
@@ -590,6 +622,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             self._create_net_iface(ip, netmask, vlan, node, port, vserver_name,
                                    allocation_id)
 
+    @na_utils.trace
     def get_available_aggregates_for_vserver(self, vserver, vserver_client):
         """Returns aggregate list for the vserver."""
         LOG.debug('Finding available aggreagates for vserver %s', vserver)
@@ -614,6 +647,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         return aggr_dict
 
     @ensure_vserver
+    @na_utils.trace
     def create_share(self, context, share, share_server=None):
         """Creates new share."""
         vserver = share_server['backend_details']['vserver_name']
@@ -624,6 +658,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         return self._create_export(share, vserver, vserver_client)
 
     @ensure_vserver
+    @na_utils.trace
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Creates new share form snapshot."""
@@ -636,6 +671,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                                                vserver_client)
         return self._create_export(share, vserver, vserver_client)
 
+    @na_utils.trace
     def _allocate_container(self, share, vserver, vserver_client):
         """Create new share on aggregate."""
         share_name = self._get_valid_share_name(share['id'])
@@ -653,6 +689,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                 }
         vserver_client.send_request('volume-create', args)
 
+    @na_utils.trace
     def _allocate_container_from_snapshot(self, share, snapshot, vserver,
                                           vserver_client):
         """Clones existing share."""
@@ -669,6 +706,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
 
         vserver_client.send_request('volume-clone-create', args)
 
+    @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
         args = {
             'query': {
@@ -683,12 +721,14 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         if int(response.get_child_content('num-records')):
             return True
 
+    @na_utils.trace
     def _deallocate_container(self, share, vserver_client):
         """Free share space."""
         self._share_unmount(share, vserver_client)
         self._offline_share(share, vserver_client)
         self._delete_share(share, vserver_client)
 
+    @na_utils.trace
     def _offline_share(self, share, vserver_client):
         """Sends share offline. Required before deleting a share."""
         share_name = self._get_valid_share_name(share['id'])
@@ -696,6 +736,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         LOG.debug('Offline volume %s', share_name)
         vserver_client.send_request('volume-offline', args)
 
+    @na_utils.trace
     def _delete_share(self, share, vserver_client):
         """Destroys share on a target OnTap device."""
         share_name = self._get_valid_share_name(share['id'])
@@ -704,6 +745,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         vserver_client.send_request('volume-destroy', args)
 
     @ensure_vserver
+    @na_utils.trace
     def delete_share(self, context, share, share_server=None):
         """Deletes share."""
         share_name = self._get_valid_share_name(share['id'])
@@ -717,6 +759,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         else:
             LOG.info(_LI("Share %s does not exist."), share['id'])
 
+    @na_utils.trace
     def _create_export(self, share, vserver, vserver_client):
         """Creates NAS storage."""
         helper = self._get_helper(share)
@@ -738,6 +781,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         return export_location
 
     @ensure_vserver
+    @na_utils.trace
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot of a share."""
         vserver = share_server['backend_details']['vserver_name']
@@ -751,6 +795,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         LOG.debug('Creating snapshot %s', snapshot_name)
         vserver_client.send_request('snapshot-create', args)
 
+    @na_utils.trace
     def _remove_export(self, share, vserver_client):
         """Deletes NAS storage."""
         helper = self._get_helper(share)
@@ -761,6 +806,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             helper.delete_share(share)
 
     @ensure_vserver
+    @na_utils.trace
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot of a share."""
         vserver = share_server['backend_details']['vserver_name']
@@ -776,6 +822,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         LOG.debug('Deleting snapshot %s', snapshot_name)
         vserver_client.send_request('snapshot-delete', args)
 
+    @na_utils.trace
     def _is_snapshot_busy(self, share_name, snapshot_name, vserver_client):
         """Raises ShareSnapshotIsBusy if snapshot is busy."""
         args = {'volume': share_name}
@@ -787,6 +834,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
                          == 'true')):
                 return True
 
+    @na_utils.trace
     def _share_unmount(self, share, vserver_client):
         """Unmounts share (required before deleting)."""
         share_name = self._get_valid_share_name(share['id'])
@@ -795,6 +843,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         vserver_client.send_request('volume-unmount', args)
 
     @ensure_vserver
+    @na_utils.trace
     def allow_access(self, context, share, access, share_server=None):
         """Allows access to a given NAS storage."""
         vserver = share_server['backend_details']['vserver_name']
@@ -806,6 +855,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         return helper.allow_access(context, share, access)
 
     @ensure_vserver
+    @na_utils.trace
     def deny_access(self, context, share, access, share_server=None):
         """Denies access to a given NAS storage."""
         vserver = share_server['backend_details']['vserver_name']
@@ -816,6 +866,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         helper.set_client(vserver_client)
         return helper.deny_access(context, share, access)
 
+    @na_utils.trace
     def _delete_vserver(self, vserver_name, vserver_client,
                         security_services=None):
         """Delete vserver.
@@ -867,6 +918,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
         self._client.send_request('vserver-destroy',
                                   {'vserver-name': vserver_name})
 
+    @na_utils.trace
     def _teardown_server(self, server_details, security_services=None):
         """Teardown share network."""
         vserver_name = server_details['vserver_name']
@@ -920,6 +972,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         # exports properly in long term.
         self.nfs_exports_with_prefix = False
 
+    @na_utils.trace
     def create_share(self, share_name, export_ip):
         """Creates NFS share."""
         arguments = {'is-style-cifs': 'false', 'volume': share_name}
@@ -930,6 +983,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         export_location = ':'.join([export_ip, export_pathname])
         return export_location
 
+    @na_utils.trace
     def allow_access_by_user(self, share, user):
         user, _x, group = user.partition(':')
         args = {
@@ -953,6 +1007,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         }
         self._client.send_request('volume-modify-iter', args)
 
+    @na_utils.trace
     def deny_access_by_user(self, share, user):
         args = {
             'attributes': {
@@ -972,6 +1027,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         }
         self._client.send_request('volume-modify-iter', args)
 
+    @na_utils.trace
     def add_rules(self, volume_path, rules):
         req_bodies = []
         security_rule_args = {
@@ -1057,6 +1113,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
             else:
                 raise
 
+    @na_utils.trace
     def delete_share(self, share):
         """Deletes NFS share."""
         target, export_path = self._get_export_path(share)
@@ -1070,6 +1127,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         LOG.debug('Deleting NFS rules for share %s', share['id'])
         self._client.send_request('nfs-exportfs-delete-rules', args)
 
+    @na_utils.trace
     def allow_access(self, context, share, access):
         """Allows access to a given NFS storage."""
         new_rules = access['access_to']
@@ -1084,6 +1142,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
         except naapi.NaApiError:
             self._modify_rule(share, existing_rules)
 
+    @na_utils.trace
     def deny_access(self, context, share, access):
         """Denies access to a given NFS storage."""
         access_to = access['access_to']
@@ -1098,15 +1157,18 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
 
         self._modify_rule(share, existing_rules)
 
+    @na_utils.trace
     def get_target(self, share):
         """Returns ID of target OnTap device based on export location."""
         return self._get_export_path(share)[0]
 
+    @na_utils.trace
     def _modify_rule(self, share, rules):
         """Modifies access rule for a given NFS share."""
         target, export_path = self._get_export_path(share)
         self.add_rules(export_path, rules)
 
+    @na_utils.trace
     def _get_exisiting_rules(self, share):
         """Returns available access rules for a given NFS share."""
         target, export_path = self._get_export_path(share)
@@ -1145,6 +1207,7 @@ class NetAppClusteredNFSHelper(NetAppNASHelperBase):
 class NetAppClusteredCIFSHelper(NetAppNASHelperBase):
     """Netapp specific cluster-mode CIFS sharing driver."""
 
+    @na_utils.trace
     def create_share(self, share_name, export_ip):
         """Creates CIFS share on target OnTap host."""
         share_path = '/%s' % share_name
@@ -1153,12 +1216,14 @@ class NetAppClusteredCIFSHelper(NetAppNASHelperBase):
         self._restrict_access('Everyone', share_name)
         return "//%s/%s" % (export_ip, share_name)
 
+    @na_utils.trace
     def delete_share(self, share):
         """Deletes CIFS share on target OnTap host."""
         host_ip, share_name = self._get_export_location(share)
         args = {'share-name': share_name}
         self._client.send_request('cifs-share-delete', args)
 
+    @na_utils.trace
     def allow_access(self, context, share, access):
         """Allows access to the CIFS share for a given user."""
         if access['access_type'] != 'user':
@@ -1180,6 +1245,7 @@ class NetAppClusteredCIFSHelper(NetAppNASHelperBase):
                     access_type=access['access_type'], access=access)
             raise e
 
+    @na_utils.trace
     def deny_access(self, context, share, access):
         """Denies access to the CIFS share for a given user."""
         host_ip, share_name = self._get_export_location(share)
@@ -1198,6 +1264,7 @@ class NetAppClusteredCIFSHelper(NetAppNASHelperBase):
         """Returns OnTap target IP based on share export location."""
         return self._get_export_location(share)[0]
 
+    @na_utils.trace
     def _restrict_access(self, user_name, share_name):
         args = {'user-or-group': user_name, 'share': share_name}
         self._client.send_request('cifs-share-access-control-delete', args)

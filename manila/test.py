@@ -195,6 +195,7 @@ class TestCase(base_test.BaseTestCase):
         self._services.append(svc)
         return svc
 
+    # TODO(cknight): StubOutForTesting should be removed in favor of this.
     def mock_object(self, obj, attr_name, new_attr=None, **kwargs):
         """Use python mock to mock an object attribute
 

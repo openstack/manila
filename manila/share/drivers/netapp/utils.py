@@ -1,6 +1,6 @@
-# Copyright (c) 2015 Bob Callaway.
-# Copyright (c) 2015 Tom Barron.
-# All Rights Reserved.
+# Copyright (c) 2015 Bob Callaway.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2015 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -13,10 +13,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Utilities for NetApp drivers.
-
-"""
+"""Utilities for NetApp drivers."""
 
 import copy
 import platform
@@ -33,6 +30,36 @@ from manila import version
 
 
 LOG = logging.getLogger(__name__)
+
+
+VALID_TRACE_FLAGS = ['method', 'api']
+TRACE_METHOD = False
+TRACE_API = False
+
+
+def setup_tracing(trace_flags_string):
+    global TRACE_METHOD
+    global TRACE_API
+    TRACE_METHOD = False
+    TRACE_API = False
+    if trace_flags_string:
+        flags = trace_flags_string.split(',')
+        flags = [flag.strip() for flag in flags]
+        for invalid_flag in list(set(flags) - set(VALID_TRACE_FLAGS)):
+            LOG.warning(_LW('Invalid trace flag: %s') % invalid_flag)
+        TRACE_METHOD = 'method' in flags
+        TRACE_API = 'api' in flags
+
+
+def trace(f):
+    def trace_wrapper(self, *args, **kwargs):
+        if TRACE_METHOD:
+            LOG.debug('Entering method %s' % f.__name__)
+        result = f(self, *args, **kwargs)
+        if TRACE_METHOD:
+            LOG.debug('Leaving method %s' % f.__name__)
+        return result
+    return trace_wrapper
 
 
 def check_flags(required_flags, configuration):

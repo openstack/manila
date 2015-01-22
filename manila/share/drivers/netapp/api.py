@@ -48,13 +48,14 @@ class NaServer(object):
     def __init__(self, host, server_type=SERVER_TYPE_FILER,
                  transport_type=TRANSPORT_TYPE_HTTP,
                  style=STYLE_LOGIN_PASSWORD, username=None,
-                 password=None):
+                 password=None, trace=False):
         self._host = host
         self.set_server_type(server_type)
         self.set_transport_type(transport_type)
         self.set_style(style)
         self._username = username
         self._password = password
+        self._trace = trace
         self._refresh_conn = True
 
     def get_transport_type(self):
@@ -189,7 +190,13 @@ class NaServer(object):
         """Invoke the api on the server."""
         if na_element and not isinstance(na_element, NaElement):
             ValueError('NaElement must be supplied to invoke api')
-        request = self._create_request(na_element, enable_tunneling)
+
+        request, request_element = self._create_request(na_element,
+                                                        enable_tunneling)
+
+        if self._trace:
+            LOG.debug("Request: %s", request_element.to_string(pretty=True))
+
         if not hasattr(self, '_opener') or not self._opener \
                 or self._refresh_conn:
             self._build_opener()
@@ -202,8 +209,14 @@ class NaServer(object):
             raise NaApiError(e.code, e.msg)
         except Exception as e:
             raise NaApiError('Unexpected error', e)
-        xml = response.read()
-        return self._get_result(xml)
+
+        response_xml = response.read()
+        response_element = self._get_result(response_xml)
+
+        if self._trace:
+            LOG.debug("Response: %s", response_element.to_string(pretty=True))
+
+        return response_element
 
     def invoke_successfully(self, na_element, enable_tunneling=False):
         """Invokes api and checks execution status as success.
@@ -237,7 +250,7 @@ class NaServer(object):
         request = urllib2.Request(
             self._get_url(), data=request_d,
             headers={'Content-Type': 'text/xml', 'charset': 'utf-8'})
-        return request
+        return request, netapp_elem
 
     def _enable_tunnel_request(self, netapp_elem):
         """Enables vserver or vfiler tunneling."""
