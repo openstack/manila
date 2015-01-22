@@ -90,27 +90,38 @@ class GlusterManager(object):
     """Interface with a GlusterFS volume."""
 
     scheme = re.compile('\A(?:(?P<user>[^:@/]+)@)?'
-                        '(?P<host>[^:@/]+):'
-                        '/(?P<vol>.+)')
+                        '(?P<host>[^:@/]+)'
+                        '(?::/(?P<vol>.+))?')
 
     def __init__(self, address, execf, path_to_private_key=None,
-                 remote_server_password=None):
-        """Initialize a GaneshaManager instance.
+                 remote_server_password=None, has_volume=True):
+        """Initialize a GlusterManager instance.
 
         :param address: the Gluster URI (in [<user>@]<host>:/<vol> format).
         :param execf: executor function for management commands.
         :param path_to_private_key: path to private ssh key of remote server.
         :param remote_server_password: ssh password for remote server.
+        :param has_volume: instruction to uri parser regarding how to deal
+                           with the optional volume part (True: require its
+                           presence, False: require its absence, None: don't
+                           require anything about volume).
         """
         m = self.scheme.search(address)
+        if m:
+            self.volume = m.group('vol')
+            if (has_volume is True and not self.volume) or (
+               has_volume is False and self.volume):
+                m = None
         if not m:
-            raise exception.GlusterfsException('invalid gluster address ' +
-                                               address)
+            raise exception.GlusterfsException(
+                _('Invalid gluster address %s.') % address)
         self.remote_user = m.group('user')
         self.host = m.group('host')
-        self.volume = m.group('vol')
         self.qualified = address
-        self.export = ':/'.join([self.host, self.volume])
+        if self.volume:
+            self.export = ':/'.join([self.host, self.volume])
+        else:
+            self.export = None
         self.path_to_private_key = path_to_private_key
         self.remote_server_password = remote_server_password
         self.gluster_call = self.make_gluster_call(execf)

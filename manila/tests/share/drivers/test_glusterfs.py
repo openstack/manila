@@ -17,6 +17,7 @@ import copy
 import errno
 import os
 
+import ddt
 import mock
 from oslo_config import cfg
 
@@ -53,6 +54,7 @@ NFS_EXPORT_DIR = 'nfs.export-dir'
 NFS_EXPORT_VOL = 'nfs.export-volumes'
 
 
+@ddt.ddt
 class GlusterManagerTestCase(test.TestCase):
     """Tests GlusterManager."""
 
@@ -83,6 +85,30 @@ class GlusterManagerTestCase(test.TestCase):
                          self._gluster_manager.remote_server_password)
         self.assertEqual(self.fake_executor,
                          self._gluster_manager.gluster_call)
+
+    @ddt.data(None, True)
+    def test_gluster_manager_init_has_vol(self, has_volume):
+        test_gluster_manager = glusterfs.GlusterManager(
+            'testuser@127.0.0.1:/testvol', self.fake_execf,
+            has_volume=has_volume)
+        self.assertEqual('testvol', test_gluster_manager.volume)
+
+    @ddt.data(None, False)
+    def test_gluster_manager_init_no_vol(self, has_volume):
+        test_gluster_manager = glusterfs.GlusterManager(
+            'testuser@127.0.0.1', self.fake_execf, has_volume=has_volume)
+        self.assertEqual(None, test_gluster_manager.volume)
+
+    def test_gluster_manager_init_has_shouldnt_have_vol(self):
+        self.assertRaises(exception.GlusterfsException,
+                          glusterfs.GlusterManager,
+                          'testuser@127.0.0.1:/testvol',
+                          self.fake_execf, has_volume=False)
+
+    def test_gluster_manager_hasnt_should_have_vol(self):
+        self.assertRaises(exception.GlusterfsException,
+                          glusterfs.GlusterManager, 'testuser@127.0.0.1',
+                          self.fake_execf, has_volume=True)
 
     def test_gluster_manager_invalid(self):
         self.assertRaises(exception.GlusterfsException,
