@@ -512,7 +512,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         super(GPFSShareDriver, self)._update_share_stats(data)
 
     def _get_helper(self, share):
-        if share['share_proto'].startswith('NFS'):
+        if share['share_proto'] == 'NFS':
             return self._helpers[self.configuration.gpfs_nfs_server_type]
         else:
             msg = (_('Share protocol %s not supported by GPFS driver.'),

@@ -17,6 +17,7 @@
 
 import os
 
+import ddt
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -39,6 +40,7 @@ from manila import volume
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class GenericShareDriverTestCase(test.TestCase):
     """Tests GenericShareDriver."""
 
@@ -87,7 +89,7 @@ class GenericShareDriverTestCase(test.TestCase):
             'CIFS': self._helper_cifs,
             'NFS': self._helper_nfs,
         }
-        self.share = fake_share.fake_share()
+        self.share = fake_share.fake_share(share_proto='NFS')
         self.server = {
             'instance_id': 'fake_instance_id',
             'ip': 'fake_ip',
@@ -777,6 +779,13 @@ class GenericShareDriverTestCase(test.TestCase):
                                                 self.share['name'],
                                                 access['access_type'],
                                                 access['access_to'])
+
+    @ddt.data(fake_share.fake_share(),
+              fake_share.fake_share(share_proto='NFSBOGUS'),
+              fake_share.fake_share(share_proto='CIFSBOGUS'))
+    def test__get_helper_with_wrong_proto(self, share):
+        self.assertRaises(exception.InvalidShare,
+                          self._driver._get_helper, share)
 
     def test_setup_network(self):
         sim = self._driver.instance_manager

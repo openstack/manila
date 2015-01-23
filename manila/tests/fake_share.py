@@ -22,7 +22,7 @@ def fake_share(**kwargs):
         'id': 'fakeid',
         'name': 'fakename',
         'size': 1,
-        'share_proto': 'NFS',
+        'share_proto': 'fake_proto',
         'share_network_id': 'fake share network id',
         'share_server_id': 'fake share server id',
         'export_location': 'fake_location:/fake_share',
@@ -38,7 +38,7 @@ def fake_snapshot(**kwargs):
         'share_id': 'fakeid',
         'name': 'fakesnapshotname',
         'share_size': 1,
-        'share_proto': 'NFS',
+        'share_proto': 'fake_proto',
         'export_location': 'fake_location:/fake_share',
     }
     snapshot.update(kwargs)

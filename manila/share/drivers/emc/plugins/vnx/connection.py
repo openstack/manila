@@ -57,11 +57,11 @@ class VNXStorageConnection(driver.StorageConnection):
         vdm = self.share_server_validation(share_server)
         self.allocate_container(share_name, size, vdm['id'])
 
-        if share['share_proto'].startswith('NFS'):
+        if share['share_proto'] == 'NFS':
             location = self._create_nfs_share(share_name, vdm['name'],
                                               share_server)
 
-        elif share['share_proto'].startswith('CIFS'):
+        elif share['share_proto'] == 'CIFS':
             location = self._create_cifs_share(share_name, vdm)
         else:
             raise exception.InvalidShare(
@@ -156,12 +156,12 @@ class VNXStorageConnection(driver.StorageConnection):
         vdm_ref = self.share_server_validation(share_server)
         self.allocate_container_from_snapshot(share, snapshot, vdm_ref)
 
-        if share['share_proto'].startswith('NFS'):
+        if share['share_proto'] == 'NFS':
             self._create_nfs_share(share_name, vdm_ref['name'], share_server)
             location = ('%(nfs_if)s:/%(share_name)s'
                         % {'nfs_if': share_server['backend_details']['nfs_if'],
                            'share_name': share_name})
-        elif share['share_proto'].startswith('CIFS'):
+        elif share['share_proto'] == 'CIFS':
             location = self._create_cifs_share(share_name, vdm_ref)
         else:
             raise exception.InvalidShare(
@@ -197,9 +197,9 @@ class VNXStorageConnection(driver.StorageConnection):
                          "Return directly because there is nothing to clean"))
             return
 
-        if share['share_proto'].startswith('NFS'):
+        if share['share_proto'] == 'NFS':
             self._delete_nfs_share(share, share_server)
-        elif share['share_proto'].startswith('CIFS'):
+        elif share['share_proto'] == 'CIFS':
             self._delete_cifs_share(share, share_server)
         else:
             raise exception.InvalidShare(
@@ -345,9 +345,9 @@ class VNXStorageConnection(driver.StorageConnection):
     def allow_access(self, emc_share_driver, context, share, access,
                      share_server=None):
         """Allow access to the share."""
-        if share['share_proto'].startswith('NFS'):
+        if share['share_proto'] == 'NFS':
             self._nfs_allow_access(context, share, access, share_server)
-        elif share['share_proto'].startswith('CIFS'):
+        elif share['share_proto'] == 'CIFS':
             self._cifs_allow_access(context, share, access, share_server)
         else:
             raise exception.InvalidShare(
@@ -400,9 +400,9 @@ class VNXStorageConnection(driver.StorageConnection):
     def deny_access(self, emc_share_driver, context, share, access,
                     share_server=None):
         """Deny access to the share."""
-        if share['share_proto'].startswith('NFS'):
+        if share['share_proto'] == 'NFS':
             self._nfs_deny_access(share, access, share_server)
-        elif share['share_proto'].startswith('CIFS'):
+        elif share['share_proto'] == 'CIFS':
             self._cifs_deny_access(context, share, access, share_server)
         else:
             raise exception.InvalidShare(

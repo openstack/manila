@@ -17,6 +17,7 @@
 import re
 import socket
 
+import ddt
 import mock
 from oslo_config import cfg
 
@@ -33,6 +34,7 @@ from manila import utils
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class GPFSShareDriverTestCase(test.TestCase):
     """Tests GPFSShareDriver."""
 
@@ -60,7 +62,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver._helpers = {
             'KNFS': self._helper_fake
         }
-        self.share = fake_share.fake_share()
+        self.share = fake_share.fake_share(share_proto='NFS')
         self.server = {
             'backend_details': {
                 'ip': '1.2.3.4',
@@ -130,6 +132,12 @@ class GPFSShareDriverTestCase(test.TestCase):
             [mock.call('fakenfs')]
         )
         self.assertEqual(len(self._driver._helpers), 1)
+
+    @ddt.data(fake_share.fake_share(),
+              fake_share.fake_share(share_proto='NFSBOGUS'))
+    def test__get_helper_with_wrong_proto(self, share):
+        self.assertRaises(exception.InvalidShare,
+                          self._driver._get_helper, share)
 
     def test_create_share(self):
         self._helper_fake.create_export.return_value = 'fakelocation'
