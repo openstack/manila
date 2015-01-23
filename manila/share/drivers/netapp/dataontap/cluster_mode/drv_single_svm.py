@@ -12,28 +12,28 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-NetApp Data ONTAP cDOT multi-SVM storage driver.
+NetApp Data ONTAP cDOT single-SVM storage driver.
 
 This driver requires a Data ONTAP (Cluster-mode) storage system with
 installed CIFS and/or NFS licenses, as well as a FlexClone license.  This
-driver manages share servers, meaning it creates Data ONTAP storage virtual
-machines (i.e. 'vservers') for each share network for provisioning shares.
-This driver supports NFS & CIFS protocols.
+driver does not manage share servers, meaning it uses a single Data ONTAP
+storage virtual machine (i.e. 'vserver') as defined in manila.conf to
+provision shares.  This driver supports NFS & CIFS protocols.
 """
 
 from manila.share import driver
-from manila.share.drivers.netapp.dataontap.cluster_mode import lib_multi_svm
+from manila.share.drivers.netapp.dataontap.cluster_mode import lib_single_svm
 
 
-class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
-    """NetApp Cluster-mode multi-SVM share driver."""
+class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
+    """NetApp Cluster-mode single-SVM share driver."""
 
-    DRIVER_NAME = 'NetApp_Cluster_MultiSVM'
+    DRIVER_NAME = 'NetApp_Cluster_SingleSVM'
 
     def __init__(self, db, *args, **kwargs):
-        super(NetAppCmodeMultiSvmShareDriver, self).__init__(
-            True, *args, **kwargs)
-        self.library = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary(
+        super(NetAppCmodeSingleSvmShareDriver, self).__init__(
+            False, *args, **kwargs)
+        self.library = lib_single_svm.NetAppCmodeSingleSVMFileStorageLibrary(
             db, self.DRIVER_NAME, **kwargs)
 
     def do_setup(self, context):
@@ -72,7 +72,7 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
 
     def _update_share_stats(self, data=None):
         data = self.library.get_share_stats()
-        super(NetAppCmodeMultiSvmShareDriver, self)._update_share_stats(
+        super(NetAppCmodeSingleSvmShareDriver, self)._update_share_stats(
             data=data)
 
     def get_network_allocations_number(self):

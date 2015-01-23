@@ -39,7 +39,9 @@ NETAPP_UNIFIED_DRIVER_REGISTRY = {
     {
         MULTI_SVM: DATAONTAP_CMODE_PATH +
         '.drv_multi_svm.NetAppCmodeMultiSvmShareDriver',
-    }
+        SINGLE_SVM: DATAONTAP_CMODE_PATH +
+        '.drv_single_svm.NetAppCmodeSingleSvmShareDriver',
+    },
 }
 NETAPP_UNIFIED_DRIVER_DEFAULT_MODE = {
     'ontap_cluster': MULTI_SVM,
@@ -49,8 +51,8 @@ NETAPP_UNIFIED_DRIVER_DEFAULT_MODE = {
 class NetAppDriver(object):
     """"NetApp unified share storage driver.
 
-       Acts as a factory to create NetApp storage drivers based on the
-       storage family and driver mode configured.
+    Acts as a factory to create NetApp storage drivers based on the
+    storage family and driver mode configured.
     """
 
     REQUIRED_FLAGS = ['netapp_storage_family', 'driver_handles_share_servers']
@@ -60,15 +62,14 @@ class NetAppDriver(object):
         config = kwargs.get('configuration', None)
         if not config:
             raise exception.InvalidInput(
-                reason=_('Required configuration not found'))
+                reason=_('Required configuration not found.'))
 
         config.append_config_values(driver.share_opts)
         config.append_config_values(options.netapp_proxy_opts)
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
 
         app_version = na_utils.OpenStackInfo().info()
-        LOG.info(_LI('OpenStack OS Version Info: %(info)s') % {
-            'info': app_version})
+        LOG.info(_LI('OpenStack OS Version Info: %s'), app_version)
         kwargs['app_version'] = app_version
 
         driver_mode = NetAppDriver._get_driver_mode(
@@ -91,7 +92,7 @@ class NetAppDriver(object):
                 raise exception.InvalidInput(
                     reason=_('Driver mode was not specified and a default '
                              'value could not be determined from the '
-                             'specified storage family'))
+                             'specified storage family.'))
         elif driver_handles_share_servers:
             driver_mode = MULTI_SVM
         else:
@@ -105,22 +106,21 @@ class NetAppDriver(object):
 
         storage_family = storage_family.lower()
 
-        fmt = {'storage_family': storage_family,
-               'driver_mode': driver_mode}
+        fmt = {'storage_family': storage_family, 'driver_mode': driver_mode}
         LOG.info(_LI('Requested unified config: %(storage_family)s and '
                      '%(driver_mode)s.') % fmt)
 
         family_meta = NETAPP_UNIFIED_DRIVER_REGISTRY.get(storage_family)
         if family_meta is None:
             raise exception.InvalidInput(
-                reason=_('Storage family %s is not supported')
+                reason=_('Storage family %s is not supported.')
                 % storage_family)
 
         driver_loc = family_meta.get(driver_mode)
         if driver_loc is None:
             raise exception.InvalidInput(
                 reason=_('Driver mode %(driver_mode)s is not supported '
-                         'for storage family %(storage_family)s') % fmt)
+                         'for storage family %(storage_family)s.') % fmt)
 
         kwargs['netapp_mode'] = 'proxy'
         driver = importutils.import_object(driver_loc, *args, **kwargs)

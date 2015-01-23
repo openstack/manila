@@ -20,6 +20,7 @@ import platform
 
 import mock
 from oslo_concurrency import processutils as putils
+from oslo_log import log
 
 from manila import exception
 from manila.share.drivers.netapp import utils as na_utils
@@ -31,12 +32,19 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppDriverUtilsTestCase, self).setUp()
-        self.mock_object(na_utils, 'LOG')
+
+        # Mock loggers as themselves to allow logger arg validation
+        mock_logger = log.getLogger('mock_logger')
+        self.mock_object(na_utils.LOG,
+                         'warning',
+                         mock.Mock(side_effect=mock_logger.warning))
+        self.mock_object(na_utils.LOG,
+                         'debug',
+                         mock.Mock(side_effect=mock_logger.debug))
+
         na_utils.setup_tracing(None)
 
     def test_setup_tracing(self):
-        self.mock_object(na_utils, 'LOG')
-
         na_utils.setup_tracing(None)
         self.assertFalse(na_utils.TRACE_API)
         self.assertFalse(na_utils.TRACE_METHOD)
@@ -53,8 +61,6 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertEqual(0, na_utils.LOG.warning.call_count)
 
     def test_setup_tracing_invalid_key(self):
-        self.mock_object(na_utils, 'LOG')
-
         na_utils.setup_tracing('method,fake')
 
         self.assertFalse(na_utils.TRACE_API)
@@ -66,8 +72,6 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         return 'OK'
 
     def test_trace_no_tracing(self):
-        self.mock_object(na_utils, 'LOG')
-
         result = self._trace_test_method()
 
         self.assertEqual('OK', result)
@@ -76,8 +80,6 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         na_utils.setup_tracing('method')
 
     def test_trace_method_tracing(self):
-        self.mock_object(na_utils, 'LOG')
-
         na_utils.setup_tracing('method')
 
         result = self._trace_test_method()
@@ -92,7 +94,6 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertEqual(0, na_utils.LOG.warning.call_count)
 
     def test_validate_driver_instantiation_no_proxy(self):
-        self.mock_object(na_utils, 'LOG')
         kwargs = {'netapp_mode': 'asdf'}
 
         na_utils.validate_driver_instantiation(**kwargs)
@@ -116,6 +117,18 @@ class NetAppDriverUtilsTestCase(test.TestCase):
                           na_utils.check_flags,
                           ['flag1', 'flag2'],
                           configuration)
+
+    def test_convert_to_list(self):
+        self.assertListEqual([], na_utils.convert_to_list(None))
+        self.assertListEqual(['test'], na_utils.convert_to_list('test'))
+        self.assertListEqual(['a'], na_utils.convert_to_list(['a']))
+        self.assertListEqual(['a', 'b'], na_utils.convert_to_list(['a', 'b']))
+        self.assertListEqual([1, 2, 3], na_utils.convert_to_list((1, 2, 3)))
+        self.assertListEqual([5], na_utils.convert_to_list(5))
+        self.assertListEqual(
+            sorted(['key1', 'key2']),
+            sorted(na_utils.convert_to_list({'key1': 'value1',
+                                             'key2': 'value2'})))
 
 
 class OpenstackInfoTestCase(test.TestCase):

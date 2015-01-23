@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Mock unit tests for the NetApp Data ONTAP cDOT storage driver library.
+Unit tests for the NetApp Data ONTAP cDOT base storage driver library.
 """
 
 import copy
@@ -20,78 +20,18 @@ import datetime
 import socket
 
 import mock
+from oslo_log import log
 from oslo_utils import timeutils
 
-from manila import context
 from manila import exception
 from manila.openstack.common import loopingcall
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import utils as na_utils
 from manila import test
-import manila.tests.share.drivers.netapp.dataontap.fakes as fake
-import manila.tests.share.drivers.netapp.fakes as na_fakes
-
-
-class EnsureVserverDecoratorTestCase(test.TestCase):
-
-    def setUp(self):
-        super(EnsureVserverDecoratorTestCase, self).setUp()
-        self._client = mock.Mock()
-
-    @lib_base.ensure_vserver
-    def ensure_vserver_test_method(*args, **kwargs):
-        return 'OK'
-
-    def test_ensure_vserver(self):
-
-        self._client.vserver_exists.return_value = True
-        kwargs = {'share_server': fake.SHARE_SERVER}
-
-        result = self.ensure_vserver_test_method(**kwargs)
-
-        self.assertEqual('OK', result)
-
-    def test_ensure_vserver_no_share_server(self):
-
-        self._client.vserver_exists.return_value = True
-
-        self.assertRaises(exception.NetAppException,
-                          self.ensure_vserver_test_method)
-
-    def test_ensure_vserver_no_backend_details(self):
-
-        self._client.vserver_exists.return_value = True
-        fake_share_server = copy.deepcopy(fake.SHARE_SERVER)
-        fake_share_server['backend_details'] = None
-        kwargs = {'share_server': fake_share_server}
-
-        self.assertRaises(exception.NetAppException,
-                          self.ensure_vserver_test_method,
-                          **kwargs)
-
-    def test_ensure_vserver_no_vserver_name(self):
-
-        self._client.vserver_exists.return_value = True
-        fake_share_server = copy.deepcopy(fake.SHARE_SERVER)
-        fake_share_server['backend_details']['vserver_name'] = None
-        kwargs = {'share_server': fake_share_server}
-
-        self.assertRaises(exception.NetAppException,
-                          self.ensure_vserver_test_method,
-                          **kwargs)
-
-    def test_ensure_vserver_not_found(self):
-
-        self._client.vserver_exists.return_value = False
-        kwargs = {'share_server': fake.SHARE_SERVER}
-
-        self.assertRaises(exception.VserverUnavailable,
-                          self.ensure_vserver_test_method,
-                          **kwargs)
+from manila.tests.share.drivers.netapp.dataontap import fakes as fake
 
 
 class NetAppFileStorageLibraryTestCase(test.TestCase):
@@ -101,11 +41,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.mock_object(na_utils, 'validate_driver_instantiation')
         self.mock_object(na_utils, 'setup_tracing')
-        self.mock_object(lib_base, 'LOG')
+
+        # Mock loggers as themselves to allow logger arg validation
+        mock_logger = log.getLogger('mock_logger')
+        self.mock_object(lib_base.LOG,
+                         'info',
+                         mock.Mock(side_effect=mock_logger.info))
+        self.mock_object(lib_base.LOG,
+                         'error',
+                         mock.Mock(side_effect=mock_logger.error))
+        self.mock_object(lib_base.LOG,
+                         'debug',
+                         mock.Mock(side_effect=mock_logger.debug))
 
         self.mock_db = mock.Mock()
         kwargs = {
-            'configuration': self._get_config_cmode(),
+            'configuration': fake.get_config_cmode(),
             'app_version': fake.APP_VERSION
         }
         self.library = lib_base.NetAppCmodeFileStorageLibrary(self.mock_db,
@@ -114,25 +65,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client = mock.Mock()
         self.client = self.library._client
         self.context = mock.Mock()
-
-    def _get_config_cmode(self):
-        config = na_fakes.create_configuration_cmode()
-        config.local_conf.set_override('share_backend_name',
-                                       fake.BACKEND_NAME)
-        config.netapp_login = fake.CLIENT_KWARGS['username']
-        config.netapp_password = fake.CLIENT_KWARGS['password']
-        config.netapp_server_hostname = fake.CLIENT_KWARGS['hostname']
-        config.netapp_transport_type = fake.CLIENT_KWARGS['transport_type']
-        config.netapp_server_port = fake.CLIENT_KWARGS['port']
-        config.netapp_vserver = fake.VSERVER1
-        config.netapp_volume_name_template = fake.VOLUME_NAME_TEMPLATE
-        config.netapp_aggregate_name_search_pattern = (
-            fake.AGGREGATE_NAME_SEARCH_PATTERN)
-        config.netapp_vserver_name_template = fake.VSERVER_NAME_TEMPLATE
-        config.netapp_root_volume_aggregate = fake.ROOT_VOLUME_AGGREGATE
-        config.netapp_root_volume = fake.ROOT_VOLUME
-        config.netapp_lif_name_template = fake.LIF_NAME_TEMPLATE
-        return config
 
     def test_init(self):
         self.assertEqual(fake.DRIVER_NAME, self.library.driver_name)
@@ -148,22 +80,31 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_do_setup(self):
         mock_setup_helpers = self.mock_object(self.library, '_setup_helpers')
-        mock_get_api_client = self.mock_object(self.library,
-                                               '_get_api_client')
+        mock_get_api_client = self.mock_object(self.library, '_get_api_client')
+
         self.library.do_setup(self.context)
 
         mock_get_api_client.assert_called_once_with()
+        self.library._client.check_for_cluster_credentials.\
+            assert_called_once_with()
         mock_setup_helpers.assert_called_once_with()
 
     def test_check_for_setup_error(self):
-        mock_get_licenses = self.mock_object(self.library, '_get_licenses')
+
+        self.library._licenses = []
+        self.mock_object(self.library,
+                         '_get_licenses',
+                         mock.Mock(return_value=['fake_license']))
         mock_start_periodic_tasks = self.mock_object(self.library,
                                                      '_start_periodic_tasks')
 
         self.library.check_for_setup_error()
 
-        mock_get_licenses.assert_called_once_with()
+        self.assertEqual(['fake_license'], self.library._licenses)
         mock_start_periodic_tasks.assert_called_once_with()
+
+    def test_get_vserver(self):
+        self.assertRaises(NotImplementedError, self.library._get_vserver)
 
     def test_get_api_client(self):
 
@@ -210,6 +151,55 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         client_kwargs['vserver'] = fake.VSERVER2
         mock_client_constructor.assert_called_once_with(**client_kwargs)
 
+    def test_get_licenses_both_protocols(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.client,
+                         'get_licenses',
+                         mock.Mock(return_value=fake.LICENSES))
+
+        result = self.library._get_licenses()
+
+        self.assertSequenceEqual(fake.LICENSES, result)
+        self.assertEqual(0, lib_base.LOG.error.call_count)
+        self.assertEqual(1, lib_base.LOG.info.call_count)
+
+    def test_get_licenses_one_protocol(self):
+        self.library._have_cluster_creds = True
+        licenses = list(fake.LICENSES)
+        licenses.remove('nfs')
+        self.mock_object(self.client,
+                         'get_licenses',
+                         mock.Mock(return_value=licenses))
+
+        result = self.library._get_licenses()
+
+        self.assertListEqual(licenses, result)
+        self.assertEqual(0, lib_base.LOG.error.call_count)
+        self.assertEqual(1, lib_base.LOG.info.call_count)
+
+    def test_get_licenses_no_protocols(self):
+        self.library._have_cluster_creds = True
+        licenses = list(fake.LICENSES)
+        licenses.remove('nfs')
+        licenses.remove('cifs')
+        self.mock_object(self.client,
+                         'get_licenses',
+                         mock.Mock(return_value=licenses))
+
+        result = self.library._get_licenses()
+
+        self.assertListEqual(licenses, result)
+        self.assertEqual(1, lib_base.LOG.error.call_count)
+        self.assertEqual(1, lib_base.LOG.info.call_count)
+
+    def test_get_licenses_no_cluster_creds(self):
+        self.library._have_cluster_creds = False
+
+        result = self.library._get_licenses()
+
+        self.assertListEqual([], result)
+        self.assertEqual(1, lib_base.LOG.debug.call_count)
+
     def test_start_periodic_tasks(self):
 
         mock_update_ssc_info = self.mock_object(self.library,
@@ -226,44 +216,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_loopingcall.assert_called_once_with(mock_update_ssc_info)
         self.assertTrue(mock_ssc_periodic_task.start.called)
 
-    def test_get_licenses_both_protocols(self):
-        self.mock_object(self.client,
-                         'get_licenses',
-                         mock.Mock(return_value=fake.LICENSES))
-
-        result = self.library._get_licenses()
-
-        self.assertSequenceEqual(fake.LICENSES, result)
-        self.assertEqual(0, lib_base.LOG.error.call_count)
-        self.assertEqual(1, lib_base.LOG.info.call_count)
-
-    def test_get_licenses_one_protocol(self):
-        licenses = list(fake.LICENSES)
-        licenses.remove('nfs')
-        self.mock_object(self.client,
-                         'get_licenses',
-                         mock.Mock(return_value=licenses))
-
-        result = self.library._get_licenses()
-
-        self.assertListEqual(licenses, result)
-        self.assertEqual(0, lib_base.LOG.error.call_count)
-        self.assertEqual(1, lib_base.LOG.info.call_count)
-
-    def test_get_licenses_no_protocols(self):
-        licenses = list(fake.LICENSES)
-        licenses.remove('nfs')
-        licenses.remove('cifs')
-        self.mock_object(self.client,
-                         'get_licenses',
-                         mock.Mock(return_value=licenses))
-
-        result = self.library._get_licenses()
-
-        self.assertListEqual(licenses, result)
-        self.assertEqual(1, lib_base.LOG.error.call_count)
-        self.assertEqual(1, lib_base.LOG.info.call_count)
-
     def test_get_valid_share_name(self):
 
         result = self.library._get_valid_share_name(fake.SHARE_ID)
@@ -279,11 +231,42 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test_get_aggregate_space_cluster_creds(self):
+
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library._client,
+                         'get_cluster_aggregate_capacities',
+                         mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
+
+        result = self.library._get_aggregate_space()
+
+        self.library._client.get_cluster_aggregate_capacities.\
+            assert_called_once_with(fake.AGGREGATES)
+        self.assertDictEqual(fake.AGGREGATE_CAPACITIES, result)
+
+    def test_get_aggregate_space_no_cluster_creds(self):
+
+        self.library._have_cluster_creds = False
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        self.mock_object(self.library._client,
+                         'get_vserver_aggregate_capacities',
+                         mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
+
+        result = self.library._get_aggregate_space()
+
+        self.library._client.get_vserver_aggregate_capacities.\
+            assert_called_once_with(fake.AGGREGATES)
+        self.assertDictEqual(fake.AGGREGATE_CAPACITIES, result)
+
     def test_get_share_stats(self):
 
-        self.mock_object(self.library, '_find_matching_aggregates')
-        self.mock_object(self.client,
-                         'get_cluster_aggregate_capacities',
+        self.mock_object(self.library,
+                         '_get_aggregate_space',
                          mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
         mock_handle_ems_logging = self.mock_object(self.library,
                                                    '_handle_ems_logging')
@@ -322,7 +305,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             ]
         }
 
-        self.maxDiff = None
         self.assertDictEqual(expected, result)
         self.assertTrue(mock_handle_ems_logging.called)
 
@@ -376,20 +358,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertDictEqual(fake_ems_log, result)
 
     def test_find_matching_aggregates(self):
-
-        self.mock_object(self.client,
-                         'list_aggregates',
-                         mock.Mock(return_value=fake.AGGREGATES))
-
-        self.library.configuration.netapp_aggregate_name_search_pattern = (
-            fake.AGGREGATE_NAME_SEARCH_PATTERN)
-        result = self.library._find_matching_aggregates()
-        self.assertSequenceEqual(fake.AGGREGATES, result)
-
-        self.library.configuration.netapp_aggregate_name_search_pattern = (
-            'man.*')
-        result = self.library._find_matching_aggregates()
-        self.assertSequenceEqual(fake.AGGREGATES, result)
+        self.assertRaises(NotImplementedError,
+                          self.library._find_matching_aggregates)
 
     def test_setup_helpers(self):
 
@@ -414,251 +384,71 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._licenses = fake.LICENSES
         fake_share = fake.SHARE.copy()
         fake_share['share_proto'] = 'NFS'
+        mock_check_license_for_protocol = self.mock_object(
+            self.library, '_check_license_for_protocol')
 
         result = self.library._get_helper(fake_share)
 
+        mock_check_license_for_protocol.assert_called_once_with('NFS')
         self.assertEqual('fake_nfs_helper', result)
 
-    def test_get_helper_newly_licensed_protocol(self):
+    def test_get_helper_invalid_protocol(self):
 
+        self.library._helpers = {'CIFS': 'fake_cifs_helper',
+                                 'NFS': 'fake_nfs_helper'}
+        fake_share = fake.SHARE.copy()
+        fake_share['share_proto'] = 'iSCSI'
+        self.mock_object(self.library, '_check_license_for_protocol')
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._get_helper,
+                          fake_share)
+
+    def test_check_license_for_protocol_no_cluster_creds(self):
+
+        self.library._have_cluster_creds = False
+
+        result = self.library._check_license_for_protocol('fake_protocol')
+
+        self.assertIsNone(result)
+
+    def test_check_license_for_protocol_have_license(self):
+
+        self.library._have_cluster_creds = True
+        self.library._licenses = ['base', 'fake_protocol']
+
+        result = self.library._check_license_for_protocol('FAKE_PROTOCOL')
+
+        self.assertIsNone(result)
+
+    def test_check_license_for_protocol_newly_licensed_protocol(self):
+
+        self.library._have_cluster_creds = True
         self.mock_object(self.library,
                          '_get_licenses',
                          mock.Mock(return_value=['base', 'nfs']))
         self.library._helpers = {'CIFS': 'fake_cifs_helper',
                                  'NFS': 'fake_nfs_helper'}
         self.library._licenses = ['base']
-        fake_share = fake.SHARE.copy()
-        fake_share['share_proto'] = 'NFS'
 
-        result = self.library._get_helper(fake_share)
+        result = self.library._check_license_for_protocol('NFS')
 
-        self.assertEqual('fake_nfs_helper', result)
+        self.assertIsNone(result)
         self.assertTrue(self.library._get_licenses.called)
 
-    def test_get_helper_unlicensed_protocol(self):
+    def test_check_license_for_protocol_unlicensed_protocol(self):
 
+        self.library._have_cluster_creds = True
         self.mock_object(self.library,
                          '_get_licenses',
                          mock.Mock(return_value=['base']))
         self.library._helpers = {'CIFS': 'fake_cifs_helper',
                                  'NFS': 'fake_nfs_helper'}
         self.library._licenses = ['base']
-        fake_share = fake.SHARE.copy()
-        fake_share['share_proto'] = 'NFS'
 
         self.assertRaises(exception.NetAppException,
-                          self.library._get_helper,
-                          fake_share)
-
-    def test_get_helper_invalid_protocol(self):
-
-        self.mock_object(self.library,
-                         '_get_licenses',
-                         mock.Mock(return_value=['base', 'iscsi']))
-        self.library._helpers = {'CIFS': 'fake_cifs_helper',
-                                 'NFS': 'fake_nfs_helper'}
-        self.library._licenses = ['base', 'iscsi']
-        fake_share = fake.SHARE.copy()
-        fake_share['share_proto'] = 'iSCSI'
-
-        self.assertRaises(exception.NetAppException,
-                          self.library._get_helper,
-                          fake_share)
-
-    def test_setup_server(self):
-
-        mock_create_vserver = self.mock_object(
-            self.library, '_create_vserver_if_nonexistent',
-            mock.Mock(return_value=fake.VSERVER1))
-
-        result = self.library.setup_server(fake.NETWORK_INFO)
-
-        self.assertTrue(mock_create_vserver.called)
-        self.assertDictEqual({'vserver_name': fake.VSERVER1}, result)
-
-    def test_create_vserver_if_nonexistent(self):
-
-        vserver_id = fake.NETWORK_INFO['server_id']
-        vserver_name = fake.VSERVER_NAME_TEMPLATE % vserver_id
-        vserver_client = mock.Mock()
-
-        self.mock_object(context,
-                         'get_admin_context',
-                         mock.Mock(return_value='fake_admin_context'))
-        self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
-        self.mock_object(self.library._client,
-                         'vserver_exists',
-                         mock.Mock(return_value=False))
-        self.mock_object(self.library,
-                         '_find_matching_aggregates',
-                         mock.Mock(return_value=fake.AGGREGATES))
-        self.mock_object(self.library, '_create_vserver_lifs')
-
-        result = self.library._create_vserver_if_nonexistent(
-            fake.NETWORK_INFO)
-
-        self.assertEqual(vserver_name, result)
-        self.library.db.share_server_backend_details_set.assert_called_with(
-            'fake_admin_context',
-            vserver_id,
-            {'vserver_name': vserver_name})
-        self.library._get_api_client.assert_called_with(vserver=vserver_name)
-        self.library._client.create_vserver.assert_called_with(
-            vserver_name,
-            fake.ROOT_VOLUME_AGGREGATE,
-            fake.ROOT_VOLUME,
-            fake.AGGREGATES)
-        self.library._create_vserver_lifs.assert_called_with(
-            vserver_name,
-            vserver_client,
-            fake.NETWORK_INFO)
-        self.assertTrue(vserver_client.enable_nfs.called)
-        self.library._client.setup_security_services.assert_called_with(
-            fake.NETWORK_INFO['security_services'],
-            vserver_client,
-            vserver_name)
-
-    def test_create_vserver_if_nonexistent_already_present(self):
-
-        vserver_id = fake.NETWORK_INFO['server_id']
-        vserver_name = fake.VSERVER_NAME_TEMPLATE % vserver_id
-
-        self.mock_object(context,
-                         'get_admin_context',
-                         mock.Mock(return_value='fake_admin_context'))
-        self.mock_object(self.library._client,
-                         'vserver_exists',
-                         mock.Mock(return_value=True))
-
-        self.assertRaises(exception.NetAppException,
-                          self.library._create_vserver_if_nonexistent,
-                          fake.NETWORK_INFO)
-
-        self.library.db.share_server_backend_details_set.assert_called_with(
-            'fake_admin_context',
-            vserver_id,
-            {'vserver_name': vserver_name})
-
-    def test_create_vserver_if_nonexistent_lif_creation_failure(self):
-
-        vserver_id = fake.NETWORK_INFO['server_id']
-        vserver_name = fake.VSERVER_NAME_TEMPLATE % vserver_id
-        vserver_client = mock.Mock()
-
-        self.mock_object(context,
-                         'get_admin_context',
-                         mock.Mock(return_value='fake_admin_context'))
-        self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
-        self.mock_object(self.library._client,
-                         'vserver_exists',
-                         mock.Mock(return_value=False))
-        self.mock_object(self.library,
-                         '_find_matching_aggregates',
-                         mock.Mock(return_value=fake.AGGREGATES))
-        self.mock_object(self.library,
-                         '_create_vserver_lifs',
-                         mock.Mock(side_effect=netapp_api.NaApiError))
-
-        self.assertRaises(netapp_api.NaApiError,
-                          self.library._create_vserver_if_nonexistent,
-                          fake.NETWORK_INFO)
-
-        self.library.db.share_server_backend_details_set.assert_called_with(
-            'fake_admin_context',
-            vserver_id,
-            {'vserver_name': vserver_name})
-        self.library._get_api_client.assert_called_with(vserver=vserver_name)
-        self.assertTrue(self.library._client.create_vserver.called)
-        self.library._create_vserver_lifs.assert_called_with(
-            vserver_name,
-            vserver_client,
-            fake.NETWORK_INFO)
-        self.library._client.delete_vserver.assert_called_once_with(
-            vserver_name,
-            vserver_client)
-        self.assertFalse(vserver_client.enable_nfs.called)
-        self.assertEqual(1, lib_base.LOG.error.call_count)
-
-    def test_create_vserver_lifs(self):
-
-        self.mock_object(self.library._client,
-                         'list_cluster_nodes',
-                         mock.Mock(return_value=fake.CLUSTER_NODES))
-        self.mock_object(self.library._client,
-                         'get_node_data_port',
-                         mock.Mock(return_value=fake.NODE_DATA_PORT))
-        self.mock_object(self.library, '_create_lif_if_nonexistent')
-
-        self.library._create_vserver_lifs(fake.VSERVER1,
-                                          'fake_vserver_client',
-                                          fake.NETWORK_INFO)
-
-        self.library._create_lif_if_nonexistent.assert_has_calls([
-            mock.call(
-                fake.VSERVER1,
-                fake.NETWORK_INFO['network_allocations'][0]['id'],
-                fake.NETWORK_INFO['segmentation_id'],
-                fake.CLUSTER_NODES[0],
-                fake.NODE_DATA_PORT,
-                fake.NETWORK_INFO['network_allocations'][0]['ip_address'],
-                fake.NETWORK_INFO_NETMASK,
-                'fake_vserver_client'),
-            mock.call(
-                fake.VSERVER1,
-                fake.NETWORK_INFO['network_allocations'][1]['id'],
-                fake.NETWORK_INFO['segmentation_id'],
-                fake.CLUSTER_NODES[1],
-                fake.NODE_DATA_PORT,
-                fake.NETWORK_INFO['network_allocations'][1]['ip_address'],
-                fake.NETWORK_INFO_NETMASK,
-                'fake_vserver_client')])
-
-    def test_create_lif_if_nonexistent(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.network_interface_exists = mock.Mock(
-            return_value=False)
-
-        self.library._create_lif_if_nonexistent('fake_vserver',
-                                                'fake_allocation_id',
-                                                'fake_vlan',
-                                                'fake_node',
-                                                'fake_port',
-                                                'fake_ip',
-                                                'fake_netmask',
-                                                vserver_client)
-
-        self.library._client.create_network_interface.assert_has_calls([
-            mock.call(
-                'fake_ip',
-                'fake_netmask',
-                'fake_vlan',
-                'fake_node',
-                'fake_port',
-                'fake_vserver',
-                'fake_allocation_id',
-                fake.LIF_NAME_TEMPLATE)])
-
-    def test_create_lif_if_nonexistent_already_present(self):
-
-        vserver_client = mock.Mock()
-        vserver_client.network_interface_exists = mock.Mock(
-            return_value=True)
-
-        self.library._create_lif_if_nonexistent('fake_vserver',
-                                                'fake_allocation_id',
-                                                'fake_vlan',
-                                                'fake_node',
-                                                'fake_port',
-                                                'fake_ip',
-                                                'fake_netmask',
-                                                vserver_client)
-
-        self.assertFalse(self.library._client.create_network_interface.called)
+                          self.library._check_license_for_protocol,
+                          'NFS')
 
     def test_get_pool_has_pool(self):
         result = self.library.get_pool(fake.SHARE)
@@ -693,8 +483,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         vserver_client = mock.Mock()
         self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
         mock_allocate_container = self.mock_object(self.library,
                                                    '_allocate_container')
         mock_create_export = self.mock_object(
@@ -718,8 +509,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         vserver_client = mock.Mock()
         self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
         mock_allocate_container_from_snapshot = self.mock_object(
             self.library,
             '_allocate_container_from_snapshot')
@@ -756,6 +548,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                         share_name,
                                                         fake.SHARE['size'])
 
+    def test_allocate_container_no_pool(self):
+
+        vserver_client = mock.Mock()
+        fake_share = copy.deepcopy(fake.SHARE)
+        fake_share['host'] = fake_share['host'].split('#')[0]
+
+        self.assertRaises(exception.InvalidHost,
+                          self.library._allocate_container,
+                          fake_share,
+                          fake.VSERVER1,
+                          vserver_client)
+
     def test_allocate_container_from_snapshot(self):
 
         vserver_client = mock.Mock()
@@ -777,21 +581,28 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_share_exists(self):
 
         vserver_client = mock.Mock()
-
         vserver_client.volume_exists.return_value = True
+
         result = self.library._share_exists(fake.SHARE_NAME, vserver_client)
+
         self.assertTrue(result)
 
+    def test_share_exists_not_found(self):
+
+        vserver_client = mock.Mock()
         vserver_client.volume_exists.return_value = False
+
         result = self.library._share_exists(fake.SHARE_NAME, vserver_client)
+
         self.assertFalse(result)
 
     def test_delete_share(self):
 
         vserver_client = mock.Mock()
         self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
         mock_share_exists = self.mock_object(self.library,
                                              '_share_exists',
                                              mock.Mock(return_value=True))
@@ -814,8 +625,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         vserver_client = mock.Mock()
         self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
         mock_share_exists = self.mock_object(self.library,
                                              '_share_exists',
                                              mock.Mock(return_value=False))
@@ -910,8 +722,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         vserver_client = mock.Mock()
         self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
 
         self.library.create_snapshot(self.context,
                                      fake.SNAPSHOT,
@@ -921,17 +734,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT['share_id'])
         snapshot_name = self.library._get_valid_snapshot_name(
             fake.SNAPSHOT['id'])
-        vserver_client.create_snapshot.assert_called_once_with(
-            share_name,
-            snapshot_name)
+        vserver_client.create_snapshot.assert_called_once_with(share_name,
+                                                               snapshot_name)
 
     def test_delete_snapshot(self):
 
         vserver_client = mock.Mock()
         vserver_client.is_snapshot_busy.return_value = False
         self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
 
         self.library.delete_snapshot(self.context,
                                      fake.SNAPSHOT,
@@ -941,17 +754,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT['share_id'])
         snapshot_name = self.library._get_valid_snapshot_name(
             fake.SNAPSHOT['id'])
-        vserver_client.delete_snapshot.assert_called_once_with(
-            share_name,
-            snapshot_name)
+        vserver_client.delete_snapshot.assert_called_once_with(share_name,
+                                                               snapshot_name)
 
     def test_delete_snapshot_busy(self):
 
         vserver_client = mock.Mock()
         vserver_client.is_snapshot_busy.return_value = True
         self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
 
         self.assertRaises(exception.ShareSnapshotIsBusy,
                           self.library.delete_snapshot,
@@ -968,8 +781,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=protocol_helper))
         vserver_client = mock.Mock()
         self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
 
         self.library.allow_access(self.context,
                                   fake.SHARE,
@@ -991,8 +805,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=protocol_helper))
         vserver_client = mock.Mock()
         self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
 
         self.library.deny_access(self.context,
                                  fake.SHARE,
@@ -1005,30 +820,19 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SHARE,
             fake.SHARE_ACCESS)
 
-    def test_get_network_allocations_number(self):
-
-        self.library._client.list_cluster_nodes.return_value = (
-            fake.CLUSTER_NODES)
-
-        result = self.library.get_network_allocations_number()
-
-        self.assertEqual(len(fake.CLUSTER_NODES), result)
+    def test_setup_server(self):
+        self.assertRaises(NotImplementedError,
+                          self.library.setup_server,
+                          fake.NETWORK_INFO)
 
     def test_teardown_server(self):
+        self.assertRaises(NotImplementedError,
+                          self.library.teardown_server,
+                          fake.SHARE_SERVER['backend_details'])
 
-        vserver_client = mock.Mock()
-        self.mock_object(self.library,
-                         '_get_api_client',
-                         mock.Mock(return_value=vserver_client))
-
-        self.library.teardown_server(
-            fake.SHARE_SERVER['backend_details'],
-            security_services=fake.NETWORK_INFO['security_services'])
-
-        self.library._client.delete_vserver.assert_called_once_with(
-            fake.VSERVER1,
-            vserver_client,
-            security_services=fake.NETWORK_INFO['security_services'])
+    def test_get_network_allocations_number(self):
+        self.assertRaises(NotImplementedError,
+                          self.library.get_network_allocations_number)
 
     def test_update_ssc_info(self):
 
@@ -1063,13 +867,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_update_ssc_aggr_info(self):
 
+        self.library._have_cluster_creds = True
         self.mock_object(self.client,
                          'get_aggregate_raid_types',
                          mock.Mock(return_value=fake.SSC_RAID_TYPES))
         self.mock_object(self.client,
                          'get_aggregate_disk_types',
                          mock.Mock(return_value=fake.SSC_DISK_TYPES))
-
         ssc_stats = {
             fake.AGGREGATES[0]: {},
             fake.AGGREGATES[1]: {}
@@ -1081,15 +885,25 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_update_ssc_aggr_info_not_found(self):
 
+        self.library._have_cluster_creds = True
         self.mock_object(self.client,
                          'get_aggregate_raid_types',
                          mock.Mock(return_value={}))
         self.mock_object(self.client,
                          'get_aggregate_disk_types',
                          mock.Mock(return_value={}))
-
         ssc_stats = {}
 
         self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
 
         self.assertDictEqual({}, ssc_stats)
+
+    def test_update_ssc_aggr_info_no_cluster_creds(self):
+
+        self.library._have_cluster_creds = False
+        ssc_stats = {}
+
+        self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
+
+        self.assertDictEqual({}, ssc_stats)
+        self.assertFalse(self.library._client.get_aggregate_raid_types.called)

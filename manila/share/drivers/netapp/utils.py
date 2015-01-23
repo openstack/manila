@@ -15,6 +15,7 @@
 #    under the License.
 """Utilities for NetApp drivers."""
 
+import collections
 import decimal
 import platform
 
@@ -34,14 +35,6 @@ TRACE_METHOD = False
 TRACE_API = False
 
 
-def check_flags(required_flags, configuration):
-    """Ensure that the flags we care about are set."""
-    for flag in required_flags:
-        if not getattr(configuration, flag, None):
-            msg = _('Configuration value %s is not set.') % flag
-            raise exception.InvalidInput(reason=msg)
-
-
 def validate_driver_instantiation(**kwargs):
     """Checks if a driver is instantiated other than by the unified driver.
 
@@ -53,6 +46,14 @@ def validate_driver_instantiation(**kwargs):
     LOG.warning(_LW('Please use NetAppDriver in the configuration file '
                     'to load the driver instead of directly specifying '
                     'the driver module name.'))
+
+
+def check_flags(required_flags, configuration):
+    """Ensure that the flags we care about are set."""
+    for flag in required_flags:
+        if getattr(configuration, flag, None) is None:
+            msg = _('Configuration value %s is not set.') % flag
+            raise exception.InvalidInput(reason=msg)
 
 
 def round_down(value, precision):
@@ -87,6 +88,18 @@ def trace(f):
             LOG.debug('Leaving method %s', f.__name__)
         return result
     return trace_wrapper
+
+
+def convert_to_list(value):
+
+    if value is None:
+        return []
+    elif isinstance(value, six.string_types):
+        return [value]
+    elif isinstance(value, collections.Iterable):
+        return list(value)
+    else:
+        return [value]
 
 
 class OpenStackInfo(object):

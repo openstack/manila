@@ -19,6 +19,7 @@ from oslo_log import log
 
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.protocols import base
+from manila.share.drivers.netapp import utils as na_utils
 
 
 LOG = log.getLogger(__name__)
@@ -27,6 +28,7 @@ LOG = log.getLogger(__name__)
 class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     """Netapp specific cluster-mode NFS sharing driver."""
 
+    @na_utils.trace
     def create_share(self, share_name, export_ip):
         """Creates NFS share."""
         export_path = self._client.get_volume_junction_path(share_name)
@@ -34,12 +36,14 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         export_location = ':'.join([export_ip, export_path])
         return export_location
 
+    @na_utils.trace
     def delete_share(self, share):
         """Deletes NFS share."""
         target, export_path = self._get_export_location(share)
         LOG.debug('Deleting NFS rules for share %s', share['id'])
         self._client.remove_nfs_export_rules(export_path)
 
+    @na_utils.trace
     def allow_access(self, context, share, access):
         """Allows access to a given NFS storage."""
         new_rules = access['access_to']
@@ -54,6 +58,7 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         except netapp_api.NaApiError:
             self._modify_rule(share, existing_rules)
 
+    @na_utils.trace
     def deny_access(self, context, share, access):
         """Denies access to a given NFS storage."""
         access_to = access['access_to']
@@ -68,15 +73,18 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
 
         self._modify_rule(share, existing_rules)
 
+    @na_utils.trace
     def get_target(self, share):
         """Returns ID of target OnTap device based on export location."""
         return self._get_export_location(share)[0]
 
+    @na_utils.trace
     def _modify_rule(self, share, rules):
         """Modifies access rule for a given NFS share."""
         target, export_path = self._get_export_location(share)
         self._client.add_nfs_export_rules(export_path, rules)
 
+    @na_utils.trace
     def _get_existing_rules(self, share):
         """Returns available access rules for a given NFS share."""
         target, export_path = self._get_export_location(share)

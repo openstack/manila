@@ -16,6 +16,7 @@ Mock unit tests for the NetApp driver protocols CIFS class module.
 """
 
 import mock
+from oslo_log import log
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -29,7 +30,12 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppClusteredCIFSHelperTestCase, self).setUp()
-        self.mock_object(cifs_cmode, 'LOG')
+
+        # Mock loggers as themselves to allow logger arg validation
+        mock_logger = log.getLogger('mock_logger')
+        self.mock_object(cifs_cmode.LOG,
+                         'error',
+                         mock.Mock(side_effect=mock_logger.error))
 
         self.mock_context = mock.Mock()
 

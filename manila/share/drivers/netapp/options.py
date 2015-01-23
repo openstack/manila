@@ -68,7 +68,7 @@ netapp_provisioning_opts = [
                default='share_%(share_id)s'),
     cfg.StrOpt('netapp_vserver_name_template',
                default='os_%s',
-               help='Name template to use for new vserver.'),
+               help='Name template to use for new Vserver.'),
     cfg.StrOpt('netapp_lif_name_template',
                default='os_%(net_allocation_id)s',
                help='Logical interface (LIF) name template'),
@@ -77,11 +77,24 @@ netapp_provisioning_opts = [
                help='Pattern for searching available aggregates '
                     'for provisioning.'),
     cfg.StrOpt('netapp_root_volume_aggregate',
-               help='Name of aggregate to create root volume on.'),
+               help='Name of aggregate to create Vserver root volumes on. '
+                    'This option only applies when the option '
+                    'driver_handles_share_servers is set to True.'),
     cfg.StrOpt('netapp_root_volume',
                deprecated_name='netapp_root_volume_name',
                default='root',
                help='Root volume name.'), ]
+
+netapp_cluster_opts = [
+    cfg.StrOpt('netapp_vserver',
+               default=None,
+               help=('This option specifies the Storage Virtual Machine '
+                     '(i.e. Vserver) name on the storage cluster on which '
+                     'provisioning of file storage shares should occur. This '
+                     'option should only be specified when the option '
+                     'driver_handles_share_servers is set to False (i.e. the '
+                     'driver is managing shares on a single pre-configured '
+                     'Vserver).')), ]
 
 netapp_support_opts = [
     cfg.StrOpt('netapp_trace_flags',
