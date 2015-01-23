@@ -80,6 +80,7 @@ Share backends
    cluster_mode_driver
    emc_vnx_driver
    generic_driver
+   huawei_nas_driver
 
 Indices and tables
 ------------------
