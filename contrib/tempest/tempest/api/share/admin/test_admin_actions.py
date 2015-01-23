@@ -20,8 +20,8 @@ from tempest import test
 class AdminActionsTest(base.BaseSharesAdminTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(AdminActionsTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(AdminActionsTest, cls).resource_setup()
         cls.states = ["error", "available"]
         cls.bad_status = "error_deleting"
         __, cls.sh = cls.create_share()

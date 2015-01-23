@@ -24,8 +24,8 @@ CONF = config.CONF
 class ShareMultiBackendTest(base.BaseSharesAdminTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(ShareMultiBackendTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(ShareMultiBackendTest, cls).resource_setup()
         if not CONF.share.multi_backend:
             raise cls.skipException("Manila multi-backend tests are disabled.")
         elif len(CONF.share.backend_names) < 2:

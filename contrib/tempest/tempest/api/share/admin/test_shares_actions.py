@@ -25,8 +25,8 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     """Covers share functionality, that doesn't related to share type."""
 
     @classmethod
-    def setUpClass(cls):
-        super(SharesActionsAdminTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SharesActionsAdminTest, cls).resource_setup()
 
         # create volume type for share filtering purposes
         cls.vt_name = data_utils.rand_name("tempest-vt-name")

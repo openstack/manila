@@ -29,8 +29,8 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
         return vt
 
     @classmethod
-    def setUpClass(cls):
-        super(ExtraSpecsAdminNegativeTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(ExtraSpecsAdminNegativeTest, cls).resource_setup()
         cls.member_shares_client = clients.Manager().shares_client
 
     @test.attr(type=["gate", "smoke", ])

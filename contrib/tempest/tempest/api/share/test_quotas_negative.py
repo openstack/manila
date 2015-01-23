@@ -25,8 +25,8 @@ class SharesQuotasNegativeTest(base.BaseSharesTest):
     force_tenant_isolation = True
 
     @classmethod
-    def setUpClass(cls):
-        super(SharesQuotasNegativeTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SharesQuotasNegativeTest, cls).resource_setup()
 
         # Get tenant and user
         cls.identity_client = cls._get_identity_admin_client()

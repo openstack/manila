@@ -29,8 +29,8 @@ class VolumeTypesAdminNegativeTest(base.BaseSharesAdminTest):
         return vt
 
     @classmethod
-    def setUpClass(cls):
-        super(VolumeTypesAdminNegativeTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(VolumeTypesAdminNegativeTest, cls).resource_setup()
         cls.member_shares_client = clients.Manager().shares_client
 
     @test.attr(type=["gate", "smoke", ])

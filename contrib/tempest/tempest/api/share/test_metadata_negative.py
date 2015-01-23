@@ -21,8 +21,8 @@ from tempest import test
 class SharesMetadataNegativeTest(base.BaseSharesTest):
 
     @classmethod
-    def setUpClass(cls):
-        super(SharesMetadataNegativeTest, cls).setUpClass()
+    def resource_setup(cls):
+        super(SharesMetadataNegativeTest, cls).resource_setup()
         __, cls.share = cls.create_share()
 
     @test.attr(type=["gate", "negative", ])

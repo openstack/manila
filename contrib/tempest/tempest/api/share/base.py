@@ -81,13 +81,13 @@ class BaseSharesTest(test.BaseTestCase):
     force_tenant_isolation = False
     protocols = ["nfs", "cifs"]
 
-    # Will be cleaned up in tearDownClass
+    # Will be cleaned up in resource_cleanup
     class_resources = []
 
     # Will be cleaned up in tearDown method
     method_resources = []
 
-    # Will be cleaned up in tearDownClass
+    # Will be cleaned up in resource_cleanup
     class_isolated_creds = []
 
     # Will be cleaned up in tearDown method
@@ -171,13 +171,13 @@ class BaseSharesTest(test.BaseTestCase):
             raise cls.skipException(msg)
 
     @classmethod
-    def setUpClass(cls):
+    def resource_setup(cls):
         if not (any(p in CONF.share.enable_protocols
                     for p in cls.protocols) and
                 CONF.service_available.manila):
             skip_msg = "Manila is disabled"
             raise cls.skipException(skip_msg)
-        super(BaseSharesTest, cls).setUpClass()
+        super(BaseSharesTest, cls).resource_setup()
         if not hasattr(cls, "os"):
             cls.username = CONF.identity.username
             cls.password = CONF.identity.password
@@ -199,8 +199,8 @@ class BaseSharesTest(test.BaseTestCase):
         self.addCleanup(self.clear_isolated_creds)
 
     @classmethod
-    def tearDownClass(cls):
-        super(BaseSharesTest, cls).tearDownClass()
+    def resource_cleanup(cls):
+        super(BaseSharesTest, cls).resource_cleanup()
         cls.clear_resources(cls.class_resources)
         cls.clear_isolated_creds(cls.class_isolated_creds)
 
@@ -540,7 +540,7 @@ class BaseSharesAltTest(BaseSharesTest):
     """Base test case class for all Shares Alt API tests."""
 
     @classmethod
-    def setUpClass(cls):
+    def resource_setup(cls):
         cls.username = CONF.identity.alt_username
         cls.password = CONF.identity.alt_password
         cls.tenant_name = CONF.identity.alt_tenant_name
@@ -548,14 +548,14 @@ class BaseSharesAltTest(BaseSharesTest):
         cls.os = clients.AltManager(interface=cls._interface)
         alt_share_network_id = CONF.share.alt_share_network_id
         cls.os.shares_client.share_network_id = alt_share_network_id
-        super(BaseSharesAltTest, cls).setUpClass()
+        super(BaseSharesAltTest, cls).resource_setup()
 
 
 class BaseSharesAdminTest(BaseSharesTest):
     """Base test case class for all Shares Admin API tests."""
 
     @classmethod
-    def setUpClass(cls):
+    def resource_setup(cls):
         cls.username = CONF.identity.admin_username
         cls.password = CONF.identity.admin_password
         cls.tenant_name = CONF.identity.admin_tenant_name
@@ -563,4 +563,4 @@ class BaseSharesAdminTest(BaseSharesTest):
         cls.os = clients.AdminManager(interface=cls._interface)
         admin_share_network_id = CONF.share.admin_share_network_id
         cls.os.shares_client.share_network_id = admin_share_network_id
-        super(BaseSharesAdminTest, cls).setUpClass()
+        super(BaseSharesAdminTest, cls).resource_setup()
