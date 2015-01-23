@@ -50,6 +50,16 @@ glusterfs_native_manila_share_opts = [
                 help='List of GlusterFS volumes that can be used to create '
                      'shares. Each GlusterFS volume should be of the form '
                      '[remoteuser@]<volserver>:/<volid>'),
+    cfg.StrOpt('glusterfs_native_server_password',
+               default=None,
+               secret=True,
+               help='Remote GlusterFS server node\'s login password. '
+                    'This is not required if '
+                    '\'glusterfs_native_path_to_private_key\' is '
+                    'configured.'),
+    cfg.StrOpt('glusterfs_native_path_to_private_key',
+               default=None,
+               help='Path of Manila host\'s private SSH key file.'),
 ]
 
 CONF = cfg.CONF
@@ -143,24 +153,27 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         shares = self.db.share_get_all(context)
 
         # Store the gluster volumes in dict thats helpful to track
-        # (push and pop) in future. {gluster_export: gluster_addr, ...}
+        # (push and pop) in future. {gluster_export: gluster_mgr, ...}
         # gluster_export is of form hostname:/volname which is unique
         # enough to be used as a key.
         self.gluster_unused_vols_dict = {}
         self.gluster_used_vols_dict = {}
 
         for gv in self.configuration.glusterfs_targets:
-            gaddr = glusterfs.GlusterAddress(gv)
-            exp_locn_gv = gaddr.export
+            gmgr = glusterfs.GlusterManager(
+                gv, self._execute,
+                self.configuration.glusterfs_native_path_to_private_key,
+                self.configuration.glusterfs_native_server_password)
+            exp_locn_gv = gmgr.export
 
             # Assume its unused to begin with.
-            self.gluster_unused_vols_dict.update({exp_locn_gv: gaddr})
+            self.gluster_unused_vols_dict.update({exp_locn_gv: gmgr})
 
             for s in shares:
                 exp_locn_share = s.get('export_location', None)
                 if exp_locn_share == exp_locn_gv:
                     # gluster volume is in use, move it to used list.
-                    self.gluster_used_vols_dict.update({exp_locn_gv: gaddr})
+                    self.gluster_used_vols_dict.update({exp_locn_gv: gmgr})
                     self.gluster_unused_vols_dict.pop(exp_locn_gv)
                     break
 
@@ -168,99 +181,94 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def _setup_gluster_vols(self):
         # Enable gluster volumes for SSL access only.
 
-        for gluster_addr in six.itervalues(self.gluster_unused_vols_dict):
+        for gluster_mgr in six.itervalues(self.gluster_unused_vols_dict):
 
-            gargs, gkw = gluster_addr.make_gluster_args(
-                'volume', 'set', gluster_addr.volume,
-                NFS_EXPORT_VOL, 'off')
             try:
-                self._execute(*gargs, **gkw)
+                gluster_mgr.gluster_call(
+                    'volume', 'set', gluster_mgr.volume,
+                    NFS_EXPORT_VOL, 'off')
             except exception.ProcessExecutionError as exc:
                 msg = (_("Error in gluster volume set during volume setup. "
                          "Volume: %(volname)s, Option: %(option)s, "
-                         "Error: %(error)s"),
-                       {'volname': gluster_addr.volume,
+                         "rror: %(error)s"),
+                       {'volname': gluster_mgr.volume,
                         'option': NFS_EXPORT_VOL, 'error': exc.stderr})
                 LOG.error(msg)
                 raise exception.GlusterfsException(msg)
 
-            gargs, gkw = gluster_addr.make_gluster_args(
-                'volume', 'set', gluster_addr.volume,
-                CLIENT_SSL, 'on')
             try:
-                self._execute(*gargs, **gkw)
+                gluster_mgr.gluster_call(
+                    'volume', 'set', gluster_mgr.volume,
+                    CLIENT_SSL, 'on')
             except exception.ProcessExecutionError as exc:
                 msg = (_("Error in gluster volume set during volume setup. "
                          "Volume: %(volname)s, Option: %(option)s, "
                          "Error: %(error)s"),
-                       {'volname': gluster_addr.volume,
+                       {'volname': gluster_mgr.volume,
                         'option': CLIENT_SSL, 'error': exc.stderr})
                 LOG.error(msg)
                 raise exception.GlusterfsException(msg)
 
-            gargs, gkw = gluster_addr.make_gluster_args(
-                'volume', 'set', gluster_addr.volume,
-                SERVER_SSL, 'on')
             try:
-                self._execute(*gargs, **gkw)
+                gluster_mgr.gluster_call(
+                    'volume', 'set', gluster_mgr.volume,
+                    SERVER_SSL, 'on')
             except exception.ProcessExecutionError as exc:
                 msg = (_("Error in gluster volume set during volume setup. "
                          "Volume: %(volname)s, Option: %(option)s, "
                          "Error: %(error)s"),
-                       {'volname': gluster_addr.volume,
+                       {'volname': gluster_mgr.volume,
                         'option': SERVER_SSL, 'error': exc.stderr})
                 LOG.error(msg)
                 raise exception.GlusterfsException(msg)
 
             # TODO(deepakcs) Remove this once ssl options can be
             # set dynamically.
-            self._restart_gluster_vol(gluster_addr)
+            self._restart_gluster_vol(gluster_mgr)
 
-    def _restart_gluster_vol(self, gluster_addr):
-        gargs, gkw = gluster_addr.make_gluster_args(
-            'volume', 'stop', gluster_addr.volume, '--mode=script')
+    def _restart_gluster_vol(self, gluster_mgr):
         try:
-            self._execute(*gargs, **gkw)
+            gluster_mgr.gluster_call(
+                'volume', 'stop', gluster_mgr.volume, '--mode=script')
         except exception.ProcessExecutionError as exc:
             msg = (_("Error stopping gluster volume. "
                      "Volume: %(volname)s, Error: %(error)s"),
-                   {'volname': gluster_addr.volume, 'error': exc.stderr})
+                   {'volname': gluster_mgr.volume, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        gargs, gkw = gluster_addr.make_gluster_args(
-            'volume', 'start', gluster_addr.volume)
         try:
-            self._execute(*gargs, **gkw)
+            gluster_mgr.gluster_call(
+                'volume', 'start', gluster_mgr.volume)
         except exception.ProcessExecutionError as exc:
             msg = (_("Error starting gluster volume. "
                      "Volume: %(volname)s, Error: %(error)s"),
-                   {'volname': gluster_addr.volume, 'error': exc.stderr})
+                   {'volname': gluster_mgr.volume, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
     @utils.synchronized("glusterfs_native", external=False)
     def _pop_gluster_vol(self):
         try:
-            exp_locn, gaddr = self.gluster_unused_vols_dict.popitem()
+            exp_locn, gmgr = self.gluster_unused_vols_dict.popitem()
         except KeyError:
             msg = (_("Couldn't find a free gluster volume to use."))
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        self.gluster_used_vols_dict.update({exp_locn: gaddr})
+        self.gluster_used_vols_dict.update({exp_locn: gmgr})
         return exp_locn
 
     @utils.synchronized("glusterfs_native", external=False)
     def _push_gluster_vol(self, exp_locn):
         try:
-            gaddr = self.gluster_used_vols_dict.pop(exp_locn)
+            gmgr = self.gluster_used_vols_dict.pop(exp_locn)
         except KeyError:
             msg = (_("Couldn't find the share in used list."))
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        self.gluster_unused_vols_dict.update({exp_locn: gaddr})
+        self.gluster_unused_vols_dict.update({exp_locn: gmgr})
 
     def _do_mount(self, gluster_export, mntdir):
 
@@ -286,41 +294,39 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-    def _wipe_gluster_vol(self, gluster_addr):
+    def _wipe_gluster_vol(self, gluster_mgr):
 
         # Reset the SSL options.
-        gargs, gkw = gluster_addr.make_gluster_args(
-            'volume', 'set', gluster_addr.volume,
-            CLIENT_SSL, 'off')
         try:
-            self._execute(*gargs, **gkw)
+            gluster_mgr.gluster_call(
+                'volume', 'set', gluster_mgr.volume,
+                CLIENT_SSL, 'off')
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during _wipe_gluster_vol. "
                      "Volume: %(volname)s, Option: %(option)s, "
                      "Error: %(error)s"),
-                   {'volname': gluster_addr.volume,
+                   {'volname': gluster_mgr.volume,
                     'option': CLIENT_SSL, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        gargs, gkw = gluster_addr.make_gluster_args(
-            'volume', 'set', gluster_addr.volume,
-            SERVER_SSL, 'off')
         try:
-            self._execute(*gargs, **gkw)
+            gluster_mgr.gluster_call(
+                'volume', 'set', gluster_mgr.volume,
+                SERVER_SSL, 'off')
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during _wipe_gluster_vol. "
                      "Volume: %(volname)s, Option: %(option)s, "
                      "Error: %(error)s"),
-                   {'volname': gluster_addr.volume,
+                   {'volname': gluster_mgr.volume,
                     'option': SERVER_SSL, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        self._restart_gluster_vol(gluster_addr)
+        self._restart_gluster_vol(gluster_mgr)
 
         # Create a temporary mount.
-        gluster_export = gluster_addr.export
+        gluster_export = gluster_mgr.export
         tmpdir = tempfile.mkdtemp()
         try:
             self._do_mount(gluster_export, tmpdir)
@@ -344,35 +350,33 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             shutil.rmtree(tmpdir, ignore_errors=True)
 
         # Set the SSL options.
-        gargs, gkw = gluster_addr.make_gluster_args(
-            'volume', 'set', gluster_addr.volume,
-            CLIENT_SSL, 'on')
         try:
-            self._execute(*gargs, **gkw)
+            gluster_mgr.gluster_call(
+                'volume', 'set', gluster_mgr.volume,
+                CLIENT_SSL, 'on')
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during _wipe_gluster_vol. "
                      "Volume: %(volname)s, Option: %(option)s, "
                      "Error: %(error)s"),
-                   {'volname': gluster_addr.volume,
+                   {'volname': gluster_mgr.volume,
                     'option': CLIENT_SSL, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        gargs, gkw = gluster_addr.make_gluster_args(
-            'volume', 'set', gluster_addr.volume,
-            SERVER_SSL, 'on')
         try:
-            self._execute(*gargs, **gkw)
+            gluster_mgr.gluster_call(
+                'volume', 'set', gluster_mgr.volume,
+                SERVER_SSL, 'on')
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during _wipe_gluster_vol. "
                      "Volume: %(volname)s, Option: %(option)s, "
                      "Error: %(error)s"),
-                   {'volname': gluster_addr.volume,
+                   {'volname': gluster_mgr.volume,
                     'option': SERVER_SSL, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        self._restart_gluster_vol(gluster_addr)
+        self._restart_gluster_vol(gluster_mgr)
 
     def get_network_allocations_number(self):
         return 0
@@ -408,7 +412,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         exp_locn = share.get('export_location', None)
         try:
             # Get the gluster address associated with the export.
-            gaddr = self.gluster_used_vols_dict[exp_locn]
+            gmgr = self.gluster_used_vols_dict[exp_locn]
         except KeyError:
             msg = (_("Invalid request. Ignoring delete_share request for "
                      "share %(share_id)s"), {'share_id': share['id']},)
@@ -416,7 +420,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             return
 
         try:
-            self._wipe_gluster_vol(gaddr)
+            self._wipe_gluster_vol(gmgr)
             self._push_gluster_vol(exp_locn)
         except exception.GlusterfsException:
             msg = (_("Error during delete_share request for "
@@ -436,18 +440,17 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.InvalidShareAccess(_("Only 'cert' access type "
                                                  "allowed"))
         exp_locn = share.get('export_location', None)
-        gluster_addr = self.gluster_used_vols_dict.get(exp_locn)
+        gluster_mgr = self.gluster_used_vols_dict.get(exp_locn)
 
-        gargs, gkw = gluster_addr.make_gluster_args(
-            'volume', 'set', gluster_addr.volume,
-            AUTH_SSL_ALLOW, access['access_to'])
         try:
-            self._execute(*gargs, **gkw)
+            gluster_mgr.gluster_call(
+                'volume', 'set', gluster_mgr.volume,
+                AUTH_SSL_ALLOW, access['access_to'])
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during allow access. "
                      "Volume: %(volname)s, Option: %(option)s, "
                      "access_to: %(access_to)s, Error: %(error)s"),
-                   {'volname': gluster_addr.volume,
+                   {'volname': gluster_mgr.volume,
                     'option': AUTH_SSL_ALLOW,
                     'access_to': access['access_to'], 'error': exc.stderr})
             LOG.error(msg)
@@ -455,7 +458,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # TODO(deepakcs) Remove this once ssl options can be
         # set dynamically.
-        self._restart_gluster_vol(gluster_addr)
+        self._restart_gluster_vol(gluster_mgr)
 
     def deny_access(self, context, share, access, share_server=None):
         """Deny access to a share that's using cert based auth.
@@ -468,25 +471,24 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                                  "allowed for access "
                                                  "removal."))
         exp_locn = share.get('export_location', None)
-        gluster_addr = self.gluster_used_vols_dict.get(exp_locn)
+        gluster_mgr = self.gluster_used_vols_dict.get(exp_locn)
 
-        gargs, gkw = gluster_addr.make_gluster_args(
-            'volume', 'reset', gluster_addr.volume,
-            AUTH_SSL_ALLOW)
         try:
-            self._execute(*gargs, **gkw)
+            gluster_mgr.gluster_call(
+                'volume', 'reset', gluster_mgr.volume,
+                AUTH_SSL_ALLOW)
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume reset during deny access. "
                      "Volume: %(volname)s, Option: %(option)s, "
                      "Error: %(error)s"),
-                   {'volname': gluster_addr.volume,
+                   {'volname': gluster_mgr.volume,
                     'option': AUTH_SSL_ALLOW, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
         # TODO(deepakcs) Remove this once ssl options can be
         # set dynamically.
-        self._restart_gluster_vol(gluster_addr)
+        self._restart_gluster_vol(gluster_mgr)
 
     def _update_share_stats(self):
         """Send stats info for the GlusterFS volume."""
