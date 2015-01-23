@@ -1,4 +1,5 @@
 # Copyright (c) 2014 NetApp, Inc.
+# Copyright (c) 2015 Tom Barron.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -36,6 +37,7 @@ from manila.i18n import _LI
 from manila.openstack.common import log
 from manila.share import driver
 from manila.share.drivers.netapp import api as naapi
+from manila.share.drivers.netapp import utils as na_utils
 from manila import utils
 
 
@@ -135,6 +137,9 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
 
     def __init__(self, db, *args, **kwargs):
         super(NetAppClusteredShareDriver, self).__init__(True, *args, **kwargs)
+        self._app_version = na_utils.OpenStackInfo().info()
+        LOG.info(_LI("OpenStack OS Version Info: %(info)s") % {
+            'info': self._app_version})
         self.db = db
         self._helpers = None
         self._licenses = []
@@ -198,6 +203,8 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             total_capacity_gb=(total / units.Gi),
             free_capacity_gb=(free / units.Gi))
         super(NetAppClusteredShareDriver, self)._update_share_stats(data)
+        na_utils.provide_ems(self, self._client._client, self.backend_name,
+                             self._app_version)
 
     def check_for_setup_error(self):
         """Raises error if prerequisites are not met."""

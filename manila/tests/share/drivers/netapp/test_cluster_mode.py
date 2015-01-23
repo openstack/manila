@@ -1,4 +1,5 @@
 # Copyright (c) 2014 NetApp, Inc.
+# Copyright (c) 2015 Tom Barron.
 # All Rights Reserved.
 #
 #     Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,6 +24,7 @@ from manila import exception
 from manila.share import configuration
 from manila.share.drivers.netapp import api as naapi
 from manila.share.drivers.netapp import cluster_mode as driver
+from manila.share.drivers.netapp import utils as na_utils
 from manila import test
 from manila import utils
 
@@ -30,6 +32,10 @@ from manila import utils
 class NetAppClusteredDrvTestCase(test.TestCase):
     """Test suite for NetApp Cluster Mode driver."""
 
+    @mock.patch.object(na_utils.OpenStackInfo, '_update_info_from_rpm',
+                       mock.Mock())
+    @mock.patch.object(na_utils.OpenStackInfo, '_update_info_from_dpkg',
+                       mock.Mock())
     def setUp(self):
         super(NetAppClusteredDrvTestCase, self).setUp()
         self._context = context.get_admin_context()
@@ -114,6 +120,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         ]
         )
 
+    @mock.patch.object(na_utils, 'provide_ems', mock.Mock())
     def test_update_share_stats(self):
         """Retrieve status info from share volume group."""
         fake_aggr1_struct = {
