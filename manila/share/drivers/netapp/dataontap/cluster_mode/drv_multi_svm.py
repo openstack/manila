@@ -40,6 +40,9 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def check_for_setup_error(self):
         self.library.check_for_setup_error()
 
+    def get_pool(self, share):
+        return self.library.get_pool(share)
+
     def create_share(self, context, share, **kwargs):
         return self.library.create_share(context, share, **kwargs)
 

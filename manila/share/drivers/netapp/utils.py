@@ -15,10 +15,12 @@
 #    under the License.
 """Utilities for NetApp drivers."""
 
+import decimal
 import platform
 
 from oslo_concurrency import processutils as putils
 from oslo_log import log
+import six
 
 from manila import exception
 from manila.i18n import _, _LI, _LW
@@ -30,6 +32,36 @@ LOG = log.getLogger(__name__)
 VALID_TRACE_FLAGS = ['method', 'api']
 TRACE_METHOD = False
 TRACE_API = False
+
+
+def check_flags(required_flags, configuration):
+    """Ensure that the flags we care about are set."""
+    for flag in required_flags:
+        if not getattr(configuration, flag, None):
+            msg = _('Configuration value %s is not set.') % flag
+            raise exception.InvalidInput(reason=msg)
+
+
+def validate_driver_instantiation(**kwargs):
+    """Checks if a driver is instantiated other than by the unified driver.
+
+    Helps check direct instantiation of netapp drivers.
+    Call this function in every netapp block driver constructor.
+    """
+    if kwargs and kwargs.get('netapp_mode') == 'proxy':
+        return
+    LOG.warning(_LW('Please use NetAppDriver in the configuration file '
+                    'to load the driver instead of directly specifying '
+                    'the driver module name.'))
+
+
+def round_down(value, precision):
+    """Round a number downward using a specified level of precision.
+
+    Example: round_down(float(total_space_in_bytes) / units.Gi, '0.01')
+    """
+    return float(decimal.Decimal(six.text_type(value)).quantize(
+        decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))
 
 
 def setup_tracing(trace_flags_string):
@@ -55,27 +87,6 @@ def trace(f):
             LOG.debug('Leaving method %s', f.__name__)
         return result
     return trace_wrapper
-
-
-def check_flags(required_flags, configuration):
-    """Ensure that the flags we care about are set."""
-    for flag in required_flags:
-        if not getattr(configuration, flag, None):
-            msg = _('Configuration value %s is not set.') % flag
-            raise exception.InvalidInput(reason=msg)
-
-
-def validate_instantiation(**kwargs):
-    """Checks if a driver is instantiated other than by the unified driver.
-
-    Helps check direct instantiation of netapp drivers.
-    Call this function in every netapp block driver constructor.
-    """
-    if kwargs and kwargs.get('netapp_mode') == 'proxy':
-        return
-    LOG.warning(_LW('Please use NetAppDriver in the configuration file '
-                    'to load the driver instead of directly specifying '
-                    'the driver module name.'))
 
 
 class OpenStackInfo(object):

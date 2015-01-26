@@ -65,8 +65,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_allow_access_preexisting(self):
 
-        self.mock_client.add_cifs_share_access.side_effect = \
-            netapp_api.NaApiError(code=netapp_api.EDUPLICATEENTRY)
+        self.mock_client.add_cifs_share_access.side_effect = (
+            netapp_api.NaApiError(code=netapp_api.EDUPLICATEENTRY))
 
         self.assertRaises(exception.ShareAccessExists,
                           self.helper.allow_access,
@@ -76,8 +76,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_allow_access_api_error(self):
 
-        self.mock_client.add_cifs_share_access.side_effect = \
-            netapp_api.NaApiError()
+        self.mock_client.add_cifs_share_access.side_effect = (
+            netapp_api.NaApiError())
 
         self.assertRaises(netapp_api.NaApiError,
                           self.helper.allow_access,
@@ -105,8 +105,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_deny_access_nonexistent_user(self):
 
-        self.mock_client.remove_cifs_share_access.side_effect = \
-            netapp_api.NaApiError(code=netapp_api.EONTAPI_EINVAL)
+        self.mock_client.remove_cifs_share_access.side_effect = (
+            netapp_api.NaApiError(code=netapp_api.EONTAPI_EINVAL))
 
         self.helper.deny_access(self.mock_context, fake.CIFS_SHARE,
                                 fake.ACCESS)
@@ -117,8 +117,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_deny_access_nonexistent_rule(self):
 
-        self.mock_client.remove_cifs_share_access.side_effect = \
-            netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND)
+        self.mock_client.remove_cifs_share_access.side_effect = (
+            netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND))
 
         self.helper.deny_access(self.mock_context, fake.CIFS_SHARE,
                                 fake.ACCESS)
@@ -129,8 +129,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_deny_access_api_error(self):
 
-        self.mock_client.remove_cifs_share_access.side_effect = \
-            netapp_api.NaApiError()
+        self.mock_client.remove_cifs_share_access.side_effect = (
+            netapp_api.NaApiError())
 
         self.assertRaises(netapp_api.NaApiError,
                           self.helper.deny_access,

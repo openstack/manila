@@ -12,11 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 BACKEND_NAME = 'fake_backend_name'
 DRIVER_NAME = 'fake_driver_name'
 APP_VERSION = 'fake_app_vsersion'
 HOST_NAME = 'fake_host'
+POOL_NAME = 'fake_pool'
 VSERVER1 = 'fake_vserver_1'
 VSERVER2 = 'fake_vserver_2'
 LICENSES = ['base', 'cifs', 'fcp', 'flexclone', 'iscsi', 'nfs', 'snapmirror',
@@ -51,6 +51,8 @@ CLIENT_KWARGS = {
 
 SHARE = {
     'id': SHARE_ID,
+    'host': '%(host)s@%(backend)s#%(pool)s' % {
+        'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
     'project_id': TENANT_ID,
     'name': SHARE_NAME,
     'size': SHARE_SIZE,
@@ -123,4 +125,17 @@ EMS_MESSAGE = {
     'event-description': 'fake_description',
     'log-level': '6',
     'auto-support': 'false'
+}
+
+AGGREGATE_CAPACITIES = {
+    'manila1': {
+        'available': 1181116007,  # 1.1 GB
+        'total': 3543348020,      # 3.3 GB
+        'used': 2362232013,       # 2.2 GB
+    },
+    'manila2': {
+        'available': 2147483648,  # 2.0 GB
+        'total': 6442450944,      # 6.0 GB
+        'used': 4294967296,       # 4.0 GB
+    }
 }
