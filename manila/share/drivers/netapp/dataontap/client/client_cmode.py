@@ -1022,3 +1022,73 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             LOG.debug('EMS executed successfully.')
         except netapp_api.NaApiError as e:
             LOG.warning(_LW('Failed to invoke EMS. %s') % e)
+
+    def get_aggregate_raid_types(self, aggregate_names):
+        """Get the RAID type of one or more aggregates."""
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-raid-attributes': {
+                    'raid-type': None,
+                },
+            },
+        }
+        aggr_list = self._get_aggregates(aggregate_names=aggregate_names,
+                                         desired_attributes=desired_attributes)
+
+        aggr_raid_dict = {}
+        for aggr in aggr_list:
+            aggr_name = aggr.get_child_content('aggregate-name')
+            aggr_raid_attrs = aggr.get_child_by_name('aggr-raid-attributes')
+
+            aggr_raid_dict[aggr_name] = aggr_raid_attrs.get_child_content(
+                'raid-type')
+
+        return aggr_raid_dict
+
+    def get_aggregate_disk_types(self, aggregate_names):
+        """Get the disk type of one or more aggregates."""
+
+        aggr_disk_type_dict = {}
+
+        for aggregate_name in aggregate_names:
+
+            # Only get 1 disk, since apart from hybrid aggregates all disks
+            # must be the same type.
+            api_args = {
+                'max-records': 1,
+                'query': {
+                    'storage-disk-info': {
+                        'disk-raid-info': {
+                            'disk-aggregate-info': {
+                                'aggregate-name': aggregate_name,
+                            },
+                        },
+                    },
+                },
+                'desired-attributes': {
+                    'storage-disk-info': {
+                        'disk-raid-info': {
+                            'effective-disk-type': None,
+                        },
+                    },
+                },
+            }
+            result = self.send_request('storage-disk-get-iter', api_args)
+
+            attributes_list = result.get_child_by_name(
+                'attributes-list') or netapp_api.NaElement('none')
+            storage_disk_info_list = attributes_list.get_children()
+
+            if len(storage_disk_info_list) >= 1:
+                storage_disk_info = storage_disk_info_list[0]
+                disk_raid_info = storage_disk_info.get_child_by_name(
+                    'disk-raid-info')
+                if disk_raid_info:
+                    disk_type = disk_raid_info.get_child_content(
+                        'effective-disk-type')
+                    if disk_type:
+                        aggr_disk_type_dict[aggregate_name] = disk_type
+
+        return aggr_disk_type_dict

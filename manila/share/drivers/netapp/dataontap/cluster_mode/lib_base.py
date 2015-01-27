@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -18,6 +18,7 @@ This driver requires a Data ONTAP (Cluster-mode) storage system with
 installed CIFS and/or NFS licenses.
 """
 
+import copy
 import re
 import socket
 
@@ -25,10 +26,12 @@ from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
+import six
 
 from manila import context
 from manila import exception
 from manila.i18n import _, _LE, _LI
+from manila.openstack.common import loopingcall
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
@@ -72,6 +75,7 @@ class NetAppCmodeFileStorageLibrary(object):
     """
 
     AUTOSUPPORT_INTERVAL_SECONDS = 3600  # hourly
+    SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
 
     def __init__(self, db, driver_name, **kwargs):
         na_utils.validate_driver_instantiation(**kwargs)
@@ -83,6 +87,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._licenses = []
         self._client = None
         self._clients = {}
+        self._ssc_stats = {}
         self._last_ems = timeutils.utcnow()
 
         self.configuration = kwargs['configuration']
@@ -96,7 +101,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._app_version = kwargs.get('app_version', 'unknown')
 
         na_utils.setup_tracing(self.configuration.netapp_trace_flags)
-        self.backend_name = self.configuration.safe_get(
+        self._backend_name = self.configuration.safe_get(
             'share_backend_name') or driver_name
 
     @na_utils.trace
@@ -107,6 +112,7 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def check_for_setup_error(self):
         self._get_licenses()
+        self._start_periodic_tasks()
 
     @na_utils.trace
     def _get_api_client(self, vserver=None):
@@ -131,7 +137,7 @@ class NetAppCmodeFileStorageLibrary(object):
         self._licenses = self._client.get_licenses()
 
         log_data = {
-            'backend': self.backend_name,
+            'backend': self._backend_name,
             'licenses': ', '.join(self._licenses),
         }
         LOG.info(_LI('Available licenses on %(backend)s '
@@ -139,10 +145,21 @@ class NetAppCmodeFileStorageLibrary(object):
 
         if 'nfs' not in self._licenses and 'cifs' not in self._licenses:
             msg = _LE('Neither NFS nor CIFS is licensed on %(backend)s')
-            msg_args = {'backend': self.backend_name}
+            msg_args = {'backend': self._backend_name}
             LOG.error(msg % msg_args)
 
         return self._licenses
+
+    def _start_periodic_tasks(self):
+
+        # Run the task once in the current thread so prevent a race with
+        # the first invocation of get_share_stats.
+        self._update_ssc_info()
+
+        ssc_periodic_task = loopingcall.FixedIntervalLoopingCall(
+            self._update_ssc_info)
+        ssc_periodic_task.start(interval=self.SSC_UPDATE_INTERVAL_SECONDS,
+                                initial_delay=self.SSC_UPDATE_INTERVAL_SECONDS)
 
     @na_utils.trace
     def _get_valid_share_name(self, share_id):
@@ -162,10 +179,11 @@ class NetAppCmodeFileStorageLibrary(object):
             self._find_matching_aggregates())
 
         data = {
-            'share_backend_name': self.backend_name,
+            'share_backend_name': self._backend_name,
             'driver_name': self.driver_name,
             'vendor_name': 'NetApp',
             'driver_version': '1.0',
+            'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': 0.0,
             'free_capacity_gb': 0.0,
@@ -181,14 +199,21 @@ class NetAppCmodeFileStorageLibrary(object):
             allocated_capacity_gb = na_utils.round_down(
                 float(aggr_space[aggr_name]['used']) / units.Gi, '0.01')
 
-            pools.append({
+            pool = {
                 'pool_name': aggr_name,
                 'total_capacity_gb': total_capacity_gb,
                 'free_capacity_gb': free_capacity_gb,
                 'allocated_capacity_gb': allocated_capacity_gb,
                 'QoS_support': 'False',
                 'reserved_percentage': 0,
-            })
+            }
+
+            # Add storage service catalog data.
+            pool_ssc_stats = self._ssc_stats.get(aggr_name)
+            if pool_ssc_stats:
+                pool.update(pool_ssc_stats)
+
+            pools.append(pool)
 
         data['pools'] = pools
 
@@ -504,3 +529,42 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client = self._get_api_client(vserver=vserver)
         self._client.delete_vserver(vserver, vserver_client,
                                     security_services=security_services)
+
+    def _update_ssc_info(self):
+        """Periodically runs to update Storage Service Catalog data.
+
+        The self._ssc_stats attribute is updated with the following format.
+        {<aggregate_name> : {<ssc_key>: <ssc_value>}}
+        """
+        LOG.info(_LI("Updating storage service catalog information for "
+                     "backend '%s'"), self._backend_name)
+
+        # Work on a copy and update the ssc data atomically before returning.
+        ssc_stats = copy.deepcopy(self._ssc_stats)
+
+        aggregate_names = self._find_matching_aggregates()
+
+        # Initialize entries for each aggregate.
+        for aggregate_name in aggregate_names:
+            if aggregate_name not in ssc_stats:
+                ssc_stats[aggregate_name] = {}
+
+        if aggregate_names:
+            self._update_ssc_aggr_info(aggregate_names, ssc_stats)
+
+        self._ssc_stats = ssc_stats
+
+    def _update_ssc_aggr_info(self, aggregate_names, ssc_stats):
+        """Updates the given SSC dictionary with new disk type information.
+
+        :param volume_groups: The volume groups this driver cares about
+        :param ssc_stats: The dictionary to update
+        """
+
+        raid_types = self._client.get_aggregate_raid_types(aggregate_names)
+        for aggregate_name, raid_type in six.iteritems(raid_types):
+            ssc_stats[aggregate_name]['netapp_raid_type'] = raid_type
+
+        disk_types = self._client.get_aggregate_disk_types(aggregate_names)
+        for aggregate_name, disk_type in six.iteritems(disk_types):
+            ssc_stats[aggregate_name]['netapp_disk_type'] = disk_type

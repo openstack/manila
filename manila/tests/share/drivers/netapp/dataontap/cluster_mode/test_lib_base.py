@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -24,6 +24,7 @@ from oslo_utils import timeutils
 
 from manila import context
 from manila import exception
+from manila.openstack.common import loopingcall
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
@@ -141,6 +142,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertIsNone(self.library._helpers)
         self.assertListEqual([], self.library._licenses)
         self.assertDictEqual({}, self.library._clients)
+        self.assertDictEqual({}, self.library._ssc_stats)
         self.assertIsNotNone(self.library._app_version)
         self.assertIsNotNone(self.library._last_ems)
 
@@ -155,10 +157,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_check_for_setup_error(self):
         mock_get_licenses = self.mock_object(self.library, '_get_licenses')
+        mock_start_periodic_tasks = self.mock_object(self.library,
+                                                     '_start_periodic_tasks')
 
         self.library.check_for_setup_error()
 
         mock_get_licenses.assert_called_once_with()
+        mock_start_periodic_tasks.assert_called_once_with()
 
     def test_get_api_client(self):
 
@@ -205,6 +210,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         client_kwargs['vserver'] = fake.VSERVER2
         mock_client_constructor.assert_called_once_with(**client_kwargs)
 
+    def test_start_periodic_tasks(self):
+
+        mock_update_ssc_info = self.mock_object(self.library,
+                                                '_update_ssc_info')
+        mock_ssc_periodic_task = mock.Mock()
+        mock_loopingcall = self.mock_object(
+            loopingcall,
+            'FixedIntervalLoopingCall',
+            mock.Mock(return_value=mock_ssc_periodic_task))
+
+        self.library._start_periodic_tasks()
+
+        self.assertTrue(mock_update_ssc_info.called)
+        mock_loopingcall.assert_called_once_with(mock_update_ssc_info)
+        self.assertTrue(mock_ssc_periodic_task.start.called)
+
     def test_get_licenses_both_protocols(self):
         self.mock_object(self.client,
                          'get_licenses',
@@ -212,7 +233,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         result = self.library._get_licenses()
 
-        self.assertListEqual(fake.LICENSES, result)
+        self.assertSequenceEqual(fake.LICENSES, result)
         self.assertEqual(0, lib_base.LOG.error.call_count)
         self.assertEqual(1, lib_base.LOG.info.call_count)
 
@@ -266,6 +287,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
         mock_handle_ems_logging = self.mock_object(self.library,
                                                    '_handle_ems_logging')
+        self.library._ssc_stats = fake.SSC_INFO
 
         result = self.library.get_share_stats()
 
@@ -274,23 +296,28 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'driver_name': fake.DRIVER_NAME,
             'vendor_name': 'NetApp',
             'driver_version': '1.0',
+            'netapp_storage_family': 'ontap_cluster',
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': 0.0,
             'free_capacity_gb': 0.0,
             'pools': [
-                {'pool_name': 'manila1',
+                {'pool_name': fake.AGGREGATES[0],
                  'total_capacity_gb': 3.3,
                  'free_capacity_gb': 1.1,
                  'allocated_capacity_gb': 2.2,
                  'QoS_support': 'False',
                  'reserved_percentage': 0,
+                 'netapp_raid_type': 'raid4',
+                 'netapp_disk_type': 'FCAL'
                  },
-                {'pool_name': 'manila2',
+                {'pool_name': fake.AGGREGATES[1],
                  'total_capacity_gb': 6.0,
                  'free_capacity_gb': 2.0,
                  'allocated_capacity_gb': 4.0,
                  'QoS_support': 'False',
                  'reserved_percentage': 0,
+                 'netapp_raid_type': 'raid_dp',
+                 'netapp_disk_type': 'SSD'
                  },
             ]
         }
@@ -357,12 +384,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library.configuration.netapp_aggregate_name_search_pattern = (
             fake.AGGREGATE_NAME_SEARCH_PATTERN)
         result = self.library._find_matching_aggregates()
-        self.assertListEqual(result, fake.AGGREGATES)
+        self.assertSequenceEqual(fake.AGGREGATES, result)
 
         self.library.configuration.netapp_aggregate_name_search_pattern = (
-            'aggr.*')
+            'man.*')
         result = self.library._find_matching_aggregates()
-        self.assertListEqual(result, ['aggr0'])
+        self.assertSequenceEqual(fake.AGGREGATES, result)
 
     def test_setup_helpers(self):
 
@@ -1002,3 +1029,67 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.VSERVER1,
             vserver_client,
             security_services=fake.NETWORK_INFO['security_services'])
+
+    def test_update_ssc_info(self):
+
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
+        mock_update_ssc_aggr_info = self.mock_object(self.library,
+                                                     '_update_ssc_aggr_info')
+
+        self.library._update_ssc_info()
+
+        expected = {
+            fake.AGGREGATES[0]: {},
+            fake.AGGREGATES[1]: {}
+        }
+
+        self.assertDictEqual(expected, self.library._ssc_stats)
+        self.assertTrue(mock_update_ssc_aggr_info.called)
+
+    def test_update_ssc_info_no_aggregates(self):
+
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=[]))
+        mock_update_ssc_aggr_info = self.mock_object(self.library,
+                                                     '_update_ssc_aggr_info')
+
+        self.library._update_ssc_info()
+
+        self.assertDictEqual({}, self.library._ssc_stats)
+        self.assertFalse(mock_update_ssc_aggr_info.called)
+
+    def test_update_ssc_aggr_info(self):
+
+        self.mock_object(self.client,
+                         'get_aggregate_raid_types',
+                         mock.Mock(return_value=fake.SSC_RAID_TYPES))
+        self.mock_object(self.client,
+                         'get_aggregate_disk_types',
+                         mock.Mock(return_value=fake.SSC_DISK_TYPES))
+
+        ssc_stats = {
+            fake.AGGREGATES[0]: {},
+            fake.AGGREGATES[1]: {}
+        }
+
+        self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
+
+        self.assertDictEqual(fake.SSC_INFO, ssc_stats)
+
+    def test_update_ssc_aggr_info_not_found(self):
+
+        self.mock_object(self.client,
+                         'get_aggregate_raid_types',
+                         mock.Mock(return_value={}))
+        self.mock_object(self.client,
+                         'get_aggregate_disk_types',
+                         mock.Mock(return_value={}))
+
+        ssc_stats = {}
+
+        self.library._update_ssc_aggr_info(fake.AGGREGATES, ssc_stats)
+
+        self.assertDictEqual({}, ssc_stats)

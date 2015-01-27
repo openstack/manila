@@ -1,4 +1,4 @@
-# Copyright (c) - 2014, Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -30,7 +30,9 @@ NODE_VSERVER_NAME = 'fake_node_vserver'
 ROOT_VOLUME_AGGREGATE_NAME = 'fake_root_aggr'
 ROOT_VOLUME_NAME = 'fake_root_volume'
 SHARE_AGGREGATE_NAME = 'fake_aggr1'
-SHARE_AGGREGATE_NAMES = ['fake_aggr1', 'fake_aggr2']
+SHARE_AGGREGATE_NAMES = ('fake_aggr1', 'fake_aggr2')
+SHARE_AGGREGATE_RAID_TYPES = ('raid4', 'raid_dp')
+SHARE_AGGREGATE_DISK_TYPE = 'FCAL'
 SHARE_NAME = 'fake_share'
 SNAPSHOT_NAME = 'fake_snapshot'
 PARENT_SHARE_NAME = 'fake_parent_share'
@@ -237,10 +239,10 @@ LICENSE_V2_LIST_INFO_RESPONSE = etree.XML("""
   </results>
 """)
 
-LICENSES = [
+LICENSES = (
     'base', 'cifs', 'fcp', 'flexclone', 'iscsi', 'nfs', 'snapmirror',
     'snaprestore', 'snapvault'
-]
+)
 
 VOLUME_COUNT_RESPONSE = etree.XML("""
   <results status="passed">
@@ -384,7 +386,7 @@ NET_PORT_GET_ITER_RESPONSE = etree.XML("""
   </results>
 """ % {'node_name': NODE_NAME})
 
-PORTS = ['e0a', 'e0b', 'e0c', 'e0d']
+PORTS = ('e0a', 'e0b', 'e0c', 'e0d')
 
 NET_INTERFACE_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
@@ -483,9 +485,9 @@ NET_INTERFACE_GET_ITER_RESPONSE = etree.XML("""
     'vlan': VLAN_PORT
 })
 
-LIF_NAMES = ['cluster_mgmt', 'mgmt1', LIF_NAME]
+LIF_NAMES = ('cluster_mgmt', 'mgmt1', LIF_NAME)
 
-LIFS = [
+LIFS = (
     {'address': '192.168.228.42',
      'home-node': NODE_NAME,
      'home-port': 'e0c',
@@ -509,8 +511,8 @@ LIFS = [
      'netmask': NETMASK,
      'role': 'data',
      'vserver': VSERVER_NAME
-     }
-]
+     },
+)
 
 NET_INTERFACE_GET_ONE_RESPONSE = etree.XML("""
   <results status="passed">
@@ -565,7 +567,7 @@ AGGR_GET_NAMES_RESPONSE = etree.XML("""
   </results>
 """)
 
-AGGR_NAMES = ['aggr0', 'manila']
+AGGR_NAMES = ('aggr0', 'manila')
 
 AGGR_GET_SPACE_RESPONSE = etree.XML("""
   <results status="passed">
@@ -918,7 +920,7 @@ SNAPSHOT_GET_ITER_BUSY_RESPONSE = etree.XML("""
   </results>
 """ % {'snap': SNAPSHOT_NAME, 'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
 
-NFS_EXPORT_RULES = ['10.10.10.10', '10.10.10.20']
+NFS_EXPORT_RULES = ('10.10.10.10', '10.10.10.20')
 
 NFS_EXPORTFS_LIST_RULES_2_NO_RULES_RESPONSE = etree.XML("""
   <results status="passed">
@@ -974,6 +976,68 @@ NFS_EXPORTFS_LIST_RULES_2_RESPONSE = etree.XML("""
     'host1': NFS_EXPORT_RULES[0],
     'host2': NFS_EXPORT_RULES[1],
 })
+
+AGGR_GET_RAID_TYPE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <plexes>
+            <plex-attributes>
+              <plex-name>/aggr0/plex0</plex-name>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <raidgroup-name>/aggr0/plex0/rg0</raidgroup-name>
+                </raidgroup-attributes>
+              </raidgroups>
+            </plex-attributes>
+          </plexes>
+          <raid-type>%(raid_type1)s</raid-type>
+        </aggr-raid-attributes>
+        <aggregate-name>%(aggr1)s</aggregate-name>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <plexes>
+            <plex-attributes>
+              <plex-name>/manila/plex0</plex-name>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <raidgroup-name>/manila/plex0/rg0</raidgroup-name>
+                </raidgroup-attributes>
+                <raidgroup-attributes>
+                  <raidgroup-name>/manila/plex0/rg1</raidgroup-name>
+                </raidgroup-attributes>
+              </raidgroups>
+            </plex-attributes>
+          </plexes>
+          <raid-type>%(raid_type2)s</raid-type>
+        </aggr-raid-attributes>
+        <aggregate-name>%(aggr2)s</aggregate-name>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""" % {
+    'aggr1': SHARE_AGGREGATE_NAMES[0],
+    'aggr2': SHARE_AGGREGATE_NAMES[1],
+    'raid_type1': SHARE_AGGREGATE_RAID_TYPES[0],
+    'raid_type2': SHARE_AGGREGATE_RAID_TYPES[1]
+})
+
+STORAGE_DISK_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.19</disk-name>
+        <disk-raid-info>
+          <effective-disk-type>%s</effective-disk-type>
+        </disk-raid-info>
+      </storage-disk-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % SHARE_AGGREGATE_DISK_TYPE)
 
 GET_AGGREGATE_FOR_VOLUME_RESPONSE = etree.XML("""
   <results status="passed">
