@@ -751,6 +751,14 @@ class DbQuotaDriverTestCase(test.TestCase):
                                       'quota_class_get_all_by_name', ])
         self.assertEqual(result, self.expected_all_context)
 
+    def test_get_project_quotas_with_remains(self):
+        self._stub_get_by_project()
+        result = self.driver.get_project_quotas(
+            FakeContext('test_project', 'test_class'),
+            quota.QUOTAS._resources, 'test_project', remains=True)
+        for result_key in result:
+            self.assertIn("remains", result[result_key])
+
     def test_get_user_quotas_alt_context_no_class(self):
         self._stub_get_by_project_and_user()
         result = self.driver.get_user_quotas(
