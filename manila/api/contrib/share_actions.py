@@ -121,11 +121,11 @@ class ShareActionsController(wsgi.Controller):
     def _allow_access(self, req, id, body):
         """Add share access rule."""
         context = req.environ['manila.context']
-
+        access_data = body['os-allow_access']
         share = self.share_api.get(context, id)
 
-        access_type = body['os-allow_access']['access_type']
-        access_to = body['os-allow_access']['access_to']
+        access_type = access_data['access_type']
+        access_to = access_data['access_to']
         if access_type == 'ip':
             self._validate_ip_range(access_to)
         elif access_type == 'user':
@@ -138,7 +138,8 @@ class ShareActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=exc_str)
         try:
             access = self.share_api.allow_access(
-                context, share, access_type, access_to)
+                context, share, access_type, access_to,
+                access_data.get('access_level'))
         except exception.ShareAccessExists as e:
             raise webob.exc.HTTPBadRequest(explanation=e.msg)
         return {'access': access}

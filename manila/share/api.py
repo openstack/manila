@@ -24,6 +24,7 @@ from oslo.utils import timeutils
 import six
 
 from manila.api import extensions
+from manila.common import constants
 from manila.db import base
 from manila import exception
 from manila.i18n import _
@@ -450,7 +451,8 @@ class API(base.Base):
             snapshots = results
         return snapshots
 
-    def allow_access(self, ctx, share, access_type, access_to):
+    def allow_access(self, ctx, share, access_type, access_to,
+                     access_level=None):
         """Allow access to share."""
         if not share['host']:
             msg = _("Share host is None")
@@ -459,14 +461,20 @@ class API(base.Base):
             msg = _("Share status must be available")
             raise exception.InvalidShare(reason=msg)
         policy.check_policy(ctx, 'share', 'allow_access')
-        values = {'share_id': share['id'],
-                  'access_type': access_type,
-                  'access_to': access_to}
+        values = {
+            'share_id': share['id'],
+            'access_type': access_type,
+            'access_to': access_to,
+            'access_level': access_level,
+        }
         access = [a for a in self.db.share_access_get_all_by_type_and_access(
             ctx, share['id'], access_type, access_to) if a['state'] != 'error']
         if access:
             raise exception.ShareAccessExists(access_type=access_type,
                                               access=access_to)
+        if access_level not in constants.ACCESS_LEVELS + (None, ):
+            msg = _("Invalid share access level: %s.") % access_level
+            raise exception.InvalidShareAccess(reason=msg)
         access = self.db.share_access_create(ctx, values)
         self.share_rpcapi.allow_access(ctx, share, access)
         return access
@@ -501,6 +509,7 @@ class API(base.Base):
         return [{'id': rule.id,
                  'access_type': rule.access_type,
                  'access_to': rule.access_to,
+                 'access_level': rule.access_level,
                  'state': rule.state} for rule in rules]
 
     def access_get(self, context, access_id):
