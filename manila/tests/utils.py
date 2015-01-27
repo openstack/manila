@@ -1,4 +1,5 @@
 # Copyright 2011 OpenStack LLC
+# Copyright 2015 Mirantic, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,11 +16,16 @@
 
 import os
 
-import manila.context
+from oslo_config import cfg
+
+from manila import context
+from manila import utils
+
+CONF = cfg.CONF
 
 
 def get_test_admin_context():
-    return manila.context.get_admin_context()
+    return context.get_admin_context()
 
 
 def is_manila_installed():
@@ -27,3 +33,44 @@ def is_manila_installed():
         return True
     else:
         return False
+
+
+class create_temp_config_with_opts(object):
+    """Creates temporary config file with provided opts and values.
+
+    usage:
+        data = {'FOO_GROUP': {'foo_opt': 'foo_value'}}
+        assert CONF.FOO_GROUP.foo_opt != 'foo_value'
+        with create_temp_config_with_opts(data):
+            assert CONF.FOO_GROUP.foo_opt == 'foo_value'
+        assert CONF.FOO_GROUP.foo_opt != 'foo_value'
+
+    :param data: dict -- expected dict with two layers, first is name of
+       config group and second is opts with values. Example:
+       {'DEFAULT': {'foo_opt': 'foo_v'}, 'BAR_GROUP': {'bar_opt': 'bar_v'}}
+    """
+
+    def __init__(self, data):
+        self.data = data
+
+    def __enter__(self):
+        config_filename = 'fake_config'
+        with utils.tempdir() as tmpdir:
+            tmpfilename = os.path.join(tmpdir, '%s.conf' % config_filename)
+            with open(tmpfilename, "w") as configfile:
+                for group, opts in self.data.items():
+                    configfile.write("""[%s]\n""" % group)
+                    for opt, value in opts.items():
+                        configfile.write(
+                            """%(k)s = %(v)s\n""" % {'k': opt, 'v': value})
+                configfile.write("""\n""")
+
+            # Add config file with updated opts
+            CONF.default_config_files = [configfile.name]
+
+            # Reload config instance to use redefined opts
+            CONF.reload_config_files()
+        return CONF
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        return False  # do not suppress errors

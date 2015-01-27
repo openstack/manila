@@ -15,7 +15,6 @@
 #    under the License.
 """Unit tests for the Share driver module."""
 
-import os
 import time
 
 import ddt
@@ -26,6 +25,7 @@ from manila import network
 from manila.share import configuration
 from manila.share import driver
 from manila import test
+from manila.tests import utils as test_utils
 from manila import utils
 
 
@@ -59,18 +59,8 @@ class ShareDriverTestCase(test.TestCase):
                           execute_mixin._try_execute)
 
     def test_verify_share_driver_mode_option_type(self):
-        opt_name = 'driver_handles_share_servers'
-        with utils.tempdir() as tmpdir:
-            tmpfilename = os.path.join(tmpdir, '%s.conf' % opt_name)
-            with open(tmpfilename, "w") as configfile:
-                configfile.write("""[DEFAULT]\n%s = True""" % opt_name)
-
-            # Add config file with updated opt
-            driver.CONF.default_config_files = [configfile.name]
-
-            # Reload config instance to use redefined opt
-            driver.CONF.reload_config_files()
-
+        data = {'DEFAULT': {'driver_handles_share_servers': 'True'}}
+        with test_utils.create_temp_config_with_opts(data):
             share_driver = driver.ShareDriver([True, False])
             self.assertEqual(True, share_driver.driver_handles_share_servers)
 

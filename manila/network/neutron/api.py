@@ -85,10 +85,9 @@ class API(base.Base):
 
     def __init__(self, config_group_name=None):
         super(API, self).__init__()
-        if config_group_name is None:
-            config_group_name = 'DEFAULT'
-        CONF.register_opts(neutron_opts, group=config_group_name)
-        self.configuration = getattr(CONF, config_group_name, CONF)
+        self.config_group_name = config_group_name or 'DEFAULT'
+        CONF.register_opts(neutron_opts, group=self.config_group_name)
+        self.configuration = getattr(CONF, self.config_group_name, CONF)
         self.last_neutron_extension_sync = None
         self.extensions = {}
         self.client = self.get_client(context.get_admin_context())

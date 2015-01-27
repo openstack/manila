@@ -1,4 +1,5 @@
 # Copyright 2013 Openstack Foundation
+# Copyright 2015 Mirantis, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_config import cfg
+
 from manila.common import constants
 from manila import exception
 from manila import network
@@ -20,6 +23,23 @@ from manila.network.neutron import api as neutron_api
 from manila.network.neutron import constants as neutron_constants
 from manila.openstack.common import log as logging
 
+neutron_single_network_plugin_opts = [
+    cfg.StrOpt(
+        'neutron_net_id',
+        help="Default Neutron network that will be used for share server "
+             "creation in case it is not provided.",
+        deprecated_group='DEFAULT',
+        default=None),
+    cfg.StrOpt(
+        'neutron_subnet_id',
+        help="Default Neutron subnet that will be used for share server "
+             "creation in case it is not provided. Should be assigned to "
+             "network defined in opt 'neutron_net_id' if set.",
+        deprecated_group='DEFAULT',
+        default=None),
+]
+
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -131,3 +151,45 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         self.db.share_network_update(context,
                                      share_network['id'],
                                      subnet_values)
+
+
+class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
+
+    def __init__(self, *args, **kwargs):
+        super(NeutronSingleNetworkPlugin, self).__init__(*args, **kwargs)
+        CONF.register_opts(
+            neutron_single_network_plugin_opts,
+            group=self.neutron_api.config_group_name)
+        self.net = self.neutron_api.configuration.neutron_net_id
+        self.subnet = self.neutron_api.configuration.neutron_subnet_id
+        self._verify_net_and_subnet()
+
+    def allocate_network(self, context, share_server, share_network, **kwargs):
+        share_network = self._update_share_network_net_data(
+            context, share_network)
+        super(NeutronSingleNetworkPlugin, self).allocate_network(
+            context, share_server, share_network, **kwargs)
+
+    def _verify_net_and_subnet(self):
+        data = dict(net=self.net, subnet=self.subnet)
+        if self.net and self.subnet:
+            net = self.neutron_api.get_network(self.net)
+            if not (net.get('subnets') and data['subnet'] in net['subnets']):
+                raise exception.NetworkBadConfigurationException(
+                    "Subnet '%(subnet)s' does not belong to "
+                    "network '%(net)s'." % data)
+        else:
+            raise exception.NetworkBadConfigurationException(
+                "Neutron net and subnet are expected to be both set. "
+                "Got: net=%(net)s and subnet=%(subnet)s." % data)
+
+    def _update_share_network_net_data(self, context, share_network):
+        upd = dict()
+        if not share_network.get('neutron_net_id') == self.net:
+            upd['neutron_net_id'] = self.net
+        if not share_network.get('neutron_subnet_id') == self.subnet:
+            upd['neutron_subnet_id'] = self.subnet
+        if upd:
+            share_network = self.db.share_network_update(
+                context, share_network['id'], upd)
+        return share_network
