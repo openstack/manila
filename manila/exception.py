@@ -477,3 +477,7 @@ class GaneshaCommandFailure(ProcessExecutionError):
 
 class InvalidSqliteDB(Invalid):
     message = _("Invalid Sqlite database.")
+
+
+class SSHException(ManilaException):
+    message = _("Exception in SSH protocol negotiation or logic.")

@@ -80,26 +80,27 @@ class SSHPool(pools.Pool):
         self.login = login
         self.password = password
         self.conn_timeout = conn_timeout if conn_timeout else None
-        self.privatekey = privatekey
+        self.path_to_private_key = privatekey
         super(SSHPool, self).__init__(*args, **kwargs)
 
     def create(self):
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        look_for_keys = True
+        if self.path_to_private_key:
+            self.path_to_private_key = os.path.expanduser(
+                self.path_to_private_key)
+            look_for_keys = False
+        elif self.password:
+            look_for_keys = False
         try:
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            if self.privatekey:
-                pkfile = os.path.expanduser(self.privatekey)
-                self.privatekey = paramiko.RSAKey.from_private_key_file(pkfile)
-            elif not self.password:
-                msg = _("Specify a password or private_key")
-                raise exception.ManilaException(msg)
             ssh.connect(self.ip,
                         port=self.port,
                         username=self.login,
                         password=self.password,
-                        pkey=self.privatekey,
+                        key_filename=self.path_to_private_key,
+                        look_for_keys=look_for_keys,
                         timeout=self.conn_timeout)
-
             # Paramiko by default sets the socket timeout to 0.1 seconds,
             # ignoring what we set thru the sshclient. This doesn't help for
             # keeping long lived connections. Hence we have to bypass it, by
@@ -113,9 +114,10 @@ class SSHPool(pools.Pool):
                 transport.set_keepalive(self.conn_timeout)
             return ssh
         except Exception as e:
-            msg = _("Error connecting via ssh: %s") % e
+            msg = _("Check whether private key or password are correctly "
+                    "set. Error connecting via ssh: %s") % e
             LOG.error(msg)
-            raise paramiko.SSHException(msg)
+            raise exception.SSHException(msg)
 
     def get(self):
         """Return an item from the pool, when one is available.
