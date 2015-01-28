@@ -207,9 +207,10 @@ class AdminActionsTest(test.TestCase):
 
     def test_admin_force_delete_snapshot(self):
         snapshot = stubs.stub_snapshot(1, host='foo')
-        self.stubs.Set(db, 'share_get', lambda x, y: snapshot)
-        self.stubs.Set(db, 'share_snapshot_get', lambda x, y: snapshot)
-        self.stubs.Set(share_api.API, 'delete_snapshot', lambda *x, **y: True)
+        self.mock_object(db, 'share_get', lambda x, y: snapshot)
+        self.mock_object(db, 'share_snapshot_get', lambda x, y: snapshot)
+        self.mock_object(share_api.API, 'delete_snapshot',
+                         lambda *x, **y: True)
         path = '/v1/fake/snapshots/%s/action' % snapshot['id']
         req = webob.Request.blank(path)
         req.method = 'POST'
@@ -221,9 +222,10 @@ class AdminActionsTest(test.TestCase):
 
     def test_member_force_delete_snapshot(self):
         snapshot = stubs.stub_snapshot(1, host='foo')
-        self.stubs.Set(db, 'share_get', lambda x, y: snapshot)
-        self.stubs.Set(db, 'share_snapshot_get', lambda x, y: snapshot)
-        self.stubs.Set(share_api.API, 'delete_snapshot', lambda *x, **y: True)
+        self.mock_object(db, 'share_get', lambda x, y: snapshot)
+        self.mock_object(db, 'share_snapshot_get', lambda x, y: snapshot)
+        self.mock_object(share_api.API, 'delete_snapshot',
+                         lambda *x, **y: True)
         path = '/v1/fake/snapshots/%s/action' % snapshot['id']
         req = webob.Request.blank(path)
         req.method = 'POST'

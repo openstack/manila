@@ -49,7 +49,7 @@ class ZFSSAApiTestCase(test.TestCase):
         return response
 
     def test_enable_service(self):
-        self.stubs.Set(self._zfssa.rclient, 'put', mock.Mock())
+        self.mock_object(self._zfssa.rclient, 'put')
         self._zfssa.rclient.put.return_value = self._create_response(
             restclient.Status.ACCEPTED)
 
@@ -63,8 +63,8 @@ class ZFSSAApiTestCase(test.TestCase):
                           'nfs')
 
     def test_verify_avail_space(self):
-        self.stubs.Set(self._zfssa, 'verify_project', mock.Mock())
-        self.stubs.Set(self._zfssa, 'get_project_stats', mock.Mock())
+        self.mock_object(self._zfssa, 'verify_project')
+        self.mock_object(self._zfssa, 'get_project_stats')
         self._zfssa.get_project_stats.return_value = 2000
 
         self._zfssa.verify_avail_space(self.pool,
@@ -86,9 +86,9 @@ class ZFSSAApiTestCase(test.TestCase):
                           1000)
 
     def test_create_project(self):
-        self.stubs.Set(self._zfssa, 'verify_pool', mock.Mock())
-        self.stubs.Set(self._zfssa.rclient, 'get', mock.Mock())
-        self.stubs.Set(self._zfssa.rclient, 'post', mock.Mock())
+        self.mock_object(self._zfssa, 'verify_pool')
+        self.mock_object(self._zfssa.rclient, 'get')
+        self.mock_object(self._zfssa.rclient, 'post')
         arg = {
             'name': self.project,
             'sharesmb': 'off',
@@ -115,9 +115,9 @@ class ZFSSAApiTestCase(test.TestCase):
                           arg)
 
     def test_create_share(self):
-        self.stubs.Set(self._zfssa, 'verify_avail_space', mock.Mock())
-        self.stubs.Set(self._zfssa.rclient, 'get', mock.Mock())
-        self.stubs.Set(self._zfssa.rclient, 'post', mock.Mock())
+        self.mock_object(self._zfssa, 'verify_avail_space')
+        self.mock_object(self._zfssa.rclient, 'get')
+        self.mock_object(self._zfssa.rclient, 'post')
         self._zfssa.rclient.get.return_value = self._create_response(
             restclient.Status.NOT_FOUND)
         self._zfssa.rclient.post.return_value = self._create_response(
@@ -153,7 +153,7 @@ class ZFSSAApiTestCase(test.TestCase):
                           arg)
 
     def test_modify_share(self):
-        self.stubs.Set(self._zfssa.rclient, 'put', mock.Mock())
+        self.mock_object(self._zfssa.rclient, 'put')
         self._zfssa.rclient.put.return_value = self._create_response(
             restclient.Status.ACCEPTED)
         arg = {"name": "dummyname"}
@@ -173,7 +173,7 @@ class ZFSSAApiTestCase(test.TestCase):
                           arg)
 
     def test_delete_share(self):
-        self.stubs.Set(self._zfssa.rclient, 'delete', mock.Mock())
+        self.mock_object(self._zfssa.rclient, 'delete')
         self._zfssa.rclient.delete.return_value = self._create_response(
             restclient.Status.NO_CONTENT)
         svc = self._zfssa.share_path % (self.pool, self.project, self.share)
@@ -183,7 +183,7 @@ class ZFSSAApiTestCase(test.TestCase):
         self._zfssa.rclient.delete.assert_called_with(svc)
 
     def test_create_snapshot(self):
-        self.stubs.Set(self._zfssa.rclient, 'post', mock.Mock())
+        self.mock_object(self._zfssa.rclient, 'post')
         self._zfssa.rclient.post.return_value = self._create_response(
             restclient.Status.CREATED)
         arg = {"name": self.snap}
@@ -208,7 +208,7 @@ class ZFSSAApiTestCase(test.TestCase):
                           self.snap)
 
     def test_delete_snapshot(self):
-        self.stubs.Set(self._zfssa.rclient, 'delete', mock.Mock())
+        self.mock_object(self._zfssa.rclient, 'delete')
         self._zfssa.rclient.delete.return_value = self._create_response(
             restclient.Status.NO_CONTENT)
         svc = self._zfssa.snapshot_path % (self.pool,
@@ -233,8 +233,8 @@ class ZFSSAApiTestCase(test.TestCase):
                           self.snap)
 
     def test_clone_snapshot(self):
-        self.stubs.Set(self._zfssa, 'verify_avail_space', mock.Mock())
-        self.stubs.Set(self._zfssa.rclient, 'put', mock.Mock())
+        self.mock_object(self._zfssa, 'verify_avail_space')
+        self.mock_object(self._zfssa.rclient, 'put')
         self._zfssa.rclient.put.return_value = self._create_response(
             restclient.Status.CREATED)
         snapshot = {
@@ -282,8 +282,8 @@ class ZFSSAApiTestCase(test.TestCase):
         return arg
 
     def test_allow_access_nfs(self):
-        self.stubs.Set(self._zfssa, 'get_share', mock.Mock())
-        self.stubs.Set(self._zfssa, 'modify_share', mock.Mock())
+        self.mock_object(self._zfssa, 'get_share')
+        self.mock_object(self._zfssa, 'modify_share')
         details = {"sharenfs": "off"}
         access = {
             "access_type": "nonip",
@@ -349,8 +349,8 @@ class ZFSSAApiTestCase(test.TestCase):
         self.assertEqual(2, self._zfssa.modify_share.call_count)
 
     def test_deny_access_nfs(self):
-        self.stubs.Set(self._zfssa, 'get_share', mock.Mock())
-        self.stubs.Set(self._zfssa, 'modify_share', mock.Mock())
+        self.mock_object(self._zfssa, 'get_share')
+        self.mock_object(self._zfssa, 'modify_share')
         data1 = self._create_entry("off", "10.0.0.1")
         access = {
             "access_type": "nonip",

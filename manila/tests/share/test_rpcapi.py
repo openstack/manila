@@ -106,8 +106,8 @@ class ShareRpcAPITestCase(test.TestCase):
             if expected_retval:
                 return expected_retval
 
-        self.stubs.Set(self.rpcapi.client, "prepare", _fake_prepare_method)
-        self.stubs.Set(self.rpcapi.client, rpc_method, _fake_rpc_method)
+        self.mock_object(self.rpcapi.client, "prepare", _fake_prepare_method)
+        self.mock_object(self.rpcapi.client, rpc_method, _fake_rpc_method)
 
         retval = getattr(self.rpcapi, method)(self.ctxt, **kwargs)
 

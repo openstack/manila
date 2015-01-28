@@ -61,10 +61,11 @@ class FakeNotifier(object):
         NOTIFICATIONS.append(msg)
 
 
-def stub_notifier(stubs):
-    stubs.Set(messaging, 'Notifier', FakeNotifier)
+def stub_notifier(testcase):
+    testcase.mock_object(messaging, 'Notifier', FakeNotifier)
     if rpc.NOTIFIER:
         serializer = getattr(rpc.NOTIFIER, '_serializer', None)
-        stubs.Set(rpc, 'NOTIFIER', FakeNotifier(rpc.NOTIFIER.transport,
-                                                rpc.NOTIFIER.publisher_id,
-                                                serializer=serializer))
+        testcase.mock_object(rpc, 'NOTIFIER',
+                             FakeNotifier(rpc.NOTIFIER.transport,
+                                          rpc.NOTIFIER.publisher_id,
+                                          serializer=serializer))

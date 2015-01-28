@@ -90,7 +90,7 @@ class HostManagerTestCase(test.TestCase):
                 info['got_fprops'].append(filter_props)
                 return True
 
-            self.stubs.Set(FakeFilterClass1, '_filter_one', fake_filter_one)
+            self.mock_object(FakeFilterClass1, '_filter_one', fake_filter_one)
             result = self.host_manager.get_filtered_hosts(self.fake_hosts,
                                                           fake_properties)
             self._verify_result(info, result)

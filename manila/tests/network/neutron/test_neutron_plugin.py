@@ -314,7 +314,7 @@ class NeutronSingleNetworkPluginTest(test.TestCase):
             }
         }
         fake_net = {'subnets': ['fake1', 'fake2', fake_subnet_id]}
-        self.stubs.Set(
+        self.mock_object(
             neutron_api.API, 'get_network', mock.Mock(return_value=fake_net))
 
         with test_utils.create_temp_config_with_opts(config_data):
@@ -352,7 +352,7 @@ class NeutronSingleNetworkPluginTest(test.TestCase):
                 'neutron_subnet_id': 'fake_subnet_id',
             }
         }
-        self.stubs.Set(
+        self.mock_object(
             neutron_api.API, 'get_network', mock.Mock(return_value=fake_net))
 
         with test_utils.create_temp_config_with_opts(config_data):
@@ -370,7 +370,7 @@ class NeutronSingleNetworkPluginTest(test.TestCase):
             }
         }
         fake_net = {'subnets': [fake_subnet_id]}
-        self.stubs.Set(
+        self.mock_object(
             neutron_api.API, 'get_network', mock.Mock(return_value=fake_net))
         with test_utils.create_temp_config_with_opts(config_data):
             instance = plugin.NeutronSingleNetworkPlugin()
@@ -400,7 +400,7 @@ class NeutronSingleNetworkPluginTest(test.TestCase):
             'neutron_net_id': n,
             'neutron_subnet_id': s,
         }
-        self.stubs.Set(
+        self.mock_object(
             instance.db, 'share_network_update',
             mock.Mock(return_value=share_network))
 
@@ -420,7 +420,7 @@ class NeutronSingleNetworkPluginTest(test.TestCase):
         share_network_upd = 'updated_fake_share_network'
         count = 2
         device_owner = 'fake_device_owner'
-        self.stubs.Set(
+        self.mock_object(
             instance, '_update_share_network_net_data',
             mock.Mock(return_value=share_network_upd))
 

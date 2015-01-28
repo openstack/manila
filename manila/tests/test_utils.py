@@ -233,7 +233,7 @@ class GenericUtilsTestCase(test.TestCase):
                 raise exception.ProcessExecutionError
             return 'fakecontents', None
 
-        self.stubs.Set(utils, 'execute', fake_execute)
+        self.mock_object(utils, 'execute', fake_execute)
         contents = utils.read_file_as_root('good')
         self.assertEqual(contents, 'fakecontents')
         self.assertRaises(exception.FileNotFound,
@@ -243,7 +243,7 @@ class GenericUtilsTestCase(test.TestCase):
         def fake_execute(*args, **kwargs):
             if args[0] == 'chown':
                 fake_execute.uid = args[1]
-        self.stubs.Set(utils, 'execute', fake_execute)
+        self.mock_object(utils, 'execute', fake_execute)
 
         with tempfile.NamedTemporaryFile() as f:
             with utils.temporary_chown(f.name, owner_uid=2):

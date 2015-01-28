@@ -105,7 +105,7 @@ def fake_execute(*cmd_parts, **kwargs):
     return reply
 
 
-def stub_out_utils_execute(stubs):
+def stub_out_utils_execute(testcase):
     fake_execute_set_repliers([])
     fake_execute_clear_log()
-    stubs.Set(utils, 'execute', fake_execute)
+    testcase.mock_object(utils, 'execute', fake_execute)

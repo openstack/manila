@@ -83,9 +83,10 @@ class GenericShareDriverTestCase(test.TestCase):
             context="fake", instance_name="fake",
             share_network_id=self.fake_sn["id"], old_server_ip="fake")
 
-        self.stubs.Set(utils, 'synchronized',
-                       mock.Mock(return_value=lambda f: f))
-        self.stubs.Set(generic.os.path, 'exists', mock.Mock(return_value=True))
+        self.mock_object(utils, 'synchronized',
+                         mock.Mock(return_value=lambda f: f))
+        self.mock_object(generic.os.path, 'exists',
+                         mock.Mock(return_value=True))
         self._driver._helpers = {
             'CIFS': self._helper_cifs,
             'NFS': self._helper_nfs,
@@ -106,9 +107,9 @@ class GenericShareDriverTestCase(test.TestCase):
         self.snapshot = fake_share.fake_snapshot()
 
     def test_do_setup(self):
-        self.stubs.Set(volume, 'API', mock.Mock())
-        self.stubs.Set(compute, 'API', mock.Mock())
-        self.stubs.Set(self._driver, '_setup_helpers', mock.Mock())
+        self.mock_object(volume, 'API')
+        self.mock_object(compute, 'API')
+        self.mock_object(self._driver, '_setup_helpers')
         self._driver.do_setup(self._context)
         volume.API.assert_called_once_with()
         compute.API.assert_called_once_with()
@@ -117,8 +118,8 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_setup_helpers(self):
         self._driver._helpers = {}
         CONF.set_default('share_helpers', ['NFS=fakenfs'])
-        self.stubs.Set(generic.importutils, 'import_class',
-                       mock.Mock(return_value=self._helper_nfs))
+        self.mock_object(generic.importutils, 'import_class',
+                         mock.Mock(return_value=self._helper_nfs))
         self._driver._setup_helpers()
         generic.importutils.import_class.assert_has_calls([
             mock.call('fakenfs')
@@ -134,12 +135,12 @@ class GenericShareDriverTestCase(test.TestCase):
         volume = 'fake_volume'
         volume2 = 'fake_volume2'
         self._helper_nfs.create_export.return_value = 'fakelocation'
-        self.stubs.Set(self._driver, '_allocate_container',
-                       mock.Mock(return_value=volume))
-        self.stubs.Set(self._driver, '_attach_volume',
-                       mock.Mock(return_value=volume2))
-        self.stubs.Set(self._driver, '_format_device', mock.Mock())
-        self.stubs.Set(self._driver, '_mount_device', mock.Mock())
+        self.mock_object(self._driver, '_allocate_container',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self._driver, '_attach_volume',
+                         mock.Mock(return_value=volume2))
+        self.mock_object(self._driver, '_format_device')
+        self.mock_object(self._driver, '_mount_device')
 
         result = self._driver.create_share(
             self._context, self.share, share_server=self.server)
@@ -163,8 +164,8 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_format_device(self):
         volume = {'mountpoint': 'fake_mount_point'}
-        self.stubs.Set(self._driver, '_ssh_exec',
-                       mock.Mock(return_value=('', '')))
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=('', '')))
         self._driver._format_device(self.server, volume)
         self._driver._ssh_exec.assert_called_once_with(
             self.server,
@@ -175,14 +176,13 @@ class GenericShareDriverTestCase(test.TestCase):
         server = {'instance_id': 'fake_server_id'}
         mount_path = '/fake/mount/path'
         volume = {'mountpoint': 'fake_mount_point'}
-        self.stubs.Set(self._driver, '_is_device_mounted',
-                       mock.Mock(return_value=False))
-        self.stubs.Set(self._driver, '_sync_mount_temp_and_perm_files',
-                       mock.Mock())
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value=mount_path))
-        self.stubs.Set(self._driver, '_ssh_exec',
-                       mock.Mock(return_value=('', '')))
+        self.mock_object(self._driver, '_is_device_mounted',
+                         mock.Mock(return_value=False))
+        self.mock_object(self._driver, '_sync_mount_temp_and_perm_files')
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=('', '')))
 
         self._driver._mount_device(self.share, server, volume)
 
@@ -201,11 +201,11 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_mount_device_present(self):
         mount_path = '/fake/mount/path'
         volume = {'mountpoint': 'fake_mount_point'}
-        self.stubs.Set(self._driver, '_is_device_mounted',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value=mount_path))
-        self.stubs.Set(generic.LOG, 'warning', mock.Mock())
+        self.mock_object(self._driver, '_is_device_mounted',
+                         mock.Mock(return_value=True))
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
+        self.mock_object(generic.LOG, 'warning')
 
         self._driver._mount_device(self.share, self.server, volume)
 
@@ -216,10 +216,11 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_mount_device_exception_raised(self):
         volume = {'mountpoint': 'fake_mount_point'}
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value='fake'))
-        self.stubs.Set(self._driver, '_is_device_mounted',
-                       mock.Mock(side_effect=exception.ProcessExecutionError))
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value='fake'))
+        self.mock_object(
+            self._driver, '_is_device_mounted',
+            mock.Mock(side_effect=exception.ProcessExecutionError))
 
         self.assertRaises(
             exception.ShareBackendException,
@@ -234,14 +235,13 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_unmount_device_present(self):
         mount_path = '/fake/mount/path'
-        self.stubs.Set(self._driver, '_is_device_mounted',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(self._driver, '_sync_mount_temp_and_perm_files',
-                       mock.Mock())
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value=mount_path))
-        self.stubs.Set(self._driver, '_ssh_exec',
-                       mock.Mock(return_value=('', '')))
+        self.mock_object(self._driver, '_is_device_mounted',
+                         mock.Mock(return_value=True))
+        self.mock_object(self._driver, '_sync_mount_temp_and_perm_files')
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=('', '')))
 
         self._driver._unmount_device(self.share, self.server)
 
@@ -257,11 +257,11 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_unmount_device_not_present(self):
         mount_path = '/fake/mount/path'
-        self.stubs.Set(self._driver, '_is_device_mounted',
-                       mock.Mock(return_value=False))
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value=mount_path))
-        self.stubs.Set(generic.LOG, 'warning', mock.Mock())
+        self.mock_object(self._driver, '_is_device_mounted',
+                         mock.Mock(return_value=False))
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
+        self.mock_object(generic.LOG, 'warning')
 
         self._driver._unmount_device(self.share, self.server)
 
@@ -275,10 +275,10 @@ class GenericShareDriverTestCase(test.TestCase):
         mount_path = '/fake/mount/path'
         mounts = "%(dev)s on %(path)s" % {'dev': volume['mountpoint'],
                                           'path': mount_path}
-        self.stubs.Set(self._driver, '_ssh_exec',
-                       mock.Mock(return_value=(mounts, '')))
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value=mount_path))
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=(mounts, '')))
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
 
         result = self._driver._is_device_mounted(
             self.share, self.server, volume)
@@ -291,10 +291,10 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_is_device_mounted_true_no_volume_provided(self):
         mount_path = '/fake/mount/path'
         mounts = "/fake/dev/path on %(path)s type fake" % {'path': mount_path}
-        self.stubs.Set(self._driver, '_ssh_exec',
-                       mock.Mock(return_value=(mounts, '')))
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value=mount_path))
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=(mounts, '')))
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
 
         result = self._driver._is_device_mounted(self.share, self.server)
 
@@ -308,10 +308,10 @@ class GenericShareDriverTestCase(test.TestCase):
         volume = {'mountpoint': 'fake_mount_point', 'id': 'fake_id'}
         mounts = "%(dev)s on %(path)s" % {'dev': '/fake',
                                           'path': mount_path}
-        self.stubs.Set(self._driver, '_ssh_exec',
-                       mock.Mock(return_value=(mounts, '')))
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value=mount_path))
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=(mounts, '')))
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
 
         result = self._driver._is_device_mounted(
             self.share, self.server, volume)
@@ -324,10 +324,10 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_is_device_mounted_false_no_volume_provided(self):
         mount_path = '/fake/mount/path'
         mounts = "%(path)s" % {'path': 'fake'}
-        self.stubs.Set(self._driver, '_ssh_exec',
-                       mock.Mock(return_value=(mounts, '')))
-        self.stubs.Set(self._driver, '_get_mount_path',
-                       mock.Mock(return_value=mount_path))
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=(mounts, '')))
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
 
         result = self._driver._is_device_mounted(self.share, self.server)
 
@@ -337,7 +337,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertEqual(result, False)
 
     def test_sync_mount_temp_and_perm_files(self):
-        self.stubs.Set(self._driver, '_ssh_exec', mock.Mock())
+        self.mock_object(self._driver, '_ssh_exec')
         self._driver._sync_mount_temp_and_perm_files(self.server)
         self._driver._ssh_exec.has_calls(
             mock.call(
@@ -346,8 +346,9 @@ class GenericShareDriverTestCase(test.TestCase):
             mock.call(self.server, ['sudo', 'mount', '-a']))
 
     def test_sync_mount_temp_and_perm_files_raise_error_on_copy(self):
-        self.stubs.Set(self._driver, '_ssh_exec',
-                       mock.Mock(side_effect=exception.ProcessExecutionError))
+        self.mock_object(
+            self._driver, '_ssh_exec',
+            mock.Mock(side_effect=exception.ProcessExecutionError))
         self.assertRaises(
             exception.ShareBackendException,
             self._driver._sync_mount_temp_and_perm_files,
@@ -362,8 +363,8 @@ class GenericShareDriverTestCase(test.TestCase):
             if args[1][1] == 'cp':
                 raise exception.ProcessExecutionError()
 
-        self.stubs.Set(self._driver, '_ssh_exec',
-                       mock.Mock(side_effect=raise_error_on_mount))
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(side_effect=raise_error_on_mount))
         self.assertRaises(
             exception.ShareBackendException,
             self._driver._sync_mount_temp_and_perm_files,
@@ -383,10 +384,9 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_attach_volume_not_attached(self):
         availiable_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
-        self.stubs.Set(self._driver.compute_api, 'instance_volume_attach',
-                       mock.Mock())
-        self.stubs.Set(self._driver.volume_api, 'get',
-                       mock.Mock(return_value=attached_volume))
+        self.mock_object(self._driver.compute_api, 'instance_volume_attach')
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(return_value=attached_volume))
 
         result = self._driver._attach_volume(self._context, self.share,
                                              'fake_inst_id', availiable_volume)
@@ -401,8 +401,8 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_attach_volume_attached_correct(self):
         fake_server = fake_compute.FakeServer()
         attached_volume = fake_volume.FakeVolume(status='in-use')
-        self.stubs.Set(self._driver.compute_api, 'instance_volumes_list',
-                       mock.Mock(return_value=[attached_volume]))
+        self.mock_object(self._driver.compute_api, 'instance_volumes_list',
+                         mock.Mock(return_value=[attached_volume]))
 
         result = self._driver._attach_volume(self._context, self.share,
                                              fake_server, attached_volume)
@@ -413,8 +413,8 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_server = fake_compute.FakeServer()
         attached_volume = fake_volume.FakeVolume(status='in-use')
         anoter_volume = fake_volume.FakeVolume(id='fake_id2', status='in-use')
-        self.stubs.Set(self._driver.compute_api, 'instance_volumes_list',
-                       mock.Mock(return_value=[anoter_volume]))
+        self.mock_object(self._driver.compute_api, 'instance_volumes_list',
+                         mock.Mock(return_value=[anoter_volume]))
         self.assertRaises(exception.ManilaException,
                           self._driver._attach_volume, self._context,
                           self.share, fake_server, attached_volume)
@@ -422,8 +422,8 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_attach_volume_failed_attach(self):
         fake_server = fake_compute.FakeServer()
         availiable_volume = fake_volume.FakeVolume()
-        self.stubs.Set(self._driver.compute_api, 'instance_volume_attach',
-                       mock.Mock(side_effect=exception.ManilaException))
+        self.mock_object(self._driver.compute_api, 'instance_volume_attach',
+                         mock.Mock(side_effect=exception.ManilaException))
         self.assertRaises(exception.ManilaException,
                           self._driver._attach_volume,
                           self._context, self.share, fake_server,
@@ -433,10 +433,9 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_server = fake_compute.FakeServer()
         availiable_volume = fake_volume.FakeVolume()
         error_volume = fake_volume.FakeVolume(status='error')
-        self.stubs.Set(self._driver.compute_api, 'instance_volume_attach',
-                       mock.Mock())
-        self.stubs.Set(self._driver.volume_api, 'get',
-                       mock.Mock(return_value=error_volume))
+        self.mock_object(self._driver.compute_api, 'instance_volume_attach')
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(return_value=error_volume))
         self.assertRaises(exception.ManilaException,
                           self._driver._attach_volume,
                           self._context, self.share,
@@ -445,22 +444,22 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_get_volume(self):
         volume = fake_volume.FakeVolume(
             display_name=CONF.volume_name_template % self.share['id'])
-        self.stubs.Set(self._driver.volume_api, 'get_all',
-                       mock.Mock(return_value=[volume]))
+        self.mock_object(self._driver.volume_api, 'get_all',
+                         mock.Mock(return_value=[volume]))
         result = self._driver._get_volume(self._context, self.share['id'])
         self.assertEqual(result, volume)
 
     def test_get_volume_none(self):
-        self.stubs.Set(self._driver.volume_api, 'get_all',
-                       mock.Mock(return_value=[]))
+        self.mock_object(self._driver.volume_api, 'get_all',
+                         mock.Mock(return_value=[]))
         result = self._driver._get_volume(self._context, self.share['id'])
         self.assertEqual(result, None)
 
     def test_get_volume_error(self):
         volume = fake_volume.FakeVolume(
             display_name=CONF.volume_name_template % self.share['id'])
-        self.stubs.Set(self._driver.volume_api, 'get_all',
-                       mock.Mock(return_value=[volume, volume]))
+        self.mock_object(self._driver.volume_api, 'get_all',
+                         mock.Mock(return_value=[volume, volume]))
         self.assertRaises(exception.ManilaException,
                           self._driver._get_volume,
                           self._context, self.share['id'])
@@ -469,15 +468,15 @@ class GenericShareDriverTestCase(test.TestCase):
         volume_snapshot = fake_volume.FakeVolumeSnapshot(
             display_name=CONF.volume_snapshot_name_template %
             self.snapshot['id'])
-        self.stubs.Set(self._driver.volume_api, 'get_all_snapshots',
-                       mock.Mock(return_value=[volume_snapshot]))
+        self.mock_object(self._driver.volume_api, 'get_all_snapshots',
+                         mock.Mock(return_value=[volume_snapshot]))
         result = self._driver._get_volume_snapshot(self._context,
                                                    self.snapshot['id'])
         self.assertEqual(result, volume_snapshot)
 
     def test_get_volume_snapshot_none(self):
-        self.stubs.Set(self._driver.volume_api, 'get_all_snapshots',
-                       mock.Mock(return_value=[]))
+        self.mock_object(self._driver.volume_api, 'get_all_snapshots',
+                         mock.Mock(return_value=[]))
         result = self._driver._get_volume_snapshot(self._context,
                                                    self.share['id'])
         self.assertEqual(result, None)
@@ -486,9 +485,9 @@ class GenericShareDriverTestCase(test.TestCase):
         volume_snapshot = fake_volume.FakeVolumeSnapshot(
             display_name=CONF.volume_snapshot_name_template %
             self.snapshot['id'])
-        self.stubs.Set(self._driver.volume_api, 'get_all_snapshots',
-                       mock.Mock(return_value=[volume_snapshot,
-                                               volume_snapshot]))
+        self.mock_object(self._driver.volume_api, 'get_all_snapshots',
+                         mock.Mock(return_value=[volume_snapshot,
+                                                 volume_snapshot]))
         self.assertRaises(exception.ManilaException,
                           self._driver._get_volume_snapshot, self._context,
                           self.share['id'])
@@ -496,14 +495,13 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_detach_volume(self):
         availiable_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
-        self.stubs.Set(self._driver, '_get_volume',
-                       mock.Mock(return_value=attached_volume))
-        self.stubs.Set(self._driver.compute_api, 'instance_volumes_list',
-                       mock.Mock(return_value=[attached_volume]))
-        self.stubs.Set(self._driver.compute_api, 'instance_volume_detach',
-                       mock.Mock())
-        self.stubs.Set(self._driver.volume_api, 'get',
-                       mock.Mock(return_value=availiable_volume))
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(return_value=attached_volume))
+        self.mock_object(self._driver.compute_api, 'instance_volumes_list',
+                         mock.Mock(return_value=[attached_volume]))
+        self.mock_object(self._driver.compute_api, 'instance_volume_detach')
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(return_value=availiable_volume))
 
         self._driver._detach_volume(self._context, self.share,
                                     self.server['backend_details'])
@@ -519,14 +517,13 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_detach_volume_detached(self):
         availiable_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
-        self.stubs.Set(self._driver, '_get_volume',
-                       mock.Mock(return_value=attached_volume))
-        self.stubs.Set(self._driver.compute_api, 'instance_volumes_list',
-                       mock.Mock(return_value=[]))
-        self.stubs.Set(self._driver.volume_api, 'get',
-                       mock.Mock(return_value=availiable_volume))
-        self.stubs.Set(self._driver.compute_api, 'instance_volume_detach',
-                       mock.Mock())
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(return_value=attached_volume))
+        self.mock_object(self._driver.compute_api, 'instance_volumes_list',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(return_value=availiable_volume))
+        self.mock_object(self._driver.compute_api, 'instance_volume_detach')
 
         self._driver._detach_volume(self._context, self.share,
                                     self.server['backend_details'])
@@ -538,8 +535,8 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_allocate_container(self):
         fake_vol = fake_volume.FakeVolume()
         self.fake_conf.cinder_volume_type = 'fake_volume_type'
-        self.stubs.Set(self._driver.volume_api, 'create',
-                       mock.Mock(return_value=fake_vol))
+        self.mock_object(self._driver.volume_api, 'create',
+                         mock.Mock(return_value=fake_vol))
 
         result = self._driver._allocate_container(self._context, self.share)
         self.assertEqual(result, fake_vol)
@@ -554,10 +551,10 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_allocate_container_with_snaphot(self):
         fake_vol = fake_volume.FakeVolume()
         fake_vol_snap = fake_volume.FakeVolumeSnapshot()
-        self.stubs.Set(self._driver, '_get_volume_snapshot',
-                       mock.Mock(return_value=fake_vol_snap))
-        self.stubs.Set(self._driver.volume_api, 'create',
-                       mock.Mock(return_value=fake_vol))
+        self.mock_object(self._driver, '_get_volume_snapshot',
+                         mock.Mock(return_value=fake_vol_snap))
+        self.mock_object(self._driver.volume_api, 'create',
+                         mock.Mock(return_value=fake_vol))
 
         result = self._driver._allocate_container(self._context,
                                                   self.share,
@@ -573,8 +570,8 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_allocate_container_error(self):
         fake_vol = fake_volume.FakeVolume(status='error')
-        self.stubs.Set(self._driver.volume_api, 'create',
-                       mock.Mock(return_value=fake_vol))
+        self.mock_object(self._driver.volume_api, 'create',
+                         mock.Mock(return_value=fake_vol))
 
         self.assertRaises(exception.ManilaException,
                           self._driver._allocate_container,
@@ -583,10 +580,10 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_deallocate_container(self):
         fake_vol = fake_volume.FakeVolume()
-        self.stubs.Set(self._driver, '_get_volume',
-                       mock.Mock(return_value=fake_vol))
-        self.stubs.Set(self._driver.volume_api, 'delete', mock.Mock())
-        self.stubs.Set(self._driver.volume_api, 'get', mock.Mock(
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(return_value=fake_vol))
+        self.mock_object(self._driver.volume_api, 'delete')
+        self.mock_object(self._driver.volume_api, 'get', mock.Mock(
             side_effect=exception.VolumeNotFound(volume_id=fake_vol['id'])))
 
         self._driver._deallocate_container(self._context, self.share)
@@ -602,11 +599,11 @@ class GenericShareDriverTestCase(test.TestCase):
         vol1 = 'fake_vol1'
         vol2 = 'fake_vol2'
         self._helper_nfs.create_export.return_value = 'fakelocation'
-        self.stubs.Set(self._driver, '_allocate_container',
-                       mock.Mock(return_value=vol1))
-        self.stubs.Set(self._driver, '_attach_volume',
-                       mock.Mock(return_value=vol2))
-        self.stubs.Set(self._driver, '_mount_device', mock.Mock())
+        self.mock_object(self._driver, '_allocate_container',
+                         mock.Mock(return_value=vol1))
+        self.mock_object(self._driver, '_attach_volume',
+                         mock.Mock(return_value=vol2))
+        self.mock_object(self._driver, '_mount_device')
 
         result = self._driver.create_share_from_snapshot(
             self._context,
@@ -626,11 +623,11 @@ class GenericShareDriverTestCase(test.TestCase):
             self.server['backend_details'], self.share['name'])
 
     def test_delete_share_no_share_servers_handling(self):
-        self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
-        self.stubs.Set(
+        self.mock_object(self._driver, '_deallocate_container')
+        self.mock_object(
             self._driver.service_instance_manager,
             'get_common_server', mock.Mock(return_value=self.server))
-        self.stubs.Set(
+        self.mock_object(
             self._driver.service_instance_manager,
             'ensure_service_instance', mock.Mock(return_value=False))
 
@@ -647,9 +644,9 @@ class GenericShareDriverTestCase(test.TestCase):
                 self._context, self.server['backend_details'])
 
     def test_delete_share(self):
-        self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
-        self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
-        self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
+        self.mock_object(self._driver, '_unmount_device')
+        self.mock_object(self._driver, '_detach_volume')
+        self.mock_object(self._driver, '_deallocate_container')
 
         self._driver.delete_share(
             self._context, self.share, share_server=self.server)
@@ -668,9 +665,9 @@ class GenericShareDriverTestCase(test.TestCase):
                 self._context, self.server['backend_details'])
 
     def test_delete_share_without_share_server(self):
-        self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
-        self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
-        self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
+        self.mock_object(self._driver, '_unmount_device')
+        self.mock_object(self._driver, '_detach_volume')
+        self.mock_object(self._driver, '_deallocate_container')
 
         self._driver.delete_share(
             self._context, self.share, share_server=None)
@@ -682,9 +679,9 @@ class GenericShareDriverTestCase(test.TestCase):
             self._driver.admin_context, self.share)
 
     def test_delete_share_without_server_backend_details(self):
-        self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
-        self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
-        self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
+        self.mock_object(self._driver, '_unmount_device')
+        self.mock_object(self._driver, '_detach_volume')
+        self.mock_object(self._driver, '_deallocate_container')
 
         fake_share_server = {
             'instance_id': 'fake_instance_id',
@@ -705,11 +702,11 @@ class GenericShareDriverTestCase(test.TestCase):
             self._driver.admin_context, self.share)
 
     def test_delete_share_without_server_availability(self):
-        self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
-        self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
-        self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
+        self.mock_object(self._driver, '_unmount_device')
+        self.mock_object(self._driver, '_detach_volume')
+        self.mock_object(self._driver, '_deallocate_container')
 
-        self.stubs.Set(
+        self.mock_object(
             self._driver.service_instance_manager,
             'ensure_service_instance', mock.Mock(return_value=False))
         self._driver.delete_share(
@@ -727,10 +724,10 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_create_snapshot(self):
         fake_vol = fake_volume.FakeVolume()
         fake_vol_snap = fake_volume.FakeVolumeSnapshot(share_id=fake_vol['id'])
-        self.stubs.Set(self._driver, '_get_volume',
-                       mock.Mock(return_value=fake_vol))
-        self.stubs.Set(self._driver.volume_api, 'create_snapshot_force',
-                       mock.Mock(return_value=fake_vol_snap))
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(return_value=fake_vol))
+        self.mock_object(self._driver.volume_api, 'create_snapshot_force',
+                         mock.Mock(return_value=fake_vol_snap))
 
         self._driver.create_snapshot(self._context, fake_vol_snap,
                                      share_server=self.server)
@@ -747,12 +744,13 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_delete_snapshot(self):
         fake_vol_snap = fake_volume.FakeVolumeSnapshot()
         fake_vol_snap2 = {'id': 'fake_vol_snap2'}
-        self.stubs.Set(self._driver, '_get_volume_snapshot',
-                       mock.Mock(return_value=fake_vol_snap2))
-        self.stubs.Set(self._driver.volume_api, 'delete_snapshot', mock.Mock())
-        self.stubs.Set(self._driver.volume_api, 'get_snapshot',
-                       mock.Mock(side_effect=exception.VolumeSnapshotNotFound(
-                           snapshot_id=fake_vol_snap['id'])))
+        self.mock_object(self._driver, '_get_volume_snapshot',
+                         mock.Mock(return_value=fake_vol_snap2))
+        self.mock_object(self._driver.volume_api, 'delete_snapshot')
+        self.mock_object(
+            self._driver.volume_api, 'get_snapshot',
+            mock.Mock(side_effect=exception.VolumeSnapshotNotFound(
+                snapshot_id=fake_vol_snap['id'])))
 
         self._driver.delete_snapshot(self._context, fake_vol_snap,
                                      share_server=self.server)
@@ -768,11 +766,11 @@ class GenericShareDriverTestCase(test.TestCase):
         vol1 = 'fake_vol1'
         vol2 = 'fake_vol2'
         self._helper_nfs.create_export.return_value = 'fakelocation'
-        self.stubs.Set(self._driver, '_get_volume',
-                       mock.Mock(return_value=vol1))
-        self.stubs.Set(self._driver, '_attach_volume',
-                       mock.Mock(return_value=vol2))
-        self.stubs.Set(self._driver, '_mount_device', mock.Mock())
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(return_value=vol1))
+        self.mock_object(self._driver, '_attach_volume',
+                         mock.Mock(return_value=vol2))
+        self.mock_object(self._driver, '_mount_device')
 
         self._driver.ensure_share(
             self._context, self.share, share_server=self.server)
@@ -835,9 +833,9 @@ class GenericShareDriverTestCase(test.TestCase):
         net_info = {'server_id': 'fake',
                     'neutron_net_id': 'fake-net-id',
                     'neutron_subnet_id': 'fake-subnet-id'}
-        self.stubs.Set(self._driver.service_instance_manager,
-                       'set_up_service_instance',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(self._driver.service_instance_manager,
+                         'set_up_service_instance',
+                         mock.Mock(side_effect=raise_exception))
         self.assertRaises(exception.ServiceInstanceException,
                           self._driver.setup_server,
                           net_info)
@@ -862,9 +860,9 @@ class GenericShareDriverTestCase(test.TestCase):
         ssh.get_transport().is_active = mock.Mock(return_value=True)
         ssh_pool = mock.Mock()
         ssh_pool.create = mock.Mock(return_value=ssh)
-        self.stubs.Set(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
-        self.stubs.Set(processutils, 'ssh_execute',
-                       mock.Mock(return_value=ssh_output))
+        self.mock_object(utils, 'SSHPool', mock.Mock(return_value=ssh_pool))
+        self.mock_object(processutils, 'ssh_execute',
+                         mock.Mock(return_value=ssh_output))
         self._driver.ssh_connections = {}
 
         result = self._driver._ssh_exec(self.server, cmd)
@@ -888,8 +886,8 @@ class GenericShareDriverTestCase(test.TestCase):
         ssh.get_transport = mock.Mock()
         ssh.get_transport().is_active = mock.Mock(side_effect=lambda: True)
         ssh_pool = mock.Mock()
-        self.stubs.Set(processutils, 'ssh_execute',
-                       mock.Mock(return_value=ssh_output))
+        self.mock_object(processutils, 'ssh_execute',
+                         mock.Mock(return_value=ssh_output))
         self._driver.ssh_connections = {
             self.server['instance_id']: (ssh_pool, ssh)
         }
@@ -913,8 +911,8 @@ class GenericShareDriverTestCase(test.TestCase):
         ssh_pool = mock.Mock()
         ssh_pool.create = mock.Mock(side_effect=lambda: ssh)
         ssh_pool.remove = mock.Mock()
-        self.stubs.Set(processutils, 'ssh_execute',
-                       mock.Mock(return_value=ssh_output))
+        self.mock_object(processutils, 'ssh_execute',
+                         mock.Mock(return_value=ssh_output))
         self._driver.ssh_connections = {
             self.server['instance_id']: (ssh_pool, ssh)
         }
@@ -1026,7 +1024,7 @@ class NFSHelperTestCase(test.TestCase):
 
     def setUp(self):
         super(NFSHelperTestCase, self).setUp()
-        fake_utils.stub_out_utils_execute(self.stubs)
+        fake_utils.stub_out_utils_execute(self)
         self.fake_conf = manila.share.configuration.Configuration(None)
         self._ssh_exec = mock.Mock(return_value=('', ''))
         self._execute = mock.Mock(return_value=('', ''))
@@ -1044,8 +1042,7 @@ class NFSHelperTestCase(test.TestCase):
         self.assertEqual(ret, expected_location)
 
     def test_allow_access(self):
-        self.stubs.Set(self._helper, '_sync_nfs_temp_and_perm_files',
-                       mock.Mock())
+        self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
         self._helper.allow_access(self.server, 'fake_share',
                                   'ip', '10.0.0.2')
         local_path = os.path.join(CONF.share_mount_path, 'fake_share')
@@ -1066,8 +1063,7 @@ class NFSHelperTestCase(test.TestCase):
         )
 
     def test_deny_access(self):
-        self.stubs.Set(self._helper, '_sync_nfs_temp_and_perm_files',
-                       mock.Mock())
+        self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
         local_path = os.path.join(CONF.share_mount_path, 'fake_share')
         self._helper.deny_access(self.server, 'fake_share', 'ip', '10.0.0.2')
         export_string = ':'.join(['10.0.0.2', local_path])
@@ -1109,8 +1105,8 @@ class CIFSHelperTestCase(test.TestCase):
             else:
                 return ('', '')
 
-        self.stubs.Set(self._helper, '_ssh_exec',
-                       mock.Mock(side_effect=fake_ssh_exec))
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(side_effect=fake_ssh_exec))
 
         ret = self._helper.create_export(self.server_details, self.share_name)
         expected_location = '//%s/%s' % (
@@ -1193,8 +1189,8 @@ class CIFSHelperTestCase(test.TestCase):
             else:
                 return ('', '')
 
-        self.stubs.Set(self._helper, '_ssh_exec',
-                       mock.Mock(side_effect=fake_ssh_exec))
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(side_effect=fake_ssh_exec))
 
         self._helper.remove_export(self.server_details, self.share_name)
 
@@ -1212,9 +1208,9 @@ class CIFSHelperTestCase(test.TestCase):
     def test_allow_access_ip_exist(self):
         ip = '1.1.1.1'
         hosts = [ip, ]
-        self.stubs.Set(self._helper, '_get_allow_hosts',
-                       mock.Mock(return_value=hosts))
-        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+        self.mock_object(self._helper, '_get_allow_hosts',
+                         mock.Mock(return_value=hosts))
+        self.mock_object(self._helper, '_set_allow_hosts')
 
         self.assertRaises(
             exception.ShareAccessExists,
@@ -1232,9 +1228,9 @@ class CIFSHelperTestCase(test.TestCase):
     def test_allow_access_ip_does_not_exist(self):
         ip = '1.1.1.1'
         hosts = []
-        self.stubs.Set(self._helper, '_get_allow_hosts',
-                       mock.Mock(return_value=hosts))
-        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+        self.mock_object(self._helper, '_get_allow_hosts',
+                         mock.Mock(return_value=hosts))
+        self.mock_object(self._helper, '_set_allow_hosts')
 
         self._helper.allow_access(
             self.server_details, self.share_name, 'ip', ip)
@@ -1257,9 +1253,9 @@ class CIFSHelperTestCase(test.TestCase):
     def test_deny_access_list_has_value(self):
         ip = '1.1.1.1'
         hosts = [ip, ]
-        self.stubs.Set(self._helper, '_get_allow_hosts',
-                       mock.Mock(return_value=hosts))
-        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+        self.mock_object(self._helper, '_get_allow_hosts',
+                         mock.Mock(return_value=hosts))
+        self.mock_object(self._helper, '_set_allow_hosts')
 
         self._helper.deny_access(
             self.server_details, self.share_name, 'ip', ip)
@@ -1272,9 +1268,9 @@ class CIFSHelperTestCase(test.TestCase):
     def test_deny_access_list_does_not_have_value(self):
         ip = '1.1.1.1'
         hosts = []
-        self.stubs.Set(self._helper, '_get_allow_hosts',
-                       mock.Mock(return_value=hosts))
-        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+        self.mock_object(self._helper, '_get_allow_hosts',
+                         mock.Mock(return_value=hosts))
+        self.mock_object(self._helper, '_set_allow_hosts')
 
         self._helper.deny_access(
             self.server_details, self.share_name, 'ip', ip)
@@ -1284,12 +1280,12 @@ class CIFSHelperTestCase(test.TestCase):
         self._helper._set_allow_hosts.assert_has_calls([])
 
     def test_deny_access_force(self):
-        self.stubs.Set(
+        self.mock_object(
             self._helper,
             '_get_allow_hosts',
             mock.Mock(side_effect=exception.ProcessExecutionError()),
         )
-        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+        self.mock_object(self._helper, '_set_allow_hosts')
 
         self._helper.deny_access(
             self.server_details, self.share_name, 'ip', '1.1.1.1', force=True)
@@ -1302,9 +1298,9 @@ class CIFSHelperTestCase(test.TestCase):
         def raise_process_execution_error(*args, **kwargs):
             raise exception.ProcessExecutionError()
 
-        self.stubs.Set(self._helper, '_get_allow_hosts',
-                       mock.Mock(side_effect=raise_process_execution_error))
-        self.stubs.Set(self._helper, '_set_allow_hosts', mock.Mock())
+        self.mock_object(self._helper, '_get_allow_hosts',
+                         mock.Mock(side_effect=raise_process_execution_error))
+        self.mock_object(self._helper, '_set_allow_hosts')
         self.assertRaises(
             exception.ProcessExecutionError,
             self._helper.deny_access,

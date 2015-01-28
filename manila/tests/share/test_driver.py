@@ -47,10 +47,10 @@ class ShareDriverTestCase(test.TestCase):
     def setUp(self):
         super(ShareDriverTestCase, self).setUp()
         self.utils = utils
-        self.stubs.Set(self.utils, 'execute', fake_execute_with_raise)
+        self.mock_object(self.utils, 'execute', fake_execute_with_raise)
         self.time = time
-        self.stubs.Set(self.time, 'sleep', fake_sleep)
-        self.stubs.Set(driver.CONF, 'driver_handles_share_servers', True)
+        self.mock_object(self.time, 'sleep', fake_sleep)
+        self.mock_object(driver.CONF, 'driver_handles_share_servers', True)
 
     def test__try_execute(self):
         execute_mixin = ShareDriverWithExecuteMixin(
@@ -66,7 +66,7 @@ class ShareDriverTestCase(test.TestCase):
 
     def _instantiate_share_driver(self, network_config_group,
                                   driver_handles_share_servers):
-        self.stubs.Set(network, 'API', mock.Mock())
+        self.mock_object(network, 'API')
         config = mock.Mock()
         config.append_config_values = mock.Mock()
         config.config_group = 'fake_config_group'
@@ -92,7 +92,7 @@ class ShareDriverTestCase(test.TestCase):
         self._instantiate_share_driver("fake_network_config_group", True)
 
     def test_instantiate_share_driver_no_configuration(self):
-        self.stubs.Set(network, 'API', mock.Mock())
+        self.mock_object(network, 'API')
 
         share_driver = driver.ShareDriver(True, configuration=None)
 
@@ -138,7 +138,7 @@ class ShareDriverTestCase(test.TestCase):
     @ddt.unpack
     def test__verify_share_server_handling_valid_cases(self, opt, allowed):
         conf = configuration.Configuration(None)
-        self.stubs.Set(conf, 'safe_get', mock.Mock(return_value=opt))
+        self.mock_object(conf, 'safe_get', mock.Mock(return_value=opt))
         share_driver = driver.ShareDriver(allowed, configuration=conf)
         self.assertTrue(conf.safe_get.celled)
         self.assertEqual(opt, share_driver.driver_handles_share_servers)
@@ -156,7 +156,7 @@ class ShareDriverTestCase(test.TestCase):
     @ddt.unpack
     def test__verify_share_server_handling_invalid_cases(self, opt, allowed):
         conf = configuration.Configuration(None)
-        self.stubs.Set(conf, 'safe_get', mock.Mock(return_value=opt))
+        self.mock_object(conf, 'safe_get', mock.Mock(return_value=opt))
         self.assertRaises(
             exception.ManilaException,
             driver.ShareDriver, allowed, configuration=conf)

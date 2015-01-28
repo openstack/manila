@@ -58,7 +58,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self.fakefspath = "/gpfs0"
         self.fakesharepath = "/gpfs0/share-fakeid"
         self.fakesnapshotpath = "/gpfs0/.snapshots/snapshot-fakesnapshotid"
-        self.stubs.Set(gpfs.os.path, 'exists', mock.Mock(return_value=True))
+        self.mock_object(gpfs.os.path, 'exists', mock.Mock(return_value=True))
         self._driver._helpers = {
             'KNFS': self._helper_fake
         }
@@ -86,9 +86,9 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._gnfs_helper.configuration.gpfs_ssh_login = self.sshlogin
         self._gnfs_helper.configuration.gpfs_ssh_private_key = self.sshkey
         self._gnfs_helper.configuration.ganesha_service_name = self.gservice
-        self.stubs.Set(socket, 'gethostname',
-                       mock.Mock(return_value="testserver"))
-        self.stubs.Set(socket, 'gethostbyname_ex', mock.Mock(
+        self.mock_object(socket, 'gethostname',
+                         mock.Mock(return_value="testserver"))
+        self.mock_object(socket, 'gethostbyname_ex', mock.Mock(
             return_value=('localhost',
                           ['localhost.localdomain', 'testserver'],
                           ['127.0.0.1', self.local_ip])
@@ -100,7 +100,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self.assertEqual(self._driver._stats, result)
 
     def test_get_share_stats_refresh_true(self):
-        self.stubs.Set(
+        self.mock_object(
             self._driver, '_get_available_capacity',
             mock.Mock(return_value=(11111.0, 12345.0)))
         result = self._driver.get_share_stats(True)
@@ -118,15 +118,15 @@ class GPFSShareDriverTestCase(test.TestCase):
             self._driver.configuration.gpfs_mount_point_base)
 
     def test_do_setup(self):
-        self.stubs.Set(self._driver, '_setup_helpers', mock.Mock())
+        self.mock_object(self._driver, '_setup_helpers')
         self._driver.do_setup(self._context)
         self._driver._setup_helpers.assert_called_any()
 
     def test_setup_helpers(self):
         self._driver._helpers = {}
         CONF.set_default('gpfs_share_helpers', ['KNFS=fakenfs'])
-        self.stubs.Set(gpfs.importutils, 'import_class',
-                       mock.Mock(return_value=self._helper_fake))
+        self.mock_object(gpfs.importutils, 'import_class',
+                         mock.Mock(return_value=self._helper_fake))
         self._driver._setup_helpers()
         gpfs.importutils.import_class.assert_has_calls(
             [mock.call('fakenfs')]
@@ -143,7 +143,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._helper_fake.create_export.return_value = 'fakelocation'
         methods = ('_create_share', '_get_share_path')
         for method in methods:
-            self.stubs.Set(self._driver, method, mock.Mock())
+            self.mock_object(self._driver, method)
         result = self._driver.create_share(self._context, self.share,
                                            share_server=self.server)
         self._driver._create_share.assert_called_once_with(self.share)
@@ -447,7 +447,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         )
 
     def test__gpfs_local_execute(self):
-        self.stubs.Set(utils, 'execute', mock.Mock(return_value=True))
+        self.mock_object(utils, 'execute', mock.Mock(return_value=True))
         cmd = "testcmd"
         self._driver._gpfs_local_execute(cmd)
         utils.execute.assert_called_once_with(cmd, run_as_root=True)
@@ -467,7 +467,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._knfs_helper._execute = mock.Mock(
             return_value=['/fs0 <world>', 0]
         )
-        self.stubs.Set(re, 'search', mock.Mock(return_value=None))
+        self.mock_object(re, 'search', mock.Mock(return_value=None))
         export_opts = None
         self._knfs_helper._get_export_options = mock.Mock(
             return_value=export_opts
@@ -488,7 +488,7 @@ class GPFSShareDriverTestCase(test.TestCase):
     def test_knfs_allow_access_access_exists(self):
         out = ['/fs0 <world>', 0]
         self._knfs_helper._execute = mock.Mock(return_value=out)
-        self.stubs.Set(re, 'search', mock.Mock(return_value="fake"))
+        self.mock_object(re, 'search', mock.Mock(return_value="fake"))
         self._knfs_helper._get_export_options = mock.Mock()
         access_type = self.access['access_type']
         access = self.access['access_to']
@@ -548,7 +548,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._knfs_helper._publish_access.assert_called_once_with(*cmd)
 
     def test_knfs__publish_access(self):
-        self.stubs.Set(utils, 'execute', mock.Mock())
+        self.mock_object(utils, 'execute')
         cmd = ['fakecmd']
         self._knfs_helper._publish_access(*cmd)
         utils.execute.assert_any_call(*cmd, run_as_root=True,
@@ -561,8 +561,9 @@ class GPFSShareDriverTestCase(test.TestCase):
         self.assertTrue(socket.gethostname.called)
 
     def test_knfs__publish_access_exception(self):
-        self.stubs.Set(utils, 'execute',
-                       mock.Mock(side_effect=exception.ProcessExecutionError))
+        self.mock_object(
+            utils, 'execute',
+            mock.Mock(side_effect=exception.ProcessExecutionError))
         cmd = ['fakecmd']
         self.assertRaises(exception.ProcessExecutionError,
                           self._knfs_helper._publish_access, *cmd)
@@ -621,20 +622,20 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._gnfs_helper._get_export_options = mock.Mock(
             return_value=export_opts
         )
-        self.stubs.Set(ganesha_utils, 'parse_ganesha_config', mock.Mock(
+        self.mock_object(ganesha_utils, 'parse_ganesha_config', mock.Mock(
             return_value=(pre_lines, exports)
         ))
-        self.stubs.Set(ganesha_utils, 'export_exists', mock.Mock(
+        self.mock_object(ganesha_utils, 'export_exists', mock.Mock(
             return_value=False
         ))
-        self.stubs.Set(ganesha_utils, 'get_next_id', mock.Mock(
+        self.mock_object(ganesha_utils, 'get_next_id', mock.Mock(
             return_value=101
         ))
-        self.stubs.Set(ganesha_utils, 'get_export_template', mock.Mock(
+        self.mock_object(ganesha_utils, 'get_export_template', mock.Mock(
             return_value={}
         ))
-        self.stubs.Set(ganesha_utils, 'publish_ganesha_config', mock.Mock())
-        self.stubs.Set(ganesha_utils, 'reload_ganesha_config', mock.Mock())
+        self.mock_object(ganesha_utils, 'publish_ganesha_config')
+        self.mock_object(ganesha_utils, 'reload_ganesha_config')
         self._gnfs_helper._ganesha_process_request(
             "allow_access", local_path, self.share, access_type, access
         )
@@ -661,17 +662,17 @@ class GPFSShareDriverTestCase(test.TestCase):
         initial_access = "10.0.0.1,10.0.0.2"
         export = {"rw_access": initial_access}
         exports = {}
-        self.stubs.Set(ganesha_utils, 'parse_ganesha_config', mock.Mock(
+        self.mock_object(ganesha_utils, 'parse_ganesha_config', mock.Mock(
             return_value=(pre_lines, exports)
         ))
-        self.stubs.Set(ganesha_utils, 'get_export_by_path', mock.Mock(
+        self.mock_object(ganesha_utils, 'get_export_by_path', mock.Mock(
             return_value=export
         ))
-        self.stubs.Set(ganesha_utils, 'format_access_list', mock.Mock(
+        self.mock_object(ganesha_utils, 'format_access_list', mock.Mock(
             return_value="10.0.0.1"
         ))
-        self.stubs.Set(ganesha_utils, 'publish_ganesha_config', mock.Mock())
-        self.stubs.Set(ganesha_utils, 'reload_ganesha_config', mock.Mock())
+        self.mock_object(ganesha_utils, 'publish_ganesha_config')
+        self.mock_object(ganesha_utils, 'reload_ganesha_config')
         self._gnfs_helper._ganesha_process_request(
             "deny_access", local_path, self.share, access_type, access
         )
@@ -694,14 +695,14 @@ class GPFSShareDriverTestCase(test.TestCase):
         pre_lines = []
         exports = {}
         export = {}
-        self.stubs.Set(ganesha_utils, 'parse_ganesha_config', mock.Mock(
+        self.mock_object(ganesha_utils, 'parse_ganesha_config', mock.Mock(
             return_value=(pre_lines, exports)
         ))
-        self.stubs.Set(ganesha_utils, 'get_export_by_path', mock.Mock(
+        self.mock_object(ganesha_utils, 'get_export_by_path', mock.Mock(
             return_value=export
         ))
-        self.stubs.Set(ganesha_utils, 'publish_ganesha_config', mock.Mock())
-        self.stubs.Set(ganesha_utils, 'reload_ganesha_config', mock.Mock())
+        self.mock_object(ganesha_utils, 'publish_ganesha_config')
+        self.mock_object(ganesha_utils, 'reload_ganesha_config')
         self._gnfs_helper._ganesha_process_request(
             "remove_export", local_path, self.share
         )

@@ -101,16 +101,6 @@ class Database(fixtures.Fixture):
         db_migrate.stamp('head')
 
 
-class StubOutForTesting(object):
-    def __init__(self, parent):
-        self.parent = parent
-
-    def Set(self, obj, attr_name, new_attr):
-        stub = mock.patch.object(obj, attr_name, new_attr)
-        stub.start()
-        self.parent.addCleanup(stub.stop)
-
-
 class TestCase(base_test.BaseTestCase):
     """Test case base class for all unit tests."""
 
@@ -132,7 +122,6 @@ class TestCase(base_test.BaseTestCase):
             )
         self.useFixture(_DB_CACHE)
 
-        self.stubs = StubOutForTesting(self)
         self.injected = []
         self._services = []
         self.flags(fatal_exception_format_errors=True)
@@ -153,7 +142,7 @@ class TestCase(base_test.BaseTestCase):
         self.useFixture(self.messaging_conf)
         rpc.init(CONF)
 
-        fake_notifier.stub_notifier(self.stubs)
+        fake_notifier.stub_notifier(self)
 
     def tearDown(self):
         """Runs after each test method to tear down test environment."""
@@ -195,12 +184,12 @@ class TestCase(base_test.BaseTestCase):
         self._services.append(svc)
         return svc
 
-    # TODO(cknight): StubOutForTesting should be removed in favor of this.
     def mock_object(self, obj, attr_name, new_attr=None, **kwargs):
         """Use python mock to mock an object attribute
 
         Mocks the specified objects attribute with the given value.
         Automatically performs 'addCleanup' for the mock.
+
         """
         if not new_attr:
             new_attr = mock.Mock()

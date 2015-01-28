@@ -70,10 +70,10 @@ class NovaApiTestCase(test.TestCase):
         self.api = nova.API()
         self.novaclient = FakeNovaClient()
         self.ctx = context.get_admin_context()
-        self.stubs.Set(nova, 'novaclient',
-                       mock.Mock(return_value=self.novaclient))
-        self.stubs.Set(nova, '_untranslate_server_summary_view',
-                       lambda server: server)
+        self.mock_object(nova, 'novaclient',
+                         mock.Mock(return_value=self.novaclient))
+        self.mock_object(nova, '_untranslate_server_summary_view',
+                         lambda server: server)
 
     def test_server_create(self):
         result = self.api.server_create(self.ctx, 'server_name', 'fake_image',
@@ -81,7 +81,7 @@ class NovaApiTestCase(test.TestCase):
         self.assertEqual(result['id'], 'created_id')
 
     def test_server_delete(self):
-        self.stubs.Set(self.novaclient.servers, 'delete', mock.Mock())
+        self.mock_object(self.novaclient.servers, 'delete')
         self.api.server_delete(self.ctx, 'id1')
         self.novaclient.servers.delete.assert_called_once_with('id1')
 
@@ -93,7 +93,8 @@ class NovaApiTestCase(test.TestCase):
     def test_server_get_by_name_or_id(self):
         instance_id = 'instance_id1'
         server = {'id': instance_id, 'fake_key': 'fake_value'}
-        self.stubs.Set(utils, 'find_resource', mock.Mock(return_value=server))
+        self.mock_object(utils, 'find_resource',
+                         mock.Mock(return_value=server))
 
         result = self.api.server_get_by_name_or_id(self.ctx, instance_id)
 
@@ -111,98 +112,96 @@ class NovaApiTestCase(test.TestCase):
                          self.api.server_list(self.ctx))
 
     def test_server_pause(self):
-        self.stubs.Set(self.novaclient.servers, 'pause', mock.Mock())
+        self.mock_object(self.novaclient.servers, 'pause')
         self.api.server_pause(self.ctx, 'id1')
         self.novaclient.servers.pause.assert_called_once_with('id1')
 
     def test_server_unpause(self):
-        self.stubs.Set(self.novaclient.servers, 'unpause', mock.Mock())
+        self.mock_object(self.novaclient.servers, 'unpause')
         self.api.server_unpause(self.ctx, 'id1')
         self.novaclient.servers.unpause.assert_called_once_with('id1')
 
     def test_server_suspend(self):
-        self.stubs.Set(self.novaclient.servers, 'suspend', mock.Mock())
+        self.mock_object(self.novaclient.servers, 'suspend')
         self.api.server_suspend(self.ctx, 'id1')
         self.novaclient.servers.suspend.assert_called_once_with('id1')
 
     def test_server_resume(self):
-        self.stubs.Set(self.novaclient.servers, 'resume', mock.Mock())
+        self.mock_object(self.novaclient.servers, 'resume')
         self.api.server_resume(self.ctx, 'id1')
         self.novaclient.servers.resume.assert_called_once_with('id1')
 
     def test_server_reboot_hard(self):
-        self.stubs.Set(self.novaclient.servers, 'reboot', mock.Mock())
+        self.mock_object(self.novaclient.servers, 'reboot')
         self.api.server_reboot(self.ctx, 'id1')
         self.novaclient.servers.reboot.assert_called_once_with(
             'id1', nova_servers.REBOOT_HARD)
 
     def test_server_reboot_soft(self):
-        self.stubs.Set(self.novaclient.servers, 'reboot', mock.Mock())
+        self.mock_object(self.novaclient.servers, 'reboot')
         self.api.server_reboot(self.ctx, 'id1', True)
         self.novaclient.servers.reboot.assert_called_once_with(
             'id1', nova_servers.REBOOT_SOFT)
 
     def test_server_rebuild(self):
-        self.stubs.Set(self.novaclient.servers, 'rebuild', mock.Mock())
+        self.mock_object(self.novaclient.servers, 'rebuild')
         self.api.server_rebuild(self.ctx, 'id1', 'fake_image')
         self.novaclient.servers.rebuild.assert_called_once_with('id1',
                                                                 'fake_image',
                                                                 None)
 
     def test_instance_volume_attach(self):
-        self.stubs.Set(self.novaclient.volumes, 'create_server_volume',
-                       mock.Mock())
+        self.mock_object(self.novaclient.volumes, 'create_server_volume')
         self.api.instance_volume_attach(self.ctx, 'instance_id',
                                         'vol_id', 'device')
         self.novaclient.volumes.create_server_volume.\
             assert_called_once_with('instance_id', 'vol_id', 'device')
 
     def test_instance_volume_detach(self):
-        self.stubs.Set(self.novaclient.volumes, 'delete_server_volume',
-                       mock.Mock())
+        self.mock_object(self.novaclient.volumes, 'delete_server_volume')
         self.api.instance_volume_detach(self.ctx, 'instance_id',
                                         'att_id')
         self.novaclient.volumes.delete_server_volume.\
             assert_called_once_with('instance_id', 'att_id')
 
     def test_instance_volumes_list(self):
-        self.stubs.Set(self.novaclient.volumes, 'get_server_volumes',
-                       mock.Mock(return_value=[Volume('id1'), Volume('id2')]))
+        self.mock_object(
+            self.novaclient.volumes, 'get_server_volumes',
+            mock.Mock(return_value=[Volume('id1'), Volume('id2')]))
         self.cinderclient = self.novaclient
-        self.stubs.Set(cinder, 'cinderclient',
-                       mock.Mock(return_value=self.novaclient))
+        self.mock_object(cinder, 'cinderclient',
+                         mock.Mock(return_value=self.novaclient))
         result = self.api.instance_volumes_list(self.ctx, 'instance_id')
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].id, 'id1')
         self.assertEqual(result[1].id, 'id2')
 
     def test_server_update(self):
-        self.stubs.Set(self.novaclient.servers, 'update', mock.Mock())
+        self.mock_object(self.novaclient.servers, 'update')
         self.api.server_update(self.ctx, 'id1', 'new_name')
         self.novaclient.servers.update.assert_called_once_with('id1',
                                                                name='new_name')
 
     def test_update_server_volume(self):
-        self.stubs.Set(self.novaclient.volumes, 'update_server_volume',
-                       mock.Mock())
+        self.mock_object(self.novaclient.volumes, 'update_server_volume')
         self.api.update_server_volume(self.ctx, 'instance_id', 'att_id',
                                       'new_vol_id')
         self.novaclient.volumes.update_server_volume.\
             assert_called_once_with('instance_id', 'att_id', 'new_vol_id')
 
     def test_keypair_create(self):
-        self.stubs.Set(self.novaclient.keypairs, 'create', mock.Mock())
+        self.mock_object(self.novaclient.keypairs, 'create')
         self.api.keypair_create(self.ctx, 'keypair_name')
         self.novaclient.keypairs.create.assert_called_once_with('keypair_name')
 
     def test_keypair_import(self):
-        self.stubs.Set(self.novaclient.keypairs, 'create', mock.Mock())
+        self.mock_object(self.novaclient.keypairs, 'create')
         self.api.keypair_import(self.ctx, 'keypair_name', 'fake_pub_key')
         self.novaclient.keypairs.create.\
             assert_called_once_with('keypair_name', 'fake_pub_key')
 
     def test_keypair_delete(self):
-        self.stubs.Set(self.novaclient.keypairs, 'delete', mock.Mock())
+        self.mock_object(self.novaclient.keypairs, 'delete')
         self.api.keypair_delete(self.ctx, 'fake_keypair_id')
         self.novaclient.keypairs.delete.\
             assert_called_once_with('fake_keypair_id')
