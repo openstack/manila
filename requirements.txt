@@ -5,9 +5,9 @@
 # pbr should be first
 pbr>=0.6,!=0.7,<1.0
 
-alembic>=0.7.1
+alembic>=0.7.2
 Babel>=1.3
-eventlet>=0.15.2
+eventlet>=0.16.1
 greenlet>=0.3.2
 iso8601>=0.1.9
 lxml>=2.3
