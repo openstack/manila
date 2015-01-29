@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev63\n"
+"Project-Id-Version: manila 2015.1.dev138\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-01-07 06:12+0000\n"
+"POT-Creation-Date: 2015-01-29 06:31+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -168,36 +168,36 @@ msgid ""
 "snapshots already consumed)"
 msgstr ""
 
-#: manila/share/manager.py:254
+#: manila/share/manager.py:260
 #, python-format
 msgid ""
 "Share information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/manager.py:469
+#: manila/share/manager.py:475
 #, python-format
 msgid ""
 "Server Information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/drivers/generic.py:271
+#: manila/share/drivers/generic.py:270
 #, python-format
 msgid "Mount point '%(path)s' already exists on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:297
+#: manila/share/drivers/generic.py:296
 #, python-format
 msgid "Mount point '%(path)s' does not exist on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:801
+#: manila/share/drivers/generic.py:782
 #, python-format
 msgid "Caught error trying delete share: %(error)s, trying delete it forcibly."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:195
+#: manila/share/drivers/glusterfs.py:225
 #, python-format
 msgid "%s is already mounted"
 msgstr ""
@@ -213,7 +213,7 @@ msgstr ""
 msgid "Service instance %s does not exist."
 msgstr ""
 
-#: manila/share/drivers/service_instance.py:382
+#: manila/share/drivers/service_instance.py:390
 #, python-format
 msgid ""
 "No key path is available. May be non-existent key path is provided. Check"
@@ -222,47 +222,47 @@ msgid ""
 "configuration file."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:196
+#: manila/share/drivers/emc/plugins/vnx/connection.py:195
 msgid ""
 "Driver does not support share deletion without share network specified. "
 "Return directly because there is nothing to clean"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:218
+#: manila/share/drivers/emc/plugins/vnx/connection.py:217
 #, python-format
 msgid "CIFS share %s not found. Skip the deletion"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:251
+#: manila/share/drivers/emc/plugins/vnx/connection.py:250
 #, python-format
 msgid "NFS share %s not found. Skip the deletion"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:284
+#: manila/share/drivers/emc/plugins/vnx/connection.py:283
 #, python-format
 msgid "Mount point %(path)s on %(vdm)s not found."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:287
+#: manila/share/drivers/emc/plugins/vnx/connection.py:286
 #, python-format
 msgid "Deleting mount point %(path)s on %(mover_name)s failed. Reason: %(err)s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:293
+#: manila/share/drivers/emc/plugins/vnx/connection.py:292
 msgid "Failed to find the VDM. Try to delete the file system"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:304
+#: manila/share/drivers/emc/plugins/vnx/connection.py:303
 #, python-format
 msgid "File system %s not found. Skip the deletion"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:325
+#: manila/share/drivers/emc/plugins/vnx/connection.py:324
 #, python-format
 msgid "Check point not found. Reason: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:329
+#: manila/share/drivers/emc/plugins/vnx/connection.py:328
 #, python-format
 msgid "Snapshot: %(name)s not found. Skip the deletion."
 msgstr ""
@@ -320,5 +320,47 @@ msgstr ""
 #: manila/share/drivers/emc/plugins/vnx/xml_api_parser.py:951
 #, python-format
 msgid "Expected one of %(expected)s under %(parent)s, got %(actual)s."
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_helper.py:212
+#, python-format
+msgid "The share was not found. share_name:%s"
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_helper.py:217
+msgid "The filesystem was not found."
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_helper.py:403
+msgid "Only ip access type allowed."
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_helper.py:407
+msgid "Only user access type allowed."
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_helper.py:413
+#, python-format
+msgid "Can not get share. share_name: %s"
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_helper.py:419
+#, python-format
+msgid "Can not get access id from share. share_name: %s"
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_nas.py:154
+#, python-format
+msgid "Delete snapshot share id %s fs has been deleted."
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_nas.py:163
+#, python-format
+msgid "Can not find snapshot %s in array."
+msgstr ""
+
+#: manila/share/drivers/netapp/utils.py:122
+#, python-format
+msgid "Failed to invoke ems. Message : %s"
 msgstr ""
 

@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Manila\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-01-07 06:12+0000\n"
-"PO-Revision-Date: 2015-01-01 04:37+0000\n"
+"POT-Creation-Date: 2015-01-29 06:31+0000\n"
+"PO-Revision-Date: 2015-01-23 15:22+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/manila/language/"
 "de/)\n"
@@ -94,7 +94,7 @@ msgstr ""
 msgid "Unable to execute %(cmd)s. Exception: %(exception)s"
 msgstr ""
 
-#: manila/network/neutron/api.py:167
+#: manila/network/neutron/api.py:166
 #, python-format
 msgid "Neutron error creating port on network %s"
 msgstr ""
@@ -142,7 +142,7 @@ msgstr ""
 msgid "Failed to update quota for deleting share"
 msgstr ""
 
-#: manila/share/driver.py:140
+#: manila/share/driver.py:141
 #, python-format
 msgid "Recovering from a failed execute. Try number %s"
 msgstr ""
@@ -162,29 +162,29 @@ msgid ""
 "'%(ar_id)s', exception is '%(e)s'."
 msgstr ""
 
-#: manila/share/manager.py:217
+#: manila/share/manager.py:223
 #, python-format
 msgid "Share server %s does not exist."
 msgstr "Share Server %s existiert nicht."
 
-#: manila/share/manager.py:227
+#: manila/share/manager.py:233
 msgid "Failed to get share server for share creation."
 msgstr ""
 
-#: manila/share/manager.py:246
+#: manila/share/manager.py:252
 #, python-format
 msgid "Share %s failed on creation."
 msgstr ""
 
-#: manila/share/manager.py:292
+#: manila/share/manager.py:298
 msgid "Failed to update usages deleting share"
 msgstr ""
 
-#: manila/share/manager.py:366
+#: manila/share/manager.py:372
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: manila/share/manager.py:507
+#: manila/share/manager.py:513
 #, python-format
 msgid "Share server %s failed on deletion."
 msgstr ""
@@ -200,73 +200,76 @@ msgid ""
 "Default volume type is not found, please check default_volume_type config: %s"
 msgstr ""
 
-#: manila/share/drivers/generic.py:231
+#: manila/share/drivers/generic.py:230
 #, python-format
 msgid "Failed to sync mount files on server '%s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:238
+#: manila/share/drivers/generic.py:237
 #, python-format
 msgid "Failed to mount all shares on server '%s'."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:137
+#: manila/share/drivers/glusterfs.py:125
 #, python-format
 msgid "Error retrieving volume info: %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:162
+#: manila/share/drivers/glusterfs.py:187
 #, python-format
-msgid "Error in disabling access to the entire GlusterFS volume: %s"
+msgid ""
+"Error in tuning GlusterFS volume to enable creation of shares of specific "
+"size: %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:173
-#, python-format
-msgid "Error in enabling creation of shares of specific size: %s"
-msgstr ""
-
-#: manila/share/drivers/glusterfs.py:233
+#: manila/share/drivers/glusterfs.py:245
 #, python-format
 msgid "Could not mount the Gluster volume %s"
 msgstr "Konnte Gluster Volume %s nicht mounten"
 
-#: manila/share/drivers/glusterfs.py:303
+#: manila/share/drivers/glusterfs.py:298
 #, python-format
 msgid "Unable to create share %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:317
+#: manila/share/drivers/glusterfs.py:312
 #, python-format
 msgid ""
 "Cannot cleanup share, %s, that errored out during its creation, but exists "
 "in GlusterFS volume."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:329
+#: manila/share/drivers/glusterfs.py:324
 #, python-format
 msgid "Unable to delete share %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:388
+#: manila/share/drivers/glusterfs.py:378
+#, python-format
+msgid ""
+"Error in tuning GlusterFS volume to prevent exporting the entire volume: %s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:443
 #, python-format
 msgid "Error in gluster volume set: %s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:569
+#: manila/share/drivers/emc/plugins/vnx/connection.py:568
 #, python-format
 msgid "Could not setup server. Reason: %s."
 msgstr "Kann Server nicht aufsetzen. Grund: %s."
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:691
+#: manila/share/drivers/emc/plugins/vnx/connection.py:690
 #, python-format
 msgid "Could not find CIFS server by name: %s."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:736
+#: manila/share/drivers/emc/plugins/vnx/connection.py:735
 msgid "Could not get storage pool list."
 msgstr "Storage Pool Liste konnte nicht abgerufen werden."
 
-#: manila/share/drivers/emc/plugins/vnx/connection.py:863
+#: manila/share/drivers/emc/plugins/vnx/connection.py:862
 #, python-format
 msgid "Could not get mount point. Reason: %s."
 msgstr "Mountpunkt konnten nicht abgerufen werden. Grund: %s."
@@ -296,45 +299,60 @@ msgstr ""
 msgid "Invalid export database on Ganesha node %(tag)s: %(db)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:696
+#: manila/share/drivers/huawei/huawei_helper.py:72
+#, python-format
+msgid "Bad response from server: %s."
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_helper.py:164
+#, python-format
+msgid "Bad response from change file: %s."
+msgstr ""
+
+#: manila/share/drivers/huawei/huawei_helper.py:353
+#, python-format
+msgid "Read Huawei config file(%(filename)s) for Manila error: %(err)s"
+msgstr ""
+
+#: manila/share/drivers/ibm/gpfs.py:687
 #, python-format
 msgid "Invalid metadata %(attr)s for share %(share)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:170
+#: manila/share/drivers/netapp/cluster_mode.py:173
 #, python-format
 msgid "Could not get licenses list. %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:415
+#: manila/share/drivers/netapp/cluster_mode.py:411
 msgid "Failed to create network interface"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:496
+#: manila/share/drivers/netapp/cluster_mode.py:492
 msgid "DNS exists for vserver."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:827
+#: manila/share/drivers/netapp/cluster_mode.py:823
 #, python-format
 msgid "Vserver %s does not exist."
 msgstr "Vserver %s existiert nicht."
 
-#: manila/share/drivers/netapp/cluster_mode.py:838
+#: manila/share/drivers/netapp/cluster_mode.py:834
 #, python-format
 msgid "Volume %s is already offline."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:862
+#: manila/share/drivers/netapp/cluster_mode.py:858
 #, python-format
 msgid "CIFS server does not exist for vserver %s"
 msgstr "CIFS Server existiert nicht für Vserver %s"
 
-#: manila/share/drivers/netapp/cluster_mode.py:1190
+#: manila/share/drivers/netapp/cluster_mode.py:1186
 #, python-format
 msgid "User %s does not exist."
 msgstr "Benutzer %s existiert nicht."
 
-#: manila/share/drivers/netapp/cluster_mode.py:1192
+#: manila/share/drivers/netapp/cluster_mode.py:1188
 #, python-format
 msgid "Rule %s does not exist."
 msgstr "Regel %s existiert nicht."
@@ -346,7 +364,7 @@ msgid ""
 "Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
 
-#: manila/share/drivers/zfssa/zfssashare.py:266
+#: manila/share/drivers/zfssa/zfssashare.py:264
 #, python-format
 msgid "snapshot %s: has clones"
 msgstr ""
