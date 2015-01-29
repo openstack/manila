@@ -28,54 +28,15 @@ from manila import exception
 import manila.share.configuration
 from manila.share.drivers import generic
 from manila import test
-from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_compute
 from manila.tests import fake_service_instance
+from manila.tests import fake_share
 from manila.tests import fake_utils
 from manila.tests import fake_volume
 from manila import utils
 from manila import volume
 
 CONF = cfg.CONF
-
-
-def fake_share(**kwargs):
-    share = {
-        'id': 'fakeid',
-        'name': 'fakename',
-        'size': 1,
-        'share_proto': 'NFS',
-        'share_network_id': 'fake share network id',
-        'share_server_id': 'fake share server id',
-        'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
-    }
-    share.update(kwargs)
-    return db_fakes.FakeModel(share)
-
-
-def fake_snapshot(**kwargs):
-    snapshot = {
-        'id': 'fakesnapshotid',
-        'share_name': 'fakename',
-        'share_id': 'fakeid',
-        'name': 'fakesnapshotname',
-        'share_size': 1,
-        'share_proto': 'NFS',
-        'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
-    }
-    snapshot.update(kwargs)
-    return db_fakes.FakeModel(snapshot)
-
-
-def fake_access(**kwargs):
-    access = {
-        'id': 'fakeaccid',
-        'access_type': 'ip',
-        'access_to': '10.0.0.2',
-        'state': 'active',
-    }
-    access.update(kwargs)
-    return db_fakes.FakeModel(access)
 
 
 class GenericShareDriverTestCase(test.TestCase):
@@ -126,7 +87,7 @@ class GenericShareDriverTestCase(test.TestCase):
             'CIFS': self._helper_cifs,
             'NFS': self._helper_nfs,
         }
-        self.share = fake_share()
+        self.share = fake_share.fake_share()
         self.server = {
             'instance_id': 'fake_instance_id',
             'ip': 'fake_ip',
@@ -138,8 +99,8 @@ class GenericShareDriverTestCase(test.TestCase):
                 'instance_id': 'fake'
             }
         }
-        self.access = fake_access()
-        self.snapshot = fake_snapshot()
+        self.access = fake_share.fake_access()
+        self.snapshot = fake_share.fake_snapshot()
 
     def test_do_setup(self):
         self.stubs.Set(volume, 'API', mock.Mock())
@@ -193,7 +154,7 @@ class GenericShareDriverTestCase(test.TestCase):
             self.share, self.server['backend_details'], volume2)
 
     def test_create_share_exception(self):
-        share = fake_share(share_network_id=None)
+        share = fake_share.fake_share(share_network_id=None)
         self.assertRaises(exception.ManilaException, self._driver.create_share,
                           self._context, share)
 

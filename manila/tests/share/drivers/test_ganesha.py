@@ -24,42 +24,21 @@ from manila import exception
 from manila.share import configuration as config
 from manila.share.drivers import ganesha
 from manila import test
-from manila.tests.db import fakes as db_fakes
+from manila.tests import fake_share
 
 CONF = cfg.CONF
 
 
-def fake_access(**kwargs):
-    access = {
-        'id': 'fakeaccessid',
-        'access_type': 'ip',
-        'access_to': '10.0.0.1'
-    }
-    access.update(kwargs)
-    return db_fakes.FakeModel(access)
-
-
-def fake_share(**kwargs):
-    share = {
-        'id': 'fakeid',
-        'name': 'fakename',
-        'size': 1,
-        'share_proto': 'NFS',
-        'export_location': '127.0.0.1:/mnt/nfs/testvol',
-    }
-    share.update(kwargs)
-    return db_fakes.FakeModel(share)
-
 fake_basepath = '/fakepath'
 
-fake_export_name = 'fakename--fakeaccessid'
+fake_export_name = 'fakename--fakeaccid'
 
 fake_output_template = {
     'EXPORT': {
         'Export_Id': 101,
         'Path': '/fakepath/fakename',
-        'Pseudo': '/fakepath/fakename--fakeaccessid',
-        'Tag': 'fakeaccessid',
+        'Pseudo': '/fakepath/fakename--fakeaccid',
+        'Tag': 'fakeaccid',
         'CLIENT': {
             'Clients': '10.0.0.1'
         },
@@ -87,8 +66,8 @@ class GaneshaNASHelperTestCase(test.TestCase):
             self._execute, self.fake_conf, tag='faketag')
         self._helper.ganesha = mock.Mock()
         self._helper.export_template = {'key': 'value'}
-        self.share = fake_share()
-        self.access = fake_access()
+        self.share = fake_share.fake_share()
+        self.access = fake_share.fake_access()
 
     def test_load_conf_dir(self):
         fake_template1 = {'key': 'value1'}
@@ -264,7 +243,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
         self.assertEqual(None, ret)
 
     def test_allow_access_error_invalid_share(self):
-        access = fake_access(access_type='notip')
+        access = fake_share.fake_access(access_type='notip')
         self.assertRaises(exception.InvalidShareAccess,
                           self._helper.allow_access, '/fakepath',
                           self.share, access)
@@ -272,5 +251,5 @@ class GaneshaNASHelperTestCase(test.TestCase):
     def test_deny_access(self):
         ret = self._helper.deny_access('/fakepath', self.share, self.access)
         self._helper.ganesha.remove_export.assert_called_once_with(
-            'fakename--fakeaccessid')
+            'fakename--fakeaccid')
         self.assertEqual(None, ret)

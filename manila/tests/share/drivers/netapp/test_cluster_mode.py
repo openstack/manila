@@ -26,6 +26,7 @@ from manila.share.drivers.netapp import api as naapi
 from manila.share.drivers.netapp import cluster_mode as driver
 from manila.share.drivers.netapp import utils as na_utils
 from manila import test
+from manila.tests import fake_share
 from manila import utils
 
 
@@ -48,23 +49,8 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self._vserver_client = mock.Mock()
         self._vserver_client.send_request = mock.Mock()
         driver.NetAppApiClient = mock.Mock(return_value=self._vserver_client)
-        self.share = {'id': 'fake_uuid',
-                      'project_id': 'fake_tenant_id',
-                      'name': 'fake_name',
-                      'size': 1,
-                      'share_proto': 'fake',
-                      'share_network_id': 'fake_net_id',
-                      'share_server_id': 'fake-share-srv-id',
-                      'network_info': {
-                          'network_allocations': [
-                              {'ip_address': 'ip'}
-                          ]
-                      }}
-        self.snapshot = {'id': 'fake_snapshot_uuid',
-                         'project_id': 'fake_tenant_id',
-                         'share_id': 'fake_share_id',
-                         'share': self.share
-                         }
+        self.share = fake_share.fake_share()
+        self.snapshot = fake_share.fake_snapshot()
         self.security_service = {'id': 'fake_id',
                                  'domain': 'FAKE',
                                  'server': 'fake_server',
@@ -76,9 +62,11 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             }
         }
         self.helper = mock.Mock()
-        self.driver._helpers = {'FAKE': self.helper}
-        self.driver._licenses = ['fake']
-
+        self.driver._helpers = {
+            'NFS': self.helper,
+            'CIFS': self.helper,
+        }
+        self.driver._licenses = ['nfs', 'cifs']
         self.network_info = {
             'server_id': 'fake_server_id',
             'cidr': '10.0.0.0/24',
@@ -605,8 +593,8 @@ class NetAppClusteredDrvTestCase(test.TestCase):
                                         self._vserver_client)
         args = {'containing-aggr-name': 'fake3',
                 'size': '1g',
-                'volume': 'share_fake_uuid',
-                'junction-path': '/share_fake_uuid'
+                'volume': 'share_fakeid',
+                'junction-path': '/share_fakeid'
                 }
         self._vserver_client.send_request.assert_called_with(
             'volume-create', args)
@@ -616,10 +604,10 @@ class NetAppClusteredDrvTestCase(test.TestCase):
                                                       self.snapshot,
                                                       'vserver',
                                                       self._vserver_client)
-        args = {'volume': 'share_fake_uuid',
-                'parent-volume': 'share_fake_share_id',
-                'parent-snapshot': 'share_snapshot_fake_snapshot_uuid',
-                'junction-path': '/share_fake_uuid'}
+        args = {'volume': 'share_fakeid',
+                'parent-volume': 'share_fakeid',
+                'parent-snapshot': 'share_snapshot_fakesnapshotid',
+                'junction-path': '/share_fakeid'}
         self._vserver_client.send_request.assert_called_with(
             'volume-clone-create', args)
 
@@ -627,11 +615,11 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.driver._deallocate_container(self.share, self._vserver_client)
         self._vserver_client.send_request.assert_has_calls([
             mock.call('volume-unmount',
-                      {'volume-name': 'share_fake_uuid'}),
+                      {'volume-name': 'share_fakeid'}),
             mock.call('volume-offline',
-                      {'name': 'share_fake_uuid'}),
+                      {'name': 'share_fakeid'}),
             mock.call('volume-destroy',
-                      {'name': 'share_fake_uuid'})
+                      {'name': 'share_fakeid'})
         ])
 
     def test_create_export(self):
@@ -691,8 +679,8 @@ class NetAppClusteredDrvTestCase(test.TestCase):
                                     share_server=self.share_server)
         self._vserver_client.send_request.assert_called_once_with(
             'snapshot-create',
-            {'volume': 'share_fake_share_id',
-             'snapshot': 'share_snapshot_fake_snapshot_uuid'})
+            {'volume': 'share_fakeid',
+             'snapshot': 'share_snapshot_fakesnapshotid'})
 
     def test_delete_share(self):
         resp = mock.Mock()
@@ -777,13 +765,9 @@ class NetAppNFSHelperTestCase(test.TestCase):
         self._db = mock.Mock()
         self.client = mock.Mock()
         self.name = 'fake_share_name'
-        self.share = {'id': 'fake_uuid',
-                      'tenant_id': 'fake_tenant_id',
-                      'name': self.name,
-                      'size': 1,
-                      'export_location': 'location:/%s' % self.name,
-                      'share_server_id': 'fake-share-srv-id',
-                      'share_proto': 'fake'}
+        export_location = 'location:/%s' % self.name
+        self.share = fake_share.fake_share(
+            share_proto='NFS', name=self.name, export_location=export_location)
         self.helper = driver.NetAppClusteredNFSHelper()
         self.helper._client = mock.Mock()
         self.helper._client.send_request = mock.Mock()
@@ -911,12 +895,11 @@ class NetAppCIFSHelperTestCase(test.TestCase):
         super(NetAppCIFSHelperTestCase, self).setUp()
         self._context = context.get_admin_context()
         self.name = 'fake_share_name'
-        self.share = {'id': 'fake_uuid',
-                      'tenant_id': 'fake_tenant_id',
-                      'name': self.name,
-                      'size': 1,
-                      'export_location': '//location/%s' % self.name,
-                      'share_proto': 'fake'}
+        export_location = '//location/%s' % self.name
+        self.share = fake_share.fake_share(
+            share_proto='CIFS',
+            name=self.name,
+            export_location=export_location)
         self.helper = driver.NetAppClusteredCIFSHelper()
         self.stubs.Set(self.helper, '_client', mock.Mock())
         self.stubs.Set(self.helper._client, 'send_request', mock.Mock())

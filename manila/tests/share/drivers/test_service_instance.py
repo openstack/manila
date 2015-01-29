@@ -26,25 +26,12 @@ from manila import context
 from manila import exception
 from manila.share.drivers import service_instance
 from manila import test
-from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_compute
 from manila.tests import fake_network
+from manila.tests import fake_share
 from manila import utils
 
 CONF = cfg.CONF
-
-
-def fake_share(**kwargs):
-    share = {
-        'id': 'fakeid',
-        'name': 'fakename',
-        'size': 1,
-        'share_proto': 'NFS',
-        'share_network_id': 'fake share network id',
-        'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
-    }
-    share.update(kwargs)
-    return db_fakes.FakeModel(share)
 
 
 class ServiceInstanceManagerTestCase(test.TestCase):
@@ -77,7 +64,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             'CIFS': self._helper_cifs,
             'NFS': self._helper_nfs,
         }
-        self.share = fake_share()
+        self.share = fake_share.fake_share()
         self.instance_id = 'fake_instance_id'
 
     def test_get_service_network_net_exists(self):

@@ -26,48 +26,11 @@ import manila.share.configuration as config
 import manila.share.drivers.ibm.ganesha_utils as ganesha_utils
 import manila.share.drivers.ibm.gpfs as gpfs
 from manila import test
-from manila.tests.db import fakes as db_fakes
+from manila.tests import fake_share
 from manila import utils
 
 
 CONF = cfg.CONF
-
-
-def fake_share(**kwargs):
-    share = {
-        'id': 'fakeid',
-        'name': 'fakename',
-        'size': 1,
-        'share_proto': 'NFS',
-        'export_location': '127.0.0.1:/mnt/nfs/share-1',
-    }
-    share.update(kwargs)
-    return db_fakes.FakeModel(share)
-
-
-def fake_snapshot(**kwargs):
-    snapshot = {
-        'id': 'fakesnapshotid',
-        'share_name': 'fakename',
-        'share_id': 'fakeid',
-        'name': 'fakesnapshotname',
-        'share_size': 1,
-        'share_proto': 'NFS',
-        'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
-    }
-    snapshot.update(kwargs)
-    return db_fakes.FakeModel(snapshot)
-
-
-def fake_access(**kwargs):
-    access = {
-        'id': 'fakeaccid',
-        'access_type': 'ip',
-        'access_to': '10.0.0.2',
-        'state': 'active',
-    }
-    access.update(kwargs)
-    return db_fakes.FakeModel(access)
 
 
 class GPFSShareDriverTestCase(test.TestCase):
@@ -97,15 +60,15 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver._helpers = {
             'KNFS': self._helper_fake
         }
-        self.share = fake_share()
+        self.share = fake_share.fake_share()
         self.server = {
             'backend_details': {
                 'ip': '1.2.3.4',
                 'instance_id': 'fake'
             }
         }
-        self.access = fake_access()
-        self.snapshot = fake_snapshot()
+        self.access = fake_share.fake_access()
+        self.snapshot = fake_share.fake_snapshot()
         self.local_ip = "192.11.22.1"
         self.remote_ip = "192.11.22.2"
         gpfs_nfs_server_list = [self.local_ip, self.remote_ip]
