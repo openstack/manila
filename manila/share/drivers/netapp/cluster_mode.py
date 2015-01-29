@@ -42,6 +42,11 @@ from manila import utils
 
 
 NETAPP_NAS_OPTS = [
+    cfg.StrOpt('netapp_storage_family',
+               default='ontap_cluster',
+               help=('The storage family type used on the storage system; '
+                     'valid values include ontap_cluster for using '
+                     'clustered Data ONTAP.')),
     cfg.StrOpt('netapp_nas_login',
                default='admin',
                help='User name for the ONTAP controller.'),

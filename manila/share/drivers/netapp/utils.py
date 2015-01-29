@@ -25,13 +25,22 @@ import socket
 from oslo_concurrency import processutils as putils
 from oslo_utils import timeutils
 
-from manila.i18n import _LI, _LW
+from manila import exception
+from manila.i18n import _, _LI, _LW
 from manila.openstack.common import log as logging
 from manila.share.drivers.netapp import api as na_api
 from manila import version
 
 
 LOG = logging.getLogger(__name__)
+
+
+def check_flags(required_flags, configuration):
+    """Ensure that the flags we care about are set."""
+    for flag in required_flags:
+        if not getattr(configuration, flag, None):
+            msg = _('Configuration value %s is not set.') % flag
+            raise exception.InvalidInput(reason=msg)
 
 
 def provide_ems(requester, server, netapp_backend, app_version,
