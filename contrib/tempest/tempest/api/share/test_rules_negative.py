@@ -85,6 +85,15 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
                           self.share["id"], "ip", "1.2.3.1/")
 
     @test.attr(type=["negative", "gate", ])
+    def test_create_access_rule_with_wrong_level(self):
+        self.assertRaises(exceptions.BadRequest,
+                          self.shares_client.create_access_rule,
+                          self.share["id"],
+                          'ip',
+                          '2.2.2.2',
+                          'su')
+
+    @test.attr(type=["negative", "gate", ])
     def test_create_duplicate_of_ip_rule(self):
         # test data
         access_type = "ip"
@@ -171,6 +180,15 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
                           "wrong_share_id",
                           access_type="user",
                           access_to="fakeuser")
+
+    @test.attr(type=["negative", "gate", ])
+    def test_create_access_rule_with_wrong_level(self):
+        self.assertRaises(exceptions.BadRequest,
+                          self.shares_client.create_access_rule,
+                          self.share["id"],
+                          'user',
+                          CONF.share.username_for_user_rules,
+                          'su')
 
 
 class ShareUserRulesForCIFSNegativeTest(ShareUserRulesForNFSNegativeTest):

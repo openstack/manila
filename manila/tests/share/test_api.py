@@ -17,6 +17,7 @@
 import datetime
 import uuid
 
+import ddt
 import mock
 # NOTE(vponomaryov): import from oslo.utils.timeutils is workaround for
 # mocking same object but from different namespaces. Remove it when all
@@ -93,6 +94,7 @@ def fake_access(id, **kwargs):
         'share_id': 'fakeshareid',
         'access_type': 'fakeacctype',
         'access_to': 'fakeaccto',
+        'access_level': 'rw',
         'state': 'fakeactive',
         'STATE_NEW': 'fakenew',
         'STATE_ACTIVE': 'fakeactive',
@@ -160,6 +162,7 @@ _FAKE_LIST_OF_ALL_SNAPSHOTS = [
 ]
 
 
+@ddt.ddt
 class ShareAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -920,23 +923,33 @@ class ShareAPITestCase(test.TestCase):
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share', 'get_all_snapshots')
 
-    def test_allow_access(self):
+    @ddt.data(None, 'rw', 'ro')
+    def test_allow_access(self, level):
         share = fake_share('fakeid', status='available')
         values = {
             'share_id': share['id'],
             'access_type': 'fakeacctype',
             'access_to': 'fakeaccto',
+            'access_level': level,
         }
-        with mock.patch.object(db_driver, 'share_access_create',
-                               mock.Mock(return_value='fakeacc')):
-            self.share_rpcapi.allow_access(self.context, share, 'fakeacc')
-            access = self.api.allow_access(self.context, share, 'fakeacctype',
-                                           'fakeaccto')
-            self.assertEqual(access, 'fakeacc')
-            db_driver.share_access_create.assert_called_once_with(
-                self.context, values)
-            share_api.policy.check_policy.assert_called_once_with(
-                self.context, 'share', 'allow_access')
+        self.stubs.Set(db_driver, 'share_access_create',
+                       mock.Mock(return_value='fakeacc'))
+        access = self.api.allow_access(self.context, share,
+                                       'fakeacctype', 'fakeaccto',
+                                       level)
+        self.assertEqual(access, 'fakeacc')
+        self.share_rpcapi.allow_access.assert_called_once_with(
+            self.context, share, 'fakeacc')
+        db_driver.share_access_create.assert_called_once_with(
+            self.context, values)
+        share_api.policy.check_policy.assert_called_once_with(
+            self.context, 'share', 'allow_access')
+
+    def test_allow_access_invalid_access_level(self):
+        share = fake_share('fakeid', status='available')
+        self.assertRaises(exception.InvalidShareAccess, self.api.allow_access,
+                          self.context, share, 'fakeacctype', 'fakeaccto',
+                          'ab')
 
     def test_allow_access_status_not_available(self):
         share = fake_share('fakeid', status='error')
@@ -1013,12 +1026,14 @@ class ShareAPITestCase(test.TestCase):
                 'id': 'fakeacc0id',
                 'access_type': 'fakeacctype',
                 'access_to': 'fakeaccto',
+                'access_level': 'rw',
                 'state': 'fakenew',
             },
             {
                 'id': 'fakeacc1id',
                 'access_type': 'fakeacctype',
                 'access_to': 'fakeaccto',
+                'access_level': 'rw',
                 'state': 'fakeerror',
             },
         ]

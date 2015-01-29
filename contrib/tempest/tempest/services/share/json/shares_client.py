@@ -97,12 +97,13 @@ class SharesClient(rest_client.RestClient):
         resp, body = self.get("shares/%s" % share_id)
         return resp, self._parse_resp(body)
 
-    def create_access_rule(self, share_id,
-                           access_type="ip", access_to="0.0.0.0"):
+    def create_access_rule(self, share_id, access_type="ip",
+                           access_to="0.0.0.0", access_level=None):
         post_body = {
             "os-allow_access": {
                 "access_type": access_type,
                 "access_to": access_to,
+                "access_level": access_level,
             }
         }
         body = json.dumps(post_body)

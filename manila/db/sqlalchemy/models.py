@@ -264,6 +264,8 @@ class ShareAccessMapping(BASE, ManilaBase):
     state = Column(Enum(STATE_NEW, STATE_ACTIVE,
                         STATE_DELETING, STATE_DELETED, STATE_ERROR),
                    default=STATE_NEW)
+    access_level = Column(Enum(*constants.ACCESS_LEVELS),
+                          default=constants.ACCESS_LEVEL_RW)
 
 
 class ShareSnapshot(BASE, ManilaBase):
