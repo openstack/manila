@@ -538,26 +538,23 @@ class RestHelper():
 
         return share_client_type
 
-    def _get_snapshot_id_by_name(self, sharefsid, snap_name):
-        """Get snapshot id in Array by snapshot name."""
-
-        url_subfix = ("/FSSNAPSHOT?TYPE=48&"
-                      "PARENTID=%s&&sortby=TIMESTAMP,d&"
-                      "range=[0-2000]" % sharefsid)
+    def _check_snapshot_id_exist(self, snap_id):
+        """Check the snapshot id exists."""
+        url_subfix = "/FSSNAPSHOT/" + snap_id
 
         url = self.url + url_subfix
         result = self.call(url, None, "GET")
-        self._assert_rest_result(result, 'Get snapshot id by name error!')
 
-        snapshot_name = "share_snapshot_" + snap_name.replace("-", "_")
-        snapshot_id = None
-        if "data" in result:
-            for item in result['data']:
-                if snapshot_name == item['NAME']:
-                    snapshot_id = item['ID']
-                    break
-
-        return snapshot_id
+        if result['error']['code'] == constants.MSG_SNAPSHOT_NOT_FOUND:
+            return False
+        elif result['error']['code'] == 0:
+            return True
+        else:
+            err_str = "Check the snapshot id exists error!"
+            err_msg = (_('%(err)s\nresult: %(res)s.') % {'err': err_str,
+                                                         'res': result})
+            LOG.error(err_msg)
+            raise exception.InvalidShare(reason=err_msg)
 
     def _delete_snapshot(self, snap_id):
         """Deletes snapshot."""
@@ -714,6 +711,11 @@ class RestHelper():
     def _get_share_name_by_id(self, share_id):
         share_name = "share_" + share_id
         return share_name
+
+    def _get_snapshot_id(self, fs_id, snap_name):
+        snapshot_id = (fs_id + "@" + "share_snapshot_"
+                       + snap_name.replace("-", "_"))
+        return snapshot_id
 
     def _check_service(self):
         running_status = self._get_cifs_service_status()

@@ -85,6 +85,7 @@ class FakeHuaweiNasHelper(huawei_helper.RestHelper):
         self.setupserver_flag = False
         self.fs_status_flag = True
         self.create_share_flag = False
+        self.snapshot_flag = True
 
     def _change_file_mode(self, filepath):
         pass
@@ -153,6 +154,13 @@ class FakeHuaweiNasHelper(huawei_helper.RestHelper):
                 data = """{"error":{"code":0},"data":{
                             "ID":"3"}}"""
                 self.create_snapflag = True
+
+            if url == "FSSNAPSHOT/4@share_snapshot_fake_snapshot_uuid":
+                if self.snapshot_flag:
+                    data = """{"error":{"code":0},"data":{"ID":"3"}}"""
+                else:
+                    data = '{"error":{"code":1073754118}}'
+                self.delete_flag = True
 
             if url == "FSSNAPSHOT/3" or url == "filesystem/4":
                 data = """{"error":{"code":0}}"""
@@ -522,17 +530,19 @@ class HuaweiShareDriverTestCase(test.TestCase):
                                     self.share_server)
         self.assertTrue(self.driver.helper.create_snapflag)
 
-    def test_delete_nfs_snapshot_success(self):
+    def test_delete_snapshot_success(self):
         self.driver.helper.login()
         self.driver.helper.delete_flag = False
+        self.driver.helper.snapshot_flag = True
         self.driver.delete_snapshot(self._context, self.nfs_snapshot,
                                     self.share_server)
         self.assertTrue(self.driver.helper.delete_flag)
 
-    def test_delete_cifs_snapshot_success(self):
+    def test_delete_snapshot_not_exist_success(self):
         self.driver.helper.login()
         self.driver.helper.delete_flag = False
-        self.driver.delete_snapshot(self._context, self.cifs_snapshot,
+        self.driver.helper.snapshot_flag = False
+        self.driver.delete_snapshot(self._context, self.nfs_snapshot,
                                     self.share_server)
         self.assertTrue(self.driver.helper.delete_flag)
 
