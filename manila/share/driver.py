@@ -102,10 +102,12 @@ ganesha_opts = [
                     '(Ganesha module only.)'),
     cfg.StrOpt('ganesha_export_dir',
                default='$ganesha_config_dir/export.d',
-               help='Path to Ganesha export template. (Ganesha module only.)'),
+               help='Path to directory containing Ganesha export '
+                    'configuration. (Ganesha module only.)'),
     cfg.StrOpt('ganesha_export_template_dir',
                default='/etc/manila/ganesha-export-templ.d',
-               help='Path to Ganesha export template. (Ganesha module only.)'),
+               help='Path to directory containing Ganesha export '
+                    'block templates. (Ganesha module only.)'),
 ]
 
 CONF = cfg.CONF
