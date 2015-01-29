@@ -186,7 +186,7 @@ class ShareDriver(object):
             self.init_execute_mixin(*args, **kwargs)  # pylint: disable=E1101
         if hasattr(self, 'init_ganesha_mixin'):
             # Instance with 'GaneshaMixin'
-            self.init_execute_mixin(*args, **kwargs)  # pylint: disable=E1101
+            self.init_ganesha_mixin(*args, **kwargs)  # pylint: disable=E1101
         self.network_api = network.API(config_group_name=network_config_group)
 
     @property
