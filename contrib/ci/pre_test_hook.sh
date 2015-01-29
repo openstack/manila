@@ -36,6 +36,12 @@ else
     echo "MANILA_MULTI_BACKEND=False" >> $localrc_path
 fi
 
+# Checkout Nova's working variant as workaround for bug #1415835
+# remove it when above bug is fixed in Nova.
+NOVA_COMMIT="36eb483e"  # 29 Jan, 2015
+cd $BASE/new/nova
+git checkout $NOVA_COMMIT
+
 # Go to Tempest dir and checkout stable commit to avoid possible
 # incompatibilities for plugin stored in Manila repo.
 TEMPEST_COMMIT="b5fa11db"  # 8 Jan, 2015
