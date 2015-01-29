@@ -1959,6 +1959,7 @@ def share_server_backend_details_get(context, share_server_id,
 
 @require_context
 def network_allocation_create(context, values):
+    values['id'] = values.get('id', six.text_type(uuid.uuid4()))
     alloc_ref = models.NetworkAllocation()
     alloc_ref.update(values)
     session = get_session()
@@ -1984,6 +1985,14 @@ def network_allocation_get(context, id, session=None):
     if result is None:
         raise exception.NotFound()
     return result
+
+
+@require_context
+def network_allocations_get_by_ip_address(context, ip_address):
+    session = get_session()
+    result = model_query(context, models.NetworkAllocation, session=session).\
+        filter_by(ip_address=ip_address).all()
+    return result or []
 
 
 @require_context

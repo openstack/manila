@@ -23,6 +23,7 @@ import socket
 import tempfile
 import uuid
 
+import ddt
 import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
@@ -583,3 +584,46 @@ class CidrToNetmaskTestCase(test.TestCase):
     def test_cidr_to_netmask_invalid_04(self):
         cidr = '10.0.0.555/33'
         self.assertRaises(exception.InvalidInput, utils.cidr_to_netmask, cidr)
+
+
+@ddt.ddt
+class IsValidIPVersion(test.TestCase):
+    """Test suite for function 'is_valid_ip_address'."""
+
+    @ddt.data('0.0.0.0', '255.255.255.255', '192.168.0.1')
+    def test_valid_v4(self, addr):
+        for vers in (4, '4'):
+            self.assertTrue(utils.is_valid_ip_address(addr, vers))
+
+    @ddt.data(
+        '2001:cdba:0000:0000:0000:0000:3257:9652',
+        '2001:cdba:0:0:0:0:3257:9652',
+        '2001:cdba::3257:9652')
+    def test_valid_v6(self, addr):
+        for vers in (6, '6'):
+            self.assertTrue(utils.is_valid_ip_address(addr, vers))
+
+    @ddt.data(
+        {'addr': '1.1.1.1', 'vers': 3},
+        {'addr': '1.1.1.1', 'vers': 5},
+        {'addr': '1.1.1.1', 'vers': 7},
+        {'addr': '2001:cdba::3257:9652', 'vers': '3'},
+        {'addr': '2001:cdba::3257:9652', 'vers': '5'},
+        {'addr': '2001:cdba::3257:9652', 'vers': '7'})
+    @ddt.unpack
+    def test_provided_invalid_version(self, addr, vers):
+        self.assertRaises(
+            exception.ManilaException, utils.is_valid_ip_address, addr, vers)
+
+    def test_provided_none_version(self):
+        self.assertRaises(TypeError, utils.is_valid_ip_address, '', None)
+
+    @ddt.data(None, 'fake', '1.1.1.1')
+    def test_provided_invalid_v6_address(self, addr):
+        for vers in (6, '6'):
+            self.assertFalse(utils.is_valid_ip_address(addr, vers))
+
+    @ddt.data(None, 'fake', '255.255.255.256', '2001:cdba::3257:9652')
+    def test_provided_invalid_v4_address(self, addr):
+        for vers in (4, '4'):
+            self.assertFalse(utils.is_valid_ip_address(addr, vers))

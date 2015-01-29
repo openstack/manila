@@ -494,6 +494,16 @@ def cidr_to_netmask(cidr):
         raise exception.InvalidInput(_("Invalid cidr supplied %s") % cidr)
 
 
+def is_valid_ip_address(ip_address, ip_version):
+    if int(ip_version) == 4:
+        return netaddr.valid_ipv4(ip_address)
+    elif int(ip_version) == 6:
+        return netaddr.valid_ipv6(ip_address)
+    else:
+        raise exception.ManilaException(
+            _("Provided improper IP version '%s'.") % ip_version)
+
+
 class IsAMatcher(object):
     def __init__(self, expected_value=None):
         self.expected_value = expected_value

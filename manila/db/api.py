@@ -552,6 +552,11 @@ def network_allocations_get_for_share_server(context, share_server_id,
                                                          session=session)
 
 
+def network_allocations_get_by_ip_address(context, ip_address):
+    """Get network allocations by IP address."""
+    return IMPL.network_allocations_get_by_ip_address(context, ip_address)
+
+
 ##################
 
 
