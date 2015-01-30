@@ -497,3 +497,7 @@ class SSHException(ManilaException):
 
 class SopAPIError(Invalid):
     message = _("%(err)s")
+
+
+class HDFSException(ManilaException):
+    message = _("HDFS exception occurred!")

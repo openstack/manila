@@ -50,6 +50,7 @@ def fake_access(**kwargs):
         'id': 'fakeaccid',
         'access_type': 'ip',
         'access_to': '10.0.0.1',
+        'access_level': 'rw',
         'state': 'active',
     }
     access.update(kwargs)

@@ -108,7 +108,7 @@ class API(base.Base):
 
         # TODO(rushiagr): Find a suitable place to keep all the allowed
         #                 share types so that it becomes easier to add one
-        if share_proto.lower() not in ['nfs', 'cifs', 'glusterfs']:
+        if share_proto.lower() not in ['nfs', 'cifs', 'glusterfs', 'hdfs']:
             msg = (_("Invalid share type provided: %s") % share_proto)
             raise exception.InvalidInput(reason=msg)
 
