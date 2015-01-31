@@ -44,7 +44,7 @@ nova_opts = [
                help='Region name of this node.'),
     cfg.StrOpt('nova_ca_certificates_file',
                default=None,
-               help='Location of CA certicates file to use for nova client '
+               help='Location of CA certificates file to use for nova client '
                     'requests.'),
     cfg.BoolOpt('nova_api_insecure',
                 default=False,
