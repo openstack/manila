@@ -22,7 +22,7 @@ from manila.share import configuration as conf
 from manila.share.drivers.emc import driver as emc_driver
 from manila.share.drivers.emc.plugins.vnx import helper
 from manila import test
-
+from manila.tests import fake_share
 
 LOG = logging.getLogger(__name__)
 
@@ -196,29 +196,8 @@ disks     = d7
     default_cifsserver_name = 'fakeserver2'
 
     @staticmethod
-    def fake_share_nfs(**kwargs):
-        share = {
-            'id': 'fakeid',
-            'name': 'fakename',
-            'size': 1,
-            'share_proto': 'NFS',
-            'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
-        }
-        share.update(kwargs)
-        return share
-
-    @staticmethod
-    def fake_share_cifs(**kwargs):
-        share = {
-            'id': 'fakeid',
-            'name': 'fakename',
-            'size': 1,
-            'share_proto': 'CIFS',
-            'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
-            'share_network_id': 'fakesharenetworkid',
-        }
-        share.update(kwargs)
-        return share
+    def fake_share(**kwargs):
+        return fake_share.fake_share(**kwargs)
 
     @staticmethod
     def fake_share_server(**kwargs):
@@ -237,40 +216,17 @@ disks     = d7
 
     @staticmethod
     def fake_snapshot(**kwargs):
-        snapshot = {
-            'id': 'fakesnapshotid',
-            'share_name': 'fakename',
-            'share_id': 'fakeid',
-            'name': 'fakesnapshotname',
-            'share_size': 1,
-            'size': 1,
-            'share_proto': 'NFS',
-            'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
-        }
-        snapshot.update(kwargs)
-        return snapshot
+        return fake_share.fake_snapshot(**kwargs)
 
     @staticmethod
     def fake_access(**kwargs):
-        access = {
-            'id': 'fakeaccid',
-            'access_type': 'ip',
-            'access_to': '10.0.0.2',
-            'state': 'active',
-        }
-        access.update(kwargs)
-        return access
+        kwargs.update(access_to='10.0.0.2')
+        return fake_share.fake_access(**kwargs)
 
     @staticmethod
     def fake_access_subnet(**kwargs):
-        access = {
-            'id': 'fakeaccid',
-            'access_type': 'ip',
-            'access_to': '10.0.0.2/24',
-            'state': 'active',
-        }
-        access.update(kwargs)
-        return access
+        kwargs.update(access_to='10.0.0.2/24')
+        return fake_share.fake_access(**kwargs)
 
     @staticmethod
     def fake_security_services(**kwargs):
@@ -933,7 +889,7 @@ disks     = d7
 
     @staticmethod
     def resp_allow_cifs_access(access):
-        cifs_share = TD.fake_share_cifs()
+        cifs_share = TD.fake_share(share_proto='CIFS')
         domain = TD.fake_security_services()[0]['domain']
         user = access['access_to']
         return (
@@ -946,7 +902,7 @@ disks     = d7
 
     @staticmethod
     def req_allow_deny_cifs_access(access, action='grant'):
-        cifs_share = TD.fake_share_cifs()
+        cifs_share = TD.fake_share(share_proto='CIFS')
         domain = TD.fake_security_services()[0]['domain']
         user = access['access_to']
         account = user + '@' + domain
@@ -965,7 +921,7 @@ disks     = d7
 
     @staticmethod
     def req_disable_cifs_access():
-        share_name = TD.fake_share_cifs()['name']
+        share_name = TD.fake_share(share_proto='CIFS')['name']
         cmd_str = 'sharesd %s set noaccess' % share_name
         return [
             'env', 'NAS_DB=/nas',
@@ -1282,7 +1238,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.SSHConnector.run_ssh.assert_has_calls(ssh_calls)
 
     def test_create_nfs_share_default(self):
-        share = TD.fake_share_nfs()
+        share = TD.fake_share(share_proto='NFS')
         share_server = TD.fake_share_server()
         vdm_name = share_server['backend_details']['share_server_name']
         hook = RequestSideEffect()
@@ -1305,7 +1261,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
                          "NFS export path is incorrect")
 
     def test_delete_nfs_share_default(self):
-        share = TD.fake_share_nfs()
+        share = TD.fake_share(share_proto='NFS')
         share_server = TD.fake_share_server()
         mover_name = share_server['backend_details']['share_server_name']
         path = '/' + share['name']
@@ -1336,7 +1292,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
 
     def test_delete_nfs_share_but_share_absent(self):
-        share = TD.fake_share_nfs()
+        share = TD.fake_share(share_proto='NFS')
         share_server = TD.fake_share_server()
         mover_name = share_server['backend_details']['share_server_name']
         path = '/' + share['name']
@@ -1365,7 +1321,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
 
     def test_create_cifs_share_default(self):
-        share = TD.fake_share_cifs()
+        share = TD.fake_share(share_proto='CIFS')
         hook = RequestSideEffect()
         ssh_hook = SSHSideEffect()
         share_server = TD.fake_share_server()
@@ -1391,7 +1347,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
                          "CIFS export path is incorrect")
 
     def test_delete_cifs_share_default(self):
-        share = TD.fake_share_cifs()
+        share = TD.fake_share(share_proto='CIFS')
         share_server = TD.fake_share_server()
         hook = RequestSideEffect()
         hook.append(TD.resp_get_cifs_share_by_name(share['name']))
@@ -1400,7 +1356,8 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_get_filesystem(share['name']))
         hook.append(TD.resp_task_succeed())
         helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
-        self.driver.delete_share(None, TD.fake_share_cifs(), share_server)
+        self.driver.delete_share(
+            None, TD.fake_share(share_proto='CIFS'), share_server)
         expected_calls = [
             mock.call(TD.req_get_cifs_share_by_name(share['name'])),
             mock.call(TD.req_delete_cifs_share(share['name'])),
@@ -1412,7 +1369,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
 
     def test_delete_cifs_share_but_share_absent(self):
-        share = TD.fake_share_cifs()
+        share = TD.fake_share(share_proto='CIFS')
         share_server = TD.fake_share_server()
         hook = RequestSideEffect()
         hook.append(TD.resp_get_cifs_share_by_name_absence(share['name']))
@@ -1420,7 +1377,8 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_get_filesystem(share['name']))
         hook.append(TD.resp_task_succeed())
         helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
-        self.driver.delete_share(None, TD.fake_share_cifs(), share_server)
+        self.driver.delete_share(
+            None, TD.fake_share(share_proto='CIFS'), share_server)
         expected_calls = [
             mock.call(TD.req_get_cifs_share_by_name(share['name'])),
             mock.call(TD.req_delete_mount('/' + share['name'])),
@@ -1481,7 +1439,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
 
     def test_nfs_allow_access(self):
-        share = TD.fake_share_nfs()
+        share = TD.fake_share(share_proto='NFS')
         access = TD.fake_access()
         share_server = TD.fake_share_server()
         mover_name = share_server['backend_details']['share_server_name']
@@ -1502,7 +1460,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
 
     def test_nfs_allow_access_subnet(self):
-        share = TD.fake_share_nfs()
+        share = TD.fake_share(share_proto='NFS')
         access = TD.fake_access_subnet()
         share_server = TD.fake_share_server()
         mover_name = share_server['backend_details']['share_server_name']
@@ -1523,7 +1481,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
 
     def test_nfs_deny_access_subnet(self):
-        share = TD.fake_share_nfs()
+        share = TD.fake_share(share_proto='NFS')
         access = TD.fake_access_subnet()
         share_server = TD.fake_share_server()
         mover_name = share_server['backend_details']['share_server_name']
@@ -1544,7 +1502,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
 
     def test_nfs_deny_access(self):
-        share = TD.fake_share_nfs()
+        share = TD.fake_share(share_proto='NFS')
         access = TD.fake_access()
         share_server = TD.fake_share_server()
         mover_name = share_server['backend_details']['share_server_name']
@@ -1566,7 +1524,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
                 mock.Mock(return_value=TD.fake_share_network()))
     def test_cifs_allow_access(self):
         context = 'fake_context'
-        share = TD.fake_share_cifs()
+        share = TD.fake_share(share_proto='CIFS')
         access = TD.fake_access(**{'access_type': 'user',
                                    'access_to': 'administrator'})
         share_server = TD.fake_share_server()
@@ -1583,7 +1541,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
                 mock.Mock(return_value=TD.fake_share_network()))
     def test_cifs_deny_access(self):
         context = 'fake_context'
-        share = TD.fake_share_cifs()
+        share = TD.fake_share(share_proto='CIFS')
         access = TD.fake_access(**{'access_type': 'user',
                                    'access_to': 'administrator'})
         share_server = TD.fake_share_server()
@@ -1599,7 +1557,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
             context, share['share_network_id'])
 
     def test_create_share_from_snapshot(self):
-        share = TD.fake_share_nfs()
+        share = TD.fake_share(share_proto='NFS')
         snap = TD.fake_snapshot()
         share_server = TD.fake_share_server()
         fake_ckpt = "fake_ckpt"

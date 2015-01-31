@@ -24,7 +24,7 @@ from manila import exception
 from manila.share import configuration as config
 from manila.share.drivers import glusterfs
 from manila import test
-from manila.tests.db import fakes as db_fakes
+from manila.tests import fake_share
 from manila.tests import fake_utils
 
 
@@ -44,18 +44,6 @@ fake_gluster_manager_attrs = {
 fake_local_share_path = '/mnt/nfs/testvol/fakename'
 
 
-def fake_share(**kwargs):
-    share = {
-        'id': 'fakeid',
-        'name': 'fakename',
-        'size': 1,
-        'share_proto': 'NFS',
-        'export_location': '127.0.0.1:/mnt/nfs/testvol',
-    }
-    share.update(kwargs)
-    return db_fakes.FakeModel(share)
-
-fake_access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
 fake_args = ('foo', 'bar')
 fake_kwargs = {'key1': 'value1', 'key2': 'value2'}
 fake_path_to_private_key = '/fakepath/to/privatekey'
@@ -252,7 +240,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             configuration=self.fake_conf)
         self._driver.gluster_manager = mock.Mock(**fake_gluster_manager_attrs)
         self._helper_nfs = mock.Mock()
-        self.share = fake_share()
+        self.share = fake_share.fake_share(share_proto='NFS')
 
     def test_do_setup(self):
         fake_gluster_manager = mock.Mock(**fake_gluster_manager_attrs)
@@ -626,44 +614,50 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertEqual(None, ret)
 
     def test_get_helper_not_implemented(self):
-        share = fake_share(share_proto='Others')
+        share = fake_share.fake_share(share_proto='Others')
         self.assertRaises(
             exception.InvalidShare, self._driver._get_helper, share)
 
     def test_allow_access(self):
         self.stubs.Set(self._driver, '_get_helper', mock.Mock())
         ret = self._driver.allow_access(self._context, self.share,
-                                        fake_access)
+                                        fake_share.fake_access)
         self._driver._get_helper.assert_called_once_with(self.share)
         self._driver._get_helper().\
-            allow_access.assert_called_once_with('/', self.share, fake_access)
+            allow_access.assert_called_once_with(
+                '/', self.share, fake_share.fake_access)
         self.assertEqual(None, ret)
 
     def test_allow_access_can_be_called_with_extra_arg_share_server(self):
         self.stubs.Set(self._driver, '_get_helper', mock.Mock())
         ret = self._driver.allow_access(self._context, self.share,
-                                        fake_access, share_server=None)
+                                        fake_share.fake_access,
+                                        share_server=None)
         self._driver._get_helper.assert_called_once_with(self.share)
         self._driver._get_helper().\
-            allow_access.assert_called_once_with('/', self.share, fake_access)
+            allow_access.assert_called_once_with(
+                '/', self.share, fake_share.fake_access)
         self.assertEqual(None, ret)
 
     def test_deny_access(self):
         self.stubs.Set(self._driver, '_get_helper', mock.Mock())
         ret = self._driver.deny_access(self._context, self.share,
-                                       fake_access)
+                                       fake_share.fake_access)
         self._driver._get_helper.assert_called_once_with(self.share)
         self._driver._get_helper().\
-            deny_access.assert_called_once_with('/', self.share, fake_access)
+            deny_access.assert_called_once_with(
+                '/', self.share, fake_share.fake_access)
         self.assertEqual(None, ret)
 
     def test_deny_access_can_be_called_with_extra_arg_share_server(self):
         self.stubs.Set(self._driver, '_get_helper', mock.Mock())
         ret = self._driver.deny_access(self._context, self.share,
-                                       fake_access, share_server=None)
+                                       fake_share.fake_access,
+                                       share_server=None)
         self._driver._get_helper.assert_called_once_with(self.share)
         self._driver._get_helper().\
-            deny_access.assert_called_once_with('/', self.share, fake_access)
+            deny_access.assert_called_once_with(
+                '/', self.share, fake_share.fake_access)
         self.assertEqual(None, ret)
 
 
@@ -721,7 +715,7 @@ class GlusterNFSHelperTestCase(test.TestCase):
 
     def test_manage_access_noop(self):
         cbk = mock.Mock(return_value=True)
-        access = fake_access
+        access = fake_share.fake_access()
         export_dir_dict = mock.Mock()
         self.stubs.Set(self._helper, '_get_export_dir_dict',
                        mock.Mock(return_value=export_dir_dict))
@@ -738,7 +732,7 @@ class GlusterNFSHelperTestCase(test.TestCase):
         def cbk(d, key, value):
             d[key].append(value)
 
-        access = fake_access
+        access = fake_share.fake_access()
         export_dir_dict = {
             'example.com': ['10.0.0.1'],
             'fakename': ['10.0.0.2'],
@@ -764,7 +758,7 @@ class GlusterNFSHelperTestCase(test.TestCase):
         def raise_exception(*args, **kwargs):
             raise exception.ProcessExecutionError()
 
-        access = fake_access
+        access = fake_share.fake_access()
         export_dir_dict = {
             'example.com': ['10.0.0.1'],
             'fakename': ['10.0.0.2'],
@@ -791,7 +785,7 @@ class GlusterNFSHelperTestCase(test.TestCase):
         def cbk(d, key, value):
             d.pop(key)
 
-        access = fake_access
+        access = fake_share.fake_access()
         args = ('volume', 'reset', self._helper.gluster_manager.volume,
                 NFS_EXPORT_DIR)
         export_dir_dict = {'fakename': ['10.0.0.1']}
@@ -806,8 +800,8 @@ class GlusterNFSHelperTestCase(test.TestCase):
             *args)
 
     def test_allow_access_with_share_having_noaccess(self):
-        access = fake_access
-        share = fake_share()
+        access = fake_share.fake_access()
+        share = fake_share.fake_share()
         export_dir_dict = {'example.com': ['10.0.0.1']}
         export_str = '/example.com(10.0.0.1),/fakename(10.0.0.1)'
         args = ('volume', 'set', self._helper.gluster_manager.volume,
@@ -820,8 +814,8 @@ class GlusterNFSHelperTestCase(test.TestCase):
             *args)
 
     def test_allow_access_with_share_having_access(self):
-        access = fake_access
-        share = fake_share()
+        access = fake_share.fake_access()
+        share = fake_share.fake_share()
         export_dir_dict = {'fakename': ['10.0.0.1']}
         self.stubs.Set(self._helper, '_get_export_dir_dict',
                        mock.Mock(return_value=export_dir_dict))
@@ -830,8 +824,8 @@ class GlusterNFSHelperTestCase(test.TestCase):
         self.assertFalse(self._helper.gluster_manager.gluster_call.called)
 
     def test_deny_access_with_share_having_noaccess(self):
-        access = fake_access
-        share = fake_share()
+        access = fake_share.fake_access()
+        share = fake_share.fake_share()
         export_dir_dict = {}
         self.stubs.Set(self._helper, '_get_export_dir_dict',
                        mock.Mock(return_value=export_dir_dict))
@@ -840,8 +834,8 @@ class GlusterNFSHelperTestCase(test.TestCase):
         self.assertFalse(self._helper.gluster_manager.gluster_call.called)
 
     def test_deny_access_with_share_having_access(self):
-        access = fake_access
-        share = fake_share()
+        access = fake_share.fake_access()
+        share = fake_share.fake_share()
         export_dir_dict = {
             'example.com': ['10.0.0.1'],
             'fakename': ['10.0.0.1'],
