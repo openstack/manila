@@ -570,9 +570,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                             access['access_to'])
 
     def _get_helper(self, share):
-        if share['share_proto'].startswith('NFS'):
+        if share['share_proto'] == 'NFS':
             return self._helpers['NFS']
-        elif share['share_proto'].startswith('CIFS'):
+        elif share['share_proto'] == 'CIFS':
             return self._helpers['CIFS']
         else:
             raise exception.InvalidShare(reason='Wrong share type')

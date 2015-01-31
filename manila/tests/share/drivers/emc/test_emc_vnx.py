@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import ddt
 import mock
 from oslo_utils import units
 
@@ -1126,6 +1127,7 @@ class SSHSideEffect(object):
                 return item[1]
 
 
+@ddt.ddt
 class EMCShareDriverVNXTestCase(test.TestCase):
     def setUp(self):
         super(EMCShareDriverVNXTestCase, self).setUp()
@@ -1237,6 +1239,22 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
         helper.SSHConnector.run_ssh.assert_has_calls(ssh_calls)
 
+    @ddt.data(fake_share.fake_share(),
+              fake_share.fake_share(share_proto='NFSBOGUS'),
+              fake_share.fake_share(share_proto='CIFSBOGUS'))
+    def test_create_share_with_wrong_proto(self, share):
+        share_server = TD.fake_share_server()
+        hook = RequestSideEffect()
+        hook.append(TD.resp_get_vdm())
+        hook.append(TD.resp_task_succeed())
+        hook.append(TD.resp_task_succeed())
+        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        sshHook = SSHSideEffect()
+        sshHook.append(TD.CREATE_NFS_EXPORT_OUT, TD.FAKE_ERROR)
+        helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share, None, share, share_server)
+
     def test_create_nfs_share_default(self):
         share = TD.fake_share(share_proto='NFS')
         share_server = TD.fake_share_server()
@@ -1259,6 +1277,28 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.SSHConnector.run_ssh.assert_has_calls(ssh_calls)
         self.assertEqual(location, '192.168.1.1:/%s' % share['name'],
                          "NFS export path is incorrect")
+
+    @ddt.data(fake_share.fake_share(),
+              fake_share.fake_share(share_proto='NFSBOGUS'),
+              fake_share.fake_share(share_proto='CIFSBOGUS'))
+    def test_delete_share_with_wrong_proto(self, share):
+        share_server = TD.fake_share_server()
+        mover_name = share_server['backend_details']['share_server_name']
+        path = '/' + share['name']
+        sshHook = SSHSideEffect()
+        sshHook.append(TD.resp_get_nfs_share_by_path(mover_name,
+                                                     path))
+        sshHook.append(TD.resp_delete_nfs_share_success(mover_name))
+        helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
+
+        hook = RequestSideEffect()
+        hook.append(TD.resp_task_succeed())
+        hook.append(TD.resp_get_filesystem(share['name']))
+        hook.append(TD.resp_task_succeed())
+        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.delete_share,
+                          None, share, share_server)
 
     def test_delete_nfs_share_default(self):
         share = TD.fake_share(share_proto='NFS')
@@ -1438,6 +1478,23 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         expected_calls = [mock.call(TD.req_query_snapshot('fakesnapshotname'))]
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
 
+    @ddt.data(fake_share.fake_share(),
+              fake_share.fake_share(share_proto='NFSBOGUS'),
+              fake_share.fake_share(share_proto='CIFSBOGUS'))
+    def test_allow_access_with_wrong_proto(self, share):
+        access = fake_share.fake_access()
+        share_server = TD.fake_share_server()
+        mover_name = share_server['backend_details']['share_server_name']
+        path = '/' + share['name']
+        sshHook = SSHSideEffect()
+        sshHook.append(TD.resp_get_nfs_share_by_path(mover_name,
+                                                     path))
+        sshHook.append(TD.resp_change_nfs_share_success(mover_name))
+        helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.allow_access,
+                          None, share, access, share_server)
+
     def test_nfs_allow_access(self):
         share = TD.fake_share(share_proto='NFS')
         access = TD.fake_access()
@@ -1501,6 +1558,24 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         ]
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
 
+    @ddt.data(fake_share.fake_share(),
+              fake_share.fake_share(share_proto='NFSBOGUS'),
+              fake_share.fake_share(share_proto='CIFSBOGUS'))
+    def test_deny_access_with_wrong_proto(self, share):
+        access = fake_share.fake_access()
+        share_server = TD.fake_share_server()
+        mover_name = share_server['backend_details']['share_server_name']
+        path = '/' + share['name']
+        sshHook = SSHSideEffect()
+        sshHook.append(TD.resp_get_nfs_share_by_path(mover_name,
+                                                     path,
+                                                     [access['access_to']]))
+        sshHook.append(TD.resp_change_nfs_share_success(mover_name))
+        helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.deny_access,
+                          None, share, access, share_server)
+
     def test_nfs_deny_access(self):
         share = TD.fake_share(share_proto='NFS')
         access = TD.fake_access()
@@ -1555,6 +1630,32 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
         manila.db.share_network_get.assert_called_once_with(
             context, share['share_network_id'])
+
+    @ddt.data(fake_share.fake_share(),
+              fake_share.fake_share(share_proto='NFSBOGUS'),
+              fake_share.fake_share(share_proto='CIFSBOGUS'))
+    def test_create_share_from_snapshot_with_wrong_proto(self, share):
+        snap = fake_share.fake_snapshot()
+        share_server = TD.fake_share_server()
+        fake_ckpt = "fake_ckpt"
+        hook = RequestSideEffect()
+        hook.append(TD.resp_get_filesystem(share['name']))
+
+        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        sshHook = SSHSideEffect()
+        sshHook.append(TD.GET_INTERCONNECT_ID_OUT, TD.FAKE_ERROR)
+        sshHook.append(TD.FAKE_OUTPUT, TD.FAKE_ERROR)
+        sshHook.append(TD.FAKE_OUTPUT, TD.FAKE_ERROR)
+        sshHook.append(TD.FAKE_OUTPUT, TD.COPY_CKPT_OUTPUT)
+        sshHook.append(TD.nas_info_out(snap['name'], fake_ckpt), TD.FAKE_ERROR)
+        sshHook.append(TD.FAKE_OUTPUT, TD.FAKE_ERROR)
+        sshHook.append(TD.FAKE_OUTPUT, TD.FAKE_ERROR)
+        sshHook.append(TD.FAKE_OUTPUT, TD.FAKE_ERROR)
+        sshHook.append(TD.CREATE_NFS_EXPORT_OUT, TD.FAKE_ERROR)
+        helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share_from_snapshot,
+                          None, share, snap, share_server)
 
     def test_create_share_from_snapshot(self):
         share = TD.fake_share(share_proto='NFS')

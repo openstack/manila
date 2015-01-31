@@ -17,6 +17,7 @@
 import copy
 import hashlib
 
+import ddt
 import mock
 
 from manila import context
@@ -30,6 +31,7 @@ from manila.tests import fake_share
 from manila import utils
 
 
+@ddt.ddt
 class NetAppClusteredDrvTestCase(test.TestCase):
     """Test suite for NetApp Cluster Mode driver."""
 
@@ -49,7 +51,7 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self._vserver_client = mock.Mock()
         self._vserver_client.send_request = mock.Mock()
         driver.NetAppApiClient = mock.Mock(return_value=self._vserver_client)
-        self.share = fake_share.fake_share()
+        self.share = fake_share.fake_share(share_proto='NFS')
         self.snapshot = fake_share.fake_snapshot()
         self.security_service = {'id': 'fake_id',
                                  'domain': 'FAKE',
@@ -460,6 +462,15 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             mock.call('net-vlan-create', vlan_args),
             mock.call('net-interface-create', interface_args),
         ])
+
+    @ddt.data(fake_share.fake_share(),
+              fake_share.fake_share(share_proto='NFSBOGUS'),
+              fake_share.fake_share(share_proto='CIFSBOGUS'))
+    def test_get_helper_with_wrong_proto(self, share):
+        self.stubs.Set(self.driver, '_check_licenses',
+                       mock.Mock(return_value=share['share_proto']))
+        self.assertRaises(exception.NetAppException,
+                          self.driver._get_helper, share)
 
     def test_enable_nfs(self):
         self.driver._enable_nfs(self._vserver_client)

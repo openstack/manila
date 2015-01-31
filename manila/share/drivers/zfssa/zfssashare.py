@@ -194,7 +194,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
         arg.update(self.default_args)
         arg.update({'name': share['id']})
 
-        if share['share_proto'].startswith('CIFS'):
+        if share['share_proto'] == 'CIFS':
             arg.update({'sharesmb': 'on'})
         LOG.debug("ZFSSAShareDriver.create_share: id=%(name)s, size=%(quota)s",
                   {'name': arg['name'],
@@ -240,7 +240,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
         }
         arg.update(details)
 
-        if share['share_proto'].startswith('CIFS'):
+        if share['share_proto'] == 'CIFS':
             arg.update({'sharesmb': 'on'})
         self.zfssa.clone_snapshot(lcfg.zfssa_pool,
                                   lcfg.zfssa_project,
@@ -281,7 +281,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
         """Allows access to an NFS share for the specified IP."""
         LOG.debug("ZFSSAShareDriver.allow_access: share=%s", share['id'])
         lcfg = self.configuration
-        if share['share_proto'].startswith('NFS'):
+        if share['share_proto'] == 'NFS':
             self.zfssa.allow_access_nfs(lcfg.zfssa_pool,
                                         lcfg.zfssa_project,
                                         share['id'],
@@ -291,12 +291,12 @@ class ZFSSAShareDriver(driver.ShareDriver):
         """Deny access to an NFS share for the specified IP."""
         LOG.debug("ZFSSAShareDriver.deny_access: share=%s", share['id'])
         lcfg = self.configuration
-        if share['share_proto'].startswith('NFS'):
+        if share['share_proto'] == 'NFS':
             self.zfssa.deny_access_nfs(lcfg.zfssa_pool,
                                        lcfg.zfssa_project,
                                        share['id'],
                                        access)
-        elif share['share_proto'].startswith('CIFS'):
+        elif share['share_proto'] == 'CIFS':
             return
 
     def _update_share_stats(self):
