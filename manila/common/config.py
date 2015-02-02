@@ -27,7 +27,10 @@ stepping stone.
 import socket
 
 from oslo_config import cfg
+import six
 
+from manila.common import constants
+from manila import exception
 from manila.i18n import _
 
 CONF = cfg.CONF
@@ -172,8 +175,36 @@ global_opts = [
                 help='A list of share backend names to use. These backend '
                      'names should be backed by a unique [CONFIG] group '
                      'with its options.'),
+    cfg.ListOpt('enabled_share_protocols',
+                default=['NFS', 'CIFS'],
+                help="Specify list of protocols to be allowed for share "
+                     "creation. Available values are '%s'" % six.text_type(
+                         constants.SUPPORTED_SHARE_PROTOCOLS)),
     cfg.BoolOpt('no_snapshot_gb_quota',
                 default=False,
                 help='Whether snapshots count against Gigabyte quota.'), ]
 
 CONF.register_opts(global_opts)
+
+
+def verify_share_protocols():
+    """Perfom verification of 'enabled_share_protocols'."""
+    msg = None
+    supported_protocols = constants.SUPPORTED_SHARE_PROTOCOLS
+    data = dict(supported=six.text_type(supported_protocols))
+    if CONF.enabled_share_protocols:
+        for share_proto in CONF.enabled_share_protocols:
+            if share_proto not in supported_protocols:
+                data.update({'share_proto': share_proto})
+                msg = _("Unsupported share protocol '%(share_proto)s' "
+                        "is set as enabled. Available values are "
+                        "%(supported)s. ")
+                break
+    else:
+        msg = _("No share protocols were specified as enabled. "
+                "Available values are %(supported)s. ")
+    if msg:
+        msg += _("Please specify one or more protocols using "
+                 "configuration option 'enabled_share_protocols.")
+        msg = msg % data
+        raise exception.ManilaException(message=msg)

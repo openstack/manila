@@ -26,6 +26,7 @@ from oslo.utils import timeutils as timeutils_old  # noqa
 from oslo_config import cfg
 from oslo_utils import timeutils
 
+from manila.common import constants
 from manila import context
 from manila import db as db_driver
 from manila import exception
@@ -34,6 +35,7 @@ from manila import share
 from manila.share import api as share_api
 from manila import test
 from manila.tests.db import fakes as db_fakes
+from manila.tests import utils as test_utils
 from manila import utils
 
 CONF = cfg.CONF
@@ -419,9 +421,9 @@ class ShareAPITestCase(test.TestCase):
     def test_get_all_filter_by_invalid_extra_specs(self):
         self._get_all_filter_metadata_or_extra_specs_invalid(key='extra_specs')
 
-    def test_create(self):
-        date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        timeutils.utcnow.return_value = date
+    @ddt.data(*constants.SUPPORTED_SHARE_PROTOCOLS)
+    def test_create_share_valid_protocol(self, proto):
+        timeutils.utcnow.return_value = datetime.datetime(1, 1, 1, 1, 1, 1)
         share = fake_share('fakeid',
                            user_id=self.context.user_id,
                            project_id=self.context.project_id,
@@ -430,31 +432,39 @@ class ShareAPITestCase(test.TestCase):
         for name in ('id', 'export_location', 'host', 'launched_at',
                      'terminated_at'):
             options.pop(name, None)
-        with mock.patch.object(db_driver, 'share_create',
-                               mock.Mock(return_value=share)):
-            self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
-                            availability_zone='fakeaz')
-            db_driver.share_create.assert_called_once_with(
-                self.context, options)
+        options.update(share_proto=proto)
+        self.mock_object(
+            db_driver, 'share_create', mock.Mock(return_value=share))
 
-    def test_create_glusterfs(self):
-        date = datetime.datetime(1, 1, 1, 1, 1, 1)
-        timeutils.utcnow.return_value = date
-        share = fake_share('fakeid',
-                           user_id=self.context.user_id,
-                           project_id=self.context.project_id,
-                           status='creating')
-        options = share.copy()
+        all_protos = ','.join(
+            proto for proto in constants.SUPPORTED_SHARE_PROTOCOLS)
+        data = dict(DEFAULT=dict(enabled_share_protocols=all_protos))
+        with test_utils.create_temp_config_with_opts(data):
+            self.api.create(
+                self.context, proto, '1', 'fakename', 'fakedesc',
+                availability_zone='fakeaz')
+
+        db_driver.share_create.assert_called_once_with(
+            self.context, options)
+
+    @ddt.data(
+        None, '', 'fake', 'nfsfake', 'cifsfake', 'glusterfsfake', 'hdfsfake')
+    def test_create_share_invalid_protocol(self, proto):
+        options = fake_share(
+            'fakeid', user_id=self.context.user_id,
+            project_id=self.context.project_id, status='creating')
         for name in ('id', 'export_location', 'host', 'launched_at',
                      'terminated_at'):
             options.pop(name, None)
-        with mock.patch.object(db_driver, 'share_create',
-                               mock.Mock(return_value=share)):
-            options.update(share_proto='glusterfs')
-            self.api.create(self.context, 'glusterfs', '1', 'fakename',
-                            'fakedesc', availability_zone='fakeaz')
-            db_driver.share_create.assert_called_once_with(
-                self.context, options)
+        options.update(share_proto=proto)
+        all_protos = ','.join(
+            proto for proto in constants.SUPPORTED_SHARE_PROTOCOLS)
+        data = dict(DEFAULT=dict(enabled_share_protocols=all_protos))
+        with test_utils.create_temp_config_with_opts(data):
+            self.assertRaises(
+                exception.InvalidInput,
+                self.api.create,
+                self.context, proto, '1', 'fakename', 'fakedesc')
 
     @mock.patch.object(quota.QUOTAS, 'reserve',
                        mock.Mock(return_value='reservation'))

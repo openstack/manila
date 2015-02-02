@@ -81,6 +81,7 @@ fi
 
 # Common opts
 SHARE_NAME_PREFIX=${SHARE_NAME_PREFIX:-share-}
+MANILA_ENABLED_SHARE_PROTOCOLS=${ENABLED_SHARE_PROTOCOLS:-"NFS,CIFS"}
 MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.filter_scheduler.FilterScheduler}
 MANILA_SERVICE_SECGROUP="manila-service"
 
@@ -249,6 +250,8 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT nova_admin_password $SERVICE_PASSWORD
     iniset $MANILA_CONF DEFAULT cinder_admin_password $SERVICE_PASSWORD
     iniset $MANILA_CONF DEFAULT neutron_admin_password $SERVICE_PASSWORD
+
+    iniset $MANILA_CONF DEFAULT enabled_share_protocols $MANILA_ENABLED_SHARE_PROTOCOLS
 
     iniset $MANILA_CONF oslo_concurrency lock_path $MANILA_LOCK_PATH
 

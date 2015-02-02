@@ -106,10 +106,15 @@ class API(base.Base):
                         "You should omit the argument.")
                 raise exception.InvalidInput(reason=msg)
 
-        # TODO(rushiagr): Find a suitable place to keep all the allowed
-        #                 share types so that it becomes easier to add one
-        if share_proto.lower() not in ['nfs', 'cifs', 'glusterfs', 'hdfs']:
-            msg = (_("Invalid share type provided: %s") % share_proto)
+        supported_share_protocols = (
+            proto.upper() for proto in CONF.enabled_share_protocols)
+        if not (share_proto and
+                share_proto.upper() in supported_share_protocols):
+            msg = (_("Invalid share protocol provided: %(provided)s. "
+                     "It is either disabled or unsupported. Available "
+                     "protocols: %(supported)s") % dict(
+                         provided=share_proto,
+                         supported=CONF.enabled_share_protocols))
             raise exception.InvalidInput(reason=msg)
 
         try:
