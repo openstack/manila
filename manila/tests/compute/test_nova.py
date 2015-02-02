@@ -14,6 +14,7 @@
 
 import mock
 from novaclient import exceptions as nova_exception
+from novaclient import utils
 from novaclient.v1_1 import servers as nova_servers
 
 from manila.compute import nova
@@ -87,7 +88,17 @@ class NovaApiTestCase(test.TestCase):
     def test_server_get(self):
         instance_id = 'instance_id1'
         result = self.api.server_get(self.ctx, instance_id)
-        self.assertEqual(result['id'], instance_id)
+        self.assertEqual(instance_id, result['id'])
+
+    def test_server_get_by_name_or_id(self):
+        instance_id = 'instance_id1'
+        server = {'id': instance_id, 'fake_key': 'fake_value'}
+        self.stubs.Set(utils, 'find_resource', mock.Mock(return_value=server))
+
+        result = self.api.server_get_by_name_or_id(self.ctx, instance_id)
+
+        self.assertEqual(instance_id, result['id'])
+        utils.find_resource.assert_called_once_with(mock.ANY, instance_id)
 
     def test_server_get_failed(self):
         nova.novaclient.side_effect = nova_exception.NotFound(404)

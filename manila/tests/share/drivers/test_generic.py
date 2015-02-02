@@ -1,4 +1,5 @@
 # Copyright (c) 2014 NetApp, Inc.
+# Copyright (c) 2015 Mirantis, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -624,6 +625,27 @@ class GenericShareDriverTestCase(test.TestCase):
         self._helper_nfs.create_export.assert_called_once_with(
             self.server['backend_details'], self.share['name'])
 
+    def test_delete_share_no_share_servers_handling(self):
+        self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
+        self.stubs.Set(
+            self._driver.service_instance_manager,
+            'get_common_server', mock.Mock(return_value=self.server))
+        self.stubs.Set(
+            self._driver.service_instance_manager,
+            'ensure_service_instance', mock.Mock(return_value=False))
+
+        CONF.set_default('driver_handles_share_servers', False)
+
+        self._driver.delete_share(self._context, self.share)
+
+        self._driver.service_instance_manager.get_common_server.\
+            assert_called_once_with()
+        self._driver._deallocate_container.assert_called_once_with(
+            self._driver.admin_context, self.share)
+        self._driver.service_instance_manager.ensure_service_instance.\
+            assert_called_once_with(
+                self._context, self.server['backend_details'])
+
     def test_delete_share(self):
         self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
         self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
@@ -641,6 +663,9 @@ class GenericShareDriverTestCase(test.TestCase):
             self.server['backend_details'])
         self._driver._deallocate_container.assert_called_once_with(
             self._driver.admin_context, self.share)
+        self._driver.service_instance_manager.ensure_service_instance.\
+            assert_called_once_with(
+                self._context, self.server['backend_details'])
 
     def test_delete_share_without_share_server(self):
         self.stubs.Set(self._driver, '_unmount_device', mock.Mock())
@@ -684,17 +709,20 @@ class GenericShareDriverTestCase(test.TestCase):
         self.stubs.Set(self._driver, '_detach_volume', mock.Mock())
         self.stubs.Set(self._driver, '_deallocate_container', mock.Mock())
 
-        with mock.patch.object(self._driver.service_instance_manager,
-                               'ensure_service_instance',
-                               mock.Mock(return_value=False)):
-            self._driver.delete_share(
-                self._context, self.share, share_server=self.server)
+        self.stubs.Set(
+            self._driver.service_instance_manager,
+            'ensure_service_instance', mock.Mock(return_value=False))
+        self._driver.delete_share(
+            self._context, self.share, share_server=self.server)
 
-            self.assertFalse(self._helper_nfs.remove_export.called)
-            self.assertFalse(self._driver._unmount_device.called)
-            self.assertFalse(self._driver._detach_volume.called)
-            self._driver._deallocate_container.assert_called_once_with(
-                self._driver.admin_context, self.share)
+        self.assertFalse(self._helper_nfs.remove_export.called)
+        self.assertFalse(self._driver._unmount_device.called)
+        self.assertFalse(self._driver._detach_volume.called)
+        self._driver._deallocate_container.assert_called_once_with(
+            self._driver.admin_context, self.share)
+        self._driver.service_instance_manager.ensure_service_instance.\
+            assert_called_once_with(
+                self._context, self.server['backend_details'])
 
     def test_create_snapshot(self):
         fake_vol = fake_volume.FakeVolume()
@@ -787,7 +815,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare,
                           self._driver._get_helper, share)
 
-    def test_setup_network(self):
+    def test__setup_server(self):
         sim = self._driver.instance_manager
         net_info = {'server_id': 'fake',
                     'neutron_net_id': 'fake-net-id',
@@ -799,7 +827,7 @@ class GenericShareDriverTestCase(test.TestCase):
             'fake-net-id',
             'fake-subnet-id')
 
-    def test_setup_network_revert(self):
+    def test__setup_server_revert(self):
 
         def raise_exception(*args, **kwargs):
             raise exception.ServiceInstanceException
@@ -814,7 +842,7 @@ class GenericShareDriverTestCase(test.TestCase):
                           self._driver.setup_server,
                           net_info)
 
-    def test_teardown_network(self):
+    def test__teardown_server(self):
         server_details = {
             'instance_id': 'fake_instance_id',
             'subnet_id': 'fake_subnet_id',
@@ -927,6 +955,70 @@ class GenericShareDriverTestCase(test.TestCase):
             self.assertIn(key, result)
         self.assertEqual(True, result['driver_handles_share_servers'])
         self.assertEqual('Open Source', result['vendor_name'])
+
+
+@generic.ensure_server
+def fake(driver_instance, context, share_server=None):
+    return share_server
+
+
+@ddt.ddt
+class GenericDriverEnsureServerTestCase(test.TestCase):
+
+    def setUp(self):
+        super(GenericDriverEnsureServerTestCase, self).setUp()
+        self._context = context.get_admin_context()
+        self.server = {'id': 'fake_id', 'backend_details': {'foo': 'bar'}}
+        self.dhss_false = type(
+            'Fake', (object,), {'driver_handles_share_servers': False})
+        self.dhss_true = type(
+            'Fake', (object,), {'driver_handles_share_servers': True})
+
+    def test_share_servers_are_not_handled_server_not_provided(self):
+        self.dhss_false.service_instance_manager = mock.Mock()
+        self.dhss_false.service_instance_manager.get_common_server = (
+            mock.Mock(return_value=self.server))
+        self.dhss_false.service_instance_manager.ensure_service_instance = (
+            mock.Mock(return_value=True))
+
+        actual = fake(self.dhss_false, self._context)
+
+        self.assertEqual(self.server, actual)
+        self.dhss_false.service_instance_manager.\
+            get_common_server.assert_called_once_with()
+        self.dhss_false.service_instance_manager.ensure_service_instance.\
+            assert_called_once_with(
+                self._context, self.server['backend_details'])
+
+    @ddt.data({'id': 'without_details'},
+              {'id': 'with_details', 'backend_details': {'foo': 'bar'}})
+    def test_share_servers_are_not_handled_server_provided(self, server):
+        self.assertRaises(
+            exception.ManilaException,
+            fake, self.dhss_false, self._context, share_server=server)
+
+    def test_share_servers_are_handled_server_provided(self):
+        self.dhss_true.service_instance_manager = mock.Mock()
+        self.dhss_true.service_instance_manager.ensure_service_instance = (
+            mock.Mock(return_value=True))
+
+        actual = fake(self.dhss_true, self._context, share_server=self.server)
+
+        self.assertEqual(self.server, actual)
+        self.dhss_true.service_instance_manager.ensure_service_instance.\
+            assert_called_once_with(
+                self._context, self.server['backend_details'])
+
+    def test_share_servers_are_handled_invalid_server_provided(self):
+        server = {'id': 'without_details'}
+
+        self.assertRaises(
+            exception.ManilaException,
+            fake, self.dhss_true, self._context, share_server=server)
+
+    def test_share_servers_are_handled_server_not_provided(self):
+        self.assertRaises(
+            exception.ManilaException, fake, self.dhss_true, self._context)
 
 
 class NFSHelperTestCase(test.TestCase):

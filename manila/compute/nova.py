@@ -20,6 +20,7 @@ import sys
 
 from novaclient import exceptions as nova_exception
 from novaclient import service_catalog
+from novaclient import utils
 from novaclient.v1_1 import client as nova_client
 from novaclient.v1_1.contrib import assisted_volume_snapshots
 from novaclient.v1_1 import servers as nova_servers
@@ -27,6 +28,7 @@ from oslo_config import cfg
 
 from manila.db import base
 from manila import exception
+from manila.i18n import _
 from manila.openstack.common import log as logging
 
 
@@ -180,6 +182,15 @@ class API(base.Base):
         return _untranslate_server_summary_view(
             novaclient(context).servers.get(instance_id)
         )
+
+    def server_get_by_name_or_id(self, context, instance_name_or_id):
+        try:
+            server = utils.find_resource(
+                novaclient(context).servers, instance_name_or_id)
+        except nova_exception.CommandError as e:
+            msg = _("Failed to get Nova VM. %s") % e
+            raise exception.ManilaException(msg)
+        return _untranslate_server_summary_view(server)
 
     def server_list(self, context, search_opts=None, all_tenants=False):
         if search_opts is None:

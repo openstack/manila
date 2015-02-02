@@ -89,6 +89,9 @@ class API(object):
     def server_get(self, *args, **kwargs):
         pass
 
+    def server_get_by_name_or_id(self, *args, **kwargs):
+        pass
+
     def keypair_list(self, *args, **kwargs):
         pass
 
