@@ -90,4 +90,4 @@ dbus-addexport: RegExpFilter, dbus-send, root, dbus-send, --print-reply, --syste
 dbus-removeexport: RegExpFilter, dbus-send, root, dbus-send, --print-reply, --system, --dest=org\.ganesha\.nfsd, /org/ganesha/nfsd/ExportMgr, org\.ganesha\.nfsd\.exportmgr\.(Add|Remove)Export, .*
 
 # manila/share/drivers/ganesha/manager.py:
-rmconf: RegExpFilter, sh, root, sh, -c, rm /.*/\*\.conf$
+rmconf: RegExpFilter, sh, root, sh, -c, rm -f /.*/\*\.conf$

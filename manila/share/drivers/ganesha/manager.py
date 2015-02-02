@@ -340,5 +340,5 @@ class GaneshaManager(object):
     def reset_exports(self):
         """Delete all export files."""
         self.execute('sh', '-c',
-                     'rm %s/*.conf' % pipes.quote(self.ganesha_export_dir))
+                     'rm -f %s/*.conf' % pipes.quote(self.ganesha_export_dir))
         self._mkindex()
