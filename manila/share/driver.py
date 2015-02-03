@@ -185,6 +185,9 @@ class ShareDriver(object):
             network_config_group = None
 
         self._verify_share_server_handling(driver_handles_share_servers)
+        if self.driver_handles_share_servers:
+            self.network_api = network.API(
+                config_group_name=network_config_group)
 
         if hasattr(self, 'init_execute_mixin'):
             # Instance with 'ExecuteMixin'
@@ -192,7 +195,6 @@ class ShareDriver(object):
         if hasattr(self, 'init_ganesha_mixin'):
             # Instance with 'GaneshaMixin'
             self.init_ganesha_mixin(*args, **kwargs)  # pylint: disable=E1101
-        self.network_api = network.API(config_group_name=network_config_group)
 
     @property
     def driver_handles_share_servers(self):

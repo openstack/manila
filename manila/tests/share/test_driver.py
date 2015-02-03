@@ -77,12 +77,16 @@ class ShareDriverTestCase(test.TestCase):
 
         self.assertTrue(hasattr(share_driver, 'configuration'))
         config.append_config_values.assert_called_once_with(driver.share_opts)
-        if network_config_group:
-            network.API.assert_called_once_with(
-                config_group_name=config.network_config_group)
+        if driver_handles_share_servers:
+            if network_config_group:
+                network.API.assert_called_once_with(
+                    config_group_name=config.network_config_group)
+            else:
+                network.API.assert_called_once_with(
+                    config_group_name=config.config_group)
         else:
-            network.API.assert_called_once_with(
-                config_group_name=config.config_group)
+            self.assertFalse(hasattr(share_driver, 'network_api'))
+            self.assertFalse(network.API.called)
         return share_driver
 
     def test_instantiate_share_driver(self):
