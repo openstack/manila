@@ -516,6 +516,6 @@ class GaneshaManagerTestCase(test.TestCase):
         self.mock_object(self._manager, '_mkindex')
         ret = self._manager.reset_exports()
         self._manager.execute.assert_called_once_with(
-            'sh', '-c', 'rm /fakedir0/export.d/*.conf')
+            'sh', '-c', 'rm -f /fakedir0/export.d/*.conf')
         self._manager._mkindex.assert_called_once_with()
         self.assertEqual(None, ret)
