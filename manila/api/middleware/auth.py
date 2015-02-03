@@ -19,6 +19,7 @@ Common Auth Middleware.
 import os
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_serialization import jsonutils
 import webob.dec
 import webob.exc
@@ -26,7 +27,6 @@ import webob.exc
 from manila.api.openstack import wsgi
 from manila import context
 from manila.i18n import _
-from manila.openstack.common import log as logging
 from manila import wsgi as base_wsgi
 
 use_forwarded_for_opt = cfg.BoolOpt(
@@ -37,7 +37,7 @@ use_forwarded_for_opt = cfg.BoolOpt(
 
 CONF = cfg.CONF
 CONF.register_opt(use_forwarded_for_opt)
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def pipeline_factory(loader, global_conf, **local_conf):

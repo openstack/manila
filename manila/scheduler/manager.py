@@ -21,6 +21,7 @@ Scheduler Service
 
 from oslo import messaging
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 
@@ -29,11 +30,10 @@ from manila import db
 from manila import exception
 from manila.i18n import _LW
 from manila import manager
-from manila.openstack.common import log as logging
 from manila import rpc
 from manila.share import rpcapi as share_rpcapi
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
                                   default='manila.scheduler.filter_scheduler.'

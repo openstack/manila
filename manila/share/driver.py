@@ -21,14 +21,14 @@ Drivers for shares.
 import time
 
 from oslo_config import cfg
+from oslo_log import log
 
 from manila import exception
 from manila.i18n import _LE
 from manila import network
-from manila.openstack.common import log as logging
 from manila import utils
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 share_opts = [
     # NOTE(rushiagr): Reasonable to define this option at only one place.

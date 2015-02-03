@@ -21,6 +21,7 @@ import copy
 import itertools
 
 import oslo_concurrency.opts
+import oslo_log._options
 
 import manila.api.middleware.auth
 import manila.api.middleware.sizelimit
@@ -128,6 +129,7 @@ _opts = [
 ]
 
 _opts.extend(oslo_concurrency.opts.list_opts())
+_opts.extend(oslo_log._options.list_opts())
 
 
 def list_opts():

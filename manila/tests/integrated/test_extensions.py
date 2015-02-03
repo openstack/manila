@@ -14,13 +14,12 @@
 #    under the License.
 
 from oslo_config import cfg
+from oslo_log import log
 
-from manila.openstack.common import log as logging
 from manila.tests.integrated import integrated_helpers
 
-
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class ExtensionsTest(integrated_helpers._IntegratedTestBase):

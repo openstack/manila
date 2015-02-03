@@ -24,11 +24,11 @@ from cinderclient import exceptions as cinder_exception
 from cinderclient import service_catalog
 from cinderclient.v2 import client as cinder_client
 from oslo_config import cfg
+from oslo_log import log
 
 from manila.db import base
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import log as logging
 
 
 cinder_opts = [
@@ -68,7 +68,7 @@ cinder_opts = [
 CONF = cfg.CONF
 CONF.register_opts(cinder_opts)
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def cinderclient(context):

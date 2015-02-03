@@ -17,12 +17,12 @@
 import time
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import units
 
 from manila import exception
 from manila.i18n import _, _LI, _LW
-from manila.openstack.common import log as logging
 from manila.openstack.common import loopingcall
 from manila.share import driver
 from manila.share.drivers.huawei import constants
@@ -35,7 +35,7 @@ huawei_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(huawei_opts)
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class HuaweiNasDriver(driver.ShareDriver):

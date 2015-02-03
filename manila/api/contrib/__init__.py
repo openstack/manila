@@ -20,12 +20,12 @@ It can't be called 'extensions' because that causes namespacing problems.
 """
 
 from oslo_config import cfg
+from oslo_log import log
 
 from manila.api import extensions
-from manila.openstack.common import log as logging
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def standard_extensions(ext_mgr):

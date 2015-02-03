@@ -17,6 +17,7 @@ import abc
 
 import netaddr
 from oslo_config import cfg
+from oslo_log import log
 import six
 
 from manila import exception
@@ -25,11 +26,10 @@ from manila.i18n import _LE
 from manila.i18n import _LW
 from manila.network.linux import ip_lib
 from manila.network.linux import ovs_lib
-from manila.openstack.common import log as logging
 from manila import utils
 
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 OPTS = [
     cfg.StrOpt('ovs_integration_bridge',

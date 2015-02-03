@@ -14,18 +14,18 @@
 #    under the License.
 import ddt
 import mock
+from oslo_log import log
 from oslo_utils import units
 
 import manila.db
 from manila import exception
-from manila.openstack.common import log as logging
 from manila.share import configuration as conf
 from manila.share.drivers.emc import driver as emc_driver
 from manila.share.drivers.emc.plugins.vnx import helper
 from manila import test
 from manila.tests import fake_share
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def query(func):

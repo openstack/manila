@@ -25,6 +25,7 @@ import hashlib
 import re
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import units
 import six
@@ -34,7 +35,6 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LI
-from manila.openstack.common import log
 from manila.share import driver
 from manila.share.drivers.netapp import api as naapi
 from manila.share.drivers.netapp import utils as na_utils

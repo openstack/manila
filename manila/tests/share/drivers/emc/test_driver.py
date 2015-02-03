@@ -14,15 +14,15 @@
 #    under the License.
 
 import mock
+from oslo_log import log
 from stevedore import extension
 
-from manila.openstack.common import log as logging
 from manila.share import configuration as conf
 from manila.share.drivers.emc import driver as emcdriver
 from manila.share.drivers.emc.plugins import base
 from manila import test
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class FakeConnection(base.StorageConnection):

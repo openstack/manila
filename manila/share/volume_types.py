@@ -17,6 +17,7 @@
 
 from oslo_config import cfg
 from oslo_db import exception as db_exception
+from oslo_log import log
 import six
 
 from manila import context
@@ -24,10 +25,9 @@ from manila import db
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
-from manila.openstack.common import log as logging
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def create(context, name, extra_specs={}):

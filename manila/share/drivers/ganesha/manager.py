@@ -18,18 +18,17 @@ import pipes
 import re
 import sys
 
+from oslo_log import log
 from oslo_serialization import jsonutils
 import six
 
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
-from manila.openstack.common import log as logging
 from manila.share.drivers.ganesha import utils as ganesha_utils
 from manila import utils
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 IWIDTH = 4
 
 

@@ -21,8 +21,8 @@ to specify, which backend plugins to use.
 """
 
 from oslo_config import cfg
+from oslo_log import log
 
-from manila.openstack.common import log
 from manila.share import driver
 from manila.share.drivers.emc import plugin_manager as manager
 

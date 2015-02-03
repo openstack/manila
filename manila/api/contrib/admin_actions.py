@@ -12,6 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from oslo_log import log
 import webob
 from webob import exc
 
@@ -19,11 +20,9 @@ from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila import db
 from manila import exception
-from manila.openstack.common import log as logging
 from manila import share
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class AdminController(wsgi.Controller):

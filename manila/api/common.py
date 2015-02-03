@@ -17,6 +17,7 @@ import os
 import re
 
 from oslo_config import cfg
+from oslo_log import log
 import six
 from six.moves.urllib import parse
 import webob
@@ -24,11 +25,10 @@ import webob
 from manila.api.openstack import wsgi
 from manila.api import xmlutil
 from manila.i18n import _
-from manila.openstack.common import log as logging
 from manila import utils
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 XML_NS_V1 = 'http://docs.openstack.org/volume/api/v1'
 
 

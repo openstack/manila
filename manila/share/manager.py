@@ -20,6 +20,7 @@
 """
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -32,13 +33,12 @@ from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
 from manila import manager
-from manila.openstack.common import log as logging
 from manila import quota
 import manila.share.configuration
 from manila.share import utils as share_utils
 from manila import utils
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 share_manager_opts = [
     cfg.StrOpt('share_driver',

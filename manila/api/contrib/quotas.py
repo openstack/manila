@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
+from oslo_log import log
 from oslo_utils import strutils
 from six.moves.urllib import parse
 import webob
@@ -25,12 +25,11 @@ from manila import db
 from manila.db.sqlalchemy import api as sqlalchemy_api
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import log as logging
 from manila import quota
 
 
 QUOTAS = quota.QUOTAS
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 NON_QUOTA_KEYS = ['tenant_id', 'id', 'force']
 
 

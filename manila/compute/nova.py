@@ -25,12 +25,11 @@ from novaclient.v1_1 import client as nova_client
 from novaclient.v1_1.contrib import assisted_volume_snapshots
 from novaclient.v1_1 import servers as nova_servers
 from oslo_config import cfg
+from oslo_log import log
 
 from manila.db import base
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import log as logging
-
 
 nova_opts = [
     cfg.StrOpt('nova_catalog_info',
@@ -67,7 +66,7 @@ nova_opts = [
 CONF = cfg.CONF
 CONF.register_opts(nova_opts)
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def novaclient(context):

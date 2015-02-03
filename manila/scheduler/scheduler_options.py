@@ -24,11 +24,11 @@ import datetime
 import os
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 
 from manila.i18n import _LE
-from manila.openstack.common import log as logging
 
 scheduler_json_config_location_opt = cfg.StrOpt(
     'scheduler_json_config_location',
@@ -38,7 +38,7 @@ scheduler_json_config_location_opt = cfg.StrOpt(
 CONF = cfg.CONF
 CONF.register_opt(scheduler_json_config_location_opt)
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class SchedulerOptions(object):

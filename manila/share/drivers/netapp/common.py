@@ -17,17 +17,16 @@ Unified driver for NetApp storage systems.
 Supports multiple storage systems of different families and driver modes.
 """
 
+from oslo_log import log
 from oslo_utils import importutils
 
 from manila import exception
 from manila.i18n import _, _LI
-from manila.openstack.common import log as logging
 from manila.share import driver
 from manila.share.drivers.netapp import cluster_mode
 from manila.share.drivers.netapp import utils as na_utils
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 # Add new drivers here, no other code changes required.
 NETAPP_UNIFIED_DRIVER_REGISTRY = {

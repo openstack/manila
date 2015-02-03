@@ -13,11 +13,11 @@
 #    under the License.
 
 import mock
+from oslo_log import log
 
-from manila.openstack.common import log as logging
 from manila.tests import fake_compute
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class FakeServiceInstanceManager(object):

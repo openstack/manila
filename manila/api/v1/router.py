@@ -19,6 +19,8 @@
 WSGI middleware for OpenStack Share API.
 """
 
+from oslo_log import log
+
 from manila.api import extensions
 import manila.api.openstack
 from manila.api.v1 import limits
@@ -30,10 +32,8 @@ from manila.api.v1 import share_snapshots
 from manila.api.v1 import shares
 from manila.api.v1 import volume_types
 from manila.api import versions
-from manila.openstack.common import log as logging
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class APIRouter(manila.api.openstack.APIRouter):

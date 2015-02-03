@@ -20,16 +20,15 @@ import platform
 import socket
 
 from oslo_concurrency import processutils as putils
+from oslo_log import log
 from oslo_utils import timeutils
 
 from manila import exception
 from manila.i18n import _, _LI, _LW
-from manila.openstack.common import log as logging
 from manila.share.drivers.netapp import api as na_api
 from manila import version
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 VALID_TRACE_FLAGS = ['method', 'api']

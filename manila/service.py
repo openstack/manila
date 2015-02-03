@@ -29,6 +29,7 @@ import eventlet
 import greenlet
 from oslo import messaging
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import importutils
 
 from manila import context
@@ -37,13 +38,12 @@ from manila import exception
 from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 from manila.openstack.common import loopingcall
 from manila import rpc
 from manila import version
 from manila import wsgi
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 service_opts = [
     cfg.IntOpt('report_interval',

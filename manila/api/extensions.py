@@ -17,6 +17,7 @@
 import os
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import importutils
 import six
 import webob.dec
@@ -29,11 +30,10 @@ from manila import exception
 from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 import manila.policy
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class ExtensionDescriptor(object):

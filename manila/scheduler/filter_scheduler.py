@@ -21,16 +21,16 @@ Weighing Functions.
 """
 
 from oslo_config import cfg
+from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
-from manila.openstack.common import log as logging
 from manila.scheduler import driver
 from manila.scheduler import scheduler_options
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class FilterScheduler(driver.Scheduler):

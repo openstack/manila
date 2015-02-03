@@ -26,6 +26,7 @@ from oslo_config import cfg
 from oslo_db import exception as db_exception
 from oslo_db import options as db_options
 from oslo_db.sqlalchemy import session
+from oslo_log import log
 from oslo_utils import timeutils
 import six
 from sqlalchemy import or_
@@ -39,12 +40,11 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 
 
 CONF = cfg.CONF
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 _DEFAULT_QUOTA_NAME = 'default'
 PER_PROJECT_QUOTAS = []

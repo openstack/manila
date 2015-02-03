@@ -14,11 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log
+
 from manila.api.middleware import sizelimit
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class RequestBodySizeLimiter(sizelimit.RequestBodySizeLimiter):
