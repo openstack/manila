@@ -13,27 +13,67 @@
 # under the License.
 
 # This script is executed inside post_test_hook function in devstack gate.
+# First argument ($1) expects 'multibackend' as value for setting appropriate
+# tempest conf opts, all other values will assume singlebackend installation.
 
 sudo chown -R jenkins:stack $BASE/new/tempest
 sudo chown -R jenkins:stack $BASE/data/tempest
 sudo chmod -R o+rx $BASE/new/devstack/files
 
-# Import devstack function 'iniset'
+# Import devstack functions 'iniset', 'iniget' and 'trueorfalse'
 source $BASE/new/devstack/functions
 
 if [[ "$1" =~ "multibackend" ]]; then
     # if arg $1 has "multibackend", then we assume multibackend installation
     iniset $BASE/new/tempest/etc/tempest.conf share multi_backend True
 
-    # backend names are defined in pre_test_hook
-    iniset $BASE/new/tempest/etc/tempest.conf share backend_names "LONDON,PARIS"
+    # Set share backends names, they are defined within pre_test_hook
+    export BACKENDS_NAMES="LONDON,PARIS"
+else
+    export BACKENDS_NAMES="LONDON"
 fi
+iniset $BASE/new/tempest/etc/tempest.conf share backend_names $BACKENDS_NAMES
 
 # Set two retries for CI jobs
 iniset $BASE/new/tempest/etc/tempest.conf share share_creation_retry_number 2
 
 # Suppress errors in cleanup of resources
 iniset $BASE/new/tempest/etc/tempest.conf share suppress_errors_in_cleanup True
+
+# Define whether share drivers handle share servers or not.
+# Requires defined config option 'driver_handles_share_servers'.
+MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
+NO_SHARE_SERVER_HANDLING_MODES=0
+WITH_SHARE_SERVER_HANDLING_MODES=0
+
+# Convert backend names to config groups using lowercase translation
+CONFIG_GROUPS=${BACKENDS_NAMES,,}
+
+for CG in ${CONFIG_GROUPS//,/ }; do
+    DRIVER_HANDLES_SHARE_SERVERS=$(iniget $MANILA_CONF $CG driver_handles_share_servers)
+    if [[ $DRIVER_HANDLES_SHARE_SERVERS == False ]]; then
+        NO_SHARE_SERVER_HANDLING_MODES=$((NO_SHARE_SERVER_HANDLING_MODES+1))
+    elif [[ $DRIVER_HANDLES_SHARE_SERVERS == True ]]; then
+        WITH_SHARE_SERVER_HANDLING_MODES=$((WITH_SHARE_SERVER_HANDLING_MODES+1))
+    else
+        echo "Config option 'driver_handles_share_servers' either is not defined or \
+              defined with improper value - '$DRIVER_HANDLES_SHARE_SERVERS'."
+        exit 1
+    fi
+done
+
+if [[ $NO_SHARE_SERVER_HANDLING_MODES -ge 1 && $WITH_SHARE_SERVER_HANDLING_MODES -ge 1 || \
+      $NO_SHARE_SERVER_HANDLING_MODES -eq 0 && $WITH_SHARE_SERVER_HANDLING_MODES -eq 0 ]]; then
+    echo 'Allowed only same driver modes for all backends to be run with Tempest job.'
+    exit 1
+elif [[ $NO_SHARE_SERVER_HANDLING_MODES -ge 1 ]]; then
+    iniset $BASE/new/tempest/etc/tempest.conf share multitenancy_enabled False
+elif [[ $WITH_SHARE_SERVER_HANDLING_MODES -ge 1 ]]; then
+    iniset $BASE/new/tempest/etc/tempest.conf share multitenancy_enabled True
+else
+    echo 'Should never get here. If get, then error occured.'
+    exit 1
+fi
 
 # let us control if we die or not
 set +o errexit

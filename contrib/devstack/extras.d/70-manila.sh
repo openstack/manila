@@ -16,12 +16,20 @@ if is_service_enabled manila; then
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Creating Manila entities for auth service"
         create_manila_accounts
+
         echo_summary "Creating Manila service flavor"
         create_manila_service_flavor
+
         echo_summary "Creating Manila service security group"
         create_manila_service_secgroup
+
         echo_summary "Creating Manila service image"
         create_manila_service_image
+
+        echo_summary "Creating Manila service share servers for generic driver backends \
+                      for which handlng of share servers is disabled."
+        create_service_share_servers
+
         echo_summary "Starting Manila"
         start_manila
     fi

@@ -82,6 +82,7 @@ fi
 # Common opts
 SHARE_NAME_PREFIX=${SHARE_NAME_PREFIX:-share-}
 MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.filter_scheduler.FilterScheduler}
+MANILA_SERVICE_SECGROUP="manila-service"
 
 # Common info for Generic driver(s)
 SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.generic.GenericShareDriver}
@@ -260,7 +261,7 @@ function configure_manila {
     fi
     if [ ! $MANILA_ENABLED_BACKENDS ]; then
         # If $MANILA_ENABLED_BACKENDS is not set, use configured backends by default
-        MANILA_ENABLED_BACKENDS=$default_backends
+        export MANILA_ENABLED_BACKENDS=$default_backends
     fi
     iniset $MANILA_CONF DEFAULT enabled_share_backends $MANILA_ENABLED_BACKENDS
 
@@ -292,6 +293,28 @@ function configure_manila {
     set_config_opts DEFAULT
 }
 
+function create_service_share_servers {
+    private_net_id=$(neutron net-list --all-tenants | grep ' private ' | get_field 1)
+    for BE in ${MANILA_ENABLED_BACKENDS//,/ }; do
+        driver_handles_share_servers=$(iniget $MANILA_CONF $BE driver_handles_share_servers)
+        share_driver=$(iniget $MANILA_CONF $BE share_driver)
+        generic_driver='manila.share.drivers.generic.GenericShareDriver'
+        if [[ $(trueorfalse False driver_handles_share_servers) == False && \
+              $share_driver == $generic_driver ]]; then
+            vm_name='manila_service_share_server_'$BE
+            nova boot $vm_name \
+                --flavor $MANILA_SERVICE_VM_FLAVOR_NAME \
+                --image $MANILA_SERVICE_IMAGE_NAME \
+                --nic net-id=$private_net_id \
+                --security-groups $MANILA_SERVICE_SECGROUP
+
+            iniset $MANILA_CONF $BE service_instance_name_or_id $vm_name
+            iniset $MANILA_CONF $BE service_net_name_or_ip $private_net_id
+            iniset $MANILA_CONF $BE tenant_net_name_or_ip $private_net_id
+        fi
+    done
+}
+
 function create_manila_service_flavor {
     # Create flavor for Manila's service VM
     nova flavor-create $MANILA_SERVICE_VM_FLAVOR_NAME $MANILA_SERVICE_VM_FLAVOR_REF $MANILA_SERVICE_VM_FLAVOR_RAM $MANILA_SERVICE_VM_FLAVOR_DISK $MANILA_SERVICE_VM_FLAVOR_VCPUS
@@ -307,8 +330,6 @@ function create_manila_service_image {
 }
 
 function create_manila_service_secgroup {
-    MANILA_SERVICE_SECGROUP="manila-service"
-
     # Create a secgroup
     if ! nova secgroup-list | grep -q $MANILA_SERVICE_SECGROUP; then
         nova secgroup-create $MANILA_SERVICE_SECGROUP "$MANILA_SERVICE_SECGROUP description"
