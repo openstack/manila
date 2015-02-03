@@ -163,17 +163,16 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         vserver_name = \
             self.driver.configuration.netapp_vserver_name_template % \
             self.network_info['server_id']
-        self.stubs.Set(self.driver.db, 'share_server_backend_details_set',
-                       mock.Mock())
-        self.stubs.Set(self.driver, '_vserver_exists',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(self.driver, '_get_cluster_nodes',
-                       mock.Mock(return_value=nodes))
-        self.stubs.Set(self.driver, '_get_node_data_port',
-                       mock.Mock(return_value=port))
-        self.stubs.Set(self.driver, '_create_lif_if_not_exists', mock.Mock())
-        self.stubs.Set(self.driver, '_enable_nfs', mock.Mock())
-        self.stubs.Set(self.driver, '_setup_security_services', mock.Mock())
+        self.mock_object(self.driver.db, 'share_server_backend_details_set')
+        self.mock_object(self.driver, '_vserver_exists',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.driver, '_get_cluster_nodes',
+                         mock.Mock(return_value=nodes))
+        self.mock_object(self.driver, '_get_node_data_port',
+                         mock.Mock(return_value=port))
+        self.mock_object(self.driver, '_create_lif_if_not_exists')
+        self.mock_object(self.driver, '_enable_nfs')
+        self.mock_object(self.driver, '_setup_security_services')
 
         returned_data = self.driver._vserver_create_if_not_exists(
             self.network_info)
@@ -217,17 +216,16 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         vserver_name = \
             self.driver.configuration.netapp_vserver_name_template % \
             network_info['server_id']
-        self.stubs.Set(self.driver.db, 'share_server_backend_details_set',
-                       mock.Mock())
-        self.stubs.Set(self.driver, '_vserver_exists',
-                       mock.Mock(return_value=False))
-        self.stubs.Set(self.driver, '_create_vserver', mock.Mock())
-        self.stubs.Set(self.driver, '_get_cluster_nodes',
-                       mock.Mock(return_value=nodes))
-        self.stubs.Set(self.driver, '_get_node_data_port',
-                       mock.Mock(return_value=port))
-        self.stubs.Set(self.driver, '_create_lif_if_not_exists', mock.Mock())
-        self.stubs.Set(self.driver, '_enable_nfs', mock.Mock())
+        self.mock_object(self.driver.db, 'share_server_backend_details_set')
+        self.mock_object(self.driver, '_vserver_exists',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.driver, '_create_vserver')
+        self.mock_object(self.driver, '_get_cluster_nodes',
+                         mock.Mock(return_value=nodes))
+        self.mock_object(self.driver, '_get_node_data_port',
+                         mock.Mock(return_value=port))
+        self.mock_object(self.driver, '_create_lif_if_not_exists')
+        self.mock_object(self.driver, '_enable_nfs')
 
         returned_data = self.driver._vserver_create_if_not_exists(network_info)
 
@@ -268,18 +266,17 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         vserver_name = \
             self.driver.configuration.netapp_vserver_name_template % \
             network_info['server_id']
-        self.stubs.Set(self.driver.db, 'share_server_backend_details_set',
-                       mock.Mock())
-        self.stubs.Set(self.driver, '_vserver_exists',
-                       mock.Mock(return_value=False))
-        self.stubs.Set(self.driver, '_create_vserver', mock.Mock())
-        self.stubs.Set(self.driver, '_get_cluster_nodes',
-                       mock.Mock(return_value=nodes))
-        self.stubs.Set(self.driver, '_get_node_data_port',
-                       mock.Mock(return_value=port))
-        self.stubs.Set(self.driver, '_create_lif_if_not_exists', mock.Mock())
-        self.stubs.Set(self.driver, '_enable_nfs', mock.Mock())
-        self.stubs.Set(self.driver, '_setup_security_services', mock.Mock())
+        self.mock_object(self.driver.db, 'share_server_backend_details_set')
+        self.mock_object(self.driver, '_vserver_exists',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.driver, '_create_vserver')
+        self.mock_object(self.driver, '_get_cluster_nodes',
+                         mock.Mock(return_value=nodes))
+        self.mock_object(self.driver, '_get_node_data_port',
+                         mock.Mock(return_value=port))
+        self.mock_object(self.driver, '_create_lif_if_not_exists')
+        self.mock_object(self.driver, '_enable_nfs')
+        self.mock_object(self.driver, '_setup_security_services')
 
         returned_data = self.driver._vserver_create_if_not_exists(network_info)
 
@@ -467,8 +464,9 @@ class NetAppClusteredDrvTestCase(test.TestCase):
               fake_share.fake_share(share_proto='NFSBOGUS'),
               fake_share.fake_share(share_proto='CIFSBOGUS'))
     def test_get_helper_with_wrong_proto(self, share):
-        self.stubs.Set(self.driver, '_check_licenses',
-                       mock.Mock(return_value=share['share_proto']))
+        self.mock_object(self.driver,
+                         '_check_licenses',
+                         mock.Mock(return_value=share['share_proto']))
         self.assertRaises(exception.NetAppException,
                           self.driver._get_helper, share)
 
@@ -570,8 +568,8 @@ class NetAppClusteredDrvTestCase(test.TestCase):
             'domain': 'FAKE',
         }
         self.driver._configure_dns = mock.Mock()
-        self.stubs.Set(self._vserver_client, 'send_request',
-                       mock.Mock(side_effect=naapi.NaApiError()))
+        self.mock_object(self._vserver_client, 'send_request',
+                         mock.Mock(side_effect=naapi.NaApiError()))
 
         self.assertRaises(
             exception.NetAppException,
@@ -744,9 +742,9 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         licenses = naapi.NaElement('fake_licenses_as_response')
         licenses.translate_struct(licenses_dict)
 
-        self.stubs.Set(self.driver._client, 'send_request',
-                       mock.Mock(return_value=licenses))
-        self.stubs.Set(driver.LOG, 'info', mock.Mock())
+        self.mock_object(self.driver._client, 'send_request',
+                         mock.Mock(return_value=licenses))
+        self.mock_object(driver.LOG, 'info')
 
         response = self.driver._check_licenses()
 
@@ -756,9 +754,9 @@ class NetAppClusteredDrvTestCase(test.TestCase):
         self.assertEqual(response, ['fake_license_1', 'fake_license_2'])
 
     def test_licenses_exception_raise(self):
-        self.stubs.Set(self.driver._client, 'send_request',
-                       mock.Mock(side_effect=naapi.NaApiError()))
-        self.stubs.Set(driver.LOG, 'error', mock.Mock())
+        self.mock_object(self.driver._client, 'send_request',
+                         mock.Mock(side_effect=naapi.NaApiError()))
+        self.mock_object(driver.LOG, 'error')
 
         self.driver._check_licenses()
 
@@ -786,11 +784,11 @@ class NetAppNFSHelperTestCase(test.TestCase):
     def test_create_share(self):
         export_ip = 'fake_export_ip'
         junction = 'fake-vserver-location'
-        self.stubs.Set(self.helper._client, 'send_request', mock.Mock())
+        self.mock_object(self.helper._client, 'send_request')
         self.helper._client.send_request().get_child_by_name = mock.Mock()
         self.helper._client.send_request().get_child_by_name().get_content = (
             mock.Mock(side_effect=lambda: junction))
-        self.stubs.Set(self.helper, 'add_rules', mock.Mock())
+        self.mock_object(self.helper, 'add_rules')
 
         location = self.helper.create_share(self.share['name'], export_ip)
 
@@ -825,8 +823,8 @@ class NetAppNFSHelperTestCase(test.TestCase):
             if pathname.startswith(volume_path):
                 raise naapi.NaApiError('13114')
 
-        self.stubs.Set(self.helper._client, 'send_request',
-                       mock.Mock(side_effect=raise_exception_13114))
+        self.mock_object(self.helper._client, 'send_request',
+                         mock.Mock(side_effect=raise_exception_13114))
 
         self.helper.add_rules(volume_path, rules)
 
@@ -847,8 +845,8 @@ class NetAppNFSHelperTestCase(test.TestCase):
                     not self.helper.nfs_exports_with_prefix):
                 raise naapi.NaApiError('13114')
 
-        self.stubs.Set(self.helper._client, 'send_request',
-                       mock.Mock(side_effect=raise_exception_13114))
+        self.mock_object(self.helper._client, 'send_request',
+                         mock.Mock(side_effect=raise_exception_13114))
 
         self.helper.add_rules(volume_path, rules)
 
@@ -912,8 +910,8 @@ class NetAppCIFSHelperTestCase(test.TestCase):
             name=self.name,
             export_location=export_location)
         self.helper = driver.NetAppClusteredCIFSHelper()
-        self.stubs.Set(self.helper, '_client', mock.Mock())
-        self.stubs.Set(self.helper._client, 'send_request', mock.Mock())
+        self.mock_object(self.helper, '_client')
+        self.mock_object(self.helper._client, 'send_request')
 
     def test_create_share(self):
         self.helper.create_share(self.name, '1.1.1.1')
@@ -946,8 +944,8 @@ class NetAppCIFSHelperTestCase(test.TestCase):
         )
 
     def test_allow_access_user_type_rule_already_present(self):
-        self.stubs.Set(self.helper._client, 'send_request',
-                       mock.Mock(side_effect=naapi.NaApiError('13130')))
+        self.mock_object(self.helper._client, 'send_request',
+                         mock.Mock(side_effect=naapi.NaApiError('13130')))
         access = {'access_to': 'fake_access', 'access_type': 'user'}
         self.assertRaises(
             exception.ShareAccessExists,
@@ -993,8 +991,8 @@ class NetAppCIFSHelperTestCase(test.TestCase):
         )
 
     def test_deny_access_exception_raised(self):
-        self.stubs.Set(self.helper, '_restrict_access',
-                       mock.Mock(side_effect=naapi.NaApiError()))
+        self.mock_object(self.helper, '_restrict_access',
+                         mock.Mock(side_effect=naapi.NaApiError()))
         self.assertRaises(
             naapi.NaApiError,
             self.helper.deny_access,

@@ -178,7 +178,7 @@ class SimpleSchedulerSharesTestCase(test.TestCase):
 
     def setUp(self):
         super(SimpleSchedulerSharesTestCase, self).setUp()
-        self.stubs.Set(share_rpcapi, 'ShareAPI', mock.Mock())
+        self.mock_object(share_rpcapi, 'ShareAPI')
         self.driver = simple.SimpleScheduler()
 
         self.context = context.RequestContext('fake_user', 'fake_project')

@@ -48,12 +48,12 @@ class ShareActionsTest(test.TestCase):
         super(ShareActionsTest, self).setUp()
         self.controller = share_actions.ShareActionsController()
 
-        self.stubs.Set(share_api.API, 'get', stubs.stub_share_get)
+        self.mock_object(share_api.API, 'get', stubs.stub_share_get)
 
     def test_allow_access(self):
         def _stub_allow_access(*args, **kwargs):
             return {'fake': 'fake'}
-        self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
+        self.mock_object(share_api.API, "allow_access", _stub_allow_access)
 
         id = 'fake_share_id'
         body = {
@@ -70,7 +70,7 @@ class ShareActionsTest(test.TestCase):
     def test_allow_access_cert_min_accessto(self):
         def _stub_allow_access(*args, **kwargs):
             return {'fake': 'fake'}
-        self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
+        self.mock_object(share_api.API, "allow_access", _stub_allow_access)
 
         body = {
             "os-allow_access": {
@@ -86,7 +86,7 @@ class ShareActionsTest(test.TestCase):
     def test_allow_access_cert_typical_accessto(self):
         def _stub_allow_access(*args, **kwargs):
             return {'fake': 'fake'}
-        self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
+        self.mock_object(share_api.API, "allow_access", _stub_allow_access)
 
         body = {
             "os-allow_access": {
@@ -102,7 +102,7 @@ class ShareActionsTest(test.TestCase):
     def test_allow_access_cert_max_accessto(self):
         def _stub_allow_access(*args, **kwargs):
             return {'fake': 'fake'}
-        self.stubs.Set(share_api.API, "allow_access", _stub_allow_access)
+        self.mock_object(share_api.API, "allow_access", _stub_allow_access)
 
         access_to = 'x' * 64
         body = {
@@ -204,8 +204,8 @@ class ShareActionsTest(test.TestCase):
         def _stub_deny_access(*args, **kwargs):
             pass
 
-        self.stubs.Set(share_api.API, "deny_access", _stub_deny_access)
-        self.stubs.Set(share_api.API, "access_get", _fake_access_get)
+        self.mock_object(share_api.API, "deny_access", _stub_deny_access)
+        self.mock_object(share_api.API, "access_get", _fake_access_get)
 
         id = 'fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
@@ -217,8 +217,8 @@ class ShareActionsTest(test.TestCase):
         def _stub_deny_access(*args, **kwargs):
             pass
 
-        self.stubs.Set(share_api.API, "deny_access", _stub_deny_access)
-        self.stubs.Set(share_api.API, "access_get", _fake_access_get)
+        self.mock_object(share_api.API, "deny_access", _stub_deny_access)
+        self.mock_object(share_api.API, "access_get", _fake_access_get)
 
         id = 'super_fake_share_id'
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
@@ -236,7 +236,8 @@ class ShareActionsTest(test.TestCase):
                      "access_type": "fakeip",
                      "access_to": "127.0.0.1"}]
 
-        self.stubs.Set(share_api.API, "access_get_all", _fake_access_get_all)
+        self.mock_object(share_api.API, "access_get_all",
+                         _fake_access_get_all)
         id = 'fake_share_id'
         body = {"os-access_list": None}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)

@@ -93,8 +93,8 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         self.configuration.driver_handles_share_servers = False
 
     def test_create_share(self):
-        self.stubs.Set(self._driver.zfssa, 'create_share', mock.Mock())
-        self.stubs.Set(self._driver, '_export_location', mock.Mock())
+        self.mock_object(self._driver.zfssa, 'create_share')
+        self.mock_object(self._driver, '_export_location')
         lcfg = self.configuration
         arg = {
             'host': lcfg.zfssa_data_ip,
@@ -115,8 +115,8 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         self.assertEqual(1, self._driver._export_location.call_count)
 
     def test_create_share_from_snapshot(self):
-        self.stubs.Set(self._driver.zfssa, 'clone_snapshot', mock.Mock())
-        self.stubs.Set(self._driver, '_export_location', mock.Mock())
+        self.mock_object(self._driver.zfssa, 'clone_snapshot')
+        self.mock_object(self._driver, '_export_location')
         lcfg = self.configuration
         arg = {
             'host': lcfg.zfssa_data_ip,
@@ -145,7 +145,7 @@ class ZFSSAShareDriverTestCase(test.TestCase):
             arg)
 
     def test_delete_share(self):
-        self.stubs.Set(self._driver.zfssa, 'delete_share', mock.Mock())
+        self.mock_object(self._driver.zfssa, 'delete_share')
         self._driver.delete_share(self._context, self.share)
         self.assertEqual(1, self._driver.zfssa.delete_share.call_count)
         lcfg = self.configuration
@@ -154,7 +154,7 @@ class ZFSSAShareDriverTestCase(test.TestCase):
                                                            self.share['id'])
 
     def test_create_snapshot(self):
-        self.stubs.Set(self._driver.zfssa, 'create_snapshot', mock.Mock())
+        self.mock_object(self._driver.zfssa, 'create_snapshot')
         lcfg = self.configuration
         self._driver.create_snapshot(self._context, self.snapshot)
         self.assertEqual(1, self._driver.zfssa.create_snapshot.call_count)
@@ -165,12 +165,12 @@ class ZFSSAShareDriverTestCase(test.TestCase):
             self.snapshot['id'])
 
     def test_delete_snapshot(self):
-        self.stubs.Set(self._driver.zfssa, 'delete_snapshot', mock.Mock())
+        self.mock_object(self._driver.zfssa, 'delete_snapshot')
         self._driver.delete_snapshot(self._context, self.snapshot)
         self.assertEqual(1, self._driver.zfssa.delete_snapshot.call_count)
 
     def test_delete_snapshot_negative(self):
-        self.stubs.Set(self._driver.zfssa, 'has_clones', mock.Mock())
+        self.mock_object(self._driver.zfssa, 'has_clones')
         self._driver.zfssa.has_clones.return_value = True
         self.assertRaises(exception.ShareSnapshotIsBusy,
                           self._driver.delete_snapshot,
@@ -178,7 +178,7 @@ class ZFSSAShareDriverTestCase(test.TestCase):
                           self.snapshot)
 
     def test_ensure_share(self):
-        self.stubs.Set(self._driver.zfssa, 'get_share', mock.Mock())
+        self.mock_object(self._driver.zfssa, 'get_share')
         lcfg = self.configuration
         self._driver.ensure_share(self._context, self.share)
         self.assertEqual(1, self._driver.zfssa.get_share.call_count)
@@ -194,7 +194,7 @@ class ZFSSAShareDriverTestCase(test.TestCase):
                           self.share)
 
     def test_allow_access(self):
-        self.stubs.Set(self._driver.zfssa, 'allow_access_nfs', mock.Mock())
+        self.mock_object(self._driver.zfssa, 'allow_access_nfs')
         lcfg = self.configuration
         self._driver.allow_access(self._context, self.share, self.access)
         self.assertEqual(1, self._driver.zfssa.allow_access_nfs.call_count)
@@ -205,7 +205,7 @@ class ZFSSAShareDriverTestCase(test.TestCase):
             self.access)
 
     def test_deny_access(self):
-        self.stubs.Set(self._driver.zfssa, 'deny_access_nfs', mock.Mock())
+        self.mock_object(self._driver.zfssa, 'deny_access_nfs')
         lcfg = self.configuration
         self._driver.deny_access(self._context, self.share, self.access)
         self.assertEqual(1, self._driver.zfssa.deny_access_nfs.call_count)

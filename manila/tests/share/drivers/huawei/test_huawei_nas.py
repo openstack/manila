@@ -266,7 +266,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.configuration.share_backend_name = 'fake_share_backend_name'
         self.configuration.driver_handles_share_servers = False
         self.configuration.manila_huawei_conf_file = self.fake_conf_file
-        self.stubs.Set(time, 'sleep', fake_sleep)
+        self.mock_object(time, 'sleep', fake_sleep)
         driver = FakeHuaweiNasDriver(configuration=self.configuration)
         self.driver = driver
         self.driver.helper.test_normal = True

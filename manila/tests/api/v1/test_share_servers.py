@@ -161,10 +161,10 @@ class ShareServerAPITest(test.TestCase):
     def setUp(self):
         super(ShareServerAPITest, self).setUp()
         self.controller = share_servers.ShareServerController()
-        self.stubs.Set(policy, 'check_policy',
-                       mock.Mock(return_value=True))
-        self.stubs.Set(db_api, 'share_server_get_all',
-                       mock.Mock(return_value=fake_share_server_get_all()))
+        self.mock_object(policy, 'check_policy',
+                         mock.Mock(return_value=True))
+        self.mock_object(db_api, 'share_server_get_all',
+                         mock.Mock(return_value=fake_share_server_get_all()))
 
     def test_index_no_filters(self):
         result = self.controller.index(FakeRequestAdmin)
@@ -221,8 +221,8 @@ class ShareServerAPITest(test.TestCase):
         self.assertEqual(len(result['share_servers']), 0)
 
     def test_show(self):
-        self.stubs.Set(db_api, 'share_server_get',
-                       mock.Mock(return_value=fake_share_server_get()))
+        self.mock_object(db_api, 'share_server_get',
+                         mock.Mock(return_value=fake_share_server_get()))
         result = self.controller.show(
             FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
@@ -234,9 +234,9 @@ class ShareServerAPITest(test.TestCase):
                          fake_share_server_get_result['share_server'])
 
     def test_details(self):
-        self.stubs.Set(db_api, 'share_server_get',
-                       mock.Mock(return_value=fake_share_server_get()))
-        self.stubs.Set(
+        self.mock_object(db_api, 'share_server_get',
+                         mock.Mock(return_value=fake_share_server_get()))
+        self.mock_object(
             db_api, 'share_server_backend_details_get',
             mock.Mock(return_value=fake_share_server_backend_details_get()))
         result = self.controller.details(
@@ -253,10 +253,9 @@ class ShareServerAPITest(test.TestCase):
 
     def test_delete_active_server(self):
         share_server = FakeShareServer(status=constants.STATUS_ACTIVE)
-        self.stubs.Set(db_api, 'share_server_get',
-                       mock.Mock(return_value=share_server))
-        self.stubs.Set(self.controller.share_api, 'delete_share_server',
-                       mock.Mock())
+        self.mock_object(db_api, 'share_server_get',
+                         mock.Mock(return_value=share_server))
+        self.mock_object(self.controller.share_api, 'delete_share_server')
         self.controller.delete(
             FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
@@ -269,10 +268,9 @@ class ShareServerAPITest(test.TestCase):
 
     def test_delete_error_server(self):
         share_server = FakeShareServer(status=constants.STATUS_ERROR)
-        self.stubs.Set(db_api, 'share_server_get',
-                       mock.Mock(return_value=share_server))
-        self.stubs.Set(self.controller.share_api, 'delete_share_server',
-                       mock.Mock())
+        self.mock_object(db_api, 'share_server_get',
+                         mock.Mock(return_value=share_server))
+        self.mock_object(self.controller.share_api, 'delete_share_server')
         self.controller.delete(
             FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
@@ -290,10 +288,10 @@ class ShareServerAPITest(test.TestCase):
             raise exception.ShareServerInUse(share_server_id=share_server_id)
 
         share_server = fake_share_server_get()
-        self.stubs.Set(db_api, 'share_server_get',
-                       mock.Mock(return_value=share_server))
-        self.stubs.Set(self.controller.share_api, 'delete_share_server',
-                       mock.Mock(side_effect=raise_not_share_server_in_use))
+        self.mock_object(db_api, 'share_server_get',
+                         mock.Mock(return_value=share_server))
+        self.mock_object(self.controller.share_api, 'delete_share_server',
+                         mock.Mock(side_effect=raise_not_share_server_in_use))
         self.assertRaises(exc.HTTPConflict,
                           self.controller.delete,
                           FakeRequestAdmin,
@@ -310,8 +308,8 @@ class ShareServerAPITest(test.TestCase):
             raise exception.ShareServerNotFound(
                 share_server_id=share_server_id)
 
-        self.stubs.Set(db_api, 'share_server_get',
-                       mock.Mock(side_effect=raise_not_found))
+        self.mock_object(db_api, 'share_server_get',
+                         mock.Mock(side_effect=raise_not_found))
         self.assertRaises(exc.HTTPNotFound,
                           self.controller.delete,
                           FakeRequestAdmin,
@@ -323,8 +321,8 @@ class ShareServerAPITest(test.TestCase):
 
     def test_delete_creating_server(self):
         share_server = FakeShareServer(status=constants.STATUS_CREATING)
-        self.stubs.Set(db_api, 'share_server_get',
-                       mock.Mock(return_value=share_server))
+        self.mock_object(db_api, 'share_server_get',
+                         mock.Mock(return_value=share_server))
         self.assertRaises(exc.HTTPForbidden,
                           self.controller.delete,
                           FakeRequestAdmin,
@@ -335,8 +333,8 @@ class ShareServerAPITest(test.TestCase):
 
     def test_delete_deleting_server(self):
         share_server = FakeShareServer(status=constants.STATUS_DELETING)
-        self.stubs.Set(db_api, 'share_server_get',
-                       mock.Mock(return_value=share_server))
+        self.mock_object(db_api, 'share_server_get',
+                         mock.Mock(return_value=share_server))
         self.assertRaises(exc.HTTPForbidden,
                           self.controller.delete,
                           FakeRequestAdmin,

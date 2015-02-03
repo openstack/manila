@@ -45,7 +45,7 @@ class GaneshaUtilsTests(test.TestCase):
         self.assertEqual(walk_test_list, ret)
 
     def test_path_from(self):
-        self.stubs.Set(os.path, 'abspath',
-                       lambda path: os.path.join('/foo/bar', path))
+        self.mock_object(os.path, 'abspath',
+                         lambda path: os.path.join('/foo/bar', path))
         ret = utils.path_from('baz.py', '../quux', 'tic/tac/toe')
         self.assertEqual('/foo/quux/tic/tac/toe', os.path.normpath(ret))

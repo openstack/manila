@@ -34,13 +34,14 @@ class ShareApiTest(test.TestCase):
     def setUp(self):
         super(ShareApiTest, self).setUp()
         self.controller = shares.ShareController()
-        self.stubs.Set(share_api.API, 'get_all',
-                       stubs.stub_get_all_shares)
-        self.stubs.Set(share_api.API, 'get',
-                       stubs.stub_share_get)
-        self.stubs.Set(share_api.API, 'update', stubs.stub_share_update)
-        self.stubs.Set(share_api.API, 'delete', stubs.stub_share_delete)
-        self.stubs.Set(share_api.API, 'get_snapshot', stubs.stub_snapshot_get)
+        self.mock_object(share_api.API, 'get_all',
+                         stubs.stub_get_all_shares)
+        self.mock_object(share_api.API, 'get',
+                         stubs.stub_share_get)
+        self.mock_object(share_api.API, 'update', stubs.stub_share_update)
+        self.mock_object(share_api.API, 'delete', stubs.stub_share_delete)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get)
         self.maxDiff = None
         self.shr_example = {
             "size": 100,
@@ -99,7 +100,7 @@ class ShareApiTest(test.TestCase):
                                 size=100,
                                 share_proto=shr['share_proto'].upper(),
                                 availability_zone=shr['availability_zone']))
-        self.stubs.Set(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'create', create_mock)
 
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
@@ -124,8 +125,8 @@ class ShareApiTest(test.TestCase):
                                 share_proto=shr['share_proto'].upper(),
                                 availability_zone=shr['availability_zone'],
                                 share_network_id=shr['share_network_id']))
-        self.stubs.Set(share_api.API, 'create', create_mock)
-        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': 'fakenetid'}))
 
         body = {"share": copy.deepcopy(shr)}
@@ -155,7 +156,7 @@ class ShareApiTest(test.TestCase):
                                 availability_zone=shr['availability_zone'],
                                 snapshot_id=shr['snapshot_id'],
                                 share_network_id=shr['share_network_id']))
-        self.stubs.Set(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'create', create_mock)
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.create(req, body)
@@ -181,11 +182,12 @@ class ShareApiTest(test.TestCase):
                                 availability_zone=shr['availability_zone'],
                                 snapshot_id=shr['snapshot_id'],
                                 share_network_id=shr['share_network_id']))
-        self.stubs.Set(share_api.API, 'create', create_mock)
-        self.stubs.Set(share_api.API, 'get_snapshot', stubs.stub_snapshot_get)
-        self.stubs.Set(share_api.API, 'get', mock.Mock(
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get)
+        self.mock_object(share_api.API, 'get', mock.Mock(
             return_value={'share_network_id': parent_share_net}))
-        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
 
         body = {"share": copy.deepcopy(shr)}
@@ -215,11 +217,12 @@ class ShareApiTest(test.TestCase):
                                 availability_zone=shr['availability_zone'],
                                 snapshot_id=shr['snapshot_id'],
                                 share_network_id=shr['share_network_id']))
-        self.stubs.Set(share_api.API, 'create', create_mock)
-        self.stubs.Set(share_api.API, 'get_snapshot', stubs.stub_snapshot_get)
-        self.stubs.Set(share_api.API, 'get', mock.Mock(
+        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get)
+        self.mock_object(share_api.API, 'get', mock.Mock(
             return_value={'share_network_id': parent_share_net}))
-        self.stubs.Set(share_api.API, 'get_share_network', mock.Mock(
+        self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
 
         body = {"share": copy.deepcopy(shr)}
@@ -231,7 +234,7 @@ class ShareApiTest(test.TestCase):
                          parent_share_net)
 
     def test_share_create_from_snapshot_invalid_share_net(self):
-        self.stubs.Set(share_api.API, 'create', mock.Mock())
+        self.mock_object(share_api.API, 'create')
         shr = {
             "size": 100,
             "name": "Share Test Name",
@@ -282,8 +285,8 @@ class ShareApiTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_share_show_no_share(self):
-        self.stubs.Set(share_api.API, 'get',
-                       stubs.stub_share_get_notfound)
+        self.mock_object(share_api.API, 'get',
+                         stubs.stub_share_get_notfound)
         req = fakes.HTTPRequest.blank('/shares/1')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show,
@@ -322,8 +325,8 @@ class ShareApiTest(test.TestCase):
         self.assertNotEqual(res_dict['share']["size"], shr["size"])
 
     def test_share_delete_no_share(self):
-        self.stubs.Set(share_api.API, 'get',
-                       stubs.stub_share_get_notfound)
+        self.mock_object(share_api.API, 'get',
+                         stubs.stub_share_get_notfound)
         req = fakes.HTTPRequest.blank('/shares/1')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.delete,
@@ -357,8 +360,8 @@ class ShareApiTest(test.TestCase):
             {'id': 'id2', 'display_name': 'n2'},
             {'id': 'id3', 'display_name': 'n3'},
         ]
-        self.stubs.Set(share_api.API, 'get_all',
-                       mock.Mock(return_value=shares))
+        self.mock_object(share_api.API, 'get_all',
+                         mock.Mock(return_value=shares))
 
         result = self.controller.index(req)
 
@@ -393,8 +396,8 @@ class ShareApiTest(test.TestCase):
         self._share_list_summary_with_search_opts(use_admin_context=True)
 
     def test_share_list_summary(self):
-        self.stubs.Set(share_api.API, 'get_all',
-                       stubs.stub_share_get_all_by_project)
+        self.mock_object(share_api.API, 'get_all',
+                         stubs.stub_share_get_all_by_project)
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.index(req)
         expected = {
@@ -453,8 +456,8 @@ class ShareApiTest(test.TestCase):
             },
             {'id': 'id3', 'display_name': 'n3'},
         ]
-        self.stubs.Set(share_api.API, 'get_all',
-                       mock.Mock(return_value=shares))
+        self.mock_object(share_api.API, 'get_all',
+                         mock.Mock(return_value=shares))
 
         result = self.controller.detail(req)
 
@@ -502,8 +505,8 @@ class ShareApiTest(test.TestCase):
         self._share_list_detail_with_search_opts(use_admin_context=True)
 
     def test_share_list_detail(self):
-        self.stubs.Set(share_api.API, 'get_all',
-                       stubs.stub_share_get_all_by_project)
+        self.mock_object(share_api.API, 'get_all',
+                         stubs.stub_share_get_all_by_project)
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
         req = fakes.HTTPRequest.blank('/shares/detail', environ=env)
         res_dict = self.controller.detail(req)

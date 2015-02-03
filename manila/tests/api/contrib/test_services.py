@@ -180,12 +180,12 @@ class ServicesTest(test.TestCase):
     def setUp(self):
         super(ServicesTest, self).setUp()
 
-        self.stubs.Set(db, "service_get_all", fake_service_get_all)
-        self.stubs.Set(timeutils, "utcnow", fake_utcnow)
-        self.stubs.Set(db, "service_get_by_args",
-                       fake_service_get_by_host_binary)
-        self.stubs.Set(db, "service_update", fake_service_update)
-        self.stubs.Set(policy, "enforce", fake_policy_enforce)
+        self.mock_object(db, "service_get_all", fake_service_get_all)
+        self.mock_object(timeutils, "utcnow", fake_utcnow)
+        self.mock_object(db, "service_get_by_args",
+                         fake_service_get_by_host_binary)
+        self.mock_object(db, "service_update", fake_service_update)
+        self.mock_object(policy, "enforce", fake_policy_enforce)
 
         self.context = context.get_admin_context()
         self.controller = services.ServiceController()

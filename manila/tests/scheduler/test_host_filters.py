@@ -44,7 +44,7 @@ class HostFiltersTestCase(test.TestCase):
     def _stub_service_is_up(self, ret_value):
         def fake_service_is_up(service):
             return ret_value
-        self.stubs.Set(utils, 'service_is_up', fake_service_is_up)
+        self.mock_object(utils, 'service_is_up', fake_service_is_up)
 
     def test_capacity_filter_passes(self):
         self._stub_service_is_up(True)

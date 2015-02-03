@@ -77,7 +77,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(GlusterfsNativeShareDriverTestCase, self).setUp()
-        fake_utils.stub_out_utils_execute(self.stubs)
+        fake_utils.stub_out_utils_execute(self)
         self._execute = fake_utils.fake_execute
         self._context = context.get_admin_context()
 
@@ -96,10 +96,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver = glusterfs_native.GlusterfsNativeShareDriver(
             self._db, execute=self._execute,
             configuration=self.fake_conf)
-        self.stubs.Set(tempfile, 'mkdtemp',
-                       mock.Mock(return_value='/tmp/tmpKGHKJ'))
-        self.stubs.Set(glusterfs.GlusterManager, 'make_gluster_call',
-                       mock.Mock())
+        self.mock_object(tempfile, 'mkdtemp',
+                         mock.Mock(return_value='/tmp/tmpKGHKJ'))
+        self.mock_object(glusterfs.GlusterManager, 'make_gluster_call')
         self.addCleanup(fake_utils.fake_execute_set_repliers, [])
         self.addCleanup(fake_utils.fake_execute_clear_log)
 
@@ -188,8 +187,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
         self._driver.gluster_unused_vols_dict = {gmgr2.export: gmgr2}
-        self.stubs.Set(gmgr2, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr2, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver._setup_gluster_vols)
@@ -214,8 +213,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
         self._driver.gluster_unused_vols_dict = {gmgr2.export: gmgr2}
-        self.stubs.Set(gmgr2, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr2, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver._setup_gluster_vols)
@@ -242,8 +241,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
         self._driver.gluster_unused_vols_dict = {gmgr2.export: gmgr2}
-        self.stubs.Set(gmgr2, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr2, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver._setup_gluster_vols)
@@ -273,8 +272,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             if(args == test_args):
                 raise exception.ProcessExecutionError()
 
-        self.stubs.Set(gmgr1, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver._restart_gluster_vol, gmgr1)
@@ -292,8 +291,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             if(args == test_args[1]):
                 raise exception.ProcessExecutionError()
 
-        self.stubs.Set(gmgr1, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver._restart_gluster_vol, gmgr1)
@@ -446,8 +445,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.gluster_target1, self._execute, None, None)
-        self.stubs.Set(gmgr1, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver._wipe_gluster_vol, gmgr1)
@@ -474,8 +473,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.gluster_target1, self._execute, None, None)
-        self.stubs.Set(gmgr1, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver._wipe_gluster_vol, gmgr1)
@@ -504,8 +503,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.gluster_target1, self._execute, None, None)
-        self.stubs.Set(gmgr1, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         expected_exec = ['find /tmp/tmpKGHKJ -mindepth 1 -delete']
 
@@ -539,8 +538,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.gluster_target1, self._execute, None, None)
-        self.stubs.Set(gmgr1, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         expected_exec = ['find /tmp/tmpKGHKJ -mindepth 1 -delete']
 
@@ -779,8 +778,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
         self._driver.gluster_unused_vols_dict = {gmgr2.export: gmgr2}
 
-        self.stubs.Set(gmgr1, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
         share = fake_db_share1()[0]
 
         self.assertRaises(exception.GlusterfsException,
@@ -834,8 +833,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
         self._driver.gluster_unused_vols_dict = {gmgr2.export: gmgr2}
 
-        self.stubs.Set(gmgr1, 'gluster_call',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
 
         share = fake_db_share1()[0]
 

@@ -80,14 +80,14 @@ class VolumeTypesManageApiTest(test.TestCase):
         """to reset notifier drivers left over from other api/contrib tests"""
         fake_notifier.reset()
         self.addCleanup(fake_notifier.reset)
-        self.stubs.Set(volume_types, 'create',
-                       return_volume_types_create)
-        self.stubs.Set(volume_types, 'get_volume_type_by_name',
-                       return_volume_types_get_by_name)
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
-        self.stubs.Set(volume_types, 'destroy',
-                       return_volume_types_destroy)
+        self.mock_object(volume_types, 'create',
+                         return_volume_types_create)
+        self.mock_object(volume_types, 'get_volume_type_by_name',
+                         return_volume_types_get_by_name)
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_volume_types_get_volume_type)
+        self.mock_object(volume_types, 'destroy',
+                         return_volume_types_destroy)
 
     def test_volume_types_delete(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')

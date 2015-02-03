@@ -65,7 +65,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     def setUp(self):
         super(VolumeTypesExtraSpecsTest, self).setUp()
         self.flags(host='fake')
-        self.stubs.Set(manila.db, 'volume_type_get', volume_type_get)
+        self.mock_object(manila.db, 'volume_type_get', volume_type_get)
         self.api_path = '/v2/fake/os-volume-types/1/extra_specs'
         self.controller = types_extra_specs.VolumeTypeExtraSpecsController()
 
@@ -74,8 +74,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.addCleanup(fake_notifier.reset)
 
     def test_index(self):
-        self.stubs.Set(manila.db, 'volume_type_extra_specs_get',
-                       return_volume_type_extra_specs)
+        self.mock_object(manila.db, 'volume_type_extra_specs_get',
+                         return_volume_type_extra_specs)
 
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.index(req, 1)
@@ -83,8 +83,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
     def test_index_no_data(self):
-        self.stubs.Set(manila.db, 'volume_type_extra_specs_get',
-                       return_empty_volume_type_extra_specs)
+        self.mock_object(manila.db, 'volume_type_extra_specs_get',
+                         return_empty_volume_type_extra_specs)
 
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.index(req, 1)
@@ -92,8 +92,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual(0, len(res_dict['extra_specs']))
 
     def test_show(self):
-        self.stubs.Set(manila.db, 'volume_type_extra_specs_get',
-                       return_volume_type_extra_specs)
+        self.mock_object(manila.db, 'volume_type_extra_specs_get',
+                         return_volume_type_extra_specs)
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key5')
         res_dict = self.controller.show(req, 1, 'key5')
@@ -101,16 +101,16 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value5', res_dict['key5'])
 
     def test_show_spec_not_found(self):
-        self.stubs.Set(manila.db, 'volume_type_extra_specs_get',
-                       return_empty_volume_type_extra_specs)
+        self.mock_object(manila.db, 'volume_type_extra_specs_get',
+                         return_empty_volume_type_extra_specs)
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key6')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
                           req, 1, 'key6')
 
     def test_delete(self):
-        self.stubs.Set(manila.db, 'volume_type_extra_specs_delete',
-                       delete_volume_type_extra_specs)
+        self.mock_object(manila.db, 'volume_type_extra_specs_delete',
+                         delete_volume_type_extra_specs)
 
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path + '/key5')
@@ -118,17 +118,17 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
     def test_delete_not_found(self):
-        self.stubs.Set(manila.db, 'volume_type_extra_specs_delete',
-                       delete_volume_type_extra_specs_not_found)
+        self.mock_object(manila.db, 'volume_type_extra_specs_delete',
+                         delete_volume_type_extra_specs_not_found)
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key6')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
                           req, 1, 'key6')
 
     def test_create(self):
-        self.stubs.Set(manila.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(manila.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         body = {"extra_specs": {"key1": "value1"}}
 
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
@@ -139,9 +139,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
     def test_create_with_too_small_key(self):
-        self.stubs.Set(manila.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(manila.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         too_small_key = ""
         body = {"extra_specs": {too_small_key: "value"}}
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
@@ -150,9 +150,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           self.controller.create, req, 1, body)
 
     def test_create_with_too_big_key(self):
-        self.stubs.Set(manila.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(manila.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         too_big_key = "k" * 256
         body = {"extra_specs": {too_big_key: "value"}}
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
@@ -161,9 +161,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           self.controller.create, req, 1, body)
 
     def test_create_with_too_small_value(self):
-        self.stubs.Set(manila.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(manila.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         too_small_value = ""
         body = {"extra_specs": {"key": too_small_value}}
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
@@ -172,9 +172,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           self.controller.create, req, 1, body)
 
     def test_create_with_too_big_value(self):
-        self.stubs.Set(manila.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(manila.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         too_big_value = "v" * 256
         body = {"extra_specs": {"key": too_big_value}}
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
@@ -231,9 +231,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                          res_dict['extra_specs']['other3_alphanum.-_:'])
 
     def test_update_item(self):
-        self.stubs.Set(manila.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(manila.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         body = {"key1": "value1"}
 
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
@@ -244,9 +244,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value1', res_dict['key1'])
 
     def test_update_item_too_many_keys(self):
-        self.stubs.Set(manila.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(manila.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         body = {"key1": "value1", "key2": "value2"}
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key1')
@@ -254,9 +254,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           req, 1, 'key1', body)
 
     def test_update_item_body_uri_mismatch(self):
-        self.stubs.Set(manila.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(manila.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         body = {"key1": "value1"}
 
         req = fakes.HTTPRequest.blank(self.api_path + '/bad')

@@ -141,12 +141,12 @@ class GaneshaManagerTestCase(test.TestCase):
               self.mock_restart_service):
             self._manager = manager.GaneshaManager(
                 self._execute, 'faketag', **manager_fake_kwargs)
-        self.stubs.Set(utils, 'synchronized',
-                       mock.Mock(return_value=lambda f: f))
+        self.mock_object(utils, 'synchronized',
+                         mock.Mock(return_value=lambda f: f))
 
     def test_init(self):
-        self.stubs.Set(self._manager, 'reset_exports', mock.Mock())
-        self.stubs.Set(self._manager, 'restart_service', mock.Mock())
+        self.mock_object(self._manager, 'reset_exports')
+        self.mock_object(self._manager, 'restart_service')
         self.assertEqual('/fakedir0/fakeconfig',
                          self._manager.ganesha_config_path)
         self.assertEqual('faketag', self._manager.tag)
@@ -174,7 +174,7 @@ class GaneshaManagerTestCase(test.TestCase):
                 raise exception.GaneshaCommandFailure()
 
         test_execute = mock.Mock(side_effect=raise_exception)
-        self.stubs.Set(manager.LOG, 'error', mock.Mock())
+        self.mock_object(manager.LOG, 'error')
         with contextlib.nested(
             mock.patch.object(manager.GaneshaManager, 'get_export_id',
                               return_value=100),
@@ -199,7 +199,7 @@ class GaneshaManagerTestCase(test.TestCase):
                 raise exception.GaneshaCommandFailure()
 
         test_execute = mock.Mock(side_effect=raise_exception)
-        self.stubs.Set(manager.LOG, 'error', mock.Mock())
+        self.mock_object(manager.LOG, 'error')
         with contextlib.nested(
             mock.patch.object(manager.GaneshaManager, 'get_export_id',
                               return_value=100),
@@ -226,8 +226,8 @@ class GaneshaManagerTestCase(test.TestCase):
 
     def test_write_file(self):
         test_data = 'fakedata'
-        self.stubs.Set(manager.pipes, 'quote',
-                       mock.Mock(return_value='fakefile.conf.RANDOM'))
+        self.mock_object(manager.pipes, 'quote',
+                         mock.Mock(return_value='fakefile.conf.RANDOM'))
         test_args = [
             ('mktemp', '-p', '/fakedir0/export.d', '-t',
              'fakefile.conf.XXXXXX'),
@@ -242,8 +242,8 @@ class GaneshaManagerTestCase(test.TestCase):
             if args == test_args[0]:
                 return ('fakefile.conf.RANDOM\n', '')
 
-        self.stubs.Set(self._manager, 'execute',
-                       mock.Mock(side_effect=return_tmpfile))
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(side_effect=return_tmpfile))
         self._manager._write_file(test_path, test_data)
         self._manager.execute.assert_has_calls([
             mock.call(*test_args[0]),
@@ -253,9 +253,9 @@ class GaneshaManagerTestCase(test.TestCase):
 
     def test_write_conf_file(self):
         test_data = 'fakedata'
-        self.stubs.Set(self._manager, '_getpath',
-                       mock.Mock(return_value=test_path))
-        self.stubs.Set(self._manager, '_write_file', mock.Mock())
+        self.mock_object(self._manager, '_getpath',
+                         mock.Mock(return_value=test_path))
+        self.mock_object(self._manager, '_write_file')
         ret = self._manager._write_conf_file(test_name, test_data)
         self.assertEqual(test_path, ret)
         self._manager._getpath.assert_called_once_with(test_name)
@@ -265,9 +265,9 @@ class GaneshaManagerTestCase(test.TestCase):
     def test_mkindex(self):
         test_ls_output = 'INDEX.conf\nfakefile.conf\nfakefile.txt'
         test_index = '%include /fakedir0/export.d/fakefile.conf\n'
-        self.stubs.Set(self._manager, 'execute',
-                       mock.Mock(return_value=(test_ls_output, '')))
-        self.stubs.Set(self._manager, '_write_conf_file', mock.Mock())
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(return_value=(test_ls_output, '')))
+        self.mock_object(self._manager, '_write_conf_file')
         ret = self._manager._mkindex()
         self._manager.execute.assert_called_once_with(
             'ls', '/fakedir0/export.d', run_as_root=False)
@@ -278,12 +278,12 @@ class GaneshaManagerTestCase(test.TestCase):
     def test_read_export_file(self):
         test_args = ('cat', test_path)
         test_kwargs = {'message': 'reading export fakefile'}
-        self.stubs.Set(self._manager, '_getpath',
-                       mock.Mock(return_value=test_path))
-        self.stubs.Set(self._manager, 'execute',
-                       mock.Mock(return_value=(test_ganesha_cnf,)))
-        self.stubs.Set(manager, 'parseconf',
-                       mock.Mock(return_value=test_dict_unicode))
+        self.mock_object(self._manager, '_getpath',
+                         mock.Mock(return_value=test_path))
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(return_value=(test_ganesha_cnf,)))
+        self.mock_object(manager, 'parseconf',
+                         mock.Mock(return_value=test_dict_unicode))
         ret = self._manager._read_export_file(test_name)
         self._manager._getpath.assert_called_once_with(test_name)
         self._manager.execute.assert_called_once_with(
@@ -292,10 +292,10 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertEqual(test_dict_unicode, ret)
 
     def test_write_export_file(self):
-        self.stubs.Set(manager, 'mkconf',
-                       mock.Mock(return_value=test_ganesha_cnf))
-        self.stubs.Set(self._manager, '_write_conf_file',
-                       mock.Mock(return_value=test_path))
+        self.mock_object(manager, 'mkconf',
+                         mock.Mock(return_value=test_ganesha_cnf))
+        self.mock_object(self._manager, '_write_conf_file',
+                         mock.Mock(return_value=test_path))
         ret = self._manager._write_export_file(test_name, test_dict_str)
         manager.mkconf.assert_called_once_with(test_dict_str)
         self._manager._write_conf_file.assert_called_once_with(
@@ -310,10 +310,10 @@ class GaneshaManagerTestCase(test.TestCase):
                 u'CLIENT': {u'Clients': u"'ip1','ip2'"}
             }
         }
-        self.stubs.Set(manager, 'mkconf',
-                       mock.Mock(return_value=test_ganesha_cnf))
-        self.stubs.Set(self._manager, '_write_conf_file',
-                       mock.Mock(return_value=test_path))
+        self.mock_object(manager, 'mkconf',
+                         mock.Mock(return_value=test_ganesha_cnf))
+        self.mock_object(self._manager, '_write_conf_file',
+                         mock.Mock(return_value=test_path))
         self.assertRaises(exception.InvalidParameterValue,
                           self._manager._write_export_file,
                           test_name, test_errordict)
@@ -321,10 +321,10 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertFalse(self._manager._write_conf_file.called)
 
     def test_rm_export_file(self):
-        self.stubs.Set(self._manager, 'execute',
-                       mock.Mock(return_value=('', '')))
-        self.stubs.Set(self._manager, '_getpath',
-                       mock.Mock(return_value=test_path))
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(return_value=('', '')))
+        self.mock_object(self._manager, '_getpath',
+                         mock.Mock(return_value=test_path))
         ret = self._manager._rm_export_file(test_name)
         self._manager._getpath.assert_called_once_with(test_name)
         self._manager.execute.assert_called_once_with('rm', test_path)
@@ -333,8 +333,8 @@ class GaneshaManagerTestCase(test.TestCase):
     def test_dbus_send_ganesha(self):
         test_args = ('arg1', 'arg2')
         test_kwargs = {'key': 'value'}
-        self.stubs.Set(self._manager, 'execute',
-                       mock.Mock(return_value=('', '')))
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(return_value=('', '')))
         ret = self._manager._dbus_send_ganesha('fakemethod', *test_args,
                                                **test_kwargs)
         self._manager.execute.assert_called_once_with(
@@ -346,18 +346,17 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertEqual(None, ret)
 
     def test_remove_export_dbus(self):
-        self.stubs.Set(self._manager, '_dbus_send_ganesha',
-                       mock.Mock())
+        self.mock_object(self._manager, '_dbus_send_ganesha')
         ret = self._manager._remove_export_dbus(test_export_id)
         self._manager._dbus_send_ganesha.assert_called_once_with(
             'RemoveExport', 'uint16:101')
         self.assertEqual(None, ret)
 
     def test_add_export(self):
-        self.stubs.Set(self._manager, '_write_export_file',
-                       mock.Mock(return_value=test_path))
-        self.stubs.Set(self._manager, '_dbus_send_ganesha', mock.Mock())
-        self.stubs.Set(self._manager, '_mkindex', mock.Mock())
+        self.mock_object(self._manager, '_write_export_file',
+                         mock.Mock(return_value=test_path))
+        self.mock_object(self._manager, '_dbus_send_ganesha')
+        self.mock_object(self._manager, '_mkindex')
         ret = self._manager.add_export(test_name, test_dict_str)
         self._manager._write_export_file.assert_called_once_with(
             test_name, test_dict_str)
@@ -368,13 +367,14 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertEqual(None, ret)
 
     def test_add_export_error_during_mkindex(self):
-        self.stubs.Set(self._manager, '_write_export_file',
-                       mock.Mock(return_value=test_path))
-        self.stubs.Set(self._manager, '_dbus_send_ganesha', mock.Mock())
-        self.stubs.Set(self._manager, '_mkindex',
-                       mock.Mock(side_effect=exception.GaneshaCommandFailure))
-        self.stubs.Set(self._manager, '_rm_export_file', mock.Mock())
-        self.stubs.Set(self._manager, '_remove_export_dbus', mock.Mock())
+        self.mock_object(self._manager, '_write_export_file',
+                         mock.Mock(return_value=test_path))
+        self.mock_object(self._manager, '_dbus_send_ganesha')
+        self.mock_object(
+            self._manager, '_mkindex',
+            mock.Mock(side_effect=exception.GaneshaCommandFailure))
+        self.mock_object(self._manager, '_rm_export_file')
+        self.mock_object(self._manager, '_remove_export_dbus')
         self.assertRaises(exception.GaneshaCommandFailure,
                           self._manager.add_export, test_name, test_dict_str)
         self._manager._write_export_file.assert_called_once_with(
@@ -388,12 +388,13 @@ class GaneshaManagerTestCase(test.TestCase):
             test_export_id)
 
     def test_add_export_error_during_write_export_file(self):
-        self.stubs.Set(self._manager, '_write_export_file',
-                       mock.Mock(side_effect=exception.GaneshaCommandFailure))
-        self.stubs.Set(self._manager, '_dbus_send_ganesha', mock.Mock())
-        self.stubs.Set(self._manager, '_mkindex', mock.Mock())
-        self.stubs.Set(self._manager, '_rm_export_file', mock.Mock())
-        self.stubs.Set(self._manager, '_remove_export_dbus', mock.Mock())
+        self.mock_object(
+            self._manager, '_write_export_file',
+            mock.Mock(side_effect=exception.GaneshaCommandFailure))
+        self.mock_object(self._manager, '_dbus_send_ganesha')
+        self.mock_object(self._manager, '_mkindex')
+        self.mock_object(self._manager, '_rm_export_file')
+        self.mock_object(self._manager, '_remove_export_dbus')
         self.assertRaises(exception.GaneshaCommandFailure,
                           self._manager.add_export, test_name, test_dict_str)
         self._manager._write_export_file.assert_called_once_with(
@@ -404,14 +405,14 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertFalse(self._manager._remove_export_dbus.called)
 
     def test_add_export_error_during_dbus_send_ganesha(self):
-        self.stubs.Set(self._manager, '_write_export_file',
-                       mock.Mock(return_value=test_path))
-        self.stubs.Set(self._manager, '_dbus_send_ganesha',
-                       mock.Mock(side_effect=exception.GaneshaCommandFailure))
-        self.stubs.Set(self._manager, '_mkindex',
-                       mock.Mock())
-        self.stubs.Set(self._manager, '_rm_export_file', mock.Mock())
-        self.stubs.Set(self._manager, '_remove_export_dbus', mock.Mock())
+        self.mock_object(self._manager, '_write_export_file',
+                         mock.Mock(return_value=test_path))
+        self.mock_object(
+            self._manager, '_dbus_send_ganesha',
+            mock.Mock(side_effect=exception.GaneshaCommandFailure))
+        self.mock_object(self._manager, '_mkindex')
+        self.mock_object(self._manager, '_rm_export_file')
+        self.mock_object(self._manager, '_remove_export_dbus')
         self.assertRaises(exception.GaneshaCommandFailure,
                           self._manager.add_export, test_name, test_dict_str)
         self._manager._write_export_file.assert_called_once_with(
@@ -424,11 +425,11 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertFalse(self._manager._remove_export_dbus.called)
 
     def test_remove_export(self):
-        self.stubs.Set(self._manager, '_read_export_file',
-                       mock.Mock(return_value=test_dict_unicode))
+        self.mock_object(self._manager, '_read_export_file',
+                         mock.Mock(return_value=test_dict_unicode))
         methods = ('_remove_export_dbus', '_rm_export_file', '_mkindex')
         for method in methods:
-            self.stubs.Set(self._manager, method, mock.Mock())
+            self.mock_object(self._manager, method)
         ret = self._manager.remove_export(test_name)
         self._manager._read_export_file.assert_called_once_with(test_name)
         self._manager._remove_export_dbus.assert_called_once_with(
@@ -438,11 +439,12 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertEqual(None, ret)
 
     def test_remove_export_error_during_read_export_file(self):
-        self.stubs.Set(self._manager, '_read_export_file',
-                       mock.Mock(side_effect=exception.GaneshaCommandFailure))
+        self.mock_object(
+            self._manager, '_read_export_file',
+            mock.Mock(side_effect=exception.GaneshaCommandFailure))
         methods = ('_remove_export_dbus', '_rm_export_file', '_mkindex')
         for method in methods:
-            self.stubs.Set(self._manager, method, mock.Mock())
+            self.mock_object(self._manager, method)
         self.assertRaises(exception.GaneshaCommandFailure,
                           self._manager.remove_export, test_name)
         self._manager._read_export_file.assert_called_once_with(test_name)
@@ -451,13 +453,14 @@ class GaneshaManagerTestCase(test.TestCase):
         self._manager._mkindex.assert_called_once_with()
 
     def test_remove_export_error_during_remove_export_dbus(self):
-        self.stubs.Set(self._manager, '_read_export_file',
-                       mock.Mock(return_value=test_dict_unicode))
-        self.stubs.Set(self._manager, '_remove_export_dbus',
-                       mock.Mock(side_effect=exception.GaneshaCommandFailure))
+        self.mock_object(self._manager, '_read_export_file',
+                         mock.Mock(return_value=test_dict_unicode))
+        self.mock_object(
+            self._manager, '_remove_export_dbus',
+            mock.Mock(side_effect=exception.GaneshaCommandFailure))
         methods = ('_rm_export_file', '_mkindex')
         for method in methods:
-            self.stubs.Set(self._manager, method, mock.Mock())
+            self.mock_object(self._manager, method)
         self.assertRaises(exception.GaneshaCommandFailure,
                           self._manager.remove_export, test_name)
         self._manager._read_export_file.assert_called_once_with(test_name)
@@ -467,8 +470,8 @@ class GaneshaManagerTestCase(test.TestCase):
         self._manager._mkindex.assert_called_once_with()
 
     def test_get_export_id(self):
-        self.stubs.Set(self._manager, 'execute',
-                       mock.Mock(return_value=('exportid|101', '')))
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(return_value=('exportid|101', '')))
         ret = self._manager.get_export_id()
         self._manager.execute.assert_called_once_with(
             'sqlite3', self._manager.ganesha_db_path,
@@ -478,8 +481,8 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertEqual(101, ret)
 
     def test_get_export_id_nobump(self):
-        self.stubs.Set(self._manager, 'execute',
-                       mock.Mock(return_value=('exportid|101', '')))
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(return_value=('exportid|101', '')))
         ret = self._manager.get_export_id(bump=False)
         self._manager.execute.assert_called_once_with(
             'sqlite3', self._manager.ganesha_db_path,
@@ -488,9 +491,9 @@ class GaneshaManagerTestCase(test.TestCase):
         self.assertEqual(101, ret)
 
     def test_get_export_id_error_invalid_export_db(self):
-        self.stubs.Set(self._manager, 'execute',
-                       mock.Mock(return_value=('invalid', '')))
-        self.stubs.Set(manager.LOG, 'error', mock.Mock())
+        self.mock_object(self._manager, 'execute',
+                         mock.Mock(return_value=('invalid', '')))
+        self.mock_object(manager.LOG, 'error')
         self.assertRaises(exception.InvalidSqliteDB,
                           self._manager.get_export_id)
         manager.LOG.error.assert_called_once_with(
@@ -502,15 +505,15 @@ class GaneshaManagerTestCase(test.TestCase):
             run_as_root=False)
 
     def test_restart_service(self):
-        self.stubs.Set(self._manager, 'execute', mock.Mock())
+        self.mock_object(self._manager, 'execute')
         ret = self._manager.restart_service()
         self._manager.execute.assert_called_once_with(
             'service', 'ganesha.fakeservice', 'restart')
         self.assertEqual(None, ret)
 
     def test_reset_exports(self):
-        self.stubs.Set(self._manager, 'execute', mock.Mock())
-        self.stubs.Set(self._manager, '_mkindex', mock.Mock())
+        self.mock_object(self._manager, 'execute')
+        self.mock_object(self._manager, '_mkindex')
         ret = self._manager.reset_exports()
         self._manager.execute.assert_called_once_with(
             'sh', '-c', 'rm /fakedir0/export.d/*.conf')

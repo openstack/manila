@@ -69,8 +69,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.controller = types.VolumeTypesController()
 
     def test_volume_types_index(self):
-        self.stubs.Set(volume_types, 'get_all_types',
-                       return_volume_types_get_all_types)
+        self.mock_object(volume_types, 'get_all_types',
+                         return_volume_types_get_all_types)
 
         req = fakes.HTTPRequest.blank('/v2/fake/types')
         res_dict = self.controller.index(req)
@@ -84,8 +84,8 @@ class VolumeTypesApiTest(test.TestCase):
             self.assertEqual('value1', entry['extra_specs']['key1'])
 
     def test_volume_types_index_no_data(self):
-        self.stubs.Set(volume_types, 'get_all_types',
-                       return_empty_volume_types_get_all_types)
+        self.mock_object(volume_types, 'get_all_types',
+                         return_empty_volume_types_get_all_types)
 
         req = fakes.HTTPRequest.blank('/v2/fake/types')
         res_dict = self.controller.index(req)
@@ -93,8 +93,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertEqual(0, len(res_dict['volume_types']))
 
     def test_volume_types_show(self):
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_volume_types_get_volume_type)
 
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         res_dict = self.controller.show(req, 1)
@@ -104,8 +104,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertEqual('vol_type_1', res_dict['volume_type']['name'])
 
     def test_volume_types_show_not_found(self):
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_volume_types_get_volume_type)
 
         req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,

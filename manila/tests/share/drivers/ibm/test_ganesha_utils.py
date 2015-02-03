@@ -98,9 +98,9 @@ class GaneshaUtilsTestCase(test.TestCase):
         self.sshlogin = "fake_login"
         self.sshkey = "fake_sshkey"
         self.STARTING_EXPORT_ID = 100
-        self.stubs.Set(socket, 'gethostname',
-                       mock.Mock(return_value="testserver"))
-        self.stubs.Set(socket, 'gethostbyname_ex', mock.Mock(
+        self.mock_object(socket, 'gethostname',
+                         mock.Mock(return_value="testserver"))
+        self.mock_object(socket, 'gethostbyname_ex', mock.Mock(
             return_value=('localhost',
                           ['localhost.localdomain', 'testserver'],
                           ['127.0.0.1'] + self.local_ip)
@@ -108,8 +108,8 @@ class GaneshaUtilsTestCase(test.TestCase):
 
     def test_get_export_by_path(self):
         fake_export = {'export_id': '100'}
-        self.stubs.Set(ganesha_utils, '_get_export_by_path',
-                       mock.Mock(return_value=fake_export))
+        self.mock_object(ganesha_utils, '_get_export_by_path',
+                         mock.Mock(return_value=fake_export))
         export = ganesha_utils.get_export_by_path(self.fake_exports,
                                                   self.fake_path)
         self.assertEqual(export, fake_export)
@@ -119,8 +119,8 @@ class GaneshaUtilsTestCase(test.TestCase):
 
     def test_export_exists(self):
         fake_export = {'export_id': '100'}
-        self.stubs.Set(ganesha_utils, '_get_export_by_path',
-                       mock.Mock(return_value=fake_export))
+        self.mock_object(ganesha_utils, '_get_export_by_path',
+                         mock.Mock(return_value=fake_export))
         result = ganesha_utils.export_exists(self.fake_exports, self.fake_path)
         self.assertTrue(result)
         ganesha_utils._get_export_by_path.assert_called_once_with(
@@ -184,7 +184,7 @@ class GaneshaUtilsTestCase(test.TestCase):
         configpath = self.fake_configpath
         methods = ('_publish_local_config', '_publish_remote_config')
         for method in methods:
-            self.stubs.Set(ganesha_utils, method, mock.Mock())
+            self.mock_object(ganesha_utils, method)
         ganesha_utils.publish_ganesha_config(self.servers, self.sshlogin,
                                              self.sshkey, configpath,
                                              self.fake_pre_lines,
@@ -198,7 +198,7 @@ class GaneshaUtilsTestCase(test.TestCase):
             )
 
     def test_reload_ganesha_config(self):
-        self.stubs.Set(utils, 'execute', mock.Mock(return_value=True))
+        self.mock_object(utils, 'execute', mock.Mock(return_value=True))
         service = 'ganesha.nfsd'
         ganesha_utils.reload_ganesha_config(self.servers, self.sshlogin)
         reload_cmd = ['service', service, 'restart']
@@ -213,9 +213,9 @@ class GaneshaUtilsTestCase(test.TestCase):
 
     @mock.patch('six.moves.builtins.open')
     def test__publish_local_config(self, mock_open):
-        self.stubs.Set(utils, 'execute', mock.Mock(return_value=True))
+        self.mock_object(utils, 'execute', mock.Mock(return_value=True))
         fake_timestamp = 1415506949.75
-        self.stubs.Set(time, 'time', mock.Mock(return_value=fake_timestamp))
+        self.mock_object(time, 'time', mock.Mock(return_value=fake_timestamp))
         configpath = self.fake_configpath
         tmp_path = '%s.tmp.%s' % (configpath, fake_timestamp)
         ganesha_utils._publish_local_config(configpath,
@@ -231,10 +231,11 @@ class GaneshaUtilsTestCase(test.TestCase):
 
     @mock.patch('six.moves.builtins.open')
     def test__publish_local_config_exception(self, mock_open):
-        self.stubs.Set(utils, 'execute',
-                       mock.Mock(side_effect=exception.ProcessExecutionError))
+        self.mock_object(
+            utils, 'execute',
+            mock.Mock(side_effect=exception.ProcessExecutionError))
         fake_timestamp = 1415506949.75
-        self.stubs.Set(time, 'time', mock.Mock(return_value=fake_timestamp))
+        self.mock_object(time, 'time', mock.Mock(return_value=fake_timestamp))
         configpath = self.fake_configpath
         tmp_path = '%s.tmp.%s' % (configpath, fake_timestamp)
         self.assertRaises(exception.GPFSGaneshaException,
@@ -255,8 +256,9 @@ class GaneshaUtilsTestCase(test.TestCase):
         utils.execute.assert_called_once_with(*scpcmd, run_as_root=False)
 
     def test__publish_remote_config_exception(self):
-        self.stubs.Set(utils, 'execute',
-                       mock.Mock(side_effect=exception.ProcessExecutionError))
+        self.mock_object(
+            utils, 'execute',
+            mock.Mock(side_effect=exception.ProcessExecutionError))
         server = self.remote_ips[1]
         dest = '%s@%s:%s' % (self.sshlogin, server, self.fake_configpath)
         scpcmd = ['scp', '-i', self.sshkey, self.fake_configpath, dest]

@@ -658,7 +658,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             self.calls.append('quota_class_get_all_by_name')
             self.assertEqual(quota_class, 'test_class')
             return dict(gigabytes=500, shares=10, )
-        self.stubs.Set(db, 'quota_class_get_all_by_name', fake_qcgabn)
+        self.mock_object(db, 'quota_class_get_all_by_name', fake_qcgabn)
 
     def test_get_class_quotas(self):
         self._stub_quota_class_get_all_by_name()
@@ -702,10 +702,10 @@ class DbQuotaDriverTestCase(test.TestCase):
             return dict(shares=dict(in_use=2, reserved=0),
                         gigabytes=dict(in_use=10, reserved=0), )
 
-        self.stubs.Set(db, 'quota_get_all_by_project_and_user', fake_qgabpu)
-        self.stubs.Set(db, 'quota_get_all_by_project', fake_qgabp)
-        self.stubs.Set(db, 'quota_usage_get_all_by_project_and_user',
-                       fake_qugabpu)
+        self.mock_object(db, 'quota_get_all_by_project_and_user', fake_qgabpu)
+        self.mock_object(db, 'quota_get_all_by_project', fake_qgabp)
+        self.mock_object(db, 'quota_usage_get_all_by_project_and_user',
+                         fake_qugabpu)
 
         self._stub_quota_class_get_all_by_name()
 
@@ -735,8 +735,8 @@ class DbQuotaDriverTestCase(test.TestCase):
             return dict(shares=dict(in_use=2, reserved=0),
                         gigabytes=dict(in_use=10, reserved=0), )
 
-        self.stubs.Set(db, 'quota_get_all_by_project', fake_qgabp)
-        self.stubs.Set(db, 'quota_usage_get_all_by_project', fake_qugabp)
+        self.mock_object(db, 'quota_get_all_by_project', fake_qgabp)
+        self.mock_object(db, 'quota_usage_get_all_by_project', fake_qugabp)
 
         self._stub_quota_class_get_all_by_name()
 
@@ -905,12 +905,12 @@ class DbQuotaDriverTestCase(test.TestCase):
             self.calls.append('quota_get_all_by_project_and_user')
             return {'shares': 2}
 
-        self.stubs.Set(self.driver, 'get_project_quotas',
-                       fake_get_project_quotas)
-        self.stubs.Set(self.driver, 'get_user_quotas',
-                       fake_get_user_quotas)
-        self.stubs.Set(db, 'quota_get_all_by_project_and_user',
-                       fake_qgabpau)
+        self.mock_object(self.driver, 'get_project_quotas',
+                         fake_get_project_quotas)
+        self.mock_object(self.driver, 'get_user_quotas',
+                         fake_get_user_quotas)
+        self.mock_object(db, 'quota_get_all_by_project_and_user',
+                         fake_qgabpau)
 
     def test_get_settable_quotas_with_user(self):
         self._stub_get_settable_quotas()
@@ -956,8 +956,8 @@ class DbQuotaDriverTestCase(test.TestCase):
             return dict((k, dict(limit=v.default))
                         for k, v in resources.items())
 
-        self.stubs.Set(self.driver, 'get_project_quotas',
-                       fake_get_project_quotas)
+        self.mock_object(self.driver, 'get_project_quotas',
+                         fake_get_project_quotas)
 
     def test_get_quotas_has_sync_unknown(self):
         self._stub_get_project_quotas()
@@ -1009,7 +1009,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             self.calls.append(('quota_reserve', expire, until_refresh,
                                max_age))
             return ['resv-1', 'resv-2', 'resv-3']
-        self.stubs.Set(db, 'quota_reserve', fake_quota_reserve)
+        self.mock_object(db, 'quota_reserve', fake_quota_reserve)
 
     def test_reserve_bad_expire(self):
         self._stub_get_project_quotas()
@@ -1100,8 +1100,8 @@ class DbQuotaDriverTestCase(test.TestCase):
         def fake_quota_delete_all_by_project(context, project_id):
             self.calls.append(('quota_destroy_all_by_project', project_id))
             return None
-        self.stubs.Set(sqa_api, 'quota_destroy_all_by_project',
-                       fake_quota_delete_all_by_project)
+        self.mock_object(sqa_api, 'quota_destroy_all_by_project',
+                         fake_quota_delete_all_by_project)
 
     def test_delete_by_project(self):
         self._stub_quota_delete_all_by_project()
@@ -1196,13 +1196,15 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
 
             return reservation_ref
 
-        self.stubs.Set(sqa_api, 'get_session', fake_get_session)
-        self.stubs.Set(sqa_api, '_get_project_quota_usages',
-                       fake_get_project_quota_usages)
-        self.stubs.Set(sqa_api, '_get_user_quota_usages',
-                       fake_get_user_quota_usages)
-        self.stubs.Set(sqa_api, '_quota_usage_create', fake_quota_usage_create)
-        self.stubs.Set(sqa_api, '_reservation_create', fake_reservation_create)
+        self.mock_object(sqa_api, 'get_session', fake_get_session)
+        self.mock_object(sqa_api, '_get_project_quota_usages',
+                         fake_get_project_quota_usages)
+        self.mock_object(sqa_api, '_get_user_quota_usages',
+                         fake_get_user_quota_usages)
+        self.mock_object(sqa_api, '_quota_usage_create',
+                         fake_quota_usage_create)
+        self.mock_object(sqa_api, '_reservation_create',
+                         fake_reservation_create)
 
         self.patcher = mock.patch.object(timeutils, 'utcnow')
         self.mock_utcnow = self.patcher.start()

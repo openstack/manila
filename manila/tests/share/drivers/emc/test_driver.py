@@ -111,7 +111,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         self.configuration = conf.Configuration(None)
         self.configuration.append_config_values = mock.Mock(return_value=0)
         self.configuration.share_backend_name = FAKE_BACKEND
-        self.stubs.Set(self.configuration, 'safe_get', self._fake_safe_get)
+        self.mock_object(self.configuration, 'safe_get', self._fake_safe_get)
         self.driver = emcdriver.EMCShareDriver(
             configuration=self.configuration)
 

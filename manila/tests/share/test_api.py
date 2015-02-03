@@ -171,18 +171,20 @@ class ShareAPITestCase(test.TestCase):
         self.scheduler_rpcapi = mock.Mock()
         self.share_rpcapi = mock.Mock()
         self.api = share.API()
-        self.stubs.Set(self.api, 'scheduler_rpcapi', self.scheduler_rpcapi)
-        self.stubs.Set(self.api, 'share_rpcapi', self.share_rpcapi)
-        self.stubs.Set(quota.QUOTAS, 'reserve', lambda *args, **kwargs: None)
+        self.mock_object(self.api, 'scheduler_rpcapi', self.scheduler_rpcapi)
+        self.mock_object(self.api, 'share_rpcapi', self.share_rpcapi)
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         lambda *args, **kwargs: None)
 
         dt_utc = datetime.datetime.utcnow()
-        self.stubs.Set(timeutils, 'utcnow', mock.Mock(return_value=dt_utc))
-        self.stubs.Set(timeutils_old, 'utcnow', mock.Mock(return_value=dt_utc))
-        self.stubs.Set(share_api.policy, 'check_policy', mock.Mock())
+        self.mock_object(timeutils, 'utcnow', mock.Mock(return_value=dt_utc))
+        self.mock_object(timeutils_old, 'utcnow',
+                         mock.Mock(return_value=dt_utc))
+        self.mock_object(share_api.policy, 'check_policy')
 
     def test_get_all_admin_no_filters(self):
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
         shares = self.api.get_all(ctx)
         share_api.policy.check_policy.assert_called_once_with(
@@ -195,8 +197,8 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_admin_filter_by_all_tenants(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
-        self.stubs.Set(db_driver, 'share_get_all',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
+        self.mock_object(db_driver, 'share_get_all',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
         shares = self.api.get_all(ctx, {'all_tenants': 1})
         share_api.policy.check_policy.assert_called_once_with(
             ctx, 'share', 'get_all')
@@ -211,8 +213,8 @@ class ShareAPITestCase(test.TestCase):
                 raise exception.NotAuthorized
 
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
-        self.stubs.Set(share_api.policy, 'check_policy',
-                       mock.Mock(side_effect=fake_policy_checker))
+        self.mock_object(share_api.policy, 'check_policy',
+                         mock.Mock(side_effect=fake_policy_checker))
         self.assertRaises(
             exception.NotAuthorized,
             self.api.get_all,
@@ -228,10 +230,10 @@ class ShareAPITestCase(test.TestCase):
         # NOTE(vponomaryov): if share_server_id provided, 'all_tenants' opt
         #                    should not make any influence.
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
-        self.stubs.Set(db_driver, 'share_get_all_by_share_server',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[2:]))
-        self.stubs.Set(db_driver, 'share_get_all', mock.Mock())
-        self.stubs.Set(db_driver, 'share_get_all_by_project', mock.Mock())
+        self.mock_object(db_driver, 'share_get_all_by_share_server',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[2:]))
+        self.mock_object(db_driver, 'share_get_all')
+        self.mock_object(db_driver, 'share_get_all_by_project')
         shares = self.api.get_all(
             ctx, {'share_server_id': 'fake_server_3', 'all_tenants': 1})
         share_api.policy.check_policy.assert_has_calls([
@@ -248,8 +250,8 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_admin_filter_by_name(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
         shares = self.api.get_all(ctx, {'name': 'bar'})
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
@@ -262,8 +264,8 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_admin_filter_by_name_and_all_tenants(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
-        self.stubs.Set(db_driver, 'share_get_all',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
+        self.mock_object(db_driver, 'share_get_all',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
         shares = self.api.get_all(ctx, {'name': 'foo', 'all_tenants': 1})
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
@@ -274,8 +276,8 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_admin_filter_by_status(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
         shares = self.api.get_all(ctx, {'status': 'active'})
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
@@ -288,8 +290,8 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_admin_filter_by_status_and_all_tenants(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
-        self.stubs.Set(db_driver, 'share_get_all',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
+        self.mock_object(db_driver, 'share_get_all',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES))
         shares = self.api.get_all(ctx, {'status': 'error', 'all_tenants': 1})
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
@@ -301,8 +303,8 @@ class ShareAPITestCase(test.TestCase):
     def test_get_all_non_admin_filter_by_all_tenants(self):
         # Expected share list only by project of non-admin user
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=False)
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
         shares = self.api.get_all(ctx, {'all_tenants': 1})
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
@@ -315,8 +317,8 @@ class ShareAPITestCase(test.TestCase):
 
     def test_get_all_non_admin_with_name_and_status_filters(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=False)
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[1:]))
         shares = self.api.get_all(ctx, {'name': 'bar', 'status': 'error'})
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
@@ -344,8 +346,8 @@ class ShareAPITestCase(test.TestCase):
         ])
 
     def test_get_all_with_sorting_valid(self):
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         shares = self.api.get_all(ctx, sort_key='status', sort_dir='asc')
         share_api.policy.check_policy.assert_called_once_with(
@@ -357,8 +359,8 @@ class ShareAPITestCase(test.TestCase):
         self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0], shares)
 
     def test_get_all_sort_key_invalid(self):
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         self.assertRaises(
             exception.InvalidInput,
@@ -370,8 +372,8 @@ class ShareAPITestCase(test.TestCase):
             ctx, 'share', 'get_all')
 
     def test_get_all_sort_dir_invalid(self):
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         self.assertRaises(
             exception.InvalidInput,
@@ -383,8 +385,8 @@ class ShareAPITestCase(test.TestCase):
             ctx, 'share', 'get_all')
 
     def _get_all_filter_metadata_or_extra_specs_valid(self, key):
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         search_opts = {key: {'foo1': 'bar1', 'foo2': 'bar2'}}
         shares = self.api.get_all(ctx, search_opts=search_opts.copy())
@@ -402,8 +404,8 @@ class ShareAPITestCase(test.TestCase):
         self._get_all_filter_metadata_or_extra_specs_valid(key='extra_specs')
 
     def _get_all_filter_metadata_or_extra_specs_invalid(self, key):
-        self.stubs.Set(db_driver, 'share_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
+        self.mock_object(db_driver, 'share_get_all_by_project',
+                         mock.Mock(return_value=_FAKE_LIST_OF_ALL_SHARES[0]))
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         search_opts = {key: "{'foo': 'bar'}"}
         self.assertRaises(exception.InvalidInput, self.api.get_all, ctx,
@@ -499,8 +501,8 @@ class ShareAPITestCase(test.TestCase):
         server_returned = {
             'id': 'fake_share_server_id',
         }
-        self.stubs.Set(db_driver, 'share_server_update',
-                       mock.Mock(return_value=server_returned))
+        self.mock_object(db_driver, 'share_server_update',
+                         mock.Mock(return_value=server_returned))
         self.api.delete_share_server(self.context, server)
         db_driver.share_get_all_by_share_server.assert_called_once_with(
             self.context, server['id'])
@@ -586,10 +588,10 @@ class ShareAPITestCase(test.TestCase):
             'volume_type': None,
             'snapshot_id': share['snapshot_id'],
         }
-        self.stubs.Set(db_driver, 'share_create',
-                       mock.Mock(return_value=share))
-        self.stubs.Set(db_driver, 'share_update',
-                       mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_create',
+                         mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_update',
+                         mock.Mock(return_value=share))
 
         self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
                         snapshot=snapshot, availability_zone='fakeaz')
@@ -633,10 +635,10 @@ class ShareAPITestCase(test.TestCase):
             'volume_type': None,
             'snapshot_id': share['snapshot_id'],
         }
-        self.stubs.Set(db_driver, 'share_create',
-                       mock.Mock(return_value=share))
-        self.stubs.Set(db_driver, 'share_update',
-                       mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_create',
+                         mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_update',
+                         mock.Mock(return_value=share))
 
         self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
                         snapshot=snapshot, availability_zone='fakeaz')
@@ -682,11 +684,12 @@ class ShareAPITestCase(test.TestCase):
             'volume_type': volume_type,
             'snapshot_id': share['snapshot_id'],
         }
-        self.stubs.Set(db_driver, 'share_create',
-                       mock.Mock(return_value=share))
-        self.stubs.Set(db_driver, 'share_update',
-                       mock.Mock(return_value=share))
-        self.stubs.Set(db_driver, 'share_get', mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_create',
+                         mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_update',
+                         mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_get',
+                         mock.Mock(return_value=share))
 
         # Call tested method
         self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
@@ -731,9 +734,10 @@ class ShareAPITestCase(test.TestCase):
         for name in ('id', 'export_location', 'host', 'launched_at',
                      'terminated_at'):
             options.pop(name, None)
-        self.stubs.Set(db_driver, 'share_create',
-                       mock.Mock(return_value=share))
-        self.stubs.Set(db_driver, 'share_get', mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_create',
+                         mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_get',
+                         mock.Mock(return_value=share))
 
         # Call tested method
         self.assertRaises(exception.InvalidInput, self.api.create,
@@ -873,8 +877,8 @@ class ShareAPITestCase(test.TestCase):
         search_opts = {'size': 'fakesize'}
         fake_objs = [{'name': 'fakename1'}, search_opts]
         ctx = context.RequestContext('fakeuid', 'fakepid', is_admin=False)
-        self.stubs.Set(db_driver, 'share_snapshot_get_all_by_project',
-                       mock.Mock(return_value=fake_objs))
+        self.mock_object(db_driver, 'share_snapshot_get_all_by_project',
+                         mock.Mock(return_value=fake_objs))
 
         result = self.api.get_all_snapshots(ctx, search_opts)
 
@@ -886,8 +890,9 @@ class ShareAPITestCase(test.TestCase):
             filters=search_opts)
 
     def test_get_all_snapshots_with_sorting_valid(self):
-        self.stubs.Set(db_driver, 'share_snapshot_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SNAPSHOTS[0]))
+        self.mock_object(
+            db_driver, 'share_snapshot_get_all_by_project',
+            mock.Mock(return_value=_FAKE_LIST_OF_ALL_SNAPSHOTS[0]))
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         snapshots = self.api.get_all_snapshots(
             ctx, sort_key='status', sort_dir='asc')
@@ -898,8 +903,9 @@ class ShareAPITestCase(test.TestCase):
         self.assertEqual(_FAKE_LIST_OF_ALL_SNAPSHOTS[0], snapshots)
 
     def test_get_all_snapshots_sort_key_invalid(self):
-        self.stubs.Set(db_driver, 'share_snapshot_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SNAPSHOTS[0]))
+        self.mock_object(
+            db_driver, 'share_snapshot_get_all_by_project',
+            mock.Mock(return_value=_FAKE_LIST_OF_ALL_SNAPSHOTS[0]))
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         self.assertRaises(
             exception.InvalidInput,
@@ -911,8 +917,9 @@ class ShareAPITestCase(test.TestCase):
             ctx, 'share', 'get_all_snapshots')
 
     def test_get_all_snapshots_sort_dir_invalid(self):
-        self.stubs.Set(db_driver, 'share_snapshot_get_all_by_project',
-                       mock.Mock(return_value=_FAKE_LIST_OF_ALL_SNAPSHOTS[0]))
+        self.mock_object(
+            db_driver, 'share_snapshot_get_all_by_project',
+            mock.Mock(return_value=_FAKE_LIST_OF_ALL_SNAPSHOTS[0]))
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=False)
         self.assertRaises(
             exception.InvalidInput,
@@ -932,8 +939,8 @@ class ShareAPITestCase(test.TestCase):
             'access_to': 'fakeaccto',
             'access_level': level,
         }
-        self.stubs.Set(db_driver, 'share_access_create',
-                       mock.Mock(return_value='fakeacc'))
+        self.mock_object(db_driver, 'share_access_create',
+                         mock.Mock(return_value='fakeacc'))
         access = self.api.allow_access(self.context, share,
                                        'fakeacctype', 'fakeaccto',
                                        level)

@@ -47,12 +47,12 @@ class CinderApiTestCase(test.TestCase):
         self.api = cinder.API()
         self.cinderclient = FakeCinderClient()
         self.ctx = context.get_admin_context()
-        self.stubs.Set(cinder, 'cinderclient',
-                       mock.Mock(return_value=self.cinderclient))
-        self.stubs.Set(cinder, '_untranslate_volume_summary_view',
-                       lambda ctx, vol: vol)
-        self.stubs.Set(cinder, '_untranslate_snapshot_summary_view',
-                       lambda ctx, snap: snap)
+        self.mock_object(cinder, 'cinderclient',
+                         mock.Mock(return_value=self.cinderclient))
+        self.mock_object(cinder, '_untranslate_volume_summary_view',
+                         lambda ctx, vol: vol)
+        self.mock_object(cinder, '_untranslate_snapshot_summary_view',
+                         lambda ctx, snap: snap)
 
     def test_get(self):
         volume_id = 'volume_id1'
@@ -133,56 +133,52 @@ class CinderApiTestCase(test.TestCase):
                           self.api.update, self.ctx, '', '')
 
     def test_reserve_volume(self):
-        self.stubs.Set(self.cinderclient.volumes, 'reserve', mock.Mock())
+        self.mock_object(self.cinderclient.volumes, 'reserve')
         self.api.reserve_volume(self.ctx, 'id1')
         self.cinderclient.volumes.reserve.assert_called_once_with('id1')
 
     def test_unreserve_volume(self):
-        self.stubs.Set(self.cinderclient.volumes, 'unreserve', mock.Mock())
+        self.mock_object(self.cinderclient.volumes, 'unreserve')
         self.api.unreserve_volume(self.ctx, 'id1')
         self.cinderclient.volumes.unreserve.assert_called_once_with('id1')
 
     def test_begin_detaching(self):
-        self.stubs.Set(self.cinderclient.volumes, 'begin_detaching',
-                       mock.Mock())
+        self.mock_object(self.cinderclient.volumes, 'begin_detaching')
         self.api.begin_detaching(self.ctx, 'id1')
         self.cinderclient.volumes.begin_detaching.assert_called_once_with(
             'id1')
 
     def test_roll_detaching(self):
-        self.stubs.Set(self.cinderclient.volumes, 'roll_detaching',
-                       mock.Mock())
+        self.mock_object(self.cinderclient.volumes, 'roll_detaching')
         self.api.roll_detaching(self.ctx, 'id1')
         self.cinderclient.volumes.roll_detaching.assert_called_once_with('id1')
 
     def test_attach(self):
-        self.stubs.Set(self.cinderclient.volumes, 'attach', mock.Mock())
+        self.mock_object(self.cinderclient.volumes, 'attach')
         self.api.attach(self.ctx, 'id1', 'uuid', 'point')
         self.cinderclient.volumes.attach.assert_called_once_with('id1',
                                                                  'uuid',
                                                                  'point')
 
     def test_detach(self):
-        self.stubs.Set(self.cinderclient.volumes, 'detach', mock.Mock())
+        self.mock_object(self.cinderclient.volumes, 'detach')
         self.api.detach(self.ctx, 'id1')
         self.cinderclient.volumes.detach.assert_called_once_with('id1')
 
     def test_initialize_connection(self):
-        self.stubs.Set(self.cinderclient.volumes, 'initialize_connection',
-                       mock.Mock())
+        self.mock_object(self.cinderclient.volumes, 'initialize_connection')
         self.api.initialize_connection(self.ctx, 'id1', 'connector')
         self.cinderclient.volumes.initialize_connection.\
             assert_called_once_with('id1', 'connector')
 
     def test_terminate_connection(self):
-        self.stubs.Set(self.cinderclient.volumes, 'terminate_connection',
-                       mock.Mock())
+        self.mock_object(self.cinderclient.volumes, 'terminate_connection')
         self.api.terminate_connection(self.ctx, 'id1', 'connector')
         self.cinderclient.volumes.terminate_connection.\
             assert_called_once_with('id1', 'connector')
 
     def test_delete(self):
-        self.stubs.Set(self.cinderclient.volumes, 'delete', mock.Mock())
+        self.mock_object(self.cinderclient.volumes, 'delete')
         self.api.delete(self.ctx, 'id1')
         self.cinderclient.volumes.delete.assert_called_once_with('id1')
 
@@ -212,8 +208,7 @@ class CinderApiTestCase(test.TestCase):
         self.assertEqual(result['id'], 'created_id')
 
     def test_delete_snapshot(self):
-        self.stubs.Set(self.cinderclient.volume_snapshots,
-                       'delete', mock.Mock())
+        self.mock_object(self.cinderclient.volume_snapshots, 'delete')
         self.api.delete_snapshot(self.ctx, 'id1')
         self.cinderclient.volume_snapshots.delete.assert_called_once_with(
             'id1')

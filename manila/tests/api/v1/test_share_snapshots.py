@@ -32,13 +32,13 @@ class ShareSnapshotApiTest(test.TestCase):
         super(ShareSnapshotApiTest, self).setUp()
         self.controller = share_snapshots.ShareSnapshotsController()
 
-        self.stubs.Set(share_api.API, 'get', stubs.stub_share_get)
-        self.stubs.Set(share_api.API, 'get_all_snapshots',
-                       stubs.stub_snapshot_get_all_by_project)
-        self.stubs.Set(share_api.API, 'get_snapshot',
-                       stubs.stub_snapshot_get)
-        self.stubs.Set(share_api.API, 'snapshot_update',
-                       stubs.stub_snapshot_update)
+        self.mock_object(share_api.API, 'get', stubs.stub_share_get)
+        self.mock_object(share_api.API, 'get_all_snapshots',
+                         stubs.stub_snapshot_get_all_by_project)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get)
+        self.mock_object(share_api.API, 'snapshot_update',
+                         stubs.stub_snapshot_update)
         self.snp_example = {
             'share_id': 100,
             'size': 12,
@@ -49,8 +49,8 @@ class ShareSnapshotApiTest(test.TestCase):
         self.maxDiff = None
 
     def test_snapshot_create(self):
-        self.stubs.Set(share_api.API, 'create_snapshot',
-                       stubs.stub_snapshot_create)
+        self.mock_object(share_api.API, 'create_snapshot',
+                         stubs.stub_snapshot_create)
         body = {
             'snapshot': {
                 'share_id': 100,
@@ -96,15 +96,15 @@ class ShareSnapshotApiTest(test.TestCase):
                           body)
 
     def test_snapshot_delete(self):
-        self.stubs.Set(share_api.API, 'delete_snapshot',
-                       stubs.stub_snapshot_delete)
+        self.mock_object(share_api.API, 'delete_snapshot',
+                         stubs.stub_snapshot_delete)
         req = fakes.HTTPRequest.blank('/snapshots/200')
         resp = self.controller.delete(req, 200)
         self.assertEqual(resp.status_int, 202)
 
     def test_snapshot_delete_nofound(self):
-        self.stubs.Set(share_api.API, 'get_snapshot',
-                       stubs.stub_snapshot_get_notfound)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get_notfound)
         req = fakes.HTTPRequest.blank('/snapshots/200')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.delete,
@@ -141,16 +141,16 @@ class ShareSnapshotApiTest(test.TestCase):
         self.assertEqual(res_dict, expected)
 
     def test_snapshot_show_nofound(self):
-        self.stubs.Set(share_api.API, 'get_snapshot',
-                       stubs.stub_snapshot_get_notfound)
+        self.mock_object(share_api.API, 'get_snapshot',
+                         stubs.stub_snapshot_get_notfound)
         req = fakes.HTTPRequest.blank('/snapshots/200')
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show,
                           req, '200')
 
     def test_snapshot_list_summary(self):
-        self.stubs.Set(share_api.API, 'get_all_snapshots',
-                       stubs.stub_snapshot_get_all_by_project)
+        self.mock_object(share_api.API, 'get_all_snapshots',
+                         stubs.stub_snapshot_get_all_by_project)
         req = fakes.HTTPRequest.blank('/snapshots')
         res_dict = self.controller.index(req)
         expected = {
@@ -195,8 +195,8 @@ class ShareSnapshotApiTest(test.TestCase):
             {'id': 'id2', 'display_name': 'n2'},
             {'id': 'id3', 'display_name': 'n3'},
         ]
-        self.stubs.Set(share_api.API, 'get_all_snapshots',
-                       mock.Mock(return_value=snapshots))
+        self.mock_object(share_api.API, 'get_all_snapshots',
+                         mock.Mock(return_value=snapshots))
 
         result = self.controller.index(req)
 
@@ -251,8 +251,8 @@ class ShareSnapshotApiTest(test.TestCase):
             {'id': 'id3', 'display_name': 'n3'},
         ]
 
-        self.stubs.Set(share_api.API, 'get_all_snapshots',
-                       mock.Mock(return_value=snapshots))
+        self.mock_object(share_api.API, 'get_all_snapshots',
+                         mock.Mock(return_value=snapshots))
 
         result = self.controller.detail(req)
 

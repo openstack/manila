@@ -1141,7 +1141,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         self.configuration.emc_nas_password = 'fakepwd'
         self.configuration.emc_nas_server = TD.emc_nas_server_default
         self.configuration.share_backend_name = 'fake_backend'
-        self.stubs.Set(self.configuration, 'safe_get', self._fake_safe_get)
+        self.mock_object(self.configuration, 'safe_get', self._fake_safe_get)
         self.driver = emc_driver.EMCShareDriver(
             configuration=self.configuration)
         self.driver_setup()

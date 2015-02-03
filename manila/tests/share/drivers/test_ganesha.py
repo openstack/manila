@@ -80,14 +80,14 @@ class GaneshaNASHelperTestCase(test.TestCase):
                 copy.deepcopy(tmpl1), copy.deepcopy(tmpl2))
             tmpl1.update(tmpl2)
 
-        self.stubs.Set(ganesha.os, 'listdir',
-                       mock.Mock(return_value=fake_ls_dir))
-        self.stubs.Set(ganesha.LOG, 'info', mock.Mock())
-        self.stubs.Set(ganesha.ganesha_manager, 'parseconf',
-                       mock.Mock(side_effect=[fake_template1,
-                                              fake_template2]))
-        self.stubs.Set(ganesha.ganesha_utils, 'patch',
-                       mock.Mock(side_effect=fake_patch_run))
+        self.mock_object(ganesha.os, 'listdir',
+                         mock.Mock(return_value=fake_ls_dir))
+        self.mock_object(ganesha.LOG, 'info')
+        self.mock_object(ganesha.ganesha_manager, 'parseconf',
+                         mock.Mock(side_effect=[fake_template1,
+                                                fake_template2]))
+        self.mock_object(ganesha.ganesha_utils, 'patch',
+                         mock.Mock(side_effect=fake_patch_run))
         with mock.patch('six.moves.builtins.open',
                         mock.mock_open()) as mockopen:
             mockopen().read.side_effect = ['fakeconf0', 'fakeconf1']
@@ -108,13 +108,13 @@ class GaneshaNASHelperTestCase(test.TestCase):
             self.assertEqual(fake_template2, ret)
 
     def test_load_conf_dir_no_conf_dir_must_exist_false(self):
-        self.stubs.Set(
+        self.mock_object(
             ganesha.os, 'listdir',
             mock.Mock(side_effect=OSError(errno.ENOENT,
                                           os.strerror(errno.ENOENT))))
-        self.stubs.Set(ganesha.LOG, 'info', mock.Mock())
-        self.stubs.Set(ganesha.ganesha_manager, 'parseconf', mock.Mock())
-        self.stubs.Set(ganesha.ganesha_utils, 'patch', mock.Mock())
+        self.mock_object(ganesha.LOG, 'info')
+        self.mock_object(ganesha.ganesha_manager, 'parseconf')
+        self.mock_object(ganesha.ganesha_utils, 'patch')
         with mock.patch('six.moves.builtins.open',
                         mock.mock_open(read_data='fakeconf')) as mockopen:
             ret = self._helper._load_conf_dir(self.fake_conf_dir_path,
@@ -129,7 +129,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
             self.assertEqual({}, ret)
 
     def test_load_conf_dir_error_no_conf_dir_must_exist_true(self):
-        self.stubs.Set(
+        self.mock_object(
             ganesha.os, 'listdir',
             mock.Mock(side_effect=OSError(errno.ENOENT,
                                           os.strerror(errno.ENOENT))))
@@ -138,7 +138,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
         ganesha.os.listdir.assert_called_once_with(self.fake_conf_dir_path)
 
     def test_load_conf_dir_error_conf_dir_present_must_exist_false(self):
-        self.stubs.Set(
+        self.mock_object(
             ganesha.os, 'listdir',
             mock.Mock(side_effect=OSError(errno.EACCES,
                                           os.strerror(errno.EACCES))))
@@ -147,7 +147,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
         ganesha.os.listdir.assert_called_once_with(self.fake_conf_dir_path)
 
     def test_load_conf_dir_error(self):
-        self.stubs.Set(
+        self.mock_object(
             ganesha.os, 'listdir',
             mock.Mock(side_effect=RuntimeError('fake error')))
         self.assertRaises(RuntimeError, self._helper._load_conf_dir,
@@ -157,11 +157,11 @@ class GaneshaNASHelperTestCase(test.TestCase):
     def test_init_helper(self):
         mock_template = mock.Mock()
         mock_ganesha_manager = mock.Mock()
-        self.stubs.Set(ganesha.ganesha_manager, 'GaneshaManager',
-                       mock.Mock(return_value=mock_ganesha_manager))
-        self.stubs.Set(self._helper, '_load_conf_dir',
-                       mock.Mock(return_value=mock_template))
-        self.stubs.Set(self._helper, '_default_config_hook', mock.Mock())
+        self.mock_object(ganesha.ganesha_manager, 'GaneshaManager',
+                         mock.Mock(return_value=mock_ganesha_manager))
+        self.mock_object(self._helper, '_load_conf_dir',
+                         mock.Mock(return_value=mock_template))
+        self.mock_object(self._helper, '_default_config_hook')
         ret = self._helper.init_helper()
         ganesha.ganesha_manager.GaneshaManager.assert_called_once_with(
             self._execute, 'faketag',
@@ -179,12 +179,12 @@ class GaneshaNASHelperTestCase(test.TestCase):
     def test_init_helper_conf_dir_empty(self):
         mock_template = mock.Mock()
         mock_ganesha_manager = mock.Mock()
-        self.stubs.Set(ganesha.ganesha_manager, 'GaneshaManager',
-                       mock.Mock(return_value=mock_ganesha_manager))
-        self.stubs.Set(self._helper, '_load_conf_dir',
-                       mock.Mock(return_value={}))
-        self.stubs.Set(self._helper, '_default_config_hook',
-                       mock.Mock(return_value=mock_template))
+        self.mock_object(ganesha.ganesha_manager, 'GaneshaManager',
+                         mock.Mock(return_value=mock_ganesha_manager))
+        self.mock_object(self._helper, '_load_conf_dir',
+                         mock.Mock(return_value={}))
+        self.mock_object(self._helper, '_default_config_hook',
+                         mock.Mock(return_value=mock_template))
         ret = self._helper.init_helper()
         ganesha.ganesha_manager.GaneshaManager.assert_called_once_with(
             self._execute, 'faketag',
@@ -201,10 +201,10 @@ class GaneshaNASHelperTestCase(test.TestCase):
 
     def test_default_config_hook(self):
         fake_template = {'key': 'value'}
-        self.stubs.Set(ganesha.ganesha_utils, 'path_from',
-                       mock.Mock(return_value='/fakedir3/fakeconfdir'))
-        self.stubs.Set(self._helper, '_load_conf_dir',
-                       mock.Mock(return_value=fake_template))
+        self.mock_object(ganesha.ganesha_utils, 'path_from',
+                         mock.Mock(return_value='/fakedir3/fakeconfdir'))
+        self.mock_object(self._helper, '_load_conf_dir',
+                         mock.Mock(return_value=fake_template))
         ret = self._helper._default_config_hook()
         ganesha.ganesha_utils.path_from.assert_called_once_with(
             ganesha.__file__, 'conf')
@@ -223,12 +223,12 @@ class GaneshaNASHelperTestCase(test.TestCase):
             mock_ganesha_utils_patch(copy.deepcopy(tmpl1), tmpl2, tmpl3)
             tmpl1.update(tmpl3)
 
-        self.stubs.Set(self._helper.ganesha, 'get_export_id',
-                       mock.Mock(return_value=101))
-        self.stubs.Set(self._helper, '_fsal_hook',
-                       mock.Mock(return_value='fakefsal'))
-        self.stubs.Set(ganesha.ganesha_utils, 'patch',
-                       mock.Mock(side_effect=fake_patch_run))
+        self.mock_object(self._helper.ganesha, 'get_export_id',
+                         mock.Mock(return_value=101))
+        self.mock_object(self._helper, '_fsal_hook',
+                         mock.Mock(return_value='fakefsal'))
+        self.mock_object(ganesha.ganesha_utils, 'patch',
+                         mock.Mock(side_effect=fake_patch_run))
         ret = self._helper.allow_access(fake_basepath, self.share,
                                         self.access)
         self._helper.ganesha.get_export_id.assert_called_once_with()

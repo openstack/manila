@@ -52,9 +52,8 @@ class ShareManagerTestCase(test.TestCase):
         # to specific manager.
         self.share_manager = importutils.import_object(
             "manila.share.manager.ShareManager")
-        self.stubs.Set(self.share_manager.driver, 'do_setup', mock.Mock())
-        self.stubs.Set(self.share_manager.driver, 'check_for_setup_error',
-                       mock.Mock())
+        self.mock_object(self.share_manager.driver, 'do_setup')
+        self.mock_object(self.share_manager.driver, 'check_for_setup_error')
         self.context = context.get_admin_context()
 
     @staticmethod
@@ -136,8 +135,8 @@ class ShareManagerTestCase(test.TestCase):
         return service_ref
 
     def test_init_host_with_no_shares(self):
-        self.stubs.Set(self.share_manager.db, 'share_get_all_by_host',
-                       mock.Mock(return_value=[]))
+        self.mock_object(self.share_manager.db, 'share_get_all_by_host',
+                         mock.Mock(return_value=[]))
 
         self.share_manager.init_host()
 
@@ -165,18 +164,19 @@ class ShareManagerTestCase(test.TestCase):
             FakeAccessRule(state='error'),
         ]
         share_server = 'fake_share_server_type_does_not_matter'
-        self.stubs.Set(self.share_manager.db,
-                       'share_get_all_by_host',
-                       mock.Mock(return_value=shares))
-        self.stubs.Set(self.share_manager.driver, 'ensure_share', mock.Mock())
-        self.stubs.Set(self.share_manager, '_get_share_server',
-                       mock.Mock(return_value=share_server))
-        self.stubs.Set(self.share_manager, 'publish_service_capabilities',
-                       mock.Mock())
-        self.stubs.Set(self.share_manager.db, 'share_access_get_all_for_share',
-                       mock.Mock(return_value=rules))
-        self.stubs.Set(self.share_manager.driver, 'allow_access',
-                       mock.Mock(side_effect=raise_share_access_exists))
+        self.mock_object(self.share_manager.db,
+                         'share_get_all_by_host',
+                         mock.Mock(return_value=shares))
+        self.mock_object(self.share_manager.driver, 'ensure_share')
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=share_server))
+        self.mock_object(self.share_manager, 'publish_service_capabilities',
+                         mock.Mock())
+        self.mock_object(self.share_manager.db,
+                         'share_access_get_all_for_share',
+                         mock.Mock(return_value=rules))
+        self.mock_object(self.share_manager.driver, 'allow_access',
+                         mock.Mock(side_effect=raise_share_access_exists))
 
         # call of 'init_host' method
         self.share_manager.init_host()
@@ -213,17 +213,16 @@ class ShareManagerTestCase(test.TestCase):
             {'id': 'fake_id_3', 'status': 'available', 'name': 'fake_name_3'},
         ]
         share_server = 'fake_share_server_type_does_not_matter'
-        self.stubs.Set(self.share_manager.db,
-                       'share_get_all_by_host',
-                       mock.Mock(return_value=shares))
-        self.stubs.Set(self.share_manager.driver, 'ensure_share',
-                       mock.Mock(side_effect=raise_exception))
-        self.stubs.Set(self.share_manager, '_get_share_server',
-                       mock.Mock(return_value=share_server))
-        self.stubs.Set(self.share_manager, 'publish_service_capabilities',
-                       mock.Mock())
-        self.stubs.Set(manager.LOG, 'error', mock.Mock())
-        self.stubs.Set(manager.LOG, 'info', mock.Mock())
+        self.mock_object(self.share_manager.db,
+                         'share_get_all_by_host',
+                         mock.Mock(return_value=shares))
+        self.mock_object(self.share_manager.driver, 'ensure_share',
+                         mock.Mock(side_effect=raise_exception))
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=share_server))
+        self.mock_object(self.share_manager, 'publish_service_capabilities')
+        self.mock_object(manager.LOG, 'error')
+        self.mock_object(manager.LOG, 'info')
 
         # call of 'init_host' method
         self.share_manager.init_host()
@@ -266,20 +265,20 @@ class ShareManagerTestCase(test.TestCase):
             FakeAccessRule(state='error'),
         ]
         share_server = 'fake_share_server_type_does_not_matter'
-        self.stubs.Set(self.share_manager.db,
-                       'share_get_all_by_host',
-                       mock.Mock(return_value=shares))
-        self.stubs.Set(self.share_manager.driver, 'ensure_share', mock.Mock())
-        self.stubs.Set(self.share_manager, '_get_share_server',
-                       mock.Mock(return_value=share_server))
-        self.stubs.Set(self.share_manager, 'publish_service_capabilities',
-                       mock.Mock())
-        self.stubs.Set(manager.LOG, 'error', mock.Mock())
-        self.stubs.Set(manager.LOG, 'info', mock.Mock())
-        self.stubs.Set(self.share_manager.db, 'share_access_get_all_for_share',
-                       mock.Mock(return_value=rules))
-        self.stubs.Set(self.share_manager.driver, 'allow_access',
-                       mock.Mock(side_effect=raise_exception))
+        self.mock_object(self.share_manager.db,
+                         'share_get_all_by_host',
+                         mock.Mock(return_value=shares))
+        self.mock_object(self.share_manager.driver, 'ensure_share')
+        self.mock_object(self.share_manager, '_get_share_server',
+                         mock.Mock(return_value=share_server))
+        self.mock_object(self.share_manager, 'publish_service_capabilities')
+        self.mock_object(manager.LOG, 'error')
+        self.mock_object(manager.LOG, 'info')
+        self.mock_object(self.share_manager.db,
+                         'share_access_get_all_for_share',
+                         mock.Mock(return_value=rules))
+        self.mock_object(self.share_manager.driver, 'allow_access',
+                         mock.Mock(side_effect=raise_exception))
 
         # call of 'init_host' method
         self.share_manager.init_host()
@@ -380,15 +379,16 @@ class ShareManagerTestCase(test.TestCase):
             snapshot['progress'] = '99%'
             return snapshot
 
-        self.stubs.Set(self.share_manager.driver, "create_snapshot",
-                       _fake_create_snapshot)
+        self.mock_object(self.share_manager.driver, "create_snapshot",
+                         _fake_create_snapshot)
 
         share = self._create_share()
         share_id = share['id']
         snapshot = self._create_snapshot(share_id=share_id)
         snapshot_id = snapshot['id']
 
-        self.share_manager.create_snapshot(self.context, share_id, snapshot_id)
+        self.share_manager.create_snapshot(self.context, share_id,
+                                           snapshot_id)
         self.assertEqual(share_id,
                          db.share_snapshot_get(context.get_admin_context(),
                                                snapshot_id).share_id)
@@ -408,10 +408,10 @@ class ShareManagerTestCase(test.TestCase):
         def _raise_not_found(self, *args, **kwargs):
             raise exception.NotFound()
 
-        self.stubs.Set(self.share_manager.driver, "create_snapshot",
-                       mock.Mock(side_effect=_raise_not_found))
-        self.stubs.Set(self.share_manager.driver, "delete_snapshot",
-                       mock.Mock(side_effect=_raise_not_found))
+        self.mock_object(self.share_manager.driver, "create_snapshot",
+                         mock.Mock(side_effect=_raise_not_found))
+        self.mock_object(self.share_manager.driver, "delete_snapshot",
+                         mock.Mock(side_effect=_raise_not_found))
 
         share = self._create_share()
         share_id = share['id']
@@ -445,8 +445,8 @@ class ShareManagerTestCase(test.TestCase):
         def _raise_share_snapshot_is_busy(self, *args, **kwargs):
             raise exception.ShareSnapshotIsBusy(snapshot_name='fakename')
 
-        self.stubs.Set(self.share_manager.driver, "delete_snapshot",
-                       mock.Mock(side_effect=_raise_share_snapshot_is_busy))
+        self.mock_object(self.share_manager.driver, "delete_snapshot",
+                         mock.Mock(side_effect=_raise_share_snapshot_is_busy))
         share = self._create_share(status='ACTIVE')
         snapshot = self._create_snapshot(share_id=share['id'])
         snapshot_id = snapshot['id']
@@ -462,16 +462,16 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_with_share_network_driver_not_handles_servers(self):
         manager.CONF.set_default('driver_handles_share_servers', False)
-        self.stubs.Set(
+        self.mock_object(
             self.share_manager.driver.configuration, 'safe_get',
             mock.Mock(return_value=False))
         share_id = 'fake_share_id'
         share_network_id = 'fake_sn'
-        self.stubs.Set(
+        self.mock_object(
             self.share_manager.db, 'share_get',
             mock.Mock(return_value=self._create_share(
                 share_network_id=share_network_id)))
-        self.stubs.Set(self.share_manager.db, 'share_update', mock.Mock())
+        self.mock_object(self.share_manager.db, 'share_update')
 
         self.assertRaises(
             exception.ManilaException,
@@ -506,12 +506,12 @@ class ShareManagerTestCase(test.TestCase):
     def test_create_share_with_share_network_server_creation_failed(self):
         fake_share = {'id': 'fake_share_id', 'share_network_id': 'fake_sn_id'}
         fake_server = {'id': 'fake_srv_id'}
-        self.stubs.Set(db, 'share_server_create',
-                       mock.Mock(return_value=fake_server))
-        self.stubs.Set(db, 'share_update',
-                       mock.Mock(return_value=fake_share))
-        self.stubs.Set(db, 'share_get',
-                       mock.Mock(return_value=fake_share))
+        self.mock_object(db, 'share_server_create',
+                         mock.Mock(return_value=fake_server))
+        self.mock_object(db, 'share_update',
+                         mock.Mock(return_value=fake_share))
+        self.mock_object(db, 'share_get',
+                         mock.Mock(return_value=fake_share))
 
         def raise_share_server_not_found(*args, **kwargs):
             raise exception.ShareServerNotFound(
@@ -520,10 +520,10 @@ class ShareManagerTestCase(test.TestCase):
         def raise_manila_exception(*args, **kwargs):
             raise exception.ManilaException()
 
-        self.stubs.Set(db, 'share_server_get_by_host_and_share_net_valid',
-                       mock.Mock(side_effect=raise_share_server_not_found))
-        self.stubs.Set(self.share_manager, '_setup_server',
-                       mock.Mock(side_effect=raise_manila_exception))
+        self.mock_object(db, 'share_server_get_by_host_and_share_net_valid',
+                         mock.Mock(side_effect=raise_share_server_not_found))
+        self.mock_object(self.share_manager, '_setup_server',
+                         mock.Mock(side_effect=raise_manila_exception))
 
         self.assertRaises(
             exception.ManilaException,
@@ -616,10 +616,10 @@ class ShareManagerTestCase(test.TestCase):
             state='ERROR')
         share_id = share['id']
         fake_server = {'id': 'fake_srv_id'}
-        self.stubs.Set(db, 'share_server_create',
-                       mock.Mock(return_value=fake_server))
-        self.stubs.Set(self.share_manager, '_setup_server',
-                       mock.Mock(return_value=fake_server))
+        self.mock_object(db, 'share_server_create',
+                         mock.Mock(return_value=fake_server))
+        self.mock_object(self.share_manager, '_setup_server',
+                         mock.Mock(return_value=fake_server))
 
         self.share_manager.create_share(self.context, share_id)
 
@@ -639,10 +639,10 @@ class ShareManagerTestCase(test.TestCase):
         def _raise_not_found(self, *args, **kwargs):
             raise exception.NotFound()
 
-        self.stubs.Set(self.share_manager.driver, "create_share",
-                       mock.Mock(side_effect=_raise_not_found))
-        self.stubs.Set(self.share_manager.driver, "delete_share",
-                       mock.Mock(side_effect=_raise_not_found))
+        self.mock_object(self.share_manager.driver, "create_share",
+                         mock.Mock(side_effect=_raise_not_found))
+        self.mock_object(self.share_manager.driver, "delete_share",
+                         mock.Mock(side_effect=_raise_not_found))
 
         share = self._create_share()
         share_id = share['id']
@@ -785,10 +785,10 @@ class ShareManagerTestCase(test.TestCase):
         def _fake_deny_access(self, *args, **kwargs):
             raise exception.NotFound()
 
-        self.stubs.Set(self.share_manager.driver, "allow_access",
-                       _fake_allow_access)
-        self.stubs.Set(self.share_manager.driver, "deny_access",
-                       _fake_deny_access)
+        self.mock_object(self.share_manager.driver, "allow_access",
+                         _fake_allow_access)
+        self.mock_object(self.share_manager.driver, "deny_access",
+                         _fake_deny_access)
 
         share = self._create_share()
         share_id = share['id']
@@ -823,19 +823,17 @@ class ShareManagerTestCase(test.TestCase):
         server_info = {'fake_server_info_key': 'fake_server_info_value'}
 
         # mock required stuff
-        self.stubs.Set(self.share_manager.db, 'share_network_get',
-                       mock.Mock(return_value=share_network))
-        self.stubs.Set(self.share_manager.driver, 'allocate_network',
-                       mock.Mock())
-        self.stubs.Set(self.share_manager, '_form_server_setup_info',
-                       mock.Mock(return_value=network_info))
-        self.stubs.Set(self.share_manager.driver, 'setup_server',
-                       mock.Mock(return_value=server_info))
-        self.stubs.Set(self.share_manager.db,
-                       'share_server_backend_details_set',
-                       mock.Mock())
-        self.stubs.Set(self.share_manager.db, 'share_server_update',
-                       mock.Mock(return_value=share_server))
+        self.mock_object(self.share_manager.db, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+        self.mock_object(self.share_manager.driver, 'allocate_network')
+        self.mock_object(self.share_manager, '_form_server_setup_info',
+                         mock.Mock(return_value=network_info))
+        self.mock_object(self.share_manager.driver, 'setup_server',
+                         mock.Mock(return_value=server_info))
+        self.mock_object(self.share_manager.db,
+                         'share_server_backend_details_set')
+        self.mock_object(self.share_manager.db, 'share_server_update',
+                         mock.Mock(return_value=share_server))
 
         # execute method _setup_server
         result = self.share_manager._setup_server(
@@ -872,16 +870,15 @@ class ShareManagerTestCase(test.TestCase):
         server_info = {}
 
         # mock required stuff
-        self.stubs.Set(self.share_manager.db, 'share_network_get',
-                       mock.Mock(return_value=share_network))
-        self.stubs.Set(self.share_manager, '_form_server_setup_info',
-                       mock.Mock(return_value=network_info))
-        self.stubs.Set(self.share_manager.driver, 'setup_server',
-                       mock.Mock(return_value=server_info))
-        self.stubs.Set(self.share_manager.db, 'share_server_update',
-                       mock.Mock(return_value=share_server))
-        self.stubs.Set(self.share_manager.driver, 'allocate_network',
-                       mock.Mock())
+        self.mock_object(self.share_manager.db, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+        self.mock_object(self.share_manager, '_form_server_setup_info',
+                         mock.Mock(return_value=network_info))
+        self.mock_object(self.share_manager.driver, 'setup_server',
+                         mock.Mock(return_value=server_info))
+        self.mock_object(self.share_manager.db, 'share_server_update',
+                         mock.Mock(return_value=share_server))
+        self.mock_object(self.share_manager.driver, 'allocate_network')
 
         # execute method _setup_server
         result = self.share_manager._setup_server(
@@ -913,27 +910,24 @@ class ShareManagerTestCase(test.TestCase):
         network_info = {'fake_network_info_key': 'fake_network_info_value'}
         if detail_data_proper:
             detail_data = {'server_details': server_info}
-            self.stubs.Set(self.share_manager.db,
-                           'share_server_backend_details_set',
-                           mock.Mock())
+            self.mock_object(self.share_manager.db,
+                             'share_server_backend_details_set')
         else:
             detail_data = 'not dictionary detail data'
 
         # Mock required parameters
-        self.stubs.Set(self.share_manager.db, 'share_network_get',
-                       mock.Mock(return_value=share_network))
-        self.stubs.Set(self.share_manager.db, 'share_server_update',
-                       mock.Mock())
+        self.mock_object(self.share_manager.db, 'share_network_get',
+                         mock.Mock(return_value=share_network))
+        self.mock_object(self.share_manager.db, 'share_server_update')
         for m in ['deallocate_network', 'allocate_network']:
-            self.stubs.Set(self.share_manager.driver, m, mock.Mock())
-        self.stubs.Set(self.share_manager, '_form_server_setup_info',
-                       mock.Mock(return_value=network_info))
-        self.stubs.Set(self.share_manager.db,
-                       'share_server_backend_details_set',
-                       mock.Mock())
-        self.stubs.Set(self.share_manager.driver, 'setup_server',
-                       mock.Mock(side_effect=exception.ManilaException(
-                           detail_data=detail_data)))
+            self.mock_object(self.share_manager.driver, m)
+        self.mock_object(self.share_manager, '_form_server_setup_info',
+                         mock.Mock(return_value=network_info))
+        self.mock_object(self.share_manager.db,
+                         'share_server_backend_details_set')
+        self.mock_object(self.share_manager.driver, 'setup_server',
+                         mock.Mock(side_effect=exception.ManilaException(
+                             detail_data=detail_data)))
 
         # execute method _setup_server
         self.assertRaises(
