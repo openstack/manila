@@ -149,6 +149,15 @@ class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin):
             self._walk_versions(snake_walk=self.snake_walk,
                                 downgrade=self.downgrade)
 
+    def test_single_branch(self):
+        alembic_cfg = migration._alembic_config()
+        script_directory = script.ScriptDirectory.from_config(alembic_cfg)
+
+        actual_result = script_directory.get_heads()
+
+        self.assertEqual(1, len(actual_result),
+                         "Db migrations should have only one branch.")
+
 
 class TestManilaMigrationsMySQL(ManilaMigrationsCheckers,
                                 test_base.MySQLOpportunisticTestCase):
