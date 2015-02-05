@@ -168,6 +168,7 @@ class ShareManagerTestCase(test.TestCase):
                          'share_get_all_by_host',
                          mock.Mock(return_value=shares))
         self.mock_object(self.share_manager.driver, 'ensure_share')
+        self.mock_object(self.share_manager, '_ensure_share_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities',
@@ -188,6 +189,9 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext))
         self.share_manager.driver.check_for_setup_error.\
             assert_called_once_with()
+        self.share_manager._ensure_share_has_pool.\
+            assert_called_once_with(utils.IsAMatcher(context.RequestContext),
+                                    shares[0])
         self.share_manager._get_share_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), shares[0])
         self.share_manager.driver.ensure_share.assert_called_once_with(
@@ -218,6 +222,7 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=shares))
         self.mock_object(self.share_manager.driver, 'ensure_share',
                          mock.Mock(side_effect=raise_exception))
+        self.mock_object(self.share_manager, '_ensure_share_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities')
@@ -233,6 +238,10 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
         self.share_manager.driver.check_for_setup_error.assert_called_with()
+        self.share_manager._ensure_share_has_pool.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[0]),
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[2]),
+        ])
         self.share_manager._get_share_server.assert_has_calls([
             mock.call(utils.IsAMatcher(context.RequestContext), shares[0]),
             mock.call(utils.IsAMatcher(context.RequestContext), shares[2]),
@@ -269,6 +278,7 @@ class ShareManagerTestCase(test.TestCase):
                          'share_get_all_by_host',
                          mock.Mock(return_value=shares))
         self.mock_object(self.share_manager.driver, 'ensure_share')
+        self.mock_object(self.share_manager, '_ensure_share_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities')
@@ -289,6 +299,10 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
         self.share_manager.driver.check_for_setup_error.assert_called_with()
+        self.share_manager._ensure_share_has_pool.assert_has_calls([
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[0]),
+            mock.call(utils.IsAMatcher(context.RequestContext), shares[2]),
+        ])
         self.share_manager._get_share_server.assert_has_calls([
             mock.call(utils.IsAMatcher(context.RequestContext), shares[0]),
             mock.call(utils.IsAMatcher(context.RequestContext), shares[2]),
@@ -960,3 +974,30 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_setup_server_exception_in_driver(self):
         self.setup_server_raise_exception(detail_data_proper=True)
+
+    def test_ensure_share_has_pool_with_only_host(self):
+        fake_share = {'status': 'available', 'host': 'host1', 'id': 1}
+        host = self.share_manager._ensure_share_has_pool(context.
+                                                         get_admin_context(),
+                                                         fake_share)
+        self.assertIsNone(host)
+
+    def test_ensure_share_has_pool_with_full_pool_name(self):
+        fake_share = {'host': 'host1#pool0', 'id': 1,
+                      'status': 'available'}
+        fake_share_expected_value = 'pool0'
+        host = self.share_manager._ensure_share_has_pool(context.
+                                                         get_admin_context(),
+                                                         fake_share)
+        self.assertEqual(fake_share_expected_value, host)
+
+    def test_ensure_share_has_pool_unable_to_fetch_share(self):
+        fake_share = {'host': 'host@backend', 'id': 1,
+                      'status': 'available'}
+        with mock.patch.object(self.share_manager.driver, 'get_pool',
+                               side_effect=Exception):
+            with mock.patch.object(manager, 'LOG') as mock_LOG:
+                self.share_manager._ensure_share_has_pool(context.
+                                                          get_admin_context(),
+                                                          fake_share)
+                self.assertEqual(1, mock_LOG.error.call_count)

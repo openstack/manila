@@ -35,6 +35,7 @@ from manila import manager
 from manila.openstack.common import log as logging
 from manila import quota
 import manila.share.configuration
+from manila.share import utils as share_utils
 from manila import utils
 
 LOG = logging.getLogger(__name__)
@@ -82,6 +83,27 @@ class ShareManager(manager.SchedulerDependentManager):
         self.driver = importutils.import_object(
             share_driver, self.db, configuration=self.configuration)
 
+    def _ensure_share_has_pool(self, ctxt, share):
+        pool = share_utils.extract_host(share['host'], 'pool')
+        if pool is None:
+            # No pool name encoded in host, so this is a legacy
+            # share created before pool is introduced, ask
+            # driver to provide pool info if it has such
+            # knowledge and update the DB.
+            try:
+                pool = self.driver.get_pool(share)
+            except Exception as err:
+                LOG.error(_LE("Failed to fetch pool name for share: "
+                              "%(share)s. Error: %(error)s."),
+                          {'share': share['id'], 'error': err})
+                return
+
+            if pool:
+                new_host = share_utils.append_host(share['host'], pool)
+                self.db.share_update(ctxt, share['id'], {'host': new_host})
+
+        return pool
+
     def init_host(self):
         """Initialization for a standalone service."""
 
@@ -93,6 +115,7 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.debug("Re-exporting %s shares", len(shares))
         for share in shares:
             if share['status'] == 'available':
+                self._ensure_share_has_pool(ctxt, share)
                 share_server = self._get_share_server(ctxt, share)
                 try:
                     self.driver.ensure_share(

@@ -52,6 +52,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         share['project_id'] = self.project_id
         share['size'] = size
         share['status'] = 'available'
+        share['host'] = 'fake_host'
         return db.share_create(self.context, share)
 
     def _create_snapshot(self, share):
@@ -60,6 +61,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         snapshot['project_id'] = self.project_id
         snapshot['share_id'] = share['id']
         snapshot['share_size'] = share['size']
+        snapshot['host'] = share['host']
         snapshot['status'] = 'available'
         return db.share_snapshot_create(self.context, snapshot)
 

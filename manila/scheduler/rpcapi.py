@@ -31,15 +31,16 @@ class SchedulerAPI(object):
     API version history:
 
         1.0 - Initial version.
+        1.1 - Add get_pools method
     '''
 
-    RPC_API_VERSION = '1.0'
+    RPC_API_VERSION = '1.1'
 
     def __init__(self):
         super(SchedulerAPI, self).__init__()
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.0')
+        self.client = rpc.get_client(target, version_cap='1.1')
 
     def create_share(self, ctxt, topic, share_id, snapshot_id=None,
                      request_spec=None, filter_properties=None):
@@ -66,3 +67,8 @@ class SchedulerAPI(object):
             host=host,
             capabilities=capabilities,
         )
+
+    def get_pools(self, ctxt, filters=None):
+        cctxt = self.client.prepare(version='1.1')
+        return cctxt.call(ctxt, 'get_pools',
+                          filters=filters)

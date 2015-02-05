@@ -324,3 +324,16 @@ class TestCase(base_test.BaseTestCase):
             self.assertTrue(a is None)
         else:
             f(a, *args, **kwargs)
+
+    def _dict_from_object(self, obj, ignored_keys):
+        if ignored_keys is None:
+            ignored_keys = []
+        return dict([(k, v) for k, v in obj.iteritems()
+                     if k not in ignored_keys])
+
+    def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None):
+        obj_to_dict = lambda o: self._dict_from_object(o, ignored_keys)
+        sort_key = lambda d: [d[k] for k in sorted(d)]
+        conv_and_sort = lambda obj: sorted(map(obj_to_dict, obj), key=sort_key)
+
+        self.assertEqual(conv_and_sort(objs1), conv_and_sort(objs2))

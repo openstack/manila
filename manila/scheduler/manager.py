@@ -19,6 +19,7 @@
 Scheduler Service
 """
 
+from oslo import messaging
 from oslo_config import cfg
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -45,6 +46,10 @@ CONF.register_opt(scheduler_driver_opt)
 
 class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
+
+    RPC_API_VERSION = '1.1'
+
+    target = messaging.Target(version=RPC_API_VERSION)
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -87,6 +92,10 @@ class SchedulerManager(manager.Manager):
                 self._set_share_error_state_and_notify('create_share',
                                                        context, ex,
                                                        request_spec)
+
+    def get_pools(self, context, filters=None):
+        """Get active pools from the scheduler's cache."""
+        return self.driver.get_pools(context, filters)
 
     def _set_share_error_state_and_notify(self, method, context, ex,
                                           request_spec):

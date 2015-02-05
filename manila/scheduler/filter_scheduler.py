@@ -49,6 +49,10 @@ class FilterScheduler(driver.Scheduler):
         """Fetch options dictionary. Broken out for testing."""
         return self.options.get_configuration()
 
+    def get_pools(self, context, filters):
+        # TODO(zhiteng) Add filters support
+        return self.host_manager.get_pools(context)
+
     def _post_select_populate_filter_properties(self, filter_properties,
                                                 host_state):
         """Add additional information to filter properties.

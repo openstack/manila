@@ -43,7 +43,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
 
         target = {
             "fanout": fanout,
-            "version": kwargs.pop('version', rpcapi.RPC_API_VERSION),
+            "version": kwargs.pop('version', '1.0'),
         }
         expected_msg = copy.deepcopy(kwargs)
 
@@ -89,3 +89,9 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.0')
+
+    def test_get_pools(self):
+        self._test_scheduler_api('get_pools',
+                                 rpc_method='call',
+                                 filters=None,
+                                 version='1.1')
