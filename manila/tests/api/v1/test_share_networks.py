@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 from oslo_db import exception as db_exception
 from oslo_utils import timeutils
@@ -74,6 +75,7 @@ fake_sn_with_ss_shortened = {
 QUOTAS = quota.QUOTAS
 
 
+@ddt.ddt
 class ShareNetworkAPITest(test.TestCase):
 
     def setUp(self):
@@ -109,6 +111,64 @@ class ShareNetworkAPITest(test.TestCase):
         self.assertFalse('shares' in view)
         self.assertFalse('network_allocations' in view)
         self.assertFalse('security_services' in view)
+
+    @ddt.data(
+        {'nova_net_id': 'fake_nova_net_id'},
+        {'neutron_net_id': 'fake_neutron_net_id'},
+        {'neutron_subnet_id': 'fake_neutron_subnet_id'},
+        {'neutron_net_id': 'fake', 'neutron_subnet_id': 'fake'})
+    def test_create_valid_cases(self, data):
+        data.update({'user_id': 'fake_user_id'})
+        body = {share_networks.RESOURCE_NAME: data}
+        result = self.controller.create(self.req, body)
+        data.pop('user_id', None)
+        for k, v in data.items():
+            self.assertIn(data[k], result['share_network'][k])
+
+    @ddt.data(
+        {'nova_net_id': 'foo', 'neutron_net_id': 'bar'},
+        {'nova_net_id': 'foo', 'neutron_subnet_id': 'quuz'},
+        {'nova_net_id': 'foo', 'neutron_net_id': 'bar',
+         'neutron_subnet_id': 'quuz'})
+    def test_create_invalid_cases(self, data):
+        data.update({'user_id': 'fake_user_id'})
+        body = {share_networks.RESOURCE_NAME: data}
+        self.assertRaises(
+            webob_exc.HTTPBadRequest, self.controller.create, self.req, body)
+
+    @ddt.data(
+        {'nova_net_id': 'fake_nova_net_id'},
+        {'neutron_net_id': 'fake_neutron_net_id'},
+        {'neutron_subnet_id': 'fake_neutron_subnet_id'},
+        {'neutron_net_id': 'fake', 'neutron_subnet_id': 'fake'})
+    def test_update_valid_cases(self, data):
+        body = {share_networks.RESOURCE_NAME: {'user_id': 'fake_user'}}
+        created = self.controller.create(self.req, body)
+
+        body = {share_networks.RESOURCE_NAME: data}
+        result = self.controller.update(
+            self.req, created['share_network']['id'], body)
+
+        for k, v in data.items():
+            self.assertIn(data[k], result['share_network'][k])
+
+        self._check_share_network_view(
+            result[share_networks.RESOURCE_NAME],
+            result['share_network'])
+
+    @ddt.data(
+        {'nova_net_id': 'foo', 'neutron_net_id': 'bar'},
+        {'nova_net_id': 'foo', 'neutron_subnet_id': 'quuz'},
+        {'nova_net_id': 'foo', 'neutron_net_id': 'bar',
+         'neutron_subnet_id': 'quuz'})
+    def test_update_invalid_cases(self, data):
+        body = {share_networks.RESOURCE_NAME: {'user_id': 'fake_user'}}
+        created = self.controller.create(self.req, body)
+        body = {share_networks.RESOURCE_NAME: data}
+        self.assertRaises(
+            webob_exc.HTTPBadRequest,
+            self.controller.update,
+            self.req, created['share_network']['id'], body)
 
     def test_create_nominal(self):
         with mock.patch.object(db_api,

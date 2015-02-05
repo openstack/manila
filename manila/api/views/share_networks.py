@@ -43,6 +43,7 @@ class ViewBuilder(common.ViewBuilder):
                 'updated_at': share_network.get('updated_at'),
                 'neutron_net_id': share_network.get('neutron_net_id'),
                 'neutron_subnet_id': share_network.get('neutron_subnet_id'),
+                'nova_net_id': share_network.get('nova_net_id'),
                 'network_type': share_network.get('network_type'),
                 'segmentation_id': share_network.get('segmentation_id'),
                 'cidr': share_network.get('cidr'),
