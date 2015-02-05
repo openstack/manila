@@ -512,12 +512,12 @@ class VNXStorageConnection(driver.StorageConnection):
             # Refresh DataMover/VDM by the configuration
             moverRef = self.get_mover_ref_by_name(self._mover_name)
             if not self._vdm_exist(vdm_name):
-                LOG.debug('Share Server %s not found. Creating', vdm_name)
+                LOG.debug('Share server %s not found, creating.', vdm_name)
                 self._create_vdm(vdm_name, moverRef)
 
             status, vdmRef = self._XMLAPI_helper.get_vdm_by_name(vdm_name)
             if constants.STATUS_OK != status:
-                message = (_('Could not get Share Server by name %(name)s. '
+                message = (_('Could not get share server by name %(name)s. '
                              'Reason: %(err)s.')
                            % {'name': vdm_name,
                               'err': vdmRef})
@@ -901,7 +901,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         if (service_number > 1 or
                 security_services[0]['type'] != 'active_directory'):
-            return False, _("Unsupported Security Services. "
+            return False, _("Unsupported security services. "
                             "Only support single security service and "
                             "only support type 'active_directory'")
 

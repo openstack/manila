@@ -96,9 +96,9 @@ class ZFSSAApi(object):
         self.verify_project(pool, project)
         avail = self.get_project_stats(pool, project)
         if avail < size:
-            exception_msg = (_('Error Creating '
-                               'Share: %(share)s on '
-                               'Pool: %(pool)s. '
+            exception_msg = (_('Error creating '
+                               'share: %(share)s on '
+                               'pool: %(pool)s. '
                                'Not enough space.')
                              % {'share': share,
                                 'pool': pool})
@@ -112,18 +112,18 @@ class ZFSSAApi(object):
         svc = self.pool_path % pool
         ret = self.rclient.get(svc)
         if ret.status != restclient.Status.OK:
-            exception_msg = (_('Error Getting Pool Stats: '
-                               'Pool: %(pool)s '
-                               'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
+            exception_msg = (_('Error getting pool stats: '
+                               'pool: %(pool)s '
+                               'return code: %(ret.status)d '
+                               'message: %(ret.data)s.')
                              % {'pool': pool,
                                 'ret.status': ret.status,
                                 'ret.data': ret.data})
             raise exception.InvalidInput(reason=exception_msg)
         val = jsonutils.loads(ret.data)
         if not self._is_pool_owned(val):
-            exception_msg = (_('Error Pool ownership: '
-                               'Pool %(pool)s is not owned '
+            exception_msg = (_('Error pool ownership: '
+                               'pool %(pool)s is not owned '
                                'by %(host)s.')
                              % {'pool': pool,
                                 'host': self.host})
@@ -141,11 +141,11 @@ class ZFSSAApi(object):
         svc = self.project_path % (pool, project)
         ret = self.rclient.get(svc)
         if ret.status != restclient.Status.OK:
-            exception_msg = (_('Error Getting Project Stats: '
-                               'Pool: %(pool)s '
-                               'Project: %(project)s '
-                               'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
+            exception_msg = (_('Error getting project stats: '
+                               'pool: %(pool)s '
+                               'project: %(project)s '
+                               'return code: %(ret.status)d '
+                               'message: %(ret.data)s.')
                              % {'pool': pool,
                                 'project': project,
                                 'ret.status': ret.status,
@@ -164,11 +164,11 @@ class ZFSSAApi(object):
             svc = self.projects_path % pool
             ret = self.rclient.post(svc, arg)
             if ret.status != restclient.Status.CREATED:
-                exception_msg = (_('Error Creating Project: '
+                exception_msg = (_('Error creating project: '
                                    '%(project)s on '
-                                   'Pool: %(pool)s '
-                                   'Return code: %(ret.status)d '
-                                   'Message: %(ret.data)s .')
+                                   'pool: %(pool)s '
+                                   'return code: %(ret.status)d '
+                                   'message: %(ret.data)s.')
                                  % {'project': project,
                                     'pool': pool,
                                     'ret.status': ret.status,
@@ -195,10 +195,10 @@ class ZFSSAApi(object):
             svc = self.shares_path % (pool, project)
             ret = self.rclient.post(svc, share)
             if ret.status != restclient.Status.CREATED:
-                exception_msg = (_('Error Creating '
-                                   'Share: %(name)s '
-                                   'Return code: %(ret.status)d '
-                                   'Message: %(ret.data)s.')
+                exception_msg = (_('Error creating '
+                                   'share: %(name)s '
+                                   'return code: %(ret.status)d '
+                                   'message: %(ret.data)s.')
                                  % {'name': share['name'],
                                     'ret.status': ret.status,
                                     'ret.data': ret.data})
@@ -234,12 +234,12 @@ class ZFSSAApi(object):
         svc = self.share_path % (pool, project, share)
         ret = self.rclient.delete(svc)
         if ret.status != restclient.Status.NO_CONTENT:
-            exception_msg = (_LE('Error Deleting '
-                                 'Share: %(share)s to '
-                                 'Pool: %(pool)s '
-                                 'Project: %(project)s  '
-                                 'Return code: %(ret.status)d '
-                                 'Message: %(ret.data)s.'),
+            exception_msg = (_LE('Error deleting '
+                                 'share: %(share)s to '
+                                 'pool: %(pool)s '
+                                 'project: %(project)s '
+                                 'return code: %(ret.status)d '
+                                 'message: %(ret.data)s.'),
                              {'share': share,
                               'pool': pool,
                               'project': project,
@@ -253,13 +253,13 @@ class ZFSSAApi(object):
         arg = {'name': snapshot}
         ret = self.rclient.post(svc, arg)
         if ret.status != restclient.Status.CREATED:
-            exception_msg = (_('Error Creating '
-                               'Snapshot: %(snapshot)s on'
-                               'Share: %(share)s to '
-                               'Pool: %(pool)s '
-                               'Project: %(project)s  '
-                               'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
+            exception_msg = (_('Error creating '
+                               'snapshot: %(snapshot)s on '
+                               'share: %(share)s to '
+                               'pool: %(pool)s '
+                               'project: %(project)s '
+                               'return code: %(ret.status)d '
+                               'message: %(ret.data)s.')
                              % {'snapshot': snapshot,
                                 'share': share,
                                 'pool': pool,
@@ -273,13 +273,13 @@ class ZFSSAApi(object):
         svc = self.snapshot_path % (pool, project, share, snapshot)
         ret = self.rclient.delete(svc)
         if ret.status != restclient.Status.NO_CONTENT:
-            exception_msg = (_('Error Deleting '
-                               'Snapshot: %(snapshot)s on '
-                               'Share: %(share)s to '
-                               'Pool: %(pool)s '
-                               'Project: %(project)s  '
-                               'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
+            exception_msg = (_('Error deleting '
+                               'snapshot: %(snapshot)s on '
+                               'share: %(share)s to '
+                               'pool: %(pool)s '
+                               'project: %(project)s  '
+                               'return code: %(ret.status)d '
+                               'message: %(ret.data)s.')
                              % {'snapshot': snapshot,
                                 'share': share,
                                 'pool': pool,
@@ -297,13 +297,13 @@ class ZFSSAApi(object):
                                  snapshot['id'])
         ret = self.rclient.put(svc, arg)
         if ret.status != restclient.Status.CREATED:
-            exception_msg = (_('Error Cloning '
-                               'Snapshot: %(snapshot)s on '
-                               'Share: %(share)s of '
+            exception_msg = (_('Error cloning '
+                               'snapshot: %(snapshot)s on '
+                               'share: %(share)s of '
                                'Pool: %(pool)s '
-                               'Project: %(project)s  '
-                               'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
+                               'project: %(project)s '
+                               'return code: %(ret.status)d '
+                               'message: %(ret.data)s.')
                              % {'snapshot': snapshot['id'],
                                 'share': snapshot['share_id'],
                                 'pool': pool,
@@ -337,7 +337,7 @@ class ZFSSAApi(object):
         if sharenfs == 'off':
             sharenfs = 'sec=sys'
         if ip in sharenfs:
-            LOG.debug('Access to Share %(share)s via NFS '
+            LOG.debug('Access to share %(share)s via NFS '
                       'already granted to %(ip)s.',
                       {'share': share,
                        'ip': ip})
