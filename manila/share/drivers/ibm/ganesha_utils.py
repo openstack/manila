@@ -269,7 +269,7 @@ def _publish_local_config(configpath, pre_lines, exports):
     try:
         utils.execute(*mvcmd, run_as_root=True)
     except exception.ProcessExecutionError as e:
-        msg = (_('Failed while publishing ganesha config locally.'
+        msg = (_('Failed while publishing ganesha config locally. '
                  'Error: %s.'), six.text_type(e))
         LOG.error(msg)
         raise exception.GPFSGaneshaException(msg)

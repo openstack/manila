@@ -391,7 +391,7 @@ class NetAppClusteredShareDriver(driver.ShareDriver):
             if share_proto == proto:
                 return self._helpers[proto]
 
-        err_msg = _("Invalid NAS protocol supplied: %s. ") % share_proto
+        err_msg = _("Invalid NAS protocol supplied: %s.") % share_proto
 
         raise exception.NetAppException(err_msg)
 
