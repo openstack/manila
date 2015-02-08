@@ -53,6 +53,7 @@ import manila.share.drivers.generic
 import manila.share.drivers.glusterfs
 import manila.share.drivers.glusterfs_native
 import manila.share.drivers.hds.sop
+import manila.share.drivers.hp.hp_3par_driver
 import manila.share.drivers.huawei.huawei_nas
 import manila.share.drivers.ibm.gpfs
 import manila.share.drivers.netapp.cluster_mode
