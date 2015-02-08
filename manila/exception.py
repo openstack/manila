@@ -458,6 +458,18 @@ class EMCVnxXMLAPIError(Invalid):
     message = _("%(err)s")
 
 
+class HP3ParInvalidClient(Invalid):
+    message = _("%(err)s")
+
+
+class HP3ParInvalid(Invalid):
+    message = _("%(err)s")
+
+
+class HP3ParUnexpectedError(ManilaException):
+    message = _("%(err)s")
+
+
 class GPFSException(ManilaException):
     message = _("GPFS exception occurred.")
 
