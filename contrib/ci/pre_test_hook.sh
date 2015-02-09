@@ -13,9 +13,15 @@
 # under the License.
 
 # This script is executed inside pre_test_hook function in devstack gate.
+# First argument ($1) expects boolean as value where:
+# 'False' means share driver will not handle share servers
+# 'True' means it will handle share servers.
 
 # Install manila devstack integration
 cp -r $BASE/new/manila/contrib/devstack/* $BASE/new/devstack
+
+# Import devstack function 'trueorfalse'
+source $BASE/new/devstack/functions
 
 localrc_path=$BASE/new/devstack/localrc
 echo "DEVSTACK_GATE_TEMPEST_ALLOW_TENANT_ISOLATION=1" >> $localrc_path
@@ -27,6 +33,12 @@ echo "MANILA_BACKEND1_CONFIG_GROUP_NAME=london" >> $localrc_path
 echo "MANILA_BACKEND2_CONFIG_GROUP_NAME=paris" >> $localrc_path
 echo "MANILA_SHARE_BACKEND1_NAME=LONDON" >> $localrc_path
 echo "MANILA_SHARE_BACKEND2_NAME=PARIS" >> $localrc_path
+
+driver_handles_share_servers=$1
+driver_handles_share_servers=$(trueorfalse True driver_handles_share_servers)
+
+echo "MANILA_OPTGROUP_london_driver_handles_share_servers=$driver_handles_share_servers" >> $localrc_path
+echo "MANILA_OPTGROUP_paris_driver_handles_share_servers=$driver_handles_share_servers" >> $localrc_path
 
 # JOB_NAME is defined in openstack-infra/config project
 # used by CI/CD, where this script is intended to be used.
