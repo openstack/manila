@@ -36,6 +36,7 @@ import netaddr
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import timeutils
 import paramiko
@@ -43,11 +44,9 @@ import six
 
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import log as logging
-
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 synchronized = lockutils.synchronized_with_prefix('manila-')
 

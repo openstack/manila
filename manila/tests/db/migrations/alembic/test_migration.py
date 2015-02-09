@@ -21,12 +21,12 @@ from alembic import script
 import mock
 from oslo_db.sqlalchemy import test_base
 from oslo_db.sqlalchemy import test_migrations
+from oslo_log import log
 from sqlalchemy.sql import text
 
 from manila.db.migrations.alembic import migration
-from manila.openstack.common import log as logging
 
-LOG = logging.getLogger('manila.tests.test_migrations')
+LOG = log.getLogger('manila.tests.test_migrations')
 
 
 class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin):

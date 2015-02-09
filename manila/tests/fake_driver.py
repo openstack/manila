@@ -14,11 +14,11 @@
 #    under the License.
 
 import mock
+from oslo_log import log
 
-from manila.openstack.common import log as logging
 from manila.share import driver
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class FakeShareDriver(driver.ShareDriver):

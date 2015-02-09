@@ -21,8 +21,8 @@ import random
 import string
 import uuid
 
+from oslo_log import log
 
-from manila.openstack.common import log as logging
 from manila import service
 from manila import test  # For the flags
 from manila.tests.integrated.api import client
@@ -30,7 +30,7 @@ from manila.tests.integrated.api import client
 from oslo_config import cfg
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def generate_random_alphanumeric(length):

@@ -21,13 +21,13 @@ Manage hosts in the current zone.
 import UserDict
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import timeutils
 import six
 
 from manila import db
 from manila import exception
 from manila.i18n import _LI
-from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common.scheduler import weights
 from manila.share import utils as share_utils
@@ -52,7 +52,7 @@ host_manager_opts = [
 CONF = cfg.CONF
 CONF.register_opts(host_manager_opts)
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class ReadOnlyDict(UserDict.IterableUserDict):

@@ -16,12 +16,10 @@
 import uuid
 
 from oslo_config import cfg
-
-from manila.openstack.common import log as logging
-
+from oslo_log import log
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class FakeNetwork(object):

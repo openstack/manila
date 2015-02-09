@@ -17,12 +17,11 @@ Request Body limiting middleware.
 """
 
 from oslo_config import cfg
+from oslo_log import log
 import webob.dec
 import webob.exc
 
-
 from manila.i18n import _
-from manila.openstack.common import log as logging
 from manila import wsgi
 
 # default request size is 112k
@@ -33,7 +32,7 @@ max_request_body_size_opt = cfg.IntOpt(
 
 CONF = cfg.CONF
 CONF.register_opt(max_request_body_size_opt)
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class LimitingReader(object):

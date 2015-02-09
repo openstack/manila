@@ -17,13 +17,13 @@
 import re
 
 from eventlet import greenthread
+from oslo_log import log
 import six
 
 from manila import exception
-from manila.openstack.common import log as logging
 from manila import utils
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 _fake_execute_repliers = []
 _fake_execute_log = []

@@ -16,6 +16,7 @@
 import base64
 from xml import etree
 
+from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_utils import units
 import six
@@ -24,11 +25,10 @@ from six.moves.urllib import request as urlreq  # pylint: disable=E0611
 
 from manila import exception
 from manila.i18n import _, _LE, _LW
-from manila.openstack.common import log as logging
 from manila.share.drivers.huawei import constants
 from manila import utils
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class RestHelper():

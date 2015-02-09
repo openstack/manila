@@ -18,13 +18,13 @@
 
 import math
 
+from oslo_log import log
+
 from manila.i18n import _LE
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class CapacityFilter(filters.BaseHostFilter):

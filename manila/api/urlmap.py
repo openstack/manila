@@ -16,10 +16,10 @@
 import re
 import urllib2
 
+from oslo_log import log
 import paste.urlmap
 
 from manila.api.openstack import wsgi
-from manila.openstack.common import log as logging
 
 
 _quoted_string_re = r'"[^"\\]*(?:\\.[^"\\]*)*"'
@@ -28,7 +28,7 @@ _option_header_piece_re = re.compile(
     r'(?:=\s*([^;]+|%s))?\s*' %
     (_quoted_string_re, _quoted_string_re))
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def unquote_header_value(value):

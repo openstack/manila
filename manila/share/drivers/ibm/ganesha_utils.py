@@ -30,14 +30,14 @@ import socket
 import time
 
 import netaddr
+from oslo_log import log
 import six
 
 from manila import exception
 from manila.i18n import _, _LI
-from manila.openstack.common import log as logging
 from manila import utils
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 # more simple pattern for matching a single avpair per line,
 # skips lines starting with # comment char
 AVPATTERN = re.compile('^\s*(?!#)\s*(?P<attr>\S+)\s*=\s*(?P<val>\S+)\s*;')

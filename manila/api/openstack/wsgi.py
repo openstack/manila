@@ -15,6 +15,7 @@
 
 import inspect
 import math
+from oslo_log import log
 from oslo_serialization import jsonutils
 import six
 import time
@@ -24,7 +25,6 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LI
-from manila.openstack.common import log as logging
 from manila import utils
 from manila import wsgi
 
@@ -36,7 +36,7 @@ from xml.parsers import expat
 XMLNS_V1 = 'http://docs.openstack.org/volume/api/v1'
 XMLNS_ATOM = 'http://www.w3.org/2005/Atom'
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 # The vendor content types should serialize identically to the non-vendor
 # content types. So to avoid littering the code with both options, we

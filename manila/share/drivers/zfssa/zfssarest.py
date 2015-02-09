@@ -14,12 +14,12 @@
 """
 ZFS Storage Appliance Proxy
 """
+from oslo_log import log
 from oslo_serialization import jsonutils
 
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
-from manila.openstack.common import log
 from manila.share.drivers.zfssa import restclient
 
 

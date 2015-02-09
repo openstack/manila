@@ -18,17 +18,16 @@
 WSGI middleware for OpenStack API controllers.
 """
 
+from oslo_log import log
 import routes
 
 from manila.api.openstack import wsgi
-from manila.openstack.common import log as logging
 from manila.i18n import _
 from manila.i18n import _LW
 from manila import utils
 from manila import wsgi as base_wsgi
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class APIMapper(routes.Mapper):

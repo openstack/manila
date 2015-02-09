@@ -30,19 +30,18 @@ import sys
 import xml.etree.cElementTree as etree
 
 from oslo_config import cfg
+from oslo_log import log
 import six
 
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 from manila.share import driver
 from manila.share.drivers import ganesha
 from manila.share.drivers.ganesha import utils as ganesha_utils
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 GlusterfsManilaShare_opts = [
     cfg.StrOpt('glusterfs_target',

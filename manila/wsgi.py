@@ -30,6 +30,8 @@ import eventlet
 import eventlet.wsgi
 import greenlet
 from oslo_config import cfg
+from oslo_log import log
+from oslo_log import loggers
 from oslo_utils import netutils
 from paste import deploy
 import routes.middleware
@@ -40,7 +42,6 @@ import webob.exc
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
-from manila.openstack.common import log as logging
 
 socket_opts = [
     cfg.IntOpt('backlog',
@@ -88,8 +89,7 @@ CONF = cfg.CONF
 CONF.register_opts(socket_opts)
 CONF.register_opts(eventlet_opts)
 
-CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class Server(object):
@@ -118,8 +118,8 @@ class Server(object):
         self._socket = None
         self._protocol = protocol
         self._pool = eventlet.GreenPool(pool_size or self.default_pool_size)
-        self._logger = logging.getLogger("eventlet.wsgi.server")
-        self._wsgi_logger = logging.WritableLogger(self._logger)
+        self._logger = log.getLogger("eventlet.wsgi.server")
+        self._wsgi_logger = loggers.WritableLogger(self._logger)
 
     def _get_socket(self, host, port, backlog):
         bind_addr = (host, port)

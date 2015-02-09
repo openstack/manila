@@ -20,17 +20,16 @@
 import copy
 
 from oslo_context import context as common_context
+from oslo_log import log
 from oslo_utils import timeutils
 import six
 
 from manila.i18n import _
 from manila.i18n import _LW
 from manila.openstack.common import local
-from manila.openstack.common import log as logging
 from manila import policy
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class RequestContext(object):

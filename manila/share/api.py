@@ -19,6 +19,7 @@ Handles all requests relating to shares.
 """
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import timeutils
 import six
@@ -30,7 +31,6 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 from manila import policy
 from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi
@@ -47,7 +47,7 @@ share_api_opts = [
 CONF = cfg.CONF
 CONF.register_opts(share_api_opts)
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 GB = 1048576 * 1024
 QUOTAS = quota.QUOTAS
 

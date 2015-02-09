@@ -14,13 +14,11 @@
 
 import httplib
 
+from oslo_log import log
 from oslo_serialization import jsonutils
 from six.moves.urllib import parse
 
-from manila.openstack.common import log as logging
-
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class OpenStackApiException(Exception):

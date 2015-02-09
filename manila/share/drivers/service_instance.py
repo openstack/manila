@@ -23,6 +23,7 @@ import time
 
 import netaddr
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import importutils
 import six
 
@@ -34,11 +35,9 @@ from manila.i18n import _
 from manila.i18n import _LW
 from manila.network.linux import ip_lib
 from manila.network.neutron import api as neutron
-from manila.openstack.common import log as logging
 from manila import utils
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 share_servers_handling_mode_opts = [
     cfg.StrOpt('service_image_name',

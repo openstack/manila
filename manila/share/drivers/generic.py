@@ -21,6 +21,7 @@ import time
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 import six
@@ -32,14 +33,12 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 from manila.share import driver
 from manila.share.drivers import service_instance
 from manila import utils
 from manila import volume
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 share_opts = [
     cfg.StrOpt('smb_template_config_path',

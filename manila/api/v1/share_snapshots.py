@@ -15,6 +15,7 @@
 
 """The share snapshots api."""
 
+from oslo_log import log
 import six
 import webob
 from webob import exc
@@ -25,11 +26,9 @@ from manila.api.views import share_snapshots as snapshot_views
 from manila.api import xmlutil
 from manila import exception
 from manila.i18n import _LI
-from manila.openstack.common import log as logging
 from manila import share
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def make_snapshot(elem):

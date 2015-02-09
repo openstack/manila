@@ -13,10 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from manila.openstack.common import log as logging
+from oslo_log import log
+
 from manila.openstack.common.scheduler import filters
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class RetryFilter(filters.BaseHostFilter):

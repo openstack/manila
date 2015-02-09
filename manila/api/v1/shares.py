@@ -17,6 +17,7 @@
 
 import ast
 
+from oslo_log import log
 from oslo_utils import uuidutils
 import six
 import webob
@@ -29,12 +30,10 @@ from manila.api import xmlutil
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
-from manila.openstack.common import log as logging
 from manila import share
 from manila.share import volume_types
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def make_share(elem):

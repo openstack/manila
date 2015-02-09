@@ -52,18 +52,16 @@ This module provides Manager, a base class for managers.
 """
 
 from oslo_config import cfg
+from oslo_log import log
 import six
 
 from manila.db import base
 from manila.i18n import _LE
-from manila.openstack.common import log as logging
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import version
 
 CONF = cfg.CONF
-
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def periodic_task(*args, **kwargs):

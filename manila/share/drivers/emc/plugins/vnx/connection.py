@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """VNX backend for the EMC Manila driver."""
+from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import units
 import six
@@ -22,7 +23,6 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LW
-from manila.openstack.common import log
 from manila.share.drivers.emc.plugins import base as driver
 from manila.share.drivers.emc.plugins.vnx import constants
 from manila.share.drivers.emc.plugins.vnx import helper

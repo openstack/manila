@@ -17,6 +17,7 @@ import random
 import re
 
 from eventlet import greenthread
+from oslo_log import log
 import six
 from six.moves.urllib import error as url_error  # pylint: disable=E0611
 from six.moves.urllib import request as url_request  # pylint: disable=E0611
@@ -26,15 +27,13 @@ from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 from manila.share.drivers.emc.plugins.vnx import constants
 from manila.share.drivers.emc.plugins.vnx import utils as vnx_utils
 from manila.share.drivers.emc.plugins.vnx import xml_api_parser as parser
 from manila.share.drivers.emc.plugins.vnx import xml_api_schema as schema
 from manila import utils
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class XMLAPIConnector(object):

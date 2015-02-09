@@ -18,12 +18,12 @@ ZFS Storage Appliance Manila Share Driver
 import base64
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import units
 
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
-from manila.openstack.common import log
 from manila.share import driver
 from manila.share.drivers.zfssa import zfssarest
 

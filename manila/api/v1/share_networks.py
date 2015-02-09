@@ -16,6 +16,7 @@
 """The shares api."""
 
 from oslo_db import exception as db_exception
+from oslo_log import log
 from oslo_utils import timeutils
 import six
 import webob
@@ -30,14 +31,13 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 from manila import policy
 from manila import quota
 from manila.share import rpcapi as share_rpcapi
 
 RESOURCE_NAME = 'share_network'
 RESOURCES_NAME = 'share_networks'
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 QUOTAS = quota.QUOTAS
 SHARE_NETWORK_ATTRS = (
     'id',

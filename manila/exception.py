@@ -24,14 +24,14 @@ SHOULD include dedicated exception logging.
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log
 import six
 import webob.exc
 
 from manila.i18n import _
 from manila.i18n import _LE
-from manila.openstack.common import log as logging
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 exc_log_opts = [
     cfg.BoolOpt('fatal_exception_format_errors',

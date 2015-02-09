@@ -23,17 +23,16 @@ import time
 
 import httplib2
 from oslo_config import cfg
+from oslo_log import log
 from oslo_serialization import jsonutils as json
 from oslo_utils import units
 import six
 
 from manila import exception
 from manila.i18n import _LW
-from manila.openstack.common import log as logging
 from manila.share import driver
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 hdssop_share_opts = [
     cfg.StrOpt('hdssop_target',

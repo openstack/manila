@@ -15,9 +15,9 @@
 import types
 import xml.dom.minidom
 
-from manila.i18n import _LW
-from manila.openstack.common import log
+from oslo_log import log
 
+from manila.i18n import _LW
 
 LOG = log.getLogger(__name__)
 

@@ -31,18 +31,17 @@ import shutil
 import tempfile
 
 from oslo_config import cfg
+from oslo_log import log
 import six
 
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
-from manila.openstack.common import log as logging
 from manila.share import driver
 from manila.share.drivers import glusterfs
 from manila import utils
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 glusterfs_native_manila_share_opts = [
     cfg.ListOpt('glusterfs_targets',

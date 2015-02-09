@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log
 import webob.exc
 
 from manila.api import extensions
@@ -20,11 +21,9 @@ from manila.api.openstack import wsgi
 from manila.api import xmlutil
 from manila import db
 from manila import exception
-from manila.openstack.common import log as logging
 from manila import utils
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 authorize = extensions.extension_authorizer('share', 'services')
 
 

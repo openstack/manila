@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log
 import six
 import webob.dec
 import webob.exc
@@ -21,12 +22,10 @@ import webob.exc
 from manila.api.openstack import wsgi
 from manila.i18n import _LE
 from manila.i18n import _LI
-from manila.openstack.common import log as logging
 from manila import utils
 from manila import wsgi as base_wsgi
 
-
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class FaultWrapper(base_wsgi.Middleware):

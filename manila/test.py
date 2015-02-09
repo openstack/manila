@@ -31,13 +31,13 @@ from oslo.messaging import conffixture as messaging_conffixture
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
+from oslo_log import log
 import oslotest.base as base_test
 import six
 
 from manila.db import migration
 from manila.db.sqlalchemy import api as db_api
 from manila.db.sqlalchemy import models as db_models
-from manila.openstack.common import log as logging
 from manila import rpc
 from manila import service
 from manila.tests import conf_fixture
@@ -52,7 +52,7 @@ test_opts = [
 CONF = cfg.CONF
 CONF.register_opts(test_opts)
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 _DB_CACHE = None
 

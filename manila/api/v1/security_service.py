@@ -15,6 +15,7 @@
 
 """The security service api."""
 
+from oslo_log import log
 import six
 import webob
 from webob import exc
@@ -28,12 +29,11 @@ from manila import db
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
-from manila.openstack.common import log as logging
 from manila import policy
 
 
 RESOURCE_NAME = 'security_service'
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 def make_security_service(elem):

@@ -15,10 +15,8 @@
 import types
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import timeutils
-
-from manila.openstack.common import log
-
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)

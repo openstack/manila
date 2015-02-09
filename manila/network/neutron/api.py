@@ -17,13 +17,13 @@
 from neutronclient.common import exceptions as neutron_client_exc
 from neutronclient.v2_0 import client as clientv20
 from oslo_config import cfg
+from oslo_log import log
 
 from manila import context
 from manila.db import base
 from manila import exception
 from manila.i18n import _LE
 from manila.network.neutron import constants as neutron_constants
-from manila.openstack.common import log as logging
 
 neutron_opts = [
     cfg.StrOpt(
@@ -74,7 +74,7 @@ neutron_opts = [
 ]
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class API(base.Base):

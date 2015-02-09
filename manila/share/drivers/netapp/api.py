@@ -21,9 +21,9 @@ Contains classes required to issue api calls to ONTAP and OnCommand DFM.
 import urllib2
 
 from lxml import etree
+from oslo_log import log
 
 from manila.i18n import _
-from manila.openstack.common import log
 
 
 LOG = log.getLogger(__name__)

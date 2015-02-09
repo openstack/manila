@@ -38,6 +38,7 @@ import socket
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import units
@@ -45,12 +46,11 @@ import six
 
 from manila import exception
 from manila.i18n import _, _LE, _LI
-from manila.openstack.common import log as logging
 from manila.share import driver
 from manila.share.drivers.ibm import ganesha_utils
 from manila import utils
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 # matches multiple comma separated avpairs on a line.  values with an embedded
 # comma must be wrapped in quotation marks

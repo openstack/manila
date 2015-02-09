@@ -19,6 +19,7 @@
 import datetime
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import timeutils
 import six
@@ -26,9 +27,8 @@ import six
 from manila import db
 from manila import exception
 from manila.i18n import _LE
-from manila.openstack.common import log as logging
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 quota_opts = [
     cfg.IntOpt('quota_shares',

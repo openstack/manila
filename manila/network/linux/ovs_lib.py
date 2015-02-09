@@ -15,11 +15,12 @@
 
 import re
 
+from oslo_log import log
+
 from manila.i18n import _LE
-from manila.openstack.common import log as logging
 from manila import utils
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class OVSBridge:

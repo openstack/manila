@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log
 import six
 import webob
 from webob import exc
@@ -24,13 +25,12 @@ from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import log as logging
 from manila import policy
 from manila import share
 
 RESOURCE_NAME = 'share_server'
 RESOURCES_NAME = 'share_servers'
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 SHARE_SERVER_ATTRS = (
     'id',
     'project_id',

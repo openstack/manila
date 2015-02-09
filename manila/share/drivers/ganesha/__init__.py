@@ -19,17 +19,16 @@ import os
 import re
 
 from oslo_config import cfg
+from oslo_log import log
 import six
 
 from manila import exception
 from manila.i18n import _LI
-from manila.openstack.common import log as logging
 from manila.share.drivers.ganesha import manager as ganesha_manager
 from manila.share.drivers.ganesha import utils as ganesha_utils
 
-
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 @six.add_metaclass(abc.ABCMeta)
