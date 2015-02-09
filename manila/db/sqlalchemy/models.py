@@ -369,7 +369,7 @@ class ShareServer(BASE, ManilaBase):
     host = Column(String(255), nullable=False)
     status = Column(Enum(constants.STATUS_INACTIVE, constants.STATUS_ACTIVE,
                          constants.STATUS_ERROR, constants.STATUS_DELETING,
-                         constants.STATUS_CREATING),
+                         constants.STATUS_CREATING, constants.STATUS_DELETED),
                     default=constants.STATUS_INACTIVE)
     network_allocations = orm.relationship(
         "NetworkAllocation",
