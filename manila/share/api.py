@@ -70,7 +70,7 @@ class API(base.Base):
 
         if snapshot is not None:
             if snapshot['status'] != 'available':
-                msg = _('status must be available')
+                msg = _("status must be 'available'")
                 raise exception.InvalidShareSnapshot(reason=msg)
             if not size:
                 size = snapshot['size']

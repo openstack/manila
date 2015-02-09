@@ -171,7 +171,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         except OSError as exc:
             if exc.errno == errno.ENOENT:
                 raise exception.GlusterfsException(
-                    _('mount.glusterfs is not installed'))
+                    _('mount.glusterfs is not installed.'))
             else:
                 raise
 
