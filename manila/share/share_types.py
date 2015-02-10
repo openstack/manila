@@ -110,24 +110,25 @@ def get_share_type_by_name(context, name):
     return db.share_type_get_by_name(context, name)
 
 
-def get_default_share_type():
+def get_default_share_type(ctxt=None):
     """Get the default share type."""
     name = CONF.default_share_type
-    share_type = {}
 
-    if name is not None:
+    if name is None:
+        return {}
+
+    if ctxt is None:
         ctxt = context.get_admin_context()
-        try:
-            share_type = get_share_type_by_name(ctxt, name)
-        except exception.ShareTypeNotFoundByName as e:
-            # Couldn't find share type with the name in default_share_type
-            # flag, record this issue and move on
-            # TODO(zhiteng) consider add notification to warn admin
-            LOG.exception(_LE('Default share type is not found, '
-                              'please check default_share_type config: %s'),
-                          e)
 
-    return share_type
+    try:
+        return get_share_type_by_name(ctxt, name)
+    except exception.ShareTypeNotFoundByName as e:
+        # Couldn't find share type with the name in default_share_type
+        # flag, record this issue and move on
+        # TODO(zhiteng) consider add notification to warn admin
+        LOG.exception(_LE('Default share type is not found, '
+                          'please check default_share_type config: %s'),
+                      e)
 
 
 def get_share_type_extra_specs(share_type_id, key=False):

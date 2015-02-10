@@ -13,6 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import mock
 from oslo_utils import timeutils
 import webob
 
@@ -51,7 +52,7 @@ def return_empty_share_types_get_all_types(context):
     return {}
 
 
-def return_share_types_get_share_type(context, id):
+def return_share_types_get_share_type(context, id=1):
     if id == "777":
         raise exception.ShareTypeNotFound(share_type_id=id)
     return stub_share_type(int(id))
@@ -110,6 +111,25 @@ class ShareTypesApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
                           req, '777')
+
+    def test_share_types_default(self):
+        self.mock_object(share_types, 'get_default_share_type',
+                         return_share_types_get_share_type)
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types/default')
+        res_dict = self.controller.default(req)
+
+        self.assertEqual(2, len(res_dict))
+        self.assertEqual('1', res_dict['share_type']['id'])
+        self.assertEqual('share_type_1', res_dict['share_type']['name'])
+
+    def test_share_types_default_not_found(self):
+        self.mock_object(share_types, 'get_default_share_type',
+                         mock.Mock(side_effect=exception.ShareTypeNotFound(
+                             share_type_id="fake")))
+        req = fakes.HTTPRequest.blank('/v2/fake/types/default')
+
+        self.assertRaises(webob.exc.HTTPNotFound, self.controller.default, req)
 
     def test_view_builder_show(self):
         view_builder = views_types.ViewBuilder()
