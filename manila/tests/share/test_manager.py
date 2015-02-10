@@ -1001,3 +1001,35 @@ class ShareManagerTestCase(test.TestCase):
                                                           get_admin_context(),
                                                           fake_share)
                 self.assertEqual(1, mock_LOG.error.call_count)
+
+    def test__form_server_setup_info(self):
+        fake_network_allocations = ['foo', 'bar']
+        self.mock_object(
+            self.share_manager.db, 'network_allocations_get_for_share_server',
+            mock.Mock(return_value=fake_network_allocations))
+        fake_share_server = dict(
+            id='fake_share_server_id', backend_details=dict(foo='bar'))
+        fake_share_network = dict(
+            segmentation_id='fake_segmentation_id',
+            cidr='fake_cidr',
+            neutron_net_id='fake_neutron_net_id',
+            neutron_subnet_id='fake_neutron_subnet_id',
+            nova_net_id='fake_nova_net_id',
+            security_services='fake_security_services')
+        expected = dict(
+            server_id=fake_share_server['id'],
+            segmentation_id=fake_share_network['segmentation_id'],
+            cidr=fake_share_network['cidr'],
+            neutron_net_id=fake_share_network['neutron_net_id'],
+            neutron_subnet_id=fake_share_network['neutron_subnet_id'],
+            nova_net_id=fake_share_network['nova_net_id'],
+            security_services=fake_share_network['security_services'],
+            network_allocations=fake_network_allocations,
+            backend_details=fake_share_server['backend_details'])
+
+        network_info = self.share_manager._form_server_setup_info(
+            self.context, fake_share_server, fake_share_network)
+
+        self.assertEqual(expected, network_info)
+        self.share_manager.db.network_allocations_get_for_share_server.\
+            assert_called_once_with(self.context, fake_share_server['id'])

@@ -469,6 +469,7 @@ class ShareManager(manager.SchedulerDependentManager):
             'cidr': share_network['cidr'],
             'neutron_net_id': share_network['neutron_net_id'],
             'neutron_subnet_id': share_network['neutron_subnet_id'],
+            'nova_net_id': share_network['nova_net_id'],
             'security_services': share_network['security_services'],
             'network_allocations': network_allocations,
             'backend_details': share_server.get('backend_details'),
@@ -485,14 +486,13 @@ class ShareManager(manager.SchedulerDependentManager):
             share_network = self.db.share_network_get(
                 context, share_server['share_network_id'])
 
-            network_info = self._form_server_setup_info(context, share_server,
-                                                        share_network)
-            server_info = self.driver.setup_server(network_info,
-                                                   metadata=metadata)
+            network_info = self._form_server_setup_info(
+                context, share_server, share_network)
+            server_info = self.driver.setup_server(
+                network_info, metadata=metadata)
             if server_info and isinstance(server_info, dict):
-                self.db.share_server_backend_details_set(context,
-                                                         share_server['id'],
-                                                         server_info)
+                self.db.share_server_backend_details_set(
+                    context, share_server['id'], server_info)
             return self.db.share_server_update(
                 context, share_server['id'],
                 {'status': constants.STATUS_ACTIVE})

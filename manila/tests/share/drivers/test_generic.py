@@ -861,15 +861,14 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test__setup_server(self):
         sim = self._driver.instance_manager
-        net_info = {'server_id': 'fake',
-                    'neutron_net_id': 'fake-net-id',
-                    'neutron_subnet_id': 'fake-subnet-id'}
+        net_info = {
+            'server_id': 'fake',
+            'neutron_net_id': 'fake-net-id',
+            'neutron_subnet_id': 'fake-subnet-id',
+        }
         self._driver.setup_server(net_info)
         sim.set_up_service_instance.assert_called_once_with(
-            self._context,
-            'fake',
-            'fake-net-id',
-            'fake-subnet-id')
+            self._context, net_info)
 
     def test__setup_server_revert(self):
 
@@ -895,8 +894,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver.teardown_server(server_details)
         self._driver.service_instance_manager.delete_service_instance.\
             assert_called_once_with(
-                self._driver.admin_context, server_details['instance_id'],
-                server_details['subnet_id'], server_details['router_id'])
+                self._driver.admin_context, server_details)
 
     def test_ssh_exec_connection_not_exist(self):
         ssh_output = 'fake_ssh_output'

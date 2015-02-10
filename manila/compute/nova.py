@@ -135,6 +135,15 @@ def _untranslate_server_summary_view(server):
     return d
 
 
+def _to_dict(obj):
+    if isinstance(obj, dict):
+        return obj
+    elif hasattr(obj, 'to_dict'):
+        return obj.to_dict()
+    else:
+        return obj.__dict__
+
+
 def translate_server_exception(method):
     """Transforms the exception for the instance.
 
@@ -308,3 +317,7 @@ class API(base.Base):
 
     def security_group_rule_delete(self, context, rule):
         return novaclient(context).security_group_rules.delete(rule)
+
+    def network_get(self, context, network_id):
+        """Return network data by its ID."""
+        return _to_dict(novaclient(context).networks.get(network_id))

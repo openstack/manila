@@ -72,9 +72,27 @@ class FakeRouter(object):
         setattr(self, attr, value)
 
 
+class FakeDeviceAddr(object):
+    def __init__(self, list_of_addresses=None):
+        self.addresses = list_of_addresses or [
+            dict(ip_version=4, cidr='1.0.0.0/27'),
+            dict(ip_version=4, cidr='2.0.0.0/27'),
+            dict(ip_version=6, cidr='3.0.0.0/27'),
+        ]
+
+    def list(self):
+        return self.addresses
+
+
+class FakeDevice(object):
+    def __init__(self, name=None, list_of_addresses=None):
+        self.addr = FakeDeviceAddr(list_of_addresses)
+        self.name = name or 'fake_device_name'
+
+
 class API(object):
     """Fake Network API."""
-    admin_tenant_id = 'fake admin tenant id'
+    admin_project_id = 'fake_admin_project_id'
 
     network = {
         "status": "ACTIVE",
@@ -105,13 +123,13 @@ class API(object):
         "device_id": "fake_device_id"
     }
 
-    def get_all_tenant_networks(self, tenant_id):
+    def get_all_admin_project_networks(self):
         net1 = self.network.copy()
-        net1['tenant_id'] = tenant_id
+        net1['tenant_id'] = self.admin_project_id
         net1['id'] = str(uuid.uuid4())
 
         net2 = self.network.copy()
-        net2['tenant_id'] = tenant_id
+        net2['tenant_id'] = self.admin_project_id
         net2['id'] = str(uuid.uuid4())
         return [net1, net2]
 
