@@ -382,18 +382,18 @@ class GenericShareDriverTestCase(test.TestCase):
                                               self.share['name']))
 
     def test_attach_volume_not_attached(self):
-        availiable_volume = fake_volume.FakeVolume()
+        available_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
         self.mock_object(self._driver.compute_api, 'instance_volume_attach')
         self.mock_object(self._driver.volume_api, 'get',
                          mock.Mock(return_value=attached_volume))
 
         result = self._driver._attach_volume(self._context, self.share,
-                                             'fake_inst_id', availiable_volume)
+                                             'fake_inst_id', available_volume)
 
         self._driver.compute_api.instance_volume_attach.\
             assert_called_once_with(self._context, 'fake_inst_id',
-                                    availiable_volume['id'])
+                                    available_volume['id'])
         self._driver.volume_api.get.assert_called_once_with(
             self._context, attached_volume['id'])
         self.assertEqual(result, attached_volume)
@@ -421,17 +421,17 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_attach_volume_failed_attach(self):
         fake_server = fake_compute.FakeServer()
-        availiable_volume = fake_volume.FakeVolume()
+        available_volume = fake_volume.FakeVolume()
         self.mock_object(self._driver.compute_api, 'instance_volume_attach',
                          mock.Mock(side_effect=exception.ManilaException))
         self.assertRaises(exception.ManilaException,
                           self._driver._attach_volume,
                           self._context, self.share, fake_server,
-                          availiable_volume)
+                          available_volume)
 
     def test_attach_volume_error(self):
         fake_server = fake_compute.FakeServer()
-        availiable_volume = fake_volume.FakeVolume()
+        available_volume = fake_volume.FakeVolume()
         error_volume = fake_volume.FakeVolume(status='error')
         self.mock_object(self._driver.compute_api, 'instance_volume_attach')
         self.mock_object(self._driver.volume_api, 'get',
@@ -439,7 +439,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.ManilaException,
                           self._driver._attach_volume,
                           self._context, self.share,
-                          fake_server, availiable_volume)
+                          fake_server, available_volume)
 
     def test_get_volume(self):
         volume = fake_volume.FakeVolume(
@@ -493,7 +493,7 @@ class GenericShareDriverTestCase(test.TestCase):
                           self.share['id'])
 
     def test_detach_volume(self):
-        availiable_volume = fake_volume.FakeVolume()
+        available_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
         self.mock_object(self._driver, '_get_volume',
                          mock.Mock(return_value=attached_volume))
@@ -501,7 +501,7 @@ class GenericShareDriverTestCase(test.TestCase):
                          mock.Mock(return_value=[attached_volume]))
         self.mock_object(self._driver.compute_api, 'instance_volume_detach')
         self.mock_object(self._driver.volume_api, 'get',
-                         mock.Mock(return_value=availiable_volume))
+                         mock.Mock(return_value=available_volume))
 
         self._driver._detach_volume(self._context, self.share,
                                     self.server['backend_details'])
@@ -510,19 +510,19 @@ class GenericShareDriverTestCase(test.TestCase):
             assert_called_once_with(
                 self._context,
                 self.server['backend_details']['instance_id'],
-                availiable_volume['id'])
+                available_volume['id'])
         self._driver.volume_api.get.assert_called_once_with(
-            self._context, availiable_volume['id'])
+            self._context, available_volume['id'])
 
     def test_detach_volume_detached(self):
-        availiable_volume = fake_volume.FakeVolume()
+        available_volume = fake_volume.FakeVolume()
         attached_volume = fake_volume.FakeVolume(status='in-use')
         self.mock_object(self._driver, '_get_volume',
                          mock.Mock(return_value=attached_volume))
         self.mock_object(self._driver.compute_api, 'instance_volumes_list',
                          mock.Mock(return_value=[]))
         self.mock_object(self._driver.volume_api, 'get',
-                         mock.Mock(return_value=availiable_volume))
+                         mock.Mock(return_value=available_volume))
         self.mock_object(self._driver.compute_api, 'instance_volume_detach')
 
         self._driver._detach_volume(self._context, self.share,
