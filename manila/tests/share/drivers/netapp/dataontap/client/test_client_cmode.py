@@ -1383,12 +1383,15 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def test_create_volume_with_extra_specs(self):
 
         self.mock_object(self.client, 'set_volume_max_files')
+        self.mock_object(self.client, 'enable_dedup')
+        self.mock_object(self.client, 'enable_compression')
         self.mock_object(self.client, 'send_request')
 
         self.client.create_volume(
             fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100,
             thin_provisioned=True, language='en-US',
-            snapshot_policy='default', max_files=5000)
+            snapshot_policy='default', dedup_enabled=True,
+            compression_enabled=True, max_files=5000)
 
         volume_create_args = {
             'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
@@ -1404,6 +1407,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                                     volume_create_args)
         self.client.set_volume_max_files.assert_called_once_with(
             fake.SHARE_NAME, fake.MAX_FILES)
+        self.client.enable_dedup.assert_called_once_with(fake.SHARE_NAME)
+        self.client.enable_compression.assert_called_once_with(fake.SHARE_NAME)
 
     def test_set_volume_max_files(self):
 
@@ -1430,6 +1435,31 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_called_once_with(
             'volume-modify-iter', volume_modify_iter_api_args)
+
+    def test_enable_dedup(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.enable_dedup(fake.SHARE_NAME)
+
+        sis_enable_args = {'path': '/vol/%s' % fake.SHARE_NAME}
+
+        self.client.send_request.assert_called_once_with('sis-enable',
+                                                         sis_enable_args)
+
+    def test_enable_compression(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.enable_compression(fake.SHARE_NAME)
+
+        sis_set_config_args = {
+            'path': '/vol/%s' % fake.SHARE_NAME,
+            'enable-compression': 'true'
+        }
+
+        self.client.send_request.assert_called_once_with('sis-set-config',
+                                                         sis_set_config_args)
 
     def test_volume_exists(self):
 

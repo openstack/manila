@@ -51,7 +51,9 @@ class NetAppCmodeFileStorageLibrary(object):
     # client library argument keywords.  When we expose more backend
     # capabilities here, we will add them to this map.
     BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP = {
-        'netapp:thin_provisioned': 'thin_provisioned'
+        'netapp:thin_provisioned': 'thin_provisioned',
+        'netapp:dedup': 'dedup_enabled',
+        'netapp:compression': 'compression_enabled',
     }
     STRING_QUALIFIED_EXTRA_SPECS_MAP = {
         'netapp:snapshot_policy': 'snapshot_policy',
@@ -341,9 +343,6 @@ class NetAppCmodeFileStorageLibrary(object):
                   'provisioning options %(options)s',
                   {'share': share_name, 'pool': pool_name,
                    'options': provisioning_options})
-
-        LOG.debug('Creating share %(share)s on pool %(pool)s',
-                  {'share': share_name, 'pool': pool_name})
         vserver_client.create_volume(pool_name, share_name,
                                      share['size'],
                                      **provisioning_options)
@@ -375,6 +374,21 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _check_boolean_extra_specs_validity(self, share, specs,
                                             keys_of_interest):
+        # cDOT compression requires deduplication.
+        dedup = specs.get('netapp:dedup', None)
+        compression = specs.get('netapp:compression', None)
+        if dedup is not None and compression is not None:
+            if dedup.lower() == 'false' and compression.lower() == 'true':
+                spec = {'netapp:dedup': dedup,
+                        'netapp:compression': compression}
+                type_id = share['share_type_id']
+                share_id = share['id']
+                args = {'type_id': type_id, 'share_id': share_id, 'spec': spec}
+                msg = _('Invalid combination of extra_specs in share_type '
+                        '%(type_id)s for share %(share_id)s: %(spec)s: '
+                        'deduplication must be enabled in order for '
+                        'compression to be enabled.')
+                raise exception.Invalid(msg % args)
         """Check if the boolean_extra_specs have valid values."""
         # Extra spec values must be (ignoring case) 'true' or 'false'.
         for key in keys_of_interest:
