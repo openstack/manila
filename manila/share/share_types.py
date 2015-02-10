@@ -1,4 +1,5 @@
 # Copyright (c) 2014 Openstack Foundation.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -185,3 +186,8 @@ def share_types_diff(context, share_type_id1, share_type_id2):
         all_equal = False
 
     return (diff, all_equal)
+
+
+def get_extra_specs_from_share(share):
+    type_id = share.get('share_type_id', None)
+    return get_share_type_extra_specs(type_id)

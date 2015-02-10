@@ -1,4 +1,5 @@
 # Copyright (c) 2015 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -34,8 +35,8 @@ from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import options as na_opts
 from manila.share.drivers.netapp import utils as na_utils
+from manila.share import share_types
 from manila.share import utils as share_utils
-
 
 LOG = log.getLogger(__name__)
 
@@ -44,6 +45,13 @@ class NetAppCmodeFileStorageLibrary(object):
 
     AUTOSUPPORT_INTERVAL_SECONDS = 3600  # hourly
     SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
+
+    # Maps NetApp qualified extra specs keys to corresponding backend API
+    # client library argument keywords.  When we expose more backend
+    # capabilities here, we will add them to this map.
+    BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP = {
+        'netapp:thin_provisioned': 'thin_provisioned'
+    }
 
     def __init__(self, db, driver_name, **kwargs):
         na_utils.validate_driver_instantiation(**kwargs)
@@ -280,14 +288,14 @@ class NetAppCmodeFileStorageLibrary(object):
         if pool:
             return pool
 
-        volume_name = self._get_valid_share_name(share['id'])
-        return self._client.get_aggregate_for_volume(volume_name)
+        share_name = self._get_valid_share_name(share['id'])
+        return self._client.get_aggregate_for_volume(share_name)
 
     @na_utils.trace
     def create_share(self, context, share, share_server):
         """Creates new share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
-        self._allocate_container(share, vserver, vserver_client)
+        self._allocate_container(share, vserver_client)
         return self._create_export(share, vserver, vserver_client)
 
     @na_utils.trace
@@ -299,20 +307,72 @@ class NetAppCmodeFileStorageLibrary(object):
         return self._create_export(share, vserver, vserver_client)
 
     @na_utils.trace
-    def _allocate_container(self, share, vserver, vserver_client):
+    def _allocate_container(self, share, vserver_client):
         """Create new share on aggregate."""
         share_name = self._get_valid_share_name(share['id'])
 
         # Get Data ONTAP aggregate name as pool name.
-        aggregate_name = share_utils.extract_host(share['host'], level='pool')
-
-        if aggregate_name is None:
+        pool_name = share_utils.extract_host(share['host'], level='pool')
+        if pool_name is None:
             msg = _("Pool is not available in the share host field.")
             raise exception.InvalidHost(reason=msg)
 
-        LOG.debug('Creating volume %(share_name)s on aggregate %(aggregate)s',
-                  {'share_name': share_name, 'aggregate': aggregate_name})
-        vserver_client.create_volume(aggregate_name, share_name, share['size'])
+        extra_specs = share_types.get_extra_specs_from_share(share)
+        self._check_boolean_extra_specs_validity(
+            share, extra_specs, list(self.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
+        provisioning_options = self._get_boolean_provisioning_options(
+            extra_specs, self.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
+
+        LOG.debug('Creating share %(share)s on pool %(pool)s with '
+                  'provisioning options %(options)s',
+                  {'share': share_name, 'pool': pool_name,
+                   'options': provisioning_options})
+        vserver_client.create_volume(pool_name, share_name,
+                                     share['size'],
+                                     **provisioning_options)
+
+    @na_utils.trace
+    def _check_boolean_extra_specs_validity(self, share, specs,
+                                            keys_of_interest):
+        # Boolean extra spec values must be (ignoring case) 'true' or 'false'.
+        for key in keys_of_interest:
+            value = specs.get(key)
+            if value is not None and value.lower() not in ['true', 'false']:
+                type_id = share['share_type_id']
+                share_id = share['id']
+                arg_map = {'value': value, 'key': key, 'type_id': type_id,
+                           'share_id': share_id}
+                msg = _('Invalid value "%(value)s" for extra_spec "%(key)s" '
+                        'in share_type %(type_id)s for share %(share_id)s.')
+                raise exception.Invalid(msg % arg_map)
+
+    @na_utils.trace
+    def _get_boolean_provisioning_options(self, specs, boolean_specs_map):
+        """Given extra specs, return corresponding client library kwargs.
+
+        Build a full set of client library provisioning kwargs, filling in a
+        default value if an explicit value has not been supplied via a
+        corresponding extra spec.  Boolean extra spec values are "true" or
+        "false", with missing specs treated as "false".  Provisioning kwarg
+        values are True or False.
+        """
+        # Extract the extra spec keys of concern and their corresponding
+        # kwarg keys as lists.
+        keys_of_interest = list(boolean_specs_map)
+        provisioning_args = [boolean_specs_map[key]
+                             for key in keys_of_interest]
+        # Set missing spec values to 'false'
+        for key in keys_of_interest:
+            if key not in specs:
+                specs[key] = 'false'
+        # Build a list of Boolean provisioning arguments from the string
+        # equivalents in the spec values.
+        provisioning_values = [specs[key].lower() == 'true' for key in
+                               keys_of_interest]
+        # Combine the list of provisioning args and the list of provisioning
+        # values into a dictionary suitable for use as kwargs when invoking
+        # provisioning methods from the client API library.
+        return dict(zip(provisioning_args, provisioning_values))
 
     @na_utils.trace
     def _allocate_container_from_snapshot(self, share, snapshot,
@@ -322,7 +382,7 @@ class NetAppCmodeFileStorageLibrary(object):
         parent_share_name = self._get_valid_share_name(snapshot['share_id'])
         parent_snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
 
-        LOG.debug('Creating volume from snapshot %s', snapshot['id'])
+        LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(share_name, parent_share_name,
                                            parent_snapshot_name)
 
@@ -456,7 +516,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def _update_ssc_aggr_info(self, aggregate_names, ssc_stats):
         """Updates the given SSC dictionary with new disk type information.
 
-        :param volume_groups: The volume groups this driver cares about
+        :param aggregate_names: The aggregates this driver cares about
         :param ssc_stats: The dictionary to update
         """
 

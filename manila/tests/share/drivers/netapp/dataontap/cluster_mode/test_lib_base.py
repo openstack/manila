@@ -1,4 +1,5 @@
 # Copyright (c) 2015 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -30,6 +31,8 @@ from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import utils as na_utils
+from manila.share import share_types
+from manila.share import utils as share_utils
 from manila import test
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
 
@@ -498,7 +501,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                            share_server=fake.SHARE_SERVER)
 
         mock_allocate_container.assert_called_once_with(fake.SHARE,
-                                                        fake.VSERVER1,
                                                         vserver_client)
         mock_create_export.assert_called_once_with(fake.SHARE,
                                                    fake.VSERVER1,
@@ -536,17 +538,61 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual('fake_export_location', result)
 
     def test_allocate_container(self):
-
+        self.mock_object(self.library, '_get_valid_share_name', mock.Mock(
+            return_value=fake.SHARE_NAME))
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            return_value=fake.POOL_NAME))
+        self.mock_object(share_types, 'get_extra_specs_from_share',
+                         mock.Mock(return_value=fake.EXTRA_SPEC))
+        self.mock_object(self.library, '_check_boolean_extra_specs_validity')
+        self.mock_object(self.library, '_get_boolean_provisioning_options',
+                         mock.Mock(return_value=fake.PROVISIONING_OPTIONS))
         vserver_client = mock.Mock()
 
-        self.library._allocate_container(fake.SHARE,
-                                         fake.VSERVER1,
+        self.library._allocate_container(fake.EXTRA_SPEC_SHARE,
                                          vserver_client)
 
-        share_name = self.library._get_valid_share_name(fake.SHARE['id'])
-        vserver_client.create_volume.assert_called_with(fake.POOL_NAME,
-                                                        share_name,
-                                                        fake.SHARE['size'])
+        vserver_client.create_volume.assert_called_once_with(
+            fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
+            thin_provisioned=True)
+
+    def test_check_boolean_extra_specs_validity(self):
+        self.library._check_boolean_extra_specs_validity(
+            fake.EXTRA_SPEC_SHARE, fake.EXTRA_SPEC,
+            list(self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
+
+    def test_check_boolean_extra_specs_validity_empty_spec(self):
+        self.library._check_boolean_extra_specs_validity(
+            fake.EXTRA_SPEC_SHARE, fake.EMPTY_EXTRA_SPEC,
+            list(self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
+
+    def test_check_boolean_extra_specs_validity_invalid_value(self):
+        self.assertRaises(
+            exception.Invalid,
+            self.library._check_boolean_extra_specs_validity,
+            fake.EXTRA_SPEC_SHARE, fake.INVALID_EXTRA_SPEC,
+            list(self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
+
+    def test_get_boolean_provisioning_options(self):
+        result = self.library._get_boolean_provisioning_options(
+            fake.EXTRA_SPEC,
+            self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
+
+        self.assertEqual(fake.PROVISIONING_OPTIONS, result)
+
+    def test_get_boolean_provisioning_options_missing_spec(self):
+        result = self.library._get_boolean_provisioning_options(
+            fake.SHORT_EXTRA_SPEC,
+            self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
+
+        self.assertEqual(fake.PROVISIONING_OPTIONS, result)
+
+    def test_get_boolean_provisioning_options_implicit_false(self):
+        result = self.library._get_boolean_provisioning_options(
+            fake.EMPTY_EXTRA_SPEC,
+            self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
+
+        self.assertEqual({'thin_provisioned': False}, result)
 
     def test_allocate_container_no_pool(self):
 
@@ -557,7 +603,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.InvalidHost,
                           self.library._allocate_container,
                           fake_share,
-                          fake.VSERVER1,
                           vserver_client)
 
     def test_allocate_container_from_snapshot(self):
@@ -573,7 +618,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT['share_id'])
         parent_snapshot_name = self.library._get_valid_snapshot_name(
             fake.SNAPSHOT['id'])
-        vserver_client.create_volume_clone.assert_called_with(
+        vserver_client.create_volume_clone.assert_called_once_with(
             share_name,
             parent_share_name,
             parent_snapshot_name)

@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2015 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -1290,11 +1291,29 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
             'size': '100g',
             'volume': fake.SHARE_NAME,
-            'junction-path': '/%s' % fake.SHARE_NAME
+            'junction-path': '/%s' % fake.SHARE_NAME,
         }
 
-        self.client.send_request.assert_has_calls([
-            mock.call('volume-create', volume_create_args)])
+        self.client.send_request.assert_called_once_with('volume-create',
+                                                         volume_create_args)
+
+    def test_create_thin_volume(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_volume(
+            fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100,
+            thin_provisioned=True)
+
+        volume_create_args = {
+            'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
+            'size': '100g',
+            'volume': fake.SHARE_NAME,
+            'junction-path': '/%s' % fake.SHARE_NAME,
+            'space-reserve': 'none'
+        }
+
+        self.client.send_request.assert_called_once_with('volume-create',
+                                                         volume_create_args)
 
     def test_volume_exists(self):
 
