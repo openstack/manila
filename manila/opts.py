@@ -16,7 +16,6 @@ __all__ = [
     'list_opts'
 ]
 
-
 import copy
 import itertools
 
@@ -57,13 +56,14 @@ import manila.share.drivers.hds.sop
 import manila.share.drivers.hp.hp_3par_driver
 import manila.share.drivers.huawei.huawei_nas
 import manila.share.drivers.ibm.gpfs
-import manila.share.drivers.netapp.cluster_mode
+import manila.share.drivers.netapp.options
 import manila.share.drivers.service_instance
 import manila.share.drivers.zfssa.zfssashare
 import manila.share.manager
 import manila.volume
 import manila.volume.cinder
 import manila.wsgi
+
 
 # List of *all* options in [DEFAULT] namespace of manila.
 # Any new option list or option needs to be registered here.
@@ -113,7 +113,11 @@ _global_opt_lists = [
     manila.share.drivers.hp.hp_3par_driver.HP3PAR_OPTS,
     manila.share.drivers.huawei.huawei_nas.huawei_opts,
     manila.share.drivers.ibm.gpfs.gpfs_share_opts,
-    manila.share.drivers.netapp.cluster_mode.NETAPP_NAS_OPTS,
+    manila.share.drivers.netapp.options.netapp_proxy_opts,
+    manila.share.drivers.netapp.options.netapp_connection_opts,
+    manila.share.drivers.netapp.options.netapp_transport_opts,
+    manila.share.drivers.netapp.options.netapp_basicauth_opts,
+    manila.share.drivers.netapp.options.netapp_provisioning_opts,
     manila.share.drivers.service_instance.common_opts,
     manila.share.drivers.service_instance.no_share_servers_handling_mode_opts,
     manila.share.drivers.service_instance.share_servers_handling_mode_opts,

@@ -15,16 +15,20 @@
 
 from manila.share import configuration as conf
 from manila.share import driver as manila_opts
-from manila.share.drivers.netapp import cluster_mode
+from manila.share.drivers.netapp import options as na_opts
 
 
 def create_configuration():
     config = conf.Configuration(None)
     config.append_config_values(manila_opts.share_opts)
-    config.append_config_values(cluster_mode.NETAPP_NAS_OPTS)
+    config.append_config_values(na_opts.netapp_connection_opts)
+    config.append_config_values(na_opts.netapp_transport_opts)
+    config.append_config_values(na_opts.netapp_basicauth_opts)
+    config.append_config_values(na_opts.netapp_provisioning_opts)
     return config
 
 
 def create_configuration_cmode():
     config = create_configuration()
+    config.append_config_values(na_opts.netapp_support_opts)
     return config

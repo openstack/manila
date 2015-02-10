@@ -16,8 +16,9 @@ import mock
 import six
 
 from manila import exception
-from manila.share.drivers.netapp import cluster_mode
 from manila.share.drivers.netapp import common as na_common
+from manila.share.drivers.netapp.dataontap.cluster_mode import drv_multi_svm
+from manila.share.drivers.netapp import utils as na_utils
 from manila import test
 from manila.tests.share.drivers.netapp import fakes as na_fakes
 
@@ -30,8 +31,13 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
     def test_new(self):
 
+        self.mock_object(na_utils.OpenStackInfo, 'info',
+                         mock.Mock(return_value='fake_info'))
+        mock_get_driver_mode = self.mock_object(
+            na_common.NetAppDriver, '_get_driver_mode',
+            mock.Mock(return_value='fake_mode'))
         mock_create_driver = self.mock_object(na_common.NetAppDriver,
-                                              'create_driver')
+                                              '_create_driver')
 
         config = na_fakes.create_configuration()
         config.netapp_storage_family = 'fake_family'
@@ -40,18 +46,23 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         kwargs = {'configuration': config}
         na_common.NetAppDriver(**kwargs)
 
-        mock_create_driver.assert_called_with('fake_family', True,
-                                              *(), **kwargs)
+        kwargs['app_version'] = 'fake_info'
+        mock_get_driver_mode.assert_called_once_with('fake_family', True)
+        mock_create_driver.assert_called_once_with('fake_family', 'fake_mode',
+                                                   *(), **kwargs)
 
     def test_new_missing_config(self):
 
-        self.mock_object(na_common.NetAppDriver, 'create_driver')
+        self.mock_object(na_utils.OpenStackInfo, 'info')
+        self.mock_object(na_common.NetAppDriver, '_create_driver')
 
-        self.assertRaises(exception.InvalidInput, na_common.NetAppDriver, **{})
+        self.assertRaises(exception.InvalidInput,
+                          na_common.NetAppDriver, **{})
 
     def test_new_missing_family(self):
 
-        self.mock_object(na_common.NetAppDriver, 'create_driver')
+        self.mock_object(na_utils.OpenStackInfo, 'info')
+        self.mock_object(na_common.NetAppDriver, '_create_driver')
 
         config = na_fakes.create_configuration()
         config.driver_handles_share_servers = True
@@ -64,6 +75,9 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
     def test_new_missing_mode(self):
 
+        self.mock_object(na_utils.OpenStackInfo, 'info')
+        self.mock_object(na_common.NetAppDriver, '_create_driver')
+
         config = na_fakes.create_configuration()
         config.driver_handles_share_servers = None
         config.netapp_storage_family = 'fake_family'
@@ -73,6 +87,28 @@ class NetAppDriverFactoryTestCase(test.TestCase):
                           na_common.NetAppDriver,
                           **kwargs)
 
+    def test_get_driver_mode_missing_mode_good_default(self):
+
+        result = na_common.NetAppDriver._get_driver_mode('ONTAP_CLUSTER', None)
+        self.assertEqual(na_common.MULTI_SVM, result)
+
+    def test_create_driver_missing_mode_no_default(self):
+
+        self.assertRaises(exception.InvalidInput,
+                          na_common.NetAppDriver._get_driver_mode,
+                          'fake_family', None)
+
+    def test_get_driver_mode_multi_svm(self):
+
+        result = na_common.NetAppDriver._get_driver_mode('ONTAP_CLUSTER', True)
+        self.assertEqual(na_common.MULTI_SVM, result)
+
+    def test_get_driver_mode_single_svm(self):
+
+        result = na_common.NetAppDriver._get_driver_mode('ONTAP_CLUSTER',
+                                                         False)
+        self.assertEqual(na_common.SINGLE_SVM, result)
+
     def test_create_driver(self):
 
         def get_full_class_name(obj):
@@ -81,14 +117,14 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         config = na_fakes.create_configuration()
         config.local_conf.set_override('driver_handles_share_servers', True)
 
-        kwargs = {'configuration': config}
+        kwargs = {'configuration': config, 'app_version': 'fake_info'}
 
         registry = na_common.NETAPP_UNIFIED_DRIVER_REGISTRY
         mock_db = mock.Mock()
 
         for family in six.iterkeys(registry):
             for mode, full_class_name in six.iteritems(registry[family]):
-                driver = na_common.NetAppDriver.create_driver(
+                driver = na_common.NetAppDriver._create_driver(
                     family, mode, mock_db, **kwargs)
                 self.assertEqual(full_class_name, get_full_class_name(driver))
 
@@ -97,48 +133,38 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         config = na_fakes.create_configuration()
         config.local_conf.set_override('driver_handles_share_servers', True)
 
-        kwargs = {'configuration': config}
-
+        kwargs = {'configuration': config, 'app_version': 'fake_info'}
         mock_db = mock.Mock()
 
-        driver = na_common.NetAppDriver.create_driver('ONTAP_CLUSTER',
-                                                      True,
-                                                      mock_db,
-                                                      **kwargs)
+        driver = na_common.NetAppDriver._create_driver('ONTAP_CLUSTER',
+                                                       na_common.MULTI_SVM,
+                                                       mock_db,
+                                                       **kwargs)
 
         self.assertIsInstance(driver,
-                              cluster_mode.NetAppClusteredShareDriver)
+                              drv_multi_svm.NetAppCmodeMultiSvmShareDriver)
 
     def test_create_driver_invalid_family(self):
 
-        kwargs = {'configuration': na_fakes.create_configuration()}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+        }
         mock_db = mock.Mock()
 
         self.assertRaises(exception.InvalidInput,
-                          na_common.NetAppDriver.create_driver,
-                          'fake_family', 'iscsi', mock_db, **kwargs)
+                          na_common.NetAppDriver._create_driver,
+                          'fake_family', na_common.MULTI_SVM,
+                          mock_db, **kwargs)
 
-    def test_create_driver_missing_mode_good_default(self):
+    def test_create_driver_invalid_mode(self):
 
-        config = na_fakes.create_configuration()
-        config.local_conf.set_override('driver_handles_share_servers', True)
-
-        kwargs = {'configuration': config}
-        mock_db = mock.Mock()
-
-        driver = na_common.NetAppDriver.create_driver('ONTAP_CLUSTER',
-                                                      None,
-                                                      mock_db,
-                                                      **kwargs)
-
-        self.assertIsInstance(driver,
-                              cluster_mode.NetAppClusteredShareDriver)
-
-    def test_create_driver_missing_mode_no_default(self):
-
-        kwargs = {'configuration': na_fakes.create_configuration()}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+        }
         mock_db = mock.Mock()
 
         self.assertRaises(exception.InvalidInput,
-                          na_common.NetAppDriver.create_driver,
-                          'fake_family', None, mock_db, **kwargs)
+                          na_common.NetAppDriver._create_driver,
+                          'ontap_cluster', 'fake_mode', mock_db, **kwargs)

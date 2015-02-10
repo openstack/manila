@@ -1,0 +1,967 @@
+# Copyright (c) - 2014, Clinton Knight.  All rights reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+from lxml import etree
+
+
+CONNECTION_INFO = {
+    'hostname': 'hostname',
+    'transport_type': 'https',
+    'port': 443,
+    'username': 'admin',
+    'password': 'passw0rd'
+}
+
+NODE_NAME = 'fake_node'
+VSERVER_NAME = 'fake_vserver'
+ADMIN_VSERVER_NAME = 'fake_admin_vserver'
+NODE_VSERVER_NAME = 'fake_node_vserver'
+ROOT_VOLUME_AGGREGATE_NAME = 'fake_root_aggr'
+ROOT_VOLUME_NAME = 'fake_root_volume'
+SHARE_AGGREGATE_NAME = 'fake_aggr1'
+SHARE_AGGREGATE_NAMES = ['fake_aggr1', 'fake_aggr2']
+SHARE_NAME = 'fake_share'
+SNAPSHOT_NAME = 'fake_snapshot'
+PARENT_SHARE_NAME = 'fake_parent_share'
+PARENT_SNAPSHOT_NAME = 'fake_parent_snapshot'
+
+USER_NAME = 'fake_user'
+
+PORT = 'e0a'
+VLAN = '1001'
+VLAN_PORT = 'e0a-1001'
+IP_ADDRESS = '10.10.10.10'
+NETMASK = '255.255.255.0'
+NET_ALLOCATION_ID = 'fake_allocation_id'
+LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
+LIF_NAME = LIF_NAME_TEMPLATE % {'net_allocation_id': NET_ALLOCATION_ID}
+
+EMS_MESSAGE = {
+    'computer-name': 'fake_host',
+    'event-id': '0',
+    'event-source': 'fake driver',
+    'app-version': 'fake app version',
+    'category': 'fake category',
+    'event-description': 'fake description',
+    'log-level': '6',
+    'auto-support': 'false',
+}
+
+NO_RECORDS_RESPONSE = etree.XML("""
+  <results status="passed">
+    <num-records>0</num-records>
+  </results>
+""")
+
+VSERVER_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <vserver-info>
+        <vserver-name>%(fake_vserver)s</vserver-name>
+      </vserver-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'fake_vserver': VSERVER_NAME})
+
+VSERVER_GET_ROOT_VOLUME_NAME_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <vserver-info>
+        <root-volume>%(root_volume)s</root-volume>
+        <vserver-name>%(fake_vserver)s</vserver-name>
+      </vserver-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'root_volume': ROOT_VOLUME_NAME, 'fake_vserver': VSERVER_NAME})
+
+VSERVER_GET_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <vserver-info>
+        <aggr-list>
+          <aggr-name>aggr0</aggr-name>
+          <aggr-name>manila</aggr-name>
+        </aggr-list>
+        <vserver-aggr-info-list>
+          <vserver-aggr-info>
+            <aggr-availsize>45678592</aggr-availsize>
+            <aggr-name>aggr0</aggr-name>
+          </vserver-aggr-info>
+          <vserver-aggr-info>
+            <aggr-availsize>6448431104</aggr-availsize>
+            <aggr-name>manila</aggr-name>
+          </vserver-aggr-info>
+        </vserver-aggr-info-list>
+        <vserver-name>%(vserver)s</vserver-name>
+      </vserver-info>
+    </attributes>
+  </results>
+""" % {'vserver': VSERVER_NAME})
+
+VSERVER_DATA_LIST_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <vserver-info>
+        <vserver-name>%(vserver)s</vserver-name>
+        <vserver-type>data</vserver-type>
+      </vserver-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'vserver': VSERVER_NAME})
+
+VSERVER_AGGREGATES = {'aggr0': 45678592, 'manila': 6448431104}
+
+VSERVER_GET_RESPONSE_NO_AGGREGATES = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <vserver-info>
+        <vserver-name>%(vserver)s</vserver-name>
+      </vserver-info>
+    </attributes>
+  </results>
+""" % {'vserver': VSERVER_NAME})
+
+ONTAPI_VERSION_RESPONSE = etree.XML("""
+  <results status="passed">
+    <major-version>1</major-version>
+    <minor-version>19</minor-version>
+  </results>
+""")
+
+LICENSE_V2_LIST_INFO_RESPONSE = etree.XML("""
+  <results status="passed">
+    <licenses>
+      <license-v2-info>
+        <customer-id>none</customer-id>
+        <description>Cluster Base License</description>
+        <legacy>false</legacy>
+        <owner>cluster3</owner>
+        <package>base</package>
+        <serial-number>1-80-000008</serial-number>
+        <type>license</type>
+      </license-v2-info>
+      <license-v2-info>
+        <customer-id>none</customer-id>
+        <description>NFS License</description>
+        <legacy>false</legacy>
+        <owner>cluster3-01</owner>
+        <package>nfs</package>
+        <serial-number>1-81-0000000000000004082368507</serial-number>
+        <type>license</type>
+      </license-v2-info>
+      <license-v2-info>
+        <customer-id>none</customer-id>
+        <description>CIFS License</description>
+        <legacy>false</legacy>
+        <owner>cluster3-01</owner>
+        <package>cifs</package>
+        <serial-number>1-81-0000000000000004082368507</serial-number>
+        <type>license</type>
+      </license-v2-info>
+      <license-v2-info>
+        <customer-id>none</customer-id>
+        <description>iSCSI License</description>
+        <legacy>false</legacy>
+        <owner>cluster3-01</owner>
+        <package>iscsi</package>
+        <serial-number>1-81-0000000000000004082368507</serial-number>
+        <type>license</type>
+      </license-v2-info>
+      <license-v2-info>
+        <customer-id>none</customer-id>
+        <description>FCP License</description>
+        <legacy>false</legacy>
+        <owner>cluster3-01</owner>
+        <package>fcp</package>
+        <serial-number>1-81-0000000000000004082368507</serial-number>
+        <type>license</type>
+      </license-v2-info>
+      <license-v2-info>
+        <customer-id>none</customer-id>
+        <description>SnapRestore License</description>
+        <legacy>false</legacy>
+        <owner>cluster3-01</owner>
+        <package>snaprestore</package>
+        <serial-number>1-81-0000000000000004082368507</serial-number>
+        <type>license</type>
+      </license-v2-info>
+      <license-v2-info>
+        <customer-id>none</customer-id>
+        <description>SnapMirror License</description>
+        <legacy>false</legacy>
+        <owner>cluster3-01</owner>
+        <package>snapmirror</package>
+        <serial-number>1-81-0000000000000004082368507</serial-number>
+        <type>license</type>
+      </license-v2-info>
+      <license-v2-info>
+        <customer-id>none</customer-id>
+        <description>FlexClone License</description>
+        <legacy>false</legacy>
+        <owner>cluster3-01</owner>
+        <package>flexclone</package>
+        <serial-number>1-81-0000000000000004082368507</serial-number>
+        <type>license</type>
+      </license-v2-info>
+      <license-v2-info>
+        <customer-id>none</customer-id>
+        <description>SnapVault License</description>
+        <legacy>false</legacy>
+        <owner>cluster3-01</owner>
+        <package>snapvault</package>
+        <serial-number>1-81-0000000000000004082368507</serial-number>
+        <type>license</type>
+      </license-v2-info>
+    </licenses>
+  </results>
+""")
+
+LICENSES = [
+    'base', 'cifs', 'fcp', 'flexclone', 'iscsi', 'nfs', 'snapmirror',
+    'snaprestore', 'snapvault'
+]
+
+VOLUME_COUNT_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>vol0</name>
+          <owning-vserver-name>cluster3-01</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(root_volume)s</name>
+          <owning-vserver-name>%(fake_vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""" % {'root_volume': ROOT_VOLUME_NAME, 'fake_vserver': VSERVER_NAME})
+
+CIFS_SECURITY_SERVICE = {
+    'type': 'active_directory',
+    'password': 'fake_password',
+    'user': 'fake_user',
+    'domain': 'fake_domain',
+    'dns_ip': 'fake_dns_ip',
+}
+
+LDAP_SECURITY_SERVICE = {
+    'type': 'ldap',
+    'password': 'fake_password',
+    'server': 'fake_server',
+    'id': 'fake_id',
+}
+
+KERBEROS_SECURITY_SERVICE = {
+    'type': 'kerberos',
+    'password': 'fake_password',
+    'user': 'fake_user',
+    'server': 'fake_server',
+    'id': 'fake_id',
+    'domain': 'fake_domain',
+    'dns_ip': 'fake_dns_ip',
+}
+
+KERBEROS_SERVICE_PRINCIPAL_NAME = 'nfs/fake-vserver.fake_domain@FAKE_DOMAIN'
+
+INVALID_SECURITY_SERVICE = {
+    'type': 'fake',
+}
+
+SYSTEM_NODE_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <node-details-info>
+        <node>%s</node>
+      </node-details-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % NODE_NAME)
+
+NET_PORT_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <net-port-info>
+        <administrative-duplex>full</administrative-duplex>
+        <administrative-flowcontrol>full</administrative-flowcontrol>
+        <administrative-speed>auto</administrative-speed>
+        <is-administrative-auto-negotiate>true</is-administrative-auto-negotiate>
+        <is-administrative-up>true</is-administrative-up>
+        <is-operational-auto-negotiate>true</is-operational-auto-negotiate>
+        <link-status>up</link-status>
+        <mac-address>00:0c:29:fc:04:d9</mac-address>
+        <mtu>1500</mtu>
+        <node>%(node_name)s</node>
+        <operational-duplex>full</operational-duplex>
+        <operational-flowcontrol>none</operational-flowcontrol>
+        <operational-speed>1000</operational-speed>
+        <port>e0a</port>
+        <port-type>physical</port-type>
+        <role>data</role>
+      </net-port-info>
+      <net-port-info>
+        <administrative-duplex>full</administrative-duplex>
+        <administrative-flowcontrol>full</administrative-flowcontrol>
+        <administrative-speed>auto</administrative-speed>
+        <is-administrative-auto-negotiate>true</is-administrative-auto-negotiate>
+        <is-administrative-up>true</is-administrative-up>
+        <is-operational-auto-negotiate>true</is-operational-auto-negotiate>
+        <link-status>up</link-status>
+        <mac-address>00:0c:29:fc:04:e3</mac-address>
+        <mtu>1500</mtu>
+        <node>%(node_name)s</node>
+        <operational-duplex>full</operational-duplex>
+        <operational-flowcontrol>none</operational-flowcontrol>
+        <operational-speed>1000</operational-speed>
+        <port>e0b</port>
+        <port-type>physical</port-type>
+        <role>data</role>
+      </net-port-info>
+      <net-port-info>
+        <administrative-duplex>full</administrative-duplex>
+        <administrative-flowcontrol>full</administrative-flowcontrol>
+        <administrative-speed>auto</administrative-speed>
+        <is-administrative-auto-negotiate>true</is-administrative-auto-negotiate>
+        <is-administrative-up>true</is-administrative-up>
+        <is-operational-auto-negotiate>true</is-operational-auto-negotiate>
+        <link-status>up</link-status>
+        <mac-address>00:0c:29:fc:04:ed</mac-address>
+        <mtu>1500</mtu>
+        <node>%(node_name)s</node>
+        <operational-duplex>full</operational-duplex>
+        <operational-flowcontrol>none</operational-flowcontrol>
+        <operational-speed>1000</operational-speed>
+        <port>e0c</port>
+        <port-type>physical</port-type>
+        <role>data</role>
+      </net-port-info>
+      <net-port-info>
+        <administrative-duplex>full</administrative-duplex>
+        <administrative-flowcontrol>full</administrative-flowcontrol>
+        <administrative-speed>auto</administrative-speed>
+        <is-administrative-auto-negotiate>true</is-administrative-auto-negotiate>
+        <is-administrative-up>true</is-administrative-up>
+        <is-operational-auto-negotiate>true</is-operational-auto-negotiate>
+        <link-status>up</link-status>
+        <mac-address>00:0c:29:fc:04:f7</mac-address>
+        <mtu>1500</mtu>
+        <node>%(node_name)s</node>
+        <operational-duplex>full</operational-duplex>
+        <operational-flowcontrol>none</operational-flowcontrol>
+        <operational-speed>1000</operational-speed>
+        <port>e0d</port>
+        <port-type>physical</port-type>
+        <role>data</role>
+      </net-port-info>
+    </attributes-list>
+    <num-records>4</num-records>
+  </results>
+""" % {'node_name': NODE_NAME})
+
+PORTS = ['e0a', 'e0b', 'e0c', 'e0d']
+
+NET_INTERFACE_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <net-interface-info>
+        <address>192.168.228.42</address>
+        <address-family>ipv4</address-family>
+        <administrative-status>up</administrative-status>
+        <current-node>%(node)s</current-node>
+        <current-port>e0c</current-port>
+        <data-protocols>
+          <data-protocol>none</data-protocol>
+        </data-protocols>
+        <dns-domain-name>none</dns-domain-name>
+        <failover-group>system-defined</failover-group>
+        <failover-policy>disabled</failover-policy>
+        <firewall-policy>mgmt</firewall-policy>
+        <home-node>%(node)s</home-node>
+        <home-port>e0c</home-port>
+        <interface-name>cluster_mgmt</interface-name>
+        <is-auto-revert>true</is-auto-revert>
+        <is-home>true</is-home>
+        <lif-uuid>d3230112-7524-11e4-8608-123478563412</lif-uuid>
+        <listen-for-dns-query>false</listen-for-dns-query>
+        <netmask>%(netmask)s</netmask>
+        <netmask-length>24</netmask-length>
+        <operational-status>up</operational-status>
+        <role>cluster_mgmt</role>
+        <routing-group-name>c192.168.228.0/24</routing-group-name>
+        <use-failover-group>system_defined</use-failover-group>
+        <vserver>cluster3</vserver>
+      </net-interface-info>
+      <net-interface-info>
+        <address>192.168.228.43</address>
+        <address-family>ipv4</address-family>
+        <administrative-status>up</administrative-status>
+        <current-node>%(node)s</current-node>
+        <current-port>e0d</current-port>
+        <dns-domain-name>none</dns-domain-name>
+        <failover-group>system-defined</failover-group>
+        <failover-policy>nextavail</failover-policy>
+        <firewall-policy>mgmt</firewall-policy>
+        <home-node>%(node)s</home-node>
+        <home-port>e0d</home-port>
+        <interface-name>mgmt1</interface-name>
+        <is-auto-revert>true</is-auto-revert>
+        <is-home>true</is-home>
+        <lif-uuid>0ccc57cc-7525-11e4-8608-123478563412</lif-uuid>
+        <listen-for-dns-query>false</listen-for-dns-query>
+        <netmask>%(netmask)s</netmask>
+        <netmask-length>24</netmask-length>
+        <operational-status>up</operational-status>
+        <role>node_mgmt</role>
+        <routing-group-name>n192.168.228.0/24</routing-group-name>
+        <use-failover-group>system_defined</use-failover-group>
+        <vserver>cluster3-01</vserver>
+      </net-interface-info>
+      <net-interface-info>
+        <address>%(address)s</address>
+        <address-family>ipv4</address-family>
+        <administrative-status>up</administrative-status>
+        <current-node>%(node)s</current-node>
+        <current-port>%(vlan)s</current-port>
+        <data-protocols>
+          <data-protocol>nfs</data-protocol>
+          <data-protocol>cifs</data-protocol>
+        </data-protocols>
+        <dns-domain-name>none</dns-domain-name>
+        <failover-group>system-defined</failover-group>
+        <failover-policy>nextavail</failover-policy>
+        <firewall-policy>data</firewall-policy>
+        <home-node>%(node)s</home-node>
+        <home-port>%(vlan)s</home-port>
+        <interface-name>%(lif)s</interface-name>
+        <is-auto-revert>false</is-auto-revert>
+        <is-home>true</is-home>
+        <lif-uuid>db4d91b6-95d9-11e4-8608-123478563412</lif-uuid>
+        <listen-for-dns-query>false</listen-for-dns-query>
+        <netmask>%(netmask)s</netmask>
+        <netmask-length>24</netmask-length>
+        <operational-status>up</operational-status>
+        <role>data</role>
+        <routing-group-name>d10.0.0.0/24</routing-group-name>
+        <use-failover-group>system_defined</use-failover-group>
+        <vserver>%(vserver)s</vserver>
+      </net-interface-info>
+    </attributes-list>
+    <num-records>3</num-records>
+  </results>
+""" % {
+    'lif': LIF_NAME,
+    'vserver': VSERVER_NAME,
+    'node': NODE_NAME,
+    'address': IP_ADDRESS,
+    'netmask': NETMASK,
+    'vlan': VLAN_PORT
+})
+
+LIF_NAMES = ['cluster_mgmt', 'mgmt1', LIF_NAME]
+
+LIFS = [
+    {'address': '192.168.228.42',
+     'home-node': NODE_NAME,
+     'home-port': 'e0c',
+     'interface-name': 'cluster_mgmt',
+     'netmask': NETMASK,
+     'role': 'cluster_mgmt',
+     'vserver': 'cluster3'
+     },
+    {'address': '192.168.228.43',
+     'home-node': NODE_NAME,
+     'home-port': 'e0d',
+     'interface-name': 'mgmt1',
+     'netmask': NETMASK,
+     'role': 'node_mgmt',
+     'vserver': 'cluster3-01'
+     },
+    {'address': IP_ADDRESS,
+     'home-node': NODE_NAME,
+     'home-port': VLAN_PORT,
+     'interface-name': LIF_NAME,
+     'netmask': NETMASK,
+     'role': 'data',
+     'vserver': VSERVER_NAME
+     }
+]
+
+NET_INTERFACE_GET_ONE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <net-interface-info>
+        <interface-name>%(lif)s</interface-name>
+        <vserver>%(vserver)s</vserver>
+      </net-interface-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'lif': LIF_NAME, 'vserver': VSERVER_NAME})
+
+AGGR_GET_NAMES_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <plexes>
+            <plex-attributes>
+              <plex-name>/aggr0/plex0</plex-name>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <raidgroup-name>/aggr0/plex0/rg0</raidgroup-name>
+                </raidgroup-attributes>
+              </raidgroups>
+            </plex-attributes>
+          </plexes>
+        </aggr-raid-attributes>
+        <aggregate-name>aggr0</aggregate-name>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <plexes>
+            <plex-attributes>
+              <plex-name>/manila/plex0</plex-name>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <raidgroup-name>/manila/plex0/rg0</raidgroup-name>
+                </raidgroup-attributes>
+                <raidgroup-attributes>
+                  <raidgroup-name>/manila/plex0/rg1</raidgroup-name>
+                </raidgroup-attributes>
+              </raidgroups>
+            </plex-attributes>
+          </plexes>
+        </aggr-raid-attributes>
+        <aggregate-name>manila</aggregate-name>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""")
+
+AGGR_NAMES = ['aggr0', 'manila']
+
+AGGR_GET_SPACE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <plexes>
+            <plex-attributes>
+              <plex-name>/aggr0/plex0</plex-name>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <raidgroup-name>/aggr0/plex0/rg0</raidgroup-name>
+                </raidgroup-attributes>
+              </raidgroups>
+            </plex-attributes>
+          </plexes>
+        </aggr-raid-attributes>
+        <aggr-space-attributes>
+          <size-available>45678592</size-available>
+          <size-total>943718400</size-total>
+        </aggr-space-attributes>
+        <aggregate-name>aggr0</aggregate-name>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <plexes>
+            <plex-attributes>
+              <plex-name>/manila/plex0</plex-name>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <raidgroup-name>/manila/plex0/rg0</raidgroup-name>
+                </raidgroup-attributes>
+                <raidgroup-attributes>
+                  <raidgroup-name>/manila/plex0/rg1</raidgroup-name>
+                </raidgroup-attributes>
+              </raidgroups>
+            </plex-attributes>
+          </plexes>
+        </aggr-raid-attributes>
+        <aggr-space-attributes>
+          <size-available>6448435200</size-available>
+          <size-total>7549747200</size-total>
+        </aggr-space-attributes>
+        <aggregate-name>manila</aggregate-name>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""")
+
+AGGR_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-64bit-upgrade-attributes>
+          <aggr-status-attributes>
+            <is-64-bit-upgrade-in-progress>false</is-64-bit-upgrade-in-progress>
+          </aggr-status-attributes>
+        </aggr-64bit-upgrade-attributes>
+        <aggr-fs-attributes>
+          <block-type>64_bit</block-type>
+          <fsid>1758646411</fsid>
+          <type>aggr</type>
+        </aggr-fs-attributes>
+        <aggr-inode-attributes>
+          <files-private-used>512</files-private-used>
+          <files-total>30384</files-total>
+          <files-used>96</files-used>
+          <inodefile-private-capacity>30384</inodefile-private-capacity>
+          <inodefile-public-capacity>30384</inodefile-public-capacity>
+          <maxfiles-available>30384</maxfiles-available>
+          <maxfiles-possible>243191</maxfiles-possible>
+          <maxfiles-used>96</maxfiles-used>
+          <percent-inode-used-capacity>0</percent-inode-used-capacity>
+        </aggr-inode-attributes>
+        <aggr-ownership-attributes>
+          <home-id>4082368507</home-id>
+          <home-name>cluster3-01</home-name>
+          <owner-id>4082368507</owner-id>
+          <owner-name>cluster3-01</owner-name>
+        </aggr-ownership-attributes>
+        <aggr-performance-attributes>
+          <free-space-realloc>off</free-space-realloc>
+          <max-write-alloc-blocks>0</max-write-alloc-blocks>
+        </aggr-performance-attributes>
+        <aggr-raid-attributes>
+          <checksum-status>active</checksum-status>
+          <checksum-style>block</checksum-style>
+          <disk-count>3</disk-count>
+          <ha-policy>cfo</ha-policy>
+          <has-local-root>true</has-local-root>
+          <has-partner-root>false</has-partner-root>
+          <is-checksum-enabled>true</is-checksum-enabled>
+          <is-hybrid>false</is-hybrid>
+          <is-hybrid-enabled>false</is-hybrid-enabled>
+          <is-inconsistent>false</is-inconsistent>
+          <mirror-status>unmirrored</mirror-status>
+          <mount-state>online</mount-state>
+          <plex-count>1</plex-count>
+          <plexes>
+            <plex-attributes>
+              <is-online>true</is-online>
+              <is-resyncing>false</is-resyncing>
+              <plex-name>/aggr0/plex0</plex-name>
+              <plex-status>normal,active</plex-status>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <checksum-style>block</checksum-style>
+                  <is-cache-tier>false</is-cache-tier>
+                  <is-recomputing-parity>false</is-recomputing-parity>
+                  <is-reconstructing>false</is-reconstructing>
+                  <raidgroup-name>/aggr0/plex0/rg0</raidgroup-name>
+                  <recomputing-parity-percentage>0</recomputing-parity-percentage>
+                  <reconstruction-percentage>0</reconstruction-percentage>
+                </raidgroup-attributes>
+              </raidgroups>
+              <resyncing-percentage>0</resyncing-percentage>
+            </plex-attributes>
+          </plexes>
+          <raid-lost-write-state>on</raid-lost-write-state>
+          <raid-size>16</raid-size>
+          <raid-status>raid_dp, normal</raid-status>
+          <raid-type>raid_dp</raid-type>
+          <state>online</state>
+        </aggr-raid-attributes>
+        <aggr-snaplock-attributes>
+          <is-snaplock>false</is-snaplock>
+        </aggr-snaplock-attributes>
+        <aggr-snapshot-attributes>
+          <files-total>0</files-total>
+          <files-used>0</files-used>
+          <is-snapshot-auto-create-enabled>true</is-snapshot-auto-create-enabled>
+          <is-snapshot-auto-delete-enabled>true</is-snapshot-auto-delete-enabled>
+          <maxfiles-available>0</maxfiles-available>
+          <maxfiles-possible>0</maxfiles-possible>
+          <maxfiles-used>0</maxfiles-used>
+          <percent-inode-used-capacity>0</percent-inode-used-capacity>
+          <percent-used-capacity>0</percent-used-capacity>
+          <size-available>0</size-available>
+          <size-total>0</size-total>
+          <size-used>0</size-used>
+          <snapshot-reserve-percent>0</snapshot-reserve-percent>
+        </aggr-snapshot-attributes>
+        <aggr-space-attributes>
+          <aggregate-metadata>245760</aggregate-metadata>
+          <hybrid-cache-size-total>0</hybrid-cache-size-total>
+          <percent-used-capacity>95</percent-used-capacity>
+          <size-available>45670400</size-available>
+          <size-total>943718400</size-total>
+          <size-used>898048000</size-used>
+          <total-reserved-space>0</total-reserved-space>
+          <used-including-snapshot-reserve>898048000</used-including-snapshot-reserve>
+          <volume-footprints>897802240</volume-footprints>
+        </aggr-space-attributes>
+        <aggr-volume-count-attributes>
+          <flexvol-count>1</flexvol-count>
+          <flexvol-count-collective>0</flexvol-count-collective>
+          <flexvol-count-striped>0</flexvol-count-striped>
+        </aggr-volume-count-attributes>
+        <aggregate-name>aggr0</aggregate-name>
+        <aggregate-uuid>15863632-ea49-49a8-9c88-2bd2d57c6d7a</aggregate-uuid>
+        <nodes>
+          <node-name>cluster3-01</node-name>
+        </nodes>
+        <striping-type>unknown</striping-type>
+      </aggr-attributes>
+      <aggr-attributes>
+        <aggr-64bit-upgrade-attributes>
+          <aggr-status-attributes>
+            <is-64-bit-upgrade-in-progress>false</is-64-bit-upgrade-in-progress>
+          </aggr-status-attributes>
+        </aggr-64bit-upgrade-attributes>
+        <aggr-fs-attributes>
+          <block-type>64_bit</block-type>
+          <fsid>706602229</fsid>
+          <type>aggr</type>
+        </aggr-fs-attributes>
+        <aggr-inode-attributes>
+          <files-private-used>528</files-private-used>
+          <files-total>31142</files-total>
+          <files-used>96</files-used>
+          <inodefile-private-capacity>31142</inodefile-private-capacity>
+          <inodefile-public-capacity>31142</inodefile-public-capacity>
+          <maxfiles-available>31142</maxfiles-available>
+          <maxfiles-possible>1945584</maxfiles-possible>
+          <maxfiles-used>96</maxfiles-used>
+          <percent-inode-used-capacity>0</percent-inode-used-capacity>
+        </aggr-inode-attributes>
+        <aggr-ownership-attributes>
+          <home-id>4082368507</home-id>
+          <home-name>cluster3-01</home-name>
+          <owner-id>4082368507</owner-id>
+          <owner-name>cluster3-01</owner-name>
+        </aggr-ownership-attributes>
+        <aggr-performance-attributes>
+          <free-space-realloc>off</free-space-realloc>
+          <max-write-alloc-blocks>0</max-write-alloc-blocks>
+        </aggr-performance-attributes>
+        <aggr-raid-attributes>
+          <checksum-status>active</checksum-status>
+          <checksum-style>block</checksum-style>
+          <disk-count>10</disk-count>
+          <ha-policy>sfo</ha-policy>
+          <has-local-root>false</has-local-root>
+          <has-partner-root>false</has-partner-root>
+          <is-checksum-enabled>true</is-checksum-enabled>
+          <is-hybrid>false</is-hybrid>
+          <is-hybrid-enabled>false</is-hybrid-enabled>
+          <is-inconsistent>false</is-inconsistent>
+          <mirror-status>unmirrored</mirror-status>
+          <mount-state>online</mount-state>
+          <plex-count>1</plex-count>
+          <plexes>
+            <plex-attributes>
+              <is-online>true</is-online>
+              <is-resyncing>false</is-resyncing>
+              <plex-name>/manila/plex0</plex-name>
+              <plex-status>normal,active</plex-status>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <checksum-style>block</checksum-style>
+                  <is-cache-tier>false</is-cache-tier>
+                  <is-recomputing-parity>false</is-recomputing-parity>
+                  <is-reconstructing>false</is-reconstructing>
+                  <raidgroup-name>/manila/plex0/rg0</raidgroup-name>
+                  <recomputing-parity-percentage>0</recomputing-parity-percentage>
+                  <reconstruction-percentage>0</reconstruction-percentage>
+                </raidgroup-attributes>
+                <raidgroup-attributes>
+                  <checksum-style>block</checksum-style>
+                  <is-cache-tier>false</is-cache-tier>
+                  <is-recomputing-parity>false</is-recomputing-parity>
+                  <is-reconstructing>false</is-reconstructing>
+                  <raidgroup-name>/manila/plex0/rg1</raidgroup-name>
+                  <recomputing-parity-percentage>0</recomputing-parity-percentage>
+                  <reconstruction-percentage>0</reconstruction-percentage>
+                </raidgroup-attributes>
+              </raidgroups>
+              <resyncing-percentage>0</resyncing-percentage>
+            </plex-attributes>
+          </plexes>
+          <raid-lost-write-state>on</raid-lost-write-state>
+          <raid-size>8</raid-size>
+          <raid-status>raid4, normal</raid-status>
+          <raid-type>raid4</raid-type>
+          <state>online</state>
+        </aggr-raid-attributes>
+        <aggr-snaplock-attributes>
+          <is-snaplock>false</is-snaplock>
+        </aggr-snaplock-attributes>
+        <aggr-snapshot-attributes>
+          <files-total>0</files-total>
+          <files-used>0</files-used>
+          <is-snapshot-auto-create-enabled>true</is-snapshot-auto-create-enabled>
+          <is-snapshot-auto-delete-enabled>true</is-snapshot-auto-delete-enabled>
+          <maxfiles-available>0</maxfiles-available>
+          <maxfiles-possible>0</maxfiles-possible>
+          <maxfiles-used>0</maxfiles-used>
+          <percent-inode-used-capacity>0</percent-inode-used-capacity>
+          <percent-used-capacity>0</percent-used-capacity>
+          <size-available>0</size-available>
+          <size-total>0</size-total>
+          <size-used>0</size-used>
+          <snapshot-reserve-percent>0</snapshot-reserve-percent>
+        </aggr-snapshot-attributes>
+        <aggr-space-attributes>
+          <aggregate-metadata>425984</aggregate-metadata>
+          <hybrid-cache-size-total>0</hybrid-cache-size-total>
+          <percent-used-capacity>15</percent-used-capacity>
+          <size-available>6448431104</size-available>
+          <size-total>7549747200</size-total>
+          <size-used>1101316096</size-used>
+          <total-reserved-space>0</total-reserved-space>
+          <used-including-snapshot-reserve>1101316096</used-including-snapshot-reserve>
+          <volume-footprints>1100890112</volume-footprints>
+        </aggr-space-attributes>
+        <aggr-volume-count-attributes>
+          <flexvol-count>2</flexvol-count>
+          <flexvol-count-collective>0</flexvol-count-collective>
+          <flexvol-count-striped>0</flexvol-count-striped>
+        </aggr-volume-count-attributes>
+        <aggregate-name>manila</aggregate-name>
+        <aggregate-uuid>2a741934-1aaf-42dd-93ca-aaf231be108a</aggregate-uuid>
+        <nodes>
+          <node-name>cluster3-01</node-name>
+        </nodes>
+        <striping-type>not_striped</striping-type>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""")
+
+VOLUME_GET_NAME_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(volume)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+
+VOLUME_GET_VOLUME_PATH_RESPONSE = etree.XML("""
+  <results status="passed">
+    <junction>/%(volume)s</junction>
+  </results>
+""" % {'volume': SHARE_NAME})
+
+VOLUME_GET_VOLUME_PATH_CIFS_RESPONSE = etree.XML("""
+  <results status="passed">
+    <junction>\\%(volume)s</junction>
+  </results>
+""" % {'volume': SHARE_NAME})
+
+VOLUME_JUNCTION_PATH = '/' + SHARE_NAME
+VOLUME_JUNCTION_PATH_CIFS = '\\' + SHARE_NAME
+
+SNAPSHOT_GET_ITER_NOT_BUSY_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapshot-info>
+        <busy>false</busy>
+        <name>%(snap)s</name>
+        <volume>%(volume)s</volume>
+        <vserver>%(vserver)s</vserver>
+      </snapshot-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'snap': SNAPSHOT_NAME, 'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+
+SNAPSHOT_GET_ITER_BUSY_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapshot-info>
+        <busy>true</busy>
+        <name>%(snap)s</name>
+        <volume>%(volume)s</volume>
+        <vserver>%(vserver)s</vserver>
+      </snapshot-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'snap': SNAPSHOT_NAME, 'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+
+NFS_EXPORT_RULES = ['10.10.10.10', '10.10.10.20']
+
+NFS_EXPORTFS_LIST_RULES_2_NO_RULES_RESPONSE = etree.XML("""
+  <results status="passed">
+    <rules />
+  </results>
+""")
+
+NFS_EXPORTFS_LIST_RULES_2_RESPONSE = etree.XML("""
+  <results status="passed">
+    <rules>
+      <exports-rule-info-2>
+        <pathname>%(path)s</pathname>
+        <security-rules>
+          <security-rule-info>
+            <anon>65534</anon>
+            <nosuid>false</nosuid>
+            <read-only>
+              <exports-hostname-info>
+                <name>%(host1)s</name>
+              </exports-hostname-info>
+              <exports-hostname-info>
+                <name>%(host2)s</name>
+              </exports-hostname-info>
+            </read-only>
+            <read-write>
+              <exports-hostname-info>
+                <name>%(host1)s</name>
+              </exports-hostname-info>
+              <exports-hostname-info>
+                <name>%(host2)s</name>
+              </exports-hostname-info>
+            </read-write>
+            <root>
+              <exports-hostname-info>
+                <name>%(host1)s</name>
+              </exports-hostname-info>
+              <exports-hostname-info>
+                <name>%(host2)s</name>
+              </exports-hostname-info>
+            </root>
+            <sec-flavor>
+              <sec-flavor-info>
+                <flavor>sys</flavor>
+              </sec-flavor-info>
+            </sec-flavor>
+          </security-rule-info>
+        </security-rules>
+      </exports-rule-info-2>
+    </rules>
+  </results>
+""" % {
+    'path': VOLUME_JUNCTION_PATH,
+    'host1': NFS_EXPORT_RULES[0],
+    'host2': NFS_EXPORT_RULES[1],
+})

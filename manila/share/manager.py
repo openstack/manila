@@ -53,6 +53,8 @@ share_manager_opts = [
 CONF = cfg.CONF
 CONF.register_opts(share_manager_opts)
 
+# Drivers that need to change module paths or class names can add their
+# old/new path here to maintain backward compatibility.
 MAPPING = {
     'manila.share.drivers.netapp.cluster_mode.NetAppClusteredShareDriver':
     'manila.share.drivers.netapp.common.NetAppDriver', }

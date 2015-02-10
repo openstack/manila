@@ -81,9 +81,10 @@ The following example shows five configured back ends:
     path_to_public_key=/home/baruser/.ssh/id_rsa.pub
 
     [backendNetApp]
-    share_driver=manila.share.drivers.netapp.cluster_mode.NetAppClusteredShareDriver
+    share_driver = manila.share.drivers.netapp.common.NetAppDriver
+    driver_handles_share_servers = True
     share_backend_name=backendNetApp
-    netapp_nas_login=user
-    netapp_nas_password=password
-    netapp_nas_server_hostname=1.1.1.1
+    netapp_login=user
+    netapp_password=password
+    netapp_server_hostname=1.1.1.1
     netapp_root_volume_aggregate=aggr01

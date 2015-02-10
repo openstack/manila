@@ -23,21 +23,26 @@ from oslo_utils import importutils
 from manila import exception
 from manila.i18n import _, _LI
 from manila.share import driver
-from manila.share.drivers.netapp import cluster_mode
+from manila.share.drivers.netapp import options
 from manila.share.drivers.netapp import utils as na_utils
 
+
 LOG = log.getLogger(__name__)
+
+MULTI_SVM = 'multi_svm'
+SINGLE_SVM = 'single_svm'
+DATAONTAP_CMODE_PATH = 'manila.share.drivers.netapp.dataontap.cluster_mode'
 
 # Add new drivers here, no other code changes required.
 NETAPP_UNIFIED_DRIVER_REGISTRY = {
     'ontap_cluster':
     {
-        'multi_svm':
-        'manila.share.drivers.netapp.cluster_mode.NetAppClusteredShareDriver',
+        MULTI_SVM: DATAONTAP_CMODE_PATH +
+        '.drv_multi_svm.NetAppCmodeMultiSvmShareDriver',
     }
 }
 NETAPP_UNIFIED_DRIVER_DEFAULT_MODE = {
-    'ontap_cluster': 'multi_svm',
+    'ontap_cluster': MULTI_SVM,
 }
 
 
@@ -58,36 +63,47 @@ class NetAppDriver(object):
                 reason=_('Required configuration not found'))
 
         config.append_config_values(driver.share_opts)
-        config.append_config_values(cluster_mode.NETAPP_NAS_OPTS)
+        config.append_config_values(options.netapp_proxy_opts)
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
 
-        return NetAppDriver.create_driver(config.netapp_storage_family,
-                                          config.driver_handles_share_servers,
-                                          *args, **kwargs)
+        app_version = na_utils.OpenStackInfo().info()
+        LOG.info(_LI('OpenStack OS Version Info: %(info)s') % {
+            'info': app_version})
+        kwargs['app_version'] = app_version
+
+        driver_mode = NetAppDriver._get_driver_mode(
+            config.netapp_storage_family, config.driver_handles_share_servers)
+
+        return NetAppDriver._create_driver(config.netapp_storage_family,
+                                           driver_mode,
+                                           *args, **kwargs)
 
     @staticmethod
-    def create_driver(storage_family, driver_handles_share_servers, *args,
-                      **kwargs):
-        """"Creates an appropriate driver based on family and mode."""
+    def _get_driver_mode(storage_family, driver_handles_share_servers):
 
-        storage_family = storage_family.lower()
-
-        # determine driver mode
         if driver_handles_share_servers is None:
             driver_mode = NETAPP_UNIFIED_DRIVER_DEFAULT_MODE.get(
-                storage_family)
+                storage_family.lower())
 
             if driver_mode:
-                LOG.debug('Default driver mode %s selected.' % driver_mode)
+                LOG.debug('Default driver mode %s selected.', driver_mode)
             else:
                 raise exception.InvalidInput(
                     reason=_('Driver mode was not specified and a default '
                              'value could not be determined from the '
                              'specified storage family'))
         elif driver_handles_share_servers:
-            driver_mode = 'multi_svm'
+            driver_mode = MULTI_SVM
         else:
-            driver_mode = 'single_svm'
+            driver_mode = SINGLE_SVM
+
+        return driver_mode
+
+    @staticmethod
+    def _create_driver(storage_family, driver_mode, *args, **kwargs):
+        """"Creates an appropriate driver based on family and mode."""
+
+        storage_family = storage_family.lower()
 
         fmt = {'storage_family': storage_family,
                'driver_mode': driver_mode}
@@ -106,7 +122,6 @@ class NetAppDriver(object):
                 reason=_('Driver mode %(driver_mode)s is not supported '
                          'for storage family %(storage_family)s') % fmt)
 
-        kwargs = kwargs or {}
         kwargs['netapp_mode'] = 'proxy'
         driver = importutils.import_object(driver_loc, *args, **kwargs)
         LOG.info(_LI('NetApp driver of family %(storage_family)s and mode '
