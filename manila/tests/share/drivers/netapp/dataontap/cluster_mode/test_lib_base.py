@@ -554,7 +554,56 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         vserver_client.create_volume.assert_called_once_with(
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
-            thin_provisioned=True)
+            thin_provisioned=True, snapshot_policy='default',
+            language='en-US', max_files=5000)
+
+    def test_allocate_container_no_pool_name(self):
+        self.mock_object(self.library, '_get_valid_share_name', mock.Mock(
+            return_value=fake.SHARE_NAME))
+        self.mock_object(share_utils, 'extract_host', mock.Mock(
+            return_value=None))
+        self.mock_object(self.library, '_check_extra_specs_validity')
+        self.mock_object(self.library, '_get_provisioning_options')
+        vserver_client = mock.Mock()
+
+        self.assertRaises(exception.InvalidHost,
+                          self.library._allocate_container, fake.SHARE,
+                          vserver_client)
+
+        self.library._get_valid_share_name.assert_called_once_with(
+            fake.SHARE['id'])
+        share_utils.extract_host.assert_called_once_with(fake.SHARE['host'],
+                                                         level='pool')
+        self.assertEqual(0,
+                         self.library._check_extra_specs_validity.call_count)
+        self.assertEqual(0, self.library._get_provisioning_options.call_count)
+
+    def test_check_extra_specs_validity(self):
+        self.library._check_extra_specs_validity(
+            fake.EXTRA_SPEC_SHARE, fake.EXTRA_SPEC)
+
+    def test_check_extra_specs_validity_empty_spec(self):
+        self.library._check_extra_specs_validity(
+            fake.EXTRA_SPEC_SHARE, fake.EMPTY_EXTRA_SPEC)
+
+    def test_check_extra_specs_validity_invalid_value(self):
+        self.assertRaises(
+            exception.Invalid, self.library._check_extra_specs_validity,
+            fake.EXTRA_SPEC_SHARE, fake.INVALID_EXTRA_SPEC)
+
+    def test_check_string_extra_specs_validity(self):
+        self.library._check_string_extra_specs_validity(
+            fake.EXTRA_SPEC_SHARE, fake.EXTRA_SPEC)
+
+    def test_check_string_extra_specs_validity_empty_spec(self):
+        self.library._check_string_extra_specs_validity(
+            fake.EXTRA_SPEC_SHARE, fake.EMPTY_EXTRA_SPEC)
+
+    def test_check_string_extra_specs_validity_invalid_value(self):
+        self.assertRaises(
+            exception.NetAppException,
+            self.library._check_string_extra_specs_validity,
+            fake.EXTRA_SPEC_SHARE, fake.INVALID_MAX_FILE_EXTRA_SPEC)
 
     def test_check_boolean_extra_specs_validity(self):
         self.library._check_boolean_extra_specs_validity(
@@ -573,19 +622,41 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.EXTRA_SPEC_SHARE, fake.INVALID_EXTRA_SPEC,
             list(self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
 
-    def test_get_boolean_provisioning_options(self):
-        result = self.library._get_boolean_provisioning_options(
-            fake.EXTRA_SPEC,
-            self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
+    def test_get_provisioning_options(self):
+        result = self.library._get_provisioning_options(fake.EXTRA_SPEC)
 
         self.assertEqual(fake.PROVISIONING_OPTIONS, result)
+
+    def test_get_provisioning_options_missing_spec(self):
+        result = self.library._get_provisioning_options(
+            fake.SHORT_BOOLEAN_EXTRA_SPEC)
+
+        self.assertEqual(
+            fake.PROVISIONING_OPTIONS_BOOLEAN_THIN_PROVISIONED_TRUE, result)
+
+    def test_get_provisioning_options_implicit_false(self):
+        result = self.library._get_provisioning_options(
+            fake.EMPTY_EXTRA_SPEC)
+
+        expected = {'language': None, 'max_files': None,
+                    'snapshot_policy': None,
+                    'thin_provisioned': False}
+
+        self.assertEqual(expected, result)
+
+    def test_get_boolean_provisioning_options(self):
+        result = self.library._get_boolean_provisioning_options(
+            fake.BOOLEAN_EXTRA_SPEC,
+            self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
+
+        self.assertEqual(fake.PROVISIONING_OPTIONS_BOOLEAN, result)
 
     def test_get_boolean_provisioning_options_missing_spec(self):
         result = self.library._get_boolean_provisioning_options(
-            fake.SHORT_EXTRA_SPEC,
+            fake.SHORT_BOOLEAN_EXTRA_SPEC,
             self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
 
-        self.assertEqual(fake.PROVISIONING_OPTIONS, result)
+        self.assertEqual(fake.PROVISIONING_OPTIONS_BOOLEAN, result)
 
     def test_get_boolean_provisioning_options_implicit_false(self):
         result = self.library._get_boolean_provisioning_options(
@@ -593,6 +664,38 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             self.library.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
 
         self.assertEqual({'thin_provisioned': False}, result)
+
+    def test_get_string_provisioning_options(self):
+        result = self.library._get_string_provisioning_options(
+            fake.STRING_EXTRA_SPEC,
+            self.library.STRING_QUALIFIED_EXTRA_SPECS_MAP)
+
+        self.assertEqual(fake.PROVISIONING_OPTIONS_STRING, result)
+
+    def test_get_string_provisioning_options_missing_spec(self):
+        result = self.library._get_string_provisioning_options(
+            fake.SHORT_STRING_EXTRA_SPEC,
+            self.library.STRING_QUALIFIED_EXTRA_SPECS_MAP)
+
+        self.assertEqual(fake.PROVISIONING_OPTIONS_STRING_MISSING_SPECS,
+                         result)
+
+    def test_get_string_provisioning_options_implicit_false(self):
+        result = self.library._get_string_provisioning_options(
+            fake.EMPTY_EXTRA_SPEC,
+            self.library.STRING_QUALIFIED_EXTRA_SPECS_MAP)
+
+        self.assertEqual(fake.PROVISIONING_OPTIONS_STRING_DEFAULT, result)
+
+    def test_check_if_max_files_is_valid_with_negative_integer(self):
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_if_max_files_is_valid,
+                          fake.SHARE, -1)
+
+    def test_check_if_max_files_is_valid_with_string(self):
+        self.assertRaises(ValueError,
+                          self.library._check_if_max_files_is_valid,
+                          fake.SHARE, 'abc')
 
     def test_allocate_container_no_pool(self):
 

@@ -37,6 +37,7 @@ SHARE_NAME = 'fake_share'
 SNAPSHOT_NAME = 'fake_snapshot'
 PARENT_SHARE_NAME = 'fake_parent_share'
 PARENT_SNAPSHOT_NAME = 'fake_parent_snapshot'
+MAX_FILES = 5000
 
 USER_NAME = 'fake_user'
 

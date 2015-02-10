@@ -52,6 +52,11 @@ class NetAppCmodeFileStorageLibrary(object):
     BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP = {
         'netapp:thin_provisioned': 'thin_provisioned'
     }
+    STRING_QUALIFIED_EXTRA_SPECS_MAP = {
+        'netapp:snapshot_policy': 'snapshot_policy',
+        'netapp:language': 'language',
+        'netapp:max_files': 'max_files',
+    }
 
     def __init__(self, db, driver_name, **kwargs):
         na_utils.validate_driver_instantiation(**kwargs)
@@ -318,23 +323,49 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.InvalidHost(reason=msg)
 
         extra_specs = share_types.get_extra_specs_from_share(share)
-        self._check_boolean_extra_specs_validity(
-            share, extra_specs, list(self.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
-        provisioning_options = self._get_boolean_provisioning_options(
-            extra_specs, self.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
+        self._check_extra_specs_validity(share, extra_specs)
+        provisioning_options = self._get_provisioning_options(extra_specs)
 
         LOG.debug('Creating share %(share)s on pool %(pool)s with '
                   'provisioning options %(options)s',
                   {'share': share_name, 'pool': pool_name,
                    'options': provisioning_options})
+
+        LOG.debug('Creating share %(share)s on pool %(pool)s',
+                  {'share': share_name, 'pool': pool_name})
         vserver_client.create_volume(pool_name, share_name,
                                      share['size'],
                                      **provisioning_options)
 
     @na_utils.trace
+    def _check_extra_specs_validity(self, share, extra_specs):
+        """Check if the extra_specs have valid values."""
+        self._check_boolean_extra_specs_validity(
+            share, extra_specs, list(self.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP))
+        self._check_string_extra_specs_validity(share, extra_specs)
+
+    @na_utils.trace
+    def _check_string_extra_specs_validity(self, share, extra_specs):
+        """Check if the string_extra_specs have valid values."""
+        if 'netapp:max_files' in extra_specs:
+            self._check_if_max_files_is_valid(share,
+                                              extra_specs['netapp:max_files'])
+
+    @na_utils.trace
+    def _check_if_max_files_is_valid(self, share, value):
+        """Check if max_files has a valid value."""
+        if int(value) < 0:
+            args = {'value': value, 'key': 'netapp:max_files',
+                    'type_id': share['share_type_id'], 'share_id': share['id']}
+            msg = _('Invalid value "%(value)s" for extra_spec "%(key)s" '
+                    'in share_type %(type_id)s for share %(share_id)s.')
+            raise exception.NetAppException(msg % args)
+
+    @na_utils.trace
     def _check_boolean_extra_specs_validity(self, share, specs,
                                             keys_of_interest):
-        # Boolean extra spec values must be (ignoring case) 'true' or 'false'.
+        """Check if the boolean_extra_specs have valid values."""
+        # Extra spec values must be (ignoring case) 'true' or 'false'.
         for key in keys_of_interest:
             value = specs.get(key)
             if value is not None and value.lower() not in ['true', 'false']:
@@ -373,6 +404,40 @@ class NetAppCmodeFileStorageLibrary(object):
         # values into a dictionary suitable for use as kwargs when invoking
         # provisioning methods from the client API library.
         return dict(zip(provisioning_args, provisioning_values))
+
+    @na_utils.trace
+    def _get_string_provisioning_options(self, specs, string_specs_map):
+        """Given extra specs, return corresponding client library kwargs.
+
+        Build a full set of client library provisioning kwargs, filling in a
+        default value if an explicit value has not been supplied via a
+        corresponding extra spec.
+        """
+        # Extract the extra spec keys of concern and their corresponding
+        # kwarg keys as lists.
+        keys_of_interest = list(string_specs_map)
+        provisioning_args = [string_specs_map[key]
+                             for key in keys_of_interest]
+        # Set missing spec values to 'false'
+        for key in keys_of_interest:
+            if key not in specs:
+                specs[key] = None
+        provisioning_values = [specs[key] for key in keys_of_interest]
+
+        # Combine the list of provisioning args and the list of provisioning
+        # values into a dictionary suitable for use as kwargs when invoking
+        # provisioning methods from the client API library.
+        return dict(zip(provisioning_args, provisioning_values))
+
+    @na_utils.trace
+    def _get_provisioning_options(self, specs):
+        """Return a merged result of string and binary provisioning options."""
+        boolean_args = self._get_boolean_provisioning_options(
+            specs, self.BOOLEAN_QUALIFIED_EXTRA_SPECS_MAP)
+
+        string_args = self._get_string_provisioning_options(
+            specs, self.STRING_QUALIFIED_EXTRA_SPECS_MAP)
+        return dict(boolean_args.items() + string_args.items())
 
     @na_utils.trace
     def _allocate_container_from_snapshot(self, share, snapshot,

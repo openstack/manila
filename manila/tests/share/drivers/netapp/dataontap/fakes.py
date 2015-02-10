@@ -65,6 +65,7 @@ SHARE = {
     'name': SHARE_NAME,
     'size': SHARE_SIZE,
     'share_proto': 'fake',
+    'share_type_id': 'fake_share_type_id',
     'share_network_id': '5dfe0898-e2a1-4740-9177-81c7d26713b0',
     'share_server_id': '7e6a2cc8-871f-4b1d-8364-5aad0f98da86',
     'network_info': {
@@ -74,18 +75,78 @@ SHARE = {
 
 EXTRA_SPEC = {
     'netapp:thin_provisioned': 'true',
+    'netapp:snapshot_policy': 'default',
+    'netapp:language': 'en-US',
+    'netapp:max_files': 5000,
 }
 
 PROVISIONING_OPTIONS = {
     'thin_provisioned': True,
+    'snapshot_policy': 'default',
+    'language': 'en-US',
+    'max_files': 5000,
 }
 
-SHORT_EXTRA_SPEC = {
+PROVISIONING_OPTIONS_BOOLEAN = {
+    'thin_provisioned': True,
+}
+
+PROVISIONING_OPTIONS_BOOLEAN_THIN_PROVISIONED_TRUE = {
+    'thin_provisioned': True,
+    'snapshot_policy': None,
+    'language': None,
+    'max_files': None,
+}
+
+PROVISIONING_OPTIONS_STRING = {
+    'snapshot_policy': 'default',
+    'language': 'en-US',
+    'max_files': 5000,
+}
+
+PROVISIONING_OPTIONS_STRING_MISSING_SPECS = {
+    'snapshot_policy': 'default',
+    'language': 'en-US',
+    'max_files': None,
+}
+
+PROVISIONING_OPTIONS_STRING_DEFAULT = {
+    'snapshot_policy': None,
+    'language': None,
+    'max_files': None,
+}
+
+SHORT_BOOLEAN_EXTRA_SPEC = {
     'netapp:thin_provisioned': 'true',
+}
+
+STRING_EXTRA_SPEC = {
+    'netapp:snapshot_policy': 'default',
+    'netapp:language': 'en-US',
+    'netapp:max_files': 5000,
+}
+
+SHORT_STRING_EXTRA_SPEC = {
+    'netapp:snapshot_policy': 'default',
+    'netapp:language': 'en-US',
 }
 
 INVALID_EXTRA_SPEC = {
     'netapp:thin_provisioned': 'ture',
+    'netapp:snapshot_policy': 'wrong_default',
+    'netapp:language': 'abc',
+}
+
+INVALID_MAX_FILE_EXTRA_SPEC = {
+    'netapp:max_files': -1,
+}
+
+BOOLEAN_EXTRA_SPEC = {
+    'netapp:thin_provisioned': 'true',
+}
+
+BOOLEAN_SHORT_EXTRA_SPEC = {
+    'netapp:thin_provisioned': 'true',
 }
 
 

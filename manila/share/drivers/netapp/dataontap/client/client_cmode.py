@@ -717,7 +717,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_volume(self, aggregate_name, volume_name, size_gb,
-                      thin_provisioned=False):
+                      thin_provisioned=False, snapshot_policy=None,
+                      language=None, max_files=None):
         """Creates a volume."""
         api_args = {
             'containing-aggr-name': aggregate_name,
@@ -727,7 +728,35 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
         if thin_provisioned:
             api_args['space-reserve'] = 'none'
+        if snapshot_policy is not None:
+            api_args['snapshot-policy'] = snapshot_policy
+        if language is not None:
+            api_args['language-code'] = language
         self.send_request('volume-create', api_args)
+
+        if max_files is not None:
+            self.set_volume_max_files(volume_name, max_files)
+
+    @na_utils.trace
+    def set_volume_max_files(self, volume_name, max_files):
+        """Set flexvol file limit."""
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-inode-attributes': {
+                        'files-total': max_files,
+                    },
+                },
+            },
+        }
+        self.send_request('volume-modify-iter', api_args)
 
     @na_utils.trace
     def volume_exists(self, volume_name):

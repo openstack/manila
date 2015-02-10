@@ -1297,23 +1297,56 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with('volume-create',
                                                          volume_create_args)
 
-    def test_create_thin_volume(self):
+    def test_create_volume_with_extra_specs(self):
+
+        self.mock_object(self.client, 'set_volume_max_files')
         self.mock_object(self.client, 'send_request')
 
         self.client.create_volume(
             fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100,
-            thin_provisioned=True)
+            thin_provisioned=True, language='en-US',
+            snapshot_policy='default', max_files=5000)
 
         volume_create_args = {
             'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
             'size': '100g',
             'volume': fake.SHARE_NAME,
             'junction-path': '/%s' % fake.SHARE_NAME,
-            'space-reserve': 'none'
+            'space-reserve': 'none',
+            'language-code': 'en-US',
+            'snapshot-policy': 'default',
         }
 
-        self.client.send_request.assert_called_once_with('volume-create',
-                                                         volume_create_args)
+        self.client.send_request.assert_called_with('volume-create',
+                                                    volume_create_args)
+        self.client.set_volume_max_files.assert_called_once_with(
+            fake.SHARE_NAME, fake.MAX_FILES)
+
+    def test_set_volume_max_files(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.set_volume_max_files(fake.SHARE_NAME, fake.MAX_FILES)
+
+        volume_modify_iter_api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-inode-attributes': {
+                        'files-total': fake.MAX_FILES,
+                    },
+                },
+            },
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'volume-modify-iter', volume_modify_iter_api_args)
 
     def test_volume_exists(self):
 
