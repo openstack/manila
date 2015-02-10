@@ -14,12 +14,15 @@
 #    under the License.
 
 import six  # noqa
+import testtools  # noqa
 
 from tempest.api.share import base
+from tempest import config_share as config
 from tempest import exceptions
 from tempest.openstack.common import log as logging
 from tempest import test
 
+CONF = config.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -71,6 +74,8 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
                           "", name="name")
 
     @test.attr(type=["gate", "smoke", "negative"])
+    @testtools.skipIf(
+        not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_invalid_keys_sh_server_exists(self):
         ss_data = self.generate_security_service_data()
         resp, ss = self.create_security_service(**ss_data)

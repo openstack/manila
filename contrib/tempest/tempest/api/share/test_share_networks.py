@@ -14,9 +14,13 @@
 #    under the License.
 
 import six  # noqa
+import testtools  # noqa
 
 from tempest.api.share import base
+from tempest import config_share as config
 from tempest import test
+
+CONF = config.CONF
 
 
 class ShareNetworkListMixin(object):
@@ -176,6 +180,8 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         self.assertDictContainsSubset(update_data, updated)
 
     @test.attr(type=["gate", "smoke"])
+    @testtools.skipIf(
+        not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_update_valid_keys_sh_server_exists(self):
         resp, share = self.create_share(cleanup_in_class=False)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
