@@ -66,6 +66,8 @@ MANILA_CONF_DIR=${MANILA_CONF_DIR:-/etc/manila}
 MANILA_CONF=$MANILA_CONF_DIR/manila.conf
 MANILA_API_PASTE_INI=$MANILA_CONF_DIR/api-paste.ini
 
+MANILA_DEFAULT_SHARE_TYPE=${MANILA_DEFAULT_SHARE_TYPE:-default}
+
 # Public facing bits
 MANILA_SERVICE_HOST=${MANILA_SERVICE_HOST:-$SERVICE_HOST}
 MANILA_SERVICE_PORT=${MANILA_SERVICE_PORT:-8786}
@@ -246,6 +248,7 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT rootwrap_config $MANILA_CONF_DIR/rootwrap.conf
     iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.contrib.standard_extensions
     iniset $MANILA_CONF DEFAULT state_path $MANILA_STATE_PATH
+    iniset $MANILA_CONF DEFAULT default_share_type $MANILA_DEFAULT_SHARE_TYPE
 
     iniset $MANILA_CONF DEFAULT nova_admin_password $SERVICE_PASSWORD
     iniset $MANILA_CONF DEFAULT cinder_admin_password $SERVICE_PASSWORD
@@ -413,6 +416,17 @@ function create_manila_accounts {
         fi
     fi
 }
+
+# Create default share type
+function create_default_share_type {
+    echo "Waiting for Manila API to start..."
+    if ! wait_for_service 60 $MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT; then
+        die $LINENO "Manila did not start"
+    fi
+
+    manila type-create $MANILA_DEFAULT_SHARE_TYPE
+}
+
 
 # init_manila - Initialize database and volume group
 function init_manila {
