@@ -170,24 +170,24 @@ class InUse(ManilaException):
 
 
 class ShareNetworkNotFound(NotFound):
-    message = _("Share Network %(share_network_id)s could not be found.")
+    message = _("Share network %(share_network_id)s could not be found.")
 
 
 class ShareServerNotFound(NotFound):
-    message = _("Share Server %(share_server_id)s could not be found.")
+    message = _("Share server %(share_server_id)s could not be found.")
 
 
 class ShareServerNotFoundByFilters(ShareServerNotFound):
-    message = _("Share Server could not be found by "
+    message = _("Share server could not be found by "
                 "filters: %(filters_description)s.")
 
 
 class ShareServerInUse(InUse):
-    message = _("Share Server %(share_server_id)s is in use.")
+    message = _("Share server %(share_server_id)s is in use.")
 
 
 class ShareServerNotCreated(ManilaException):
-    message = _("Share Server %(share_server_id)s failed on creation.")
+    message = _("Share server %(share_server_id)s failed on creation.")
 
 
 class ServiceNotFound(NotFound):
@@ -199,11 +199,11 @@ class HostNotFound(NotFound):
 
 
 class SchedulerHostFilterNotFound(NotFound):
-    message = _("Scheduler Host Filter %(filter_name)s could not be found.")
+    message = _("Scheduler host filter %(filter_name)s could not be found.")
 
 
 class SchedulerHostWeigherNotFound(NotFound):
-    message = _("Scheduler Host Weigher %(weigher_name)s could not be found.")
+    message = _("Scheduler host weigher %(weigher_name)s could not be found.")
 
 
 class HostBinaryNotFound(NotFound):
@@ -303,7 +303,7 @@ class QuotaError(ManilaException):
 
 class ShareSizeExceedsAvailableQuota(QuotaError):
     message = _("Requested share or snapshot exceeds "
-                "allowed Gigabytes quota.")
+                "allowed gigabytes quota.")
 
 
 class ShareLimitExceeded(QuotaError):
@@ -412,17 +412,17 @@ class VolumeTypeNotFoundByName(VolumeTypeNotFound):
 
 
 class VolumeTypeExtraSpecsNotFound(NotFound):
-    message = _("Volume Type %(volume_type_id)s has no extra specs with "
+    message = _("Volume type %(volume_type_id)s has no extra specs with "
                 "key %(extra_specs_key)s.")
 
 
 class VolumeTypeInUse(ManilaException):
-    message = _("Volume Type %(volume_type_id)s deletion is not allowed with "
+    message = _("Volume type %(volume_type_id)s deletion is not allowed with "
                 "volumes present with the type.")
 
 
 class VolumeTypeExists(ManilaException):
-    message = _("Volume Type %(id)s already exists.")
+    message = _("Volume type %(id)s already exists.")
 
 
 class VolumeTypeCreateFailed(ManilaException):
@@ -443,7 +443,7 @@ class ServiceInstanceException(ManilaException):
 
 
 class ServiceInstanceUnavailable(ServiceInstanceException):
-    message = _("Service Instance is not available.")
+    message = _("Service instance is not available.")
 
 
 class NetAppException(ManilaException):

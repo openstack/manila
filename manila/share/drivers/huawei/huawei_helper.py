@@ -387,7 +387,7 @@ class RestHelper():
                 fileparam['ALLOCTYPE'] = 0
             else:
                 err_msg = (_(
-                    'Config file is wrong. Filesystem Type must be "Thin"'
+                    'Config file is wrong. Filesystem type must be "Thin"'
                     ' or "Thick". AllocType:%(fetchtype)s') %
                     {'fetchtype': fstype})
                 LOG.error(err_msg)
