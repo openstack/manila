@@ -13,9 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import testtools  # noqa
+
 from tempest.api.share import base
+from tempest import config_share as config
 from tempest import exceptions
 from tempest import test
+
+CONF = config.CONF
 
 
 class ShareNetworksNegativeTest(base.BaseSharesTest):
@@ -53,6 +58,8 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
                           "", name="name")
 
     @test.attr(type=["gate", "smoke", "negative"])
+    @testtools.skipIf(
+        not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_invalid_keys_sh_server_exists(self):
         resp, share = self.create_share(cleanup_in_class=False)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)

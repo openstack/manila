@@ -13,9 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import testtools  # noqa
+
 from tempest.api.share import base
+from tempest import config_share as config
 from tempest import exceptions
 from tempest import test
+
+CONF = config.CONF
 
 
 class SecServicesMappingNegativeTest(base.BaseSharesTest):
@@ -85,6 +90,8 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
                           "wrong_id", "wrong_id")
 
     @test.attr(type=["gate", "smoke", "negative"])
+    @testtools.skipIf(
+        not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_delete_ss_from_sn_used_by_share_server(self):
         sn = self.shares_client.get_share_network(
             self.os.shares_client.share_network_id)[1]

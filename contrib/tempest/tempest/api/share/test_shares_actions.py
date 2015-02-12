@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import testtools  # noqa
+
 from tempest.api.share import base
 from tempest.common.utils import data_utils
 from tempest import config_share as config
@@ -165,6 +167,8 @@ class SharesActionsTest(base.BaseSharesTest):
             self.assertEqual(filters['host'], share['host'])
 
     @test.attr(type=["gate", ])
+    @testtools.skipIf(
+        not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_list_shares_with_detail_filter_by_share_network_id(self):
         __, base_share = self.shares_client.get_share(self.share['id'])
         filters = {'share_network_id': base_share['share_network_id']}

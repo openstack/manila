@@ -14,11 +14,14 @@
 #    under the License.
 
 import six  # noqa
+import testtools  # noqa
 
 from tempest.api.share import base
+from tempest import config_share as config
 from tempest.openstack.common import log as logging
 from tempest import test
 
+CONF = config.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -53,6 +56,8 @@ class SecurityServiceListMixin(object):
         [self.assertIn(key, s_s.keys()) for s_s in listed for key in keys]
 
     @test.attr(type=["gate", "smoke"])
+    @testtools.skipIf(
+        not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_list_security_services_filter_by_share_network(self):
         sn = self.shares_client.get_share_network(
             self.os.shares_client.share_network_id)[1]
@@ -168,6 +173,8 @@ class SecurityServicesTest(base.BaseSharesTest,
         self.assertDictContainsSubset(upd_data, get)
 
     @test.attr(type=["gate", "smoke"])
+    @testtools.skipIf(
+        not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_valid_keys_sh_server_exists(self):
         ss_data = self.generate_security_service_data()
         resp, ss = self.create_security_service(**ss_data)
