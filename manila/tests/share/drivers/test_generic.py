@@ -443,54 +443,71 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_get_volume(self):
         volume = fake_volume.FakeVolume(
-            display_name=CONF.volume_name_template % self.share['id'])
+            name=CONF.volume_name_template % self.share['id'])
         self.mock_object(self._driver.volume_api, 'get_all',
                          mock.Mock(return_value=[volume]))
         result = self._driver._get_volume(self._context, self.share['id'])
         self.assertEqual(result, volume)
+        self._driver.volume_api.get_all.assert_called_once_with(
+            self._context, {'all_tenants': True, 'name': volume['name']})
 
     def test_get_volume_none(self):
+        vol_name = (
+            self._driver.configuration.volume_name_template % self.share['id'])
         self.mock_object(self._driver.volume_api, 'get_all',
                          mock.Mock(return_value=[]))
         result = self._driver._get_volume(self._context, self.share['id'])
         self.assertEqual(result, None)
+        self._driver.volume_api.get_all.assert_called_once_with(
+            self._context, {'all_tenants': True, 'name': vol_name})
 
     def test_get_volume_error(self):
         volume = fake_volume.FakeVolume(
-            display_name=CONF.volume_name_template % self.share['id'])
+            name=CONF.volume_name_template % self.share['id'])
         self.mock_object(self._driver.volume_api, 'get_all',
                          mock.Mock(return_value=[volume, volume]))
         self.assertRaises(exception.ManilaException,
                           self._driver._get_volume,
                           self._context, self.share['id'])
+        self._driver.volume_api.get_all.assert_called_once_with(
+            self._context, {'all_tenants': True, 'name': volume['name']})
 
     def test_get_volume_snapshot(self):
         volume_snapshot = fake_volume.FakeVolumeSnapshot(
-            display_name=CONF.volume_snapshot_name_template %
+            name=self._driver.configuration.volume_snapshot_name_template %
             self.snapshot['id'])
         self.mock_object(self._driver.volume_api, 'get_all_snapshots',
                          mock.Mock(return_value=[volume_snapshot]))
         result = self._driver._get_volume_snapshot(self._context,
                                                    self.snapshot['id'])
         self.assertEqual(result, volume_snapshot)
+        self._driver.volume_api.get_all_snapshots.assert_called_once_with(
+            self._context, {'name': volume_snapshot['name']})
 
     def test_get_volume_snapshot_none(self):
+        snap_name = (
+            self._driver.configuration.volume_snapshot_name_template %
+            self.share['id'])
         self.mock_object(self._driver.volume_api, 'get_all_snapshots',
                          mock.Mock(return_value=[]))
         result = self._driver._get_volume_snapshot(self._context,
                                                    self.share['id'])
         self.assertEqual(result, None)
+        self._driver.volume_api.get_all_snapshots.assert_called_once_with(
+            self._context, {'name': snap_name})
 
     def test_get_volume_snapshot_error(self):
         volume_snapshot = fake_volume.FakeVolumeSnapshot(
-            display_name=CONF.volume_snapshot_name_template %
+            name=self._driver.configuration.volume_snapshot_name_template %
             self.snapshot['id'])
-        self.mock_object(self._driver.volume_api, 'get_all_snapshots',
-                         mock.Mock(return_value=[volume_snapshot,
-                                                 volume_snapshot]))
-        self.assertRaises(exception.ManilaException,
-                          self._driver._get_volume_snapshot, self._context,
-                          self.share['id'])
+        self.mock_object(
+            self._driver.volume_api, 'get_all_snapshots',
+            mock.Mock(return_value=[volume_snapshot, volume_snapshot]))
+        self.assertRaises(
+            exception.ManilaException, self._driver._get_volume_snapshot,
+            self._context, self.snapshot['id'])
+        self._driver.volume_api.get_all_snapshots.assert_called_once_with(
+            self._context, {'name': volume_snapshot['name']})
 
     def test_detach_volume(self):
         available_volume = fake_volume.FakeVolume()

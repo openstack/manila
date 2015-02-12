@@ -350,7 +350,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def _get_volume(self, context, share_id):
         """Finds volume, associated to the specific share."""
         volume_name = self.configuration.volume_name_template % share_id
-        search_opts = {'display_name': volume_name}
+        search_opts = {'name': volume_name}
         if context.is_admin:
             search_opts['all_tenants'] = True
         volumes_list = self.volume_api.get_all(context, search_opts)
@@ -358,6 +358,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if len(volumes_list) == 1:
             volume = volumes_list[0]
         elif len(volumes_list) > 1:
+            LOG.error(
+                _LE("Expected only one volume in volume list with name "
+                    "'%(name)s', but got more than one in a result - "
+                    "'%(result)s'."), {
+                        'name': volume_name, 'result': volumes_list})
             raise exception.ManilaException(_('Error. Ambiguous volumes'))
         return volume
 
@@ -366,12 +371,17 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         volume_snapshot_name = (
             self.configuration.volume_snapshot_name_template % snapshot_id)
         volume_snapshot_list = self.volume_api.get_all_snapshots(
-            context,
-            {'display_name': volume_snapshot_name})
+            context, {'name': volume_snapshot_name})
         volume_snapshot = None
         if len(volume_snapshot_list) == 1:
             volume_snapshot = volume_snapshot_list[0]
         elif len(volume_snapshot_list) > 1:
+            LOG.error(
+                _LE("Expected only one volume snapshot in list with name "
+                    "'%(name)s', but got more than one in a result - "
+                    "'%(result)s'."), {
+                        'name': volume_snapshot_name,
+                        'result': volume_snapshot_list})
             raise exception.ManilaException(
                 _('Error. Ambiguous volume snaphots'))
         return volume_snapshot
