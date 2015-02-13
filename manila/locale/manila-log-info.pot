@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev6\n"
+"Project-Id-Version: manila 2015.1.dev30\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-02-09 06:13+0000\n"
+"POT-Creation-Date: 2015-02-13 06:13+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -101,7 +101,7 @@ msgstr ""
 msgid "Loaded extension: %s"
 msgstr ""
 
-#: manila/api/middleware/fault.py:55
+#: manila/api/middleware/fault.py:54
 #, python-format
 msgid "%(url)s returned with HTTP %(status)d"
 msgstr ""
@@ -121,22 +121,22 @@ msgstr ""
 msgid "Delete security service with id: %s"
 msgstr ""
 
-#: manila/api/v1/share_snapshots.py:85
+#: manila/api/v1/share_snapshots.py:84
 #, python-format
 msgid "Delete snapshot with id: %s"
 msgstr ""
 
-#: manila/api/v1/share_snapshots.py:184
+#: manila/api/v1/share_snapshots.py:183
 #, python-format
 msgid "Create snapshot from share %s"
 msgstr ""
 
-#: manila/api/v1/shares.py:88
+#: manila/api/v1/shares.py:87
 #, python-format
 msgid "Delete share with id: %s"
 msgstr ""
 
-#: manila/api/v1/shares.py:216
+#: manila/api/v1/shares.py:215
 #, python-format
 msgid "Create %(share_proto)s share of %(size)s GB"
 msgstr ""
@@ -170,58 +170,58 @@ msgstr ""
 msgid "Removing non-active host: %(host)s from scheduler cache."
 msgstr ""
 
-#: manila/share/manager.py:154
+#: manila/share/manager.py:156
 #, python-format
 msgid "Share %(name)s: skipping export, because it has '%(status)s' status."
 msgstr ""
 
-#: manila/share/manager.py:208
+#: manila/share/manager.py:210
 msgid "Share server created successfully."
 msgstr ""
 
-#: manila/share/manager.py:210
+#: manila/share/manager.py:212
 #, python-format
 msgid "Used already existed share server '%(share_server_id)s'"
 msgstr ""
 
-#: manila/share/manager.py:300
+#: manila/share/manager.py:302
 msgid "Share created successfully."
 msgstr ""
 
-#: manila/share/manager.py:335
+#: manila/share/manager.py:337
 #, python-format
 msgid "Share %s: deleted successfully."
 msgstr ""
 
-#: manila/share/manager.py:449
+#: manila/share/manager.py:451
 msgid "Updating share status"
 msgstr ""
 
-#: manila/share/manager.py:556
+#: manila/share/manager.py:558
 msgid "Share server deleted successfully."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:114
+#: manila/share/drivers/glusterfs_native.py:113
 #, python-format
 msgid "Number of gluster volumes read from config: %(numvols)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:141
+#: manila/share/drivers/glusterfs_native.py:140
 msgid ""
 "Number of gluster volumes in use:  %(inuse-numvols)s. Number of gluster "
 "volumes available for use as share: %(unused-numvols)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:402
+#: manila/share/drivers/glusterfs_native.py:401
 #, python-format
 msgid "export_location sent back from create_share: %s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/helper.py:1192
+#: manila/share/drivers/emc/plugins/vnx/helper.py:1191
 msgid "Found the header of the command /nas/bin/nas_cel -interconnect -l"
 msgstr ""
 
-#: manila/share/drivers/ganesha/__init__.py:72
+#: manila/share/drivers/ganesha/__init__.py:71
 #, python-format
 msgid "Loading Ganesha config from %s."
 msgstr ""
@@ -306,50 +306,50 @@ msgstr ""
 msgid "Export for %s is not defined in Ganesha config."
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:152
+#: manila/share/drivers/netapp/common.py:70
 #, python-format
 msgid "OpenStack OS Version Info: %(info)s"
 msgstr ""
 
-#: manila/share/drivers/netapp/cluster_mode.py:198
-#, python-format
-msgid "Available licenses on '%(backend)s' are %(licenses)s."
-msgstr ""
-
-#: manila/share/drivers/netapp/cluster_mode.py:760
-#, python-format
-msgid "Share %s does not exist."
-msgstr ""
-
-#: manila/share/drivers/netapp/common.py:95
+#: manila/share/drivers/netapp/common.py:110
 #, python-format
 msgid "Requested unified config: %(storage_family)s and %(driver_mode)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/common.py:113
+#: manila/share/drivers/netapp/common.py:127
 #, python-format
 msgid ""
 "NetApp driver of family %(storage_family)s and mode %(driver_mode)s "
 "loaded."
 msgstr ""
 
-#: manila/share/drivers/netapp/utils.py:262
+#: manila/share/drivers/netapp/utils.py:143
 #, python-format
 msgid "No rpm info found for %(pkg)s package."
 msgstr ""
 
-#: manila/share/drivers/netapp/utils.py:271
+#: manila/share/drivers/netapp/utils.py:152
 #, python-format
 msgid "Could not run rpm command: %(msg)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/utils.py:283
+#: manila/share/drivers/netapp/utils.py:164
 #, python-format
 msgid "No dpkg-query info found for %(pkg)s package."
 msgstr ""
 
-#: manila/share/drivers/netapp/utils.py:302
+#: manila/share/drivers/netapp/utils.py:183
 #, python-format
 msgid "Could not run dpkg-query command: %(msg)s."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:136
+#, python-format
+msgid "Available licenses on %(backend)s are %(licenses)s."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:376
+#, python-format
+msgid "Share %s does not exist."
 msgstr ""
 

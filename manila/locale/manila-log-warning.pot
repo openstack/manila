@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev6\n"
+"Project-Id-Version: manila 2015.1.dev30\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-02-09 06:13+0000\n"
+"POT-Creation-Date: 2015-02-13 06:13+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
 
-#: manila/context.py:60
+#: manila/context.py:59
 #, python-format
 msgid "Arguments dropped when creating context: %s"
 msgstr ""
@@ -70,20 +70,20 @@ msgstr ""
 msgid "Failed to load extension %(ext_name)s: %(exc)s"
 msgstr ""
 
-#: manila/api/sizelimit.py:26
+#: manila/api/sizelimit.py:27
 msgid ""
 "manila.api.sizelimit:RequestBodySizeLimiter is deprecated. Please use "
 "manila.api.middleware.sizelimit: RequestBodySizeLimiter instead"
 msgstr ""
 
-#: manila/api/openstack/__init__.py:111
+#: manila/api/openstack/__init__.py:110
 #, python-format
 msgid ""
 "Extension %(ext_name)s: Cannot extend resource %(collection)s: No such "
 "resource"
 msgstr ""
 
-#: manila/api/openstack/__init__.py:130
+#: manila/api/openstack/__init__.py:129
 msgid ""
 "manila.api.openstack:FaultWrapper is deprecated. Please use "
 "manila.api.middleware.fault:FaultWrapper instead."
@@ -95,7 +95,7 @@ msgid ""
 "manila.api.urlmap:urlmap_factory instead."
 msgstr ""
 
-#: manila/api/openstack/volume/__init__.py:26
+#: manila/api/openstack/volume/__init__.py:27
 msgid ""
 "manila.api.openstack.volume:APIRouter is deprecated. Please use "
 "manila.api.v1.router:APIRouter instead."
@@ -168,59 +168,59 @@ msgid ""
 "snapshots already consumed)"
 msgstr ""
 
-#: manila/share/manager.py:78
+#: manila/share/manager.py:80
 #, python-format
 msgid ""
 "Driver path %(old)s is deprecated, update your configuration to the new "
 "path %(new)s"
 msgstr ""
 
-#: manila/share/manager.py:294
+#: manila/share/manager.py:296
 #, python-format
 msgid ""
 "Share information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/manager.py:509
+#: manila/share/manager.py:511
 #, python-format
 msgid ""
 "Server Information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/drivers/generic.py:283
+#: manila/share/drivers/generic.py:282
 #, python-format
 msgid "Mount point '%(path)s' already exists on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:309
+#: manila/share/drivers/generic.py:308
 #, python-format
 msgid "Mount point '%(path)s' does not exist on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:795
+#: manila/share/drivers/generic.py:804
 #, python-format
 msgid "Caught error trying delete share: %(error)s, trying delete it forcibly."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:225
+#: manila/share/drivers/glusterfs.py:224
 #, python-format
 msgid "%s is already mounted"
 msgstr ""
 
-#: manila/share/drivers/service_instance.py:315
+#: manila/share/drivers/service_instance.py:314
 msgid ""
 "Name for service instance security group is not provided. Skipping "
 "security group step."
 msgstr ""
 
-#: manila/share/drivers/service_instance.py:350
+#: manila/share/drivers/service_instance.py:349
 #, python-format
 msgid "Service instance %s does not exist."
 msgstr ""
 
-#: manila/share/drivers/service_instance.py:481
+#: manila/share/drivers/service_instance.py:480
 #, python-format
 msgid ""
 "No key path is available. May be non-existent key path is provided. Check"
@@ -274,7 +274,7 @@ msgstr ""
 msgid "Snapshot: %(name)s not found. Skip the deletion."
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/helper.py:176
+#: manila/share/drivers/emc/plugins/vnx/helper.py:175
 #, python-format
 msgid "Translated status from %(old)s to %(new)s. Message: %(info)s."
 msgstr ""
@@ -329,7 +329,7 @@ msgstr ""
 msgid "Expected one of %(expected)s under %(parent)s, got %(actual)s."
 msgstr ""
 
-#: manila/share/drivers/hds/sop.py:322
+#: manila/share/drivers/hds/sop.py:321
 #: manila/share/drivers/huawei/huawei_helper.py:403
 msgid "Only ip access type allowed."
 msgstr ""
@@ -367,13 +367,26 @@ msgstr ""
 msgid "Can not find snapshot %s in array."
 msgstr ""
 
-#: manila/share/drivers/netapp/utils.py:49
+#: manila/share/drivers/netapp/utils.py:44
 #, python-format
 msgid "Invalid trace flag: %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/utils.py:158
+#: manila/share/drivers/netapp/utils.py:76
+msgid ""
+"Please use NetAppDriver in the configuration file to load the driver "
+"instead of directly specifying the driver module name."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:901
+msgid ""
+"Data ONTAP API 'nfs-exportfs-append-rules-2' compatibility action: "
+"remember behavior to send proper values with first attempt next time. Now"
+" trying send another request with changed value for 'pathname'."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:972
 #, python-format
-msgid "Failed to invoke ems. Message : %s"
+msgid "Failed to invoke EMS. %s"
 msgstr ""
 
