@@ -1,22 +1,27 @@
-The Choose Your Own Adventure README for Manila
-===============================================
+======
+MANILA
+======
 
-You have come across an OpenStack shared filesystem service.  It has
+You have come across an OpenStack shared file system service.  It has
 identified itself as "Manila."  It was abstracted from the Cinder
 project.
 
-To monitor it from a distance: follow `@openstack <http://twitter.com/openstack>`_ on twitter.
+* Wiki: https://wiki.openstack.org/Manila
+* Developer docs: http://docs.openstack.org/developer/manila
 
-To tame it for use in your own cloud: read http://docs.openstack.org
+Getting Started
+---------------
 
-To study its anatomy: read https://wiki.openstack.org/wiki/Manila
+If you'd like to run from the master branch, you can clone the git repo:
 
-To dissect it in detail: visit http://github.com/openstack/manila
+    git clone https://github.com/openstack/manila.git
 
-To taunt it with its weaknesses: use http://bugs.launchpad.net/manila
+For developer information please see
+`HACKING.rst <https://github.com/openstack/manila/blob/master/HACKING.rst>`_
 
-To watch it: http://jenkins.openstack.org
+You can raise bugs here http://bugs.launchpad.net/manila
 
-To hack at it: read HACKING.rst
+Python client
+-------------
 
-To cry over its pylint problems: http://jenkins.openstack.org/job/manila-pylint/violations
+https://github.com/openstack/python-manilaclient.git
