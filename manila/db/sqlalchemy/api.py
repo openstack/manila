@@ -1860,7 +1860,10 @@ def share_server_delete(context, id):
     with session.begin():
         server_ref = share_server_get(context, id, session=session)
         share_server_backend_details_delete(context, id, session=session)
-        server_ref.delete(session=session)
+        server_ref.update({'deleted': server_ref.id,
+                           'deleted_at': timeutils.utcnow(),
+                           'updated_at': literal_column('updated_at'),
+                           'status': constants.STATUS_DELETED})
 
 
 @require_context
