@@ -50,6 +50,7 @@ CONF = cfg.CONF
 if __name__ == '__main__':
     CONF(sys.argv[1:], project='manila',
          version=version.version_string())
+    config.verify_share_protocols()
     logging.setup("manila")
     utils.monkey_patch()
     server = service.WSGIService('osapi_share')
