@@ -308,9 +308,11 @@ function create_service_share_servers {
                 --nic net-id=$private_net_id \
                 --security-groups $MANILA_SERVICE_SECGROUP
 
-            iniset $MANILA_CONF $BE service_instance_name_or_id $vm_name
-            iniset $MANILA_CONF $BE service_net_name_or_ip $private_net_id
-            iniset $MANILA_CONF $BE tenant_net_name_or_ip $private_net_id
+            vm_id=$(nova show $vm_name | grep ' id ' | get_field 2)
+
+            iniset $MANILA_CONF $BE service_instance_name_or_id $vm_id
+            iniset $MANILA_CONF $BE service_net_name_or_ip private
+            iniset $MANILA_CONF $BE tenant_net_name_or_ip private
         fi
     done
 }
