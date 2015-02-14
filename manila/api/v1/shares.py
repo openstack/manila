@@ -31,7 +31,7 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
 from manila import share
-from manila.share import volume_types
+from manila.share import share_types
 
 LOG = log.getLogger(__name__)
 
@@ -157,7 +157,7 @@ class ShareController(wsgi.Controller):
         #                    for it allows non-admin access.
         return (
             'display_name', 'status', 'share_server_id', 'volume_type_id',
-            'snapshot_id', 'host', 'share_network_id',
+            'share_type_id', 'snapshot_id', 'host', 'share_network_id',
             'metadata', 'extra_specs', 'sort_key', 'sort_dir',
         )
 
@@ -258,18 +258,22 @@ class ShareController(wsgi.Controller):
         display_name = share.get('display_name')
         display_description = share.get('display_description')
 
-        req_volume_type = share.get('volume_type', None)
-        if req_volume_type:
+        if 'share_type' in share and 'volume_type' in share:
+            msg = 'Cannot specify both share_type and volume_type'
+            raise exc.HTTPBadRequest(explanation=msg)
+        req_share_type = share.get('share_type', share.get('volume_type'))
+
+        if req_share_type:
             try:
-                if not uuidutils.is_uuid_like(req_volume_type):
-                    kwargs['volume_type'] = \
-                        volume_types.get_volume_type_by_name(
-                            context, req_volume_type)
+                if not uuidutils.is_uuid_like(req_share_type):
+                    kwargs['share_type'] = \
+                        share_types.get_share_type_by_name(
+                            context, req_share_type)
                 else:
-                    kwargs['volume_type'] = volume_types.get_volume_type(
-                        context, req_volume_type)
-            except exception.VolumeTypeNotFound:
-                msg = _("Volume type not found.")
+                    kwargs['share_type'] = share_types.get_share_type(
+                        context, req_share_type)
+            except exception.ShareTypeNotFound:
+                msg = _("Share type not found.")
                 raise exc.HTTPNotFound(explanation=msg)
 
         new_share = self.share_api.create(context,

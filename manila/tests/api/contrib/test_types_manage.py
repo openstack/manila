@@ -17,52 +17,52 @@ import webob
 
 from manila.api.contrib import types_manage
 from manila import exception
-from manila.share import volume_types
+from manila.share import share_types
 from manila import test
 from manila.tests.api import fakes
 from manila.tests import fake_notifier
 
 
-def stub_volume_type(id):
+def stub_share_type(id):
     specs = {"key1": "value1",
              "key2": "value2",
              "key3": "value3",
              "key4": "value4",
              "key5": "value5"}
-    return dict(id=id, name='vol_type_%s' % str(id), extra_specs=specs)
+    return dict(id=id, name='share_type_%s' % str(id), extra_specs=specs)
 
 
-def return_volume_types_get_volume_type(context, id):
+def return_share_types_get_share_type(context, id):
     if id == "777":
-        raise exception.VolumeTypeNotFound(volume_type_id=id)
-    return stub_volume_type(int(id))
+        raise exception.ShareTypeNotFound(share_type_id=id)
+    return stub_share_type(int(id))
 
 
-def return_volume_types_destroy(context, name):
+def return_share_types_destroy(context, name):
     if name == "777":
-        raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
+        raise exception.ShareTypeNotFoundByName(share_type_name=name)
     pass
 
 
-def return_volume_types_with_volumes_destroy(context, id):
+def return_share_types_with_volumes_destroy(context, id):
     if id == "1":
-        raise exception.VolumeTypeInUse(volume_type_id=id)
+        raise exception.ShareTypeInUse(share_type_id=id)
     pass
 
 
-def return_volume_types_create(context, name, specs):
+def return_share_types_create(context, name, specs):
     pass
 
 
-def return_volume_types_get_by_name(context, name):
+def return_share_types_get_by_name(context, name):
     if name == "777":
-        raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
-    return stub_volume_type(int(name.split("_")[2]))
+        raise exception.ShareTypeNotFoundByName(share_type_name=name)
+    return stub_share_type(int(name.split("_")[2]))
 
 
 def make_create_body(name):
     return {
-        "volume_type": {
+        "share_type": {
             "name": name,
             "extra_specs": {
                 "key": "value",
@@ -71,51 +71,52 @@ def make_create_body(name):
     }
 
 
-class VolumeTypesManageApiTest(test.TestCase):
+class ShareTypesManageApiTest(test.TestCase):
     def setUp(self):
-        super(VolumeTypesManageApiTest, self).setUp()
+        super(ShareTypesManageApiTest, self).setUp()
         self.flags(host='fake')
-        self.controller = types_manage.VolumeTypesManageController()
+        self.controller = types_manage.ShareTypesManageController()
 
         """to reset notifier drivers left over from other api/contrib tests"""
         fake_notifier.reset()
         self.addCleanup(fake_notifier.reset)
-        self.mock_object(volume_types, 'create',
-                         return_volume_types_create)
-        self.mock_object(volume_types, 'get_volume_type_by_name',
-                         return_volume_types_get_by_name)
-        self.mock_object(volume_types, 'get_volume_type',
-                         return_volume_types_get_volume_type)
-        self.mock_object(volume_types, 'destroy',
-                         return_volume_types_destroy)
+        self.mock_object(share_types, 'create',
+                         return_share_types_create)
+        self.mock_object(share_types, 'get_share_type_by_name',
+                         return_share_types_get_by_name)
+        self.mock_object(share_types, 'get_share_type',
+                         return_share_types_get_share_type)
+        self.mock_object(share_types, 'destroy',
+                         return_share_types_destroy)
 
-    def test_volume_types_delete(self):
+    def test_share_types_delete(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         self.controller._delete(req, 1)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
-    def test_volume_types_delete_not_found(self):
+    def test_share_types_delete_not_found(self):
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller._delete,
                           req, '777')
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
-    def test_volume_types_with_volumes_destroy(self):
+    def test_share_types_with_volumes_destroy(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         self.controller._delete(req, 1)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
     def test_create(self):
-        body = make_create_body("volume_type_1")
+        body = make_create_body("share_type_1")
         req = fakes.HTTPRequest.blank('/v2/fake/types')
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         res_dict = self.controller._create(req, body)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
-        self.assertEqual(1, len(res_dict))
-        self.assertEqual('vol_type_1', res_dict['volume_type']['name'])
+        self.assertEqual(2, len(res_dict))
+        self.assertEqual('share_type_1', res_dict['share_type']['name'])
+        self.assertEqual('share_type_1', res_dict['volume_type']['name'])
 
     def test_create_with_too_small_name(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types')
@@ -131,17 +132,17 @@ class VolumeTypesManageApiTest(test.TestCase):
                           req, make_create_body("n" * 256))
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
 
-    def _create_volume_type_bad_body(self, body):
+    def _create_share_type_bad_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types')
         req.method = 'POST'
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._create, req, body)
 
     def test_create_no_body(self):
-        self._create_volume_type_bad_body(body=None)
+        self._create_share_type_bad_body(body=None)
 
     def test_create_missing_volume(self):
-        self._create_volume_type_bad_body(body={'foo': {'a': 'b'}})
+        self._create_share_type_bad_body(body={'foo': {'a': 'b'}})
 
     def test_create_malformed_entity(self):
-        self._create_volume_type_bad_body(body={'volume_type': 'string'})
+        self._create_share_type_bad_body(body={'share_type': 'string'})

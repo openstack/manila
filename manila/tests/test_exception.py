@@ -198,10 +198,10 @@ class ManilaExceptionResponseCode400(test.TestCase):
         e = exception.InvalidVolume()
         self.assertEqual(e.code, 400)
 
-    def test_invalid_volume_type(self):
-        # Verify response code for exception.InvalidVolumeType
+    def test_invalid_share_type(self):
+        # Verify response code for exception.InvalidShareType
         reason = "fake_reason"
-        e = exception.InvalidVolumeType(reason=reason)
+        e = exception.InvalidShareType(reason=reason)
         self.assertEqual(e.code, 400)
         self.assertIn(reason, e.msg)
 
@@ -365,7 +365,7 @@ class ManilaExceptionResponseCode404(test.TestCase):
     def test_share_snapshot_not_found(self):
         # Verify response code for exception.ShareSnapshotNotFound
         snapshot_id = "fake_snapshot_id"
-        e = exception.ShareSnapshotNotFound(snapshot_id=snapshot_id)
+        e = exception.VolumeSnapshotNotFound(snapshot_id=snapshot_id)
         self.assertEqual(e.code, 404)
         self.assertIn(snapshot_id, e.msg)
 
@@ -396,29 +396,29 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertEqual(e.code, 404)
         self.assertIn(snapshot_id, e.msg)
 
-    def test_volume_type_not_found(self):
-        # verify response code for exception.VolumeTypeNotFound
-        volume_type_id = "fake_volume_type_id"
-        e = exception.VolumeTypeNotFound(volume_type_id=volume_type_id)
+    def test_share_type_not_found(self):
+        # verify response code for exception.ShareTypeNotFound
+        share_type_id = "fake_share_type_id"
+        e = exception.ShareTypeNotFound(share_type_id=share_type_id)
         self.assertEqual(e.code, 404)
-        self.assertIn(volume_type_id, e.msg)
+        self.assertIn(share_type_id, e.msg)
 
-    def test_volume_type_not_found_by_name(self):
-        # verify response code for exception.VolumeTypeNotFoundByName
-        volume_type_name = "fake_volume_type_name"
-        e = exception.VolumeTypeNotFoundByName(
-            volume_type_name=volume_type_name)
+    def test_share_type_not_found_by_name(self):
+        # verify response code for exception.ShareTypeNotFoundByName
+        share_type_name = "fake_share_type_name"
+        e = exception.ShareTypeNotFoundByName(
+            share_type_name=share_type_name)
         self.assertEqual(e.code, 404)
-        self.assertIn(volume_type_name, e.msg)
+        self.assertIn(share_type_name, e.msg)
 
-    def test_volume_type_extra_specs_not_found(self):
-        # verify response code for exception.VolumeTypeExtraSpecsNotFound
-        volume_type_id = "fake_volume_type_id"
+    def test_share_type_extra_specs_not_found(self):
+        # verify response code for exception.ShareTypeExtraSpecsNotFound
+        share_type_id = "fake_share_type_id"
         extra_specs_key = "fake_extra_specs_key"
-        e = exception.VolumeTypeExtraSpecsNotFound(
-            volume_type_id=volume_type_id, extra_specs_key=extra_specs_key)
+        e = exception.ShareTypeExtraSpecsNotFound(
+            share_type_id=share_type_id, extra_specs_key=extra_specs_key)
         self.assertEqual(e.code, 404)
-        self.assertIn(volume_type_id, e.msg)
+        self.assertIn(share_type_id, e.msg)
         self.assertIn(extra_specs_key, e.msg)
 
     def test_instance_not_found(self):

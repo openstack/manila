@@ -47,7 +47,7 @@ def fake_share(id, **kwargs):
         'project_id': 'fakeproject',
         'snapshot_id': None,
         'share_network_id': None,
-        'volume_type_id': None,
+        'share_type_id': None,
         'availability_zone': 'fakeaz',
         'status': 'fakestatus',
         'display_name': 'fakename',
@@ -585,7 +585,7 @@ class ShareAPITestCase(test.TestCase):
             'share_properties': options,
             'share_proto': share['share_proto'],
             'share_id': share['id'],
-            'volume_type': None,
+            'share_type': None,
             'snapshot_id': share['snapshot_id'],
         }
         self.mock_object(db_driver, 'share_create',
@@ -632,7 +632,7 @@ class ShareAPITestCase(test.TestCase):
             'share_properties': options,
             'share_proto': share['share_proto'],
             'share_id': share['id'],
-            'volume_type': None,
+            'share_type': None,
             'snapshot_id': share['snapshot_id'],
         }
         self.mock_object(db_driver, 'share_create',
@@ -659,7 +659,7 @@ class ShareAPITestCase(test.TestCase):
     @mock.patch.object(quota.QUOTAS, 'reserve',
                        mock.Mock(return_value='reservation'))
     @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
-    def test_create_from_snapshot_with_volume_type_same(self):
+    def test_create_from_snapshot_with_share_type_same(self):
         # Prepare data for test
         CONF.set_default("use_scheduler_creating_share_from_snapshot", False)
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
@@ -668,11 +668,11 @@ class ShareAPITestCase(test.TestCase):
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id=share_id,
                                  status='available')
-        volume_type = {'id': 'fake_volume_type'}
+        share_type = {'id': 'fake_share_type'}
         share = fake_share(share_id, user_id=self.context.user_id,
                            project_id=self.context.project_id,
                            snapshot_id=snapshot['id'], status='creating',
-                           volume_type_id=volume_type['id'])
+                           share_type_id=share_type['id'])
         options = share.copy()
         for name in ('id', 'export_location', 'host', 'launched_at',
                      'terminated_at'):
@@ -681,7 +681,7 @@ class ShareAPITestCase(test.TestCase):
             'share_properties': options,
             'share_proto': share['share_proto'],
             'share_id': share_id,
-            'volume_type': volume_type,
+            'share_type': share_type,
             'snapshot_id': share['snapshot_id'],
         }
         self.mock_object(db_driver, 'share_create',
@@ -694,7 +694,7 @@ class ShareAPITestCase(test.TestCase):
         # Call tested method
         self.api.create(self.context, 'nfs', '1', 'fakename', 'fakedesc',
                         snapshot=snapshot, availability_zone='fakeaz',
-                        volume_type=volume_type)
+                        share_type=share_type)
 
         # Verify results
         self.share_rpcapi.create_share.assert_called_once_with(
@@ -717,7 +717,7 @@ class ShareAPITestCase(test.TestCase):
     @mock.patch.object(quota.QUOTAS, 'reserve',
                        mock.Mock(return_value='reservation'))
     @mock.patch.object(quota.QUOTAS, 'commit', mock.Mock())
-    def test_create_from_snapshot_with_volume_type_different(self):
+    def test_create_from_snapshot_with_share_type_different(self):
         # Prepare data for test
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
         timeutils.utcnow.return_value = date
@@ -725,11 +725,11 @@ class ShareAPITestCase(test.TestCase):
         snapshot = fake_snapshot('fakesnapshotid',
                                  share_id=share_id,
                                  status='available')
-        volume_type = {'id': 'fake_volume_type'}
+        share_type = {'id': 'fake_share_type'}
         share = fake_share(share_id, user_id=self.context.user_id,
                            project_id=self.context.project_id,
                            snapshot_id=snapshot['id'], status='creating',
-                           volume_type_id=volume_type['id'][1:])
+                           share_type_id=share_type['id'][1:])
         options = share.copy()
         for name in ('id', 'export_location', 'host', 'launched_at',
                      'terminated_at'):
@@ -743,7 +743,7 @@ class ShareAPITestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput, self.api.create,
                           self.context, 'nfs', '1', 'fakename', 'fakedesc',
                           snapshot=snapshot, availability_zone='fakeaz',
-                          volume_type=volume_type)
+                          share_type=share_type)
 
         # Verify results
         share_api.policy.check_policy.assert_called_once_with(

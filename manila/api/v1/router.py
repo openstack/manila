@@ -29,8 +29,8 @@ from manila.api.v1 import share_metadata
 from manila.api.v1 import share_networks
 from manila.api.v1 import share_servers
 from manila.api.v1 import share_snapshots
+from manila.api.v1 import share_types
 from manila.api.v1 import shares
-from manila.api.v1 import volume_types
 from manila.api import versions
 
 LOG = log.getLogger(__name__)
@@ -105,7 +105,7 @@ class APIRouter(manila.api.openstack.APIRouter):
                        action='details',
                        conditions={"method": ['GET']})
 
-        self.resources['types'] = volume_types.create_resource()
+        self.resources['types'] = share_types.create_resource()
         mapper.resource("type", "types",
                         controller=self.resources['types'],
                         collection={'detail': 'GET'},

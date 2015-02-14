@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-"""Built-in volume type properties."""
+"""Built-in share type properties."""
 
 
 from oslo_config import cfg
@@ -31,41 +31,41 @@ LOG = log.getLogger(__name__)
 
 
 def create(context, name, extra_specs={}):
-    """Creates volume types."""
+    """Creates share types."""
     try:
-        type_ref = db.volume_type_create(context,
-                                         dict(name=name,
-                                              extra_specs=extra_specs))
+        type_ref = db.share_type_create(context,
+                                        dict(name=name,
+                                             extra_specs=extra_specs))
     except db_exception.DBError as e:
         LOG.exception(_LE('DB error: %s'), e)
-        raise exception.VolumeTypeCreateFailed(name=name,
-                                               extra_specs=extra_specs)
+        raise exception.ShareTypeCreateFailed(name=name,
+                                              extra_specs=extra_specs)
     return type_ref
 
 
 def destroy(context, id):
-    """Marks volume types as deleted."""
+    """Marks share types as deleted."""
     if id is None:
         msg = _("id cannot be None")
-        raise exception.InvalidVolumeType(reason=msg)
+        raise exception.InvalidShareType(reason=msg)
     else:
-        db.volume_type_destroy(context, id)
+        db.share_type_destroy(context, id)
 
 
 def get_all_types(context, inactive=0, search_opts={}):
-    """Get all non-deleted volume_types.
+    """Get all non-deleted share_types.
 
-    Pass true as argument if you want deleted volume types returned also.
+    Pass true as argument if you want deleted share types returned also.
     """
-    vol_types = db.volume_type_get_all(context, inactive)
+    share_types = db.share_type_get_all(context, inactive)
 
     if search_opts:
         LOG.debug("Searching by: %s", search_opts)
 
-        def _check_extra_specs_match(vol_type, searchdict):
+        def _check_extra_specs_match(share_type, searchdict):
             for k, v in six.iteritems(searchdict):
-                if (k not in vol_type['extra_specs'].keys()
-                        or vol_type['extra_specs'][k] != v):
+                if (k not in share_type['extra_specs'].keys()
+                        or share_type['extra_specs'][k] != v):
                     return False
             return True
 
@@ -73,7 +73,7 @@ def get_all_types(context, inactive=0, search_opts={}):
         filter_mapping = {'extra_specs': _check_extra_specs_match}
 
         result = {}
-        for type_name, type_args in six.iteritems(vol_types):
+        for type_name, type_args in six.iteritems(share_types):
             # go over all filters in the list
             for opt, values in six.iteritems(search_opts):
                 try:
@@ -85,55 +85,55 @@ def get_all_types(context, inactive=0, search_opts={}):
                     if filter_func(type_args, values):
                         result[type_name] = type_args
                         break
-        vol_types = result
-    return vol_types
+        share_types = result
+    return share_types
 
 
-def get_volume_type(ctxt, id):
-    """Retrieves single volume type by id."""
+def get_share_type(ctxt, id):
+    """Retrieves single share type by id."""
     if id is None:
         msg = _("id cannot be None")
-        raise exception.InvalidVolumeType(reason=msg)
+        raise exception.InvalidShareType(reason=msg)
 
     if ctxt is None:
         ctxt = context.get_admin_context()
 
-    return db.volume_type_get(ctxt, id)
+    return db.share_type_get(ctxt, id)
 
 
-def get_volume_type_by_name(context, name):
-    """Retrieves single volume type by name."""
+def get_share_type_by_name(context, name):
+    """Retrieves single share type by name."""
     if name is None:
         msg = _("name cannot be None")
-        raise exception.InvalidVolumeType(reason=msg)
+        raise exception.InvalidShareType(reason=msg)
 
-    return db.volume_type_get_by_name(context, name)
+    return db.share_type_get_by_name(context, name)
 
 
-def get_default_volume_type():
-    """Get the default volume type."""
-    name = CONF.default_volume_type
-    vol_type = {}
+def get_default_share_type():
+    """Get the default share type."""
+    name = CONF.default_share_type
+    share_type = {}
 
     if name is not None:
         ctxt = context.get_admin_context()
         try:
-            vol_type = get_volume_type_by_name(ctxt, name)
-        except exception.VolumeTypeNotFoundByName as e:
-            # Couldn't find volume type with the name in default_volume_type
+            share_type = get_share_type_by_name(ctxt, name)
+        except exception.ShareTypeNotFoundByName as e:
+            # Couldn't find share type with the name in default_share_type
             # flag, record this issue and move on
             # TODO(zhiteng) consider add notification to warn admin
-            LOG.exception(_LE('Default volume type is not found, '
-                              'please check default_volume_type config: %s'),
+            LOG.exception(_LE('Default share type is not found, '
+                              'please check default_share_type config: %s'),
                           e)
 
-    return vol_type
+    return share_type
 
 
-def get_volume_type_extra_specs(volume_type_id, key=False):
-    volume_type = get_volume_type(context.get_admin_context(),
-                                  volume_type_id)
-    extra_specs = volume_type['extra_specs']
+def get_share_type_extra_specs(share_type_id, key=False):
+    share_type = get_share_type(context.get_admin_context(),
+                                share_type_id)
+    extra_specs = share_type['extra_specs']
     if key:
         if extra_specs.get(key):
             return extra_specs.get(key)
@@ -143,14 +143,15 @@ def get_volume_type_extra_specs(volume_type_id, key=False):
         return extra_specs
 
 
-def volume_types_diff(context, vol_type_id1, vol_type_id2):
-    """Returns a 'diff' of two volume types and whether they are equal.
+def share_types_diff(context, share_type_id1, share_type_id2):
+    """Returns a 'diff' of two share types and whether they are equal.
 
     Returns a tuple of (diff, equal), where 'equal' is a boolean indicating
     whether there is any difference, and 'diff' is a dictionary with the
     following format:
-    {'extra_specs': {'key1': (value_in_1st_vol_type, value_in_2nd_vol_type),
-    'key2': (value_in_1st_vol_type, value_in_2nd_vol_type),
+    {'extra_specs': {
+    'key1': (value_in_1st_share_type, value_in_2nd_share_type),
+    'key2': (value_in_1st_share_type, value_in_2nd_share_type),
     ...}
     """
 
@@ -173,11 +174,11 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
 
     all_equal = True
     diff = {}
-    vol_type1 = get_volume_type(context, vol_type_id1)
-    vol_type2 = get_volume_type(context, vol_type_id2)
+    share_type1 = get_share_type(context, share_type_id1)
+    share_type2 = get_share_type(context, share_type_id2)
 
-    extra_specs1 = vol_type1.get('extra_specs')
-    extra_specs2 = vol_type2.get('extra_specs')
+    extra_specs1 = share_type1.get('extra_specs')
+    extra_specs2 = share_type2.get('extra_specs')
     diff['extra_specs'], equal = _dict_diff(extra_specs1, extra_specs2)
     if not equal:
         all_equal = False

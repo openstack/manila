@@ -119,8 +119,8 @@ class FilterScheduler(driver.Scheduler):
         # takes 'resource_XX' and 'volume_XX' as input respectively, copying
         # 'volume_XX' to 'resource_XX' will make both filters happy.
         resource_properties = share_properties.copy()
-        volume_type = request_spec.get("volume_type", {})
-        resource_type = request_spec.get("volume_type") or {}
+        share_type = request_spec.get("share_type", {})
+        resource_type = request_spec.get("share_type") or {}
         request_spec.update({'resource_properties': resource_properties})
 
         config_options = self._get_configuration_options()
@@ -132,7 +132,7 @@ class FilterScheduler(driver.Scheduler):
         filter_properties.update({'context': context,
                                   'request_spec': request_spec,
                                   'config_options': config_options,
-                                  'volume_type': volume_type,
+                                  'share_type': share_type,
                                   'resource_type': resource_type
                                   })
 

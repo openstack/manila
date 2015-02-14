@@ -40,9 +40,11 @@ def stub_volume(id, **kwargs):
         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         'snapshot_id': None,
         'source_volid': None,
+        'share_type_id': '3e196c20-3c06-11e2-81c1-0800200c9a66',
         'volume_type_id': '3e196c20-3c06-11e2-81c1-0800200c9a66',
         'volume_metadata': [],
-        'volume_type': {'name': 'vol_type_name'}}
+        'share_type': {'name': 'share_type_name'},
+        'volume_type': {'name': 'share_type_name'}}
 
     volume.update(kwargs)
     return volume

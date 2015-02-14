@@ -23,123 +23,124 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
     @classmethod
     def resource_setup(cls):
         super(ExtraSpecsAdminTest, cls).resource_setup()
-        vol_type_name = data_utils.rand_name("volume-type")
-        __, cls.volume_type = cls.create_volume_type(vol_type_name)
+        shr_type_name = data_utils.rand_name("share-type")
+        __, cls.share_type = cls.create_share_type(shr_type_name)
+        cls.share_type_id = cls.share_type["share_type"]["id"]
 
     @test.attr(type=["gate", "smoke", ])
-    def test_volume_type_extra_specs_list(self):
+    def test_share_type_extra_specs_list(self):
         extra_specs = {
             "key1": "value1",
             "key2": "value2",
         }
-        resp, es_create = self.shares_client.create_volume_type_extra_specs(
-            self.volume_type["id"], extra_specs)
+        resp, es_create = self.shares_client.create_share_type_extra_specs(
+            self.share_type_id, extra_specs)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
-        resp, es_list = self.shares_client.list_volume_types_extra_specs(
-            self.volume_type["id"])
+        resp, es_list = self.shares_client.list_share_types_extra_specs(
+            self.share_type_id)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_list)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_update_one_volume_type_extra_spec(self):
+    def test_update_one_share_type_extra_spec(self):
         extra_specs = {
             "key1": "value1",
             "key2": "value2",
         }
 
-        # Create extra specs for volume type
-        resp, es_create = self.shares_client.create_volume_type_extra_specs(
-            self.volume_type['id'], extra_specs)
+        # Create extra specs for share type
+        resp, es_create = self.shares_client.create_share_type_extra_specs(
+            self.share_type_id, extra_specs)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
-        # Update extra specs of volume type
+        # Update extra specs of share type
         extra_specs["key1"] = "fake_value1_updated"
-        resp, update_one = self.shares_client.update_volume_type_extra_spec(
-            self.volume_type["id"], "key1", extra_specs["key1"])
+        resp, update_one = self.shares_client.update_share_type_extra_spec(
+            self.share_type_id, "key1", extra_specs["key1"])
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual({"key1": extra_specs["key1"]}, update_one)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_update_all_volume_type_extra_specs(self):
+    def test_update_all_share_type_extra_specs(self):
         extra_specs = {
             "key1": "value1",
             "key2": "value2",
         }
 
-        # Create extra specs for volume type
-        resp, es_create = self.shares_client.create_volume_type_extra_specs(
-            self.volume_type['id'], extra_specs)
+        # Create extra specs for share type
+        resp, es_create = self.shares_client.create_share_type_extra_specs(
+            self.share_type_id, extra_specs)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
-        # Update extra specs of volume type
+        # Update extra specs of share type
         extra_specs["key2"] = "value2_updated"
-        resp, update_all = self.shares_client.update_volume_type_extra_specs(
-            self.volume_type["id"], extra_specs)
+        resp, update_all = self.shares_client.update_share_type_extra_specs(
+            self.share_type_id, extra_specs)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(extra_specs, update_all)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_get_all_volume_type_extra_specs(self):
+    def test_get_all_share_type_extra_specs(self):
         extra_specs = {
             "key1": "value1",
             "key2": "value2",
         }
 
-        # Create extra specs for volume type
-        resp, es_create = self.shares_client.create_volume_type_extra_specs(
-            self.volume_type['id'], extra_specs)
+        # Create extra specs for share type
+        resp, es_create = self.shares_client.create_share_type_extra_specs(
+            self.share_type_id, extra_specs)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
-        # Get all extra specs for volume type
-        resp, es_get_all = self.shares_client.get_volume_type_extra_specs(
-            self.volume_type["id"])
+        # Get all extra specs for share type
+        resp, es_get_all = self.shares_client.get_share_type_extra_specs(
+            self.share_type_id)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_get_all)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_get_one_volume_type_extra_spec(self):
+    def test_get_one_share_type_extra_spec(self):
         extra_specs = {
             "key1": "value1",
             "key2": "value2",
         }
 
-        # Create extra specs for volume type
-        resp, es_create = self.shares_client.create_volume_type_extra_specs(
-            self.volume_type['id'], extra_specs)
+        # Create extra specs for share type
+        resp, es_create = self.shares_client.create_share_type_extra_specs(
+            self.share_type_id, extra_specs)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
-        # Get one extra spec for volume type
-        resp, es_get_one = self.shares_client.get_volume_type_extra_spec(
-            self.volume_type["id"], "key1")
+        # Get one extra spec for share type
+        resp, es_get_one = self.shares_client.get_share_type_extra_spec(
+            self.share_type_id, "key1")
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual({"key1": "value1", }, es_get_one)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_delete_one_volume_type_extra_spec(self):
+    def test_delete_one_share_type_extra_spec(self):
         extra_specs = {
             "key1": "value1",
             "key2": "value2",
         }
 
-        # Create extra specs for volume type
-        resp, es_create = self.shares_client.create_volume_type_extra_specs(
-            self.volume_type['id'], extra_specs)
+        # Create extra specs for share type
+        resp, es_create = self.shares_client.create_share_type_extra_specs(
+            self.share_type_id, extra_specs)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
-        # Delete one extra spec for volume type
-        resp, __ = self.shares_client.delete_volume_type_extra_spec(
-            self.volume_type["id"], "key1")
+        # Delete one extra spec for share type
+        resp, __ = self.shares_client.delete_share_type_extra_spec(
+            self.share_type_id, "key1")
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
 
-        # Get all extra specs for volume type
-        resp, es_get_all = self.shares_client.get_volume_type_extra_specs(
-            self.volume_type["id"])
+        # Get all extra specs for share type
+        resp, es_get_all = self.shares_client.get_share_type_extra_specs(
+            self.share_type_id)
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertEqual({"key2": "value2", }, es_get_all)

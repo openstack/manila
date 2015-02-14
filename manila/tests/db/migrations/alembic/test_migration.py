@@ -196,8 +196,3 @@ class TestManilaMigrationsMySQL(ManilaMigrationsCheckers,
 class TestManilaMigrationsPostgreSQL(
         ManilaMigrationsCheckers, test_base.PostgreSQLOpportunisticTestCase):
     """Run migration tests on PostgreSQL backend."""
-
-
-class TestManilaMigrationsSQLite(ManilaMigrationsCheckers,
-                                 test_base.DbTestCase):
-    """Run migration tests on SQLite backend."""

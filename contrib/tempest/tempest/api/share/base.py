@@ -291,7 +291,7 @@ class BaseSharesTest(test.BaseTestCase):
     @classmethod
     def _create_share(cls, share_protocol=None, size=1, name=None,
                       snapshot_id=None, description=None, metadata=None,
-                      share_network_id=None, volume_type_id=None,
+                      share_network_id=None, share_type_id=None,
                       client=None, cleanup_in_class=True):
         client = client or cls.shares_client
         description = description or "Tempest's share"
@@ -305,7 +305,7 @@ class BaseSharesTest(test.BaseTestCase):
             'description': description,
             'metadata': metadata,
             'share_network_id': share_network_id,
-            'volume_type_id': volume_type_id,
+            'share_type_id': share_type_id,
         }
         resp, share = client.create_share(**kwargs)
         resource = {"type": "share", "id": share["id"], "client": client}
@@ -441,21 +441,21 @@ class BaseSharesTest(test.BaseTestCase):
         return resp, ss
 
     @classmethod
-    def create_volume_type(cls, name, client=None, cleanup_in_class=True,
-                           **kwargs):
+    def create_share_type(cls, name, client=None, cleanup_in_class=True,
+                          **kwargs):
         if client is None:
             client = cls.shares_client
-        resp, vt = client.create_volume_type(name, **kwargs)
+        resp, st = client.create_share_type(name, **kwargs)
         resource = {
-            "type": "volume_type",
-            "id": vt["id"],
+            "type": "share_type",
+            "id": st["share_type"]["id"],
             "client": client,
         }
         if cleanup_in_class:
             cls.class_resources.insert(0, resource)
         else:
             cls.method_resources.insert(0, resource)
-        return resp, vt
+        return resp, st
 
     @classmethod
     def clear_isolated_creds(cls, creds=None):
@@ -504,9 +504,9 @@ class BaseSharesTest(test.BaseTestCase):
                     elif res["type"] is "security_service":
                         client.delete_security_service(res_id)
                         client.wait_for_resource_deletion(ss_id=res_id)
-                    elif res["type"] is "volume_type":
-                        client.delete_volume_type(res_id)
-                        client.wait_for_resource_deletion(vt_id=res_id)
+                    elif res["type"] is "share_type":
+                        client.delete_share_type(res_id)
+                        client.wait_for_resource_deletion(st_id=res_id)
                     else:
                         LOG.warn("Provided unsupported resource type for "
                                  "cleanup '%s'. Skipping." % res["type"])
@@ -534,6 +534,64 @@ class BaseSharesTest(test.BaseTestCase):
             "password": data_utils.rand_name("ss-password"),
         }
         return data
+
+    # Useful assertions
+    def assertDictMatch(self, d1, d2, approx_equal=False, tolerance=0.001):
+        """Assert two dicts are equivalent.
+
+        This is a 'deep' match in the sense that it handles nested
+        dictionaries appropriately.
+
+        NOTE:
+
+            If you don't care (or don't know) a given value, you can specify
+            the string DONTCARE as the value. This will cause that dict-item
+            to be skipped.
+
+        """
+        def raise_assertion(msg):
+            d1str = str(d1)
+            d2str = str(d2)
+            base_msg = ('Dictionaries do not match. %(msg)s d1: %(d1str)s '
+                        'd2: %(d2str)s' %
+                        {"msg": msg, "d1str": d1str, "d2str": d2str})
+            raise AssertionError(base_msg)
+
+        d1keys = set(d1.keys())
+        d2keys = set(d2.keys())
+        if d1keys != d2keys:
+            d1only = d1keys - d2keys
+            d2only = d2keys - d1keys
+            raise_assertion('Keys in d1 and not d2: %(d1only)s. '
+                            'Keys in d2 and not d1: %(d2only)s' %
+                            {"d1only": d1only, "d2only": d2only})
+
+        for key in d1keys:
+            d1value = d1[key]
+            d2value = d2[key]
+            try:
+                error = abs(float(d1value) - float(d2value))
+                within_tolerance = error <= tolerance
+            except (ValueError, TypeError):
+                # If both values aren't convertable to float, just ignore
+                # ValueError if arg is a str, TypeError if it's something else
+                # (like None)
+                within_tolerance = False
+
+            if hasattr(d1value, 'keys') and hasattr(d2value, 'keys'):
+                self.assertDictMatch(d1value, d2value)
+            elif 'DONTCARE' in (d1value, d2value):
+                continue
+            elif approx_equal and within_tolerance:
+                continue
+            elif d1value != d2value:
+                raise_assertion("d1['%(key)s']=%(d1value)s != "
+                                "d2['%(key)s']=%(d2value)s" %
+                                {
+                                    "key": key,
+                                    "d1value": d1value,
+                                    "d2value": d2value
+                                })
 
 
 class BaseSharesAltTest(BaseSharesTest):

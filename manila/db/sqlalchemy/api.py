@@ -1105,7 +1105,7 @@ def _share_get_query(context, session=None):
         session = get_session()
     return model_query(context, models.Share, session=session).\
         options(joinedload('share_metadata')).\
-        options(joinedload('volume_type'))
+        options(joinedload('share_type'))
 
 
 def _metadata_refs(metadata_dict, meta_class):
@@ -1211,12 +1211,12 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
                     key=k, value=v)))
     if 'extra_specs' in filters:
         query = query.join(
-            models.VolumeTypeExtraSpecs,
-            models.VolumeTypeExtraSpecs.volume_type_id ==
-            models.Share.volume_type_id)
+            models.ShareTypeExtraSpecs,
+            models.ShareTypeExtraSpecs.share_type_id ==
+            models.Share.share_type_id)
         for k, v in filters['extra_specs'].items():
-            query = query.filter(or_(models.VolumeTypeExtraSpecs.key == k,
-                                     models.VolumeTypeExtraSpecs.value == v))
+            query = query.filter(or_(models.ShareTypeExtraSpecs.key == k,
+                                     models.ShareTypeExtraSpecs.value == v))
 
     # Apply sorting
     try:
@@ -2037,7 +2037,7 @@ to a single dict:
 
 
 @require_admin_context
-def volume_type_create(context, values):
+def share_type_create(context, values):
     """Create a new instance type.
 
     In order to pass in extra specs, the values dict should contain a
@@ -2051,24 +2051,24 @@ def volume_type_create(context, values):
     with session.begin():
         try:
             values['extra_specs'] = _metadata_refs(values.get('extra_specs'),
-                                                   models.VolumeTypeExtraSpecs)
-            volume_type_ref = models.VolumeTypes()
-            volume_type_ref.update(values)
-            volume_type_ref.save(session=session)
+                                                   models.ShareTypeExtraSpecs)
+            share_type_ref = models.ShareTypes()
+            share_type_ref.update(values)
+            share_type_ref.save(session=session)
         except db_exception.DBDuplicateEntry:
-            raise exception.VolumeTypeExists(id=values['name'])
+            raise exception.ShareTypeExists(id=values['name'])
         except Exception as e:
             raise db_exception.DBError(e)
-        return volume_type_ref
+        return share_type_ref
 
 
 @require_context
-def volume_type_get_all(context, inactive=False, filters=None):
-    """Returns a dict describing all volume_types with name as key."""
+def share_type_get_all(context, inactive=False, filters=None):
+    """Returns a dict describing all share_types with name as key."""
     filters = filters or {}
 
     read_deleted = "yes" if inactive else "no"
-    rows = model_query(context, models.VolumeTypes,
+    rows = model_query(context, models.ShareTypes,
                        read_deleted=read_deleted).\
         options(joinedload('extra_specs')).\
         options(joinedload('shares')).\
@@ -2083,10 +2083,10 @@ def volume_type_get_all(context, inactive=False, filters=None):
 
 
 @require_context
-def _volume_type_get(context, id, session=None, inactive=False):
+def _share_type_get(context, id, session=None, inactive=False):
     read_deleted = "yes" if inactive else "no"
     result = model_query(context,
-                         models.VolumeTypes,
+                         models.ShareTypes,
                          session=session,
                          read_deleted=read_deleted).\
         options(joinedload('extra_specs')).\
@@ -2095,55 +2095,55 @@ def _volume_type_get(context, id, session=None, inactive=False):
         first()
 
     if not result:
-        raise exception.VolumeTypeNotFound(volume_type_id=id)
+        raise exception.ShareTypeNotFound(share_type_id=id)
 
     return _dict_with_extra_specs(result)
 
 
 @require_context
-def volume_type_get(context, id, inactive=False):
-    """Return a dict describing specific volume_type."""
-    return _volume_type_get(context, id, None, inactive)
+def share_type_get(context, id, inactive=False):
+    """Return a dict describing specific share_type."""
+    return _share_type_get(context, id, None, inactive)
 
 
 @require_context
-def _volume_type_get_by_name(context, name, session=None):
-    result = model_query(context, models.VolumeTypes, session=session).\
+def _share_type_get_by_name(context, name, session=None):
+    result = model_query(context, models.ShareTypes, session=session).\
         options(joinedload('extra_specs')).\
         filter_by(name=name).\
         options(joinedload('shares')).\
         first()
 
     if not result:
-        raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
+        raise exception.ShareTypeNotFoundByName(share_type_name=name)
     else:
         return _dict_with_extra_specs(result)
 
 
 @require_context
-def volume_type_get_by_name(context, name):
-    """Return a dict describing specific volume_type."""
+def share_type_get_by_name(context, name):
+    """Return a dict describing specific share_type."""
 
-    return _volume_type_get_by_name(context, name)
+    return _share_type_get_by_name(context, name)
 
 
 @require_admin_context
-def volume_type_destroy(context, id):
+def share_type_destroy(context, id):
     session = get_session()
     with session.begin():
-        _volume_type_get(context, id, session)
+        _share_type_get(context, id, session)
         results = model_query(context, models.Share, session=session). \
-            filter_by(volume_type_id=id).all()
+            filter_by(share_type_id=id).all()
         if results:
-            LOG.error(_LE('VolumeType %s deletion failed, VolumeType in use.'),
+            LOG.error(_LE('ShareType %s deletion failed, ShareType in use.'),
                       id)
-            raise exception.VolumeTypeInUse(volume_type_id=id)
-        model_query(context, models.VolumeTypeExtraSpecs, session=session).\
-            filter_by(volume_type_id=id).update(
+            raise exception.ShareTypeInUse(share_type_id=id)
+        model_query(context, models.ShareTypeExtraSpecs, session=session).\
+            filter_by(share_type_id=id).update(
                 {'deleted': True,
                  'deleted_at': timeutils.utcnow(),
                  'updated_at': literal_column('updated_at')})
-        model_query(context, models.VolumeTypes, session=session).\
+        model_query(context, models.ShareTypes, session=session).\
             filter_by(id=id).update(
                 {'deleted': id,
                  'deleted_at': timeutils.utcnow(),
@@ -2169,16 +2169,16 @@ def volume_get_active_by_window(context,
 ####################
 
 
-def _volume_type_extra_specs_query(context, volume_type_id, session=None):
-    return model_query(context, models.VolumeTypeExtraSpecs, session=session,
+def _share_type_extra_specs_query(context, share_type_id, session=None):
+    return model_query(context, models.ShareTypeExtraSpecs, session=session,
                        read_deleted="no").\
-        filter_by(volume_type_id=volume_type_id).\
-        options(joinedload('volume_type'))
+        filter_by(share_type_id=share_type_id).\
+        options(joinedload('share_type'))
 
 
 @require_context
-def volume_type_extra_specs_get(context, volume_type_id):
-    rows = _volume_type_extra_specs_query(context, volume_type_id).\
+def share_type_extra_specs_get(context, share_type_id):
+    rows = _share_type_extra_specs_query(context, share_type_id).\
         all()
 
     result = {}
@@ -2189,12 +2189,11 @@ def volume_type_extra_specs_get(context, volume_type_id):
 
 
 @require_context
-def volume_type_extra_specs_delete(context, volume_type_id, key):
+def share_type_extra_specs_delete(context, share_type_id, key):
     session = get_session()
     with session.begin():
-        _volume_type_extra_specs_get_item(context, volume_type_id, key,
-                                          session)
-        _volume_type_extra_specs_query(context, volume_type_id, session).\
+        _share_type_extra_specs_get_item(context, share_type_id, key, session)
+        _share_type_extra_specs_query(context, share_type_id, session).\
             filter_by(key=key).\
             update({'deleted': True,
                     'deleted_at': timeutils.utcnow(),
@@ -2202,34 +2201,33 @@ def volume_type_extra_specs_delete(context, volume_type_id, key):
 
 
 @require_context
-def _volume_type_extra_specs_get_item(context, volume_type_id, key,
-                                      session=None):
-    result = _volume_type_extra_specs_query(
-        context, volume_type_id, session=session
-    ).filter_by(key=key).options(joinedload('volume_type')).first()
+def _share_type_extra_specs_get_item(context, share_type_id, key,
+                                     session=None):
+    result = _share_type_extra_specs_query(
+        context, share_type_id, session=session
+    ).filter_by(key=key).options(joinedload('share_type')).first()
 
     if not result:
-        raise exception.VolumeTypeExtraSpecsNotFound(
+        raise exception.ShareTypeExtraSpecsNotFound(
             extra_specs_key=key,
-            volume_type_id=volume_type_id)
+            share_type_id=share_type_id)
 
     return result
 
 
 @require_context
-def volume_type_extra_specs_update_or_create(context, volume_type_id,
-                                             specs):
+def share_type_extra_specs_update_or_create(context, share_type_id, specs):
     session = get_session()
     with session.begin():
         spec_ref = None
         for key, value in six.iteritems(specs):
             try:
-                spec_ref = _volume_type_extra_specs_get_item(
-                    context, volume_type_id, key, session)
-            except exception.VolumeTypeExtraSpecsNotFound:
-                spec_ref = models.VolumeTypeExtraSpecs()
+                spec_ref = _share_type_extra_specs_get_item(
+                    context, share_type_id, key, session)
+            except exception.ShareTypeExtraSpecsNotFound:
+                spec_ref = models.ShareTypeExtraSpecs()
             spec_ref.update({"key": key, "value": value,
-                             "volume_type_id": volume_type_id,
+                             "share_type_id": share_type_id,
                              "deleted": False})
             spec_ref.save(session=session)
 

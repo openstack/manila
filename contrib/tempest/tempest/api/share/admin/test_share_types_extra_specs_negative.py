@@ -22,11 +22,11 @@ from tempest import test
 
 class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
 
-    def _create_volume_type(self):
-        name = data_utils.rand_name("unique_vt_name")
+    def _create_share_type(self):
+        name = data_utils.rand_name("unique_st_name")
         extra_specs = {"key": "value", }
-        __, vt = self.create_volume_type(name, extra_specs=extra_specs)
-        return vt
+        __, st = self.create_share_type(name, extra_specs=extra_specs)
+        return st
 
     @classmethod
     def resource_setup(cls):
@@ -35,206 +35,208 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_extra_specs_with_user(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(
             exceptions.Unauthorized,
-            self.member_shares_client.create_volume_type_extra_specs,
-            vt["id"], {"key": "new_value"})
+            self.member_shares_client.create_share_type_extra_specs,
+            st["share_type"]["id"], {"key": "new_value"})
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_list_extra_specs_with_user(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(
             exceptions.Unauthorized,
-            self.member_shares_client.list_volume_types_extra_specs, vt["id"])
+            self.member_shares_client.list_share_types_extra_specs,
+            st["share_type"]["id"])
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_spec_with_user(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(
             exceptions.Unauthorized,
-            self.member_shares_client.get_volume_type_extra_spec,
-            vt["id"], "key")
+            self.member_shares_client.get_share_type_extra_spec,
+            st["share_type"]["id"], "key")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_specs_with_user(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(
             exceptions.Unauthorized,
-            self.member_shares_client.get_volume_type_extra_specs, vt["id"])
+            self.member_shares_client.get_share_type_extra_specs,
+            st["share_type"]["id"])
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_extra_spec_with_user(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(
             exceptions.Unauthorized,
-            self.member_shares_client.update_volume_type_extra_spec,
-            vt["id"], "key", "new_value")
+            self.member_shares_client.update_share_type_extra_spec,
+            st["share_type"]["id"], "key", "new_value")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_extra_specs_with_user(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(
             exceptions.Unauthorized,
-            self.member_shares_client.update_volume_type_extra_specs,
-            vt["id"], {"key": "new_value"})
+            self.member_shares_client.update_share_type_extra_specs,
+            st["share_type"]["id"], {"key": "new_value"})
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_delete_extra_specs_with_user(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(
             exceptions.Unauthorized,
-            self.member_shares_client.delete_volume_type_extra_spec,
-            vt["id"], "key")
+            self.member_shares_client.delete_share_type_extra_spec,
+            st["share_type"]["id"], "key")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_set_too_long_key(self):
         too_big_key = "k" * 256
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.create_volume_type_extra_specs,
-                          vt["id"], {too_big_key: "value"})
+                          self.shares_client.create_share_type_extra_specs,
+                          st["share_type"]["id"], {too_big_key: "value"})
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_set_too_long_value_with_creation(self):
         too_big_value = "v" * 256
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.create_volume_type_extra_specs,
-                          vt["id"], {"key": too_big_value})
+                          self.shares_client.create_share_type_extra_specs,
+                          st["share_type"]["id"], {"key": too_big_value})
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_set_too_long_value_with_update(self):
         too_big_value = "v" * 256
-        vt = self._create_volume_type()
-        resp, body = self.shares_client.create_volume_type_extra_specs(
-            vt["id"], {"key": "value"})
+        st = self._create_share_type()
+        resp, body = self.shares_client.create_share_type_extra_specs(
+            st["share_type"]["id"], {"key": "value"})
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.update_volume_type_extra_specs,
-                          vt["id"], {"key": too_big_value})
+                          self.shares_client.update_share_type_extra_specs,
+                          st["share_type"]["id"], {"key": too_big_value})
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_set_too_long_value_with_update_of_one_key(self):
         too_big_value = "v" * 256
-        vt = self._create_volume_type()
-        resp, body = self.shares_client.create_volume_type_extra_specs(
-            vt["id"], {"key": "value"})
+        st = self._create_share_type()
+        resp, body = self.shares_client.create_share_type_extra_specs(
+            st["share_type"]["id"], {"key": "value"})
         self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
         self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.update_volume_type_extra_spec,
-                          vt["id"], "key", too_big_value)
+                          self.shares_client.update_share_type_extra_spec,
+                          st["share_type"]["id"], "key", too_big_value)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_list_es_with_empty_vol_type_id(self):
+    def test_try_list_es_with_empty_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.list_volume_types_extra_specs, "")
+                          self.shares_client.list_share_types_extra_specs, "")
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_list_es_with_invalid_vol_type_id(self):
+    def test_try_list_es_with_invalid_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.list_volume_types_extra_specs,
+                          self.shares_client.list_share_types_extra_specs,
                           data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_create_es_with_empty_vol_type_id(self):
+    def test_try_create_es_with_empty_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.create_volume_type_extra_specs,
+                          self.shares_client.create_share_type_extra_specs,
                           "", {"key1": "value1", })
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_create_es_with_invalid_vol_type_id(self):
+    def test_try_create_es_with_invalid_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.create_volume_type_extra_specs,
+                          self.shares_client.create_share_type_extra_specs,
                           data_utils.rand_name("fake"), {"key1": "value1", })
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_es_with_empty_specs(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.create_volume_type_extra_specs,
-                          vt["id"], "")
+                          self.shares_client.create_share_type_extra_specs,
+                          st["share_type"]["id"], "")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_es_with_invalid_specs(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.create_volume_type_extra_specs,
-                          vt["id"], {"": "value_with_empty_key"})
+                          self.shares_client.create_share_type_extra_specs,
+                          st["share_type"]["id"], {"": "value_with_empty_key"})
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_spec_with_empty_key(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.get_volume_type_extra_spec,
-                          vt["id"], "")
+                          self.shares_client.get_share_type_extra_spec,
+                          st["share_type"]["id"], "")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_spec_with_invalid_key(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.get_volume_type_extra_spec,
-                          vt["id"], data_utils.rand_name("fake"))
+                          self.shares_client.get_share_type_extra_spec,
+                          st["share_type"]["id"], data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_get_extra_specs_with_empty_vol_type_id(self):
+    def test_try_get_extra_specs_with_empty_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.get_volume_type_extra_specs,
+                          self.shares_client.get_share_type_extra_specs,
                           "")
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_get_extra_specs_with_invalid_vol_type_id(self):
+    def test_try_get_extra_specs_with_invalid_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.get_volume_type_extra_specs,
+                          self.shares_client.get_share_type_extra_specs,
                           data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_delete_es_key_with_empty_vol_type_id(self):
+    def test_try_delete_es_key_with_empty_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.delete_volume_type_extra_spec,
+                          self.shares_client.delete_share_type_extra_spec,
                           "", "key", )
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_delete_es_key_with_invalid_vol_type_id(self):
+    def test_try_delete_es_key_with_invalid_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.delete_volume_type_extra_spec,
+                          self.shares_client.delete_share_type_extra_spec,
                           data_utils.rand_name("fake"), "key", )
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_delete_with_invalid_key(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.delete_volume_type_extra_spec,
-                          vt["id"], data_utils.rand_name("fake"))
+                          self.shares_client.delete_share_type_extra_spec,
+                          st["share_type"]["id"], data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_update_spec_with_empty_vol_type_id(self):
+    def test_try_update_spec_with_empty_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.update_volume_type_extra_spec,
+                          self.shares_client.update_share_type_extra_spec,
                           "", "key", "new_value")
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_update_spec_with_invalid_vol_type_id(self):
+    def test_try_update_spec_with_invalid_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.update_volume_type_extra_spec,
+                          self.shares_client.update_share_type_extra_spec,
                           data_utils.rand_name("fake"), "key", "new_value")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_spec_with_empty_key(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.update_volume_type_extra_spec,
-                          vt["id"], "", "new_value")
+                          self.shares_client.update_share_type_extra_spec,
+                          st["share_type"]["id"], "", "new_value")
 
     @test.attr(type=["gate", "smoke", ])
-    def test_try_update_with_invalid_vol_type_id(self):
+    def test_try_update_with_invalid_shr_type_id(self):
         self.assertRaises(exceptions.NotFound,
-                          self.shares_client.update_volume_type_extra_specs,
+                          self.shares_client.update_share_type_extra_specs,
                           data_utils.rand_name("fake"), {"key": "new_value"})
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_with_invalid_specs(self):
-        vt = self._create_volume_type()
+        st = self._create_share_type()
         self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.update_volume_type_extra_specs,
-                          vt["id"], {"": "new_value"})
+                          self.shares_client.update_share_type_extra_specs,
+                          st["share_type"]["id"], {"": "new_value"})

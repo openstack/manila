@@ -45,7 +45,7 @@ class SharesNFSTest(base.BaseSharesTest):
                              'description', 'export_location', 'project_id',
                              'host', 'created_at', 'share_proto', 'metadata',
                              'size', 'snapshot_id', 'share_network_id',
-                             'status', 'volume_type', 'links'}
+                             'status', 'share_type', 'volume_type', 'links'}
         self.assertTrue(detailed_elements.issubset(share.keys()),
                         'At least one expected element missing from share '
                         'response. Expected %(expected)s, got %(actual)s.' % {

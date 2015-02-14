@@ -35,8 +35,8 @@ class SQLAlchemyAPIShareTestCase(test.TestCase):
         self._assertEqualListsOfObjects(shares[0],
                                         api.share_get_all_by_host(
                                             self.ctxt, 'foo'),
-                                        ignored_keys=['volume_type',
-                                                      'volume_type_id'])
+                                        ignored_keys=['share_type',
+                                                      'share_type_id'])
 
     def test_share_filter_all_by_host_with_pools_multiple_hosts(self):
         shares = [[api.share_create(self.ctxt, {'host': value})
@@ -46,5 +46,5 @@ class SQLAlchemyAPIShareTestCase(test.TestCase):
         self._assertEqualListsOfObjects(shares[0],
                                         api.share_get_all_by_host(
                                             self.ctxt, 'foo'),
-                                        ignored_keys=['volume_type',
-                                                      'volume_type_id'])
+                                        ignored_keys=['share_type',
+                                                      'share_type_id'])

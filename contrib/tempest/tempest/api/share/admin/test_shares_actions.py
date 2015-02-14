@@ -30,11 +30,11 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     def resource_setup(cls):
         super(SharesActionsAdminTest, cls).resource_setup()
 
-        # create volume type for share filtering purposes
-        cls.vt_name = data_utils.rand_name("tempest-vt-name")
+        # create share type for share filtering purposes
+        cls.st_name = data_utils.rand_name("tempest-st-name")
         cls.extra_specs = {'storage_protocol': CONF.share.storage_protocol}
-        __, cls.vt = cls.create_volume_type(
-            name=cls.vt_name,
+        __, cls.st = cls.create_share_type(
+            name=cls.st_name,
             cleanup_in_class=True,
             extra_specs=cls.extra_specs,
         )
@@ -52,7 +52,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
             description=cls.share_desc,
             size=cls.share_size,
             metadata=cls.metadata,
-            volume_type_id=cls.vt['id'],
+            share_type_id=cls.st['share_type']['id'],
         )
 
         # create snapshot
@@ -177,26 +177,27 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         self.assertTrue(self.share["id"] in shares_ids)
         self.assertFalse(self.share2["id"] in shares_ids)
         for share in shares:
-            __, vts = self.shares_client.list_volume_types()
+            __, st_list = self.shares_client.list_share_types()
             # find its name or id, get id
-            vt_id = None
-            for vt in vts:
-                if share["volume_type"] in [vt["id"], vt["name"]]:
-                    vt_id = vt["id"]
+            sts = st_list["share_types"]
+            st_id = None
+            for st in sts:
+                if share["share_type"] in [st["id"], st["name"]]:
+                    st_id = st["id"]
                     break
-            if vt_id is None:
+            if st_id is None:
                 raise ValueError(
                     "Share '%(s_id)s' listed with extra_specs filter has "
-                    "nonexistent volume type '%(vt)s'." % {
-                        "s_id": share["id"], "vt": share["volume_type"]}
+                    "nonexistent share type '%(st)s'." % {
+                        "s_id": share["id"], "st": share["share_type"]}
                 )
-            __, extra_specs = self.shares_client.list_volume_types_extra_specs(
-                vt_id)
+            __, extra_specs = self.shares_client.list_share_types_extra_specs(
+                st_id)
             self.assertDictContainsSubset(filters["extra_specs"], extra_specs)
 
     @test.attr(type=["gate", ])
-    def test_list_shares_with_detail_filter_by_volume_type_id(self):
-        filters = {'volume_type_id': self.vt['id']}
+    def test_list_shares_with_detail_filter_by_share_type_id(self):
+        filters = {'share_type_id': self.st['share_type']['id']}
 
         # list shares
         __, shares = self.shares_client.list_shares_with_detail(params=filters)
@@ -204,21 +205,22 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         # verify response
         self.assertTrue(len(shares) > 0)
         for share in shares:
-            __, vts = self.shares_client.list_volume_types()
+            __, st_list = self.shares_client.list_share_types()
             # find its name or id, get id
-            vt_id = None
-            for vt in vts:
-                if share["volume_type"] in [vt["id"], vt["name"]]:
-                    vt_id = vt["id"]
+            sts = st_list["share_types"]
+            st_id = None
+            for st in sts:
+                if share["share_type"] in [st["id"], st["name"]]:
+                    st_id = st["id"]
                     break
-            if vt_id is None:
+            if st_id is None:
                 raise ValueError(
-                    "Share '%(s_id)s' listed with volume_type_id filter has "
-                    "nonexistent volume type '%(vt)s'." % {
-                        "s_id": share["id"], "vt": share["volume_type"]}
+                    "Share '%(s_id)s' listed with share_type_id filter has "
+                    "nonexistent share type '%(st)s'." % {
+                        "s_id": share["id"], "st": share["share_type"]}
                 )
             self.assertEqual(
-                filters['volume_type_id'], vt_id)
+                filters['share_type_id'], st_id)
         self.assertFalse(self.share2['id'] in [s['id'] for s in shares])
 
     @test.attr(type=["gate", ])

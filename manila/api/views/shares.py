@@ -47,10 +47,10 @@ class ViewBuilder(common.ViewBuilder):
             metadata = dict((item['key'], item['value']) for item in metadata)
         else:
             metadata = {}
-        if share['volume_type_id'] and share.get('volume_type'):
-            volume_type = share['volume_type']['name']
+        if share['share_type_id'] and share.get('share_type'):
+            share_type = share['share_type']['name']
         else:
-            volume_type = share['volume_type_id']
+            share_type = share['share_type_id']
 
         share_dict = {
             'id': share.get('id'),
@@ -67,7 +67,8 @@ class ViewBuilder(common.ViewBuilder):
             'share_proto': share.get('share_proto'),
             'export_location': share.get('export_location'),
             'metadata': metadata,
-            'volume_type': volume_type,
+            'share_type': share_type,
+            'volume_type': share_type,
             'links': self._get_links(request, share['id'])
         }
         if context.is_admin:
