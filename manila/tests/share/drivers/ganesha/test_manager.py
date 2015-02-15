@@ -227,14 +227,14 @@ class GaneshaManagerTestCase(test.TestCase):
     def test_write_file(self):
         test_data = 'fakedata'
         self.mock_object(manager.pipes, 'quote',
-                         mock.Mock(return_value='fakefile.conf.RANDOM'))
+                         mock.Mock(side_effect=['fakedata',
+                                                'fakefile.conf.RANDOM']))
         test_args = [
             ('mktemp', '-p', '/fakedir0/export.d', '-t',
              'fakefile.conf.XXXXXX'),
-            ('sh', '-c', 'cat > fakefile.conf.RANDOM'),
+            ('sh', '-c', 'echo fakedata > fakefile.conf.RANDOM'),
             ('mv', 'fakefile.conf.RANDOM', test_path)]
         test_kwargs = {
-            'process_input': test_data,
             'message': 'writing fakefile.conf.RANDOM'
         }
 
@@ -249,7 +249,9 @@ class GaneshaManagerTestCase(test.TestCase):
             mock.call(*test_args[0]),
             mock.call(*test_args[1], **test_kwargs),
             mock.call(*test_args[2])])
-        manager.pipes.quote.assert_called_once_with('fakefile.conf.RANDOM')
+        manager.pipes.quote.assert_has_calls([
+            mock.call('fakedata'),
+            mock.call('fakefile.conf.RANDOM')])
 
     def test_write_conf_file(self):
         test_data = 'fakedata'

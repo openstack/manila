@@ -81,7 +81,7 @@ service: CommandFilter, service, root
 mktemp: CommandFilter, mktemp, root
 
 # manila/share/drivers/ganesha/manager.py:
-shcat: RegExpFilter, sh, root, sh, -c, cat > /.*
+shcat: RegExpFilter, sh, root, sh, -c, echo '((.|\n)*)' > /.*
 
 # manila/share/drivers/ganesha/manager.py:
 dbus-addexport: RegExpFilter, dbus-send, root, dbus-send, --print-reply, --system, --dest=org\.ganesha\.nfsd, /org/ganesha/nfsd/ExportMgr, org\.ganesha\.nfsd\.exportmgr\.(Add|Remove)Export, .*, .*

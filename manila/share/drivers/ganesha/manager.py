@@ -226,8 +226,10 @@ class GaneshaManager(object):
                           ("dir", "base"))
         tmpf = self.execute('mktemp', '-p', dirpath, "-t",
                             fname + ".XXXXXX")[0][:-1]
-        self.execute('sh', '-c', 'cat > ' + pipes.quote(tmpf),
-                     process_input=data, message='writing ' + tmpf)
+        self.execute(
+            'sh', '-c',
+            'echo %s > %s' % (pipes.quote(data), pipes.quote(tmpf)),
+            message='writing ' + tmpf)
         self.execute('mv', tmpf, path)
 
     def _write_conf_file(self, name, data):
