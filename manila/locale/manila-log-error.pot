@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev30\n"
+"Project-Id-Version: manila 2015.1.dev39\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-02-13 06:13+0000\n"
+"POT-Creation-Date: 2015-02-15 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -76,9 +76,9 @@ msgstr ""
 msgid "Exception while creating table."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:2129
+#: manila/db/sqlalchemy/api.py:2138
 #, python-format
-msgid "VolumeType %s deletion failed, VolumeType in use."
+msgid "ShareType %s deletion failed, ShareType in use."
 msgstr ""
 
 #: manila/network/linux/interface.py:175 manila/network/linux/interface.py:217
@@ -135,7 +135,7 @@ msgstr ""
 msgid "Free capacity not set: volume node info collection broken."
 msgstr ""
 
-#: manila/share/api.py:224
+#: manila/share/api.py:229
 msgid "Failed to update quota for deleting share"
 msgstr ""
 
@@ -191,16 +191,16 @@ msgstr ""
 msgid "Share server %s failed on deletion."
 msgstr ""
 
-#: manila/share/volume_types.py:40
+#: manila/share/share_types.py:40
 #, python-format
 msgid "DB error: %s"
 msgstr ""
 
-#: manila/share/volume_types.py:126
+#: manila/share/share_types.py:126
 #, python-format
 msgid ""
-"Default volume type is not found, please check default_volume_type "
-"config: %s"
+"Default share type is not found, please check default_share_type config: "
+"%s"
 msgstr ""
 
 #: manila/share/drivers/generic.py:242

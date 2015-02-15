@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev30\n"
+"Project-Id-Version: manila 2015.1.dev39\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-02-13 06:13+0000\n"
+"POT-Creation-Date: 2015-02-15 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -139,6 +139,70 @@ msgstr ""
 #: manila/api/v1/shares.py:215
 #, python-format
 msgid "Create %(share_proto)s share of %(size)s GB"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:38
+msgid ""
+"Renaming column name volume_type_extra_specs.key to "
+"volume_type_extra_specs.spec_key"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:44
+msgid ""
+"Renaming column name volume_type_extra_specs.value to "
+"volume_type_extra_specs.spec_value"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:50
+msgid "Renaming column name shares.volume_type_id to shares.share_type.id"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:56
+msgid "Renaming volume_types table to share_types"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:62
+msgid "Creating share_type_extra_specs table"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:78
+msgid "Migrating volume_type_extra_specs to share_type_extra_specs"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:87
+msgid "Dropping volume_type_extra_specs table"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:92
+msgid "Creating volume_type_extra_specs table"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:107
+msgid "Migrating share_type_extra_specs to volume_type_extra_specs"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:116
+msgid "Dropping share_type_extra_specs table"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:119
+msgid "Renaming share_types table to volume_types"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:125
+msgid "Renaming column name shares.share_type_id to shares.volume_type.id"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:131
+msgid ""
+"Renaming column name volume_type_extra_specs.spec_key to "
+"volume_type_extra_specs.key"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:137
+msgid ""
+"Renaming column name volume_type_extra_specs.spec_value to "
+"volume_type_extra_specs.value"
 msgstr ""
 
 #: manila/openstack/common/eventlet_backdoor.py:140

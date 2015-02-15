@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev30\n"
+"Project-Id-Version: manila 2015.1.dev39\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-02-13 06:13+0000\n"
+"POT-Creation-Date: 2015-02-15 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -348,7 +348,7 @@ msgstr ""
 
 #: manila/exception.py:394
 #, python-format
-msgid "Invalid volume type: %(reason)s."
+msgid "Invalid share type: %(reason)s."
 msgstr ""
 
 #: manila/exception.py:398
@@ -358,36 +358,36 @@ msgstr ""
 
 #: manila/exception.py:406
 #, python-format
-msgid "Volume type %(volume_type_id)s could not be found."
+msgid "Share type %(share_type_id)s could not be found."
 msgstr ""
 
 #: manila/exception.py:410
 #, python-format
-msgid "Volume type with name %(volume_type_name)s could not be found."
+msgid "Share type with name %(share_type_name)s could not be found."
 msgstr ""
 
 #: manila/exception.py:415
 #, python-format
 msgid ""
-"Volume type %(volume_type_id)s has no extra specs with key "
+"Share Type %(share_type_id)s has no extra specs with key "
 "%(extra_specs_key)s."
 msgstr ""
 
 #: manila/exception.py:420
 #, python-format
 msgid ""
-"Volume type %(volume_type_id)s deletion is not allowed with volumes "
-"present with the type."
+"Share Type %(share_type_id)s deletion is not allowed with shares present "
+"with the type."
 msgstr ""
 
 #: manila/exception.py:425
 #, python-format
-msgid "Volume type %(id)s already exists."
+msgid "Share Type %(id)s already exists."
 msgstr ""
 
 #: manila/exception.py:429
 #, python-format
-msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s."
+msgid "Cannot create share_type with name %(name)s and specs %(extra_specs)s."
 msgstr ""
 
 #: manila/exception.py:434
@@ -456,6 +456,11 @@ msgstr ""
 #: manila/utils.py:494
 #, python-format
 msgid "Invalid cidr supplied %s"
+msgstr ""
+
+#: manila/utils.py:504
+#, python-format
+msgid "Provided improper IP version '%s'."
 msgstr ""
 
 #: manila/wsgi.py:145
@@ -569,21 +574,21 @@ msgstr ""
 msgid "Invalid request body"
 msgstr ""
 
-#: manila/api/contrib/types_extra_specs.py:101
+#: manila/api/contrib/types_extra_specs.py:99
 msgid "Request body empty"
 msgstr ""
 
-#: manila/api/contrib/types_extra_specs.py:105
+#: manila/api/contrib/types_extra_specs.py:103
 #: manila/api/v1/share_metadata.py:76
 msgid "Request body and URI mismatch"
 msgstr ""
 
-#: manila/api/contrib/types_extra_specs.py:108
+#: manila/api/contrib/types_extra_specs.py:106
 #: manila/api/v1/share_metadata.py:80
 msgid "Request body contains too many items"
 msgstr ""
 
-#: manila/api/contrib/types_extra_specs.py:148
+#: manila/api/contrib/types_extra_specs.py:144
 msgid ""
 "Key names can only contain alphanumeric characters, underscores, periods,"
 " colons and hyphens."
@@ -723,16 +728,36 @@ msgid ""
 " are %(allowed_statuses)s."
 msgstr ""
 
-#: manila/api/v1/shares.py:272 manila/api/v1/volume_types.py:44
-msgid "Volume type not found."
-msgstr ""
-
-#: manila/common/config.py:80
-msgid "Deploy v1 of the Manila API."
+#: manila/api/v1/share_types.py:44 manila/api/v1/shares.py:276
+msgid "Share type not found."
 msgstr ""
 
 #: manila/common/config.py:83
+msgid "Deploy v1 of the Manila API."
+msgstr ""
+
+#: manila/common/config.py:86
 msgid "Deploy v2 of the Manila API."
+msgstr ""
+
+#: manila/common/config.py:199
+#, python-format
+msgid ""
+"Unsupported share protocol '%(share_proto)s' is set as enabled. Available"
+" values are %(supported)s. "
+msgstr ""
+
+#: manila/common/config.py:204
+#, python-format
+msgid ""
+"No share protocols were specified as enabled. Available values are "
+"%(supported)s. "
+msgstr ""
+
+#: manila/common/config.py:207
+msgid ""
+"Please specify one or more protocols using configuration option "
+"'enabled_share_protocols."
 msgstr ""
 
 #: manila/compute/nova.py:190
@@ -764,6 +789,53 @@ msgstr ""
 #: manila/db/sqlalchemy/api.py:1460
 #, python-format
 msgid "Wrong 'usage' key provided - '%(key)s'. Expected keys are '%(ek)s'."
+msgstr ""
+
+#: manila/network/standalone_network_plugin.py:125
+#, python-format
+msgid ""
+"Configuration option 'standalone_network_plugin_gateway' is required and "
+"has improper value '%s'."
+msgstr ""
+
+#: manila/network/standalone_network_plugin.py:129
+#, python-format
+msgid ""
+"Configuration option 'standalone_network_plugin_mask' is required and has"
+" improper value '%s'."
+msgstr ""
+
+#: manila/network/standalone_network_plugin.py:161
+#, python-format
+msgid "Wrong value for IP range '%s' was provided."
+msgstr ""
+
+#: manila/network/standalone_network_plugin.py:166
+#, python-format
+msgid ""
+"Config option 'standalone_network_plugin_allowed_ip_ranges' has incorrect"
+" value '%s'"
+msgstr ""
+
+#: manila/network/standalone_network_plugin.py:181
+#, python-format
+msgid ""
+"One of provided allowed IP ranges ('%(range)s') does not fit network "
+"'%(net)s' combined from gateway '%(gateway)s' and netmask '%(netmask)s'."
+msgstr ""
+
+#: manila/network/standalone_network_plugin.py:192
+#, python-format
+msgid ""
+"Configured invalid IP version '%(conf_v)s', network has version "
+"'%(net_v)s'"
+msgstr ""
+
+#: manila/network/standalone_network_plugin.py:220
+#, python-format
+msgid ""
+"No available IP addresses left in CIDRs %(cidrs)s. Requested amount of "
+"IPs to be provided '%(amount)s', available only '%(available)s'."
 msgstr ""
 
 #: manila/network/linux/interface.py:37
@@ -865,95 +937,97 @@ msgstr ""
 
 #: manila/share/api.py:104
 msgid ""
-"Invalid volume_type provided (requested type must match source snapshot, "
+"Invalid share_type provided (requested type must match source snapshot, "
 "or be omitted). You should omit the argument."
 msgstr ""
 
-#: manila/share/api.py:112
+#: manila/share/api.py:113
 #, python-format
-msgid "Invalid share type provided: %s"
-msgstr ""
-
-#: manila/share/api.py:232
-msgid "Share status must be available or error"
+msgid ""
+"Invalid share protocol provided: %(provided)s. It is either disabled or "
+"unsupported. Available protocols: %(supported)s"
 msgstr ""
 
 #: manila/share/api.py:237
+msgid "Share status must be available or error"
+msgstr ""
+
+#: manila/share/api.py:242
 #, python-format
 msgid "Share still has %d dependent snapshots"
 msgstr ""
 
-#: manila/share/api.py:264
+#: manila/share/api.py:269
 msgid "must be available"
 msgstr ""
 
-#: manila/share/api.py:324
+#: manila/share/api.py:329
 msgid "Share Snapshot status must be 'available' or 'error'."
 msgstr ""
 
-#: manila/share/api.py:359
+#: manila/share/api.py:364
 #, python-format
 msgid "Wrong metadata filter provided: %s."
 msgstr ""
 
-#: manila/share/api.py:368
+#: manila/share/api.py:373
 #, python-format
 msgid "Wrong extra specs filter provided: %s."
 msgstr ""
 
-#: manila/share/api.py:372
+#: manila/share/api.py:377
 #, python-format
 msgid "Wrong sort_key filter provided: '%s'."
 msgstr ""
 
-#: manila/share/api.py:376
+#: manila/share/api.py:381
 #, python-format
 msgid "Wrong sort_dir filter provided: '%s'."
 msgstr ""
 
-#: manila/share/api.py:426
+#: manila/share/api.py:431
 #, python-format
 msgid "Wrong '%(k)s' filter provided: '%(v)s'."
 msgstr ""
 
-#: manila/share/api.py:458 manila/share/api.py:487
+#: manila/share/api.py:463 manila/share/api.py:492
 msgid "Share host is None"
 msgstr ""
 
-#: manila/share/api.py:461 manila/share/api.py:490
+#: manila/share/api.py:466 manila/share/api.py:495
 msgid "Share status must be available"
 msgstr ""
 
-#: manila/share/api.py:476
+#: manila/share/api.py:481
 #, python-format
 msgid "Invalid share access level: %s."
 msgstr ""
 
-#: manila/share/api.py:501
+#: manila/share/api.py:506
 msgid "Access policy should be active or in error state"
 msgstr ""
 
-#: manila/share/api.py:538
+#: manila/share/api.py:543
 msgid "Metadata property key is blank"
 msgstr ""
 
-#: manila/share/api.py:542
+#: manila/share/api.py:547
 msgid "Metadata property key is greater than 255 characters"
 msgstr ""
 
-#: manila/share/api.py:546
+#: manila/share/api.py:551
 msgid "Metadata property value is blank"
 msgstr ""
 
-#: manila/share/api.py:550
+#: manila/share/api.py:555
 msgid "Metadata property value is greater than 1023 characters"
 msgstr ""
 
-#: manila/share/volume_types.py:49 manila/share/volume_types.py:95
+#: manila/share/share_types.py:49 manila/share/share_types.py:95
 msgid "id cannot be None"
 msgstr ""
 
-#: manila/share/volume_types.py:107
+#: manila/share/share_types.py:107
 msgid "name cannot be None"
 msgstr ""
 

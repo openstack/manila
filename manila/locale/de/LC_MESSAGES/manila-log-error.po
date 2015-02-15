@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Manila\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-02-13 06:13+0000\n"
-"PO-Revision-Date: 2015-02-12 19:19+0000\n"
+"POT-Creation-Date: 2015-02-15 06:12+0000\n"
+"PO-Revision-Date: 2015-02-14 21:02+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/manila/language/"
 "de/)\n"
@@ -79,9 +79,9 @@ msgstr ""
 msgid "Exception while creating table."
 msgstr "Ausnahme beim Anlegen einer Tabelle."
 
-#: manila/db/sqlalchemy/api.py:2129
+#: manila/db/sqlalchemy/api.py:2138
 #, python-format
-msgid "VolumeType %s deletion failed, VolumeType in use."
+msgid "ShareType %s deletion failed, ShareType in use."
 msgstr ""
 
 #: manila/network/linux/interface.py:175 manila/network/linux/interface.py:217
@@ -138,7 +138,7 @@ msgstr ""
 msgid "Free capacity not set: volume node info collection broken."
 msgstr ""
 
-#: manila/share/api.py:224
+#: manila/share/api.py:229
 msgid "Failed to update quota for deleting share"
 msgstr ""
 
@@ -194,15 +194,15 @@ msgstr ""
 msgid "Share server %s failed on deletion."
 msgstr ""
 
-#: manila/share/volume_types.py:40
+#: manila/share/share_types.py:40
 #, python-format
 msgid "DB error: %s"
 msgstr "Datenbank Fehler: %s"
 
-#: manila/share/volume_types.py:126
+#: manila/share/share_types.py:126
 #, python-format
 msgid ""
-"Default volume type is not found, please check default_volume_type config: %s"
+"Default share type is not found, please check default_share_type config: %s"
 msgstr ""
 
 #: manila/share/drivers/generic.py:242
