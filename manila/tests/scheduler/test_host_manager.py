@@ -1,5 +1,6 @@
 # Copyright (c) 2011 OpenStack, LLC
 # Copyright (c) 2015 Rushil Chugh
+# Copyright (c) 2015 Clinton Knight
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,6 +17,8 @@
 """
 Tests For HostManager
 """
+
+import ddt
 import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
@@ -27,6 +30,7 @@ from manila.openstack.common.scheduler import filters
 from manila.scheduler import host_manager
 from manila import test
 from manila.tests.scheduler import fakes
+from manila import utils
 
 
 CONF = cfg.CONF
@@ -42,6 +46,7 @@ class FakeFilterClass2(filters.BaseHostFilter):
         pass
 
 
+@ddt.ddt
 class HostManagerTestCase(test.TestCase):
     """Test case for HostManager class."""
 
@@ -139,9 +144,12 @@ class HostManagerTestCase(test.TestCase):
     def test_get_all_host_states_share(self):
         context = 'fake_context'
         topic = CONF.share_topic
-        ret_services = fakes.SHARE_SERVICES
-        with mock.patch.object(db, 'service_get_all_by_topic',
-                               mock.Mock(return_value=ret_services)):
+        self.mock_object(
+            db, 'service_get_all_by_topic',
+            mock.Mock(return_value=fakes.SHARE_SERVICES_WITH_POOLS))
+
+        with mock.patch.dict(self.host_manager.service_states,
+                             fakes.SHARE_SERVICE_STATES_WITH_POOLS):
             # Disabled service
             self.host_manager.get_all_host_states_share(context)
             host_state_map = self.host_manager.host_state_map
@@ -149,59 +157,214 @@ class HostManagerTestCase(test.TestCase):
             self.assertEqual(4, len(host_state_map))
             # Check that service is up
             for i in xrange(4):
-                share_node = fakes.SHARE_SERVICES[i]
+                share_node = fakes.SHARE_SERVICES_WITH_POOLS[i]
                 host = share_node['host']
                 self.assertEqual(share_node, host_state_map[host].service)
             db.service_get_all_by_topic.assert_called_once_with(context, topic)
 
-    @mock.patch('manila.db.service_get_all_by_topic')
-    @mock.patch('manila.utils.service_is_up')
-    def test_get_pools(self, _mock_service_is_up,
-                       _mock_service_get_all_by_topic):
+    def test_get_pools_no_pools(self):
         context = 'fake_context'
-
-        services = [
-            dict(id=1, host='host1', topic='share', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
-            dict(id=2, host='host2@back1', topic='share', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
-            dict(id=3, host='host2@back2', topic='share', disabled=False,
-                 availability_zone='zone2', updated_at=timeutils.utcnow()),
-        ]
-
-        mocked_service_states = {
-            'host1': dict(share_backend_name='AAA',
-                          total_capacity_gb=512, free_capacity_gb=200,
-                          timestamp=None, reserved_percentage=0,
-                          driver_handles_share_servers=False),
-            'host2@back1': dict(share_backend_name='BBB',
-                                total_capacity_gb=256, free_capacity_gb=100,
-                                timestamp=None, reserved_percentage=0,
-                                driver_handles_share_servers=False),
-            'host2@back2': dict(share_backend_name='CCC',
-                                total_capacity_gb=10000, free_capacity_gb=700,
-                                timestamp=None, reserved_percentage=0,
-                                driver_handles_share_servers=False),
-        }
-
-        _mock_service_get_all_by_topic.return_value = services
-        _mock_service_is_up.return_value = True
-        _mock_warning = mock.Mock()
-        host_manager.LOG.warn = _mock_warning
+        self.mock_object(utils, 'service_is_up', mock.Mock(return_value=True))
+        self.mock_object(
+            db, 'service_get_all_by_topic',
+            mock.Mock(return_value=fakes.SHARE_SERVICES_NO_POOLS))
+        host_manager.LOG.warn = mock.Mock()
 
         with mock.patch.dict(self.host_manager.service_states,
-                             mocked_service_states):
-            # Call get_all_host_states to populate host_state_map
-            self.host_manager.get_all_host_states_share(context)
+                             fakes.SERVICE_STATES_NO_POOLS):
 
             res = self.host_manager.get_pools(context)
-
-            # Check if get_pools returns all 3 pools
-            self.assertEqual(3, len(res))
 
             expected = [
                 {
                     'name': 'host1#AAA',
+                    'host': 'host1',
+                    'backend': None,
+                    'pool': 'AAA',
+                    'capabilities': {
+                        'timestamp': None,
+                        'share_backend_name': 'AAA',
+                        'free_capacity_gb': 200,
+                        'driver_version': None,
+                        'total_capacity_gb': 512,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'driver_handles_share_servers': False,
+                    },
+                }, {
+                    'name': 'host2@back1#BBB',
+                    'host': 'host2',
+                    'backend': 'back1',
+                    'pool': 'BBB',
+                    'capabilities': {
+                        'timestamp': None,
+                        'share_backend_name': 'BBB',
+                        'free_capacity_gb': 100,
+                        'driver_version': None,
+                        'total_capacity_gb': 256,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'driver_handles_share_servers': False,
+                    },
+                }, {
+                    'name': 'host2@back2#CCC',
+                    'host': 'host2',
+                    'backend': 'back2',
+                    'pool': 'CCC',
+                    'capabilities': {
+                        'timestamp': None,
+                        'share_backend_name': 'CCC',
+                        'free_capacity_gb': 700,
+                        'driver_version': None,
+                        'total_capacity_gb': 10000,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'driver_handles_share_servers': False,
+                    },
+                },
+            ]
+            self.assertEqual(len(expected), len(res))
+            self.assertEqual(sorted(expected), sorted(res))
+
+    def test_get_pools(self):
+        context = 'fake_context'
+        self.mock_object(utils, 'service_is_up', mock.Mock(return_value=True))
+        self.mock_object(
+            db, 'service_get_all_by_topic',
+            mock.Mock(return_value=fakes.SHARE_SERVICES_WITH_POOLS))
+        host_manager.LOG.warn = mock.Mock()
+
+        with mock.patch.dict(self.host_manager.service_states,
+                             fakes.SHARE_SERVICE_STATES_WITH_POOLS):
+
+            res = self.host_manager.get_pools(context)
+
+            expected = [
+                {
+                    'name': 'host1@AAA#pool1',
+                    'host': 'host1',
+                    'backend': 'AAA',
+                    'pool': 'pool1',
+                    'capabilities': {
+                        'pool_name': 'pool1',
+                        'timestamp': None,
+                        'share_backend_name': 'AAA',
+                        'free_capacity_gb': 41,
+                        'driver_version': None,
+                        'total_capacity_gb': 51,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'driver_handles_share_servers': False,
+                    },
+                }, {
+                    'name': 'host2@BBB#pool2',
+                    'host': 'host2',
+                    'backend': 'BBB',
+                    'pool': 'pool2',
+                    'capabilities': {
+                        'pool_name': 'pool2',
+                        'timestamp': None,
+                        'share_backend_name': 'BBB',
+                        'free_capacity_gb': 42,
+                        'driver_version': None,
+                        'total_capacity_gb': 52,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'driver_handles_share_servers': False,
+                    },
+                }, {
+                    'name': 'host3@CCC#pool3',
+                    'host': 'host3',
+                    'backend': 'CCC',
+                    'pool': 'pool3',
+                    'capabilities': {
+                        'pool_name': 'pool3',
+                        'timestamp': None,
+                        'share_backend_name': 'CCC',
+                        'free_capacity_gb': 43,
+                        'driver_version': None,
+                        'total_capacity_gb': 53,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'driver_handles_share_servers': False,
+                    },
+                }, {
+                    'name': 'host4@DDD#pool4a',
+                    'host': 'host4',
+                    'backend': 'DDD',
+                    'pool': 'pool4a',
+                    'capabilities': {
+                        'pool_name': 'pool4a',
+                        'timestamp': None,
+                        'share_backend_name': 'DDD',
+                        'free_capacity_gb': 441,
+                        'driver_version': None,
+                        'total_capacity_gb': 541,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'driver_handles_share_servers': False,
+                    },
+                }, {
+                    'name': 'host4@DDD#pool4b',
+                    'host': 'host4',
+                    'backend': 'DDD',
+                    'pool': 'pool4b',
+                    'capabilities': {
+                        'pool_name': 'pool4b',
+                        'timestamp': None,
+                        'share_backend_name': 'DDD',
+                        'free_capacity_gb': 442,
+                        'driver_version': None,
+                        'total_capacity_gb': 542,
+                        'reserved_percentage': 0,
+                        'vendor_name': None,
+                        'storage_protocol': None,
+                        'driver_handles_share_servers': False,
+                    },
+                },
+            ]
+
+            self.assertEqual(len(expected), len(res))
+            self.assertEqual(sorted(expected), sorted(res))
+
+    def test_get_pools_host_down(self):
+        context = 'fake_context'
+        mock_service_is_up = self.mock_object(utils, 'service_is_up')
+        self.mock_object(
+            db, 'service_get_all_by_topic',
+            mock.Mock(return_value=fakes.SHARE_SERVICES_NO_POOLS))
+        host_manager.LOG.warn = mock.Mock()
+
+        with mock.patch.dict(self.host_manager.service_states,
+                             fakes.SERVICE_STATES_NO_POOLS):
+
+            # Initialize host data with all services present
+            mock_service_is_up.side_effect = [True, True, True]
+
+            # Call once to update the host state map
+            self.host_manager.get_pools(context)
+
+            self.assertEqual(len(fakes.SHARE_SERVICES_NO_POOLS),
+                             len(self.host_manager.host_state_map))
+
+            # Then mock one host as down
+            mock_service_is_up.side_effect = [True, True, False]
+
+            res = self.host_manager.get_pools(context)
+
+            expected = [
+                {
+                    'name': 'host1#AAA',
+                    'host': 'host1',
+                    'backend': None,
+                    'pool': 'AAA',
                     'capabilities': {
                         'timestamp': None,
                         'driver_handles_share_servers': False,
@@ -211,10 +374,13 @@ class HostManagerTestCase(test.TestCase):
                         'total_capacity_gb': 512,
                         'reserved_percentage': 0,
                         'vendor_name': None,
-                        'storage_protocol': None},
-                },
-                {
+                        'storage_protocol': None
+                    },
+                }, {
                     'name': 'host2@back1#BBB',
+                    'host': 'host2',
+                    'backend': 'back1',
+                    'pool': 'BBB',
                     'capabilities': {
                         'timestamp': None,
                         'driver_handles_share_servers': False,
@@ -224,24 +390,73 @@ class HostManagerTestCase(test.TestCase):
                         'total_capacity_gb': 256,
                         'reserved_percentage': 0,
                         'vendor_name': None,
-                        'storage_protocol': None},
+                        'storage_protocol': None
+                    },
                 },
+            ]
+            self.assertEqual(len(expected),
+                             len(self.host_manager.host_state_map))
+            self.assertEqual(len(expected), len(res))
+            self.assertEqual(sorted(expected), sorted(res))
+
+    def test_get_pools_with_filters(self):
+        context = 'fake_context'
+        self.mock_object(utils, 'service_is_up', mock.Mock(return_value=True))
+        self.mock_object(
+            db, 'service_get_all_by_topic',
+            mock.Mock(return_value=fakes.SHARE_SERVICES_WITH_POOLS))
+        host_manager.LOG.warn = mock.Mock()
+
+        with mock.patch.dict(self.host_manager.service_states,
+                             fakes.SHARE_SERVICE_STATES_WITH_POOLS):
+
+            res = self.host_manager.get_pools(
+                context, filters={'host': 'host2', 'pool': 'pool*'})
+
+            expected = [
                 {
-                    'name': 'host2@back2#CCC',
+                    'name': 'host2@BBB#pool2',
+                    'host': 'host2',
+                    'backend': 'BBB',
+                    'pool': 'pool2',
                     'capabilities': {
+                        'pool_name': 'pool2',
                         'timestamp': None,
                         'driver_handles_share_servers': False,
-                        'share_backend_name': 'CCC',
-                        'free_capacity_gb': 700,
+                        'share_backend_name': 'BBB',
+                        'free_capacity_gb': 42,
                         'driver_version': None,
-                        'total_capacity_gb': 10000,
+                        'total_capacity_gb': 52,
                         'reserved_percentage': 0,
                         'vendor_name': None,
-                        'storage_protocol': None},
-                }
+                        'storage_protocol': None
+                    },
+                },
             ]
             self.assertEqual(len(expected), len(res))
             self.assertEqual(sorted(expected), sorted(res))
+
+    @ddt.data(
+        None,
+        {},
+        {'key1': 'value1'},
+        {'key1': 'value1', 'key2': 'value*'},
+        {'key1': '.*', 'key2': '.*'},
+    )
+    def test_passes_filters_true(self, filter):
+
+        data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        self.assertTrue(self.host_manager._passes_filters(data, filter))
+
+    @ddt.data(
+        {'key1': 'value$'},
+        {'key4': 'value'},
+        {'key1': 'value1.+', 'key2': 'value*'},
+    )
+    def test_passes_filters_false(self, filter):
+
+        data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        self.assertFalse(self.host_manager._passes_filters(data, filter))
 
 
 class HostStateTestCase(test.TestCase):

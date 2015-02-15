@@ -600,3 +600,16 @@ class SharesClient(service_client.ServiceClient):
         uri = "share-servers/%s/details" % share_server_id
         resp, body = self.get(uri)
         return resp, self._parse_resp(body)
+
+###############
+
+    def list_pools(self, detail=False, search_opts=None):
+        """Get list of scheduler pools."""
+        uri = 'scheduler-stats/pools'
+        if detail:
+            uri += '/detail'
+        if search_opts:
+            uri += "?%s" % urllib.urlencode(search_opts)
+        resp, body = self.get(uri)
+        self.expected_success(200, resp.status)
+        return resp, json.loads(body)

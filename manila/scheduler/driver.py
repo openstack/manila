@@ -91,5 +91,4 @@ class Scheduler(object):
 
     def get_pools(self, context, filters):
         """Must override schedule method for scheduler to work."""
-        raise NotImplementedError(_(
-            "Must implement get_pools"))
+        raise NotImplementedError(_("Must implement get_pools"))
