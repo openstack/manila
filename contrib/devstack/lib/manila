@@ -297,7 +297,7 @@ function configure_manila {
 }
 
 function create_service_share_servers {
-    private_net_id=$(neutron net-list --all-tenants | grep ' private ' | get_field 1)
+    private_net_id=$(nova net-list | grep ' private ' | get_field 1)
     for BE in ${MANILA_ENABLED_BACKENDS//,/ }; do
         driver_handles_share_servers=$(iniget $MANILA_CONF $BE driver_handles_share_servers)
         share_driver=$(iniget $MANILA_CONF $BE share_driver)
