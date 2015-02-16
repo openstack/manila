@@ -27,7 +27,19 @@ from manila.api import xmlutil
 from manila.i18n import _
 from manila import utils
 
+api_common_opts = [
+    cfg.IntOpt(
+        'osapi_max_limit',
+        default=1000,
+        help='The maximum number of items returned in a single response from '
+             'a collection resource.'),
+    cfg.StrOpt(
+        'osapi_share_base_URL',
+        help='Base URL to be presented to users in links to the Share API'),
+]
+
 CONF = cfg.CONF
+CONF.register_opts(api_common_opts)
 LOG = log.getLogger(__name__)
 XML_NS_V1 = 'http://docs.openstack.org/volume/api/v1'
 

@@ -95,15 +95,6 @@ global_opts = [
     cfg.MultiStrOpt('osapi_share_extension',
                     default=['manila.api.contrib.standard_extensions'],
                     help='The osapi share extension to load.'),
-    cfg.StrOpt('osapi_share_base_URL',
-               default=None,
-               help='Base URL that will be presented to users in links '
-                    'to the OpenStack Share API.',
-               deprecated_name='osapi_compute_link_prefix'),
-    cfg.IntOpt('osapi_max_limit',
-               default=1000,
-               help='The maximum number of items returned in a single '
-                    'response from a collection resource.'),
     cfg.StrOpt('sqlite_db',
                default='manila.sqlite',
                help='The filename to use with sqlite.'),
