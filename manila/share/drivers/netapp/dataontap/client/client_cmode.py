@@ -127,8 +127,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         try:
             root_volume_name = vserver_info.get_child_by_name(
-                'attributes-list').get_child_by_name('vserver-info')\
-                .get_child_content('root-volume')
+                'attributes-list').get_child_by_name(
+                    'vserver-info').get_child_content('root-volume')
         except AttributeError:
             msg = _('Could not determine root volume name '
                     'for Vserver %s.') % vserver_name
@@ -264,9 +264,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
         port_info = self.send_request('net-port-get-iter', api_args)
         try:
-            port = port_info.get_child_by_name('attributes-list')\
-                .get_child_by_name('net-port-info')\
-                .get_child_content('port')
+            port = port_info.get_child_by_name(
+                'attributes-list').get_child_by_name(
+                    'net-port-info').get_child_content('port')
         except AttributeError:
             msg = _("Data port does not exist for node %s.")
             raise exception.NetAppException(msg % node)
@@ -414,35 +414,48 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('net-interface-delete', api_args)
 
     @na_utils.trace
-    def calculate_aggregate_capacity(self, aggregate_names):
-        """Calculates capacity of one or more aggregates
+    def get_cluster_aggregate_capacities(self, aggregate_names):
+        """Calculates capacity of one or more aggregates.
 
-        Returns tuple (total, free) in bytes.
+        Returns dictionary of aggregate capacity metrics.
+        'size-used' is the actual space consumed on the aggregate.
+        'size-available' is the actual space remaining.
+        'size-total' is the defined total aggregate size, such that
+        used + available = total.
         """
         desired_attributes = {
             'aggr-attributes': {
                 'aggregate-name': None,
                 'aggr-space-attributes': {
-                    'size-total': None,
                     'size-available': None,
+                    'size-total': None,
+                    'size-used': None,
                 },
             },
         }
         aggrs = self._get_aggregates(aggregate_names=aggregate_names,
                                      desired_attributes=desired_attributes)
-        aggr_space_attrs = [aggr.get_child_by_name('aggr-space-attributes')
-                            for aggr in aggrs]
-        total = sum([int(aggr.get_child_content('size-total'))
-                     for aggr in aggr_space_attrs]) if aggr_space_attrs else 0
-        free = max([int(aggr.get_child_content('size-available'))
-                    for aggr in aggr_space_attrs]) if aggr_space_attrs else 0
-        return total, free
+        aggr_space_dict = dict()
+        for aggr in aggrs:
+            aggr_name = aggr.get_child_content('aggregate-name')
+            aggr_space_attrs = aggr.get_child_by_name('aggr-space-attributes')
+
+            aggr_space_dict[aggr_name] = {
+                'available':
+                int(aggr_space_attrs.get_child_content('size-available')),
+                'total':
+                int(aggr_space_attrs.get_child_content('size-total')),
+                'used':
+                int(aggr_space_attrs.get_child_content('size-used')),
+            }
+        return aggr_space_dict
 
     @na_utils.trace
-    def get_aggregates_for_vserver(self, vserver_name):
-        """Returns aggregate list and size info for a Vserver.
+    def get_vserver_aggregate_capacities(self, vserver_name):
+        """Calculates capacity of one or more aggregates for a vserver.
 
-        Must be called against a Vserver API client.
+        Returns dictionary of aggregate capacity metrics.  This must
+        be called against a Vserver LIF.
         """
         LOG.debug('Finding available aggregates for Vserver %s', vserver_name)
 
@@ -466,19 +479,19 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         vserver_aggr_info_list = vserver_aggr_info_element.get_children()
 
         if not vserver_aggr_info_list:
-            msg = _("No aggregates assigned to Vserver %s")
-            raise exception.NetAppException(msg % vserver_name)
+            LOG.warning(_LW('No aggregates assigned to Vserver %s.'),
+                        vserver_name)
 
         # Return dict of key-value pair of aggr_name:aggr_size_available.
-        aggr_dict = {}
+        aggr_space_dict = {}
 
         for aggr_info in vserver_aggr_info_list:
             aggr_name = aggr_info.get_child_content('aggr-name')
             aggr_size = int(aggr_info.get_child_content('aggr-availsize'))
-            aggr_dict[aggr_name] = aggr_size
+            aggr_space_dict[aggr_name] = {'available': aggr_size}
 
-        LOG.debug('Found available aggregates: %s', aggr_dict)
-        return aggr_dict
+        LOG.debug('Found available Vserver aggregates: %s', aggr_space_dict)
+        return aggr_space_dict
 
     def _get_aggregates(self, aggregate_names=None, desired_attributes=None):
 
@@ -700,6 +713,45 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
         result = self.send_request('volume-get-iter', api_args)
         return self._has_records(result)
+
+    @na_utils.trace
+    def get_aggregate_for_volume(self, volume_name):
+        """Get the name of the aggregate containing a volume."""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'containing-aggregate-name': None,
+                        'name': None,
+                    },
+                },
+            },
+        }
+        result = self.send_request('volume-get-iter', api_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        volume_attributes = attributes_list.get_child_by_name(
+            'volume-attributes') or netapp_api.NaElement('none')
+        volume_id_attributes = volume_attributes.get_child_by_name(
+            'volume-id-attributes') or netapp_api.NaElement('none')
+
+        aggregate = volume_id_attributes.get_child_content(
+            'containing-aggregate-name')
+
+        if not aggregate:
+            msg = _('Could not find aggregate for volume %s.')
+            raise exception.NetAppException(msg % volume_name)
+
+        return aggregate
 
     @na_utils.trace
     def create_volume_clone(self, volume_name, parent_volume_name,

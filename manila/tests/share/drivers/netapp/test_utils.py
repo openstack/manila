@@ -84,18 +84,18 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertEqual('OK', result)
         self.assertEqual(2, na_utils.LOG.debug.call_count)
 
-    def test_validate_instantiation_proxy(self):
+    def test_validate_driver_instantiation_proxy(self):
         kwargs = {'netapp_mode': 'proxy'}
 
-        na_utils.validate_instantiation(**kwargs)
+        na_utils.validate_driver_instantiation(**kwargs)
 
         self.assertEqual(0, na_utils.LOG.warning.call_count)
 
-    def test_validate_instantiation_no_proxy(self):
+    def test_validate_driver_instantiation_no_proxy(self):
         self.mock_object(na_utils, 'LOG')
         kwargs = {'netapp_mode': 'asdf'}
 
-        na_utils.validate_instantiation(**kwargs)
+        na_utils.validate_driver_instantiation(**kwargs)
 
         self.assertEqual(1, na_utils.LOG.warning.call_count)
 

@@ -21,7 +21,6 @@ import socket
 
 import mock
 from oslo_utils import timeutils
-from oslo_utils import units
 
 from manila import context
 from manila import exception
@@ -99,7 +98,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def setUp(self):
         super(NetAppFileStorageLibraryTestCase, self).setUp()
 
-        self.mock_object(na_utils, 'validate_instantiation')
+        self.mock_object(na_utils, 'validate_driver_instantiation')
         self.mock_object(na_utils, 'setup_tracing')
         self.mock_object(lib_base, 'LOG')
 
@@ -126,8 +125,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         config.netapp_server_port = fake.CLIENT_KWARGS['port']
         config.netapp_vserver = fake.VSERVER1
         config.netapp_volume_name_template = fake.VOLUME_NAME_TEMPLATE
-        config.netapp_aggregate_name_search_pattern = \
-            fake.AGGREGATE_NAME_SEARCH_PATTERN
+        config.netapp_aggregate_name_search_pattern = (
+            fake.AGGREGATE_NAME_SEARCH_PATTERN)
         config.netapp_vserver_name_template = fake.VSERVER_NAME_TEMPLATE
         config.netapp_root_volume_aggregate = fake.ROOT_VOLUME_AGGREGATE
         config.netapp_root_volume = fake.ROOT_VOLUME
@@ -137,7 +136,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_init(self):
         self.assertEqual(fake.DRIVER_NAME, self.library.driver_name)
         self.assertEqual(self.mock_db, self.library.db)
-        self.assertEqual(1, na_utils.validate_instantiation.call_count)
+        self.assertEqual(1, na_utils.validate_driver_instantiation.call_count)
         self.assertEqual(1, na_utils.setup_tracing.call_count)
         self.assertIsNone(self.library._helpers)
         self.assertListEqual([], self.library._licenses)
@@ -263,9 +262,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.mock_object(self.library, '_find_matching_aggregates')
         self.mock_object(self.client,
-                         'calculate_aggregate_capacity',
-                         mock.Mock(return_value=(fake.TOTAL_CAPACITY,
-                                                 fake.FREE_CAPACITY)))
+                         'get_cluster_aggregate_capacities',
+                         mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
         mock_handle_ems_logging = self.mock_object(self.library,
                                                    '_handle_ems_logging')
 
@@ -277,10 +275,27 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'vendor_name': 'NetApp',
             'driver_version': '1.0',
             'storage_protocol': 'NFS_CIFS',
-            'total_capacity_gb': fake.TOTAL_CAPACITY / units.Gi,
-            'free_capacity_gb': fake.FREE_CAPACITY / units.Gi
+            'total_capacity_gb': 0.0,
+            'free_capacity_gb': 0.0,
+            'pools': [
+                {'pool_name': 'manila1',
+                 'total_capacity_gb': 3.3,
+                 'free_capacity_gb': 1.1,
+                 'allocated_capacity_gb': 2.2,
+                 'QoS_support': 'False',
+                 'reserved_percentage': 0,
+                 },
+                {'pool_name': 'manila2',
+                 'total_capacity_gb': 6.0,
+                 'free_capacity_gb': 2.0,
+                 'allocated_capacity_gb': 4.0,
+                 'QoS_support': 'False',
+                 'reserved_percentage': 0,
+                 },
+            ]
         }
 
+        self.maxDiff = None
         self.assertDictEqual(expected, result)
         self.assertTrue(mock_handle_ems_logging.called)
 
@@ -339,13 +354,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          'list_aggregates',
                          mock.Mock(return_value=fake.AGGREGATES))
 
-        self.library.configuration.netapp_aggregate_name_search_pattern =\
-            fake.AGGREGATE_NAME_SEARCH_PATTERN
+        self.library.configuration.netapp_aggregate_name_search_pattern = (
+            fake.AGGREGATE_NAME_SEARCH_PATTERN)
         result = self.library._find_matching_aggregates()
         self.assertListEqual(result, fake.AGGREGATES)
 
-        self.library.configuration.netapp_aggregate_name_search_pattern =\
-            'aggr.*'
+        self.library.configuration.netapp_aggregate_name_search_pattern = (
+            'aggr.*')
         result = self.library._find_matching_aggregates()
         self.assertListEqual(result, ['aggr0'])
 
@@ -618,6 +633,35 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertFalse(self.library._client.create_network_interface.called)
 
+    def test_get_pool_has_pool(self):
+        result = self.library.get_pool(fake.SHARE)
+        self.assertEqual(fake.POOL_NAME, result)
+        self.assertFalse(self.client.get_aggregate_for_volume.called)
+
+    def test_get_pool_no_pool(self):
+
+        fake_share = copy.deepcopy(fake.SHARE)
+        fake_share['host'] = '%(host)s@%(backend)s' % {
+            'host': fake.HOST_NAME, 'backend': fake.BACKEND_NAME}
+        self.client.get_aggregate_for_volume.return_value = fake.POOL_NAME
+
+        result = self.library.get_pool(fake_share)
+
+        self.assertEqual(fake.POOL_NAME, result)
+        self.assertTrue(self.client.get_aggregate_for_volume.called)
+
+    def test_get_pool_raises(self):
+
+        fake_share = copy.deepcopy(fake.SHARE)
+        fake_share['host'] = '%(host)s@%(backend)s' % {
+            'host': fake.HOST_NAME, 'backend': fake.BACKEND_NAME}
+        self.client.get_aggregate_for_volume.side_effect = (
+            exception.NetAppException)
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.get_pool,
+                          fake_share)
+
     def test_create_share(self):
 
         vserver_client = mock.Mock()
@@ -674,16 +718,14 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_allocate_container(self):
 
-        aggregates = {'aggr0': 10000000000, 'aggr1': 20000000000}
         vserver_client = mock.Mock()
-        vserver_client.get_aggregates_for_vserver.return_value = aggregates
 
         self.library._allocate_container(fake.SHARE,
                                          fake.VSERVER1,
                                          vserver_client)
 
         share_name = self.library._get_valid_share_name(fake.SHARE['id'])
-        vserver_client.create_volume.assert_called_with('aggr1',
+        vserver_client.create_volume.assert_called_with(fake.POOL_NAME,
                                                         share_name,
                                                         fake.SHARE['size'])
 
@@ -938,8 +980,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_get_network_allocations_number(self):
 
-        self.library._client.list_cluster_nodes.return_value = \
-            fake.CLUSTER_NODES
+        self.library._client.list_cluster_nodes.return_value = (
+            fake.CLUSTER_NODES)
 
         result = self.library.get_network_allocations_number()
 

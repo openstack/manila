@@ -40,8 +40,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
     def test_create_share(self):
 
-        self.mock_client.get_volume_junction_path.return_value = \
-            fake.NFS_SHARE_PATH
+        self.mock_client.get_volume_junction_path.return_value = (
+            fake.NFS_SHARE_PATH)
 
         result = self.helper.create_share(fake.SHARE_NAME, fake.SHARE_ADDRESS)
 
@@ -145,8 +145,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
     def test_get_existing_rules(self):
 
-        self.mock_client.get_nfs_export_rules.return_value = \
-            fake.NFS_ACCESS_HOSTS
+        self.mock_client.get_nfs_export_rules.return_value = (
+            fake.NFS_ACCESS_HOSTS)
 
         result = self.helper._get_existing_rules(fake.NFS_SHARE)
 

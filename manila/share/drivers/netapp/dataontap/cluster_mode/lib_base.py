@@ -35,6 +35,7 @@ from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import options as na_opts
 from manila.share.drivers.netapp import utils as na_utils
+from manila.share import utils as share_utils
 from manila import utils
 
 
@@ -73,7 +74,7 @@ class NetAppCmodeFileStorageLibrary(object):
     AUTOSUPPORT_INTERVAL_SECONDS = 3600  # hourly
 
     def __init__(self, db, driver_name, **kwargs):
-        na_utils.validate_instantiation(**kwargs)
+        na_utils.validate_driver_instantiation(**kwargs)
 
         self.db = db
         self.driver_name = driver_name
@@ -157,17 +158,39 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def get_share_stats(self):
         """Retrieve stats info from Cluster Mode backend."""
-        total, free = self._client.calculate_aggregate_capacity(
+        aggr_space = self._client.get_cluster_aggregate_capacities(
             self._find_matching_aggregates())
 
-        data = dict(
-            share_backend_name=self.backend_name,
-            driver_name=self.driver_name,
-            vendor_name='NetApp',
-            driver_version='1.0',
-            storage_protocol='NFS_CIFS',
-            total_capacity_gb=(total / units.Gi),
-            free_capacity_gb=(free / units.Gi))
+        data = {
+            'share_backend_name': self.backend_name,
+            'driver_name': self.driver_name,
+            'vendor_name': 'NetApp',
+            'driver_version': '1.0',
+            'storage_protocol': 'NFS_CIFS',
+            'total_capacity_gb': 0.0,
+            'free_capacity_gb': 0.0,
+        }
+
+        pools = []
+        for aggr_name in sorted(aggr_space.keys()):
+
+            total_capacity_gb = na_utils.round_down(
+                float(aggr_space[aggr_name]['total']) / units.Gi, '0.01')
+            free_capacity_gb = na_utils.round_down(
+                float(aggr_space[aggr_name]['available']) / units.Gi, '0.01')
+            allocated_capacity_gb = na_utils.round_down(
+                float(aggr_space[aggr_name]['used']) / units.Gi, '0.01')
+
+            pools.append({
+                'pool_name': aggr_name,
+                'total_capacity_gb': total_capacity_gb,
+                'free_capacity_gb': free_capacity_gb,
+                'allocated_capacity_gb': allocated_capacity_gb,
+                'QoS_support': 'False',
+                'reserved_percentage': 0,
+            })
+
+        data['pools'] = pools
 
         self._handle_ems_logging()
 
@@ -317,6 +340,15 @@ class NetAppCmodeFileStorageLibrary(object):
                 ip, netmask, vlan, node, port, vserver_name, allocation_id,
                 self.configuration.netapp_lif_name_template)
 
+    @na_utils.trace
+    def get_pool(self, share):
+        pool = share_utils.extract_host(share['host'], level='pool')
+        if pool:
+            return pool
+
+        volume_name = self._get_valid_share_name(share['id'])
+        return self._client.get_aggregate_for_volume(volume_name)
+
     @ensure_vserver
     @na_utils.trace
     def create_share(self, context, share, share_server):
@@ -340,12 +372,17 @@ class NetAppCmodeFileStorageLibrary(object):
     def _allocate_container(self, share, vserver, vserver_client):
         """Create new share on aggregate."""
         share_name = self._get_valid_share_name(share['id'])
-        aggregates = vserver_client.get_aggregates_for_vserver(vserver)
-        aggregate = max(aggregates, key=lambda m: aggregates[m])
+
+        # Get Data ONTAP aggregate name as pool name.
+        aggregate_name = share_utils.extract_host(share['host'], level='pool')
+
+        if aggregate_name is None:
+            msg = _("Pool is not available in the share host field.")
+            raise exception.InvalidHost(reason=msg)
 
         LOG.debug('Creating volume %(share_name)s on aggregate %(aggregate)s',
-                  {'share_name': share_name, 'aggregate': aggregate})
-        vserver_client.create_volume(aggregate, share_name, share['size'])
+                  {'share_name': share_name, 'aggregate': aggregate_name})
+        vserver_client.create_volume(aggregate_name, share_name, share['size'])
 
     @na_utils.trace
     def _allocate_container_from_snapshot(self, share, snapshot,

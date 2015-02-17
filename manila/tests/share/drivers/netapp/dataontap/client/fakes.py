@@ -123,7 +123,14 @@ VSERVER_DATA_LIST_RESPONSE = etree.XML("""
   </results>
 """ % {'vserver': VSERVER_NAME})
 
-VSERVER_AGGREGATES = {'aggr0': 45678592, 'manila': 6448431104}
+VSERVER_AGGREGATES = {
+    'aggr0': {
+        'available': 45678592,
+    },
+    'manila': {
+        'available': 6448431104,
+    },
+}
 
 VSERVER_GET_RESPONSE_NO_AGGREGATES = etree.XML("""
   <results status="passed">
@@ -577,8 +584,9 @@ AGGR_GET_SPACE_RESPONSE = etree.XML("""
           </plexes>
         </aggr-raid-attributes>
         <aggr-space-attributes>
-          <size-available>45678592</size-available>
+          <size-available>45670400</size-available>
           <size-total>943718400</size-total>
+          <size-used>898048000</size-used>
         </aggr-space-attributes>
         <aggregate-name>aggr0</aggregate-name>
       </aggr-attributes>
@@ -599,8 +607,9 @@ AGGR_GET_SPACE_RESPONSE = etree.XML("""
           </plexes>
         </aggr-raid-attributes>
         <aggr-space-attributes>
-          <size-available>6448435200</size-available>
+          <size-available>4267659264</size-available>
           <size-total>7549747200</size-total>
+          <size-used>3282087936</size-used>
         </aggr-space-attributes>
         <aggregate-name>manila</aggregate-name>
       </aggr-attributes>
@@ -964,4 +973,22 @@ NFS_EXPORTFS_LIST_RULES_2_RESPONSE = etree.XML("""
     'path': VOLUME_JUNCTION_PATH,
     'host1': NFS_EXPORT_RULES[0],
     'host2': NFS_EXPORT_RULES[1],
+})
+
+GET_AGGREGATE_FOR_VOLUME_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <containing-aggregate-name>%(aggr)s</containing-aggregate-name>
+          <name>%(share)s</name>
+          <owning-vserver-name>os_aa666789-5576-4835-87b7-868069856459</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': SHARE_AGGREGATE_NAME,
+    'share': SHARE_NAME
 })
