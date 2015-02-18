@@ -17,6 +17,7 @@ import copy
 import datetime
 
 import mock
+from oslo_config import cfg
 import webob
 
 from manila.api import common
@@ -24,9 +25,13 @@ from manila.api.v1 import shares
 from manila import context
 from manila import exception
 from manila.share import api as share_api
+from manila.share import share_types
 from manila import test
 from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
+from manila import utils
+
+CONF = cfg.CONF
 
 
 class ShareApiTest(test.TestCase):
@@ -43,12 +48,27 @@ class ShareApiTest(test.TestCase):
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
         self.maxDiff = None
-        self.shr_example = {
+        self.share = {
             "size": 100,
-            "name": "Share Test Name",
-            "display_name": "Updated Desc",
-            "display_description": "Updated Display Desc",
+            "display_name": "Share Test Name",
+            "display_description": "Share Test Desc",
+            "share_proto": "fakeproto",
+            "availability_zone": "zone1:host1",
         }
+        self.create_mock = mock.Mock(
+            return_value=stubs.stub_share(
+                '1',
+                display_name=self.share['display_name'],
+                display_description=self.share['display_description'],
+                size=100,
+                share_proto=self.share['share_proto'].upper(),
+                availability_zone=self.share['availability_zone'])
+        )
+        self.vt = {
+            'id': 'fake_volume_type_id',
+            'name': 'fake_volume_type_name',
+        }
+        CONF.set_default("default_share_type", None)
 
     def _get_expected_share_detailed_response(self, values=None, admin=False):
         share = {
@@ -80,6 +100,10 @@ class ShareApiTest(test.TestCase):
             ],
         }
         if values:
+            if 'display_name' in values:
+                values['name'] = values.pop('display_name')
+            if 'display_description' in values:
+                values['description'] = values.pop('display_description')
             share.update(values)
         if share.get('share_proto'):
             share['share_proto'] = share['share_proto'].upper()
@@ -88,27 +112,41 @@ class ShareApiTest(test.TestCase):
         return {'share': share}
 
     def test_share_create(self):
-        shr = {
-            "size": 100,
-            "name": "Share Test Name",
-            "description": "Share Test Desc",
-            "share_proto": "fakeproto",
-            "availability_zone": "zone1:host1"
-        }
-        create_mock = mock.Mock(return_value=stubs.stub_share('1',
-                                display_name=shr['name'],
-                                display_description=shr['description'],
-                                size=100,
-                                share_proto=shr['share_proto'].upper(),
-                                availability_zone=shr['availability_zone']))
-        self.mock_object(share_api.API, 'create', create_mock)
+        self.mock_object(share_api.API, 'create', self.create_mock)
 
-        body = {"share": copy.deepcopy(shr)}
+        body = {"share": copy.deepcopy(self.share)}
         req = fakes.HTTPRequest.blank('/shares')
         res_dict = self.controller.create(req, body)
 
-        expected = self._get_expected_share_detailed_response(shr)
+        expected = self._get_expected_share_detailed_response(self.share)
         self.assertEqual(expected, res_dict)
+
+    def test_share_create_with_valid_default_share_type(self):
+        self.mock_object(share_types, 'get_share_type_by_name',
+                         mock.Mock(return_value=self.vt))
+        CONF.set_default("default_share_type", self.vt['name'])
+        self.mock_object(share_api.API, 'create', self.create_mock)
+
+        body = {"share": copy.deepcopy(self.share)}
+        req = fakes.HTTPRequest.blank('/shares')
+        res_dict = self.controller.create(req, body)
+
+        expected = self._get_expected_share_detailed_response(self.share)
+        share_types.get_share_type_by_name.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), self.vt['name'])
+        self.assertEqual(expected, res_dict)
+
+    def test_share_create_with_invalid_default_share_type(self):
+        self.mock_object(
+            share_types, 'get_default_share_type',
+            mock.Mock(side_effect=exception.ShareTypeNotFoundByName(
+                self.vt['name'])),
+        )
+        CONF.set_default("default_share_type", self.vt['name'])
+        req = fakes.HTTPRequest.blank('/shares')
+        self.assertRaises(exception.ShareTypeNotFoundByName,
+                          self.controller.create, req, {'share': self.share})
+        share_types.get_default_share_type.assert_called_once_with()
 
     def test_share_create_with_share_net(self):
         shr = {
@@ -299,31 +337,20 @@ class ShareApiTest(test.TestCase):
         self.assertEqual(resp.status_int, 202)
 
     def test_share_updates_description(self):
-        shr = self.shr_example
-        body = {"share": shr}
-
         req = fakes.HTTPRequest.blank('/share/1')
-        res_dict = self.controller.update(req, 1, body)
-        self.assertEqual(res_dict['share']["name"], shr["display_name"])
+        res_dict = self.controller.update(req, 1, {"share": self.share})
+        self.assertEqual(res_dict["share"]["name"], self.share["display_name"])
 
     def test_share_updates_display_descr(self):
-        shr = self.shr_example
-        body = {"share": shr}
-
         req = fakes.HTTPRequest.blank('/share/1')
-        res_dict = self.controller.update(req, 1, body)
-
+        res_dict = self.controller.update(req, 1, {"share": self.share})
         self.assertEqual(res_dict['share']["description"],
-                         shr["display_description"])
+                         self.share["display_description"])
 
     def test_share_not_updates_size(self):
-        shr = self.shr_example
-        body = {"share": shr}
-
         req = fakes.HTTPRequest.blank('/share/1')
-        res_dict = self.controller.update(req, 1, body)
-
-        self.assertNotEqual(res_dict['share']["size"], shr["size"])
+        res_dict = self.controller.update(req, 1, {"share": self.share})
+        self.assertNotEqual(res_dict['share']["size"], self.share["size"])
 
     def test_share_delete_no_share(self):
         self.mock_object(share_api.API, 'get',
@@ -451,7 +478,6 @@ class ShareApiTest(test.TestCase):
                 'status': 'available',
                 'snapshot_id': 'fake_snapshot_id',
                 'share_type_id': 'fake_share_type_id',
-                'snapshot_id': 'fake_snapshot_id',
                 'host': 'fake_host',
                 'share_network_id': 'fake_share_network_id',
             },

@@ -32,6 +32,9 @@ if is_service_enabled manila; then
 
         echo_summary "Starting Manila"
         start_manila
+
+        echo_summary "Creating Manila default share type"
+        create_default_share_type
     fi
 
     if [[ "$1" == "unstack" ]]; then

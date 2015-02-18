@@ -275,6 +275,10 @@ class ShareController(wsgi.Controller):
             except exception.ShareTypeNotFound:
                 msg = _("Share type not found.")
                 raise exc.HTTPNotFound(explanation=msg)
+        elif not snapshot:
+            def_share_type = share_types.get_default_share_type()
+            if def_share_type:
+                kwargs['share_type'] = def_share_type
 
         new_share = self.share_api.create(context,
                                           share_proto,
