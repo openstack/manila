@@ -22,6 +22,7 @@ import itertools
 import oslo_concurrency.opts
 import oslo_log._options
 
+import manila.api.common
 import manila.api.middleware.auth
 import manila.api.middleware.sizelimit
 import manila.common.config
@@ -71,6 +72,7 @@ import manila.wsgi
 # Any new option list or option needs to be registered here.
 _global_opt_lists = [
     # Keep list alphabetically sorted
+    manila.api.common.api_common_opts,
     [manila.api.middleware.auth.use_forwarded_for_opt],
     [manila.api.middleware.sizelimit.max_request_body_size_opt],
     manila.common.config.core_opts,
