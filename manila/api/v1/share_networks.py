@@ -45,6 +45,7 @@ SHARE_NETWORK_ATTRS = (
     'user_id',
     'created_at',
     'updated_at',
+    'nova_net_id',
     'neutron_net_id',
     'neutron_subnet_id',
     'network_type',
@@ -208,6 +209,23 @@ class ShareNetworkController(wsgi.Controller):
                             'detail')
         return self._get_share_networks(req)
 
+    @staticmethod
+    def _verify_no_mutually_exclusive_data(share_network, update_data=None):
+        update_data = update_data or dict()
+        neutron_net_id = (
+            share_network.get('neutron_net_id') or
+            update_data.get('neutron_net_id'))
+        neutron_subnet_id = (
+            share_network.get('neutron_subnet_id') or
+            update_data.get('neutron_subnet_id'))
+        nova_net_id = (
+            share_network.get('nova_net_id') or
+            update_data.get('nova_net_id'))
+        if nova_net_id and (neutron_net_id or neutron_subnet_id):
+            msg = _("Neutron net data and Nova net data are mutually "
+                    "exclusive. Only one of these are allowed at a time.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
     @wsgi.serializers(xml=ShareNetworkTemplate)
     def update(self, req, id, body):
         """Update specified share network."""
@@ -224,6 +242,7 @@ class ShareNetworkController(wsgi.Controller):
 
         update_values = body[RESOURCE_NAME]
 
+        self._verify_no_mutually_exclusive_data(share_network, update_values)
         if share_network['share_servers']:
             for value in update_values:
                 if value not in ['name', 'description']:
@@ -254,6 +273,7 @@ class ShareNetworkController(wsgi.Controller):
 
         values = body[RESOURCE_NAME]
         values['project_id'] = context.project_id
+        self._verify_no_mutually_exclusive_data(values)
 
         try:
             reservations = QUOTAS.reserve(context, share_networks=1)
