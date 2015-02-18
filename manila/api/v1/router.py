@@ -108,5 +108,5 @@ class APIRouter(manila.api.openstack.APIRouter):
         self.resources['types'] = share_types.create_resource()
         mapper.resource("type", "types",
                         controller=self.resources['types'],
-                        collection={'detail': 'GET'},
+                        collection={'detail': 'GET', 'default': 'GET'},
                         member={'action': 'POST'})

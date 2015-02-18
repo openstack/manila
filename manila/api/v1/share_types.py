@@ -14,6 +14,7 @@
 
 """The share type & share types extra specs extension."""
 
+import six
 from webob import exc
 
 from manila.api.openstack import wsgi
@@ -44,7 +45,24 @@ class ShareTypesController(wsgi.Controller):
             msg = _("Share type not found.")
             raise exc.HTTPNotFound(explanation=msg)
 
-        share_type['id'] = str(share_type['id'])
+        share_type['id'] = six.text_type(share_type['id'])
+        return self._view_builder.show(req, share_type)
+
+    def default(self, req):
+        """Return default volume type."""
+        context = req.environ['manila.context']
+
+        try:
+            share_type = share_types.get_default_share_type(context)
+        except exception.NotFound:
+            msg = _("Share type not found")
+            raise exc.HTTPNotFound(explanation=msg)
+
+        if not share_type:
+            msg = _("Default share type not found")
+            raise exc.HTTPNotFound(explanation=msg)
+
+        share_type['id'] = six.text_type(share_type['id'])
         return self._view_builder.show(req, share_type)
 
 
