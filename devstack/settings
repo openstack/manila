@@ -1,0 +1,9 @@
+# Devstack settings
+
+# We have to add Manila to enabled services for screen_it to work
+# It consists of 3 parts: m-api (API), m-shr (Share) and m-sch (Scheduler).
+
+enable_service manila
+enable_service m-api
+enable_service m-shr
+enable_service m-sch
