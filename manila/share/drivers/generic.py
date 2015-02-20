@@ -168,17 +168,24 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _setup_helpers(self):
         """Initializes protocol-specific NAS drivers."""
-        for helper_str in self.configuration.share_helpers:
-            share_proto, __, import_str = helper_str.partition('=')
-            helper = importutils.import_class(import_str)
-            self._helpers[share_proto.upper()] = helper(
-                self._execute,
-                self._ssh_exec,
-                self.configuration)
+        helpers = self.configuration.share_helpers
+        if helpers:
+            for helper_str in helpers:
+                share_proto, __, import_str = helper_str.partition('=')
+                helper = importutils.import_class(import_str)
+                self._helpers[share_proto.upper()] = helper(
+                    self._execute,
+                    self._ssh_exec,
+                    self.configuration)
+        else:
+            raise exception.ManilaException(
+                "No protocol helpers selected for Generic Driver. "
+                "Please specify using config option 'share_helpers'.")
 
     @ensure_server
     def create_share(self, context, share, share_server=None):
         """Creates share."""
+        helper = self._get_helper(share)
         server_details = share_server['backend_details']
         volume = self._allocate_container(self.admin_context, share)
         volume = self._attach_volume(
@@ -188,7 +195,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             volume)
         self._format_device(server_details, volume)
         self._mount_device(share, server_details, volume)
-        location = self._get_helper(share).create_export(
+        location = helper.create_export(
             server_details,
             share['name'])
         return location
@@ -481,14 +488,14 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Is called to create share from snapshot."""
+        helper = self._get_helper(share)
         volume = self._allocate_container(self.admin_context, share, snapshot)
         volume = self._attach_volume(
             self.admin_context, share,
             share_server['backend_details']['instance_id'], volume)
         self._mount_device(share, share_server['backend_details'], volume)
-        location = self._get_helper(share).create_export(
-            share_server['backend_details'],
-            share['name'])
+        location = helper.create_export(share_server['backend_details'],
+                                        share['name'])
         return location
 
     def _is_share_server_active(self, context, share_server):
@@ -501,10 +508,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def delete_share(self, context, share, share_server=None):
         """Deletes share."""
+        helper = self._get_helper(share)
         if not self.driver_handles_share_servers:
             share_server = self.service_instance_manager.get_common_server()
         if self._is_share_server_active(context, share_server):
-            self._get_helper(share).remove_export(
+            helper.remove_export(
                 share_server['backend_details'], share['name'])
             self._unmount_device(share, share_server['backend_details'])
             self._detach_volume(self.admin_context, share,
@@ -564,6 +572,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     @ensure_server
     def ensure_share(self, context, share, share_server=None):
         """Ensure that storage are mounted and exported."""
+        helper = self._get_helper(share)
         volume = self._get_volume(context, share['id'])
         volume = self._attach_volume(
             context,
@@ -571,9 +580,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             share_server['backend_details']['instance_id'],
             volume)
         self._mount_device(share, share_server['backend_details'], volume)
-        self._get_helper(share).create_export(share_server['backend_details'],
-                                              share['name'],
-                                              recreate=True)
+        helper.create_export(share_server['backend_details'], share['name'],
+                             recreate=True)
 
     @ensure_server
     def allow_access(self, context, share, access, share_server=None):
@@ -592,12 +600,12 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                             access['access_to'])
 
     def _get_helper(self, share):
-        if share['share_proto'] == 'NFS':
-            return self._helpers['NFS']
-        elif share['share_proto'] == 'CIFS':
-            return self._helpers['CIFS']
+        helper = self._helpers.get(share['share_proto'])
+        if helper:
+            return helper
         else:
-            raise exception.InvalidShare(reason='Wrong share type')
+            raise exception.InvalidShare(
+                reason="Wrong, unsupported or disabled protocol")
 
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""

@@ -131,6 +131,12 @@ class GenericShareDriverTestCase(test.TestCase):
         )
         self.assertEqual(len(self._driver._helpers), 1)
 
+    def test_setup_helpers_no_helpers(self):
+        self._driver._helpers = {}
+        CONF.set_default('share_helpers', [])
+        self.assertRaises(exception.ManilaException,
+                          self._driver._setup_helpers)
+
     def test_create_share(self):
         volume = 'fake_volume'
         volume2 = 'fake_volume2'
@@ -161,6 +167,11 @@ class GenericShareDriverTestCase(test.TestCase):
         share = fake_share.fake_share(share_network_id=None)
         self.assertRaises(exception.ManilaException, self._driver.create_share,
                           self._context, share)
+
+    def test_create_share_invalid_helper(self):
+        self._driver._helpers = {'CIFS': self._helper_cifs}
+        self.assertRaises(exception.InvalidShare, self._driver.create_share,
+                          self._context, self.share, share_server=self.server)
 
     def test_format_device(self):
         volume = {'mountpoint': 'fake_mount_point'}
@@ -639,6 +650,13 @@ class GenericShareDriverTestCase(test.TestCase):
         self._helper_nfs.create_export.assert_called_once_with(
             self.server['backend_details'], self.share['name'])
 
+    def test_create_share_from_snapshot_invalid_helper(self):
+        self._driver._helpers = {'CIFS': self._helper_cifs}
+        self.assertRaises(exception.InvalidShare,
+                          self._driver.create_share_from_snapshot,
+                          self._context, self.share, self.snapshot,
+                          share_server=self.server)
+
     def test_delete_share_no_share_servers_handling(self):
         self.mock_object(self._driver, '_deallocate_container')
         self.mock_object(
@@ -738,6 +756,12 @@ class GenericShareDriverTestCase(test.TestCase):
             assert_called_once_with(
                 self._context, self.server['backend_details'])
 
+    def test_delete_share_invalid_helper(self):
+        self._driver._helpers = {'CIFS': self._helper_cifs}
+        self.assertRaises(exception.InvalidShare,
+                          self._driver.delete_share,
+                          self._context, self.share, share_server=self.server)
+
     def test_create_snapshot(self):
         fake_vol = fake_volume.FakeVolume()
         fake_vol_snap = fake_volume.FakeVolumeSnapshot(share_id=fake_vol['id'])
@@ -801,6 +825,11 @@ class GenericShareDriverTestCase(test.TestCase):
             self.share, self.server['backend_details'], vol2)
         self._helper_nfs.create_export.assert_called_once_with(
             self.server['backend_details'], self.share['name'], recreate=True)
+
+    def test_ensure_share_invalid_helper(self):
+        self._driver._helpers = {'CIFS': self._helper_cifs}
+        self.assertRaises(exception.InvalidShare, self._driver.ensure_share,
+                          self._context, self.share, share_server=self.server)
 
     def test_allow_access(self):
         access = {'access_type': 'ip', 'access_to': 'fake_dest'}
