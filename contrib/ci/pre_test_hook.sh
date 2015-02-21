@@ -17,9 +17,6 @@
 # 'False' means share driver will not handle share servers
 # 'True' means it will handle share servers.
 
-# Install manila devstack integration
-cp -r $BASE/new/manila/contrib/devstack/* $BASE/new/devstack
-
 # Import devstack function 'trueorfalse'
 source $BASE/new/devstack/functions
 

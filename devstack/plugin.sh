@@ -30,8 +30,6 @@ set +o xtrace
 
 MANILA_GIT_BASE=${MANILA_GIT_BASE:-https://github.com}
 MANILA_REPO_ROOT=${MANILA_REPO_ROOT:-openstack}
-MANILA_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/manila.git
-MANILA_BRANCH=${MANILA_BRANCH:-master}
 
 MANILACLIENT_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/python-manilaclient.git
 MANILACLIENT_BRANCH=${MANILACLIENT_BRANCH:-master}
@@ -452,7 +450,6 @@ function init_manila {
 
 # install_manila - Collect source and prepare
 function install_manila {
-    git_clone $MANILA_REPO $MANILA_DIR $MANILA_BRANCH
     git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
 }
 
