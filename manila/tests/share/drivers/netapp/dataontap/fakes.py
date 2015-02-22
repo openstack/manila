@@ -1,4 +1,4 @@
-# Copyright (c) - 2014, Clinton Knight  All rights reserved.
+# Copyright (c) 2015 Clinton Knight  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -19,8 +19,8 @@ HOST_NAME = 'fake_host'
 POOL_NAME = 'fake_pool'
 VSERVER1 = 'fake_vserver_1'
 VSERVER2 = 'fake_vserver_2'
-LICENSES = ['base', 'cifs', 'fcp', 'flexclone', 'iscsi', 'nfs', 'snapmirror',
-            'snaprestore', 'snapvault']
+LICENSES = ('base', 'cifs', 'fcp', 'flexclone', 'iscsi', 'nfs', 'snapmirror',
+            'snaprestore', 'snapvault')
 VOLUME_NAME_TEMPLATE = 'share_%(share_id)s'
 VSERVER_NAME_TEMPLATE = 'os_%s'
 AGGREGATE_NAME_SEARCH_PATTERN = '(.*)'
@@ -32,10 +32,10 @@ PARENT_SHARE_ID = '585c3935-2aa9-437c-8bad-5abae1076555'
 SNAPSHOT_ID = 'de4c9050-e2f9-4ce1-ade4-5ed0c9f26451'
 FREE_CAPACITY = 10000000000
 TOTAL_CAPACITY = 20000000000
-AGGREGATES = ['aggr0', 'manila']
-ROOT_VOLUME_AGGREGATE = 'manila'
+AGGREGATES = ('manila_aggr_1', 'manila_aggr_2')
+ROOT_VOLUME_AGGREGATE = 'manila1'
 ROOT_VOLUME = 'root'
-CLUSTER_NODES = ['cluster1_01', 'cluster1_02']
+CLUSTER_NODES = ('cluster1_01', 'cluster1_02')
 NODE_DATA_PORT = 'e0c'
 LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
 
@@ -91,8 +91,8 @@ SNAPSHOT = {
 }
 
 LIF_NAMES = []
-LIF_ADDRESSES = ['10.10.10.10', '10.10.10.20']
-LIFS = [
+LIF_ADDRESSES = ('10.10.10.10', '10.10.10.20')
+LIFS = (
     {'address': LIF_ADDRESSES[0],
      'home-node': CLUSTER_NODES[0],
      'home-port': 'e0c',
@@ -108,8 +108,8 @@ LIFS = [
      'netmask': NETWORK_INFO_NETMASK,
      'role': 'data',
      'vserver': VSERVER1
-     }
-]
+     },
+)
 
 SHARE_ACCESS = {
     'access_type': 'user',
@@ -128,14 +128,35 @@ EMS_MESSAGE = {
 }
 
 AGGREGATE_CAPACITIES = {
-    'manila1': {
+    AGGREGATES[0]: {
         'available': 1181116007,  # 1.1 GB
         'total': 3543348020,      # 3.3 GB
         'used': 2362232013,       # 2.2 GB
     },
-    'manila2': {
+    AGGREGATES[1]: {
         'available': 2147483648,  # 2.0 GB
         'total': 6442450944,      # 6.0 GB
         'used': 4294967296,       # 4.0 GB
     }
+}
+
+SSC_INFO = {
+    AGGREGATES[0]: {
+        'netapp_raid_type': 'raid4',
+        'netapp_disk_type': 'FCAL'
+    },
+    AGGREGATES[1]: {
+        'netapp_raid_type': 'raid_dp',
+        'netapp_disk_type': 'SSD'
+    }
+}
+
+SSC_RAID_TYPES = {
+    AGGREGATES[0]: 'raid4',
+    AGGREGATES[1]: 'raid_dp'
+}
+
+SSC_DISK_TYPES = {
+    AGGREGATES[0]: 'FCAL',
+    AGGREGATES[1]: 'SSD'
 }

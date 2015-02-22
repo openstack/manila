@@ -1,5 +1,5 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
-# Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Clinton Knight.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -473,7 +473,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         result = self.client.list_aggregates()
 
-        self.assertListEqual(fake.AGGR_NAMES, result)
+        self.assertSequenceEqual(fake.AGGR_NAMES, result)
 
     def test_list_aggregates_not_found(self):
 
@@ -628,7 +628,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('net-interface-get-iter', net_interface_get_args)])
-        self.assertListEqual(fake.LIF_NAMES, result)
+        self.assertSequenceEqual(fake.LIF_NAMES, result)
 
     def test_list_network_interfaces_not_found(self):
 
@@ -653,7 +653,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('net-interface-get-iter')])
-        self.assertListEqual(fake.LIFS, result)
+        self.assertSequenceEqual(fake.LIFS, result)
 
     def test_delete_network_interface(self):
 
@@ -1671,7 +1671,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('nfs-exportfs-list-rules-2',
                       nfs_exportfs_list_rules_2_args)])
-        self.assertListEqual(fake.NFS_EXPORT_RULES, result)
+        self.assertSequenceEqual(fake.NFS_EXPORT_RULES, result)
 
     def test_get_nfs_export_rules_not_found(self):
 
@@ -1783,3 +1783,89 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('ems-autosupport-log', fake.EMS_MESSAGE)])
         self.assertEqual(1, client_cmode.LOG.warning.call_count)
+
+    def test_get_aggregate_raid_types(self):
+
+        api_response = netapp_api.NaElement(fake.AGGR_GET_RAID_TYPE_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_aggregate_raid_types(
+            fake.SHARE_AGGREGATE_NAMES)
+
+        aggr_get_iter_args = {
+            'query': {
+                'aggr-attributes': {
+                    'aggregate-name': '|'.join(fake.SHARE_AGGREGATE_NAMES),
+                }
+            },
+            'desired-attributes': {
+                'aggr-attributes': {
+                    'aggregate-name': None,
+                    'aggr-raid-attributes': {
+                        'raid-type': None,
+                    }
+                }
+            }
+        }
+
+        expected = {
+            fake.SHARE_AGGREGATE_NAMES[0]:
+            fake.SHARE_AGGREGATE_RAID_TYPES[0],
+            fake.SHARE_AGGREGATE_NAMES[1]:
+            fake.SHARE_AGGREGATE_RAID_TYPES[1]
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('aggr-get-iter', aggr_get_iter_args)])
+        self.assertDictEqual(expected, result)
+
+    def test_get_aggregate_raid_types_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_aggregate_raid_types(
+            fake.SHARE_AGGREGATE_NAMES)
+
+        self.assertDictEqual({}, result)
+
+    def test_get_aggregate_disk_types(self):
+
+        api_response = netapp_api.NaElement(
+            fake.STORAGE_DISK_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_aggregate_disk_types(
+            fake.SHARE_AGGREGATE_NAMES)
+
+        expected = {
+            fake.SHARE_AGGREGATE_NAMES[0]:
+            fake.SHARE_AGGREGATE_DISK_TYPE,
+            fake.SHARE_AGGREGATE_NAMES[1]:
+            fake.SHARE_AGGREGATE_DISK_TYPE
+        }
+
+        self.assertEqual(len(fake.SHARE_AGGREGATE_NAMES),
+                         self.client.send_request.call_count)
+        self.assertDictEqual(expected, result)
+
+    def test_get_aggregate_disk_types_not_found(self):
+
+        api_response = netapp_api.NaElement(
+            fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_aggregate_disk_types(
+            fake.SHARE_AGGREGATE_NAMES)
+
+        self.assertEqual(len(fake.SHARE_AGGREGATE_NAMES),
+                         self.client.send_request.call_count)
+        self.assertDictEqual({}, result)

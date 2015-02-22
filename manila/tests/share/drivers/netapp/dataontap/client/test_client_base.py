@@ -99,7 +99,7 @@ class NetAppBaseClientTestCase(test.TestCase):
 
         response = self.client.get_licenses()
 
-        self.assertListEqual(fake.LICENSES, response)
+        self.assertSequenceEqual(fake.LICENSES, response)
 
     def test_get_licenses_api_error(self):
 
