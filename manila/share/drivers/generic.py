@@ -467,7 +467,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 try:
                     volume = self.volume_api.get(context, volume['id'])
                 except exception.VolumeNotFound:
-                    LOG.debug('Volume was deleted succesfully')
+                    LOG.debug('Volume was deleted successfully')
                     break
                 time.sleep(1)
             else:
@@ -560,7 +560,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 snapshot = self.volume_api.get_snapshot(self.admin_context,
                                                         volume_snapshot['id'])
             except exception.VolumeSnapshotNotFound:
-                LOG.debug('Volume snapshot was deleted succesfully')
+                LOG.debug('Volume snapshot was deleted successfully')
                 break
             time.sleep(1)
         else:
