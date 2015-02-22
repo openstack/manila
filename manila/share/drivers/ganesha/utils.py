@@ -62,7 +62,14 @@ class SSHExecutor(object):
         self.pool = utils.SSHPool(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):
+        # argument with identifier 'run_as_root=' is not accepted by
+        # processutils's ssh_execute() method unlike processutils's execute()
+        # method. So implement workaround to enable or disable 'run as root'
+        # behavior.
+        run_as_root = kwargs.pop('run_as_root', False)
         cmd = ' '.join(pipes.quote(a) for a in args)
+        if run_as_root:
+            cmd = ' '.join(['sudo', cmd])
         ssh = self.pool.get()
         try:
             ret = processutils.ssh_execute(ssh, cmd, **kwargs)
