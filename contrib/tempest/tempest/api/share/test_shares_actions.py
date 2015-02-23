@@ -74,7 +74,7 @@ class SharesActionsTest(base.BaseSharesTest):
         resp, share = self.shares_client.get_share(self.share['id'])
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         expected_keys = ["status", "description", "links", "availability_zone",
@@ -104,7 +104,7 @@ class SharesActionsTest(base.BaseSharesTest):
         resp, shares = self.shares_client.list_shares()
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         keys = ["name", "id", "links"]
@@ -123,7 +123,7 @@ class SharesActionsTest(base.BaseSharesTest):
         resp, shares = self.shares_client.list_shares_with_detail()
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         keys = [
@@ -212,7 +212,7 @@ class SharesActionsTest(base.BaseSharesTest):
         # list shares by name, at least one share is expected
         params = {"name": self.share_name}
         resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(shares[0]["name"], self.share_name)
 
     @test.attr(type=["gate", ])
@@ -220,7 +220,7 @@ class SharesActionsTest(base.BaseSharesTest):
         # list shares by fake name, no shares are expected
         params = {"name": data_utils.rand_name("fake-nonexistent-name")}
         resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(len(shares), 0)
 
     @test.attr(type=["gate", ])
@@ -228,7 +228,7 @@ class SharesActionsTest(base.BaseSharesTest):
         # list shares by active status, at least one share is expected
         params = {"status": "available"}
         resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(len(shares) > 0)
         for share in shares:
             self.assertEqual(share["status"], params["status"])
@@ -238,7 +238,7 @@ class SharesActionsTest(base.BaseSharesTest):
         # list shares by fake status, no shares are expected
         params = {"status": 'fake'}
         resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(len(shares), 0)
 
     @test.attr(type=["gate", ])
@@ -246,7 +246,7 @@ class SharesActionsTest(base.BaseSharesTest):
         # non-admin user can get shares only from his project
         params = {"all_tenants": 1}
         resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(len(shares) > 0)
 
         # get share with detailed info, we need its 'project_id'
@@ -262,7 +262,7 @@ class SharesActionsTest(base.BaseSharesTest):
         resp, get = self.shares_client.get_snapshot(self.snap["id"])
 
         # verify data
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         expected_keys = ["status", "links", "share_id", "name",
@@ -291,7 +291,7 @@ class SharesActionsTest(base.BaseSharesTest):
         resp, snaps = self.shares_client.list_snapshots()
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         keys = ["id", "name", "links"]
@@ -309,7 +309,7 @@ class SharesActionsTest(base.BaseSharesTest):
         resp, snaps = self.shares_client.list_snapshots_with_detail()
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         keys = ["status", "links", "share_id", "name",
@@ -403,7 +403,7 @@ class SharesRenameTest(base.BaseSharesTest):
         resp, renamed = self.shares_client.rename(share["id"],
                                                   new_name,
                                                   new_desc)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(new_name, renamed["name"])
         self.assertEqual(new_desc, renamed["description"])
 
@@ -426,7 +426,7 @@ class SharesRenameTest(base.BaseSharesTest):
         resp, renamed = self.shares_client.rename_snapshot(self.snap["id"],
                                                            new_name,
                                                            new_desc)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(new_name, renamed["name"])
         self.assertEqual(new_desc, renamed["description"])
 

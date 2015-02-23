@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
 import testtools  # noqa
 
 from tempest.api.share import base
@@ -34,42 +35,42 @@ class SharesNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_get_share_with_wrong_id(self):
-        self.assertRaises(exceptions.NotFound, self.shares_client.get_share,
+        self.assertRaises(lib_exc.NotFound, self.shares_client.get_share,
                           "wrong_share_id")
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_get_share_without_passing_share_id(self):
         # Should not be able to get share when empty ID is passed
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share, '')
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_list_shares_nonadmin_with_nonexistent_share_server_filter(self):
         # filtering by share server allowed only for admins by default
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.shares_client.list_shares_with_detail,
                           {'share_server_id': 'fake_share_server_id'})
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_delete_share_with_wrong_id(self):
-        self.assertRaises(exceptions.NotFound, self.shares_client.delete_share,
+        self.assertRaises(lib_exc.NotFound, self.shares_client.delete_share,
                           "wrong_share_id")
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_delete_share_without_passing_share_id(self):
         # Should not be able to delete share when empty ID is passed
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_share, '')
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_create_snapshot_with_wrong_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_snapshot,
                           "wrong_share_id")
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_delete_snapshot_with_wrong_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_snapshot,
                           "wrong_share_id")
 
@@ -99,7 +100,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         self.create_snapshot_wait_for_active(share["id"])
 
         # try delete share
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.shares_client.delete_share, share["id"])
 
     @test.attr(type=["negative", "gate", ])
@@ -130,7 +131,7 @@ class SharesNegativeTest(base.BaseSharesTest):
     @testtools.skipIf(not CONF.share.multitenancy_enabled,
                       "Only for multitenancy.")
     def test_create_share_with_nonexistant_share_network(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_share,
                           share_network_id="wrong_sn_id")
 

@@ -32,7 +32,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         for status in self.states:
             resp, __ = self.shares_client.reset_state(self.sh["id"],
                                                       status=status)
-            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
             self.shares_client.wait_for_share_status(self.sh["id"], status)
 
     @test.attr(type=["gate", ])
@@ -41,7 +41,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
             resp, __ = self.shares_client.reset_state(self.sn["id"],
                                                       s_type="snapshots",
                                                       status=status)
-            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
             self.shares_client.wait_for_snapshot_status(self.sn["id"], status)
 
     @test.attr(type=["gate", ])
@@ -55,7 +55,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         self.assertEqual(check_status["status"], self.bad_status)
         # Share with status 'error_deleting' should be deleted
         resp, __ = self.shares_client.force_delete(share["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_resource_deletion(share_id=share["id"])
 
     @test.attr(type=["gate", ])
@@ -71,5 +71,5 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         # Snapshot with status 'error_deleting' should be deleted
         resp, __ = self.shares_client.force_delete(sn["id"],
                                                    s_type="snapshots")
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_resource_deletion(snapshot_id=sn["id"])

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
+
 from tempest.api.share import base
 from tempest import config_share as config
 from tempest import exceptions
@@ -103,7 +105,7 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
         resp, rule = self.shares_client.create_access_rule(self.share["id"],
                                                            access_type,
                                                            access_to)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_access_rule_status(self.share["id"],
                                                        rule["id"],
                                                        "active")
@@ -167,7 +169,7 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_user_to_snapshot(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_access_rule,
                           self.snap["id"],
                           access_type="user",
@@ -175,7 +177,7 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_user_with_wrong_share_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_access_rule,
                           "wrong_share_id",
                           access_type="user",
@@ -214,7 +216,7 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "gate", ])
     def test_delete_access_rule_with_wrong_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_access_rule,
                           self.share["id"], "wrong_rule_id")
 
@@ -226,12 +228,12 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_share_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_access_rule,
                           "wrong_share_id")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_to_snapshot(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_access_rule,
                           self.snap["id"])

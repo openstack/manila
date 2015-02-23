@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
+
 from tempest.api.share import base
 from tempest import clients_share as clients
 from tempest.common.utils import data_utils
@@ -37,7 +39,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_create_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            exceptions.Unauthorized,
+            lib_exc.Unauthorized,
             self.member_shares_client.create_share_type_extra_specs,
             st["share_type"]["id"], {"key": "new_value"})
 
@@ -45,7 +47,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_list_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            exceptions.Unauthorized,
+            lib_exc.Unauthorized,
             self.member_shares_client.list_share_types_extra_specs,
             st["share_type"]["id"])
 
@@ -53,7 +55,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_get_extra_spec_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            exceptions.Unauthorized,
+            lib_exc.Unauthorized,
             self.member_shares_client.get_share_type_extra_spec,
             st["share_type"]["id"], "key")
 
@@ -61,7 +63,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_get_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            exceptions.Unauthorized,
+            lib_exc.Unauthorized,
             self.member_shares_client.get_share_type_extra_specs,
             st["share_type"]["id"])
 
@@ -69,7 +71,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_update_extra_spec_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            exceptions.Unauthorized,
+            lib_exc.Unauthorized,
             self.member_shares_client.update_share_type_extra_spec,
             st["share_type"]["id"], "key", "new_value")
 
@@ -77,7 +79,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_update_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            exceptions.Unauthorized,
+            lib_exc.Unauthorized,
             self.member_shares_client.update_share_type_extra_specs,
             st["share_type"]["id"], {"key": "new_value"})
 
@@ -85,7 +87,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_delete_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            exceptions.Unauthorized,
+            lib_exc.Unauthorized,
             self.member_shares_client.delete_share_type_extra_spec,
             st["share_type"]["id"], "key")
 
@@ -111,7 +113,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
         st = self._create_share_type()
         resp, body = self.shares_client.create_share_type_extra_specs(
             st["share_type"]["id"], {"key": "value"})
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.update_share_type_extra_specs,
                           st["share_type"]["id"], {"key": too_big_value})
@@ -122,31 +124,31 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
         st = self._create_share_type()
         resp, body = self.shares_client.create_share_type_extra_specs(
             st["share_type"]["id"], {"key": "value"})
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.update_share_type_extra_spec,
                           st["share_type"]["id"], "key", too_big_value)
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_list_es_with_empty_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.list_share_types_extra_specs, "")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_list_es_with_invalid_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.list_share_types_extra_specs,
                           data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_es_with_empty_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_share_type_extra_specs,
                           "", {"key1": "value1", })
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_es_with_invalid_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_share_type_extra_specs,
                           data_utils.rand_name("fake"), {"key1": "value1", })
 
@@ -167,70 +169,70 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_spec_with_empty_key(self):
         st = self._create_share_type()
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_type_extra_spec,
                           st["share_type"]["id"], "")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_spec_with_invalid_key(self):
         st = self._create_share_type()
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_type_extra_spec,
                           st["share_type"]["id"], data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_specs_with_empty_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_type_extra_specs,
                           "")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_get_extra_specs_with_invalid_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_type_extra_specs,
                           data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_delete_es_key_with_empty_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_share_type_extra_spec,
                           "", "key", )
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_delete_es_key_with_invalid_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_share_type_extra_spec,
                           data_utils.rand_name("fake"), "key", )
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_delete_with_invalid_key(self):
         st = self._create_share_type()
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_share_type_extra_spec,
                           st["share_type"]["id"], data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_spec_with_empty_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_share_type_extra_spec,
                           "", "key", "new_value")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_spec_with_invalid_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_share_type_extra_spec,
                           data_utils.rand_name("fake"), "key", "new_value")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_spec_with_empty_key(self):
         st = self._create_share_type()
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_share_type_extra_spec,
                           st["share_type"]["id"], "", "new_value")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_with_invalid_shr_type_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_share_type_extra_specs,
                           data_utils.rand_name("fake"), {"key": "new_value"})
 

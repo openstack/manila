@@ -85,7 +85,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         resp, share = self.shares_client.get_share(self.share['id'])
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         expected_keys = ["status", "description", "links", "availability_zone",
@@ -115,7 +115,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         resp, shares = self.shares_client.list_shares()
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         keys = ["name", "id", "links"]
@@ -134,7 +134,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         resp, shares = self.shares_client.list_shares_with_detail()
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         keys = [
@@ -282,7 +282,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         # list shares by name, at least one share is expected
         params = {"name": self.share_name}
         resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(shares[0]["name"], self.share_name)
 
     @test.attr(type=["gate", ])
@@ -290,7 +290,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         # list shares by fake name, no shares are expected
         params = {"name": data_utils.rand_name("fake-nonexistent-name")}
         resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(0, len(shares))
 
     @test.attr(type=["gate", ])
@@ -298,7 +298,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         # list shares by active status, at least one share is expected
         params = {"status": "available"}
         resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(len(shares) > 0)
         for share in shares:
             self.assertEqual(share["status"], params["status"])
@@ -308,7 +308,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         # list shares by fake status, no shares are expected
         params = {"status": 'fake'}
         resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(0, len(shares))
 
     @test.attr(type=["gate", ])
@@ -318,7 +318,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         resp, get = self.shares_client.get_snapshot(self.snap["id"])
 
         # verify data
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         expected_keys = ["status", "links", "share_id", "name",
@@ -347,7 +347,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         resp, snaps = self.shares_client.list_snapshots()
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         keys = ["id", "name", "links"]
@@ -365,7 +365,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         resp, snaps = self.shares_client.list_snapshots_with_detail()
 
         # verify response
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify keys
         keys = ["status", "links", "share_id", "name",

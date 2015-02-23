@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
 import testtools  # noqa
 
 from tempest.api.share import base
@@ -27,33 +28,33 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_share_network_without_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_network, "")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_share_network_with_wrong_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_network, "wrong_id")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_delete_share_network_without_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_share_network, "")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_delete_share_network_with_wrong_type(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_share_network, "wrong_id")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_update_nonexistant_share_network(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_share_network,
                           "wrong_id", name="name")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_update_share_network_with_empty_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_share_network,
                           "", name="name")
 
@@ -62,9 +63,9 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_invalid_keys_sh_server_exists(self):
         resp, share = self.create_share(cleanup_in_class=False)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.shares_client.update_share_network,
                           self.shares_client.share_network_id,
                           neutron_net_id="new_net_id")
@@ -73,26 +74,26 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
     def test_try_get_deleted_share_network(self):
         data = self.generate_share_network_data()
         resp, sn = self.create_share_network(**data)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertDictContainsSubset(data, sn)
 
         resp, __ = self.shares_client.delete_share_network(sn["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # try get deleted share network entity
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_security_service,
                           sn["id"])
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_list_share_networks_all_tenants(self):
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.shares_client.list_share_networks_with_detail,
                           params={'all_tenants': 1})
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_list_share_networks_project_id(self):
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.shares_client.list_share_networks_with_detail,
                           params={'project_id': 'some_project'})
 

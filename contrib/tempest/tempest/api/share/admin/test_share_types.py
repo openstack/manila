@@ -13,10 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
+
 from tempest.api.share import base
 from tempest.common.utils import data_utils
 from tempest import config_share as config
-from tempest import exceptions
 from tempest import test
 
 CONF = config.CONF
@@ -30,17 +31,17 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
 
         # Create share type
         resp, st_create = self.shares_client.create_share_type(name)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(name, st_create['share_type']['name'])
         st_id = st_create['share_type']['id']
 
         # Delete share type
         resp, __ = self.shares_client.delete_share_type(st_id)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Verify deletion of share type
         self.shares_client.wait_for_resource_deletion(st_id=st_id)
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_type,
                           st_id)
 
@@ -52,13 +53,13 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         # Create share type
         resp, st_create = self.create_share_type(name,
                                                  extra_specs=extra_specs)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(name, st_create['share_type']['name'])
         st_id = st_create["share_type"]["id"]
 
         # Get share type
         resp, get = self.shares_client.get_share_type(st_id)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(name, get["share_type"]["name"])
         self.assertEqual(st_id, get["share_type"]["id"])
         self.assertEqual(extra_specs, get["share_type"]["extra_specs"])
@@ -72,12 +73,12 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
 
         # Create share type
         resp, st_create = self.create_share_type(name)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         st_id = st_create["share_type"]["id"]
 
         # list share types
         resp, st_list = self.shares_client.list_share_types()
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         sts = st_list["share_types"]
         self.assertTrue(len(sts) >= 1)
         self.assertTrue(any(st_id in st["id"] for st in sts))
@@ -101,18 +102,18 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         # Create share type
         resp, st_create = self.create_share_type(shr_type_name,
                                                  extra_specs=extra_specs)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Create share with share type
         resp, share = self.create_share(
             name=share_name, share_type_id=st_create["share_type"]["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(share["name"], share_name)
         self.shares_client.wait_for_share_status(share["id"], "available")
 
         # Verify share info
         resp, get = self.shares_client.get_share(share["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(share_name, get["name"])
         self.assertEqual(share["id"], get["id"])
         self.assertEqual(shr_type_name, get["share_type"])

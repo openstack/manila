@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
 import testtools  # noqa
 
 from tempest.api.share import base
-from tempest import exceptions
 from tempest import test
 
 
@@ -38,26 +38,26 @@ class SharesQuotasNegativeTest(base.BaseSharesTest):
     @test.attr(type=["gate", "smoke", "negative"])
     @testtools.skip("Skip until Bug #1234244 is fixed")
     def test_get_quotas_with_wrong_tenant_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.show_quotas,
                           "wrong_tenant_id")
 
     @test.attr(type=["gate", "smoke", "negative"])
     @testtools.skip("Skip until Bug #1234244 is fixed")
     def test_get_quotas_with_wrong_user_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.show_quotas,
                           self.tenant["id"],
                           "wrong_user_id")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_get_quotas_with_empty_tenant_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.show_quotas, "")
 
     @test.attr(type=["gate", "smoke", "negative"])
     @testtools.skip("Skip until Bug #1233170 is fixed")
     def test_get_default_quotas_with_wrong_tenant_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.default_quotas,
                           "wrong_tenant_id")

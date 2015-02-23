@@ -18,8 +18,9 @@ import time
 import urllib
 
 import six  # noqa
+from tempest_lib import exceptions as lib_exc  # noqa
 
-from tempest.common import rest_client
+from tempest.common import service_client
 from tempest.common.utils import data_utils
 from tempest import config_share as config
 from tempest import exceptions
@@ -28,7 +29,7 @@ from tempest import share_exceptions
 CONF = config.CONF
 
 
-class SharesClient(rest_client.RestClient):
+class SharesClient(service_client.ServiceClient):
     """Tempest REST client for Manila.
 
     It handles shares and access to it in OpenStack.
@@ -305,7 +306,7 @@ class SharesClient(rest_client.RestClient):
     def _is_resource_deleted(self, func, res_id):
         try:
             r, s = func(res_id)
-        except exceptions.NotFound:
+        except lib_exc.NotFound:
             return True
         if (func.__name__ == 'get_share' and s['status'] == 'error_deleting'):
             # Share has "error_deleting" status and can not be deleted.

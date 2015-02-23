@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
 import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config
-from tempest import exceptions
 from tempest import test
 
 CONF = config.CONF
@@ -40,7 +40,7 @@ class SharesNFSTest(base.BaseSharesTest):
 
         # create share
         resp, share = self.create_share(self.protocol)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         detailed_elements = {'name', 'id', 'availability_zone',
                              'description', 'export_location', 'project_id',
                              'host', 'created_at', 'share_proto', 'metadata',
@@ -54,9 +54,9 @@ class SharesNFSTest(base.BaseSharesTest):
 
         # delete share
         resp, __ = self.shares_client.delete_share(share['id'])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_resource_deletion(share_id=share['id'])
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share,
                           share['id'])
 
@@ -65,7 +65,7 @@ class SharesNFSTest(base.BaseSharesTest):
 
         # create snapshot
         resp, snap = self.create_snapshot_wait_for_active(self.share["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         detailed_elements = {'name', 'id', 'description', 'export_location',
                              'created_at', 'share_proto', 'size', 'share_size',
                              'share_id', 'status', 'links'}
@@ -77,9 +77,9 @@ class SharesNFSTest(base.BaseSharesTest):
 
         # delete snapshot
         resp, __ = self.shares_client.delete_snapshot(snap["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_resource_deletion(snapshot_id=snap["id"])
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_snapshot, snap['id'])
 
     @test.attr(type=["gate", "smoke", ])
@@ -93,11 +93,11 @@ class SharesNFSTest(base.BaseSharesTest):
         # create share from snapshot
         resp, s2 = self.create_share(self.protocol, snapshot_id=snap["id"],
                                      cleanup_in_class=False)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify share, created from snapshot
         resp, get = self.shares_client.get_share(s2["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         msg = "Expected snapshot_id %s as "\
               "source of share %s" % (snap["id"], get["snapshot_id"])
         self.assertEqual(get["snapshot_id"], snap["id"], msg)
@@ -119,7 +119,7 @@ class SharesNFSTest(base.BaseSharesTest):
         # create share from snapshot
         resp, child = self.create_share(
             self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify share, created from snapshot
         resp, get = self.shares_client.get_share(child["id"])

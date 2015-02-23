@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
+
 from tempest.api.share import base
 from tempest import clients_share as clients
-from tempest import exceptions
 from tempest import test
 
 
@@ -24,12 +25,12 @@ class ServicesAdminNegativeTest(base.BaseSharesAdminTest):
     @classmethod
     def resource_setup(cls):
         super(ServicesAdminNegativeTest, cls).resource_setup()
-        user_clients = clients.Manager(interface=cls._interface)
+        user_clients = clients.Manager()
         cls.user_shares_client = user_clients.shares_client
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_services_with_non_admin_user(self):
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.user_shares_client.list_services)
 
     @test.attr(type=["gate", "smoke", "negative", ])
@@ -38,7 +39,7 @@ class ServicesAdminNegativeTest(base.BaseSharesAdminTest):
         resp, services = self.shares_client.list_services()
         params = {'fake_param': 'fake_param_value'}
         resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(len(services), len(services_fake))
 
         # "update_at" field could be updated before second request,
@@ -51,33 +52,33 @@ class ServicesAdminNegativeTest(base.BaseSharesAdminTest):
     def test_get_service_by_invalid_host(self):
         params = {'host': 'fake_host'}
         resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(0, len(services_fake))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_binary(self):
         params = {'binary': 'fake_binary'}
         resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(0, len(services_fake))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_zone(self):
         params = {'zone': 'fake_zone'}
         resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(0, len(services_fake))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_status(self):
         params = {'status': 'fake_status'}
         resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(0, len(services_fake))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_state(self):
         params = {'state': 'fake_state'}
         resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(0, len(services_fake))

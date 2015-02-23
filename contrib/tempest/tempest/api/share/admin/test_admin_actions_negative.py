@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
+
 from tempest.api.share import base
 from tempest import clients_share as clients
 from tempest import config_share as config
@@ -33,12 +35,12 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "negative", ])
     def test_reset_nonexistent_share_state(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.reset_state, "fake")
 
     @test.attr(type=["gate", "negative", ])
     def test_reset_nonexistent_snapshot_state(self):
-        self.assertRaises(exceptions.NotFound, self.shares_client.reset_state,
+        self.assertRaises(lib_exc.NotFound, self.shares_client.reset_state,
                           "fake", s_type="snapshots")
 
     @test.attr(type=["gate", "negative", ])
@@ -56,25 +58,25 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "negative", ])
     def test_try_reset_share_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.member_shares_client.reset_state,
                           self.sh["id"])
 
     @test.attr(type=["gate", "negative", ])
     def test_try_reset_snapshot_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.member_shares_client.reset_state,
                           self.sn["id"], s_type="snapshots")
 
     @test.attr(type=["gate", "negative", ])
     def test_force_delete_nonexistent_share(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.force_delete, "fake")
 
     @test.attr(type=["gate", "negative", ])
     def test_force_delete_nonexistent_snapshot(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.force_delete,
                           "fake",
                           s_type="snapshots")
@@ -82,13 +84,13 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "negative", ])
     def test_try_force_delete_share_with_member(self):
         # If a non-admin tries to do force_delete, it should be unauthorized
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.member_shares_client.force_delete,
                           self.sh["id"])
 
     @test.attr(type=["gate", "negative", ])
     def test_try_force_delete_snapshot_with_member(self):
         # If a non-admin tries to do force_delete, it should be unauthorized
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.member_shares_client.force_delete,
                           self.sn["id"], s_type="snapshots")

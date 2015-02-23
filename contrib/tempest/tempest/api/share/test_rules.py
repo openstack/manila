@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
+
 from tempest.api.share import base
 from tempest import config_share as config
-from tempest import exceptions
 from tempest import test
 
 CONF = config.CONF
@@ -44,7 +45,7 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         resp, rule = self.shares_client.create_access_rule(self.share["id"],
                                                            access_type,
                                                            access_to)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual('rw', rule['access_level'])
         self.shares_client.wait_for_access_rule_status(self.share["id"],
                                                        rule["id"],
@@ -52,7 +53,7 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         # delete rule
         resp, _ = self.shares_client.delete_access_rule(self.share["id"],
                                                         rule["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", ])
     def test_create_delete_access_rule_with_cidr(self):
@@ -65,7 +66,7 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         resp, rule = self.shares_client.create_access_rule(self.share["id"],
                                                            access_type,
                                                            access_to)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual('rw', rule['access_level'])
         self.shares_client.wait_for_access_rule_status(self.share["id"],
                                                        rule["id"],
@@ -73,7 +74,7 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         # delete rule
         resp, _ = self.shares_client.delete_access_rule(self.share["id"],
                                                         rule["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", ])
     def test_create_delete_ro_access_rule(self):
@@ -81,14 +82,14 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
                                                            'ip',
                                                            '2.2.2.2',
                                                            'ro')
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual('ro', rule['access_level'])
         self.shares_client.wait_for_access_rule_status(self.share["id"],
                                                        rule["id"],
                                                        "active")
         resp, _ = self.shares_client.delete_access_rule(self.share["id"],
                                                         rule["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
 
 class ShareIpRulesForCIFSTest(ShareIpRulesForNFSTest):
@@ -116,7 +117,7 @@ class ShareUserRulesForNFSTest(base.BaseSharesTest):
         resp, rule = self.shares_client.create_access_rule(self.share["id"],
                                                            self.access_type,
                                                            self.access_to)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual('rw', rule['access_level'])
         self.shares_client.wait_for_access_rule_status(self.share["id"],
                                                        rule["id"],
@@ -124,7 +125,7 @@ class ShareUserRulesForNFSTest(base.BaseSharesTest):
         # delete rule
         resp, _ = self.shares_client.delete_access_rule(self.share["id"],
                                                         rule["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", ])
     def test_create_delete_ro_access_rule(self):
@@ -132,14 +133,14 @@ class ShareUserRulesForNFSTest(base.BaseSharesTest):
                                                            self.access_type,
                                                            self.access_to,
                                                            'ro')
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual('ro', rule['access_level'])
         self.shares_client.wait_for_access_rule_status(self.share["id"],
                                                        rule["id"],
                                                        "active")
         resp, _ = self.shares_client.delete_access_rule(self.share["id"],
                                                         rule["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
 
 class ShareUserRulesForCIFSTest(ShareUserRulesForNFSTest):
@@ -184,7 +185,7 @@ class ShareRulesTest(base.BaseSharesTest):
                                                            self.access_type,
                                                            self.access_to)
 
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_access_rule_status(self.share["id"],
                                                        rule["id"],
                                                        "active")
@@ -221,16 +222,16 @@ class ShareRulesTest(base.BaseSharesTest):
         resp, rule = self.shares_client.create_access_rule(share["id"],
                                                            self.access_type,
                                                            self.access_to)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_access_rule_status(share["id"], rule["id"],
                                                        "active")
 
         # delete share
         resp, _ = self.shares_client.delete_share(share['id'])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_resource_deletion(share_id=share['id'])
 
         # verify absence of rules for nonexistent share id
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.list_access_rules,
                           share['id'])

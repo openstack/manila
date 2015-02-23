@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
+
 from tempest.api.share import base
 from tempest import exceptions
 from tempest import test
@@ -28,14 +30,14 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
     @test.attr(type=["gate", "negative", ])
     def test_try_set_metadata_to_unexisting_share(self):
         md = {u"key1": u"value1", u"key2": u"value2", }
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.set_metadata,
                           "wrong_share_id", md)
 
     @test.attr(type=["gate", "negative", ])
     def test_try_update_all_metadata_for_unexisting_share(self):
         md = {u"key1": u"value1", u"key2": u"value2", }
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_all_metadata,
                           "wrong_share_id", md)
 
@@ -85,6 +87,6 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "negative", ])
     def test_try_delete_unexisting_metadata(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_metadata,
                           self.share["id"], "wrong_key")

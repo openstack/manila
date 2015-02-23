@@ -13,31 +13,25 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import auth
 from tempest import clients
-from tempest import config_share as config
+from tempest.common import cred_provider
 from tempest.services.share.json import shares_client
 
 
-CONF = config.CONF
-
-
 class Manager(clients.Manager):
-    def __init__(self, credentials=None, interface='json', service=None):
-        super(Manager, self).__init__(credentials, interface, service)
-        auth_provider = self.get_auth_provider(self.credentials)
-        if interface == 'json':
-            self.shares_client = shares_client.SharesClient(auth_provider)
+    def __init__(self, credentials=None, service=None):
+        super(Manager, self).__init__(credentials, service)
+        self.shares_client = shares_client.SharesClient(self.auth_provider)
 
 
 class AltManager(Manager):
-    def __init__(self, interface='json', service=None):
-        self.credentials = auth.get_credentials('alt_user')
-        super(AltManager, self).__init__(self.credentials, interface, service)
+    def __init__(self, service=None):
+        super(AltManager, self).__init__(
+            cred_provider.get_configured_credentials('alt_user'), service)
 
 
 class AdminManager(Manager):
-    def __init__(self, interface='json', service=None):
-        self.credentials = auth.get_credentials('identity_admin')
+    def __init__(self, service=None):
         super(AdminManager, self).__init__(
-            self.credentials, interface, service)
+            cred_provider.get_configured_credentials('identity_admin'),
+            service)

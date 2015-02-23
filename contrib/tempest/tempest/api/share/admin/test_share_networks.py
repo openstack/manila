@@ -81,7 +81,7 @@ class ShareNetworkAdminTest(
     def test_list_share_networks_all_tenants(self):
         resp, listed = self.shares_client.list_share_networks_with_detail(
             {'all_tenants': 1})
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(any(self.sn_with_ldap_ss['id'] == sn['id']
                             for sn in listed))
         self.assertTrue(any(self.sn_with_kerberos_ss['id'] == sn['id']
@@ -91,7 +91,7 @@ class ShareNetworkAdminTest(
     def test_list_share_networks_filter_by_project_id(self):
         resp, listed = self.shares_client.list_share_networks_with_detail(
             {'project_id': self.sn_with_kerberos_ss['project_id']})
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(any(self.sn_with_kerberos_ss['id'] == sn['id']
                             for sn in listed))
         self.assertTrue(all(self.sn_with_kerberos_ss['project_id'] ==

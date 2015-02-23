@@ -17,6 +17,8 @@ import copy
 import inspect
 import traceback
 
+from tempest_lib import exceptions as lib_exc  # noqa
+
 from tempest import clients_share as clients
 from tempest.common import isolated_creds
 from tempest.common.utils import data_utils
@@ -34,7 +36,7 @@ LOG = logging.getLogger(__name__)
 class handle_cleanup_exceptions(object):
     """Handle exceptions raised with cleanup operations.
 
-    Always suppress errors when exceptions.NotFound or exceptions.Unauthorized
+    Always suppress errors when lib_exc.NotFound or lib_exc.Unauthorized
     are raised.
     Suppress all other exceptions only in case config opt
     'suppress_errors_in_cleanup' in config group 'share' is True.
@@ -45,7 +47,7 @@ class handle_cleanup_exceptions(object):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         if not (isinstance(exc_value,
-                           (exceptions.NotFound, exceptions.Unauthorized)) or
+                           (lib_exc.NotFound, lib_exc.Unauthorized)) or
                 CONF.share.suppress_errors_in_cleanup):
             return False  # Do not suppress error if any
         if exc_traceback:
@@ -77,7 +79,6 @@ def network_synchronized(f):
 class BaseSharesTest(test.BaseTestCase):
     """Base test case class for all Manila API tests."""
 
-    _interface = "json"
     force_tenant_isolation = False
     protocols = ["nfs", "cifs"]
 
@@ -92,6 +93,9 @@ class BaseSharesTest(test.BaseTestCase):
 
     # Will be cleaned up in tearDown method
     method_isolated_creds = []
+
+    # All the successful HTTP status codes from RFC 2616
+    HTTP_SUCCESS = (200, 201, 202, 203, 204, 205, 206)
 
     @classmethod
     def get_client_with_isolated_creds(cls,
@@ -124,7 +128,7 @@ class BaseSharesTest(test.BaseTestCase):
         ic.type_of_creds = type_of_creds
 
         # create client with isolated creds
-        os = clients.Manager(credentials=creds, interface=cls._interface)
+        os = clients.Manager(credentials=creds)
         client = os.shares_client
 
         # Get tenant and user
@@ -183,7 +187,7 @@ class BaseSharesTest(test.BaseTestCase):
             cls.password = CONF.identity.password
             cls.tenant_name = CONF.identity.tenant_name
             cls.verify_nonempty(cls.username, cls.password, cls.tenant_name)
-            cls.os = clients.Manager(interface=cls._interface)
+            cls.os = clients.Manager()
         if CONF.share.multitenancy_enabled:
             if not CONF.service_available.neutron:
                 raise cls.skipException("Neutron support is required")
@@ -603,7 +607,7 @@ class BaseSharesAltTest(BaseSharesTest):
         cls.password = CONF.identity.alt_password
         cls.tenant_name = CONF.identity.alt_tenant_name
         cls.verify_nonempty(cls.username, cls.password, cls.tenant_name)
-        cls.os = clients.AltManager(interface=cls._interface)
+        cls.os = clients.AltManager()
         alt_share_network_id = CONF.share.alt_share_network_id
         cls.os.shares_client.share_network_id = alt_share_network_id
         super(BaseSharesAltTest, cls).resource_setup()
@@ -618,7 +622,7 @@ class BaseSharesAdminTest(BaseSharesTest):
         cls.password = CONF.identity.admin_password
         cls.tenant_name = CONF.identity.admin_tenant_name
         cls.verify_nonempty(cls.username, cls.password, cls.tenant_name)
-        cls.os = clients.AdminManager(interface=cls._interface)
+        cls.os = clients.AdminManager()
         admin_share_network_id = CONF.share.admin_share_network_id
         cls.os.shares_client.share_network_id = admin_share_network_id
         super(BaseSharesAdminTest, cls).resource_setup()

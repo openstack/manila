@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib import exceptions as lib_exc  # noqa
+
 from tempest.api.share import base
 from tempest import clients_share as clients
 from tempest.common.utils import data_utils
@@ -35,7 +37,7 @@ class ShareTypesAdminNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_share_type_with_user(self):
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.create_share_type,
                           data_utils.rand_name("used_user_creds"),
                           client=self.member_shares_client)
@@ -43,13 +45,13 @@ class ShareTypesAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_try_delete_share_type_with_user(self):
         st = self._create_share_type()
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.member_shares_client.delete_share_type,
                           st["share_type"]["id"])
 
     @test.attr(type=["gate", "smoke", ])
     def test_create_share_with_nonexistent_share_type(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.create_share,
                           share_type_id=data_utils.rand_name("fake"))
 
@@ -65,19 +67,19 @@ class ShareTypesAdminNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_get_share_type_by_nonexistent_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share_type,
                           data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_delete_share_type_by_nonexistent_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_share_type,
                           data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_duplicate_of_share_type(self):
         st = self._create_share_type()
-        self.assertRaises(exceptions.Conflict,
+        self.assertRaises(lib_exc.Conflict,
                           self.create_share_type,
                           st["share_type"]["name"])

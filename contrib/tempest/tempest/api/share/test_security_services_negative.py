@@ -14,6 +14,7 @@
 #    under the License.
 
 import six  # noqa
+from tempest_lib import exceptions as lib_exc  # noqa
 import testtools  # noqa
 
 from tempest.api.share import base
@@ -41,35 +42,35 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_security_service_without_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_security_service, "")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_security_service_with_wrong_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_security_service,
                           "wrong_id")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_delete_security_service_without_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_security_service, "")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_delete_security_service_with_wrong_type(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_security_service,
                           "wrong_id")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_update_nonexistant_security_service(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_security_service,
                           "wrong_id", name="name")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_update_security_service_with_empty_id(self):
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.update_security_service,
                           "", name="name")
 
@@ -79,18 +80,18 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
     def test_try_update_invalid_keys_sh_server_exists(self):
         ss_data = self.generate_security_service_data()
         resp, ss = self.create_security_service(**ss_data)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         sn = self.shares_client.get_share_network(
             self.os.shares_client.share_network_id)[1]
         resp, fresh_sn = self.create_share_network(
             neutron_net_id=sn["neutron_net_id"],
             neutron_subnet_id=sn["neutron_subnet_id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         resp, body = self.shares_client.add_sec_service_to_share_network(
             fresh_sn["id"], ss["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Security service with fake data is used, so if we use backend driver
         # that fails on wrong data, we expect error here.
@@ -106,7 +107,7 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
                         "that leads to share-server creation error. "
                         "%s" % six.text_type(e))
 
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.shares_client.update_security_service,
                           ss["id"],
                           user="new_user")
@@ -115,19 +116,19 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
     def test_get_deleted_security_service(self):
         data = self.generate_security_service_data()
         resp, ss = self.create_security_service(**data)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertDictContainsSubset(data, ss)
 
         resp, __ = self.shares_client.delete_security_service(ss["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # try get deleted security service entity
-        self.assertRaises(exceptions.NotFound,
+        self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_security_service,
                           ss["id"])
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_list_security_services_all_tenants(self):
-        self.assertRaises(exceptions.Unauthorized,
+        self.assertRaises(lib_exc.Unauthorized,
                           self.shares_client.list_security_services,
                           params={'all_tenants': 1})

@@ -31,27 +31,27 @@ class SecurityServicesMappingTest(base.BaseSharesTest):
         data = self.generate_share_network_data()
 
         resp, self.sn = self.create_share_network(client=self.cl, **data)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertDictContainsSubset(data, self.sn)
 
         # create security service
         data = self.generate_security_service_data()
 
         resp, self.ss = self.create_security_service(client=self.cl, **data)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertDictContainsSubset(data, self.ss)
 
         # Add security service to share network
         resp, __ = self.cl.add_sec_service_to_share_network(self.sn["id"],
                                                             self.ss["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", "smoke"])
     def test_map_ss_to_sn_and_list(self):
 
         # List security services for share network
         resp, ls = self.cl.list_sec_services_for_share_network(self.sn["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(1, len(ls))
         for key in ["status", "id", "name"]:
             self.assertIn(self.ss[key], ls[0][key])
@@ -62,7 +62,7 @@ class SecurityServicesMappingTest(base.BaseSharesTest):
         # Remove security service from share network
         resp, __ = self.cl.remove_sec_service_from_share_network(self.sn["id"],
                                                                  self.ss["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", "smoke"])
     def test_remap_ss_to_sn(self):
@@ -70,9 +70,9 @@ class SecurityServicesMappingTest(base.BaseSharesTest):
         # Remove security service from share network
         resp, __ = self.cl.remove_sec_service_from_share_network(self.sn["id"],
                                                                  self.ss["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Add security service to share network again
         resp, __ = self.cl.add_sec_service_to_share_network(self.sn["id"],
                                                             self.ss["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)

@@ -35,12 +35,12 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
         }
         resp, es_create = self.shares_client.create_share_type_extra_specs(
             self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
         resp, es_list = self.shares_client.list_share_types_extra_specs(
             self.share_type_id)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_list)
 
     @test.attr(type=["gate", "smoke", ])
@@ -53,14 +53,14 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
             self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
         # Update extra specs of share type
         extra_specs["key1"] = "fake_value1_updated"
         resp, update_one = self.shares_client.update_share_type_extra_spec(
             self.share_type_id, "key1", extra_specs["key1"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual({"key1": extra_specs["key1"]}, update_one)
 
     @test.attr(type=["gate", "smoke", ])
@@ -73,14 +73,14 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
             self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
         # Update extra specs of share type
         extra_specs["key2"] = "value2_updated"
         resp, update_all = self.shares_client.update_share_type_extra_specs(
             self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(extra_specs, update_all)
 
     @test.attr(type=["gate", "smoke", ])
@@ -93,13 +93,13 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
             self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
         # Get all extra specs for share type
         resp, es_get_all = self.shares_client.get_share_type_extra_specs(
             self.share_type_id)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_get_all)
 
     @test.attr(type=["gate", "smoke", ])
@@ -112,13 +112,13 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
             self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
         # Get one extra spec for share type
         resp, es_get_one = self.shares_client.get_share_type_extra_spec(
             self.share_type_id, "key1")
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual({"key1": "value1", }, es_get_one)
 
     @test.attr(type=["gate", "smoke", ])
@@ -131,16 +131,16 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
             self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(extra_specs, es_create)
 
         # Delete one extra spec for share type
         resp, __ = self.shares_client.delete_share_type_extra_spec(
             self.share_type_id, "key1")
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Get all extra specs for share type
         resp, es_get_all = self.shares_client.get_share_type_extra_specs(
             self.share_type_id)
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual({"key2": "value2", }, es_get_all)

@@ -16,10 +16,10 @@
 import re
 
 import six  # noqa
+from tempest_lib import exceptions as lib_exc  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config
-from tempest import exceptions
 from tempest import test
 
 CONF = config.CONF
@@ -53,7 +53,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_servers_without_filters(self):
         resp, servers = self.shares_client.list_share_servers()
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(len(servers) > 0)
         keys = [
             "id",
@@ -94,14 +94,14 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
                 if not server["host"]:
                     msg = ("Server '%s' has wrong value for host - "
                            "'%s'.") % (server["id"], server["host"])
-                    raise exceptions.InvalidContentType(message=msg)
+                    raise lib_exc.InvalidContentType(message=msg)
                 host = server["host"]
                 break
         if not host:
             msg = ("Appropriate server was not found. Its share_network_data"
                    ": '%s'. List of servers: '%s'.") % (self.sn_name_and_id,
                                                         str(servers))
-            raise exceptions.NotFound(message=msg)
+            raise lib_exc.NotFound(message=msg)
         search_opts = {"host": host}
         __, servers = self.shares_client.list_share_servers(search_opts)
         self.assertTrue(len(servers) > 0)
@@ -120,14 +120,14 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
                 if not server["status"]:
                     msg = ("Server '%s' has wrong value for status - "
                            "'%s'.") % (server["id"], server["host"])
-                    raise exceptions.InvalidContentType(message=msg)
+                    raise lib_exc.InvalidContentType(message=msg)
                 status = server["status"]
                 break
         if not status:
             msg = ("Appropriate server was not found. Its share_network_data"
                    ": '%s'. List of servers: '%s'.") % (self.sn_name_and_id,
                                                         str(servers))
-            raise exceptions.NotFound(message=msg)
+            raise lib_exc.NotFound(message=msg)
         search_opts = {"status": status}
         __, servers = self.shares_client.list_share_servers(search_opts)
         self.assertTrue(len(servers) > 0)
@@ -168,7 +168,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
     def test_show_share_server(self):
         __, servers = self.shares_client.list_share_servers()
         resp, server = self.shares_client.show_share_server(servers[0]["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         keys = [
             "id",
             "host",
@@ -205,7 +205,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         __, servers = self.shares_client.list_share_servers()
         resp, details = self.shares_client.show_share_server_details(
             servers[0]["id"])
-        self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         # If details are present they and their values should be only strings
         for k, v in details.iteritems():
             self.assertTrue(isinstance(k, six.string_types))
@@ -239,7 +239,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             # List shares by share server id
             params = {"share_server_id": serv["id"]}
             resp, shares = self.shares_client.list_shares_with_detail(params)
-            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
             for s in shares:
                 self.assertEqual(new_sn["id"], s["share_network_id"])
             self.assertTrue(any(share["id"] == s["id"] for s in shares))
@@ -255,12 +255,12 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             # List shares by share server id, we expect empty list
             params = {"share_server_id": serv["id"]}
             resp, empty = self.shares_client.list_shares_with_detail(params)
-            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
             self.assertEqual(len(empty), 0)
 
             # Delete share server
             resp, __ = self.shares_client.delete_share_server(serv["id"])
-            self.assertIn(int(resp["status"]), test.HTTP_SUCCESS)
+            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
             # Wait for share server deletion
             self.shares_client.wait_for_resource_deletion(server_id=serv["id"])
