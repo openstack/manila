@@ -40,6 +40,7 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         resp, quotas = self.shares_client.default_quotas(self.tenant["id"])
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertGreater(int(quotas["gigabytes"]), -2)
+        self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
@@ -49,6 +50,7 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
         resp, quotas = self.shares_client.show_quotas(self.tenant["id"])
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertGreater(int(quotas["gigabytes"]), -2)
+        self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
@@ -59,6 +61,7 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
                                                       self.user["id"])
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertGreater(int(quotas["gigabytes"]), -2)
+        self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)
         self.assertGreater(int(quotas["snapshots"]), -2)
         self.assertGreater(int(quotas["share_networks"]), -2)
@@ -150,6 +153,25 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         self.assertEqual(int(updated["gigabytes"]), gigabytes)
 
     @test.attr(type=["gate", "smoke", ])
+    def test_update_tenant_quota_snapshot_gigabytes(self):
+        client = self.get_client_with_isolated_creds()
+
+        # get current quotas
+        resp, custom = client.show_quotas(client.creds["tenant"]["id"])
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+
+        # make quotas for update
+        snapshot_gigabytes = int(custom["snapshot_gigabytes"]) + 2
+
+        # set new quota for shares
+        resp, updated = client.update_quotas(
+            client.creds["tenant"]["id"],
+            snapshot_gigabytes=snapshot_gigabytes)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.assertEqual(
+            int(updated["snapshot_gigabytes"]), snapshot_gigabytes)
+
+    @test.attr(type=["gate", "smoke", ])
     def test_update_user_quota_gigabytes(self):
         client = self.get_client_with_isolated_creds()
 
@@ -168,6 +190,27 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
                                              gigabytes=gigabytes)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(int(updated["gigabytes"]), gigabytes)
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_update_user_quota_snapshot_gigabytes(self):
+        client = self.get_client_with_isolated_creds()
+
+        # get current quotas
+        resp, custom = client.show_quotas(client.creds["tenant"]["id"],
+                                          client.creds["user"]["id"])
+
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+
+        # make quotas for update
+        snapshot_gigabytes = int(custom["snapshot_gigabytes"]) - 1
+
+        # set new quota for shares
+        resp, updated = client.update_quotas(
+            client.creds["tenant"]["id"], client.creds["user"]["id"],
+            snapshot_gigabytes=snapshot_gigabytes)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.assertEqual(
+            int(updated["snapshot_gigabytes"]), snapshot_gigabytes)
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_tenant_quota_share_networks(self):
@@ -217,18 +260,23 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         shares = int(custom["shares"]) + 2
         snapshots = int(custom["snapshots"]) + 2
         gigabytes = int(custom["gigabytes"]) + 2
+        snapshot_gigabytes = int(custom["snapshot_gigabytes"]) + 2
         share_networks = int(custom["share_networks"]) + 2
 
         # set new quota
-        resp, updated = client.update_quotas(client.creds["tenant"]["id"],
-                                             shares=shares,
-                                             snapshots=snapshots,
-                                             gigabytes=gigabytes,
-                                             share_networks=share_networks)
+        resp, updated = client.update_quotas(
+            client.creds["tenant"]["id"],
+            shares=shares,
+            snapshots=snapshots,
+            gigabytes=gigabytes,
+            snapshot_gigabytes=snapshot_gigabytes,
+            share_networks=share_networks)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(int(updated["shares"]), shares)
         self.assertEqual(int(updated["snapshots"]), snapshots)
         self.assertEqual(int(updated["gigabytes"]), gigabytes)
+        self.assertEqual(
+            int(updated["snapshot_gigabytes"]), snapshot_gigabytes)
         self.assertEqual(int(updated["share_networks"]), share_networks)
 
         # reset customized quotas
@@ -282,11 +330,26 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", "smoke", ])
+    def test_unlimited_quota_for_snapshot_gigabytes(self):
+        client = self.get_client_with_isolated_creds()
+        resp, __ = client.update_quotas(client.creds["tenant"]["id"],
+                                        snapshot_gigabytes=-1)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+
+    @test.attr(type=["gate", "smoke", ])
     def test_unlimited_user_quota_for_gigabytes(self):
         client = self.get_client_with_isolated_creds()
         resp, __ = client.update_quotas(client.creds["tenant"]["id"],
                                         client.creds["user"]["id"],
                                         gigabytes=-1)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_unlimited_user_quota_for_snapshot_gigabytes(self):
+        client = self.get_client_with_isolated_creds()
+        resp, __ = client.update_quotas(client.creds["tenant"]["id"],
+                                        client.creds["user"]["id"],
+                                        snapshot_gigabytes=-1)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", "smoke", ])

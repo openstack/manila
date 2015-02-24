@@ -616,20 +616,17 @@ class DbQuotaDriverTestCase(test.TestCase):
     expected_all_context = {
         "shares": {"limit": 10, "in_use": 2, "reserved": 0, },
         "gigabytes": {"limit": 50, "in_use": 10, "reserved": 0, },
-        "snapshots": {"limit": 10, "in_use": 0, "reserved": 0, },
+        "snapshot_gigabytes": {"limit": 50, "in_use": 20, "reserved": 0, },
+        "snapshots": {"limit": 10, "in_use": 4, "reserved": 0, },
         "share_networks": {"limit": 10, "in_use": 0, "reserved": 0, },
     }
 
     def setUp(self):
         super(DbQuotaDriverTestCase, self).setUp()
-
-        self.flags(quota_shares=10,
-                   quota_snapshots=10,
-                   quota_gigabytes=1000,
-                   reservation_expire=86400,
-                   until_refresh=0,
-                   max_age=0,
-                   )
+        self.flags(
+            quota_shares=10, quota_snapshots=10, quota_gigabytes=1000,
+            quota_snapshot_gigabytes=1000, reservation_expire=86400,
+            until_refresh=0, max_age=0)
 
         self.driver = quota.DbQuotaDriver()
 
@@ -649,17 +646,18 @@ class DbQuotaDriverTestCase(test.TestCase):
         expected = {
             "shares": 10,
             "gigabytes": 1000,
+            "snapshot_gigabytes": 1000,
             "snapshots": 10,
             "share_networks": 10,
         }
-        self.assertEqual(result, expected)
+        self.assertEqual(expected, result)
 
     def _stub_quota_class_get_all_by_name(self):
         # Stub out quota_class_get_all_by_name
         def fake_qcgabn(context, quota_class):
             self.calls.append('quota_class_get_all_by_name')
             self.assertEqual(quota_class, 'test_class')
-            return dict(gigabytes=500, shares=10, )
+            return dict(gigabytes=500, shares=10, snapshot_gigabytes=50)
         self.mock_object(db, 'quota_class_get_all_by_name', fake_qcgabn)
 
     def test_get_class_quotas(self):
@@ -671,10 +669,11 @@ class DbQuotaDriverTestCase(test.TestCase):
         expected = {
             "shares": 10,
             "gigabytes": 500,
+            "snapshot_gigabytes": 50,
             "snapshots": 10,
             "share_networks": 10,
         }
-        self.assertEqual(result, expected)
+        self.assertEqual(expected, result)
 
     def test_get_class_quotas_no_defaults(self):
         self._stub_quota_class_get_all_by_name()
@@ -682,27 +681,35 @@ class DbQuotaDriverTestCase(test.TestCase):
                                               'test_class', False)
 
         self.assertEqual(self.calls, ['quota_class_get_all_by_name'])
-        self.assertEqual(result, dict(shares=10,
-                                      gigabytes=500))
+        self.assertEqual(
+            dict(shares=10, gigabytes=500, snapshot_gigabytes=50), result)
 
     def _stub_get_by_project_and_user(self):
         def fake_qgabpu(context, project_id, user_id):
             self.calls.append('quota_get_all_by_project_and_user')
             self.assertEqual(project_id, 'test_project')
             self.assertEqual(user_id, 'fake_user')
-            return dict(shares=10, gigabytes=50, reserved=0)
+            return dict(
+                shares=10, gigabytes=50, snapshots=10, snapshot_gigabytes=50,
+                reserved=0)
 
         def fake_qgabp(context, project_id):
             self.calls.append('quota_get_all_by_project')
             self.assertEqual(project_id, 'test_project')
-            return dict(shares=10, gigabytes=50, reserved=0)
+            return dict(
+                shares=10, gigabytes=50, snapshots=10, snapshot_gigabytes=50,
+                reserved=0)
 
         def fake_qugabpu(context, project_id, user_id):
             self.calls.append('quota_usage_get_all_by_project_and_user')
             self.assertEqual(project_id, 'test_project')
             self.assertEqual(user_id, 'fake_user')
-            return dict(shares=dict(in_use=2, reserved=0),
-                        gigabytes=dict(in_use=10, reserved=0), )
+            return dict(
+                shares=dict(in_use=2, reserved=0),
+                gigabytes=dict(in_use=10, reserved=0),
+                snapshots=dict(in_use=4, reserved=0),
+                snapshot_gigabytes=dict(in_use=20, reserved=0),
+            )
 
         self.mock_object(db, 'quota_get_all_by_project_and_user', fake_qgabpu)
         self.mock_object(db, 'quota_get_all_by_project', fake_qgabp)
@@ -723,19 +730,23 @@ class DbQuotaDriverTestCase(test.TestCase):
             'quota_usage_get_all_by_project_and_user',
             'quota_class_get_all_by_name',
         ])
-        self.assertEqual(result, self.expected_all_context)
+        self.assertEqual(self.expected_all_context, result)
 
     def _stub_get_by_project(self):
         def fake_qgabp(context, project_id):
             self.calls.append('quota_get_all_by_project')
             self.assertEqual(project_id, 'test_project')
-            return dict(shares=10, gigabytes=50, reserved=0)
+            return dict(
+                shares=10, gigabytes=50, snapshot_gigabytes=50, reserved=0)
 
         def fake_qugabp(context, project_id):
             self.calls.append('quota_usage_get_all_by_project')
             self.assertEqual(project_id, 'test_project')
-            return dict(shares=dict(in_use=2, reserved=0),
-                        gigabytes=dict(in_use=10, reserved=0), )
+            return dict(
+                shares=dict(in_use=2, reserved=0),
+                snapshots=dict(in_use=4, reserved=0),
+                snapshot_gigabytes=dict(in_use=20, reserved=0),
+                gigabytes=dict(in_use=10, reserved=0))
 
         self.mock_object(db, 'quota_get_all_by_project', fake_qgabp)
         self.mock_object(db, 'quota_usage_get_all_by_project', fake_qugabp)
@@ -751,7 +762,7 @@ class DbQuotaDriverTestCase(test.TestCase):
         self.assertEqual(self.calls, ['quota_get_all_by_project',
                                       'quota_usage_get_all_by_project',
                                       'quota_class_get_all_by_name', ])
-        self.assertEqual(result, self.expected_all_context)
+        self.assertEqual(self.expected_all_context, result)
 
     def test_get_project_quotas_with_remains(self):
         self._stub_get_by_project()
@@ -772,7 +783,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             'quota_get_all_by_project',
             'quota_usage_get_all_by_project_and_user',
         ])
-        self.assertEqual(result, self.expected_all_context)
+        self.assertEqual(self.expected_all_context, result)
 
     def test_get_project_quotas_alt_context_no_class(self):
         self._stub_get_by_project()
@@ -782,7 +793,7 @@ class DbQuotaDriverTestCase(test.TestCase):
 
         self.assertEqual(self.calls, ['quota_get_all_by_project',
                                       'quota_usage_get_all_by_project', ])
-        self.assertEqual(result, self.expected_all_context)
+        self.assertEqual(self.expected_all_context, result)
 
     def test_get_user_quotas_alt_context_with_class(self):
         self._stub_get_by_project_and_user()
@@ -797,7 +808,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             'quota_usage_get_all_by_project_and_user',
             'quota_class_get_all_by_name',
         ])
-        self.assertEqual(result, self.expected_all_context)
+        self.assertEqual(self.expected_all_context, result)
 
     def test_get_project_quotas_alt_context_with_class(self):
         self._stub_get_by_project()
@@ -808,7 +819,7 @@ class DbQuotaDriverTestCase(test.TestCase):
         self.assertEqual(self.calls, ['quota_get_all_by_project',
                                       'quota_usage_get_all_by_project',
                                       'quota_class_get_all_by_name', ])
-        self.assertEqual(result, self.expected_all_context)
+        self.assertEqual(self.expected_all_context, result)
 
     def test_get_user_quotas_no_defaults(self):
         self._stub_get_by_project_and_user()
@@ -826,8 +837,10 @@ class DbQuotaDriverTestCase(test.TestCase):
         expected = {
             "shares": {"limit": 10, "in_use": 2, "reserved": 0, },
             "gigabytes": {"limit": 50, "in_use": 10, "reserved": 0, },
+            "snapshot_gigabytes": {"limit": 50, "in_use": 20, "reserved": 0, },
+            "snapshots": {"limit": 10, "in_use": 4, "reserved": 0, },
         }
-        self.assertEqual(result, expected)
+        self.assertEqual(expected, result)
 
     def test_get_project_quotas_no_defaults(self):
         self._stub_get_by_project()
@@ -841,8 +854,9 @@ class DbQuotaDriverTestCase(test.TestCase):
         expected = {
             "shares": {"limit": 10, "in_use": 2, "reserved": 0, },
             "gigabytes": {"limit": 50, "in_use": 10, "reserved": 0, },
+            "snapshot_gigabytes": {"limit": 50, "in_use": 20, "reserved": 0, },
         }
-        self.assertEqual(result, expected)
+        self.assertEqual(expected, result)
 
     def test_get_user_quotas_no_usages(self):
         self._stub_get_by_project_and_user()
@@ -858,10 +872,11 @@ class DbQuotaDriverTestCase(test.TestCase):
         expected = {
             "shares": {"limit": 10, },
             "gigabytes": {"limit": 50, },
+            "snapshot_gigabytes": {"limit": 50, },
             "snapshots": {"limit": 10, },
             "share_networks": {"limit": 10, },
         }
-        self.assertEqual(result, expected)
+        self.assertEqual(result, expected, result)
 
     def test_get_project_quotas_no_usages(self):
         self._stub_get_by_project()
@@ -874,10 +889,11 @@ class DbQuotaDriverTestCase(test.TestCase):
         expected = {
             "shares": {"limit": 10, },
             "gigabytes": {"limit": 50, },
+            "snapshot_gigabytes": {"limit": 50, },
             "snapshots": {"limit": 10, },
             "share_networks": {"limit": 10, },
         }
-        self.assertEqual(result, expected)
+        self.assertEqual(expected, result)
 
     def _stub_get_settable_quotas(self):
         def fake_get_project_quotas(context, resources, project_id,
@@ -928,6 +944,7 @@ class DbQuotaDriverTestCase(test.TestCase):
         expected = {
             "shares": {"minimum": 0, "maximum": 12, },
             "gigabytes": {"minimum": 0, "maximum": 1000, },
+            "snapshot_gigabytes": {"minimum": 0, "maximum": 1000, },
             "snapshots": {"minimum": 0, "maximum": 10, },
             "share_networks": {"minimum": 0, "maximum": 10, },
         }
@@ -945,6 +962,7 @@ class DbQuotaDriverTestCase(test.TestCase):
         expected = {
             "shares": {"minimum": 0, "maximum": -1, },
             "gigabytes": {"minimum": 0, "maximum": -1, },
+            "snapshot_gigabytes": {"minimum": 0, "maximum": -1, },
             "snapshots": {"minimum": 0, "maximum": -1, },
             "share_networks": {"minimum": 0, "maximum": -1, },
         }

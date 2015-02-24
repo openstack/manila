@@ -498,7 +498,7 @@ class ShareAPITestCase(test.TestCase):
             share_api.policy.check_policy.assert_called_once_with(
                 self.context, 'share', 'create_snapshot', share)
             quota.QUOTAS.reserve.assert_called_once_with(
-                self.context, snapshots=1, gigabytes=1)
+                self.context, snapshots=1, snapshot_gigabytes=1)
             quota.QUOTAS.commit.assert_called_once_with(
                 self.context, 'reservation')
             db_driver.share_snapshot_create.assert_called_once_with(

@@ -306,8 +306,11 @@ class QuotaError(ManilaException):
 
 
 class ShareSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested share or snapshot exceeds "
-                "allowed gigabytes quota.")
+    message = _("Requested share exceeds allowed gigabytes quota.")
+
+
+class SnapshotSizeExceedsAvailableQuota(QuotaError):
+    message = _("Requested snapshot exceeds allowed gigabytes quota.")
 
 
 class ShareLimitExceeded(QuotaError):

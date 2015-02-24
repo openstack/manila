@@ -39,6 +39,7 @@ class UsedLimitsController(wsgi.Controller):
             'totalShareSnapshotsUsed': 'snapshots',
             'totalShareNetworksUsed': 'share_networks',
             'totalShareGigabytesUsed': 'gigabytes',
+            'totalSnapshotGigabytesUsed': 'snapshot_gigabytes',
         }
 
         used_limits = {}

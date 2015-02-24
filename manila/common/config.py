@@ -174,9 +174,7 @@ global_opts = [
                 help="Specify list of protocols to be allowed for share "
                      "creation. Available values are '%s'" % six.text_type(
                          constants.SUPPORTED_SHARE_PROTOCOLS)),
-    cfg.BoolOpt('no_snapshot_gb_quota',
-                default=False,
-                help='Whether snapshots count against Gigabyte quota.'), ]
+]
 
 CONF.register_opts(global_opts)
 

@@ -80,6 +80,15 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           gigabytes=-2)
 
     @test.attr(type=["gate", "smoke", "negative"])
+    def test_update_snapshot_gigabytes_quota_with_wrong_data(self):
+        # -1 is acceptable value as unlimited
+        client = self.get_client_with_isolated_creds()
+        self.assertRaises(exceptions.BadRequest,
+                          client.update_quotas,
+                          client.creds["tenant"]["id"],
+                          snapshot_gigabytes=-2)
+
+    @test.attr(type=["gate", "smoke", "negative"])
     def test_update_share_networks_quota_with_wrong_data(self):
         # -1 is acceptable value as unlimited
         client = self.get_client_with_isolated_creds()
@@ -144,6 +153,21 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
                           client.creds["tenant"]["id"],
                           client.creds["user"]["id"],
                           gigabytes=bigger_value)
+
+    @test.attr(type=["gate", "smoke", "negative"])
+    def test_try_set_user_quota_snap_gigabytes_bigger_than_tenant_quota(self):
+        client = self.get_client_with_isolated_creds()
+
+        # get current quotas for tenant
+        __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
+
+        # try set user quota for snapshot gigabytes bigger than tenant quota
+        bigger_value = int(tenant_quotas["snapshot_gigabytes"]) + 2
+        self.assertRaises(exceptions.BadRequest,
+                          client.update_quotas,
+                          client.creds["tenant"]["id"],
+                          client.creds["user"]["id"],
+                          snapshot_gigabytes=bigger_value)
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_set_user_quota_share_networks_bigger_than_tenant_quota(self):
