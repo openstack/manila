@@ -325,6 +325,24 @@ class HP3ParMediatorTestCase(test.TestCase):
 
         self.mock_client.assert_has_calls(expected_calls)
 
+    def test_mediator_create_share_from_snap_not_found(self):
+        self.init_mediator()
+
+        self.mock_client.getfsnap.return_value = {
+            'message': None,
+            'total': 0,
+            'members': []
+        }
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.create_share_from_snapshot,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.NFS,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.EXPECTED_SNAP_ID,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
     def test_mediator_delete_share(self):
         self.init_mediator()
 
@@ -362,6 +380,20 @@ class HP3ParMediatorTestCase(test.TestCase):
         ]
         self.mock_client.assert_has_calls(expected_calls)
 
+    def test_mediator_create_snapshot_backend_exception(self):
+        self.init_mediator()
+
+        # createfsnap exception
+        self.mock_client.createfsnap.side_effect = Exception(
+            'createfsnap fail.')
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.create_snapshot,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.EXPECTED_SNAP_NAME,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
     def test_mediator_delete_snapshot(self):
         self.init_mediator()
 
@@ -369,9 +401,20 @@ class HP3ParMediatorTestCase(test.TestCase):
 
         self.mock_client.getfsnap.return_value = {
             'total': 1,
-            'members': [{'snapName': expected_name_from_array}],
-            'message': None
+            'members': [{'snapName': expected_name_from_array}]
         }
+
+        self.mock_client.getfshare.side_effect = [
+            # some typical independent NFS share (path) and SMB share (dir)
+            {
+                'total': 1,
+                'members': [{'sharePath': '/anyfpg/anyvfs/anyfstore'}]
+            },
+            {
+                'total': 1,
+                'members': [{'shareDir': []}],
+            }
+        ]
 
         self.mediator.delete_snapshot(constants.EXPECTED_SHARE_ID,
                                       constants.EXPECTED_SNAP_NAME,
@@ -400,6 +443,178 @@ class HP3ParMediatorTestCase(test.TestCase):
                                       reclaimStrategy='maxspeed')
         ]
         self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_delete_snapshot_not_found(self):
+        self.init_mediator()
+
+        self.mock_client.getfsnap.return_value = {
+            'total': 0,
+            'members': [],
+        }
+
+        self.mediator.delete_snapshot(constants.EXPECTED_SHARE_ID,
+                                      constants.EXPECTED_SNAP_NAME,
+                                      constants.EXPECTED_FPG,
+                                      constants.EXPECTED_VFS)
+
+        expected_calls = [
+            mock.call.getfsnap('*_%s' % constants.EXPECTED_SNAP_NAME,
+                               vfs=constants.EXPECTED_VFS,
+                               fpg=constants.EXPECTED_FPG,
+                               pat=True,
+                               fstore=constants.EXPECTED_SHARE_ID),
+        ]
+
+        # Code coverage for early exit when nothing to delete.
+        self.mock_client.assert_has_calls(expected_calls)
+        self.assertFalse(self.mock_client.getfshare.called)
+        self.assertFalse(self.mock_client.removefsnap.called)
+        self.assertFalse(self.mock_client.startfsnapclean.called)
+
+    def test_mediator_delete_snapshot_shared_nfs(self):
+        self.init_mediator()
+
+        # Mock a share under this snapshot for NFS
+        snapshot_dir = '.snapshot/DT_%s' % constants.EXPECTED_SNAP_NAME
+        snapshot_path = '%s/%s' % (constants.EXPECTED_SHARE_PATH, snapshot_dir)
+
+        self.mock_client.getfsnap.return_value = {
+            'total': 1,
+            'members': [{'snapName': constants.EXPECTED_SNAP_NAME}]
+        }
+
+        self.mock_client.getfshare.side_effect = [
+            # some typical independent NFS share (path) and SMB share (dir)
+            {
+                'total': 1,
+                'members': [{'sharePath': snapshot_path}],
+            },
+            {
+                'total': 0,
+                'members': [],
+            }
+        ]
+
+        self.assertRaises(exception.Invalid,
+                          self.mediator.delete_snapshot,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.EXPECTED_SNAP_NAME,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+    def test_mediator_delete_snapshot_shared_smb(self):
+        self.init_mediator()
+
+        # Mock a share under this snapshot for SMB
+        snapshot_dir = '.snapshot/DT_%s' % constants.EXPECTED_SNAP_NAME
+
+        self.mock_client.getfsnap.return_value = {
+            'total': 1,
+            'members': [{'snapName': constants.EXPECTED_SNAP_NAME}]
+        }
+
+        self.mock_client.getfshare.side_effect = [
+            # some typical independent NFS share (path) and SMB share (dir)
+            {
+                'total': 1,
+                'members': [{'sharePath': constants.EXPECTED_SHARE_PATH}],
+            },
+            {
+                'total': 1,
+                'members': [{'shareDir': snapshot_dir}],
+            }
+        ]
+
+        self.assertRaises(exception.Invalid,
+                          self.mediator.delete_snapshot,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.EXPECTED_SNAP_NAME,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+    def _assert_delete_snapshot_raises(self):
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.delete_snapshot,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.EXPECTED_SNAP_NAME,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+    def test_mediator_delete_snapshot_backend_exceptions(self):
+        self.init_mediator()
+
+        # getfsnap exception
+        self.mock_client.getfsnap.side_effect = Exception('getfsnap fail.')
+        self._assert_delete_snapshot_raises()
+
+        # getfsnap OK
+        self.mock_client.getfsnap.side_effect = None
+        self.mock_client.getfsnap.return_value = {
+            'total': 1,
+            'members': [{'snapName': constants.EXPECTED_SNAP_NAME}]
+        }
+
+        # getfshare exception
+        self.mock_client.getfshare.side_effect = Exception('getfshare fail.')
+        self._assert_delete_snapshot_raises()
+
+        # getfshare OK
+        def mock_fshare(*args, **kwargs):
+            if args[0] == constants.NFS_LOWER:
+                return {
+                    'total': 1,
+                    'members': [{'sharePath': '/anyfpg/anyvfs/anyfstore'}]
+                }
+            else:
+                return {
+                    'total': 1,
+                    'members': [{'shareDir': []}]
+                }
+
+        self.mock_client.getfshare.side_effect = mock_fshare
+
+        # removefsnap exception
+        self.mock_client.removefsnap.side_effect = Exception(
+            'removefsnap fail.')
+        self._assert_delete_snapshot_raises()
+
+        # removefsnap OK
+        self.mock_client.removefsnap.side_effect = None
+        self.mock_client.removefsnap.return_value = []
+
+        # startfsnapclean exception (logged, not raised)
+        self.mock_client.startfsnapclean.side_effect = Exception(
+            'startfsnapclean fail.')
+        mock_log = self.mock_object(hp3parmediator, 'LOG')
+
+        self.mediator.delete_snapshot(constants.EXPECTED_SHARE_ID,
+                                      constants.EXPECTED_SNAP_NAME,
+                                      constants.EXPECTED_FPG,
+                                      constants.EXPECTED_VFS)
+
+        expected_calls = [
+            mock.call.getfsnap('*_%s' % constants.EXPECTED_SNAP_NAME,
+                               vfs=constants.EXPECTED_VFS,
+                               fpg=constants.EXPECTED_FPG,
+                               pat=True,
+                               fstore=constants.EXPECTED_SHARE_ID),
+            mock.call.getfshare(constants.NFS_LOWER,
+                                fpg=constants.EXPECTED_FPG,
+                                vfs=constants.EXPECTED_VFS,
+                                fstore=constants.EXPECTED_SHARE_ID),
+            mock.call.getfshare(constants.SMB_LOWER,
+                                fpg=constants.EXPECTED_FPG,
+                                vfs=constants.EXPECTED_VFS,
+                                fstore=constants.EXPECTED_SHARE_ID),
+            mock.call.removefsnap(constants.EXPECTED_VFS,
+                                  constants.EXPECTED_SHARE_ID,
+                                  fpg=constants.EXPECTED_FPG,
+                                  snapname=constants.EXPECTED_SNAP_NAME),
+            mock.call.startfsnapclean(constants.EXPECTED_FPG,
+                                      reclaimStrategy='maxspeed'),
+        ]
+        self.mock_client.assert_has_calls(expected_calls)
+        mock_log.assert_has_calls(mock.call.exception(mock.ANY))
 
     def test_mediator_get_capacity(self):
         """Mediator converts client stats to capacity result."""

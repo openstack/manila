@@ -403,11 +403,14 @@ class HP3ParMediator(object):
                     path = share['sharePath'][1:].split('/')
                     dot_snapshot_index = 3
                 else:
-                    path = share['shareDir'].split('/')
+                    if share['shareDir']:
+                        path = share['shareDir'].split('/')
+                    else:
+                        path = None
                     dot_snapshot_index = 0
 
-                snapshot_index = dot_snapshot_index
-                if len(path) > snapshot_index + 1:
+                snapshot_index = dot_snapshot_index + 1
+                if path and len(path) > snapshot_index:
                     if (path[dot_snapshot_index] == '.snapshot' and
                             path[snapshot_index].endswith(snapshot_tag)):
                         msg = (_('Cannot delete snapshot because it has a '
