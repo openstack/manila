@@ -318,6 +318,15 @@ class API(base.Base):
     def security_group_rule_delete(self, context, rule):
         return novaclient(context).security_group_rules.delete(rule)
 
+    def fixed_ip_reserve(self, context, fixed_ip):
+        return novaclient(context).fixed_ips.reserve(fixed_ip)
+
+    def fixed_ip_unreserve(self, context, fixed_ip):
+        return novaclient(context).fixed_ips.unreserve(fixed_ip)
+
+    def fixed_ip_get(self, context, fixed_ip):
+        return _to_dict(novaclient(context).fixed_ips.get(fixed_ip))
+
     def network_get(self, context, network_id):
         """Return network data by its ID."""
         return _to_dict(novaclient(context).networks.get(network_id))
