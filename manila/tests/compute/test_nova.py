@@ -30,6 +30,12 @@ class Volume(object):
         self.name = volume_id
 
 
+class Network(object):
+    def __init__(self, net_id):
+        self.id = net_id
+        self.label = 'fake_label_%s' % net_id
+
+
 class FakeNovaClient(object):
     class Servers(object):
         def get(self, instance_id):
@@ -57,10 +63,15 @@ class FakeNovaClient(object):
         def __getattr__(self, item):
             return None
 
+    class Networks(object):
+        def get(self, net_id):
+            return Network(net_id)
+
     def __init__(self):
         self.servers = self.Servers()
         self.volumes = self.Volumes()
         self.keypairs = self.servers
+        self.networks = self.Networks()
 
 
 class NovaApiTestCase(test.TestCase):
@@ -209,3 +220,42 @@ class NovaApiTestCase(test.TestCase):
     def test_keypair_list(self):
         self.assertEqual([{'id': 'id1'}, {'id': 'id2'}],
                          self.api.keypair_list(self.ctx))
+
+    def test_network_get(self):
+        net_id = 'fake_net_id'
+        net = self.api.network_get(self.ctx, net_id)
+        self.assertTrue(isinstance(net, dict))
+        self.assertEqual(net_id, net['id'])
+
+
+class ToDictTestCase(test.TestCase):
+
+    def test_dict_provided(self):
+        fake_dict = {'foo_key': 'foo_value', 'bar_key': 'bar_value'}
+        result = nova._to_dict(fake_dict)
+        self.assertEqual(fake_dict, result)
+
+    def test_obj_provided_with_to_dict_method(self):
+        expected = {'foo': 'bar'}
+
+        class FakeObj(object):
+            def __init__(self):
+                self.fake_attr = 'fake_attr_value'
+
+            def to_dict(self):
+                return expected
+
+        fake_obj = FakeObj()
+        result = nova._to_dict(fake_obj)
+        self.assertEqual(expected, result)
+
+    def test_obj_provided_without_to_dict_method(self):
+        expected = {'foo': 'bar'}
+
+        class FakeObj(object):
+            def __init__(self):
+                self.foo = expected['foo']
+
+        fake_obj = FakeObj()
+        result = nova._to_dict(fake_obj)
+        self.assertEqual(expected, result)

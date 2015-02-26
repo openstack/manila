@@ -566,3 +566,65 @@ class NeutronApiTest(test.TestCase):
         self.neutron_api.client.add_interface_router.assert_called_once_with(
             router_id, {'subnet_id': subnet_id, 'port_id': port_id})
         self.assertTrue(clientv20.Client.called)
+
+    def test_admin_project_id_exist(self):
+        fake_admin_project_id = 'fake_admin_project_id_value'
+        self.neutron_api.client.httpclient = mock.Mock()
+        self.neutron_api.client.httpclient.auth_token = mock.Mock()
+        self.neutron_api.client.httpclient.auth_tenant_id = (
+            fake_admin_project_id)
+
+        admin_project_id = self.neutron_api.admin_project_id
+
+        self.assertEqual(fake_admin_project_id, admin_project_id)
+        self.neutron_api.client.httpclient.auth_token.called
+
+    def test_admin_project_id_not_exist(self):
+        fake_admin_project_id = 'fake_admin_project_id_value'
+        self.neutron_api.client.httpclient = mock.Mock()
+        self.neutron_api.client.httpclient.auth_token = mock.Mock(
+            return_value=None)
+        self.neutron_api.client.httpclient.authenticate = mock.Mock()
+        self.neutron_api.client.httpclient.auth_tenant_id = (
+            fake_admin_project_id)
+
+        admin_project_id = self.neutron_api.admin_project_id
+
+        self.assertEqual(fake_admin_project_id, admin_project_id)
+        self.neutron_api.client.httpclient.auth_token.called
+        self.neutron_api.client.httpclient.authenticate.called
+
+    def test_admin_project_id_not_exist_with_failure(self):
+        self.neutron_api.client.httpclient = mock.Mock()
+        self.neutron_api.client.httpclient.auth_token = None
+        self.neutron_api.client.httpclient.authenticate = mock.Mock(
+            side_effect=neutron_client_exc.NeutronClientException)
+        self.neutron_api.client.httpclient.auth_tenant_id = mock.Mock()
+
+        try:
+            self.neutron_api.admin_project_id
+        except exception.NetworkException:
+            pass
+        else:
+            raise Exception('Expected error was not raised')
+
+        self.assertTrue(self.neutron_api.client.httpclient.authenticate.called)
+        self.assertFalse(
+            self.neutron_api.client.httpclient.auth_tenant_id.called)
+
+    def test_get_all_admin_project_networks(self):
+        fake_networks = {'networks': ['fake_net_1', 'fake_net_2']}
+        self.mock_object(
+            self.neutron_api.client, 'list_networks',
+            mock.Mock(return_value=fake_networks))
+        self.neutron_api.client.httpclient = mock.Mock()
+        self.neutron_api.client.httpclient.auth_token = mock.Mock()
+        self.neutron_api.client.httpclient.auth_tenant_id = mock.Mock()
+
+        networks = self.neutron_api.get_all_admin_project_networks()
+
+        self.assertEqual(fake_networks['networks'], networks)
+        self.neutron_api.client.httpclient.auth_token.called
+        self.neutron_api.client.httpclient.auth_tenant_id.called
+        self.neutron_api.client.list_networks.assert_called_once_with(
+            tenant_id=self.neutron_api.admin_project_id, shared=False)

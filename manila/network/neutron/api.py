@@ -47,10 +47,11 @@ neutron_opts = [
         deprecated_group='DEFAULT',
         secret=True),
     cfg.StrOpt(
-        'neutron_admin_tenant_name',
+        'neutron_admin_project_name',
         default='service',
         deprecated_group='DEFAULT',
-        help='Tenant name for connecting to neutron in admin context.'),
+        deprecated_name='neutron_admin_tenant_name',
+        help='Project name for connecting to Neutron in admin context.'),
     cfg.StrOpt(
         'neutron_admin_auth_url',
         default='http://localhost:5000/v2.0',
@@ -105,7 +106,7 @@ class API(base.Base):
         else:
             params['username'] = self.configuration.neutron_admin_username
             params['tenant_name'] = (
-                self.configuration.neutron_admin_tenant_name)
+                self.configuration.neutron_admin_project_name)
             params['password'] = self.configuration.neutron_admin_password
             params['auth_url'] = self.configuration.neutron_admin_auth_url
             params['auth_strategy'] = self.configuration.neutron_auth_strategy
@@ -121,7 +122,7 @@ class API(base.Base):
         return self._get_client(token=token)
 
     @property
-    def admin_tenant_id(self):
+    def admin_project_id(self):
         if self.client.httpclient.auth_token is None:
             try:
                 self.client.httpclient.authenticate()
@@ -130,8 +131,8 @@ class API(base.Base):
                                                  message=e.message)
         return self.client.httpclient.auth_tenant_id
 
-    def get_all_tenant_networks(self, tenant_id):
-        search_opts = {'tenant_id': tenant_id, 'shared': False}
+    def get_all_admin_project_networks(self):
+        search_opts = {'tenant_id': self.admin_project_id, 'shared': False}
         nets = self.client.list_networks(**search_opts).get('networks', [])
         return nets
 

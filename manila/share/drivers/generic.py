@@ -618,11 +618,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         msg = "Creating share server '%s'."
         LOG.debug(msg % network_info['server_id'])
         server = self.service_instance_manager.set_up_service_instance(
-            self.admin_context,
-            network_info['server_id'],
-            network_info['neutron_net_id'],
-            network_info['neutron_subnet_id'],
-        )
+            self.admin_context, network_info)
         for helper in self._helpers.values():
             helper.init_helper(server)
         return server
@@ -632,8 +628,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         LOG.debug("Removing share infrastructure for service instance '%s'.",
                   instance_id)
         self.service_instance_manager.delete_service_instance(
-            self.admin_context, instance_id, server_details['subnet_id'],
-            server_details.get('router_id'))
+            self.admin_context, server_details)
 
 
 class NASHelperBase(object):
