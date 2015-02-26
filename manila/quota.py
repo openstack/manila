@@ -39,8 +39,10 @@ quota_opts = [
                help='Number of share snapshots allowed per project.'),
     cfg.IntOpt('quota_gigabytes',
                default=1000,
-               help='Number of share gigabytes (snapshots are also included) '
-                    'allowed per project.'),
+               help='Number of share gigabytes allowed per project.'),
+    cfg.IntOpt('quota_snapshot_gigabytes',
+               default=1000,
+               help='Number of snapshot gigabytes allowed per project.'),
     cfg.IntOpt('quota_share_networks',
                default=10,
                help='Number of share-networks allowed per project.'),
@@ -1076,6 +1078,8 @@ resources = [
     ReservableResource('shares', '_sync_shares', 'quota_shares'),
     ReservableResource('snapshots', '_sync_snapshots', 'quota_snapshots'),
     ReservableResource('gigabytes', '_sync_gigabytes', 'quota_gigabytes'),
+    ReservableResource('snapshot_gigabytes', '_sync_snapshot_gigabytes',
+                       'quota_snapshot_gigabytes'),
     ReservableResource('share_networks', '_sync_share_networks',
                        'quota_share_networks'),
 ]

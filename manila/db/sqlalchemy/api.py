@@ -263,18 +263,15 @@ def _sync_snapshots(context, project_id, user_id, session):
 
 
 def _sync_gigabytes(context, project_id, user_id, session):
-    (_junk, share_gigs) = share_data_get_for_project(context,
-                                                     project_id,
-                                                     user_id,
-                                                     session=session)
-    if CONF.no_snapshot_gb_quota:
-        return {'gigabytes': share_gigs}
+    _junk, share_gigs = share_data_get_for_project(
+        context, project_id, user_id, session=session)
+    return dict(gigabytes=share_gigs)
 
-    (_junk, snap_gigs) = snapshot_data_get_for_project(context,
-                                                       project_id,
-                                                       user_id,
-                                                       session=session)
-    return {'gigabytes': share_gigs + snap_gigs}
+
+def _sync_snapshot_gigabytes(context, project_id, user_id, session):
+    _junk, snapshot_gigs = snapshot_data_get_for_project(
+        context, project_id, user_id, session=session)
+    return dict(snapshot_gigabytes=snapshot_gigs)
 
 
 def _sync_share_networks(context, project_id, user_id, session):
@@ -289,6 +286,7 @@ QUOTA_SYNC_FUNCTIONS = {
     '_sync_shares': _sync_shares,
     '_sync_snapshots': _sync_snapshots,
     '_sync_gigabytes': _sync_gigabytes,
+    '_sync_snapshot_gigabytes': _sync_snapshot_gigabytes,
     '_sync_share_networks': _sync_share_networks,
 }
 

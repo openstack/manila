@@ -272,7 +272,8 @@ class API(base.Base):
         size = share['size']
 
         try:
-            reservations = QUOTAS.reserve(context, snapshots=1, gigabytes=size)
+            reservations = QUOTAS.reserve(
+                context, snapshots=1, snapshot_gigabytes=size)
         except exception.OverQuota as e:
             overs = e.kwargs['overs']
             usages = e.kwargs['usages']
@@ -281,15 +282,15 @@ class API(base.Base):
             def _consumed(name):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
-            if 'gigabytes' in overs:
+            if 'snapshot_gigabytes' in overs:
                 msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
                           "%(s_size)sG snapshot (%(d_consumed)dG of "
                           "%(d_quota)dG already consumed)")
                 LOG.warn(msg, {'s_pid': context.project_id,
                                's_size': size,
                                'd_consumed': _consumed('gigabytes'),
-                               'd_quota': quotas['gigabytes']})
-                raise exception.ShareSizeExceedsAvailableQuota()
+                               'd_quota': quotas['snapshot_gigabytes']})
+                raise exception.SnapshotSizeExceedsAvailableQuota()
             elif 'snapshots' in overs:
                 msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
                           "snapshot (%(d_consumed)d snapshots "

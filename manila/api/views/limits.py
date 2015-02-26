@@ -44,6 +44,7 @@ class ViewBuilder(object):
         """
         limit_names = {
             "gigabytes": ["maxTotalShareGigabytes"],
+            "snapshot_gigabytes": ["maxTotalSnapshotGigabytes"],
             "shares": ["maxTotalShares"],
             "snapshots": ["maxTotalShareSnapshots"],
             "share_networks": ["maxTotalShareNetworks"],

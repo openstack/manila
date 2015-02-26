@@ -245,8 +245,8 @@ class SharesClient(service_client.ServiceClient):
         return self.delete(uri)
 
     def update_quotas(self, tenant_id, user_id=None, shares=None,
-                      snapshots=None, gigabytes=None, share_networks=None,
-                      force=True):
+                      snapshots=None, gigabytes=None, snapshot_gigabytes=None,
+                      share_networks=None, force=True):
         uri = "os-quota-sets/%s" % tenant_id
         if user_id is not None:
             uri += "?user_id=%s" % user_id
@@ -260,6 +260,8 @@ class SharesClient(service_client.ServiceClient):
             put_body["snapshots"] = snapshots
         if gigabytes is not None:
             put_body["gigabytes"] = gigabytes
+        if snapshot_gigabytes is not None:
+            put_body["snapshot_gigabytes"] = snapshot_gigabytes
         if share_networks is not None:
             put_body["share_networks"] = share_networks
         put_body = json.dumps({"quota_set": put_body})
