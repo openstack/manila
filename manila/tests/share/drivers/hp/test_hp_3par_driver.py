@@ -39,11 +39,12 @@ class HP3ParDriverTestCase(test.TestCase):
         self.conf.hp3par_api_url = constants.API_URL
         self.conf.hp3par_san_login = constants.SAN_LOGIN
         self.conf.hp3par_san_password = constants.SAN_PASSWORD
-        self.conf.hp3par.san_ip = constants.EXPECTED_IP_1234
+        self.conf.hp3par_san_ip = constants.EXPECTED_IP_1234
         self.conf.hp3par_fpg = constants.EXPECTED_FPG
         self.conf.hp3par_san_ssh_port = constants.PORT
         self.conf.ssh_conn_timeout = constants.TIMEOUT
         self.conf.hp3par_share_ip_address = constants.EXPECTED_IP_10203040
+        self.conf.hp3par_fstore_per_share = False
         self.conf.network_config_group = 'test_network_config_group'
 
         def safe_get(attr):
@@ -66,20 +67,22 @@ class HP3ParDriverTestCase(test.TestCase):
         self.mock_mediator.get_vfs_name.return_value = constants.EXPECTED_VFS
 
         self.driver.do_setup(None)
+        conf = self.conf
         self.mock_mediator_constructor.assert_has_calls([
-            mock.call(hp3par_san_ssh_port=self.conf.hp3par_san_ssh_port,
-                      hp3par_san_password=self.conf.hp3par_san_password,
-                      hp3par_username=self.conf.hp3par_username,
-                      hp3par_san_login=self.conf.hp3par_san_login,
-                      hp3par_debug=self.conf.hp3par_debug,
-                      hp3par_api_url=self.conf.hp3par_api_url,
-                      hp3par_password=self.conf.hp3par_password,
-                      hp3par_san_ip=self.conf.hp3par_san_ip,
-                      ssh_conn_timeout=self.conf.ssh_conn_timeout)])
+            mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
+                      hp3par_san_password=conf.hp3par_san_password,
+                      hp3par_username=conf.hp3par_username,
+                      hp3par_san_login=conf.hp3par_san_login,
+                      hp3par_debug=conf.hp3par_debug,
+                      hp3par_api_url=conf.hp3par_api_url,
+                      hp3par_password=conf.hp3par_password,
+                      hp3par_san_ip=conf.hp3par_san_ip,
+                      hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
+                      ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([
             mock.call.do_setup(),
-            mock.call.get_vfs_name(self.conf.hp3par_fpg)])
+            mock.call.get_vfs_name(conf.hp3par_fpg)])
 
         self.assertEqual(constants.EXPECTED_VFS, self.driver.vfs)
 
@@ -92,16 +95,18 @@ class HP3ParDriverTestCase(test.TestCase):
         self.assertRaises(exception.ShareBackendException,
                           self.driver.do_setup, None)
 
+        conf = self.conf
         self.mock_mediator_constructor.assert_has_calls([
-            mock.call(hp3par_san_ssh_port=self.conf.hp3par_san_ssh_port,
-                      hp3par_san_password=self.conf.hp3par_san_password,
-                      hp3par_username=self.conf.hp3par_username,
-                      hp3par_san_login=self.conf.hp3par_san_login,
-                      hp3par_debug=self.conf.hp3par_debug,
-                      hp3par_api_url=self.conf.hp3par_api_url,
-                      hp3par_password=self.conf.hp3par_password,
-                      hp3par_san_ip=self.conf.hp3par_san_ip,
-                      ssh_conn_timeout=self.conf.ssh_conn_timeout)])
+            mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
+                      hp3par_san_password=conf.hp3par_san_password,
+                      hp3par_username=conf.hp3par_username,
+                      hp3par_san_login=conf.hp3par_san_login,
+                      hp3par_debug=conf.hp3par_debug,
+                      hp3par_api_url=conf.hp3par_api_url,
+                      hp3par_password=conf.hp3par_password,
+                      hp3par_san_ip=conf.hp3par_san_ip,
+                      hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
+                      ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([mock.call.do_setup()])
 
@@ -114,20 +119,22 @@ class HP3ParDriverTestCase(test.TestCase):
         self.assertRaises(exception.ShareBackendException,
                           self.driver.do_setup, None)
 
+        conf = self.conf
         self.mock_mediator_constructor.assert_has_calls([
-            mock.call(hp3par_san_ssh_port=self.conf.hp3par_san_ssh_port,
-                      hp3par_san_password=self.conf.hp3par_san_password,
-                      hp3par_username=self.conf.hp3par_username,
-                      hp3par_san_login=self.conf.hp3par_san_login,
-                      hp3par_debug=self.conf.hp3par_debug,
-                      hp3par_api_url=self.conf.hp3par_api_url,
-                      hp3par_password=self.conf.hp3par_password,
-                      hp3par_san_ip=self.conf.hp3par_san_ip,
-                      ssh_conn_timeout=self.conf.ssh_conn_timeout)])
+            mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
+                      hp3par_san_password=conf.hp3par_san_password,
+                      hp3par_username=conf.hp3par_username,
+                      hp3par_san_login=conf.hp3par_san_login,
+                      hp3par_debug=conf.hp3par_debug,
+                      hp3par_api_url=conf.hp3par_api_url,
+                      hp3par_password=conf.hp3par_password,
+                      hp3par_san_ip=conf.hp3par_san_ip,
+                      hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
+                      ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([
             mock.call.do_setup(),
-            mock.call.get_vfs_name(self.conf.hp3par_fpg)])
+            mock.call.get_vfs_name(conf.hp3par_fpg)])
 
     def init_driver(self):
         """Simple driver setup for re-use with tests that need one."""
@@ -137,11 +144,13 @@ class HP3ParDriverTestCase(test.TestCase):
         self.driver.fpg = constants.EXPECTED_FPG
         self.driver.share_ip_address = self.conf.hp3par_share_ip_address
 
-    def do_create_share(self, protocol, expected_share_id, expected_size):
+    def do_create_share(self, protocol, expected_project_id, expected_share_id,
+                        expected_size):
         """Re-usable code for create share."""
         context = None
         share_server = None
         share = {
+            'project_id': expected_project_id,
             'id': expected_share_id,
             'share_proto': protocol,
             'size': expected_size,
@@ -188,11 +197,13 @@ class HP3ParDriverTestCase(test.TestCase):
             constants.EXPECTED_SHARE_NAME)
 
         location = self.do_create_share(constants.CIFS,
+                                        constants.EXPECTED_PROJECT_ID,
                                         constants.EXPECTED_SHARE_ID,
                                         constants.EXPECTED_SIZE_2)
 
         self.assertEqual(expected_location, location)
         expected_calls = [mock.call.create_share(
+            constants.EXPECTED_PROJECT_ID,
             constants.EXPECTED_SHARE_ID,
             constants.CIFS,
             constants.EXPECTED_FPG,
@@ -210,12 +221,14 @@ class HP3ParDriverTestCase(test.TestCase):
             constants.EXPECTED_SHARE_PATH)
 
         location = self.do_create_share(constants.NFS,
+                                        constants.EXPECTED_PROJECT_ID,
                                         constants.EXPECTED_SHARE_ID,
                                         constants.EXPECTED_SIZE_1)
 
         self.assertEqual(expected_location, location)
         expected_calls = [
-            mock.call.create_share(constants.EXPECTED_SHARE_ID,
+            mock.call.create_share(constants.EXPECTED_PROJECT_ID,
+                                   constants.EXPECTED_SHARE_ID,
                                    constants.NFS,
                                    constants.EXPECTED_FPG,
                                    constants.EXPECTED_VFS,
@@ -242,7 +255,9 @@ class HP3ParDriverTestCase(test.TestCase):
         expected_calls = [
             mock.call.create_share_from_snapshot(constants.EXPECTED_SHARE_ID,
                                                  constants.CIFS,
+                                                 constants.EXPECTED_FSTORE,
                                                  constants.EXPECTED_SHARE_ID,
+                                                 constants.NFS,
                                                  constants.EXPECTED_SNAP_ID,
                                                  constants.EXPECTED_FPG,
                                                  constants.EXPECTED_VFS)]
@@ -267,7 +282,9 @@ class HP3ParDriverTestCase(test.TestCase):
         expected_calls = [
             mock.call.create_share_from_snapshot(constants.EXPECTED_SHARE_ID,
                                                  constants.NFS,
+                                                 constants.EXPECTED_PROJECT_ID,
                                                  constants.EXPECTED_SHARE_ID,
+                                                 constants.NFS,
                                                  constants.EXPECTED_SNAP_ID,
                                                  constants.EXPECTED_FPG,
                                                  constants.EXPECTED_VFS)]
@@ -280,6 +297,7 @@ class HP3ParDriverTestCase(test.TestCase):
         context = None
         share_server = None
         share = {
+            'project_id': constants.EXPECTED_PROJECT_ID,
             'id': constants.EXPECTED_SHARE_ID,
             'share_proto': constants.CIFS,
             'size': constants.EXPECTED_SIZE_1,
@@ -288,7 +306,8 @@ class HP3ParDriverTestCase(test.TestCase):
         self.driver.delete_share(context, share, share_server)
 
         expected_calls = [
-            mock.call.delete_share(constants.EXPECTED_SHARE_ID,
+            mock.call.delete_share(constants.EXPECTED_PROJECT_ID,
+                                   constants.EXPECTED_SHARE_ID,
                                    constants.CIFS,
                                    constants.EXPECTED_FPG,
                                    constants.EXPECTED_VFS)]
@@ -305,7 +324,9 @@ class HP3ParDriverTestCase(test.TestCase):
                                     share_server)
 
         expected_calls = [
-            mock.call.create_snapshot(constants.EXPECTED_SHARE_ID,
+            mock.call.create_snapshot(constants.EXPECTED_PROJECT_ID,
+                                      constants.EXPECTED_SHARE_ID,
+                                      constants.NFS,
                                       constants.EXPECTED_SNAP_ID,
                                       constants.EXPECTED_FPG,
                                       constants.EXPECTED_VFS)]
@@ -321,7 +342,9 @@ class HP3ParDriverTestCase(test.TestCase):
                                     share_server)
 
         expected_calls = [
-            mock.call.delete_snapshot(constants.EXPECTED_SHARE_ID,
+            mock.call.delete_snapshot(constants.EXPECTED_PROJECT_ID,
+                                      constants.EXPECTED_SHARE_ID,
+                                      constants.NFS,
                                       constants.EXPECTED_SNAP_ID,
                                       constants.EXPECTED_FPG,
                                       constants.EXPECTED_VFS)
@@ -337,7 +360,8 @@ class HP3ParDriverTestCase(test.TestCase):
                                  constants.ACCESS_INFO)
 
         expected_calls = [
-            mock.call.allow_access(constants.EXPECTED_SHARE_ID,
+            mock.call.allow_access(constants.EXPECTED_PROJECT_ID,
+                                   constants.EXPECTED_SHARE_ID,
                                    constants.NFS,
                                    constants.IP,
                                    constants.EXPECTED_IP_1234,
@@ -355,7 +379,8 @@ class HP3ParDriverTestCase(test.TestCase):
                                 constants.ACCESS_INFO)
 
         expected_calls = [
-            mock.call.deny_access(constants.EXPECTED_SHARE_ID,
+            mock.call.deny_access(constants.EXPECTED_PROJECT_ID,
+                                  constants.EXPECTED_SHARE_ID,
                                   constants.NFS,
                                   constants.IP,
                                   constants.EXPECTED_IP_1234,

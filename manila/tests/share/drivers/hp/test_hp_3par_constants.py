@@ -29,6 +29,7 @@ PORT = 22
 EXPECTED_IP_10203040 = '10.20.30.40'
 EXPECTED_IP_1234 = '1.2.3.4'
 EXPECTED_IP_127 = '127.0.0.1'
+EXPECTED_PROJECT_ID = 'osf-nfs-project-id'
 EXPECTED_SHARE_ID = 'osf-share-id'
 EXPECTED_SHARE_NAME = 'share-name'
 EXPECTED_SHARE_PATH = '/anyfpg/anyvfs/anyfstore'
@@ -38,11 +39,12 @@ EXPECTED_SNAP_NAME = 'osf-snap-name'
 EXPECTED_SNAP_ID = 'osf-snap-id'
 EXPECTED_STATS = {'test': 'stats'}
 EXPECTED_FPG = 'FPG_1'
-EXPECTED_FSTORE = 'osf-test_fstore'
+EXPECTED_FSTORE = EXPECTED_PROJECT_ID
 EXPECTED_VFS = 'test_vfs'
 EXPECTED_HP_DEBUG = True
 
 NFS_SHARE_INFO = {
+    'project_id': EXPECTED_PROJECT_ID,
     'id': EXPECTED_SHARE_ID,
     'share_proto': NFS,
 }
@@ -55,5 +57,9 @@ ACCESS_INFO = {
 SNAPSHOT_INFO = {
     'name': EXPECTED_SNAP_NAME,
     'id': EXPECTED_SNAP_ID,
-    'share': {'id': EXPECTED_SHARE_ID},
+    'share': {
+        'project_id': EXPECTED_PROJECT_ID,
+        'id': EXPECTED_SHARE_ID,
+        'share_proto': NFS,
+    },
 }
