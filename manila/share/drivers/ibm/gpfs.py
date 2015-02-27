@@ -36,11 +36,11 @@ import pipes
 import re
 import socket
 
-from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import strutils
 from oslo_utils import units
 import six
 
@@ -57,6 +57,7 @@ LOG = log.getLogger(__name__)
 AVPATTERN = re.compile(r'\s*(?P<attr>\w+)\s*=\s*(?P<val>'
                        '(["][a-zA-Z0-9_, ]+["])|(\w+))\s*[,]?')
 
+ERR_FILE_NOT_FOUND = 2
 
 gpfs_share_opts = [
     cfg.StrOpt('gpfs_share_export_ip',
@@ -152,11 +153,13 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def _gpfs_remote_execute(self, *cmd, **kwargs):
         host = self.configuration.gpfs_share_export_ip
-        check_exit_code = kwargs.pop('check_exit_code', None)
+        check_exit_code = kwargs.pop('check_exit_code', True)
+        ignore_exit_codes = kwargs.pop('ignore_exit_codes', None)
 
-        return self._run_ssh(host, cmd, check_exit_code)
+        return self._run_ssh(host, cmd, ignore_exit_codes, check_exit_code)
 
-    def _run_ssh(self, host, cmd_list, check_exit_code=True):
+    def _run_ssh(self, host, cmd_list, ignore_exit_codes=None,
+                 check_exit_code=True):
         command = ' '.join(pipes.quote(cmd_arg) for cmd_arg in cmd_list)
 
         if not self.sshpool:
@@ -178,25 +181,57 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                                          max_size=max_size)
         try:
             with self.sshpool.item() as ssh:
-                return processutils.ssh_execute(
+                return self._gpfs_ssh_execute(
                     ssh,
                     command,
+                    ignore_exit_codes=ignore_exit_codes,
                     check_exit_code=check_exit_code)
 
         except Exception as e:
             with excutils.save_and_reraise_exception():
                 msg = (_('Error running SSH command: %(cmd)s. '
-                         'Error: %(excmsg)s.'),
-                       {'cmd': command, 'excmsg': six.text_type(e)})
+                         'Error: %(excmsg)s.') %
+                       {'cmd': command, 'excmsg': e})
                 LOG.error(msg)
                 raise exception.GPFSException(msg)
+
+    def _gpfs_ssh_execute(self, ssh, cmd, ignore_exit_codes=None,
+                          check_exit_code=True):
+        sanitized_cmd = strutils.mask_password(cmd)
+        LOG.debug('Running cmd (SSH): %s', sanitized_cmd)
+
+        stdin_stream, stdout_stream, stderr_stream = ssh.exec_command(cmd)
+        channel = stdout_stream.channel
+
+        stdout = stdout_stream.read()
+        sanitized_stdout = strutils.mask_password(stdout)
+        stderr = stderr_stream.read()
+        sanitized_stderr = strutils.mask_password(stderr)
+
+        stdin_stream.close()
+
+        exit_status = channel.recv_exit_status()
+
+        # exit_status == -1 if no exit code was returned
+        if exit_status != -1:
+            LOG.debug('Result was %s' % exit_status)
+            if ((check_exit_code and exit_status != 0)
+                and
+                (ignore_exit_codes is None or
+                 exit_status not in ignore_exit_codes)):
+                raise exception.ProcessExecutionError(exit_code=exit_status,
+                                                      stdout=sanitized_stdout,
+                                                      stderr=sanitized_stderr,
+                                                      cmd=sanitized_cmd)
+
+        return (sanitized_stdout, sanitized_stderr)
 
     def _check_gpfs_state(self):
         try:
             out, __ = self._gpfs_execute('mmgetstate', '-Y')
         except exception.ProcessExecutionError as e:
-            msg = (_('Failed to check GPFS state. Error: %(excmsg)s.'),
-                   {'excmsg': six.text_type(e)})
+            msg = (_('Failed to check GPFS state. Error: %(excmsg)s.') %
+                   {'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
         lines = out.splitlines()
@@ -204,8 +239,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             state_token = lines[0].split(':').index('state')
             gpfs_state = lines[1].split(':')[state_token]
         except (IndexError, ValueError) as e:
-            msg = (_('Failed to check GPFS state. Error: %(excmsg)s.'),
-                   {'excmsg': six.text_type(e)})
+            msg = (_('Failed to check GPFS state. Error: %(excmsg)s.') %
+                   {'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
         if gpfs_state != 'active':
@@ -217,8 +252,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             output, __ = self._gpfs_execute('stat', '--format=%F', path,
                                             run_as_root=False)
         except exception.ProcessExecutionError as e:
-            msg = (_('%(path)s is not a directory. Error: %(excmsg)s'),
-                   {'path': path, 'excmsg': six.text_type(e)})
+            msg = (_('%(path)s is not a directory. Error: %(excmsg)s') %
+                   {'path': path, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -228,8 +263,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         try:
             self._gpfs_execute('mmlsattr', directory)
         except exception.ProcessExecutionError as e:
-            msg = (_('%(dir)s is not on GPFS filesystem. Error: %(excmsg)s.'),
-                   {'dir': directory, 'excmsg': six.text_type(e)})
+            msg = (_('%(dir)s is not on GPFS filesystem. Error: %(excmsg)s.') %
+                   {'dir': directory, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -255,8 +290,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             (out, _) = self._gpfs_execute('df', fspath)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to get GPFS device for %(fspath)s.'
-                   'Error: %(excmsg)s'),
-                   {'fspath': fspath, 'excmsg': six.text_type(e)})
+                   'Error: %(excmsg)s') %
+                   {'fspath': fspath, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -281,9 +316,9 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                                '--inode-space', 'new')
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to create fileset on %(fsdev)s for '
-                     'the share %(sharename)s. Error: %(excmsg)s.'),
+                     'the share %(sharename)s. Error: %(excmsg)s.') %
                    {'fsdev': fsdev, 'sharename': sharename,
-                   'excmsg': six.text_type(e)})
+                    'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -292,8 +327,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                                sharepath)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to link fileset for the share %(sharename)s. '
-                     'Error: %(excmsg)s.'),
-                   {'sharename': sharename, 'excmsg': six.text_type(e)})
+                     'Error: %(excmsg)s.') %
+                   {'sharename': sharename, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -302,8 +337,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                                sizestr, fsdev)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to set quota for the share %(sharename)s. '
-                     'Error: %(excmsg)s.'),
-                   {'sharename': sharename, 'excmsg': six.text_type(e)})
+                     'Error: %(excmsg)s.') %
+                   {'sharename': sharename, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -311,8 +346,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             self._gpfs_execute('chmod', '777', sharepath)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to set permissions for share %(sharename)s. '
-                     'Error: %(excmsg).'),
-                   {'sharename': sharename, 'excmsg': six.text_type(e)})
+                     'Error: %(excmsg).') %
+                   {'sharename': sharename, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -320,23 +355,32 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         """Remove container by removing GPFS fileset."""
         sharename = shareobj['name']
         fsdev = self._get_gpfs_device()
+        # ignore error, when the fileset does not exist
+        # it may happen, when the share creation failed, the share is in
+        # 'error' state, and the fileset was never created
+        # we want to ignore that error condition while deleting the fileset,
+        # i.e. 'Fileset name share-xyz not found', with error code '2'
+        # and mark the deletion successful
+        ignore_exit_codes = [ERR_FILE_NOT_FOUND]
 
         # unlink and delete the share's fileset
         try:
-            self._gpfs_execute('mmunlinkfileset', fsdev, sharename, '-f')
+            self._gpfs_execute('mmunlinkfileset', fsdev, sharename, '-f',
+                               ignore_exit_codes=ignore_exit_codes)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed unlink fileset for share %(sharename)s. '
-                     'Error: %(excmsg)s.'),
-                   {'sharename': sharename, 'excmsg': six.text_type(e)})
+                     'Error: %(excmsg)s.') %
+                   {'sharename': sharename, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
         try:
-            self._gpfs_execute('mmdelfileset', fsdev, sharename, '-f')
+            self._gpfs_execute('mmdelfileset', fsdev, sharename, '-f',
+                               ignore_exit_codes=ignore_exit_codes)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed delete fileset for share %(sharename)s. '
-                     'Error: %(excmsg)s.'),
-                   {'sharename': sharename, 'excmsg': six.text_type(e)})
+                     'Error: %(excmsg)s.') %
+                   {'sharename': sharename, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -346,8 +390,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             out, __ = self._gpfs_execute('df', '-P', '-B', '1', path)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to check available capacity for %(path)s.'
-                     'Error: %(excmsg)s.'),
-                   {'path': path, 'excmsg': six.text_type(e)})
+                     'Error: %(excmsg)s.') %
+                   {'path': path, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -369,8 +413,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                                '-j', sharename)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to create snapshot %(snapshot)s. '
-                     'Error: %(excmsg)s.'),
-                   {'snapshot': snapshot['name'], 'excmsg': six.text_type(e)})
+                     'Error: %(excmsg)s.') %
+                   {'snapshot': snapshot['name'], 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -384,8 +428,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                                '-j', sharename)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to delete snapshot %(snapshot)s. '
-                     'Error: %(excmsg)s.'),
-                   {'snapshot': snapshot['name'], 'excmsg': six.text_type(e)})
+                     'Error: %(excmsg)s.') %
+                   {'snapshot': snapshot['name'], 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -398,9 +442,9 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             self._gpfs_execute('rsync', '-rp', snapshot_path, share_path)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to create share %(share)s from '
-                     'snapshot %(snapshot)s. Error: %(excmsg)s.'),
+                     'snapshot %(snapshot)s. Error: %(excmsg)s.') %
                    {'share': share['name'], 'snapshot': snapshot['name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -568,7 +612,7 @@ class KNFSHelper(NASHelperBase):
         try:
             self._execute('exportfs', check_exit_code=True, run_as_root=True)
         except exception.ProcessExecutionError as e:
-            msg = (_('NFS server not found. Error: %s.') % six.text_type(e))
+            msg = (_('NFS server not found. Error: %s.') % e)
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -621,7 +665,7 @@ class KNFSHelper(NASHelperBase):
             out, __ = self._execute('exportfs', run_as_root=True)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to check exports on the systems. '
-                     ' Error: %s.') % six.text_type(e))
+                     ' Error: %s.') % e)
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -639,9 +683,9 @@ class KNFSHelper(NASHelperBase):
             self._publish_access(*cmd)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to allow access for share %(sharename)s. '
-                     'Error: %(excmsg)s.'),
+                     'Error: %(excmsg)s.') %
                    {'sharename': share['name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
@@ -653,9 +697,9 @@ class KNFSHelper(NASHelperBase):
             self._publish_access(*cmd)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to deny access for share %(sharename)s. '
-                     'Error: %excmsg)s.'),
+                     'Error: %(excmsg)s.') %
                    {'sharename': share['name'],
-                    'excmsg': six.text_type(e)})
+                    'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
 

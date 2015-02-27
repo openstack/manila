@@ -370,29 +370,31 @@ class GPFSShareDriverTestCase(test.TestCase):
     def test__delete_share(self):
         self._driver._gpfs_execute = mock.Mock(return_value=True)
         self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
+        ignore_exit_codes = [gpfs.ERR_FILE_NOT_FOUND]
         self._driver._delete_share(self.share)
-        self._driver._gpfs_execute.assert_any_call('mmunlinkfileset',
-                                                   self.fakedev,
-                                                   self.share['name'],
-                                                   '-f')
-        self._driver._gpfs_execute.assert_any_call('mmdelfileset',
-                                                   self.fakedev,
-                                                   self.share['name'],
-                                                   '-f')
+        self._driver._gpfs_execute.assert_any_call(
+            'mmunlinkfileset', self.fakedev, self.share['name'],
+            '-f', ignore_exit_codes=ignore_exit_codes
+        )
+        self._driver._gpfs_execute.assert_any_call(
+            'mmdelfileset', self.fakedev, self.share['name'],
+            '-f', ignore_exit_codes=ignore_exit_codes
+        )
         self._driver._get_gpfs_device.assert_called_once_with()
 
     def test__delete_share_exception(self):
         self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
+        ignore_exit_codes = [gpfs.ERR_FILE_NOT_FOUND]
         self._driver._gpfs_execute = mock.Mock(
             side_effect=exception.ProcessExecutionError
         )
         self.assertRaises(exception.GPFSException,
                           self._driver._delete_share, self.share)
         self._driver._get_gpfs_device.assert_called_once_with()
-        self._driver._gpfs_execute.assert_called_once_with('mmunlinkfileset',
-                                                           self.fakedev,
-                                                           self.share['name'],
-                                                           '-f')
+        self._driver._gpfs_execute.assert_called_once_with(
+            'mmunlinkfileset', self.fakedev, self.share['name'],
+            '-f', ignore_exit_codes=ignore_exit_codes
+        )
 
     def test__create_share_snapshot(self):
         self._driver._gpfs_execute = mock.Mock(return_value=True)
@@ -459,7 +461,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._driver.configuration.gpfs_share_export_ip = self.local_ip
         self._driver._gpfs_remote_execute(cmd, check_exit_code=True)
         self._driver._run_ssh.assert_called_once_with(
-            self.local_ip, tuple([cmd]), True
+            self.local_ip, tuple([cmd]), None, True
         )
         self._driver.configuration.gpfs_share_export_ip = orig_value
 
