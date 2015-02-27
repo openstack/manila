@@ -79,11 +79,11 @@ fi
 set +o errexit
 cd $BASE/new/tempest
 
-export TEMPEST_CONCURRENCY=12
+export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-12}
 export MANILA_TESTS='tempest.cli.*manila*'
 if [[ ! "$ZUUL_PROJECT" =~ python-manilaclient ]]; then
     MANILA_TESTS+=' tempest.api.share*';
 fi
 
 echo "Running tempest manila test suites"
-sudo -H -u jenkins tox -eall $MANILA_TESTS -- --concurrency=$TEMPEST_CONCURRENCY
+sudo -H -u jenkins tox -eall $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
