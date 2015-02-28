@@ -27,14 +27,16 @@ neutron_single_network_plugin_opts = [
     cfg.StrOpt(
         'neutron_net_id',
         help="Default Neutron network that will be used for share server "
-             "creation in case it is not provided.",
+             "creation. This opt is used only with "
+             "class 'NeutronSingleNetworkPlugin'.",
         deprecated_group='DEFAULT',
         default=None),
     cfg.StrOpt(
         'neutron_subnet_id',
         help="Default Neutron subnet that will be used for share server "
-             "creation in case it is not provided. Should be assigned to "
-             "network defined in opt 'neutron_net_id' if set.",
+             "creation. Should be assigned to network defined in opt "
+             "'neutron_net_id'. This opt is used only with "
+             "class 'NeutronSingleNetworkPlugin'.",
         deprecated_group='DEFAULT',
         default=None),
 ]
