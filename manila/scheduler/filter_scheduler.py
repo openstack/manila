@@ -136,6 +136,12 @@ class FilterScheduler(driver.Scheduler):
                                   'resource_type': resource_type
                                   })
 
+        # NOTE(vponomaryov): skip key 'driver_handles_share_servers' temporary
+        # until server and client sides are both can handle it as required key.
+        if 'extra_specs' in filter_properties['share_type']:
+            filter_properties['share_type']['extra_specs'].pop(
+                'driver_handles_share_servers', None)
+
         self.populate_filter_properties_share(request_spec, filter_properties)
 
         # Find our local list of acceptable hosts by filtering and
