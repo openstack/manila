@@ -159,11 +159,6 @@ global_opts = [
                default='keystone',
                help='The strategy to use for auth. Supports noauth, keystone, '
                     'and deprecated.'),
-    cfg.ListOpt('enabled_backends',
-                default=None,
-                help='A list of backend names to use. These backend names '
-                     'should be backed by a unique [CONFIG] group '
-                     'with its options.'),
     cfg.ListOpt('enabled_share_backends',
                 default=None,
                 help='A list of share backend names to use. These backend '

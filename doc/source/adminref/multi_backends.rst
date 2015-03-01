@@ -31,16 +31,16 @@ available capacity are met).
 
 Enable multiple back ends
 =========================
-To enable multiple share back ends, you must set the enabled_backends flag
-in the manila.conf file. This flag defines the names (separated by a comma)
-of the configuration stanzas for the different back ends: one name is
+To enable multiple share back ends, you must set the enabled_share_backends
+flag in the manila.conf file. This flag defines the names (separated by a
+comma) of the configuration stanzas for the different back ends: one name is
 associated to one configuration group for a back end.
 
 The following example shows five configured back ends:
 
     [DEFAULT]
 
-    enabled_backends=backendEMC1,backendEMC2,backendGeneric1,backendGeneric2,backendNetApp
+    enabled_share_backends=backendEMC1,backendEMC2,backendGeneric1,backendGeneric2,backendNetApp
 
     [backendEMC1]
     share_driver=manila.share.drivers.emc.driver.EMCShareDriver
