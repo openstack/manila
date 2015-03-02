@@ -83,6 +83,7 @@ Share backends
    generic_driver
    glusterfs_driver
    huawei_nas_driver
+   hdfs_native_driver
 
 Indices and tables
 ------------------
