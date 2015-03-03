@@ -308,8 +308,7 @@ class API(base.Base):
                    'share_size': share['size'],
                    'display_name': name,
                    'display_description': description,
-                   'share_proto': share['share_proto'],
-                   'export_location': share['export_location']}
+                   'share_proto': share['share_proto']}
 
         try:
             snapshot = self.db.share_snapshot_create(context, options)

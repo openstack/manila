@@ -66,7 +66,7 @@ class SharesNFSTest(base.BaseSharesTest):
         # create snapshot
         resp, snap = self.create_snapshot_wait_for_active(self.share["id"])
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        detailed_elements = {'name', 'id', 'description', 'export_location',
+        detailed_elements = {'name', 'id', 'description',
                              'created_at', 'share_proto', 'size', 'share_size',
                              'share_id', 'status', 'links'}
         self.assertTrue(detailed_elements.issubset(snap.keys()),

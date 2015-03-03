@@ -46,7 +46,6 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         'name': 'fakesnapshotname',
         'share_size': 1,
         'share_proto': 'NFS',
-        'export_location': '127.0.0.1:/mnt/nfs/volume-00002',
     }
 
     access = {

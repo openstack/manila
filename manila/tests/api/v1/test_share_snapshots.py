@@ -72,7 +72,6 @@ class ShareSnapshotApiTest(test.TestCase):
                 'size': 1,
                 'description': 'fake_share_description',
                 'share_proto': 'fakesnapproto',
-                'export_location': 'fakesnaplocation',
                 'links': [
                     {
                         'href': 'http://localhost/v1/fake/snapshots/200',
@@ -125,7 +124,6 @@ class ShareSnapshotApiTest(test.TestCase):
                 'size': 1,
                 'description': 'displaysnapdesc',
                 'share_proto': 'fakesnapproto',
-                'export_location': 'fakesnaplocation',
                 'links': [
                     {
                         'href': 'http://localhost/v1/fake/snapshots/200',
@@ -300,7 +298,6 @@ class ShareSnapshotApiTest(test.TestCase):
                     'name': 'displaysnapname',
                     'description': 'displaysnapdesc',
                     'share_proto': 'fakesnapproto',
-                    'export_location': 'fakesnaplocation',
                     'links': [
                         {
                             'href': 'http://localhost/v1/fake/snapshots/'

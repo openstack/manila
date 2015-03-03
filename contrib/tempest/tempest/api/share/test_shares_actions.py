@@ -266,7 +266,7 @@ class SharesActionsTest(base.BaseSharesTest):
 
         # verify keys
         expected_keys = ["status", "links", "share_id", "name",
-                         "export_location", "share_proto", "created_at",
+                         "share_proto", "created_at",
                          "description", "id", "share_size"]
         actual_keys = get.keys()
         [self.assertIn(key, actual_keys) for key in expected_keys]
@@ -313,7 +313,7 @@ class SharesActionsTest(base.BaseSharesTest):
 
         # verify keys
         keys = ["status", "links", "share_id", "name",
-                "export_location", "share_proto", "created_at",
+                "share_proto", "created_at",
                 "description", "id", "share_size"]
         [self.assertIn(key, sn.keys()) for sn in snaps for key in keys]
 

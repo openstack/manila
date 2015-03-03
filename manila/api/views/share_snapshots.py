@@ -52,7 +52,6 @@ class ViewBuilder(common.ViewBuilder):
                 'description': snapshot.get('display_description'),
                 'size': snapshot.get('size'),
                 'share_proto': snapshot.get('share_proto'),
-                'export_location': snapshot.get('export_location'),
                 'links': self._get_links(request, snapshot['id'])
             }
         }

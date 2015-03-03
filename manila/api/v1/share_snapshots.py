@@ -33,8 +33,7 @@ LOG = log.getLogger(__name__)
 
 def make_snapshot(elem):
     attrs = ['id', 'size', 'status', 'name', 'description', 'share_proto',
-             'export_location', 'links', 'share_id', 'created_at',
-             'share_size']
+             'links', 'share_id', 'created_at', 'share_size']
     for attr in attrs:
         elem.set(attr)
 

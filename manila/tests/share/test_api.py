@@ -79,7 +79,6 @@ def fake_snapshot(id, **kwargs):
         'display_name': 'fakename',
         'display_description': 'fakedesc',
         'share_proto': 'nfs',
-        'export_location': 'fake_location',
         'progress': 'fakeprogress99%',
         'scheduled_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         'launched_at': datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -489,7 +488,6 @@ class ShareAPITestCase(test.TestCase):
             'display_name': fake_name,
             'display_description': fake_desc,
             'share_proto': share['share_proto'],
-            'export_location': share['export_location'],
         }
         with mock.patch.object(db_driver, 'share_snapshot_create',
                                mock.Mock(return_value=snapshot)):

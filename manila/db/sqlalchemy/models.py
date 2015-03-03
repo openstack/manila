@@ -291,7 +291,6 @@ class ShareSnapshot(BASE, ManilaBase):
     display_description = Column(String(255))
     share_size = Column(Integer)
     share_proto = Column(String(255))
-    export_location = Column(String(255))
     share = orm.relationship(Share, backref="snapshots",
                              foreign_keys=share_id,
                              primaryjoin='and_('
