@@ -52,9 +52,7 @@ string_translation = re.compile(r"[^_]*_\(\s*('|\")")
 underscore_import_check = re.compile(r"(.)*import _(.)*")
 # We need this for cases where they have created their own _ function.
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
-# TODO(toabctl): Remove the oslo.messaging exception when package
-#                moved away from namespace
-oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](?!messaging)(.*)")
+oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](.*)")
 
 
 class BaseASTChecker(ast.NodeVisitor):
