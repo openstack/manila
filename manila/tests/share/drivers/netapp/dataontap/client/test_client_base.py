@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+from oslo_log import log
 
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_base
@@ -25,7 +26,13 @@ class NetAppBaseClientTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppBaseClientTestCase, self).setUp()
-        self.mock_object(client_base, 'LOG')
+
+        # Mock loggers as themselves to allow logger arg validation
+        mock_logger = log.getLogger('mock_logger')
+        self.mock_object(client_base.LOG,
+                         'error',
+                         mock.Mock(side_effect=mock_logger.error))
+
         self.client = client_base.NetAppBaseClient(**fake.CONNECTION_INFO)
         self.client.connection = mock.MagicMock()
         self.connection = self.client.connection

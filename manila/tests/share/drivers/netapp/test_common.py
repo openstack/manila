@@ -27,7 +27,6 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppDriverFactoryTestCase, self).setUp()
-        self.mock_object(na_common, 'LOG')
 
     def test_new(self):
 
@@ -114,18 +113,20 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         def get_full_class_name(obj):
             return obj.__module__ + '.' + obj.__class__.__name__
 
-        config = na_fakes.create_configuration()
-        config.local_conf.set_override('driver_handles_share_servers', True)
-
-        kwargs = {'configuration': config, 'app_version': 'fake_info'}
-
         registry = na_common.NETAPP_UNIFIED_DRIVER_REGISTRY
         mock_db = mock.Mock()
 
         for family in six.iterkeys(registry):
             for mode, full_class_name in six.iteritems(registry[family]):
+
+                config = na_fakes.create_configuration()
+                config.local_conf.set_override('driver_handles_share_servers',
+                                               mode == na_common.MULTI_SVM)
+                kwargs = {'configuration': config, 'app_version': 'fake_info'}
+
                 driver = na_common.NetAppDriver._create_driver(
                     family, mode, mock_db, **kwargs)
+
                 self.assertEqual(full_class_name, get_full_class_name(driver))
 
     def test_create_driver_case_insensitive(self):

@@ -12,6 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import manila.tests.share.drivers.netapp.fakes as na_fakes
+
+
 BACKEND_NAME = 'fake_backend_name'
 DRIVER_NAME = 'fake_driver_name'
 APP_VERSION = 'fake_app_vsersion'
@@ -160,3 +163,20 @@ SSC_DISK_TYPES = {
     AGGREGATES[0]: 'FCAL',
     AGGREGATES[1]: 'SSD'
 }
+
+
+def get_config_cmode():
+    config = na_fakes.create_configuration_cmode()
+    config.local_conf.set_override('share_backend_name', BACKEND_NAME)
+    config.netapp_login = CLIENT_KWARGS['username']
+    config.netapp_password = CLIENT_KWARGS['password']
+    config.netapp_server_hostname = CLIENT_KWARGS['hostname']
+    config.netapp_transport_type = CLIENT_KWARGS['transport_type']
+    config.netapp_server_port = CLIENT_KWARGS['port']
+    config.netapp_volume_name_template = VOLUME_NAME_TEMPLATE
+    config.netapp_aggregate_name_search_pattern = AGGREGATE_NAME_SEARCH_PATTERN
+    config.netapp_vserver_name_template = VSERVER_NAME_TEMPLATE
+    config.netapp_root_volume_aggregate = ROOT_VOLUME_AGGREGATE
+    config.netapp_root_volume = ROOT_VOLUME
+    config.netapp_lif_name_template = LIF_NAME_TEMPLATE
+    return config

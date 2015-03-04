@@ -17,6 +17,7 @@ import copy
 import hashlib
 
 import mock
+from oslo_log import log
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -31,7 +32,18 @@ class NetAppClientCmodeTestCase(test.TestCase):
     def setUp(self):
         super(NetAppClientCmodeTestCase, self).setUp()
 
-        self.mock_object(client_cmode, 'LOG')
+        # Mock loggers as themselves to allow logger arg validation
+        mock_logger = log.getLogger('mock_logger')
+        self.mock_object(client_cmode.LOG,
+                         'error',
+                         mock.Mock(side_effect=mock_logger.error))
+        self.mock_object(client_cmode.LOG,
+                         'warning',
+                         mock.Mock(side_effect=mock_logger.warning))
+        self.mock_object(client_cmode.LOG,
+                         'debug',
+                         mock.Mock(side_effect=mock_logger.debug))
+
         self.mock_object(client_base.NetAppBaseClient,
                          'get_ontapi_version',
                          mock.Mock(return_value=(1, 20)))
@@ -473,7 +485,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         result = self.client.list_aggregates()
 
-        self.assertSequenceEqual(fake.AGGR_NAMES, result)
+        self.assertSequenceEqual(fake.SHARE_AGGREGATE_NAMES, result)
 
     def test_list_aggregates_not_found(self):
 
@@ -484,6 +496,26 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertRaises(exception.NetAppException,
                           self.client.list_aggregates)
+
+    def test_list_vserver_aggregates(self):
+
+        self.mock_object(self.vserver_client,
+                         'get_vserver_aggregate_capacities',
+                         mock.Mock(return_value=fake.VSERVER_AGGREGATES))
+
+        result = self.vserver_client.list_vserver_aggregates()
+
+        self.assertListEqual(fake.VSERVER_AGGREGATES.keys(), result)
+
+    def test_list_vserver_aggregates_none_found(self):
+
+        self.mock_object(self.vserver_client,
+                         'get_vserver_aggregate_capacities',
+                         mock.Mock(return_value={}))
+
+        result = self.vserver_client.list_vserver_aggregates()
+
+        self.assertListEqual([], result)
 
     def test_create_network_interface(self):
 
@@ -652,8 +684,45 @@ class NetAppClientCmodeTestCase(test.TestCase):
         result = self.client.get_network_interfaces()
 
         self.client.send_request.assert_has_calls([
-            mock.call('net-interface-get-iter')])
+            mock.call('net-interface-get-iter', None)])
         self.assertSequenceEqual(fake.LIFS, result)
+
+    def test_get_network_interfaces_filtered_by_protocol(self):
+
+        api_response = netapp_api.NaElement(
+            fake.NET_INTERFACE_GET_ITER_RESPONSE_NFS)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_network_interfaces(protocols=['NFS'])
+
+        net_interface_get_args = {
+            'query': {
+                'net-interface-info': {
+                    'data-protocols': {
+                        'data-protocol': 'nfs',
+                    }
+                }
+            }
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('net-interface-get-iter', net_interface_get_args)])
+        self.assertListEqual(fake.NFS_LIFS, result)
+
+    def test_get_network_interfaces_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_network_interfaces()
+
+        self.client.send_request.assert_has_calls([
+            mock.call('net-interface-get-iter', None)])
+        self.assertListEqual([], result)
 
     def test_delete_network_interface(self):
 
@@ -661,13 +730,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.delete_network_interface(fake.LIF_NAME)
 
-        net_interface_get_args = {
+        net_interface_delete_args = {
             'vserver': None,
             'interface-name': fake.LIF_NAME
         }
 
         self.client.send_request.assert_has_calls([
-            mock.call('net-interface-delete', net_interface_get_args)])
+            mock.call('net-interface-delete', net_interface_delete_args)])
 
     def test_get_cluster_aggregate_capacities(self):
 
@@ -678,7 +747,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          '_get_aggregates',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_cluster_aggregate_capacities(fake.AGGR_NAMES)
+        result = self.client.get_cluster_aggregate_capacities(
+            fake.SHARE_AGGREGATE_NAMES)
 
         desired_attributes = {
             'aggr-attributes': {
@@ -693,20 +763,20 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client._get_aggregates.assert_has_calls([
             mock.call(
-                aggregate_names=fake.AGGR_NAMES,
+                aggregate_names=fake.SHARE_AGGREGATE_NAMES,
                 desired_attributes=desired_attributes)])
 
         expected = {
-            'manila': {
+            fake.SHARE_AGGREGATE_NAMES[0]: {
+                'available': 45670400,
+                'total': 943718400,
+                'used': 898048000,
+            },
+            fake.SHARE_AGGREGATE_NAMES[1]: {
                 'available': 4267659264,
                 'total': 7549747200,
                 'used': 3282087936,
             },
-            'aggr0': {
-                'available': 45670400,
-                'total': 943718400,
-                'used': 898048000,
-            }
         }
         self.assertDictEqual(expected, result)
 
@@ -717,7 +787,14 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          '_get_aggregates',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_cluster_aggregate_capacities(fake.AGGR_NAMES)
+        result = self.client.get_cluster_aggregate_capacities(
+            fake.SHARE_AGGREGATE_NAMES)
+
+        self.assertEqual({}, result)
+
+    def test_get_cluster_aggregate_capacities_none_requested(self):
+
+        result = self.client.get_cluster_aggregate_capacities([])
 
         self.assertEqual({}, result)
 
@@ -728,12 +805,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          'send_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.vserver_client.get_vserver_aggregate_capacities(
-            fake.VSERVER_NAME)
+        result = self.vserver_client.get_vserver_aggregate_capacities()
 
         vserver_args = {
             'desired-attributes': {
                 'vserver-info': {
+                    'vserver-name': None,
                     'vserver-aggr-info-list': {
                         'vserver-aggr-info': {
                             'aggr-name': None,
@@ -748,7 +825,21 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('vserver-get', vserver_args)])
         self.assertDictEqual(fake.VSERVER_AGGREGATES, result)
 
-    def test_get_vserver_aggregate_capacities_not_found(self):
+    def test_get_vserver_aggregate_capacities_partial_request(self):
+
+        api_response = netapp_api.NaElement(fake.VSERVER_GET_RESPONSE)
+        self.mock_object(self.vserver_client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.vserver_client.get_vserver_aggregate_capacities(
+            fake.SHARE_AGGREGATE_NAMES[0])
+
+        expected = {fake.SHARE_AGGREGATE_NAMES[0]:
+                    fake.VSERVER_AGGREGATES[fake.SHARE_AGGREGATE_NAMES[0]]}
+        self.assertDictEqual(expected, result)
+
+    def test_get_vserver_aggregate_capacities_aggregate_not_found(self):
 
         api_response = netapp_api.NaElement(
             fake.VSERVER_GET_RESPONSE_NO_AGGREGATES)
@@ -756,11 +847,26 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          'send_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.vserver_client.get_vserver_aggregate_capacities(
-            fake.VSERVER_NAME)
+        result = self.vserver_client.get_vserver_aggregate_capacities()
 
         self.assertDictEqual({}, result)
         self.assertEqual(1, client_cmode.LOG.warning.call_count)
+
+    def test_get_vserver_aggregate_capacities_vserver_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.vserver_client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.vserver_client.get_vserver_aggregate_capacities)
+
+    def test_get_vserver_aggregate_capacities_none_requested(self):
+
+        result = self.client.get_vserver_aggregate_capacities([])
+
+        self.assertEqual({}, result)
 
     def test_get_aggregates(self):
 
@@ -796,13 +902,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
 
         result = self.client._get_aggregates(
-            aggregate_names=fake.AGGR_NAMES,
+            aggregate_names=fake.SHARE_AGGREGATE_NAMES,
             desired_attributes=desired_attributes)
 
         aggr_get_iter_args = {
             'query': {
                 'aggr-attributes': {
-                    'aggregate-name': '|'.join(fake.AGGR_NAMES),
+                    'aggregate-name': '|'.join(fake.SHARE_AGGREGATE_NAMES),
                 }
             },
             'desired-attributes': desired_attributes
@@ -1748,6 +1854,41 @@ class NetAppClientCmodeTestCase(test.TestCase):
         mock_list_vservers.assert_called_once_with(vserver_type='node')
         self.assertEqual(fake.NODE_VSERVER_NAME, result)
 
+    def test_get_ems_log_destination_no_cluster_creds(self):
+
+        self.mock_object(self.client,
+                         'get_ontapi_version',
+                         mock.Mock(return_value=(1, 21)))
+        mock_list_vservers = self.mock_object(
+            self.client,
+            'list_vservers',
+            mock.Mock(side_effect=[[], [fake.VSERVER_NAME]]))
+
+        result = self.client._get_ems_log_destination_vserver()
+
+        mock_list_vservers.assert_has_calls([
+            mock.call(vserver_type='admin'),
+            mock.call(vserver_type='data')])
+        self.assertEqual(fake.VSERVER_NAME, result)
+
+    def test_get_ems_log_destination_vserver_not_found(self):
+
+        self.mock_object(self.client,
+                         'get_ontapi_version',
+                         mock.Mock(return_value=(1, 21)))
+        mock_list_vservers = self.mock_object(
+            self.client,
+            'list_vservers',
+            mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.NotFound,
+                          self.client._get_ems_log_destination_vserver)
+
+        mock_list_vservers.assert_has_calls([
+            mock.call(vserver_type='admin'),
+            mock.call(vserver_type='data'),
+            mock.call(vserver_type='node')])
+
     def test_send_ems_log_message(self):
 
         # Mock client lest we not be able to see calls on its copy.
@@ -1857,8 +1998,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_get_aggregate_disk_types_not_found(self):
 
-        api_response = netapp_api.NaElement(
-            fake.NO_RECORDS_RESPONSE)
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(return_value=api_response))
@@ -1869,3 +2009,34 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertEqual(len(fake.SHARE_AGGREGATE_NAMES),
                          self.client.send_request.call_count)
         self.assertDictEqual({}, result)
+
+    def test_check_for_cluster_credentials(self):
+
+        api_response = netapp_api.NaElement(fake.SYSTEM_NODE_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.check_for_cluster_credentials()
+
+        self.assertTrue(result)
+
+    def test_check_for_cluster_credentials_not_cluster(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error(
+                             netapp_api.EAPINOTFOUND)))
+
+        result = self.client.check_for_cluster_credentials()
+
+        self.assertFalse(result)
+
+    def test_check_for_cluster_credentials_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.check_for_cluster_credentials)

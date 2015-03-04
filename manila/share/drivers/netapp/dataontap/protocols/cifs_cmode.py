@@ -21,6 +21,7 @@ from manila import exception
 from manila.i18n import _, _LE
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.protocols import base
+from manila.share.drivers.netapp import utils as na_utils
 
 
 LOG = log.getLogger(__name__)
@@ -29,17 +30,20 @@ LOG = log.getLogger(__name__)
 class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
     """Netapp specific cluster-mode CIFS sharing driver."""
 
+    @na_utils.trace
     def create_share(self, share_name, export_ip):
         """Creates CIFS share on Data ONTAP Vserver."""
         self._client.create_cifs_share(share_name)
         self._client.remove_cifs_share_access(share_name, 'Everyone')
         return "//%s/%s" % (export_ip, share_name)
 
+    @na_utils.trace
     def delete_share(self, share):
         """Deletes CIFS share on Data ONTAP Vserver."""
         host_ip, share_name = self._get_export_location(share)
         self._client.remove_cifs_share(share_name)
 
+    @na_utils.trace
     def allow_access(self, context, share, access):
         """Allows access to the CIFS share for a given user."""
         if access['access_type'] != 'user':
@@ -57,6 +61,7 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
                     access_type=access['access_type'], access=access)
             raise e
 
+    @na_utils.trace
     def deny_access(self, context, share, access):
         """Denies access to the CIFS share for a given user."""
         host_ip, share_name = self._get_export_location(share)
@@ -71,6 +76,7 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
             else:
                 raise e
 
+    @na_utils.trace
     def get_target(self, share):
         """Returns OnTap target IP based on share export location."""
         return self._get_export_location(share)[0]

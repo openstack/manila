@@ -12,67 +12,35 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-NetApp Data ONTAP cDOT storage driver library. Supports NFS & CIFS protocols.
+NetApp Data ONTAP cDOT base storage driver library.
 
-This driver requires a Data ONTAP (Cluster-mode) storage system with
-installed CIFS and/or NFS licenses.
+This library is the abstract base for subclasses that complete the
+single-SVM or multi-SVM functionality needed by the cDOT Manila drivers.
 """
 
 import copy
-import re
 import socket
 
 from oslo_log import log
-from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import six
 
-from manila import context
 from manila import exception
 from manila.i18n import _, _LE, _LI
 from manila.openstack.common import loopingcall
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import options as na_opts
 from manila.share.drivers.netapp import utils as na_utils
 from manila.share import utils as share_utils
-from manila import utils
 
 
 LOG = log.getLogger(__name__)
 
 
-def ensure_vserver(f):
-    def wrap(self, *args, **kwargs):
-        server = kwargs.get('share_server')
-        if not server:
-            # For now cmode driver does not support flat networking.
-            raise exception.NetAppException(_('Share server is not provided.'))
-        vserver_name = server['backend_details'].get('vserver_name') if \
-            server.get('backend_details') else None
-        if not vserver_name:
-            msg = _('Vserver name is absent in backend details. Please '
-                    'check whether Vserver was created properly or not.')
-            raise exception.NetAppException(msg)
-        if not self._client.vserver_exists(vserver_name):
-            raise exception.VserverUnavailable(vserver=vserver_name)
-        return f(self, *args, **kwargs)
-    return wrap
-
-
 class NetAppCmodeFileStorageLibrary(object):
-    """NetApp specific ONTAP Cluster mode driver.
-
-    Supports NFS and CIFS protocols.
-    Uses Data ONTAP as backend to create shares and snapshots.
-    Sets up vServer for each share_network.
-    Connectivity between storage and client VM is organized
-    by plugging vServer's network interfaces into neutron subnet
-    that VM is using.
-    """
 
     AUTOSUPPORT_INTERVAL_SECONDS = 3600  # hourly
     SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
@@ -83,20 +51,22 @@ class NetAppCmodeFileStorageLibrary(object):
         self.db = db
         self.driver_name = driver_name
 
+        self.configuration = kwargs['configuration']
+        self.configuration.append_config_values(na_opts.netapp_connection_opts)
+        self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
+        self.configuration.append_config_values(na_opts.netapp_transport_opts)
+        self.configuration.append_config_values(na_opts.netapp_support_opts)
+        self.configuration.append_config_values(na_opts.netapp_cluster_opts)
+        self.configuration.append_config_values(
+            na_opts.netapp_provisioning_opts)
+
         self._helpers = None
         self._licenses = []
         self._client = None
         self._clients = {}
         self._ssc_stats = {}
         self._last_ems = timeutils.utcnow()
-
-        self.configuration = kwargs['configuration']
-        self.configuration.append_config_values(na_opts.netapp_connection_opts)
-        self.configuration.append_config_values(na_opts.netapp_basicauth_opts)
-        self.configuration.append_config_values(na_opts.netapp_transport_opts)
-        self.configuration.append_config_values(na_opts.netapp_support_opts)
-        self.configuration.append_config_values(
-            na_opts.netapp_provisioning_opts)
+        self._have_cluster_creds = None
 
         self._app_version = kwargs.get('app_version', 'unknown')
 
@@ -107,12 +77,16 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def do_setup(self, context):
         self._client = self._get_api_client()
+        self._have_cluster_creds = self._client.check_for_cluster_credentials()
         self._setup_helpers()
 
     @na_utils.trace
     def check_for_setup_error(self):
-        self._get_licenses()
+        self._licenses = self._get_licenses()
         self._start_periodic_tasks()
+
+    def _get_vserver(self, share_server=None):
+        raise NotImplementedError()
 
     @na_utils.trace
     def _get_api_client(self, vserver=None):
@@ -134,6 +108,11 @@ class NetAppCmodeFileStorageLibrary(object):
 
     @na_utils.trace
     def _get_licenses(self):
+
+        if not self._have_cluster_creds:
+            LOG.debug('License info not available without cluster credentials')
+            return []
+
         self._licenses = self._client.get_licenses()
 
         log_data = {
@@ -150,6 +129,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         return self._licenses
 
+    @na_utils.trace
     def _start_periodic_tasks(self):
 
         # Run the task once in the current thread so prevent a race with
@@ -173,10 +153,16 @@ class NetAppCmodeFileStorageLibrary(object):
         return 'share_snapshot_' + snapshot_id.replace('-', '_')
 
     @na_utils.trace
+    def _get_aggregate_space(self):
+        aggregates = self._find_matching_aggregates()
+        if self._have_cluster_creds:
+            return self._client.get_cluster_aggregate_capacities(aggregates)
+        else:
+            return self._client.get_vserver_aggregate_capacities(aggregates)
+
+    @na_utils.trace
     def get_share_stats(self):
-        """Retrieve stats info from Cluster Mode backend."""
-        aggr_space = self._client.get_cluster_aggregate_capacities(
-            self._find_matching_aggregates())
+        """Retrieve stats info from Data ONTAP backend."""
 
         data = {
             'share_backend_name': self._backend_name,
@@ -190,14 +176,16 @@ class NetAppCmodeFileStorageLibrary(object):
         }
 
         pools = []
+        aggr_space = self._get_aggregate_space()
+
         for aggr_name in sorted(aggr_space.keys()):
 
-            total_capacity_gb = na_utils.round_down(
-                float(aggr_space[aggr_name]['total']) / units.Gi, '0.01')
-            free_capacity_gb = na_utils.round_down(
-                float(aggr_space[aggr_name]['available']) / units.Gi, '0.01')
-            allocated_capacity_gb = na_utils.round_down(
-                float(aggr_space[aggr_name]['used']) / units.Gi, '0.01')
+            total_capacity_gb = na_utils.round_down(float(
+                aggr_space[aggr_name].get('total', 0)) / units.Gi, '0.01')
+            free_capacity_gb = na_utils.round_down(float(
+                aggr_space[aggr_name].get('available', 0)) / units.Gi, '0.01')
+            allocated_capacity_gb = na_utils.round_down(float(
+                aggr_space[aggr_name].get('used', 0)) / units.Gi, '0.01')
 
             pool = {
                 'pool_name': aggr_name,
@@ -243,17 +231,11 @@ class NetAppCmodeFileStorageLibrary(object):
             'log-level': '6',
             'auto-support': 'false',
         }
-
         return ems_log
 
-    @na_utils.trace
     def _find_matching_aggregates(self):
         """Find all aggregates match pattern."""
-        pattern = self.configuration.netapp_aggregate_name_search_pattern
-        all_aggr_names = self._client.list_aggregates()
-        matching_aggr_names = [aggr_name for aggr_name in all_aggr_names
-                               if re.match(pattern, aggr_name)]
-        return matching_aggr_names
+        raise NotImplementedError()
 
     @na_utils.trace
     def _setup_helpers(self):
@@ -265,17 +247,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def _get_helper(self, share):
         """Returns driver which implements share protocol."""
         share_protocol = share['share_proto']
-        if share_protocol.lower() not in self._licenses:
-            current_licenses = self._get_licenses()
-            if share_protocol.lower() not in current_licenses:
-                msg_args = {
-                    'protocol': share_protocol,
-                    'host': self.configuration.netapp_server_hostname,
-                }
-                msg = _('The protocol %(protocol)s is not licensed on '
-                        'controller %(host)s') % msg_args
-                LOG.error(msg)
-                raise exception.NetAppException(msg)
+        self._check_license_for_protocol(share_protocol)
 
         for protocol in self._helpers.keys():
             if share_protocol.upper().startswith(protocol):
@@ -285,85 +257,22 @@ class NetAppCmodeFileStorageLibrary(object):
         raise exception.NetAppException(err_msg)
 
     @na_utils.trace
-    def setup_server(self, network_info, metadata=None):
-        """Creates and configures new Vserver."""
-        LOG.debug('Creating server %s', network_info['server_id'])
-        vserver_name = self._create_vserver_if_nonexistent(network_info)
-        return {'vserver_name': vserver_name}
+    def _check_license_for_protocol(self, share_protocol):
+        """Validates protocol license if cluster APIs are accessible."""
+        if not self._have_cluster_creds:
+            return
 
-    @na_utils.trace
-    def _create_vserver_if_nonexistent(self, network_info):
-        """Creates Vserver with given parameters if it doesn't exist."""
-        vserver_name = (self.configuration.netapp_vserver_name_template %
-                        network_info['server_id'])
-        context_adm = context.get_admin_context()
-        self.db.share_server_backend_details_set(
-            context_adm,
-            network_info['server_id'],
-            {'vserver_name': vserver_name},
-        )
-
-        if self._client.vserver_exists(vserver_name):
-            msg = _('Vserver %s already exists.')
-            raise exception.NetAppException(msg % vserver_name)
-
-        LOG.debug('Vserver %s does not exist, creating.', vserver_name)
-        self._client.create_vserver(
-            vserver_name,
-            self.configuration.netapp_root_volume_aggregate,
-            self.configuration.netapp_root_volume,
-            self._find_matching_aggregates())
-
-        vserver_client = self._get_api_client(vserver=vserver_name)
-        try:
-            self._create_vserver_lifs(vserver_name,
-                                      vserver_client,
-                                      network_info)
-        except netapp_api.NaApiError:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed to create network interface(s)."))
-                self._client.delete_vserver(vserver_name, vserver_client)
-
-        vserver_client.enable_nfs()
-
-        security_services = network_info.get('security_services')
-        if security_services:
-            self._client.setup_security_services(security_services,
-                                                 vserver_client,
-                                                 vserver_name)
-        return vserver_name
-
-    @na_utils.trace
-    def _create_vserver_lifs(self, vserver_name, vserver_client,
-                             network_info):
-
-        nodes = self._client.list_cluster_nodes()
-        node_network_info = zip(nodes, network_info['network_allocations'])
-        netmask = utils.cidr_to_netmask(network_info['cidr'])
-
-        for node, net_info in node_network_info:
-            net_id = net_info['id']
-            port = self._client.get_node_data_port(node)
-            ip = net_info['ip_address']
-            self._create_lif_if_nonexistent(vserver_name,
-                                            net_id,
-                                            network_info['segmentation_id'],
-                                            node,
-                                            port,
-                                            ip,
-                                            netmask,
-                                            vserver_client)
-
-    @na_utils.trace
-    def _create_lif_if_nonexistent(self, vserver_name, allocation_id, vlan,
-                                   node, port, ip, netmask, vserver_client):
-        """Creates LIF for Vserver."""
-        if not vserver_client.network_interface_exists(vserver_name, node,
-                                                       port, ip, netmask,
-                                                       vlan):
-            self._client.create_network_interface(
-                ip, netmask, vlan, node, port, vserver_name, allocation_id,
-                self.configuration.netapp_lif_name_template)
+        if share_protocol.lower() not in self._licenses:
+            current_licenses = self._get_licenses()
+            if share_protocol.lower() not in current_licenses:
+                msg_args = {
+                    'protocol': share_protocol,
+                    'host': self.configuration.netapp_server_hostname
+                }
+                msg = _('The protocol %(protocol)s is not licensed on '
+                        'controller %(host)s') % msg_args
+                LOG.error(msg)
+                raise exception.NetAppException(msg)
 
     @na_utils.trace
     def get_pool(self, share):
@@ -374,22 +283,18 @@ class NetAppCmodeFileStorageLibrary(object):
         volume_name = self._get_valid_share_name(share['id'])
         return self._client.get_aggregate_for_volume(volume_name)
 
-    @ensure_vserver
     @na_utils.trace
     def create_share(self, context, share, share_server):
         """Creates new share."""
-        vserver = share_server['backend_details']['vserver_name']
-        vserver_client = self._get_api_client(vserver=vserver)
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         self._allocate_container(share, vserver, vserver_client)
         return self._create_export(share, vserver, vserver_client)
 
-    @ensure_vserver
     @na_utils.trace
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Creates new share from snapshot."""
-        vserver = share_server['backend_details']['vserver_name']
-        vserver_client = self._get_api_client(vserver=vserver)
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         self._allocate_container_from_snapshot(share, snapshot, vserver_client)
         return self._create_export(share, vserver, vserver_client)
 
@@ -421,16 +326,15 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.create_volume_clone(share_name, parent_share_name,
                                            parent_snapshot_name)
 
+    @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
         return vserver_client.volume_exists(share_name)
 
-    @ensure_vserver
     @na_utils.trace
     def delete_share(self, context, share, share_server=None):
         """Deletes share."""
         share_name = self._get_valid_share_name(share['id'])
-        vserver = share_server['backend_details']['vserver_name']
-        vserver_client = self._get_api_client(vserver=vserver)
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         if self._share_exists(share_name, vserver_client):
             self._remove_export(share, vserver_client)
             self._deallocate_container(share_name, vserver_client)
@@ -451,10 +355,14 @@ class NetAppCmodeFileStorageLibrary(object):
         helper.set_client(vserver_client)
         share_name = self._get_valid_share_name(share['id'])
 
-        interfaces = vserver_client.get_network_interfaces()
+        interfaces = vserver_client.get_network_interfaces(
+            protocols=[share['share_proto']])
+
         if not interfaces:
-            msg = _("Cannot find network interfaces for Vserver %s.")
-            raise exception.NetAppException(msg % vserver)
+            msg = _('Cannot find network interfaces for Vserver %(vserver)s '
+                    'and protocol %(proto)s.')
+            msg_args = {'vserver': vserver, 'proto': share['share_proto']}
+            raise exception.NetAppException(msg % msg_args)
 
         ip_address = interfaces[0]['address']
         export_location = helper.create_share(share_name, ip_address)
@@ -470,23 +378,19 @@ class NetAppCmodeFileStorageLibrary(object):
         if target:
             helper.delete_share(share)
 
-    @ensure_vserver
     @na_utils.trace
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot of a share."""
-        vserver = share_server['backend_details']['vserver_name']
-        vserver_client = self._get_api_client(vserver=vserver)
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_valid_share_name(snapshot['share_id'])
         snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
         LOG.debug('Creating snapshot %s', snapshot_name)
         vserver_client.create_snapshot(share_name, snapshot_name)
 
-    @ensure_vserver
     @na_utils.trace
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot of a share."""
-        vserver = share_server['backend_details']['vserver_name']
-        vserver_client = self._get_api_client(vserver=vserver)
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_valid_share_name(snapshot['share_id'])
         snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
 
@@ -497,39 +401,33 @@ class NetAppCmodeFileStorageLibrary(object):
                   {'snap': snapshot_name, 'share': share_name})
         vserver_client.delete_snapshot(share_name, snapshot_name)
 
-    @ensure_vserver
     @na_utils.trace
     def allow_access(self, context, share, access, share_server=None):
         """Allows access to a given NAS storage."""
-        vserver = share_server['backend_details']['vserver_name']
-        vserver_client = self._get_api_client(vserver=vserver)
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
         helper.allow_access(context, share, access)
 
-    @ensure_vserver
     @na_utils.trace
     def deny_access(self, context, share, access, share_server=None):
         """Denies access to a given NAS storage."""
-        vserver = share_server['backend_details']['vserver_name']
-        vserver_client = self._get_api_client(vserver=vserver)
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
         helper.deny_access(context, share, access)
 
-    @na_utils.trace
+    def setup_server(self, network_info, metadata=None):
+        raise NotImplementedError()
+
+    def teardown_server(self, server_details, security_services=None):
+        raise NotImplementedError()
+
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
-        return len(self._client.list_cluster_nodes())
+        raise NotImplementedError()
 
     @na_utils.trace
-    def teardown_server(self, server_details, security_services=None):
-        """Teardown share network."""
-        vserver = server_details['vserver_name']
-        vserver_client = self._get_api_client(vserver=vserver)
-        self._client.delete_vserver(vserver, vserver_client,
-                                    security_services=security_services)
-
     def _update_ssc_info(self):
         """Periodically runs to update Storage Service Catalog data.
 
@@ -554,12 +452,16 @@ class NetAppCmodeFileStorageLibrary(object):
 
         self._ssc_stats = ssc_stats
 
+    @na_utils.trace
     def _update_ssc_aggr_info(self, aggregate_names, ssc_stats):
         """Updates the given SSC dictionary with new disk type information.
 
         :param volume_groups: The volume groups this driver cares about
         :param ssc_stats: The dictionary to update
         """
+
+        if not self._have_cluster_creds:
+            return
 
         raid_types = self._client.get_aggregate_raid_types(aggregate_names)
         for aggregate_name, raid_type in six.iteritems(raid_types):

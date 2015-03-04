@@ -94,24 +94,28 @@ VSERVER_GET_RESPONSE = etree.XML("""
     <attributes>
       <vserver-info>
         <aggr-list>
-          <aggr-name>aggr0</aggr-name>
-          <aggr-name>manila</aggr-name>
+          <aggr-name>%(aggr1)s</aggr-name>
+          <aggr-name>%(aggr2)s</aggr-name>
         </aggr-list>
         <vserver-aggr-info-list>
           <vserver-aggr-info>
             <aggr-availsize>45678592</aggr-availsize>
-            <aggr-name>aggr0</aggr-name>
+            <aggr-name>%(aggr1)s</aggr-name>
           </vserver-aggr-info>
           <vserver-aggr-info>
             <aggr-availsize>6448431104</aggr-availsize>
-            <aggr-name>manila</aggr-name>
+            <aggr-name>%(aggr2)s</aggr-name>
           </vserver-aggr-info>
         </vserver-aggr-info-list>
         <vserver-name>%(vserver)s</vserver-name>
       </vserver-info>
     </attributes>
   </results>
-""" % {'vserver': VSERVER_NAME})
+""" % {
+    'vserver': VSERVER_NAME,
+    'aggr1': SHARE_AGGREGATE_NAMES[0],
+    'aggr2': SHARE_AGGREGATE_NAMES[1],
+})
 
 VSERVER_DATA_LIST_RESPONSE = etree.XML("""
   <results status="passed">
@@ -126,10 +130,10 @@ VSERVER_DATA_LIST_RESPONSE = etree.XML("""
 """ % {'vserver': VSERVER_NAME})
 
 VSERVER_AGGREGATES = {
-    'aggr0': {
+    SHARE_AGGREGATE_NAMES[0]: {
         'available': 45678592,
     },
-    'manila': {
+    SHARE_AGGREGATE_NAMES[1]: {
         'available': 6448431104,
     },
 }
@@ -482,10 +486,54 @@ NET_INTERFACE_GET_ITER_RESPONSE = etree.XML("""
     'node': NODE_NAME,
     'address': IP_ADDRESS,
     'netmask': NETMASK,
-    'vlan': VLAN_PORT
+    'vlan': VLAN_PORT,
 })
 
 LIF_NAMES = ('cluster_mgmt', 'mgmt1', LIF_NAME)
+
+NET_INTERFACE_GET_ITER_RESPONSE_NFS = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <net-interface-info>
+        <address>%(address)s</address>
+        <address-family>ipv4</address-family>
+        <administrative-status>up</administrative-status>
+        <current-node>%(node)s</current-node>
+        <current-port>%(vlan)s</current-port>
+        <data-protocols>
+          <data-protocol>nfs</data-protocol>
+          <data-protocol>cifs</data-protocol>
+        </data-protocols>
+        <dns-domain-name>none</dns-domain-name>
+        <failover-group>system-defined</failover-group>
+        <failover-policy>nextavail</failover-policy>
+        <firewall-policy>data</firewall-policy>
+        <home-node>%(node)s</home-node>
+        <home-port>%(vlan)s</home-port>
+        <interface-name>%(lif)s</interface-name>
+        <is-auto-revert>false</is-auto-revert>
+        <is-home>true</is-home>
+        <lif-uuid>db4d91b6-95d9-11e4-8608-123478563412</lif-uuid>
+        <listen-for-dns-query>false</listen-for-dns-query>
+        <netmask>%(netmask)s</netmask>
+        <netmask-length>24</netmask-length>
+        <operational-status>up</operational-status>
+        <role>data</role>
+        <routing-group-name>d10.0.0.0/24</routing-group-name>
+        <use-failover-group>system_defined</use-failover-group>
+        <vserver>%(vserver)s</vserver>
+      </net-interface-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'lif': LIF_NAME,
+    'vserver': VSERVER_NAME,
+    'node': NODE_NAME,
+    'address': IP_ADDRESS,
+    'netmask': NETMASK,
+    'vlan': VLAN_PORT,
+})
 
 LIFS = (
     {'address': '192.168.228.42',
@@ -510,9 +558,20 @@ LIFS = (
      'interface-name': LIF_NAME,
      'netmask': NETMASK,
      'role': 'data',
-     'vserver': VSERVER_NAME
+     'vserver': VSERVER_NAME,
      },
 )
+
+NFS_LIFS = [
+    {'address': IP_ADDRESS,
+     'home-node': NODE_NAME,
+     'home-port': VLAN_PORT,
+     'interface-name': LIF_NAME,
+     'netmask': NETMASK,
+     'role': 'data',
+     'vserver': VSERVER_NAME,
+     },
+]
 
 NET_INTERFACE_GET_ONE_RESPONSE = etree.XML("""
   <results status="passed">
@@ -533,41 +592,42 @@ AGGR_GET_NAMES_RESPONSE = etree.XML("""
         <aggr-raid-attributes>
           <plexes>
             <plex-attributes>
-              <plex-name>/aggr0/plex0</plex-name>
+              <plex-name>/%(aggr1)s/plex0</plex-name>
               <raidgroups>
                 <raidgroup-attributes>
-                  <raidgroup-name>/aggr0/plex0/rg0</raidgroup-name>
+                  <raidgroup-name>/%(aggr1)s/plex0/rg0</raidgroup-name>
                 </raidgroup-attributes>
               </raidgroups>
             </plex-attributes>
           </plexes>
         </aggr-raid-attributes>
-        <aggregate-name>aggr0</aggregate-name>
+        <aggregate-name>%(aggr1)s</aggregate-name>
       </aggr-attributes>
       <aggr-attributes>
         <aggr-raid-attributes>
           <plexes>
             <plex-attributes>
-              <plex-name>/manila/plex0</plex-name>
+              <plex-name>/%(aggr2)s/plex0</plex-name>
               <raidgroups>
                 <raidgroup-attributes>
-                  <raidgroup-name>/manila/plex0/rg0</raidgroup-name>
+                  <raidgroup-name>/%(aggr2)s/plex0/rg0</raidgroup-name>
                 </raidgroup-attributes>
                 <raidgroup-attributes>
-                  <raidgroup-name>/manila/plex0/rg1</raidgroup-name>
+                  <raidgroup-name>/%(aggr2)s/plex0/rg1</raidgroup-name>
                 </raidgroup-attributes>
               </raidgroups>
             </plex-attributes>
           </plexes>
         </aggr-raid-attributes>
-        <aggregate-name>manila</aggregate-name>
+        <aggregate-name>%(aggr2)s</aggregate-name>
       </aggr-attributes>
     </attributes-list>
     <num-records>2</num-records>
   </results>
-""")
-
-AGGR_NAMES = ('aggr0', 'manila')
+""" % {
+    'aggr1': SHARE_AGGREGATE_NAMES[0],
+    'aggr2': SHARE_AGGREGATE_NAMES[1],
+})
 
 AGGR_GET_SPACE_RESPONSE = etree.XML("""
   <results status="passed">
@@ -576,10 +636,10 @@ AGGR_GET_SPACE_RESPONSE = etree.XML("""
         <aggr-raid-attributes>
           <plexes>
             <plex-attributes>
-              <plex-name>/aggr0/plex0</plex-name>
+              <plex-name>/%(aggr1)s/plex0</plex-name>
               <raidgroups>
                 <raidgroup-attributes>
-                  <raidgroup-name>/aggr0/plex0/rg0</raidgroup-name>
+                  <raidgroup-name>/%(aggr1)s/plex0/rg0</raidgroup-name>
                 </raidgroup-attributes>
               </raidgroups>
             </plex-attributes>
@@ -590,19 +650,19 @@ AGGR_GET_SPACE_RESPONSE = etree.XML("""
           <size-total>943718400</size-total>
           <size-used>898048000</size-used>
         </aggr-space-attributes>
-        <aggregate-name>aggr0</aggregate-name>
+        <aggregate-name>%(aggr1)s</aggregate-name>
       </aggr-attributes>
       <aggr-attributes>
         <aggr-raid-attributes>
           <plexes>
             <plex-attributes>
-              <plex-name>/manila/plex0</plex-name>
+              <plex-name>/%(aggr2)s/plex0</plex-name>
               <raidgroups>
                 <raidgroup-attributes>
-                  <raidgroup-name>/manila/plex0/rg0</raidgroup-name>
+                  <raidgroup-name>/%(aggr2)s/plex0/rg0</raidgroup-name>
                 </raidgroup-attributes>
                 <raidgroup-attributes>
-                  <raidgroup-name>/manila/plex0/rg1</raidgroup-name>
+                  <raidgroup-name>/%(aggr2)s/plex0/rg1</raidgroup-name>
                 </raidgroup-attributes>
               </raidgroups>
             </plex-attributes>
@@ -613,12 +673,15 @@ AGGR_GET_SPACE_RESPONSE = etree.XML("""
           <size-total>7549747200</size-total>
           <size-used>3282087936</size-used>
         </aggr-space-attributes>
-        <aggregate-name>manila</aggregate-name>
+        <aggregate-name>%(aggr2)s</aggregate-name>
       </aggr-attributes>
     </attributes-list>
     <num-records>2</num-records>
   </results>
-""")
+""" % {
+    'aggr1': SHARE_AGGREGATE_NAMES[0],
+    'aggr2': SHARE_AGGREGATE_NAMES[1],
+})
 
 AGGR_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
@@ -673,7 +736,7 @@ AGGR_GET_ITER_RESPONSE = etree.XML("""
             <plex-attributes>
               <is-online>true</is-online>
               <is-resyncing>false</is-resyncing>
-              <plex-name>/aggr0/plex0</plex-name>
+              <plex-name>/%(aggr1)s/plex0</plex-name>
               <plex-status>normal,active</plex-status>
               <raidgroups>
                 <raidgroup-attributes>
@@ -681,7 +744,7 @@ AGGR_GET_ITER_RESPONSE = etree.XML("""
                   <is-cache-tier>false</is-cache-tier>
                   <is-recomputing-parity>false</is-recomputing-parity>
                   <is-reconstructing>false</is-reconstructing>
-                  <raidgroup-name>/aggr0/plex0/rg0</raidgroup-name>
+                  <raidgroup-name>/%(aggr1)s/plex0/rg0</raidgroup-name>
                   <recomputing-parity-percentage>0</recomputing-parity-percentage>
                   <reconstruction-percentage>0</reconstruction-percentage>
                 </raidgroup-attributes>
@@ -729,7 +792,7 @@ AGGR_GET_ITER_RESPONSE = etree.XML("""
           <flexvol-count-collective>0</flexvol-count-collective>
           <flexvol-count-striped>0</flexvol-count-striped>
         </aggr-volume-count-attributes>
-        <aggregate-name>aggr0</aggregate-name>
+        <aggregate-name>%(aggr1)s</aggregate-name>
         <aggregate-uuid>15863632-ea49-49a8-9c88-2bd2d57c6d7a</aggregate-uuid>
         <nodes>
           <node-name>cluster3-01</node-name>
@@ -786,7 +849,7 @@ AGGR_GET_ITER_RESPONSE = etree.XML("""
             <plex-attributes>
               <is-online>true</is-online>
               <is-resyncing>false</is-resyncing>
-              <plex-name>/manila/plex0</plex-name>
+              <plex-name>/%(aggr2)s/plex0</plex-name>
               <plex-status>normal,active</plex-status>
               <raidgroups>
                 <raidgroup-attributes>
@@ -794,7 +857,7 @@ AGGR_GET_ITER_RESPONSE = etree.XML("""
                   <is-cache-tier>false</is-cache-tier>
                   <is-recomputing-parity>false</is-recomputing-parity>
                   <is-reconstructing>false</is-reconstructing>
-                  <raidgroup-name>/manila/plex0/rg0</raidgroup-name>
+                  <raidgroup-name>/%(aggr2)s/plex0/rg0</raidgroup-name>
                   <recomputing-parity-percentage>0</recomputing-parity-percentage>
                   <reconstruction-percentage>0</reconstruction-percentage>
                 </raidgroup-attributes>
@@ -803,7 +866,7 @@ AGGR_GET_ITER_RESPONSE = etree.XML("""
                   <is-cache-tier>false</is-cache-tier>
                   <is-recomputing-parity>false</is-recomputing-parity>
                   <is-reconstructing>false</is-reconstructing>
-                  <raidgroup-name>/manila/plex0/rg1</raidgroup-name>
+                  <raidgroup-name>/%(aggr2)s/plex0/rg1</raidgroup-name>
                   <recomputing-parity-percentage>0</recomputing-parity-percentage>
                   <reconstruction-percentage>0</reconstruction-percentage>
                 </raidgroup-attributes>
@@ -851,7 +914,7 @@ AGGR_GET_ITER_RESPONSE = etree.XML("""
           <flexvol-count-collective>0</flexvol-count-collective>
           <flexvol-count-striped>0</flexvol-count-striped>
         </aggr-volume-count-attributes>
-        <aggregate-name>manila</aggregate-name>
+        <aggregate-name>%(aggr2)s</aggregate-name>
         <aggregate-uuid>2a741934-1aaf-42dd-93ca-aaf231be108a</aggregate-uuid>
         <nodes>
           <node-name>cluster3-01</node-name>
@@ -861,7 +924,10 @@ AGGR_GET_ITER_RESPONSE = etree.XML("""
     </attributes-list>
     <num-records>2</num-records>
   </results>
-""")
+""" % {
+    'aggr1': SHARE_AGGREGATE_NAMES[0],
+    'aggr2': SHARE_AGGREGATE_NAMES[1],
+})
 
 VOLUME_GET_NAME_RESPONSE = etree.XML("""
   <results status="passed">
@@ -984,10 +1050,10 @@ AGGR_GET_RAID_TYPE_RESPONSE = etree.XML("""
         <aggr-raid-attributes>
           <plexes>
             <plex-attributes>
-              <plex-name>/aggr0/plex0</plex-name>
+              <plex-name>/%(aggr1)s/plex0</plex-name>
               <raidgroups>
                 <raidgroup-attributes>
-                  <raidgroup-name>/aggr0/plex0/rg0</raidgroup-name>
+                  <raidgroup-name>/%(aggr1)s/plex0/rg0</raidgroup-name>
                 </raidgroup-attributes>
               </raidgroups>
             </plex-attributes>
@@ -1000,13 +1066,13 @@ AGGR_GET_RAID_TYPE_RESPONSE = etree.XML("""
         <aggr-raid-attributes>
           <plexes>
             <plex-attributes>
-              <plex-name>/manila/plex0</plex-name>
+              <plex-name>/%(aggr2)s/plex0</plex-name>
               <raidgroups>
                 <raidgroup-attributes>
-                  <raidgroup-name>/manila/plex0/rg0</raidgroup-name>
+                  <raidgroup-name>/%(aggr2)s/plex0/rg0</raidgroup-name>
                 </raidgroup-attributes>
                 <raidgroup-attributes>
-                  <raidgroup-name>/manila/plex0/rg1</raidgroup-name>
+                  <raidgroup-name>/%(aggr2)s/plex0/rg1</raidgroup-name>
                 </raidgroup-attributes>
               </raidgroups>
             </plex-attributes>

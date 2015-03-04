@@ -30,10 +30,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppClusteredNFSHelperTestCase, self).setUp()
-        self.mock_object(nfs_cmode, 'LOG')
 
         self.mock_context = mock.Mock()
-
         self.mock_client = mock.Mock()
         self.helper = nfs_cmode.NetAppCmodeNFSHelper()
         self.helper.set_client(self.mock_client)

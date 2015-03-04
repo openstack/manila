@@ -230,7 +230,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 except netapp_api.NaApiError as e:
                     if e.code == netapp_api.EOBJECTNOTFOUND:
                         LOG.error(_LE('CIFS server does not exist for '
-                                      'Vserver %s'), vserver_name)
+                                      'Vserver %s.'), vserver_name)
                     else:
                         vserver_client.send_request('cifs-server-delete')
 
@@ -291,6 +291,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise exception.NetAppException(msg)
         return [aggr.get_child_content('aggregate-name') for aggr
                 in aggr_list]
+
+    @na_utils.trace
+    def list_vserver_aggregates(self):
+        """Returns a list of aggregates available to a vserver.
+
+        This must be called against a Vserver LIF.
+        """
+        return self.get_vserver_aggregate_capacities().keys()
 
     @na_utils.trace
     def create_network_interface(self, ip, netmask, vlan, node, port,
@@ -386,9 +394,22 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 in lif_info_list.get_children()]
 
     @na_utils.trace
-    def get_network_interfaces(self):
+    def get_network_interfaces(self, protocols=None):
         """Get available LIFs."""
-        result = self.send_request('net-interface-get-iter')
+        protocols = na_utils.convert_to_list(protocols)
+        protocols = [protocol.lower() for protocol in protocols]
+
+        args = {
+            'query': {
+                'net-interface-info': {
+                    'data-protocols': {
+                        'data-protocol': '|'.join(protocols),
+                    }
+                }
+            }
+        } if protocols else None
+
+        result = self.send_request('net-interface-get-iter', args)
         lif_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
 
@@ -423,6 +444,10 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         'size-total' is the defined total aggregate size, such that
         used + available = total.
         """
+
+        if aggregate_names is not None and len(aggregate_names) == 0:
+            return {}
+
         desired_attributes = {
             'aggr-attributes': {
                 'aggregate-name': None,
@@ -451,17 +476,20 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return aggr_space_dict
 
     @na_utils.trace
-    def get_vserver_aggregate_capacities(self, vserver_name):
+    def get_vserver_aggregate_capacities(self, aggregate_names=None):
         """Calculates capacity of one or more aggregates for a vserver.
 
         Returns dictionary of aggregate capacity metrics.  This must
         be called against a Vserver LIF.
         """
-        LOG.debug('Finding available aggregates for Vserver %s', vserver_name)
+
+        if aggregate_names is not None and len(aggregate_names) == 0:
+            return {}
 
         api_args = {
             'desired-attributes': {
                 'vserver-info': {
+                    'vserver-name': None,
                     'vserver-aggr-info-list': {
                         'vserver-aggr-info': {
                             'aggr-name': None,
@@ -472,8 +500,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             },
         }
         result = self.send_request('vserver-get', api_args)
-        vserver_info = result.get_child_by_name(
-            'attributes').get_child_by_name('vserver-info')
+        attributes = result.get_child_by_name('attributes')
+        if not attributes:
+            raise exception.NetAppException('Failed to read Vserver info')
+
+        vserver_info = attributes.get_child_by_name('vserver-info')
+        vserver_name = vserver_info.get_child_content('vserver-name')
         vserver_aggr_info_element = vserver_info.get_child_by_name(
             'vserver-aggr-info-list') or netapp_api.NaElement('none')
         vserver_aggr_info_list = vserver_aggr_info_element.get_children()
@@ -487,12 +519,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         for aggr_info in vserver_aggr_info_list:
             aggr_name = aggr_info.get_child_content('aggr-name')
-            aggr_size = int(aggr_info.get_child_content('aggr-availsize'))
-            aggr_space_dict[aggr_name] = {'available': aggr_size}
+
+            if aggregate_names is None or aggr_name in aggregate_names:
+                aggr_size = int(aggr_info.get_child_content('aggr-availsize'))
+                aggr_space_dict[aggr_name] = {'available': aggr_size}
 
         LOG.debug('Found available Vserver aggregates: %s', aggr_space_dict)
         return aggr_space_dict
 
+    @na_utils.trace
     def _get_aggregates(self, aggregate_names=None, desired_attributes=None):
 
         query = {
@@ -1003,11 +1038,26 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def _get_ems_log_destination_vserver(self):
+        """Returns the best vserver destination for EMS messages."""
         major, minor = self.get_ontapi_version(cached=True)
+
         if (major > 1) or (major == 1 and minor > 15):
-            return self.list_vservers(vserver_type='admin')[0]
-        else:
-            return self.list_vservers(vserver_type='node')[0]
+            # Prefer admin Vserver (requires cluster credentials).
+            admin_vservers = self.list_vservers(vserver_type='admin')
+            if admin_vservers:
+                return admin_vservers[0]
+
+            # Fall back to data Vserver.
+            data_vservers = self.list_vservers(vserver_type='data')
+            if data_vservers:
+                return data_vservers[0]
+
+        # If older API version, or no other Vservers found, use node Vserver.
+        node_vservers = self.list_vservers(vserver_type='node')
+        if node_vservers:
+            return node_vservers[0]
+
+        raise exception.NotFound("No Vserver found to receive EMS messages.")
 
     @na_utils.trace
     def send_ems_log_message(self, message_dict):
@@ -1023,6 +1073,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         except netapp_api.NaApiError as e:
             LOG.warning(_LW('Failed to invoke EMS. %s') % e)
 
+    @na_utils.trace
     def get_aggregate_raid_types(self, aggregate_names):
         """Get the RAID type of one or more aggregates."""
 
@@ -1047,6 +1098,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         return aggr_raid_dict
 
+    @na_utils.trace
     def get_aggregate_disk_types(self, aggregate_names):
         """Get the disk type of one or more aggregates."""
 
@@ -1092,3 +1144,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                         aggr_disk_type_dict[aggregate_name] = disk_type
 
         return aggr_disk_type_dict
+
+    @na_utils.trace
+    def check_for_cluster_credentials(self):
+        try:
+            self.list_cluster_nodes()
+            # API succeeded, so definitely a cluster management LIF
+            return True
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                LOG.debug('Not connected to cluster management LIF.')
+                return False
+            else:
+                raise e
