@@ -831,26 +831,39 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare, self._driver.ensure_share,
                           self._context, self.share, share_server=self.server)
 
-    def test_allow_access(self):
-        access = {'access_type': 'ip', 'access_to': 'fake_dest'}
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
+    def test_allow_access(self, access_level):
+        access = {
+            'access_type': 'ip',
+            'access_to': 'fake_dest',
+            'access_level': access_level,
+        }
         self._driver.allow_access(
             self._context, self.share, access, share_server=self.server)
         self._driver._helpers[self.share['share_proto']].\
             allow_access.assert_called_once_with(
-                self.server['backend_details'],
-                self.share['name'],
-                access['access_type'],
+                self.server['backend_details'], self.share['name'],
+                access['access_type'], access['access_level'],
                 access['access_to'])
 
+    def test_allow_access_unsupported(self):
+        access = {
+            'access_type': 'ip',
+            'access_to': 'fake_dest',
+            'access_level': 'fakefoobar',
+        }
+        self.assertRaises(
+            exception.InvalidShareAccessLevel,
+            self._driver.allow_access,
+            self._context, self.share, access, share_server=self.server)
+
     def test_deny_access(self):
-        access = {'access_type': 'ip', 'access_to': 'fake_dest'}
-        self._driver.deny_access(self._context, self.share, access,
-                                 share_server=self.server)
-        self._driver._helpers[self.share['share_proto']]. \
-            deny_access.assert_called_once_with(self.server['backend_details'],
-                                                self.share['name'],
-                                                access['access_type'],
-                                                access['access_to'])
+        access = 'fake_access'
+        self._driver.deny_access(
+            self._context, self.share, access, share_server=self.server)
+        self._driver._helpers[
+            self.share['share_proto']].deny_access.assert_called_once_with(
+                self.server['backend_details'], self.share['name'], access)
 
     @ddt.data(fake_share.fake_share(),
               fake_share.fake_share(share_proto='NFSBOGUS'),
@@ -1063,6 +1076,7 @@ class GenericDriverEnsureServerTestCase(test.TestCase):
             exception.ManilaException, fake, self.dhss_true, self._context)
 
 
+@ddt.ddt
 class NFSHelperTestCase(test.TestCase):
     """Test case for NFS helper of generic driver."""
 
@@ -1077,23 +1091,25 @@ class NFSHelperTestCase(test.TestCase):
         ip = '10.254.0.3'
         self.server = fake_compute.FakeServer(
             ip=ip, public_address=ip, instance_id='fake_instance_id')
+        self.share_name = 'fake_share_name'
 
     def test_create_export(self):
-        ret = self._helper.create_export(self.server, 'fake_share')
+        ret = self._helper.create_export(self.server, self.share_name)
         expected_location = ':'.join([self.server['public_address'],
                                       os.path.join(CONF.share_mount_path,
-                                                   'fake_share')])
+                                                   self.share_name)])
         self.assertEqual(ret, expected_location)
 
-    def test_allow_access(self):
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
+    def test_allow_access(self, data):
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
-        self._helper.allow_access(self.server, 'fake_share',
-                                  'ip', '10.0.0.2')
-        local_path = os.path.join(CONF.share_mount_path, 'fake_share')
+        self._helper.allow_access(
+            self.server, self.share_name, 'ip', data, '10.0.0.2')
+        local_path = os.path.join(CONF.share_mount_path, self.share_name)
         self._ssh_exec.assert_has_calls([
             mock.call(self.server, ['sudo', 'exportfs']),
             mock.call(self.server, ['sudo', 'exportfs', '-o',
-                                    'rw,no_subtree_check',
+                                    '%s,no_subtree_check' % data,
                                     ':'.join(['10.0.0.2', local_path])])
         ])
         self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
@@ -1103,13 +1119,16 @@ class NFSHelperTestCase(test.TestCase):
         self.assertRaises(
             exception.InvalidShareAccess,
             self._helper.allow_access,
-            self.server, 'fake_share', 'fake', 'fakerule',
-        )
+            self.server, self.share_name,
+            'fake_type', 'fake_level', 'fake_rule')
 
-    def test_deny_access(self):
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
+    def test_deny_access(self, data):
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
-        local_path = os.path.join(CONF.share_mount_path, 'fake_share')
-        self._helper.deny_access(self.server, 'fake_share', 'ip', '10.0.0.2')
+        local_path = os.path.join(CONF.share_mount_path, self.share_name)
+        access = dict(
+            access_to='10.0.0.2', access_type='ip', access_level=data)
+        self._helper.deny_access(self.server, self.share_name, access)
         export_string = ':'.join(['10.0.0.2', local_path])
         expected_exec = ['sudo', 'exportfs', '-u', export_string]
         self._ssh_exec.assert_called_once_with(self.server, expected_exec)
@@ -1121,6 +1140,7 @@ class NFSHelperTestCase(test.TestCase):
         self._helper._ssh_exec.assert_called_once_with(self.server, mock.ANY)
 
 
+@ddt.ddt
 class CIFSHelperTestCase(test.TestCase):
     """Test case for CIFS helper of generic driver."""
 
@@ -1134,6 +1154,10 @@ class CIFSHelperTestCase(test.TestCase):
         self._execute = mock.Mock(return_value=('', ''))
         self._helper = generic.CIFSHelper(self._execute, self._ssh_exec,
                                           self.fake_conf)
+        self.access = dict(
+            access_level=const.ACCESS_LEVEL_RW,
+            access_type='ip',
+            access_to='1.1.1.1')
 
     def test_init_helper(self):
         self._helper.init_helper(self.server_details)
@@ -1250,8 +1274,7 @@ class CIFSHelperTestCase(test.TestCase):
         ])
 
     def test_allow_access_ip_exist(self):
-        ip = '1.1.1.1'
-        hosts = [ip, ]
+        hosts = [self.access['access_to'], ]
         self.mock_object(self._helper, '_get_allow_hosts',
                          mock.Mock(return_value=hosts))
         self.mock_object(self._helper, '_set_allow_hosts')
@@ -1261,23 +1284,24 @@ class CIFSHelperTestCase(test.TestCase):
             self._helper.allow_access,
             self.server_details,
             self.share_name,
-            'ip',
-            ip,
-        )
+            self.access['access_type'],
+            self.access['access_level'],
+            self.access['access_to'])
 
         self._helper._get_allow_hosts.assert_called_once_with(
             self.server_details, self.share_name)
         self._helper._set_allow_hosts.assert_has_calls([])
 
     def test_allow_access_ip_does_not_exist(self):
-        ip = '1.1.1.1'
         hosts = []
         self.mock_object(self._helper, '_get_allow_hosts',
                          mock.Mock(return_value=hosts))
         self.mock_object(self._helper, '_set_allow_hosts')
 
         self._helper.allow_access(
-            self.server_details, self.share_name, 'ip', ip)
+            self.server_details, self.share_name,
+            self.access['access_type'], self.access['access_level'],
+            self.access['access_to'])
 
         self._helper._get_allow_hosts.assert_called_once_with(
             self.server_details, self.share_name)
@@ -1289,20 +1313,35 @@ class CIFSHelperTestCase(test.TestCase):
             exception.InvalidShareAccess,
             self._helper.allow_access,
             self.server_details,
-            self.share_name,
-            'fake',
-            '1.1.1.1',
-        )
+            self.share_name, 'fake', const.ACCESS_LEVEL_RW, '1.1.1.1')
+
+    @ddt.data(const.ACCESS_LEVEL_RO, 'fake')
+    def test_allow_access_wrong_access_level(self, data):
+        self.assertRaises(
+            exception.InvalidShareAccessLevel,
+            self._helper.allow_access,
+            self.server_details,
+            self.share_name, 'ip', data, '1.1.1.1')
+
+    @ddt.data(const.ACCESS_LEVEL_RO, 'fake')
+    def test_deny_access_unsupported_access_level(self, data):
+        access = dict(access_to='1.1.1.1', access_level=data)
+        self.mock_object(self._helper, '_get_allow_hosts')
+        self.mock_object(self._helper, '_set_allow_hosts')
+
+        self._helper.deny_access(self.server_details, self.share_name, access)
+
+        self.assertFalse(self._helper._get_allow_hosts.called)
+        self.assertFalse(self._helper._set_allow_hosts.called)
 
     def test_deny_access_list_has_value(self):
-        ip = '1.1.1.1'
-        hosts = [ip, ]
+        hosts = [self.access['access_to'], ]
         self.mock_object(self._helper, '_get_allow_hosts',
                          mock.Mock(return_value=hosts))
         self.mock_object(self._helper, '_set_allow_hosts')
 
         self._helper.deny_access(
-            self.server_details, self.share_name, 'ip', ip)
+            self.server_details, self.share_name, self.access)
 
         self._helper._get_allow_hosts.assert_called_once_with(
             self.server_details, self.share_name)
@@ -1310,14 +1349,13 @@ class CIFSHelperTestCase(test.TestCase):
             self.server_details, [], self.share_name)
 
     def test_deny_access_list_does_not_have_value(self):
-        ip = '1.1.1.1'
         hosts = []
         self.mock_object(self._helper, '_get_allow_hosts',
                          mock.Mock(return_value=hosts))
         self.mock_object(self._helper, '_set_allow_hosts')
 
         self._helper.deny_access(
-            self.server_details, self.share_name, 'ip', ip)
+            self.server_details, self.share_name, self.access)
 
         self._helper._get_allow_hosts.assert_called_once_with(
             self.server_details, self.share_name)
@@ -1332,7 +1370,7 @@ class CIFSHelperTestCase(test.TestCase):
         self.mock_object(self._helper, '_set_allow_hosts')
 
         self._helper.deny_access(
-            self.server_details, self.share_name, 'ip', '1.1.1.1', force=True)
+            self.server_details, self.share_name, self.access, force=True)
 
         self._helper._get_allow_hosts.assert_called_once_with(
             self.server_details, self.share_name)
@@ -1348,11 +1386,7 @@ class CIFSHelperTestCase(test.TestCase):
         self.assertRaises(
             exception.ProcessExecutionError,
             self._helper.deny_access,
-            self.server_details,
-            self.share_name,
-            'ip',
-            '1.1.1.1',
-        )
+            self.server_details, self.share_name, self.access)
         self._helper._get_allow_hosts.assert_called_once_with(
             self.server_details, self.share_name)
         self._helper._set_allow_hosts.assert_has_calls([])

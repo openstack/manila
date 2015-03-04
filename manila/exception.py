@@ -346,6 +346,10 @@ class InvalidShareAccess(Invalid):
     message = _("Invalid access_rule: %(reason)s.")
 
 
+class InvalidShareAccessLevel(Invalid):
+    message = _("Invalid or unsupported share access level: %(level)s.")
+
+
 class ShareIsBusy(ManilaException):
     message = _("Deleting $(share_name) share that used.")
 
