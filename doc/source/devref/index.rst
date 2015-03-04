@@ -79,6 +79,7 @@ Share backends
    :maxdepth: 3
 
    netapp_cluster_mode_driver
+   emc_isilon_driver
    emc_vnx_driver
    generic_driver
    glusterfs_driver
