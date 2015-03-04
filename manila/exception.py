@@ -545,3 +545,14 @@ class SopAPIError(Invalid):
 
 class HDFSException(ManilaException):
     message = _("HDFS exception occurred!")
+
+
+class QBException(ManilaException):
+    message = _("Quobyte exception occurred: %(msg)s")
+
+
+class QBRpcException(ManilaException):
+    """Quobyte backend specific exception."""
+    message = _("Quobyte JsonRpc call to backend raised "
+                "an exception: %(result)s, Quobyte error"
+                " code %(qbcode)s")

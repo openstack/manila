@@ -26,6 +26,7 @@ def fake_share(**kwargs):
         'share_network_id': 'fake share network id',
         'share_server_id': 'fake share server id',
         'export_location': 'fake_location:/fake_share',
+        'project_id': 'fake_project_uuid',
     }
     share.update(kwargs)
     return db_fakes.FakeModel(share)

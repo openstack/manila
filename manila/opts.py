@@ -62,6 +62,7 @@ import manila.share.drivers.hp.hp_3par_driver
 import manila.share.drivers.huawei.huawei_nas
 import manila.share.drivers.ibm.gpfs
 import manila.share.drivers.netapp.options
+import manila.share.drivers.quobyte.quobyte
 import manila.share.drivers.service_instance
 import manila.share.drivers.zfssa.zfssashare
 import manila.share.manager
@@ -128,6 +129,7 @@ _global_opt_lists = [
     manila.share.drivers.netapp.options.netapp_transport_opts,
     manila.share.drivers.netapp.options.netapp_basicauth_opts,
     manila.share.drivers.netapp.options.netapp_provisioning_opts,
+    manila.share.drivers.quobyte.quobyte.quobyte_manila_share_opts,
     manila.share.drivers.service_instance.common_opts,
     manila.share.drivers.service_instance.no_share_servers_handling_mode_opts,
     manila.share.drivers.service_instance.share_servers_handling_mode_opts,
