@@ -14,12 +14,29 @@
 #    under the License.
 
 from tempest_lib import exceptions as lib_exc  # noqa
+import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config
 from tempest import test
 
 CONF = config.CONF
+
+
+def _create_delete_ro_access_rule(self):
+    """Common test case for usage in test suites with different decorators.
+
+    :param self: instance of test class
+    """
+    resp, rule = self.shares_client.create_access_rule(
+        self.share["id"], 'ip', '2.2.2.2', 'ro')
+    self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+    self.assertEqual('ro', rule['access_level'])
+    self.shares_client.wait_for_access_rule_status(
+        self.share["id"], rule["id"], "active")
+    resp, _ = self.shares_client.delete_access_rule(
+        self.share["id"], rule["id"])
+    self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
 
 class ShareIpRulesForNFSTest(base.BaseSharesTest):
@@ -77,23 +94,22 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", ])
+    @testtools.skipIf(
+        "nfs" not in CONF.share.enable_ro_access_level_for_protocols,
+        "RO access rule tests are disabled for NFS protocol.")
     def test_create_delete_ro_access_rule(self):
-        resp, rule = self.shares_client.create_access_rule(self.share["id"],
-                                                           'ip',
-                                                           '2.2.2.2',
-                                                           'ro')
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual('ro', rule['access_level'])
-        self.shares_client.wait_for_access_rule_status(self.share["id"],
-                                                       rule["id"],
-                                                       "active")
-        resp, _ = self.shares_client.delete_access_rule(self.share["id"],
-                                                        rule["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        _create_delete_ro_access_rule(self)
 
 
 class ShareIpRulesForCIFSTest(ShareIpRulesForNFSTest):
     protocol = "cifs"
+
+    @test.attr(type=["gate", ])
+    @testtools.skipIf(
+        "cifs" not in CONF.share.enable_ro_access_level_for_protocols,
+        "RO access rule tests are disabled for CIFS protocol.")
+    def test_create_delete_ro_access_rule(self):
+        _create_delete_ro_access_rule(self)
 
 
 class ShareUserRulesForNFSTest(base.BaseSharesTest):
@@ -128,23 +144,22 @@ class ShareUserRulesForNFSTest(base.BaseSharesTest):
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", ])
+    @testtools.skipIf(
+        "nfs" not in CONF.share.enable_ro_access_level_for_protocols,
+        "RO access rule tests are disabled for NFS protocol.")
     def test_create_delete_ro_access_rule(self):
-        resp, rule = self.shares_client.create_access_rule(self.share["id"],
-                                                           self.access_type,
-                                                           self.access_to,
-                                                           'ro')
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual('ro', rule['access_level'])
-        self.shares_client.wait_for_access_rule_status(self.share["id"],
-                                                       rule["id"],
-                                                       "active")
-        resp, _ = self.shares_client.delete_access_rule(self.share["id"],
-                                                        rule["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        _create_delete_ro_access_rule(self)
 
 
 class ShareUserRulesForCIFSTest(ShareUserRulesForNFSTest):
     protocol = "cifs"
+
+    @test.attr(type=["gate", ])
+    @testtools.skipIf(
+        "cifs" not in CONF.share.enable_ro_access_level_for_protocols,
+        "RO access rule tests are disabled for CIFS protocol.")
+    def test_create_delete_ro_access_rule(self):
+        _create_delete_ro_access_rule(self)
 
 
 class ShareRulesTest(base.BaseSharesTest):
