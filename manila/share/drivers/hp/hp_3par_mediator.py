@@ -24,7 +24,6 @@ import six
 
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LI
 from manila.openstack.common import log as logging
 
 hp3parclient = importutils.try_import("hp3parclient")
@@ -51,6 +50,7 @@ class HP3ParMediator(object):
         self.hp3par_san_password = kwargs.get('hp3par_san_password')
         self.hp3par_san_ssh_port = kwargs.get('hp3par_san_ssh_port')
         self.hp3par_san_private_key = kwargs.get('hp3par_san_private_key')
+        self.hp3par_fstore_per_share = kwargs.get('hp3par_fstore_per_share')
 
         self.ssh_conn_timeout = kwargs.get('ssh_conn_timeout')
         self._client = None
@@ -132,13 +132,22 @@ class HP3ParMediator(object):
         return protocol
 
     @staticmethod
-    def ensure_prefix(id):
-        if id.startswith('osf-'):
-            return id
-        else:
-            return 'osf-%s' % id
+    def other_protocol(share_proto):
+        """Given 'nfs' or 'smb' (or equivalent) return the other one."""
+        protocol = HP3ParMediator.ensure_supported_protocol(share_proto)
+        return 'nfs' if protocol == 'smb' else 'smb'
 
-    def create_share(self, share_id, share_proto, fpg, vfs,
+    @staticmethod
+    def ensure_prefix(uid, protocol=None):
+        if uid.startswith('osf-'):
+            return uid
+        elif protocol:
+            return 'osf-%s-%s' % (
+                HP3ParMediator.ensure_supported_protocol(protocol), uid)
+        else:
+            return 'osf-%s' % uid
+
+    def create_share(self, project_id, share_id, share_proto, fpg, vfs,
                      fstore=None, sharedir=None, readonly=False, size=None):
         """Create the share and return its path.
 
@@ -146,6 +155,7 @@ class HP3ParMediator(object):
         called locally from create_share_from_snapshot().  The optional
         parameters allow re-use.
 
+        :param project_id: The tenant ID.
         :param share_id: The share-id with or without osf- prefix.
         :param share_proto: The protocol (to map to smb or nfs)
         :param fpg: The file provisioning group
@@ -162,7 +172,11 @@ class HP3ParMediator(object):
         share_name = self.ensure_prefix(share_id)
 
         if not fstore:
-            fstore = share_name
+            if self.hp3par_fstore_per_share:
+                fstore = share_name
+            else:
+                fstore = self.ensure_prefix(project_id, protocol)
+
             try:
                 result = self._client.createfstore(
                     vfs, fstore, fpg=fpg,
@@ -175,17 +189,35 @@ class HP3ParMediator(object):
                 raise exception.ShareBackendException(msg)
 
             if size:
+                if self.hp3par_fstore_per_share:
+                    hcapacity = six.text_type(size * units.Ki)
+                    scapacity = hcapacity
+                else:
+                    hard_size_mb = size * units.Ki
+                    soft_size_mb = hard_size_mb
+                    result = self._client.getfsquota(
+                        fpg=fpg, vfs=vfs, fstore=fstore)
+                    LOG.debug("getfsquota result=%s", result)
+                    quotas = result['members']
+                    if len(quotas) == 1:
+                        hard_size_mb += int(quotas[0].get('hardBlock', '0'))
+                        soft_size_mb += int(quotas[0].get('softBlock', '0'))
+                    hcapacity = six.text_type(hard_size_mb)
+                    scapacity = six.text_type(soft_size_mb)
+
                 try:
-                    size_str = six.text_type(size)
                     result = self._client.setfsquota(
                         vfs, fpg=fpg, fstore=fstore,
-                        scapacity=size_str, hcapacity=size_str)
+                        scapacity=scapacity, hcapacity=hcapacity)
                     LOG.debug("setfsquota result=%s", result)
                 except Exception as e:
                     msg = (_('Failed to setfsquota on %(fstore)s: %(e)s') %
                            {'fstore': fstore, 'e': six.text_type(e)})
                     LOG.exception(msg)
                     raise exception.ShareBackendException(msg)
+
+        if not (sharedir or self.hp3par_fstore_per_share):
+            sharedir = share_name
 
         try:
             if protocol == 'nfs':
@@ -239,30 +271,45 @@ class HP3ParMediator(object):
         else:
             return result['members'][0]['shareName']
 
-    def create_share_from_snapshot(self, share_id, share_proto, orig_share_id,
+    def create_share_from_snapshot(self, share_id, share_proto,
+                                   orig_project_id, orig_share_id, orig_proto,
                                    snapshot_id, fpg, vfs):
 
-        share_name = self.ensure_prefix(share_id)
-        orig_share_name = self.ensure_prefix(orig_share_id)
-        fstore = orig_share_name
+        protocol = self.ensure_supported_protocol(share_proto)
         snapshot_tag = self.ensure_prefix(snapshot_id)
-        snapshots = self.get_snapshots(fstore, snapshot_tag, fpg, vfs)
+        orig_share_name = self.ensure_prefix(orig_share_id)
 
-        if len(snapshots) != 1:
+        snapshot = self._find_fsnap(orig_project_id,
+                                    orig_share_name,
+                                    orig_proto,
+                                    snapshot_tag,
+                                    fpg,
+                                    vfs)
+
+        if not snapshot:
             msg = (_('Failed to create share from snapshot for '
-                     'FPG/VFS/fstore/tag %(fpg)s/%(vfs)s/%(fstore)s/%(tag)s.'
-                     ' Expected to find 1 snapshot, found %(count)s.') %
-                   {'fpg': fpg, 'vfs': vfs, 'fstore': fstore,
-                    'tag': snapshot_tag, 'count': len(snapshots)})
+                     'FPG/VFS/tag %(fpg)s/%(vfs)s/%(tag)s. '
+                     'Snapshot not found.') %
+                   {
+                       'fpg': fpg,
+                       'vfs': vfs,
+                       'tag': snapshot_tag})
             LOG.exception(msg)
             raise exception.ShareBackendException(msg)
 
-        snapshot = snapshots[0]
-        sharedir = '.snapshot/%s' % snapshot['snapName']
+        fstore = snapshot['fstoreName']
+        share_name = self.ensure_prefix(share_id)
+        if fstore == orig_share_name:
+            # No subdir for original share created with fstore_per_share
+            sharedir = '.snapshot/%s' % snapshot['snapName']
+        else:
+            sharedir = '.snapshot/%s/%s' % (snapshot['snapName'],
+                                            orig_share_name)
 
         return self.create_share(
+            orig_project_id,
             share_name,
-            share_proto,
+            protocol,
             fpg,
             vfs,
             fstore=fstore,
@@ -270,11 +317,12 @@ class HP3ParMediator(object):
             readonly=True,
         )
 
-    def delete_share(self, share_id, share_proto, fpg, vfs):
+    def delete_share(self, project_id, share_id, share_proto, fpg, vfs):
 
-        share_name = self.ensure_prefix(share_id)
-        fstore = self.get_fstore(share_id, share_proto, fpg, vfs)
         protocol = self.ensure_supported_protocol(share_proto)
+        share_name = self.ensure_prefix(share_id)
+        fstore = self._find_fstore(project_id, share_name, protocol, fpg, vfs,
+                                   allow_cross_protocol=True)
 
         if not fstore:
             # Share does not exist.
@@ -289,13 +337,14 @@ class HP3ParMediator(object):
             LOG.exception(msg)
             raise exception.ShareBackendException(message=msg)
 
-        try:
-            self._client.removefstore(vfs, fstore, fpg=fpg)
-        except Exception as e:
-            msg = (_('Failed to remove fstore %(fstore)s: %(e)s') %
-                   {'fstore': fstore, 'e': six.text_type(e)})
-            LOG.exception(msg)
-            raise exception.ShareBackendException(message=msg)
+        if fstore == share_name:
+            try:
+                self._client.removefstore(vfs, fstore, fpg=fpg)
+            except Exception as e:
+                msg = (_('Failed to remove fstore %(fstore)s: %(e)s') %
+                       {'fstore': fstore, 'e': six.text_type(e)})
+                LOG.exception(msg)
+                raise exception.ShareBackendException(message=msg)
 
     def get_vfs_name(self, fpg):
         return self.get_vfs(fpg)['vfsname']
@@ -331,10 +380,33 @@ class HP3ParMediator(object):
 
         return result['members'][0]
 
-    def create_snapshot(self, orig_share_id, snapshot_id, fpg, vfs):
+    def create_snapshot(self, orig_project_id, orig_share_id, orig_share_proto,
+                        snapshot_id, fpg, vfs):
         """Creates a snapshot of a share."""
 
-        fstore = self.ensure_prefix(orig_share_id)
+        fshare = self._find_fshare(orig_project_id,
+                                   orig_share_id,
+                                   orig_share_proto,
+                                   fpg,
+                                   vfs)
+
+        if not fshare:
+            msg = (_('Failed to create snapshot for FPG/VFS/fshare '
+                     '%(fpg)s/%(vfs)s/%(fshare)s: Failed to find fshare.') %
+                   {'fpg': fpg, 'vfs': vfs, 'fshare': orig_share_id})
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg)
+
+        sharedir = fshare.get('shareDir')
+        if sharedir and sharedir.startswith('.snapshot'):
+            msg = (_('Failed to create snapshot for FPG/VFS/fshare '
+                     '%(fpg)s/%(vfs)s/%(fshare)s: Share is a read-only '
+                     'share of an existing snapshot.') %
+                   {'fpg': fpg, 'vfs': vfs, 'fshare': orig_share_id})
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg)
+
+        fstore = fshare.get('fstoreName')
         snapshot_tag = self.ensure_prefix(snapshot_id)
         try:
             result = self._client.createfsnap(
@@ -350,40 +422,19 @@ class HP3ParMediator(object):
             LOG.exception(msg)
             raise exception.ShareBackendException(msg)
 
-    def get_snapshots(self, orig_share_id, snapshot_tag, fpg, vfs):
-        fstore = self.ensure_prefix(orig_share_id)
-        try:
-            pattern = '*_%s' % snapshot_tag
-            result = self._client.getfsnap(
-                pattern, fpg=fpg, vfs=vfs, fstore=fstore, pat=True)
-
-            LOG.debug("getfsnap result=%s", result)
-
-        except Exception as e:
-            msg = (_('Failed to get snapshot for FPG/VFS/fstore/tag '
-                     '%(fpg)s/%(vfs)s/%(fstore)s/%(tag)s: %(e)s') %
-                   {'fpg': fpg, 'vfs': vfs, 'fstore': fstore,
-                    'tag': snapshot_tag, 'e': six.text_type(e)})
-            LOG.exception(msg)
-            raise exception.ShareBackendException(msg)
-
-        if result['total'] == 0:
-            LOG.info((_LI('Found zero snapshots for FPG/VFS/fstore/tag '
-                          '%(fpg)s/%(vfs)s/%(fstore)s/%(tag)s.') %
-                      {'fpg': fpg, 'vfs': vfs, 'fstore': fstore,
-                       'tag': snapshot_tag}))
-
-        return result['members']
-
-    def delete_snapshot(self, orig_share_id, snapshot_id, fpg, vfs):
+    def delete_snapshot(self, orig_project_id, orig_share_id, orig_proto,
+                        snapshot_id, fpg, vfs):
         """Deletes a snapshot of a share."""
 
-        fstore = self.ensure_prefix(orig_share_id)
         snapshot_tag = self.ensure_prefix(snapshot_id)
-        snapshots = self.get_snapshots(fstore, snapshot_tag, fpg, vfs)
 
-        if not snapshots:
+        snapshot = self._find_fsnap(orig_project_id, orig_share_id, orig_proto,
+                                    snapshot_tag, fpg, vfs)
+
+        if not snapshot:
             return
+
+        fstore = snapshot.get('fstoreName')
 
         for protocol in ('nfs', 'smb'):
             try:
@@ -417,23 +468,24 @@ class HP3ParMediator(object):
                                  'dependent share.'))
                         raise exception.Invalid(msg)
 
-        # Tag should be unique enough to only return one, but this method
-        # doesn't really need to know that.  So just loop.
-        for snapshot in snapshots:
-            try:
-                snapname = snapshot['snapName']
-                result = self._client.removefsnap(
-                    vfs, fstore, snapname=snapname, fpg=fpg)
+        snapname = snapshot['snapName']
+        try:
+            result = self._client.removefsnap(
+                vfs, fstore, snapname=snapname, fpg=fpg)
 
-                LOG.debug("removefsnap result=%s", result)
+            LOG.debug("removefsnap result=%s", result)
 
-            except Exception as e:
-                msg = (_('Failed to delete snapshot for FPG/VFS/fstore '
-                         '%(fpg)s/%(vfs)s/%(fstore)s: %(e)s') %
-                       {'fpg': fpg, 'vfs': vfs, 'fstore': fstore,
-                        'e': six.text_type(e)})
-                LOG.exception(msg)
-                raise exception.ShareBackendException(msg)
+        except Exception as e:
+            msg = (_('Failed to delete snapshot for FPG/VFS/fstore/snapshot '
+                     '%(fpg)s/%(vfs)s/%(fstore)s/%(snapname)s: %(e)s') %
+                   {
+                       'fpg': fpg,
+                       'vfs': vfs,
+                       'fstore': fstore,
+                       'snapname': snapname,
+                       'e': six.text_type(e)})
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg)
 
         # Try to reclaim the space
         try:
@@ -461,7 +513,7 @@ class HP3ParMediator(object):
 
         return protocol
 
-    def _change_access(self, plus_or_minus, fstore, share_id, share_proto,
+    def _change_access(self, plus_or_minus, project_id, share_id, share_proto,
                        access_type, access_to, fpg, vfs):
         """Allow or deny access to a share.
 
@@ -469,11 +521,12 @@ class HP3ParMediator(object):
         allow list (-).
         """
 
-        share_name = self.ensure_prefix(share_id)
-        fstore = self.ensure_prefix(fstore)
-
         protocol = self.ensure_supported_protocol(share_proto)
         self.validate_access_type(protocol, access_type)
+
+        share_name = self.ensure_prefix(share_id)
+        fstore = self._find_fstore(project_id, share_id, protocol, fpg, vfs,
+                                   allow_cross_protocol=True)
 
         try:
             if protocol == 'nfs':
@@ -507,37 +560,80 @@ class HP3ParMediator(object):
             LOG.exception(msg)
             raise exception.ShareBackendException(msg)
 
-    def get_fstore(self, share_id, share_proto, fpg, vfs):
+    def _find_fstore(self, project_id, share_id, share_proto, fpg, vfs,
+                     allow_cross_protocol=False):
+
+        share = self._find_fshare(project_id, share_id, share_proto, fpg, vfs)
+
+        if not share and allow_cross_protocol:
+            share = self._find_fshare(project_id,
+                                      share_id,
+                                      self.other_protocol(share_proto),
+                                      fpg,
+                                      vfs)
+
+        return share.get('fstoreName') if share else None
+
+    def _find_fshare(self, project_id, share_id, share_proto, fpg, vfs):
 
         protocol = self.ensure_supported_protocol(share_proto)
         share_name = self.ensure_prefix(share_id)
+
+        project_fstore = self.ensure_prefix(project_id, share_proto)
+        search_order = [
+            {'fpg': fpg, 'vfs': vfs, 'fstore': project_fstore},
+            {'fpg': fpg, 'vfs': vfs, 'fstore': share_name},
+            {'fpg': fpg},
+            {}
+        ]
+
         try:
-            shares = self._client.getfshare(protocol,
-                                            share_name,
-                                            fpg=fpg,
-                                            vfs=vfs)
+            for search_params in search_order:
+                result = self._client.getfshare(protocol, share_name,
+                                                **search_params)
+                shares = result.get('members', [])
+                if len(shares) == 1:
+                    return shares[0]
         except Exception as e:
             msg = (_('Unexpected exception while getting share list: %s') %
                    six.text_type(e))
             raise exception.ShareBackendException(msg)
 
-        members = shares['members']
-        if members:
-            return members[0].get('fstoreName')
+    def _find_fsnap(self, project_id, share_id, orig_proto, snapshot_tag,
+                    fpg, vfs):
 
-    def allow_access(self, share_id, share_proto, access_type, access_to,
-                     fpg, vfs):
+        share_name = self.ensure_prefix(share_id)
+        osf_project_id = self.ensure_prefix(project_id, orig_proto)
+        pattern = '*_%s' % self.ensure_prefix(snapshot_tag)
+
+        search_order = [
+            {'pat': True, 'fpg': fpg, 'vfs': vfs, 'fstore': osf_project_id},
+            {'pat': True, 'fpg': fpg, 'vfs': vfs, 'fstore': share_name},
+            {'pat': True, 'fpg': fpg},
+            {'pat': True},
+        ]
+
+        try:
+            for search_params in search_order:
+                result = self._client.getfsnap(pattern, **search_params)
+                snapshots = result.get('members', [])
+                if len(snapshots) == 1:
+                    return snapshots[0]
+        except Exception as e:
+            msg = (_('Unexpected exception while getting snapshots: %s') %
+                   six.text_type(e))
+            raise exception.ShareBackendException(msg)
+
+    def allow_access(self, project_id, share_id, share_proto, access_type,
+                     access_to, fpg, vfs):
         """Grant access to a share."""
 
-        fstore = self.get_fstore(share_id, share_proto, fpg, vfs)
-        self._change_access(ALLOW, fstore, share_id, share_proto,
+        self._change_access(ALLOW, project_id, share_id, share_proto,
                             access_type, access_to, fpg, vfs)
 
-    def deny_access(self, share_id, share_proto, access_type, access_to,
-                    fpg, vfs):
+    def deny_access(self, project_id, share_id, share_proto, access_type,
+                    access_to, fpg, vfs):
         """Deny access to a share."""
 
-        fstore = self.get_fstore(share_id, share_proto, fpg, vfs)
-        if fstore:
-            self._change_access(DENY, fstore, share_id, share_proto,
-                                access_type, access_to, fpg, vfs)
+        self._change_access(DENY, project_id, share_id, share_proto,
+                            access_type, access_to, fpg, vfs)

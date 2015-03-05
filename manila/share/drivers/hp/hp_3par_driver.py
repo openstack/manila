@@ -59,6 +59,9 @@ HP3PAR_OPTS = [
     cfg.StrOpt('hp3par_share_ip_address',
                default='',
                help="The IP address for shares not using a share server"),
+    cfg.BoolOpt('hp3par_fstore_per_share',
+                default=False,
+                help="Use one filestore per share"),
     cfg.BoolOpt('hp3par_debug',
                 default=False,
                 help="Enable HTTP debugging to 3PAR"),
@@ -105,6 +108,7 @@ class HP3ParShareDriver(driver.ShareDriver):
             hp3par_san_login=self.configuration.hp3par_san_login,
             hp3par_san_password=self.configuration.hp3par_san_password,
             hp3par_san_ssh_port=self.configuration.hp3par_san_ssh_port,
+            hp3par_fstore_per_share=self.configuration.hp3par_fstore_per_share,
             ssh_conn_timeout=self.configuration.ssh_conn_timeout,
         )
 
@@ -170,6 +174,7 @@ class HP3ParShareDriver(driver.ShareDriver):
 
         protocol = share['share_proto']
         path = self._hp3par.create_share(
+            share['project_id'],
             share['id'],
             protocol,
             self.fpg, self.vfs,
@@ -188,7 +193,9 @@ class HP3ParShareDriver(driver.ShareDriver):
         path = self._hp3par.create_share_from_snapshot(
             share['id'],
             protocol,
+            snapshot['share']['project_id'],
             snapshot['share']['id'],
+            snapshot['share']['share_proto'],
             snapshot['id'],
             self.fpg,
             self.vfs
@@ -199,7 +206,8 @@ class HP3ParShareDriver(driver.ShareDriver):
     def delete_share(self, context, share, share_server=None):
         """Deletes share and its fstore."""
 
-        self._hp3par.delete_share(share['id'],
+        self._hp3par.delete_share(share['project_id'],
+                                  share['id'],
                                   share['share_proto'],
                                   self.fpg,
                                   self.vfs)
@@ -207,7 +215,9 @@ class HP3ParShareDriver(driver.ShareDriver):
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot of a share."""
 
-        self._hp3par.create_snapshot(snapshot['share']['id'],
+        self._hp3par.create_snapshot(snapshot['share']['project_id'],
+                                     snapshot['share']['id'],
+                                     snapshot['share']['share_proto'],
                                      snapshot['id'],
                                      self.fpg,
                                      self.vfs)
@@ -215,7 +225,9 @@ class HP3ParShareDriver(driver.ShareDriver):
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot of a share."""
 
-        self._hp3par.delete_snapshot(snapshot['share']['id'],
+        self._hp3par.delete_snapshot(snapshot['share']['project_id'],
+                                     snapshot['share']['id'],
+                                     snapshot['share']['share_proto'],
                                      snapshot['id'],
                                      self.fpg,
                                      self.vfs)
@@ -225,7 +237,8 @@ class HP3ParShareDriver(driver.ShareDriver):
 
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
-        self._hp3par.allow_access(share['id'],
+        self._hp3par.allow_access(share['project_id'],
+                                  share['id'],
                                   share['share_proto'],
                                   access['access_type'],
                                   access['access_to'],
@@ -234,7 +247,8 @@ class HP3ParShareDriver(driver.ShareDriver):
 
     def deny_access(self, context, share, access, share_server=None):
         """Deny access to the share."""
-        self._hp3par.deny_access(share['id'],
+        self._hp3par.deny_access(share['project_id'],
+                                 share['id'],
                                  share['share_proto'],
                                  access['access_type'],
                                  access['access_to'],
