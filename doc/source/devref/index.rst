@@ -82,6 +82,7 @@ Share backends
    emc_vnx_driver
    generic_driver
    glusterfs_driver
+   glusterfs_native_driver
    huawei_nas_driver
    hdfs_native_driver
 
