@@ -36,10 +36,9 @@ flag in the manila.conf file. This flag defines the names (separated by a
 comma) of the configuration stanzas for the different back ends: one name is
 associated to one configuration group for a back end.
 
-The following example shows five configured back ends:
+The following example shows five configured back ends::
 
     [DEFAULT]
-
     enabled_share_backends=backendEMC1,backendEMC2,backendGeneric1,backendGeneric2,backendNetApp
 
     [backendEMC1]
