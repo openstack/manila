@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2015 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -715,7 +716,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 raise exception.NetAppException(msg % e.message)
 
     @na_utils.trace
-    def create_volume(self, aggregate_name, volume_name, size_gb):
+    def create_volume(self, aggregate_name, volume_name, size_gb,
+                      thin_provisioned=False):
         """Creates a volume."""
         api_args = {
             'containing-aggr-name': aggregate_name,
@@ -723,6 +725,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'volume': volume_name,
             'junction-path': '/%s' % volume_name,
         }
+        if thin_provisioned:
+            api_args['space-reserve'] = 'none'
         self.send_request('volume-create', api_args)
 
     @na_utils.trace

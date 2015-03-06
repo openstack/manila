@@ -1,4 +1,5 @@
 # Copyright (c) 2015 Clinton Knight  All rights reserved.
+# Copyright (c) 2015 Tom Barron  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -11,6 +12,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import copy
 
 import manila.tests.share.drivers.netapp.fakes as na_fakes
 
@@ -41,6 +44,8 @@ ROOT_VOLUME = 'root'
 CLUSTER_NODES = ('cluster1_01', 'cluster1_02')
 NODE_DATA_PORT = 'e0c'
 LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
+SHARE_TYPE_ID = '26e89a5b-960b-46bb-a8cf-0778e653098f'
+SHARE_TYPE_NAME = 'fake_share_type'
 
 CLIENT_KWARGS = {
     'username': 'admin',
@@ -66,6 +71,34 @@ SHARE = {
         'network_allocations': [{'ip_address': 'ip'}]
     }
 }
+
+EXTRA_SPEC = {
+    'netapp:thin_provisioned': 'true',
+}
+
+PROVISIONING_OPTIONS = {
+    'thin_provisioned': True,
+}
+
+SHORT_EXTRA_SPEC = {
+    'netapp:thin_provisioned': 'true',
+}
+
+INVALID_EXTRA_SPEC = {
+    'netapp:thin_provisioned': 'ture',
+}
+
+
+EMPTY_EXTRA_SPEC = {}
+
+SHARE_TYPE = {
+    'id': SHARE_TYPE_ID,
+    'name': SHARE_TYPE_NAME,
+    'extra_specs': EXTRA_SPEC
+}
+
+EXTRA_SPEC_SHARE = copy.deepcopy(SHARE)
+EXTRA_SPEC_SHARE['share_type_id'] = SHARE_TYPE_ID
 
 NETWORK_INFO = {
     'server_id': '56aafd02-4d44-43d7-b784-57fc88167224',

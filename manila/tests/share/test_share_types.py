@@ -1,5 +1,5 @@
-# Copyright 2015 Deutsche Telekom AG
-# All Rights Reserved.
+# Copyright 2015 Deutsche Telekom AG.  All rights reserved.
+# Copyright 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,7 +14,7 @@
 #    under the License.
 
 
-"""Test of Volume Test Manager for Manila."""
+"""Test of Share Type methods for Manila."""
 import datetime
 
 import ddt
@@ -40,19 +40,23 @@ class ShareTypesTestCase(test.TestCase):
             'updated_at': None
         }
     }
+    fake_extra_specs = {u'gold': u'True'}
+    fake_share_type_id = u'fooid-2'
     fake_type_w_extra = {
         'test_with_extra': {
             'created_at': datetime.datetime(2015, 1, 22, 11, 45, 31),
             'deleted': '0',
             'deleted_at': None,
-            'extra_specs': {u'gold': u'True'},
-            'id': u'fooid-2',
+            'extra_specs': fake_extra_specs,
+            'id': fake_share_type_id,
             'name': u'test_with_extra',
             'updated_at': None
         }
     }
 
     fake_types = dict(fake_type.items() + fake_type_w_extra.items())
+
+    fake_share = {'id': u'fooid-1', 'share_type_id': fake_share_type_id}
 
     def setUp(self):
         super(ShareTypesTestCase, self).setUp()
@@ -113,3 +117,14 @@ class ShareTypesTestCase(test.TestCase):
                                                      share_type['id'],
                                                      share_type['id'])
         self.assertTrue(equal)
+
+    def test_get_extra_specs_from_share(self):
+        expected = self.fake_extra_specs
+        self.mock_object(share_types, 'get_share_type_extra_specs',
+                         mock.Mock(return_value=expected))
+
+        spec_value = share_types.get_extra_specs_from_share(self.fake_share)
+
+        self.assertEqual(expected, spec_value)
+        share_types.get_share_type_extra_specs.assert_called_once_with(
+            self.fake_share_type_id)
