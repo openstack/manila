@@ -28,6 +28,7 @@ from manila.i18n import _
 from manila.i18n import _LE
 from manila.scheduler import driver
 from manila.scheduler import scheduler_options
+from manila.share import share_types
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -120,6 +121,17 @@ class FilterScheduler(driver.Scheduler):
         # 'volume_XX' to 'resource_XX' will make both filters happy.
         resource_properties = share_properties.copy()
         share_type = request_spec.get("share_type", {})
+
+        extra_specs = share_type.get('extra_specs', {})
+
+        if extra_specs:
+            for extra_spec_name in share_types.get_required_extra_specs():
+                extra_spec = extra_specs.get(extra_spec_name)
+
+                if extra_spec is not None:
+                    share_type['extra_specs'][extra_spec_name] = (
+                        "<is> %s" % extra_spec)
+
         resource_type = request_spec.get("share_type") or {}
         request_spec.update({'resource_properties': resource_properties})
 
@@ -135,12 +147,6 @@ class FilterScheduler(driver.Scheduler):
                                   'share_type': share_type,
                                   'resource_type': resource_type
                                   })
-
-        # NOTE(vponomaryov): skip key 'driver_handles_share_servers' temporary
-        # until server and client sides are both can handle it as required key.
-        if 'extra_specs' in filter_properties['share_type']:
-            filter_properties['share_type']['extra_specs'].pop(
-                'driver_handles_share_servers', None)
 
         self.populate_filter_properties_share(request_spec, filter_properties)
 

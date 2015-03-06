@@ -21,6 +21,7 @@ from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila.api.views import types as views_types
 from manila import exception
+from manila.i18n import _
 from manila import rpc
 from manila.share import share_types
 
@@ -54,11 +55,20 @@ class ShareTypesManageController(wsgi.Controller):
         specs = share_type.get('extra_specs', {})
 
         if name is None or name == "" or len(name) > 255:
-            raise webob.exc.HTTPBadRequest()
+            msg = _("Type name is not valid.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        try:
+            required_extra_specs = (
+                share_types.get_valid_required_extra_specs(specs)
+            )
+        except exception.InvalidExtraSpec as e:
+            raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
 
         try:
             share_types.create(context, name, specs)
             share_type = share_types.get_share_type_by_name(context, name)
+            share_type['required_extra_specs'] = required_extra_specs
             notifier_info = dict(share_types=share_type)
             rpc.get_notifier('shareType').info(
                 context, 'share_type.create', notifier_info)

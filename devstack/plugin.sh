@@ -426,7 +426,10 @@ function create_default_share_type {
         die $LINENO "Manila did not start"
     fi
 
-    manila type-create $MANILA_DEFAULT_SHARE_TYPE
+    enabled_backends=(${MANILA_ENABLED_BACKENDS//,/ })
+    driver_handles_share_servers=$(iniget $MANILA_CONF ${enabled_backends[0]} driver_handles_share_servers)
+
+    manila type-create $MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers
     if [[ $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS ]]; then
         manila type-key $MANILA_DEFAULT_SHARE_TYPE set $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS
     fi

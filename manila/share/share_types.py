@@ -19,8 +19,10 @@
 from oslo_config import cfg
 from oslo_db import exception as db_exception
 from oslo_log import log
+from oslo_utils import strutils
 import six
 
+from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
@@ -31,8 +33,13 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
-def create(context, name, extra_specs={}):
+def create(context, name, extra_specs):
     """Creates share types."""
+    try:
+        get_valid_required_extra_specs(extra_specs)
+    except exception.InvalidExtraSpec as e:
+        raise exception.InvalidShareType(reason=six.text_type(e))
+
     try:
         type_ref = db.share_type_create(context,
                                         dict(name=name,
@@ -59,6 +66,21 @@ def get_all_types(context, inactive=0, search_opts={}):
     Pass true as argument if you want deleted share types returned also.
     """
     share_types = db.share_type_get_all(context, inactive)
+
+    for type_name, type_args in six.iteritems(share_types):
+        required_extra_specs = {}
+        try:
+            required_extra_specs = get_valid_required_extra_specs(
+                type_args['extra_specs'])
+        except exception.InvalidExtraSpec as e:
+            values = {
+                'share_type': type_name,
+                'error': six.text_type(e)
+            }
+            LOG.exception(_LE('Share type %(share_type)s has invalid required'
+                              ' extra specs: %(error)s'), values)
+
+        type_args['required_extra_specs'] = required_extra_specs
 
     if search_opts:
         LOG.debug("Searching by: %s", search_opts)
@@ -143,6 +165,55 @@ def get_share_type_extra_specs(share_type_id, key=False):
             return False
     else:
         return extra_specs
+
+
+def get_required_extra_specs():
+    return constants.ExtraSpecs.REQUIRED
+
+
+def is_valid_required_extra_spec(key, value):
+    """Validates required extra_spec value.
+
+    :param key: extra_spec name
+    :param value: extra_spec value
+    :return: None if provided extra_spec is not required
+             True/False if extra_spec is required and valid or not.
+    """
+    if key not in get_required_extra_specs():
+        return
+
+    if key == constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS:
+        return strutils.bool_from_string(value, default=None) is not None
+
+    return False
+
+
+def get_valid_required_extra_specs(extra_specs):
+    """Returns required extra specs from dict.
+
+    Returns None if extra specs are not valid, or if
+    some required extras specs is missed.
+    """
+    extra_specs = extra_specs or {}
+
+    missed_extra_specs = set(get_required_extra_specs()) - set(extra_specs)
+
+    if missed_extra_specs:
+        specs = ",".join(missed_extra_specs)
+        msg = _("Required extra specs '%s' not specified.") % specs
+        raise exception.InvalidExtraSpec(reason=msg)
+
+    required_extra_specs = {}
+
+    for k in get_required_extra_specs():
+        value = extra_specs.get(k, '')
+        if not is_valid_required_extra_spec(k, value):
+            msg = _("Value of required extra_spec %s is not valid") % k
+            raise exception.InvalidExtraSpec(reason=msg)
+
+        required_extra_specs[k] = value
+
+    return required_extra_specs
 
 
 def share_types_diff(context, share_type_id1, share_type_id2):

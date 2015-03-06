@@ -62,3 +62,8 @@ ACCESS_LEVELS = (
     ACCESS_LEVEL_RW,
     ACCESS_LEVEL_RO,
 )
+
+
+class ExtraSpecs(object):
+    DRIVER_HANDLES_SHARE_SERVERS = "driver_handles_share_servers"
+    REQUIRED = (DRIVER_HANDLES_SHARE_SERVERS, )

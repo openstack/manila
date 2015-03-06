@@ -1,5 +1,6 @@
 # Copyright 2015 Deutsche Telekom AG.  All rights reserved.
 # Copyright 2015 Tom Barron.  All rights reserved.
+# Copyright 2015 Mirantis, Inc.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -15,15 +16,27 @@
 
 
 """Test of Share Type methods for Manila."""
+import copy
 import datetime
 
 import ddt
 import mock
 
+from manila.common import constants
 from manila import context
 from manila import db
+from manila import exception
 from manila.share import share_types
 from manila import test
+
+
+def create_share_type_dict(extra_specs=None):
+    return {
+        'fake_type': {
+            'name': 'fake1',
+            'extra_specs': extra_specs
+        }
+    }
 
 
 @ddt.ddt
@@ -35,6 +48,7 @@ class ShareTypesTestCase(test.TestCase):
             'deleted': '0',
             'deleted_at': None,
             'extra_specs': {},
+            'required_extra_specs': {},
             'id': u'fooid-1',
             'name': u'test',
             'updated_at': None
@@ -48,13 +62,32 @@ class ShareTypesTestCase(test.TestCase):
             'deleted': '0',
             'deleted_at': None,
             'extra_specs': fake_extra_specs,
+            'required_extra_specs': {},
             'id': fake_share_type_id,
             'name': u'test_with_extra',
             'updated_at': None
         }
     }
 
-    fake_types = dict(fake_type.items() + fake_type_w_extra.items())
+    fake_type_w_valid_extra = {
+        'test_with_extra': {
+            'created_at': datetime.datetime(2015, 1, 22, 11, 45, 31),
+            'deleted': '0',
+            'deleted_at': None,
+            'extra_specs': {
+                constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
+            },
+            'required_extra_specs': {
+                constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
+            },
+            'id': u'fooid-2',
+            'name': u'test_with_extra',
+            'updated_at': None
+        }
+    }
+
+    fake_types = dict(fake_type.items() + fake_type_w_extra.items()
+                      + fake_type_w_valid_extra.items())
 
     fake_share = {'id': u'fooid-1', 'share_type_id': fake_share_type_id}
 
@@ -66,7 +99,7 @@ class ShareTypesTestCase(test.TestCase):
     def test_get_all_types(self, share_type):
         self.mock_object(db,
                          'share_type_get_all',
-                         mock.Mock(return_value=share_type))
+                         mock.Mock(return_value=copy.deepcopy(share_type)))
         returned_type = share_types.get_all_types(self.context)
         self.assertItemsEqual(share_type, returned_type)
 
@@ -128,3 +161,56 @@ class ShareTypesTestCase(test.TestCase):
         self.assertEqual(expected, spec_value)
         share_types.get_share_type_extra_specs.assert_called_once_with(
             self.fake_share_type_id)
+
+    @ddt.data({},
+              {"fake": "fake"},
+              {constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: None})
+    def test_create_without_required_extra_spec(self, extra_specs):
+        name = "fake_share_type"
+
+        self.assertRaises(exception.InvalidShareType, share_types.create,
+                          self.context, name, extra_specs)
+
+    def test_get_share_type_required_extra_specs(self):
+        valid_required_extra_specs = (
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS,)
+
+        actual_result = share_types.get_required_extra_specs()
+
+        self.assertEqual(valid_required_extra_specs, actual_result)
+
+    def test_validate_required_extra_spec_other(self):
+        actual_result = share_types.is_valid_required_extra_spec(
+            'fake', 'fake')
+
+        self.assertEqual(None, actual_result)
+
+    @ddt.data('1', 'True', 'false', '0', True, False)
+    def test_validate_required_extra_spec_valid(self, value):
+        key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+        actual_result = share_types.is_valid_required_extra_spec(key, value)
+
+        self.assertEqual(True, actual_result)
+
+    @ddt.data('invalid', {}, '0000000000')
+    def test_validate_required_extra_spec_invalid(self, value):
+        key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+        actual_result = share_types.is_valid_required_extra_spec(key, value)
+
+        self.assertEqual(False, actual_result)
+
+    @ddt.data({constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'},
+              {constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true',
+               'another_key': True})
+    def test_get_valid_required_extra_specs_valid(self, specs):
+        actual_result = share_types.get_valid_required_extra_specs(specs)
+
+        valid_result = {
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
+        }
+        self.assertEqual(valid_result, actual_result)
+
+    @ddt.data(None, {})
+    def test_get_valid_required_extra_specs_invalid(self, specs):
+        self.assertRaises(exception.InvalidExtraSpec,
+                          share_types.get_valid_required_extra_specs, specs)

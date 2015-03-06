@@ -19,6 +19,7 @@ import webob
 
 from manila.api.v1 import share_types as types
 from manila.api.views import types as views_types
+from manila.common import constants
 from manila import exception
 from manila.share import share_types
 from manila import test
@@ -31,12 +32,16 @@ def stub_share_type(id):
         "key2": "value2",
         "key3": "value3",
         "key4": "value4",
-        "key5": "value5"
+        "key5": "value5",
+        constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: "true",
     }
     return dict(
         id=id,
         name='share_type_%s' % str(id),
         extra_specs=specs,
+        required_extra_specs={
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: "true",
+        }
     )
 
 
@@ -83,6 +88,10 @@ class ShareTypesApiTest(test.TestCase):
         self.assertEqual(set(actual_names), set(expected_names))
         for entry in res_dict['share_types']:
             self.assertEqual('value1', entry['extra_specs']['key1'])
+            self.assertTrue('required_extra_specs' in entry)
+            required_extra_spec = entry['required_extra_specs'].get(
+                constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS, '')
+            self.assertEqual('true', required_extra_spec)
 
     def test_share_types_index_no_data(self):
         self.mock_object(share_types, 'get_all_types',
@@ -142,6 +151,7 @@ class ShareTypesApiTest(test.TestCase):
             updated_at=now,
             extra_specs={},
             deleted_at=None,
+            required_extra_specs={},
             id=42,
         )
 
@@ -152,6 +162,7 @@ class ShareTypesApiTest(test.TestCase):
         expected_share_type = dict(
             name='new_type',
             extra_specs={},
+            required_extra_specs={},
             id=42,
         )
         self.assertDictMatch(output['share_type'], expected_share_type)
@@ -169,6 +180,7 @@ class ShareTypesApiTest(test.TestCase):
                     created_at=now,
                     updated_at=now,
                     extra_specs={},
+                    required_extra_specs={},
                     deleted_at=None,
                     id=42 + i
                 )
@@ -182,6 +194,7 @@ class ShareTypesApiTest(test.TestCase):
             expected_share_type = dict(
                 name='new_type',
                 extra_specs={},
+                required_extra_specs={},
                 id=42 + i
             )
             self.assertDictMatch(output['share_types'][i],

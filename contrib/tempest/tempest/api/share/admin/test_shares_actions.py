@@ -32,7 +32,8 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
 
         # create share type for share filtering purposes
         cls.st_name = data_utils.rand_name("tempest-st-name")
-        cls.extra_specs = {'storage_protocol': CONF.share.storage_protocol}
+        cls.extra_specs = cls.add_required_extra_specs_to_dict(
+            {'storage_protocol': CONF.share.storage_protocol})
         __, cls.st = cls.create_share_type(
             name=cls.st_name,
             cleanup_in_class=True,
@@ -166,7 +167,9 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_extra_specs(self):
-        filters = {"extra_specs": self.extra_specs}
+        filters = {
+            "extra_specs": {'storage_protocol': CONF.share.storage_protocol}
+        }
 
         # list shares
         __, shares = self.shares_client.list_shares_with_detail(params=filters)

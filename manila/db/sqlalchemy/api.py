@@ -1110,9 +1110,11 @@ def _metadata_refs(metadata_dict, meta_class):
     metadata_refs = []
     if metadata_dict:
         for k, v in six.iteritems(metadata_dict):
+            value = six.text_type(v) if isinstance(v, bool) else v
+
             metadata_ref = meta_class()
             metadata_ref['key'] = k
-            metadata_ref['value'] = v
+            metadata_ref['value'] = value
             metadata_refs.append(metadata_ref)
     return metadata_refs
 
