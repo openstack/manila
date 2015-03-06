@@ -1170,13 +1170,14 @@ def share_get(context, share_id, session=None):
 
 @require_context
 def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
-                                host=None, filters=None,
+                                share_network_id=None, host=None, filters=None,
                                 sort_key=None, sort_dir=None):
     """Returns sorted list of shares that satisfies filters.
 
     :param context: context to query under
     :param project_id: project id that owns shares
     :param share_server_id: share server that hosts shares
+    :param share_network_id: share network that was used for shares
     :param host: host name where shares [and share servers] are located
     :param filters: dict of filters to specify share selection
     :param sort_key: key of models.Share to be used for sorting
@@ -1193,6 +1194,8 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
         query = query.filter_by(project_id=project_id)
     if share_server_id:
         query = query.filter_by(share_server_id=share_server_id)
+    if share_network_id:
+        query = query.filter_by(share_network_id=share_network_id)
     if host and isinstance(host, six.string_types):
         session = get_session()
         with session.begin():
@@ -1265,6 +1268,16 @@ def share_get_all_by_project(context, project_id, filters=None,
         context, project_id=project_id, filters=filters,
         sort_key=sort_key, sort_dir=sort_dir,
     )
+    return query
+
+
+@require_context
+def share_get_all_by_share_network(context, share_network_id, filters=None,
+                                   sort_key=None, sort_dir=None):
+    """Returns list of shares that belong to given share network."""
+    query = _share_get_all_with_filters(
+        context, share_network_id=share_network_id, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir)
     return query
 
 
@@ -1948,6 +1961,8 @@ def share_server_backend_details_delete(context, share_server_id,
 @require_context
 def share_server_backend_details_get(context, share_server_id,
                                      session=None):
+    if not session:
+        session = get_session()
     query = model_query(context, models.ShareServerBackendDetails,
                         session=session)\
         .filter_by(share_server_id=share_server_id).all()

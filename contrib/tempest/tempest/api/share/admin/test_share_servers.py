@@ -212,7 +212,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             self.assertTrue(isinstance(v, six.string_types))
 
     @test.attr(type=["gate", "smoke", ])
-    def test_delete_share_server(self):
+    def _delete_share_server(self, delete_share_network):
         # Get network and subnet from existing share_network and reuse it
         # to be able to delete share_server after test ends.
         # TODO(vponomaryov): attach security-services too. If any exist from
@@ -258,9 +258,27 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
             self.assertEqual(len(empty), 0)
 
-            # Delete share server
-            resp, __ = self.shares_client.delete_share_server(serv["id"])
+            if delete_share_network:
+                # Delete share network, it should trigger share server deletion
+                resp, __ = self.shares_client.delete_share_network(
+                    new_sn["id"])
+            else:
+                # Delete share server
+                resp, __ = self.shares_client.delete_share_server(serv["id"])
+
             self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
             # Wait for share server deletion
             self.shares_client.wait_for_resource_deletion(server_id=serv["id"])
+
+            if delete_share_network:
+                self.shares_client.wait_for_resource_deletion(
+                    sn_id=new_sn["id"])
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_delete_share_server(self):
+        self._delete_share_server(False)
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_delete_share_server_by_deletion_of_share_network(self):
+        self._delete_share_server(True)

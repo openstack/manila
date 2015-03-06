@@ -15,7 +15,9 @@
 
 """Test of Share Manager for Manila."""
 
+import ddt
 import mock
+from oslo_serialization import jsonutils
 from oslo_utils import importutils
 
 from manila.common import constants
@@ -43,6 +45,7 @@ class FakeAccessRule(object):
         return getattr(self, item)
 
 
+@ddt.ddt
 class ShareManagerTestCase(test.TestCase):
 
     def setUp(self):
@@ -97,17 +100,17 @@ class ShareManagerTestCase(test.TestCase):
         return db.share_access_create(context.get_admin_context(), access)
 
     @staticmethod
-    def _create_share_server(state='ACTIVE', share_network_id=None, host=None):
+    def _create_share_server(state='ACTIVE', share_network_id=None, host=None,
+                             backend_details=None):
         """Create a share server object."""
         srv = {}
         srv['host'] = host
         srv['share_network_id'] = share_network_id
         srv['status'] = state
         share_srv = db.share_server_create(context.get_admin_context(), srv)
-        backend_details = {'fake': 'fake'}
-        db.share_server_backend_details_set(context.get_admin_context(),
-                                            share_srv['id'],
-                                            backend_details)
+        if backend_details:
+            db.share_server_backend_details_set(
+                context.get_admin_context(), share_srv['id'], backend_details)
         return db.share_server_get(context.get_admin_context(),
                                    share_srv['id'])
 
@@ -334,8 +337,9 @@ class ShareManagerTestCase(test.TestCase):
     def test_create_share_from_snapshot_with_server(self):
         """Test share can be created from snapshot if server exists."""
         network = self._create_share_network()
-        server = self._create_share_server(share_network_id=network['id'],
-                                           host='fake_host')
+        server = self._create_share_server(
+            share_network_id=network['id'], host='fake_host',
+            backend_details=dict(fake='fake'))
         parent_share = self._create_share(share_network_id='net-id',
                                           share_server_id=server['id'])
         share = self._create_share()
@@ -696,33 +700,35 @@ class ShareManagerTestCase(test.TestCase):
             share_id
         )
 
-    def test_delete_share_last_on_server_with_sec_services(self):
+    @ddt.data(True, False)
+    def test_delete_share_last_on_server_with_sec_services(self, with_details):
         share_net = self._create_share_network()
         sec_service = self._create_security_service(share_net['id'])
-        share_srv = self._create_share_server(
-            share_network_id=share_net['id'],
-            host=self.share_manager.host
-        )
+        backend_details = dict(
+            security_service_ldap=jsonutils.dumps(sec_service))
+        if with_details:
+            share_srv = self._create_share_server(
+                share_network_id=share_net['id'],
+                host=self.share_manager.host,
+                backend_details=backend_details)
+        else:
+            share_srv = self._create_share_server(
+                share_network_id=share_net['id'],
+                host=self.share_manager.host)
+            db.share_server_backend_details_set(
+                context.get_admin_context(), share_srv['id'], backend_details)
         share = self._create_share(share_network_id=share_net['id'],
                                    share_server_id=share_srv['id'])
-
         share_id = share['id']
-
         self.share_manager.driver = mock.Mock()
         manager.CONF.delete_share_server_with_last_share = True
-        self.share_manager.delete_share(self.context, share_id)
-        self.assertTrue(self.share_manager.driver.teardown_server.called)
-        call_args = self.share_manager.driver.teardown_server.call_args[0]
-        call_kwargs = self.share_manager.driver.teardown_server.call_args[1]
-        self.assertEqual(
-            call_args[0],
-            share_srv.get('backend_details'))
 
-        self.assertEqual(
-            len(call_kwargs['security_services']), 1)
-        self.assertTrue(
-            call_kwargs['security_services'][0]['id'],
-            sec_service['id'])
+        self.share_manager.delete_share(self.context, share_id)
+
+        self.share_manager.driver.teardown_server.assert_called_once_with(
+            server_details=backend_details,
+            security_services=[jsonutils.loads(
+                backend_details['security_service_ldap'])])
 
     def test_delete_share_last_on_server(self):
         share_net = self._create_share_network()
@@ -739,8 +745,8 @@ class ShareManagerTestCase(test.TestCase):
         manager.CONF.delete_share_server_with_last_share = True
         self.share_manager.delete_share(self.context, share_id)
         self.share_manager.driver.teardown_server.assert_called_once_with(
-            share_srv.get('backend_details'), security_services=[]
-        )
+            server_details=share_srv.get('backend_details'),
+            security_services=[])
 
     def test_delete_share_last_on_server_deletion_disabled(self):
         share_net = self._create_share_network()
@@ -833,7 +839,18 @@ class ShareManagerTestCase(test.TestCase):
         }
         metadata = {'fake_metadata_key': 'fake_metadata_value'}
         share_network = {'id': 'fake_sn_id'}
-        network_info = {'fake_network_info_key': 'fake_network_info_value'}
+        network_info = {'security_services': []}
+        for ss_type in constants.SECURITY_SERVICES_ALLOWED_TYPES:
+            network_info['security_services'].append({
+                'name': 'fake_name' + ss_type,
+                'domain': 'fake_domain' + ss_type,
+                'server': 'fake_server' + ss_type,
+                'dns_ip': 'fake_dns_ip' + ss_type,
+                'user': 'fake_user' + ss_type,
+                'type': ss_type,
+                'password': 'fake_password' + ss_type,
+            })
+        sec_services = network_info['security_services']
         server_info = {'fake_server_info_key': 'fake_server_info_value'}
 
         # mock required stuff
@@ -866,8 +883,18 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.setup_server.assert_called_once_with(
             network_info, metadata=metadata)
         self.share_manager.db.share_server_backend_details_set.\
-            assert_called_once_with(
-                self.context, share_server['id'], server_info)
+            assert_has_calls([
+                mock.call(self.context, share_server['id'],
+                          {'security_service_' + sec_services[0]['type']:
+                              jsonutils.dumps(sec_services[0])}),
+                mock.call(self.context, share_server['id'],
+                          {'security_service_' + sec_services[1]['type']:
+                              jsonutils.dumps(sec_services[1])}),
+                mock.call(self.context, share_server['id'],
+                          {'security_service_' + sec_services[2]['type']:
+                              jsonutils.dumps(sec_services[2])}),
+                mock.call(self.context, share_server['id'], server_info),
+            ])
         self.share_manager.db.share_server_update.assert_called_once_with(
             self.context, share_server['id'],
             {'status': constants.STATUS_ACTIVE})
@@ -880,7 +907,10 @@ class ShareManagerTestCase(test.TestCase):
         }
         metadata = {'fake_metadata_key': 'fake_metadata_value'}
         share_network = {'id': 'fake_sn_id'}
-        network_info = {'fake_network_info_key': 'fake_network_info_value'}
+        network_info = {
+            'fake_network_info_key': 'fake_network_info_value',
+            'security_services': [],
+        }
         server_info = {}
 
         # mock required stuff
@@ -921,7 +951,10 @@ class ShareManagerTestCase(test.TestCase):
         }
         server_info = {'details_key': 'value'}
         share_network = {'id': 'fake_sn_id'}
-        network_info = {'fake_network_info_key': 'fake_network_info_value'}
+        network_info = {
+            'fake_network_info_key': 'fake_network_info_value',
+            'security_services': [],
+        }
         if detail_data_proper:
             detail_data = {'server_details': server_info}
             self.mock_object(self.share_manager.db,
