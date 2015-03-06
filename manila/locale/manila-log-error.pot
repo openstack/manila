@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev39\n"
+"Project-Id-Version: manila 2015.1.dev97\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-02-15 06:12+0000\n"
+"POT-Creation-Date: 2015-03-05 06:13+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -31,12 +31,12 @@ msgstr ""
 msgid "Error during %(full_task_name)s: %(e)s"
 msgstr ""
 
-#: manila/quota.py:983
+#: manila/quota.py:985
 #, python-format
 msgid "Failed to commit reservations %s"
 msgstr ""
 
-#: manila/quota.py:1007
+#: manila/quota.py:1009
 #, python-format
 msgid "Failed to roll back reservations %s"
 msgstr ""
@@ -68,7 +68,7 @@ msgstr ""
 msgid "Exception handling resource: %s"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:122
+#: manila/api/v1/share_networks.py:123
 msgid "Failed to update usages deleting share-network."
 msgstr ""
 
@@ -76,7 +76,7 @@ msgstr ""
 msgid "Exception while creating table."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:2138
+#: manila/db/sqlalchemy/api.py:2136
 #, python-format
 msgid "ShareType %s deletion failed, ShareType in use."
 msgstr ""
@@ -91,7 +91,7 @@ msgstr ""
 msgid "Unable to execute %(cmd)s. Exception: %(exception)s"
 msgstr ""
 
-#: manila/network/neutron/api.py:166
+#: manila/network/neutron/api.py:167
 #, python-format
 msgid "Neutron error creating port on network %s"
 msgstr ""
@@ -114,7 +114,7 @@ msgstr ""
 msgid "No handler for matches of kind %s"
 msgstr ""
 
-#: manila/scheduler/filter_scheduler.py:216
+#: manila/scheduler/filter_scheduler.py:222
 #, python-format
 msgid ""
 "Error scheduling %(share_id)s from last share-service: %(last_host)s : "
@@ -182,11 +182,11 @@ msgstr ""
 msgid "Failed to update usages deleting share"
 msgstr ""
 
-#: manila/share/manager.py:408
+#: manila/share/manager.py:407
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: manila/share/manager.py:549
+#: manila/share/manager.py:548
 #, python-format
 msgid "Share server %s failed on deletion."
 msgstr ""
@@ -196,79 +196,79 @@ msgstr ""
 msgid "DB error: %s"
 msgstr ""
 
-#: manila/share/share_types.py:126
+#: manila/share/share_types.py:129
 #, python-format
 msgid ""
 "Default share type is not found, please check default_share_type config: "
 "%s"
 msgstr ""
 
-#: manila/share/drivers/generic.py:242
+#: manila/share/drivers/generic.py:249
 #, python-format
 msgid "Failed to sync mount files on server '%s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:249
+#: manila/share/drivers/generic.py:256
 #, python-format
 msgid "Failed to mount all shares on server '%s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:362
+#: manila/share/drivers/generic.py:369
 #, python-format
 msgid ""
 "Expected only one volume in volume list with name '%(name)s', but got "
 "more than one in a result - '%(result)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:380
+#: manila/share/drivers/generic.py:387
 #, python-format
 msgid ""
 "Expected only one volume snapshot in list with name '%(name)s', but got "
 "more than one in a result - '%(result)s'."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:124
+#: manila/share/drivers/glusterfs.py:136
 #, python-format
 msgid "Error retrieving volume info: %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:186
+#: manila/share/drivers/glusterfs.py:198
 #, python-format
 msgid ""
 "Error in tuning GlusterFS volume to enable creation of shares of specific"
 " size: %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:244
+#: manila/share/drivers/glusterfs.py:256
 #, python-format
 msgid "Could not mount the Gluster volume %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:297
+#: manila/share/drivers/glusterfs.py:309
 #, python-format
 msgid "Unable to create share %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:311
+#: manila/share/drivers/glusterfs.py:323
 #, python-format
 msgid ""
 "Cannot cleanup share, %s, that errored out during its creation, but "
 "exists in GlusterFS volume."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:323
+#: manila/share/drivers/glusterfs.py:335
 #, python-format
 msgid "Unable to delete share %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:377
+#: manila/share/drivers/glusterfs.py:389
 #, python-format
 msgid ""
 "Error in tuning GlusterFS volume to prevent exporting the entire volume: "
 "%s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:442
+#: manila/share/drivers/glusterfs.py:454
 #, python-format
 msgid "Error in gluster volume set: %s"
 msgstr ""
@@ -311,7 +311,7 @@ msgstr ""
 msgid "Error while executing management command on Ganesha node %(tag)s: %(msg)s."
 msgstr ""
 
-#: manila/share/drivers/ganesha/manager.py:329
+#: manila/share/drivers/ganesha/manager.py:331
 #, python-format
 msgid "Invalid export database on Ganesha node %(tag)s: %(db)s."
 msgstr ""
@@ -353,28 +353,28 @@ msgstr ""
 
 #: manila/share/drivers/netapp/dataontap/client/client_cmode.py:232
 #, python-format
-msgid "CIFS server does not exist for Vserver %s"
+msgid "CIFS server does not exist for Vserver %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:664
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:712
 msgid "DNS exists for Vserver."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:140
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:126
 #, python-format
 msgid "Neither NFS nor CIFS is licensed on %(backend)s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:276
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:126
 msgid "Failed to create network interface(s)."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/protocols/cifs_cmode.py:68
+#: manila/share/drivers/netapp/dataontap/protocols/cifs_cmode.py:73
 #, python-format
 msgid "User %s does not exist."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/protocols/cifs_cmode.py:70
+#: manila/share/drivers/netapp/dataontap/protocols/cifs_cmode.py:75
 #, python-format
 msgid "Rule %s does not exist."
 msgstr ""

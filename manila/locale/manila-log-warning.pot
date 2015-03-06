@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev30\n"
+"Project-Id-Version: manila 2015.1.dev97\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-02-13 06:13+0000\n"
+"POT-Creation-Date: 2015-03-05 06:13+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -95,20 +95,14 @@ msgid ""
 "manila.api.urlmap:urlmap_factory instead."
 msgstr ""
 
-#: manila/api/openstack/volume/__init__.py:27
-msgid ""
-"manila.api.openstack.volume:APIRouter is deprecated. Please use "
-"manila.api.v1.router:APIRouter instead."
-msgstr ""
-
-#: manila/api/v1/share_networks.py:269
+#: manila/api/v1/share_networks.py:289
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create share-network "
 "(%(d_consumed)d of %(d_quota)d already consumed)"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:950
+#: manila/db/sqlalchemy/api.py:948
 #, python-format
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr ""
@@ -140,28 +134,28 @@ msgid ""
 "%(requested)s/%(available)s"
 msgstr ""
 
-#: manila/share/api.py:126
+#: manila/share/api.py:131
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG share "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: manila/share/api.py:135
+#: manila/share/api.py:140
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create share (%(d_consumed)d "
 "shares already consumed)"
 msgstr ""
 
-#: manila/share/api.py:280
+#: manila/share/api.py:286
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: manila/share/api.py:289
+#: manila/share/api.py:295
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
@@ -182,45 +176,45 @@ msgid ""
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/manager.py:511
+#: manila/share/manager.py:510
 #, python-format
 msgid ""
 "Server Information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/drivers/generic.py:282
+#: manila/share/drivers/generic.py:289
 #, python-format
 msgid "Mount point '%(path)s' already exists on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:308
+#: manila/share/drivers/generic.py:315
 #, python-format
 msgid "Mount point '%(path)s' does not exist on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:804
+#: manila/share/drivers/generic.py:807
 #, python-format
 msgid "Caught error trying delete share: %(error)s, trying delete it forcibly."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:224
+#: manila/share/drivers/glusterfs.py:236
 #, python-format
 msgid "%s is already mounted"
 msgstr ""
 
-#: manila/share/drivers/service_instance.py:314
+#: manila/share/drivers/service_instance.py:309
 msgid ""
 "Name for service instance security group is not provided. Skipping "
 "security group step."
 msgstr ""
 
-#: manila/share/drivers/service_instance.py:349
+#: manila/share/drivers/service_instance.py:344
 #, python-format
 msgid "Service instance %s does not exist."
 msgstr ""
 
-#: manila/share/drivers/service_instance.py:480
+#: manila/share/drivers/service_instance.py:471
 #, python-format
 msgid ""
 "No key path is available. May be non-existent key path is provided. Check"
@@ -367,26 +361,37 @@ msgstr ""
 msgid "Can not find snapshot %s in array."
 msgstr ""
 
-#: manila/share/drivers/netapp/utils.py:44
-#, python-format
-msgid "Invalid trace flag: %s"
-msgstr ""
-
-#: manila/share/drivers/netapp/utils.py:76
+#: manila/share/drivers/netapp/utils.py:46
 msgid ""
 "Please use NetAppDriver in the configuration file to load the driver "
 "instead of directly specifying the driver module name."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:901
+#: manila/share/drivers/netapp/utils.py:77
+#, python-format
+msgid "Invalid trace flag: %s"
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:514
+#, python-format
+msgid "No aggregates assigned to Vserver %s."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:988
 msgid ""
 "Data ONTAP API 'nfs-exportfs-append-rules-2' compatibility action: "
 "remember behavior to send proper values with first attempt next time. Now"
 " trying send another request with changed value for 'pathname'."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:972
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:1074
 #, python-format
 msgid "Failed to invoke EMS. %s"
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:48
+msgid ""
+"Vserver is specified in the configuration. This is ignored when the "
+"driver is managing share servers."
 msgstr ""
 
