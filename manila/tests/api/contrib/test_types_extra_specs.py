@@ -15,10 +15,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 import webob
 
 from manila.api.contrib import types_extra_specs
+from manila.common import constants
 from manila import exception
 from manila import test
 from manila.tests.api import fakes
@@ -59,6 +61,22 @@ def share_type_get(context, share_type_id):
     pass
 
 
+def get_large_string():
+    return "s" * 256
+
+
+def get_extra_specs_dict(extra_specs, include_required=True):
+
+    if not extra_specs:
+        extra_specs = {}
+
+    if include_required:
+        extra_specs[constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS] = False
+
+    return {'extra_specs': extra_specs}
+
+
+@ddt.ddt
 class ShareTypesExtraSpecsTest(test.TestCase):
 
     def setUp(self):
@@ -124,18 +142,27 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
                           req, 1, 'key6')
 
+    def test_delete_forbidden(self):
+        key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+        req = fakes.HTTPRequest.blank(self.api_path + '/' + key)
+
+        self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete,
+                          req, 1, key)
+
     def test_create(self):
         self.mock_object(manila.db,
                          'share_type_extra_specs_update_or_create',
                          return_create_share_type_extra_specs)
-        body = {"extra_specs": {"key1": "value1"}}
+        body = get_extra_specs_dict({})
 
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.create(req, 1, body)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
-        self.assertEqual('value1', res_dict['extra_specs']['key1'])
+        self.assertTrue(
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+            in res_dict['extra_specs'])
 
     def test_create_with_too_small_key(self):
         self.mock_object(manila.db,
@@ -192,7 +219,7 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         share_type_extra_specs_update_or_create.\
             return_value = mock_return_value
 
-        body = {"extra_specs": {"other_alphanum.-_:": "value1"}}
+        body = get_extra_specs_dict({"other_alphanum.-_:": "value1"})
 
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
 
@@ -213,9 +240,11 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         share_type_extra_specs_update_or_create.\
             return_value = mock_return_value
 
-        body = {"extra_specs": {"other_alphanum.-_:": "value1",
-                                "other2_alphanum.-_:": "value2",
-                                "other3_alphanum.-_:": "value3"}}
+        body = get_extra_specs_dict({
+            "other_alphanum.-_:": "value1",
+            "other2_alphanum.-_:": "value2",
+            "other3_alphanum.-_:": "value3"
+        })
 
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
 
@@ -233,14 +262,15 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.mock_object(manila.db,
                          'share_type_extra_specs_update_or_create',
                          return_create_share_type_extra_specs)
-        body = {"key1": "value1"}
+        key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+        body = {key: True}
 
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
-        req = fakes.HTTPRequest.blank(self.api_path + '/key1')
-        res_dict = self.controller.update(req, 1, 'key1', body)
+        req = fakes.HTTPRequest.blank(self.api_path + '/' + key)
+        res_dict = self.controller.update(req, 1, key, body)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
-        self.assertEqual('value1', res_dict['key1'])
+        self.assertEqual(True, res_dict[key])
 
     def test_update_item_too_many_keys(self):
         self.mock_object(manila.db,
@@ -262,41 +292,40 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           req, 1, 'bad', body)
 
-    def _extra_specs_empty_update(self, body):
+    @ddt.data(None,
+              {},
+              {"extra_specs": {
+                  constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: ""
+              }})
+    def test_update_invalid_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1/extra_specs')
         req.method = 'POST'
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update, req, '1', body)
 
-    def test_update_no_body(self):
-        self._extra_specs_empty_update(body=None)
-
-    def test_update_empty_body(self):
-        self._extra_specs_empty_update(body={})
-
-    def _extra_specs_create_bad_body(self, body):
+    @ddt.data(None,
+              {},
+              {'foo': {'a': 'b'}},
+              {'extra_specs': 'string'},
+              {"extra_specs": {"ke/y1": "value1"}},
+              {"key1": "value1", "ke/y2": "value2", "key3": "value3"},
+              {"extra_specs": {
+                  constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: ""}},
+              {"extra_specs": {
+                  constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: "111"}},
+              {"extra_specs": {
+                  constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS + "FAKE":
+                      "fake"}},
+              {"extra_specs": {"": "value"}},
+              {"extra_specs": {"t": get_large_string()}},
+              {"extra_specs": {get_large_string(): get_large_string()}},
+              {"extra_specs": {get_large_string(): "v"}},
+              {"extra_specs": {"k": ""}},
+              )
+    def test_create_invalid_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1/extra_specs')
         req.method = 'POST'
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, '1', body)
-
-    def test_create_no_body(self):
-        self._extra_specs_create_bad_body(body=None)
-
-    def test_create_missing_volume(self):
-        body = {'foo': {'a': 'b'}}
-        self._extra_specs_create_bad_body(body=body)
-
-    def test_create_malformed_entity(self):
-        body = {'extra_specs': 'string'}
-        self._extra_specs_create_bad_body(body=body)
-
-    def test_create_invalid_key(self):
-        body = {"extra_specs": {"ke/y1": "value1"}}
-        self._extra_specs_create_bad_body(body=body)
-
-    def test_create_invalid_too_many_key(self):
-        body = {"key1": "value1", "ke/y2": "value2", "key3": "value3"}
-        self._extra_specs_create_bad_body(body=body)

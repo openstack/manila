@@ -26,7 +26,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
 
     def _create_share_type(self):
         name = data_utils.rand_name("unique_st_name")
-        extra_specs = {"key": "value", }
+        extra_specs = self.add_required_extra_specs_to_dict({"key": "value"})
         __, st = self.create_share_type(name, extra_specs=extra_specs)
         return st
 
@@ -41,7 +41,8 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(
             lib_exc.Unauthorized,
             self.member_shares_client.create_share_type_extra_specs,
-            st["share_type"]["id"], {"key": "new_value"})
+            st["share_type"]["id"],
+            self.add_required_extra_specs_to_dict({"key": "new_value"}))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_list_extra_specs_with_user(self):
@@ -95,35 +96,43 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_set_too_long_key(self):
         too_big_key = "k" * 256
         st = self._create_share_type()
-        self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.create_share_type_extra_specs,
-                          st["share_type"]["id"], {too_big_key: "value"})
+        self.assertRaises(
+            exceptions.BadRequest,
+            self.shares_client.create_share_type_extra_specs,
+            st["share_type"]["id"],
+            self.add_required_extra_specs_to_dict({too_big_key: "value"}))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_set_too_long_value_with_creation(self):
         too_big_value = "v" * 256
         st = self._create_share_type()
-        self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.create_share_type_extra_specs,
-                          st["share_type"]["id"], {"key": too_big_value})
+        self.assertRaises(
+            exceptions.BadRequest,
+            self.shares_client.create_share_type_extra_specs,
+            st["share_type"]["id"],
+            self.add_required_extra_specs_to_dict({"key": too_big_value}))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_set_too_long_value_with_update(self):
         too_big_value = "v" * 256
         st = self._create_share_type()
         resp, body = self.shares_client.create_share_type_extra_specs(
-            st["share_type"]["id"], {"key": "value"})
+            st["share_type"]["id"],
+            self.add_required_extra_specs_to_dict({"key": "value"}))
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertRaises(exceptions.BadRequest,
-                          self.shares_client.update_share_type_extra_specs,
-                          st["share_type"]["id"], {"key": too_big_value})
+        self.assertRaises(
+            exceptions.BadRequest,
+            self.shares_client.update_share_type_extra_specs,
+            st["share_type"]["id"],
+            self.add_required_extra_specs_to_dict({"key": too_big_value}))
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_set_too_long_value_with_update_of_one_key(self):
         too_big_value = "v" * 256
         st = self._create_share_type()
         resp, body = self.shares_client.create_share_type_extra_specs(
-            st["share_type"]["id"], {"key": "value"})
+            st["share_type"]["id"],
+            self.add_required_extra_specs_to_dict({"key": "value"}))
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertRaises(exceptions.BadRequest,
                           self.shares_client.update_share_type_extra_spec,

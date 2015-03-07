@@ -19,6 +19,7 @@ import traceback
 
 from tempest_lib import exceptions as lib_exc  # noqa
 
+import six
 from tempest import clients_share as clients
 from tempest.common import isolated_creds
 from tempest.common.utils import data_utils
@@ -460,6 +461,14 @@ class BaseSharesTest(test.BaseTestCase):
         else:
             cls.method_resources.insert(0, resource)
         return resp, st
+
+    @staticmethod
+    def add_required_extra_specs_to_dict(extra_specs=None):
+        value = six.text_type(CONF.share.multitenancy_enabled)
+        required = {"driver_handles_share_servers": value}
+        if extra_specs:
+            required.update(extra_specs)
+        return required
 
     @classmethod
     def clear_isolated_creds(cls, creds=None):

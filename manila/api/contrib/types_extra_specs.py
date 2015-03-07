@@ -46,27 +46,33 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         except exception.NotFound as ex:
             raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
-    def _verify_extra_specs(self, extra_specs):
-        # keys and values in extra_specs can be only strings
-        # with length in range(1, 256)
-        is_valid = True
+    def _verify_extra_specs(self, extra_specs, verify_all_required=True):
+        if verify_all_required:
+            try:
+                share_types.get_valid_required_extra_specs(extra_specs)
+            except exception.InvalidExtraSpec as e:
+                raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
+
+        def is_valid_string(v):
+            return isinstance(v, six.string_types) and len(v) in range(1, 256)
+
+        def is_valid_extra_spec(k, v):
+            valid_extra_spec_key = is_valid_string(k)
+            valid_type = is_valid_string(v) or isinstance(v, bool)
+            valid_required_extra_spec = (
+                share_types.is_valid_required_extra_spec(k, v) in (None, True))
+            return (valid_extra_spec_key
+                    and valid_type
+                    and valid_required_extra_spec)
+
         for k, v in six.iteritems(extra_specs):
-            if not (isinstance(k, six.string_types) and
-                    len(k) in range(1, 256)):
-                is_valid = False
-                break
-            if isinstance(v, dict):
+            if is_valid_string(k) and isinstance(v, dict):
                 self._verify_extra_specs(v)
-            elif isinstance(v, six.string_types):
-                if len(v) not in range(1, 256):
-                    is_valid = False
-                    break
-            else:
-                is_valid = False
-                break
-        if not is_valid:
-            expl = _('Invalid request body')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
+            elif not is_valid_extra_spec(k, v):
+                expl = _('Invalid extra_spec: %(key)s: %(value)s') % {
+                    'key': k, 'value': v
+                }
+                raise webob.exc.HTTPBadRequest(explanation=expl)
 
     def index(self, req, type_id):
         """Returns the list of extra specs for a given share type."""
@@ -83,8 +89,8 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest()
 
         self._check_type(context, type_id)
-        self._verify_extra_specs(body)
         specs = body['extra_specs']
+        self._verify_extra_specs(specs)
         self._check_key_names(specs.keys())
         db.share_type_extra_specs_update_or_create(context, type_id, specs)
         notifier_info = dict(type_id=type_id, specs=specs)
@@ -105,7 +111,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         if len(body) > 1:
             expl = _('Request body contains too many items')
             raise webob.exc.HTTPBadRequest(explanation=expl)
-        self._verify_extra_specs(body)
+        self._verify_extra_specs(body, False)
         db.share_type_extra_specs_update_or_create(context, type_id, body)
         notifier_info = dict(type_id=type_id, id=id)
         notifier = rpc.get_notifier('shareTypeExtraSpecs')
@@ -128,6 +134,10 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         context = req.environ['manila.context']
         self._check_type(context, type_id)
         authorize(context)
+
+        if id in share_types.get_required_extra_specs():
+            msg = _("Required extra specs can't be deleted.")
+            raise webob.exc.HTTPForbidden(explanation=msg)
 
         try:
             db.share_type_extra_specs_delete(context, type_id, id)

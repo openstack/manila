@@ -24,15 +24,17 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
     def resource_setup(cls):
         super(ExtraSpecsAdminTest, cls).resource_setup()
         shr_type_name = data_utils.rand_name("share-type")
-        __, cls.share_type = cls.create_share_type(shr_type_name)
+        extra_specs = cls.add_required_extra_specs_to_dict()
+        __, cls.share_type = cls.create_share_type(shr_type_name,
+                                                   extra_specs=extra_specs)
         cls.share_type_id = cls.share_type["share_type"]["id"]
 
     @test.attr(type=["gate", "smoke", ])
     def test_share_type_extra_specs_list(self):
-        extra_specs = {
+        extra_specs = self.add_required_extra_specs_to_dict({
             "key1": "value1",
             "key2": "value2",
-        }
+        })
         resp, es_create = self.shares_client.create_share_type_extra_specs(
             self.share_type_id, extra_specs)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
@@ -45,10 +47,10 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_one_share_type_extra_spec(self):
-        extra_specs = {
+        extra_specs = self.add_required_extra_specs_to_dict({
             "key1": "value1",
             "key2": "value2",
-        }
+        })
 
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
@@ -65,10 +67,10 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_all_share_type_extra_specs(self):
-        extra_specs = {
+        extra_specs = self.add_required_extra_specs_to_dict({
             "key1": "value1",
             "key2": "value2",
-        }
+        })
 
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
@@ -85,10 +87,10 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_get_all_share_type_extra_specs(self):
-        extra_specs = {
+        extra_specs = self.add_required_extra_specs_to_dict({
             "key1": "value1",
             "key2": "value2",
-        }
+        })
 
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
@@ -104,10 +106,10 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_get_one_share_type_extra_spec(self):
-        extra_specs = {
+        extra_specs = self.add_required_extra_specs_to_dict({
             "key1": "value1",
             "key2": "value2",
-        }
+        })
 
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
@@ -123,10 +125,10 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_delete_one_share_type_extra_spec(self):
-        extra_specs = {
+        extra_specs = self.add_required_extra_specs_to_dict({
             "key1": "value1",
             "key2": "value2",
-        }
+        })
 
         # Create extra specs for share type
         resp, es_create = self.shares_client.create_share_type_extra_specs(
@@ -143,4 +145,6 @@ class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
         resp, es_get_all = self.shares_client.get_share_type_extra_specs(
             self.share_type_id)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual({"key2": "value2", }, es_get_all)
+        self.assertEqual(
+            self.add_required_extra_specs_to_dict({"key2": "value2", }),
+            es_get_all)

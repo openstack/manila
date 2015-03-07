@@ -401,6 +401,10 @@ class InvalidShareType(Invalid):
     message = _("Invalid share type: %(reason)s.")
 
 
+class InvalidExtraSpec(Invalid):
+    message = _("Invalid extra_spec: %(reason)s.")
+
+
 class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
 

@@ -24,7 +24,9 @@ class ViewBuilder(common.ViewBuilder):
         """Trim away extraneous share type attributes."""
         trimmed = dict(id=share_type.get('id'),
                        name=share_type.get('name'),
-                       extra_specs=share_type.get('extra_specs'))
+                       extra_specs=share_type.get('extra_specs'),
+                       required_extra_specs=share_type.get(
+                           'required_extra_specs'))
         if brief:
             return trimmed
         else:

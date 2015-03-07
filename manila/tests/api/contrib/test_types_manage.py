@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import webob
 
 from manila.api.contrib import types_manage
+from manila.common import constants
 from manila import exception
 from manila.share import share_types
 from manila import test
@@ -60,17 +62,26 @@ def return_share_types_get_by_name(context, name):
     return stub_share_type(int(name.split("_")[2]))
 
 
-def make_create_body(name):
-    return {
+def make_create_body(name="test_share_1", extra_specs=None,
+                     spec_driver_handles_share_servers=True):
+    if not extra_specs:
+        extra_specs = {}
+
+    if spec_driver_handles_share_servers is not None:
+        extra_specs[constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS] =\
+            spec_driver_handles_share_servers
+
+    body = {
         "share_type": {
             "name": name,
-            "extra_specs": {
-                "key": "value",
-            }
+            "extra_specs": extra_specs
         }
     }
 
+    return body
 
+
+@ddt.ddt
 class ShareTypesManageApiTest(test.TestCase):
     def setUp(self):
         super(ShareTypesManageApiTest, self).setUp()
@@ -108,41 +119,35 @@ class ShareTypesManageApiTest(test.TestCase):
         self.controller._delete(req, 1)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
-    def test_create(self):
-        body = make_create_body("share_type_1")
+    @ddt.data(make_create_body("share_type_1"),
+              make_create_body(spec_driver_handles_share_servers="false"),
+              make_create_body(spec_driver_handles_share_servers="true"),
+              make_create_body(spec_driver_handles_share_servers="1"),
+              make_create_body(spec_driver_handles_share_servers="0"),
+              make_create_body(spec_driver_handles_share_servers="True"),
+              make_create_body(spec_driver_handles_share_servers="False"),
+              make_create_body(spec_driver_handles_share_servers="FalsE"))
+    def test_create(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         res_dict = self.controller._create(req, body)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
         self.assertEqual(2, len(res_dict))
         self.assertEqual('share_type_1', res_dict['share_type']['name'])
         self.assertEqual('share_type_1', res_dict['volume_type']['name'])
 
-    def test_create_with_too_small_name(self):
+    @ddt.data(None,
+              make_create_body(""),
+              make_create_body("n" * 256),
+              {'foo': {'a': 'b'}},
+              {'share_type': 'string'},
+              make_create_body(spec_driver_handles_share_servers=None),
+              make_create_body(spec_driver_handles_share_servers=""),
+              make_create_body(spec_driver_handles_share_servers=[]),
+              )
+    def test_create_invalid_request(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._create, req, make_create_body(""))
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
-
-    def test_create_with_too_big_name(self):
-        req = fakes.HTTPRequest.blank('/v2/fake/types')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller._create,
-                          req, make_create_body("n" * 256))
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
-
-    def _create_share_type_bad_body(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/types')
-        req.method = 'POST'
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._create, req, body)
-
-    def test_create_no_body(self):
-        self._create_share_type_bad_body(body=None)
-
-    def test_create_missing_volume(self):
-        self._create_share_type_bad_body(body={'foo': {'a': 'b'}})
-
-    def test_create_malformed_entity(self):
-        self._create_share_type_bad_body(body={'share_type': 'string'})
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))

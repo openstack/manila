@@ -28,9 +28,11 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_share_type_create_delete(self):
         name = data_utils.rand_name("tempest-manila")
+        extra_specs = self.add_required_extra_specs_to_dict()
 
         # Create share type
-        resp, st_create = self.shares_client.create_share_type(name)
+        resp, st_create = self.shares_client.create_share_type(
+            name, extra_specs=extra_specs)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(name, st_create['share_type']['name'])
         st_id = st_create['share_type']['id']
@@ -48,7 +50,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_share_type_create_get(self):
         name = data_utils.rand_name("tempest-manila")
-        extra_specs = {"key": "value", }
+        extra_specs = self.add_required_extra_specs_to_dict({"key": "value", })
 
         # Create share type
         resp, st_create = self.create_share_type(name,
@@ -70,9 +72,10 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_share_type_create_list(self):
         name = data_utils.rand_name("tempest-manila")
+        extra_specs = self.add_required_extra_specs_to_dict()
 
         # Create share type
-        resp, st_create = self.create_share_type(name)
+        resp, st_create = self.create_share_type(name, extra_specs=extra_specs)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         st_id = st_create["share_type"]["id"]
 
@@ -95,9 +98,9 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         # Data
         share_name = data_utils.rand_name("share")
         shr_type_name = data_utils.rand_name("share-type")
-        extra_specs = {
+        extra_specs = self.add_required_extra_specs_to_dict({
             "storage_protocol": CONF.share.storage_protocol,
-        }
+        })
 
         # Create share type
         resp, st_create = self.create_share_type(shr_type_name,
