@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev97\n"
+"Project-Id-Version: manila 2015.1.dev118\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-05 06:13+0000\n"
+"POT-Creation-Date: 2015-03-09 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -76,7 +76,7 @@ msgstr ""
 msgid "Exception while creating table."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:2136
+#: manila/db/sqlalchemy/api.py:2138
 #, python-format
 msgid "ShareType %s deletion failed, ShareType in use."
 msgstr ""
@@ -114,7 +114,7 @@ msgstr ""
 msgid "No handler for matches of kind %s"
 msgstr ""
 
-#: manila/scheduler/filter_scheduler.py:222
+#: manila/scheduler/filter_scheduler.py:228
 #, python-format
 msgid ""
 "Error scheduling %(share_id)s from last share-service: %(last_host)s : "
@@ -191,12 +191,17 @@ msgstr ""
 msgid "Share server %s failed on deletion."
 msgstr ""
 
-#: manila/share/share_types.py:40
+#: manila/share/share_types.py:48
 #, python-format
 msgid "DB error: %s"
 msgstr ""
 
-#: manila/share/share_types.py:129
+#: manila/share/share_types.py:80
+#, python-format
+msgid "Share type %(share_type)s has invalid required extra specs: %(error)s"
+msgstr ""
+
+#: manila/share/share_types.py:152
 #, python-format
 msgid ""
 "Default share type is not found, please check default_share_type config: "
@@ -331,7 +336,7 @@ msgstr ""
 msgid "Read Huawei config file(%(filename)s) for Manila error: %(err)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:687
+#: manila/share/drivers/ibm/gpfs.py:731
 #, python-format
 msgid "Invalid metadata %(attr)s for share %(share)s."
 msgstr ""
@@ -341,26 +346,26 @@ msgstr ""
 msgid "Could not get licenses list. %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:192
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:193
 #, python-format
 msgid "Vserver %s does not exist."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:203
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:204
 #, python-format
 msgid "Volume %s is already offline."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:232
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:233
 #, python-format
 msgid "CIFS server does not exist for Vserver %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:712
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:713
 msgid "DNS exists for Vserver."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:126
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:139
 #, python-format
 msgid "Neither NFS nor CIFS is licensed on %(backend)s"
 msgstr ""
