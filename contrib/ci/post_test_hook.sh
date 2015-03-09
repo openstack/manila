@@ -85,5 +85,10 @@ cd $BASE/new/tempest
 export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-12}
 export MANILA_TESTS='tempest.api.share*'
 
+if [[ "$JOB_NAME" =~ "scenario" ]]; then
+    echo "Set test set to scenario only"
+    MANILA_TESTS='tempest.scenario.*share*'
+fi
+
 echo "Running tempest manila test suites"
 sudo -H -u jenkins tox -eall $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
