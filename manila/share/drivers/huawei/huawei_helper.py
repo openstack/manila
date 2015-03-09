@@ -14,7 +14,7 @@
 #    under the License.
 
 import base64
-from xml import etree
+from xml.etree import ElementTree as ET
 
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -128,7 +128,7 @@ class RestHelper():
         """Get login IP, username and password from config file."""
         logininfo = {}
         filename = self.configuration.manila_huawei_conf_file
-        tree = etree.ElementTree.parse(filename)
+        tree = ET.parse(filename)
         root = tree.getroot()
         RestURL = root.findtext('Storage/RestURL')
         logininfo['RestURL'] = RestURL.strip()
@@ -347,7 +347,7 @@ class RestHelper():
         """Open xml file and parse the content."""
         filename = self.configuration.manila_huawei_conf_file
         try:
-            tree = etree.ElementTree.parse(filename)
+            tree = ET.parse(filename)
             root = tree.getroot()
         except Exception as err:
             LOG.error(_LE('Read Huawei config file(%(filename)s)'
