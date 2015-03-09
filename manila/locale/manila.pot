@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev97\n"
+"Project-Id-Version: manila 2015.1.dev118\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-05 06:13+0000\n"
+"POT-Creation-Date: 2015-03-09 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -75,8 +75,8 @@ msgstr ""
 msgid "Invalid host: %(reason)s"
 msgstr ""
 
-#: manila/exception.py:159 manila/exception.py:465 manila/exception.py:469
-#: manila/exception.py:473 manila/exception.py:477 manila/exception.py:506
+#: manila/exception.py:159 manila/exception.py:469 manila/exception.py:473
+#: manila/exception.py:477 manila/exception.py:481 manila/exception.py:510
 #, python-format
 msgid "%(err)s"
 msgstr ""
@@ -305,7 +305,7 @@ msgstr ""
 msgid "Share backend error: %(msg)s."
 msgstr ""
 
-#: manila/exception.py:358 manila/exception.py:409
+#: manila/exception.py:358 manila/exception.py:413
 #, python-format
 msgid "Snapshot %(snapshot_id)s could not be found."
 msgstr ""
@@ -362,91 +362,96 @@ msgstr ""
 
 #: manila/exception.py:405
 #, python-format
-msgid "Volume %(volume_id)s could not be found."
+msgid "Invalid extra_spec: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:413
+#: manila/exception.py:409
 #, python-format
-msgid "Share type %(share_type_id)s could not be found."
+msgid "Volume %(volume_id)s could not be found."
 msgstr ""
 
 #: manila/exception.py:417
 #, python-format
+msgid "Share type %(share_type_id)s could not be found."
+msgstr ""
+
+#: manila/exception.py:421
+#, python-format
 msgid "Share type with name %(share_type_name)s could not be found."
 msgstr ""
 
-#: manila/exception.py:422
+#: manila/exception.py:426
 #, python-format
 msgid ""
 "Share Type %(share_type_id)s has no extra specs with key "
 "%(extra_specs_key)s."
 msgstr ""
 
-#: manila/exception.py:427
+#: manila/exception.py:431
 #, python-format
 msgid ""
 "Share Type %(share_type_id)s deletion is not allowed with shares present "
 "with the type."
 msgstr ""
 
-#: manila/exception.py:432
+#: manila/exception.py:436
 #, python-format
 msgid "Share Type %(id)s already exists."
 msgstr ""
 
-#: manila/exception.py:436
+#: manila/exception.py:440
 #, python-format
 msgid "Cannot create share_type with name %(name)s and specs %(extra_specs)s."
 msgstr ""
 
-#: manila/exception.py:441
+#: manila/exception.py:445
 #, python-format
 msgid "Instance %(instance_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:445
+#: manila/exception.py:449
 #, python-format
 msgid "Bridge %(bridge)s does not exist."
 msgstr ""
 
-#: manila/exception.py:449
+#: manila/exception.py:453
 msgid "Exception in service instance manager occurred."
 msgstr ""
 
-#: manila/exception.py:453
+#: manila/exception.py:457
 msgid "Service instance is not available."
 msgstr ""
 
-#: manila/exception.py:457
+#: manila/exception.py:461
 msgid "Exception due to NetApp failure."
 msgstr ""
 
-#: manila/exception.py:461
+#: manila/exception.py:465
 #, python-format
 msgid "Vserver %(vserver)s is not available."
 msgstr ""
 
-#: manila/exception.py:481
+#: manila/exception.py:485
 msgid "GPFS exception occurred."
 msgstr ""
 
-#: manila/exception.py:485
+#: manila/exception.py:489
 msgid "GPFS Ganesha exception occurred."
 msgstr ""
 
-#: manila/exception.py:489
+#: manila/exception.py:493
 msgid "Ganesha management command failed."
 msgstr ""
 
-#: manila/exception.py:498
+#: manila/exception.py:502
 msgid "Invalid Sqlite database."
 msgstr ""
 
-#: manila/exception.py:502
+#: manila/exception.py:506
 msgid "Exception in SSH protocol negotiation or logic."
 msgstr ""
 
-#: manila/exception.py:510
+#: manila/exception.py:514
 msgid "HDFS exception occurred!"
 msgstr ""
 
@@ -579,28 +584,37 @@ msgstr ""
 msgid "Only 'ip','user',or'cert' access types are supported."
 msgstr ""
 
-#: manila/api/contrib/types_extra_specs.py:68
-msgid "Invalid request body"
+#: manila/api/contrib/types_extra_specs.py:72
+#, python-format
+msgid "Invalid extra_spec: %(key)s: %(value)s"
 msgstr ""
 
-#: manila/api/contrib/types_extra_specs.py:99
+#: manila/api/contrib/types_extra_specs.py:105
 msgid "Request body empty"
 msgstr ""
 
-#: manila/api/contrib/types_extra_specs.py:103
+#: manila/api/contrib/types_extra_specs.py:109
 #: manila/api/v1/share_metadata.py:76
 msgid "Request body and URI mismatch"
 msgstr ""
 
-#: manila/api/contrib/types_extra_specs.py:106
+#: manila/api/contrib/types_extra_specs.py:112
 #: manila/api/v1/share_metadata.py:80
 msgid "Request body contains too many items"
 msgstr ""
 
-#: manila/api/contrib/types_extra_specs.py:144
+#: manila/api/contrib/types_extra_specs.py:139
+msgid "Required extra specs can't be deleted."
+msgstr ""
+
+#: manila/api/contrib/types_extra_specs.py:154
 msgid ""
 "Key names can only contain alphanumeric characters, underscores, periods,"
 " colons and hyphens."
+msgstr ""
+
+#: manila/api/contrib/types_manage.py:58
+msgid "Type name is not valid."
 msgstr ""
 
 #: manila/api/middleware/auth.py:106
@@ -791,19 +805,19 @@ msgstr ""
 msgid "Unrecognized read_deleted value '%s'"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1223 manila/db/sqlalchemy/api.py:1468
+#: manila/db/sqlalchemy/api.py:1225 manila/db/sqlalchemy/api.py:1470
 #, python-format
 msgid "Wrong sorting key provided - '%s'."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1230 manila/db/sqlalchemy/api.py:1475
+#: manila/db/sqlalchemy/api.py:1232 manila/db/sqlalchemy/api.py:1477
 #, python-format
 msgid ""
 "Wrong sorting data provided: sort key is '%(sort_key)s' and sort "
 "direction is '%(sort_dir)s'."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1458
+#: manila/db/sqlalchemy/api.py:1460
 #, python-format
 msgid "Wrong 'usage' key provided - '%(key)s'. Expected keys are '%(ek)s'."
 msgstr ""
@@ -925,11 +939,11 @@ msgstr ""
 msgid "Must implement get_pools"
 msgstr ""
 
-#: manila/scheduler/filter_scheduler.py:81
+#: manila/scheduler/filter_scheduler.py:82
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
 msgstr ""
 
-#: manila/scheduler/filter_scheduler.py:200
+#: manila/scheduler/filter_scheduler.py:206
 #, python-format
 msgid "Exceeded max scheduling attempts %(max_attempts)d for share %(share_id)s"
 msgstr ""
@@ -1040,12 +1054,22 @@ msgstr ""
 msgid "Metadata property value is greater than 1023 characters"
 msgstr ""
 
-#: manila/share/share_types.py:49 manila/share/share_types.py:95
+#: manila/share/share_types.py:57 manila/share/share_types.py:118
 msgid "id cannot be None"
 msgstr ""
 
-#: manila/share/share_types.py:107
+#: manila/share/share_types.py:130
 msgid "name cannot be None"
+msgstr ""
+
+#: manila/share/share_types.py:203
+#, python-format
+msgid "Required extra specs '%s' not specified."
+msgstr ""
+
+#: manila/share/share_types.py:211
+#, python-format
+msgid "Value of required extra_spec %s is not valid"
 msgstr ""
 
 #: manila/share/drivers/generic.py:98
@@ -1562,7 +1586,7 @@ msgid "Incomplete export block: value %(val)s of attribute %(key)s is a stub."
 msgstr ""
 
 #: manila/share/drivers/hdfs/hdfs_native.py:157
-#: manila/share/drivers/ibm/gpfs.py:188
+#: manila/share/drivers/ibm/gpfs.py:192
 #, python-format
 msgid "Error running SSH command: %(cmd)s. Error: %(excmsg)s."
 msgstr ""
@@ -1996,142 +2020,142 @@ msgstr ""
 msgid "Could not restart service %(service)s on %(server)s: %(excmsg)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:198 manila/share/drivers/ibm/gpfs.py:207
+#: manila/share/drivers/ibm/gpfs.py:233 manila/share/drivers/ibm/gpfs.py:242
 #, python-format
 msgid "Failed to check GPFS state. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:220
+#: manila/share/drivers/ibm/gpfs.py:255
 #, python-format
 msgid "%(path)s is not a directory. Error: %(excmsg)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:231
+#: manila/share/drivers/ibm/gpfs.py:266
 #, python-format
 msgid "%(dir)s is not on GPFS filesystem. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:257
+#: manila/share/drivers/ibm/gpfs.py:292
 #, python-format
 msgid "Failed to get GPFS device for %(fspath)s.Error: %(excmsg)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:283
+#: manila/share/drivers/ibm/gpfs.py:318
 #, python-format
 msgid ""
 "Failed to create fileset on %(fsdev)s for the share %(sharename)s. Error:"
 " %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:294
+#: manila/share/drivers/ibm/gpfs.py:329
 #, python-format
 msgid "Failed to link fileset for the share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:304
+#: manila/share/drivers/ibm/gpfs.py:339
 #, python-format
 msgid "Failed to set quota for the share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:313
+#: manila/share/drivers/ibm/gpfs.py:348
 #, python-format
 msgid "Failed to set permissions for share %(sharename)s. Error: %(excmsg)."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:328
+#: manila/share/drivers/ibm/gpfs.py:371
 #, python-format
 msgid "Failed unlink fileset for share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:337
+#: manila/share/drivers/ibm/gpfs.py:381
 #, python-format
 msgid "Failed delete fileset for share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:348
+#: manila/share/drivers/ibm/gpfs.py:392
 #, python-format
 msgid "Failed to check available capacity for %(path)s.Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:371
+#: manila/share/drivers/ibm/gpfs.py:415
 #, python-format
 msgid "Failed to create snapshot %(snapshot)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:386
+#: manila/share/drivers/ibm/gpfs.py:430
 #, python-format
 msgid "Failed to delete snapshot %(snapshot)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:400
+#: manila/share/drivers/ibm/gpfs.py:444
 #, python-format
 msgid ""
 "Failed to create share %(share)s from snapshot %(snapshot)s. Error: "
 "%(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:459
+#: manila/share/drivers/ibm/gpfs.py:503
 msgid "GPFS is not active."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:464
+#: manila/share/drivers/ibm/gpfs.py:508
 msgid "gpfs_share_export_ip must be specified."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:470
+#: manila/share/drivers/ibm/gpfs.py:514
 #, python-format
 msgid "%s must be an absolute path."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:475
+#: manila/share/drivers/ibm/gpfs.py:519
 #, python-format
 msgid "%s is not a directory."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:480
+#: manila/share/drivers/ibm/gpfs.py:524
 #, python-format
 msgid "%s is not on GPFS. Perhaps GPFS not mounted."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:486
+#: manila/share/drivers/ibm/gpfs.py:530
 #, python-format
 msgid ""
 "Invalid gpfs_nfs_server_type value: %s. Valid values are: \"KNFS\", "
 "\"GNFS\"."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:493
+#: manila/share/drivers/ibm/gpfs.py:537
 msgid "Missing value for gpfs_nfs_server_list."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:518
+#: manila/share/drivers/ibm/gpfs.py:562
 #, python-format
 msgid "Share protocol %s not supported by GPFS driver."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:571
+#: manila/share/drivers/ibm/gpfs.py:615
 #, python-format
 msgid "NFS server not found. Error: %s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:601
+#: manila/share/drivers/ibm/gpfs.py:645
 #, python-format
 msgid "Unknown metadata key %s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:623
+#: manila/share/drivers/ibm/gpfs.py:667
 #, python-format
 msgid "Failed to check exports on the systems.  Error: %s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:641
+#: manila/share/drivers/ibm/gpfs.py:685
 #, python-format
 msgid "Failed to allow access for share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:655
+#: manila/share/drivers/ibm/gpfs.py:699
 #, python-format
-msgid "Failed to deny access for share %(sharename)s. Error: %excmsg)s."
+msgid "Failed to deny access for share %(sharename)s. Error: %(excmsg)s."
 msgstr ""
 
 #: manila/share/drivers/netapp/common.py:65
@@ -2182,79 +2206,87 @@ msgstr ""
 msgid "Requires an NaServer instance."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:133
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:134
 #, python-format
 msgid "Could not determine root volume name for Vserver %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:210
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:211
 #, python-format
 msgid "Cannot delete Vserver. Vserver %s has shares."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:271
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:272
 #, python-format
 msgid "Data port does not exist for node %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:290
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:291
 msgid "Could not list aggregates."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:350
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:351
 #, python-format
 msgid "Failed to create VLAN %(vlan)s on port %(port)s. %(err_msg)s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:579
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:580
 #, python-format
 msgid "Unsupported security service type %s for Data ONTAP driver"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:638
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:639
 #, python-format
 msgid "Failed to create CIFS server entry. %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:664
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:665
 #, python-format
 msgid "Failed to create Kerberos realm. %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:677
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:678
 msgid "Cannot set up Kerberos. There are no LIFs configured."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:714
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:715
 #, python-format
 msgid "Failed to configure DNS. %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:786
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:819
 #, python-format
 msgid "Could not find aggregate for volume %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:861
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:894
 #, python-format
 msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:256
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:269
 #, python-format
 msgid "Invalid NAS protocol supplied: %s. "
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:272
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:285
 #, python-format
 msgid "The protocol %(protocol)s is not licensed on controller %(host)s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:310
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:322
 msgid "Pool is not available in the share host field."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:362
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:360
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:376
+#, python-format
+msgid ""
+"Invalid value \"%(value)s\" for extra_spec \"%(key)s\" in share_type "
+"%(type_id)s for share %(share_id)s."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:487
 #, python-format
 msgid ""
 "Cannot find network interfaces for Vserver %(vserver)s and protocol "
