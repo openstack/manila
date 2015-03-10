@@ -106,6 +106,7 @@ class HostState(object):
         self.total_capacity_gb = 0
         self.free_capacity_gb = None
         self.reserved_percentage = 0
+        self.driver_handles_share_servers = False
 
         # PoolState for all pools
         self.pools = {}
@@ -251,11 +252,20 @@ class HostState(object):
         if not pool_cap.get('timestamp'):
             pool_cap['timestamp'] = self.updated
 
+        if not pool_cap.get('storage_protocol'):
+            pool_cap['storage_protocol'] = self.storage_protocol
+
+        if not pool_cap.get('driver_handles_share_servers'):
+            pool_cap['driver_handles_share_servers'] = \
+                self.driver_handles_share_servers
+
     def update_backend(self, capability):
         self.share_backend_name = capability.get('share_backend_name')
         self.vendor_name = capability.get('vendor_name')
         self.driver_version = capability.get('driver_version')
         self.storage_protocol = capability.get('storage_protocol')
+        self.driver_handles_share_servers = capability.get(
+            'driver_handles_share_servers')
         self.updated = capability['timestamp']
 
     def consume_from_share(self, share):
