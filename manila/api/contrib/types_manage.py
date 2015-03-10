@@ -53,6 +53,7 @@ class ShareTypesManageController(wsgi.Controller):
             share_type = body['volume_type']
         name = share_type.get('name', None)
         specs = share_type.get('extra_specs', {})
+        is_public = share_type.get('os-share-type-access:is_public', True)
 
         if name is None or name == "" or len(name) > 255:
             msg = _("Type name is not valid.")
@@ -66,7 +67,7 @@ class ShareTypesManageController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
 
         try:
-            share_types.create(context, name, specs)
+            share_types.create(context, name, specs, is_public)
             share_type = share_types.get_share_type_by_name(context, name)
             share_type['required_extra_specs'] = required_extra_specs
             notifier_info = dict(share_types=share_type)

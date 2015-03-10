@@ -33,8 +33,11 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
-def create(context, name, extra_specs):
+def create(context, name, extra_specs=None, is_public=True, projects=None):
     """Creates share types."""
+    extra_specs = extra_specs or {}
+    projects = projects or []
+
     try:
         get_valid_required_extra_specs(extra_specs)
     except exception.InvalidExtraSpec as e:
@@ -43,7 +46,9 @@ def create(context, name, extra_specs):
     try:
         type_ref = db.share_type_create(context,
                                         dict(name=name,
-                                             extra_specs=extra_specs))
+                                             extra_specs=extra_specs,
+                                             is_public=is_public),
+                                        projects=projects)
     except db_exception.DBError as e:
         LOG.exception(_LE('DB error: %s'), e)
         raise exception.ShareTypeCreateFailed(name=name,
@@ -60,12 +65,17 @@ def destroy(context, id):
         db.share_type_destroy(context, id)
 
 
-def get_all_types(context, inactive=0, search_opts={}):
+def get_all_types(context, inactive=0, search_opts=None):
     """Get all non-deleted share_types.
 
-    Pass true as argument if you want deleted share types returned also.
     """
-    share_types = db.share_type_get_all(context, inactive)
+    search_opts = search_opts or {}
+    filters = {}
+
+    if 'is_public' in search_opts:
+        filters['is_public'] = search_opts.pop('is_public')
+
+    share_types = db.share_type_get_all(context, inactive, filters=filters)
 
     for type_name, type_args in six.iteritems(share_types):
         required_extra_specs = {}
@@ -112,7 +122,7 @@ def get_all_types(context, inactive=0, search_opts={}):
     return share_types
 
 
-def get_share_type(ctxt, id):
+def get_share_type(ctxt, id, expected_fields=None):
     """Retrieves single share type by id."""
     if id is None:
         msg = _("id cannot be None")
@@ -121,7 +131,7 @@ def get_share_type(ctxt, id):
     if ctxt is None:
         ctxt = context.get_admin_context()
 
-    return db.share_type_get(ctxt, id)
+    return db.share_type_get(ctxt, id, expected_fields=expected_fields)
 
 
 def get_share_type_by_name(context, name):
@@ -214,6 +224,22 @@ def get_valid_required_extra_specs(extra_specs):
         required_extra_specs[k] = value
 
     return required_extra_specs
+
+
+def add_share_type_access(context, share_type_id, project_id):
+    """Add access to share type for project_id."""
+    if share_type_id is None:
+        msg = _("share_type_id cannot be None")
+        raise exception.InvalidShareType(reason=msg)
+    return db.share_type_access_add(context, share_type_id, project_id)
+
+
+def remove_share_type_access(context, share_type_id, project_id):
+    """Remove access to share type for project_id."""
+    if share_type_id is None:
+        msg = _("share_type_id cannot be None")
+        raise exception.InvalidShareType(reason=msg)
+    return db.share_type_access_remove(context, share_type_id, project_id)
 
 
 def share_types_diff(context, share_type_id1, share_type_id2):

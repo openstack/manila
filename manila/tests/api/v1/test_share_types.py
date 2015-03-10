@@ -13,6 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import ddt
 import mock
 from oslo_utils import timeutils
 import webob
@@ -45,7 +46,7 @@ def stub_share_type(id):
     )
 
 
-def return_share_types_get_all_types(context):
+def return_share_types_get_all_types(context, search_opts=None):
     return dict(
         share_type_1=stub_share_type(1),
         share_type_2=stub_share_type(2),
@@ -53,7 +54,7 @@ def return_share_types_get_all_types(context):
     )
 
 
-def return_empty_share_types_get_all_types(context):
+def return_empty_share_types_get_all_types(context, search_opts=None):
     return {}
 
 
@@ -69,6 +70,7 @@ def return_share_types_get_by_name(context, name):
     return stub_share_type(int(name.split("_")[2]))
 
 
+@ddt.ddt
 class ShareTypesApiTest(test.TestCase):
     def setUp(self):
         super(ShareTypesApiTest, self).setUp()
@@ -199,3 +201,13 @@ class ShareTypesApiTest(test.TestCase):
             )
             self.assertDictMatch(output['share_types'][i],
                                  expected_share_type)
+
+    @ddt.data(None, True, 'true', 'false', 'all')
+    def test_parse_is_public_valid(self, value):
+        result = self.controller._parse_is_public(value)
+        self.assertTrue(result in (True, False, None))
+
+    def test_parse_is_public_invalid(self):
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._parse_is_public,
+                          'fakefakefake')

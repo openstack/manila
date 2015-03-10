@@ -57,7 +57,7 @@ def stub_share_type_extra_specs():
     return specs
 
 
-def share_type_get(context, share_type_id):
+def share_type_get(context, id, inactive=False, expected_fields=None):
     pass
 
 
