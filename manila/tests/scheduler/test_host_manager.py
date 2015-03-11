@@ -172,13 +172,16 @@ class HostManagerTestCase(test.TestCase):
         mocked_service_states = {
             'host1': dict(share_backend_name='AAA',
                           total_capacity_gb=512, free_capacity_gb=200,
-                          timestamp=None, reserved_percentage=0),
+                          timestamp=None, reserved_percentage=0,
+                          driver_handles_share_servers=False),
             'host2@back1': dict(share_backend_name='BBB',
                                 total_capacity_gb=256, free_capacity_gb=100,
-                                timestamp=None, reserved_percentage=0),
+                                timestamp=None, reserved_percentage=0,
+                                driver_handles_share_servers=False),
             'host2@back2': dict(share_backend_name='CCC',
                                 total_capacity_gb=10000, free_capacity_gb=700,
-                                timestamp=None, reserved_percentage=0),
+                                timestamp=None, reserved_percentage=0,
+                                driver_handles_share_servers=False),
         }
 
         _mock_service_get_all_by_topic.return_value = services
@@ -201,6 +204,7 @@ class HostManagerTestCase(test.TestCase):
                     'name': 'host1#AAA',
                     'capabilities': {
                         'timestamp': None,
+                        'driver_handles_share_servers': False,
                         'share_backend_name': 'AAA',
                         'free_capacity_gb': 200,
                         'driver_version': None,
@@ -213,6 +217,7 @@ class HostManagerTestCase(test.TestCase):
                     'name': 'host2@back1#BBB',
                     'capabilities': {
                         'timestamp': None,
+                        'driver_handles_share_servers': False,
                         'share_backend_name': 'BBB',
                         'free_capacity_gb': 100,
                         'driver_version': None,
@@ -225,6 +230,7 @@ class HostManagerTestCase(test.TestCase):
                     'name': 'host2@back2#CCC',
                     'capabilities': {
                         'timestamp': None,
+                        'driver_handles_share_servers': False,
                         'share_backend_name': 'CCC',
                         'free_capacity_gb': 700,
                         'driver_version': None,
