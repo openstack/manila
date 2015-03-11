@@ -201,41 +201,82 @@ class ShareNetworkAPITest(test.TestCase):
                           self.req,
                           body)
 
-    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
     def test_delete_nominal(self):
         share_nw = fake_share_network.copy()
-        share_nw['share_servers'] = []
-        db_api.share_network_get.return_value = share_nw
+        share_nw['share_servers'] = ['foo', 'bar']
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=share_nw))
+        self.mock_object(db_api, 'share_get_all_by_share_network',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.controller.share_rpcapi, 'delete_share_server')
+        self.mock_object(db_api, 'share_network_delete')
 
-        with mock.patch.object(db_api, 'share_network_delete'):
-            self.controller.delete(self.req, share_nw)
-            db_api.share_network_delete.assert_called_once_with(
-                self.req.environ['manila.context'],
-                share_nw)
+        self.controller.delete(self.req, share_nw['id'])
 
-    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
+        db_api.share_network_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_nw['id'])
+        db_api.share_get_all_by_share_network.assert_called_once_with(
+            self.req.environ['manila.context'], share_nw['id'])
+        self.controller.share_rpcapi.delete_share_server.assert_has_calls([
+            mock.call(self.req.environ['manila.context'], 'foo'),
+            mock.call(self.req.environ['manila.context'], 'bar')])
+        db_api.share_network_delete.assert_called_once_with(
+            self.req.environ['manila.context'], share_nw['id'])
+
     def test_delete_not_found(self):
         share_nw = 'fake network id'
-        db_api.share_network_get.side_effect = exception.ShareNetworkNotFound(
-            share_network_id=share_nw)
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(side_effect=exception.ShareNetworkNotFound(
+                             share_network_id=share_nw)))
 
         self.assertRaises(webob_exc.HTTPNotFound,
                           self.controller.delete,
                           self.req,
                           share_nw)
 
-    @mock.patch.object(db_api, 'share_network_get', mock.Mock())
+    def test_quota_delete_reservation_failed(self):
+        share_nw = fake_share_network.copy()
+        share_nw['share_servers'] = ['foo', 'bar']
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=share_nw))
+        self.mock_object(db_api, 'share_get_all_by_share_network',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.controller.share_rpcapi, 'delete_share_server')
+        self.mock_object(db_api, 'share_network_delete')
+        self.mock_object(share_networks.QUOTAS, 'reserve',
+                         mock.Mock(side_effect=Exception))
+        self.mock_object(share_networks.QUOTAS, 'commit')
+
+        self.controller.delete(self.req, share_nw['id'])
+
+        db_api.share_network_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_nw['id'])
+        db_api.share_get_all_by_share_network.assert_called_once_with(
+            self.req.environ['manila.context'], share_nw['id'])
+        self.controller.share_rpcapi.delete_share_server.assert_has_calls([
+            mock.call(self.req.environ['manila.context'], 'foo'),
+            mock.call(self.req.environ['manila.context'], 'bar')])
+        db_api.share_network_delete.assert_called_once_with(
+            self.req.environ['manila.context'], share_nw['id'])
+        self.assertTrue(share_networks.QUOTAS.reserve.called)
+        self.assertFalse(share_networks.QUOTAS.commit.called)
+
     def test_delete_in_use(self):
         share_nw = fake_share_network.copy()
-        share_servers = [{'id': 1}]
-        share_nw['share_servers'] = share_servers
+        self.mock_object(db_api, 'share_network_get',
+                         mock.Mock(return_value=share_nw))
+        self.mock_object(db_api, 'share_get_all_by_share_network',
+                         mock.Mock(return_value=['foo', 'bar']))
 
-        db_api.share_network_get.return_value = share_nw
-
-        self.assertRaises(webob_exc.HTTPForbidden,
+        self.assertRaises(webob_exc.HTTPConflict,
                           self.controller.delete,
                           self.req,
                           share_nw['id'])
+
+        db_api.share_network_get.assert_called_once_with(
+            self.req.environ['manila.context'], share_nw['id'])
+        db_api.share_get_all_by_share_network.assert_called_once_with(
+            self.req.environ['manila.context'], share_nw['id'])
 
     def test_show_nominal(self):
         share_nw = 'fake network id'

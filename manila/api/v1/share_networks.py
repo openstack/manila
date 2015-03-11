@@ -109,10 +109,15 @@ class ShareNetworkController(wsgi.Controller):
             share_network = db_api.share_network_get(context, id)
         except exception.ShareNetworkNotFound as e:
             raise exc.HTTPNotFound(explanation=six.text_type(e))
-        if share_network['share_servers']:
-            msg = _("Cannot delete share network %s. "
-                    "There are share servers using it") % id
-            raise exc.HTTPForbidden(explanation=msg)
+
+        shares = db_api.share_get_all_by_share_network(context, id)
+        if shares:
+            msg = _("Can not delete share network %(id)s, it has "
+                    "%(len)s share(s).") % {'id': id, 'len': len(shares)}
+            LOG.error(msg)
+            raise exc.HTTPConflict(explanation=msg)
+        for share_server in share_network['share_servers']:
+            self.share_rpcapi.delete_share_server(context, share_server)
         db_api.share_network_delete(context, id)
 
         try:

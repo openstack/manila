@@ -110,3 +110,24 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
             exceptions.BadRequest,
             self.shares_client.list_share_networks_with_detail,
             params={'created_before': '2014-10-23T08:31:58.000000'})
+
+    @test.attr(type=["gate", "smoke", "negative"])
+    @testtools.skipIf(not CONF.share.multitenancy_enabled,
+                      'Can run only with drivers that do handle share servers '
+                      'creation. Skipping.')
+    def test_try_delete_share_network_with_existing_shares(self):
+        # Get valid network data for successful share creation
+        __, share_network = self.shares_client.get_share_network(
+            self.shares_client.share_network_id)
+        __, new_sn = self.create_share_network(
+            neutron_net_id=share_network['neutron_net_id'],
+            neutron_subnet_id=share_network['neutron_subnet_id'],
+            nova_net_id=share_network['nova_net_id'])
+
+        # Create share with share network
+        __, share = self.create_share(share_network_id=new_sn['id'])
+
+        # Try delete share network
+        self.assertRaises(
+            lib_exc.Conflict,
+            self.shares_client.delete_share_network, new_sn['id'])

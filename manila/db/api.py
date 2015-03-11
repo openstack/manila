@@ -318,6 +318,14 @@ def share_get_all_by_project(context, project_id, filters=None, sort_key=None,
     )
 
 
+def share_get_all_by_share_network(context, share_network_id, filters=None,
+                                   sort_key=None, sort_dir=None):
+    """Returns list of shares that belong to given share network."""
+    return IMPL.share_get_all_by_share_network(
+        context, share_network_id, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir)
+
+
 def share_get_all_by_share_server(context, share_server_id, filters=None,
                                   sort_key=None, sort_dir=None):
     """Returns all shares with given share server ID."""

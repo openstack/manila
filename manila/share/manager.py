@@ -21,6 +21,7 @@
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_serialization import jsonutils
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -484,11 +485,31 @@ class ShareManager(manager.SchedulerDependentManager):
             # Get share_network again in case it was updated.
             share_network = self.db.share_network_get(
                 context, share_server['share_network_id'])
-
             network_info = self._form_server_setup_info(
                 context, share_server, share_network)
+
+            # NOTE(vponomaryov): Save security services data to share server
+            # details table to remove dependency from share network after
+            # creation operation. It will allow us to delete share server and
+            # share network separately without dependency on each other.
+            for security_service in network_info['security_services']:
+                ss_type = security_service['type']
+                data = {
+                    'name': security_service['name'],
+                    'domain': security_service['domain'],
+                    'server': security_service['server'],
+                    'dns_ip': security_service['dns_ip'],
+                    'user': security_service['user'],
+                    'type': ss_type,
+                    'password': security_service['password'],
+                }
+                self.db.share_server_backend_details_set(
+                    context, share_server['id'],
+                    {'security_service_' + ss_type: jsonutils.dumps(data)})
+
             server_info = self.driver.setup_server(
                 network_info, metadata=metadata)
+
             if server_info and isinstance(server_info, dict):
                 self.db.share_server_backend_details_set(
                     context, share_server['id'], server_info)
@@ -528,31 +549,43 @@ class ShareManager(manager.SchedulerDependentManager):
             # of share_server_id field for share. If so, after lock realese
             # this method starts executing when amount of dependent shares
             # has been changed.
-            shares = self.db.share_get_all_by_share_server(
-                context, share_server['id'])
-            if shares:
-                raise exception.ShareServerInUse(
-                    share_server_id=share_server['id'])
+            server_id = share_server['id']
+            shares = self.db.share_get_all_by_share_server(context, server_id)
 
-            self.db.share_server_update(context, share_server['id'],
+            if shares:
+                raise exception.ShareServerInUse(share_server_id=server_id)
+
+            if 'backend_details' not in share_server:
+                server_details = self.db.share_server_backend_details_get(
+                    context, server_id)
+            else:
+                server_details = share_server['backend_details']
+
+            self.db.share_server_update(context, server_id,
                                         {'status': constants.STATUS_DELETING})
-            sec_services = self.db.share_network_get(
-                context,
-                share_server['share_network_id'])['security_services']
             try:
-                LOG.debug("Deleting share server")
-                self.driver.teardown_server(share_server['backend_details'],
-                                            security_services=sec_services)
+                LOG.debug("Deleting share server '%s'", server_id)
+                security_services = []
+                for ss_name in constants.SECURITY_SERVICES_ALLOWED_TYPES:
+                    ss = server_details.get('security_service_' + ss_name)
+                    if ss:
+                        security_services.append(jsonutils.loads(ss))
+
+                self.driver.teardown_server(
+                    server_details=server_details,
+                    security_services=security_services)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Share server %s failed on deletion."),
-                              share_server['id'])
+                    LOG.error(
+                        _LE("Share server '%s' failed on deletion."),
+                        server_id)
                     self.db.share_server_update(
-                        context, share_server['id'],
-                        {'status': constants.STATUS_ERROR})
+                        context, server_id, {'status': constants.STATUS_ERROR})
             else:
                 self.db.share_server_delete(context, share_server['id'])
 
         _teardown_server()
-        LOG.info(_LI("Share server deleted successfully."))
+        LOG.info(
+            _LI("Share server '%s' has been deleted successfully."),
+            share_server['id'])
         self.driver.deallocate_network(context, share_server['id'])
