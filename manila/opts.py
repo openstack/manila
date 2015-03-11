@@ -35,6 +35,7 @@ import manila.network
 import manila.network.linux.interface
 import manila.network.neutron.api
 import manila.network.neutron.neutron_network_plugin
+import manila.network.nova_network_plugin
 import manila.network.standalone_network_plugin
 import manila.openstack.common.eventlet_backdoor
 import manila.openstack.common.log
@@ -88,6 +89,7 @@ _global_opt_lists = [
     manila.network.neutron.api.neutron_opts,
     manila.network.neutron.neutron_network_plugin.
     neutron_single_network_plugin_opts,
+    manila.network.nova_network_plugin.nova_single_network_plugin_opts,
     manila.network.standalone_network_plugin.standalone_network_plugin_opts,
     manila.openstack.common.eventlet_backdoor.eventlet_backdoor_opts,
     manila.openstack.common.log.common_cli_opts,

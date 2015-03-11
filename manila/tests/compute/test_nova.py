@@ -67,11 +67,22 @@ class FakeNovaClient(object):
         def get(self, net_id):
             return Network(net_id)
 
+    class FixedIPs(object):
+        def get(self, fixed_ip):
+            return dict(address=fixed_ip)
+
+        def reserve(self, fixed_ip):
+            return None
+
+        def unreserve(self, fixed_ip):
+            return None
+
     def __init__(self):
         self.servers = self.Servers()
         self.volumes = self.Volumes()
         self.keypairs = self.servers
         self.networks = self.Networks()
+        self.fixed_ips = self.FixedIPs()
 
 
 class NovaApiTestCase(test.TestCase):
@@ -220,6 +231,22 @@ class NovaApiTestCase(test.TestCase):
     def test_keypair_list(self):
         self.assertEqual([{'id': 'id1'}, {'id': 'id2'}],
                          self.api.keypair_list(self.ctx))
+
+    def test_fixed_ip_get(self):
+        fixed_ip = 'fake_fixed_ip'
+        result = self.api.fixed_ip_get(self.ctx, fixed_ip)
+        self.assertTrue(isinstance(result, dict))
+        self.assertEqual(fixed_ip, result['address'])
+
+    def test_fixed_ip_reserve(self):
+        fixed_ip = 'fake_fixed_ip'
+        result = self.api.fixed_ip_reserve(self.ctx, fixed_ip)
+        self.assertEqual(result, None)
+
+    def test_fixed_ip_unreserve(self):
+        fixed_ip = 'fake_fixed_ip'
+        result = self.api.fixed_ip_unreserve(self.ctx, fixed_ip)
+        self.assertEqual(result, None)
 
     def test_network_get(self):
         net_id = 'fake_net_id'
