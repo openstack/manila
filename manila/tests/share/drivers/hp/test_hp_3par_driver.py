@@ -54,6 +54,7 @@ class HP3ParDriverTestCase(test.TestCase):
                 return None
         self.conf.safe_get = safe_get
 
+        self.real_hp_3par_mediator = hp3parmediator.HP3ParMediator
         self.mock_object(hp3parmediator, 'HP3ParMediator')
         self.mock_mediator_constructor = hp3parmediator.HP3ParMediator
         self.mock_mediator = self.mock_mediator_constructor()
@@ -177,14 +178,32 @@ class HP3ParDriverTestCase(test.TestCase):
                                                           share_server)
         return location
 
-    def test_driver_check_for_setup_error(self):
-        """check_for_setup_error should not raise any exceptions."""
+    def test_driver_check_for_setup_error_success(self):
+        """check_for_setup_error when things go well."""
+
+        # Generally this is always mocked, but here we reference the class.
+        hp3parmediator.HP3ParMediator = self.real_hp_3par_mediator
 
         self.mock_object(hp3pardriver, 'LOG')
         self.init_driver()
         self.driver.check_for_setup_error()
-        expected_calls = [mock.call.debug(mock.ANY, mock.ANY),
-                          mock.call.debug(mock.ANY, mock.ANY)]
+        expected_calls = [
+            mock.call.debug('HP3ParShareDriver SHA1: %s', mock.ANY),
+            mock.call.debug('HP3ParMediator SHA1: %s', mock.ANY)
+        ]
+        hp3pardriver.LOG.assert_has_calls(expected_calls)
+
+    def test_driver_check_for_setup_error_exception(self):
+        """check_for_setup_error catch and log any exceptions."""
+
+        # Since HP3ParMediator is mocked, we'll hit the except/log.
+        self.mock_object(hp3pardriver, 'LOG')
+        self.init_driver()
+        self.driver.check_for_setup_error()
+        expected_calls = [
+            mock.call.debug('HP3ParShareDriver SHA1: %s', mock.ANY),
+            mock.call.debug('Source code SHA1 not logged due to: %s', mock.ANY)
+        ]
         hp3pardriver.LOG.assert_has_calls(expected_calls)
 
     def test_driver_create_cifs_share(self):
