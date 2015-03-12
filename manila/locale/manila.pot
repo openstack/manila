@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev118\n"
+"Project-Id-Version: manila 2015.1.dev129\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-09 06:12+0000\n"
+"POT-Creation-Date: 2015-03-12 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -706,41 +706,41 @@ msgstr ""
 msgid "Metadata item was not found"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:113
+#: manila/api/v1/share_networks.py:115
 #, python-format
-msgid "Cannot delete share network %s. There are share servers using it"
+msgid "Can not delete share network %(id)s, it has %(len)s share(s)."
 msgstr ""
 
-#: manila/api/v1/share_networks.py:225
+#: manila/api/v1/share_networks.py:230
 msgid ""
 "Neutron net data and Nova net data are mutually exclusive. Only one of "
 "these are allowed at a time."
 msgstr ""
 
-#: manila/api/v1/share_networks.py:249
+#: manila/api/v1/share_networks.py:254
 #, python-format
 msgid ""
 "Cannot update share network %s. It is used by share servers. Only 'name' "
 "and 'description' fields are available for update"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:317
+#: manila/api/v1/share_networks.py:322
 #, python-format
 msgid "Share networks does not have %s action"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:326
+#: manila/api/v1/share_networks.py:331
 msgid "Cannot add security services. Share network is used."
 msgstr ""
 
-#: manila/api/v1/share_networks.py:332
+#: manila/api/v1/share_networks.py:337
 #, python-format
 msgid ""
 "Cannot add security service to share network. Security service with "
 "'%(ss_type)s' type already added to '%(sn_id)s' share network"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:359
+#: manila/api/v1/share_networks.py:364
 msgid "Cannot remove security services. Share network is used."
 msgstr ""
 
@@ -805,21 +805,52 @@ msgstr ""
 msgid "Unrecognized read_deleted value '%s'"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1225 manila/db/sqlalchemy/api.py:1470
+#: manila/db/sqlalchemy/api.py:1228 manila/db/sqlalchemy/api.py:1483
 #, python-format
 msgid "Wrong sorting key provided - '%s'."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1232 manila/db/sqlalchemy/api.py:1477
+#: manila/db/sqlalchemy/api.py:1235 manila/db/sqlalchemy/api.py:1490
 #, python-format
 msgid ""
 "Wrong sorting data provided: sort key is '%(sort_key)s' and sort "
 "direction is '%(sort_dir)s'."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1460
+#: manila/db/sqlalchemy/api.py:1473
 #, python-format
 msgid "Wrong 'usage' key provided - '%(key)s'. Expected keys are '%(ek)s'."
+msgstr ""
+
+#: manila/network/nova_network_plugin.py:71
+msgid "'nova_net_id' is not provided with share network."
+msgstr ""
+
+#: manila/network/nova_network_plugin.py:130
+#, python-format
+msgid ""
+"No available IP addresses left in network '%(net_id)s' with CIDR "
+"%(cidr)s. Requested amount of IPs to be provided '%(amount)s', available "
+"only '%(available)s'"
+msgstr ""
+
+#: manila/network/nova_network_plugin.py:173
+msgid "Nova network is not set"
+msgstr ""
+
+#: manila/network/nova_network_plugin.py:189
+#, python-format
+msgid ""
+"'share-network' with id '%s' should not contain Neutron data. Either "
+"remove it or use another 'share-network'"
+msgstr ""
+
+#: manila/network/nova_network_plugin.py:196
+#, python-format
+msgid ""
+"'share-network' with id '%(sn_id)s' already contains Nova network id "
+"'%(provided)s' that is different from what is defined in config "
+"'%(allowed)s'. Either remove incorrect network id or set it the same"
 msgstr ""
 
 #: manila/network/standalone_network_plugin.py:125

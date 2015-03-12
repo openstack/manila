@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev118\n"
+"Project-Id-Version: manila 2015.1.dev129\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-09 06:12+0000\n"
+"POT-Creation-Date: 2015-03-12 06:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -68,7 +68,7 @@ msgstr ""
 msgid "Exception handling resource: %s"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:123
+#: manila/api/v1/share_networks.py:128
 msgid "Failed to update usages deleting share-network."
 msgstr ""
 
@@ -76,7 +76,7 @@ msgstr ""
 msgid "Exception while creating table."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:2138
+#: manila/db/sqlalchemy/api.py:2153
 #, python-format
 msgid "ShareType %s deletion failed, ShareType in use."
 msgstr ""
@@ -144,19 +144,19 @@ msgstr ""
 msgid "Recovering from a failed execute. Try number %s"
 msgstr ""
 
-#: manila/share/manager.py:98
+#: manila/share/manager.py:99
 #, python-format
 msgid "Failed to fetch pool name for share: %(share)s. Error: %(error)s."
 msgstr ""
 
-#: manila/share/manager.py:127
+#: manila/share/manager.py:128
 #, python-format
 msgid ""
 "Caught exception trying ensure share '%(s_id)s'. Exception: \n"
 "%(e)s."
 msgstr ""
 
-#: manila/share/manager.py:144
+#: manila/share/manager.py:145
 #, python-format
 msgid ""
 "Unexpected exception during share access allow operation. Share id is "
@@ -164,31 +164,31 @@ msgid ""
 "'%(ar_id)s', exception is '%(e)s'."
 msgstr ""
 
-#: manila/share/manager.py:259
+#: manila/share/manager.py:260
 #, python-format
 msgid "Share server %s does not exist."
 msgstr ""
 
-#: manila/share/manager.py:269
+#: manila/share/manager.py:270
 msgid "Failed to get share server for share creation."
 msgstr ""
 
-#: manila/share/manager.py:288
+#: manila/share/manager.py:289
 #, python-format
 msgid "Share %s failed on creation."
 msgstr ""
 
-#: manila/share/manager.py:334
+#: manila/share/manager.py:335
 msgid "Failed to update usages deleting share"
 msgstr ""
 
-#: manila/share/manager.py:407
+#: manila/share/manager.py:408
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: manila/share/manager.py:548
+#: manila/share/manager.py:580
 #, python-format
-msgid "Share server %s failed on deletion."
+msgid "Share server '%s' failed on deletion."
 msgstr ""
 
 #: manila/share/share_types.py:48
