@@ -14,6 +14,7 @@
 
 """The share type & share types extra specs extension."""
 
+from oslo_utils import strutils
 import six
 from webob import exc
 
@@ -31,9 +32,8 @@ class ShareTypesController(wsgi.Controller):
 
     def index(self, req):
         """Returns the list of share types."""
-        context = req.environ['manila.context']
-        shr_types = share_types.get_all_types(context).values()
-        return self._view_builder.index(req, shr_types)
+        limited_types = self._get_share_types(req)
+        return self._view_builder.index(req, limited_types)
 
     def show(self, req, id):
         """Return a single share type item."""
@@ -64,6 +64,40 @@ class ShareTypesController(wsgi.Controller):
 
         share_type['id'] = six.text_type(share_type['id'])
         return self._view_builder.show(req, share_type)
+
+    def _get_share_types(self, req):
+        """Helper function that returns a list of type dicts."""
+        filters = {}
+        context = req.environ['manila.context']
+        if context.is_admin:
+            # Only admin has query access to all share types
+            filters['is_public'] = self._parse_is_public(
+                req.params.get('is_public'))
+        else:
+            filters['is_public'] = True
+        limited_types = share_types.get_all_types(
+            context, search_opts=filters).values()
+        return limited_types
+
+    @staticmethod
+    def _parse_is_public(is_public):
+        """Parse is_public into something usable.
+
+        * True: API should list public share types only
+        * False: API should list private share types only
+        * None: API should list both public and private share types
+        """
+        if is_public is None:
+            # preserve default value of showing only public types
+            return True
+        elif six.text_type(is_public).lower() == "all":
+            return None
+        else:
+            try:
+                return strutils.bool_from_string(is_public, strict=True)
+            except ValueError:
+                msg = _('Invalid is_public filter [%s]') % is_public
+                raise exc.HTTPBadRequest(explanation=msg)
 
 
 def create_resource():

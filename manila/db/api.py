@@ -631,24 +631,59 @@ def share_server_backend_details_get(context, share_server_id):
 ##################
 
 
-def share_type_create(context, values):
+def share_type_create(context, values, projects=None):
     """Create a new share type."""
-    return IMPL.share_type_create(context, values)
+    return IMPL.share_type_create(context, values, projects)
 
 
-def share_type_get_all(context, inactive=False):
-    """Get all share types."""
-    return IMPL.share_type_get_all(context, inactive)
+def share_type_get_all(context, inactive=False, filters=None):
+    """Get all share types.
+
+    :param context: context to query under
+    :param inactive: Include inactive share types to the result set
+    :param filters: Filters for the query in the form of key/value.
+        :is_public: Filter share types based on visibility:
+
+            * **True**: List public share types only
+            * **False**: List private share types only
+            * **None**: List both public and private share types
+
+    :returns: list of matching share types
+    """
+    return IMPL.share_type_get_all(context, inactive, filters)
 
 
-def share_type_get(context, id, inactive=False):
-    """Get share type by id."""
-    return IMPL.share_type_get(context, id, inactive)
+def share_type_get(context, type_id, inactive=False, expected_fields=None):
+    """Get share type by id.
+
+    :param context: context to query under
+    :param type_id: share type id to get.
+    :param inactive: Consider inactive share types when searching
+    :param expected_fields: Return those additional fields.
+                            Supported fields are: projects.
+    :returns: share type
+    """
+    return IMPL.share_type_get(context, type_id, inactive, expected_fields)
 
 
 def share_type_get_by_name(context, name):
     """Get share type by name."""
     return IMPL.share_type_get_by_name(context, name)
+
+
+def share_type_access_get_all(context, type_id):
+    """Get all share type access of a share type."""
+    return IMPL.share_type_access_get_all(context, type_id)
+
+
+def share_type_access_add(context, type_id, project_id):
+    """Add share type access for project."""
+    return IMPL.share_type_access_add(context, type_id, project_id)
+
+
+def share_type_access_remove(context, type_id, project_id):
+    """Remove share type access for project."""
+    return IMPL.share_type_access_remove(context, type_id, project_id)
 
 
 def share_type_qos_specs_get(context, type_id):

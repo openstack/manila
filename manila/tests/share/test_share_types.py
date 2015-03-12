@@ -103,14 +103,16 @@ class ShareTypesTestCase(test.TestCase):
         returned_type = share_types.get_all_types(self.context)
         self.assertItemsEqual(share_type, returned_type)
 
-    def test_get_all_types_filter(self):
+    def test_get_all_types_search(self):
         share_type = self.fake_type_w_extra
-        search_filter = {"extra_specs": {"gold": "True"}}
+        search_filter = {"extra_specs": {"gold": "True"}, 'is_public': True}
         self.mock_object(db,
                          'share_type_get_all',
                          mock.Mock(return_value=share_type))
         returned_type = share_types.get_all_types(self.context,
                                                   search_opts=search_filter)
+        db.share_type_get_all.assert_called_once_with(
+            mock.ANY, 0, filters={'is_public': True})
         self.assertItemsEqual(share_type, returned_type)
         search_filter = {"extra_specs": {"gold": "False"}}
         returned_type = share_types.get_all_types(self.context,
@@ -214,3 +216,42 @@ class ShareTypesTestCase(test.TestCase):
     def test_get_valid_required_extra_specs_invalid(self, specs):
         self.assertRaises(exception.InvalidExtraSpec,
                           share_types.get_valid_required_extra_specs, specs)
+
+    def test_add_access(self):
+        project_id = '456'
+        extra_specs = {
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
+        }
+        share_type = share_types.create(self.context, 'type1', extra_specs)
+        share_type_id = share_type.get('id')
+
+        share_types.add_share_type_access(self.context, share_type_id,
+                                          project_id)
+        stype_access = db.share_type_access_get_all(self.context,
+                                                    share_type_id)
+        self.assertIn(project_id, [a.project_id for a in stype_access])
+
+    def test_add_access_invalid(self):
+        self.assertRaises(exception.InvalidShareType,
+                          share_types.add_share_type_access,
+                          'fake', None, 'fake')
+
+    def test_remove_access(self):
+        project_id = '456'
+        extra_specs = {
+            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'
+        }
+        share_type = share_types.create(
+            self.context, 'type1', projects=['456'], extra_specs=extra_specs)
+        share_type_id = share_type.get('id')
+
+        share_types.remove_share_type_access(self.context, share_type_id,
+                                             project_id)
+        stype_access = db.share_type_access_get_all(self.context,
+                                                    share_type_id)
+        self.assertNotIn(project_id, stype_access)
+
+    def test_remove_access_invalid(self):
+        self.assertRaises(exception.InvalidShareType,
+                          share_types.remove_share_type_access,
+                          'fake', None, 'fake')

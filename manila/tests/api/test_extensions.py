@@ -14,14 +14,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import iso8601
 from lxml import etree
+import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 import webob
 
+from manila.api import extensions
 from manila.api.v1 import router
 from manila.api import xmlutil
+from manila import policy
 from manila import test
 
 CONF = cfg.CONF
@@ -150,3 +154,32 @@ class ExtensionControllerTest(ExtensionTestCase):
             'The Fox In Socks Extension.')
 
         xmlutil.validate_schema(root, 'extension')
+
+
+@ddt.ddt
+class ExtensionAuthorizeTestCase(test.TestCase):
+
+    @ddt.unpack
+    @ddt.data({'action': 'fake', 'valid': 'api_extension:fake:fake'},
+              {'action': None, 'valid': 'api_extension:fake'})
+    def test_extension_authorizer(self, action, valid):
+        self.mock_object(policy, 'enforce')
+        target = 'fake'
+
+        extensions.extension_authorizer('api', 'fake')(
+            {}, target, action)
+
+        policy.enforce.assert_called_once_with(mock.ANY, valid, target)
+
+    def test_extension_authorizer_empty_target(self):
+        self.mock_object(policy, 'enforce')
+        target = None
+        context = mock.Mock()
+        context.project_id = 'fake'
+        context.user_id = 'fake'
+
+        extensions.extension_authorizer('api', 'fake')(
+            context, target, 'fake')
+
+        policy.enforce.assert_called_once_with(
+            mock.ANY, mock.ANY, {'project_id': 'fake', 'user_id': 'fake'})

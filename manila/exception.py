@@ -417,6 +417,11 @@ class ShareTypeNotFound(NotFound):
     message = _("Share type %(share_type_id)s could not be found.")
 
 
+class ShareTypeAccessNotFound(NotFound):
+    message = _("Share type access not found for %(share_type_id)s / "
+                "%(project_id)s combination.")
+
+
 class ShareTypeNotFoundByName(ShareTypeNotFound):
     message = _("Share type with name %(share_type_name)s "
                 "could not be found.")
@@ -434,6 +439,11 @@ class ShareTypeInUse(ManilaException):
 
 class ShareTypeExists(ManilaException):
     message = _("Share Type %(id)s already exists.")
+
+
+class ShareTypeAccessExists(ManilaException):
+    message = _("Share type access for %(share_type_id)s / "
+                "%(project_id)s combination already exists.")
 
 
 class ShareTypeCreateFailed(ManilaException):

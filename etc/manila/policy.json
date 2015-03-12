@@ -39,6 +39,10 @@
     "share_extension:types_manage": [["rule:admin_api"]],
     "share_extension:types_extra_specs": [["rule:admin_api"]],
 
+    "share_extension:share_type_access": [],
+    "share_extension:share_type_access:addProjectAccess": [["rule:admin_api"]],
+    "share_extension:share_type_access:removeProjectAccess": [["rule:admin_api"]],
+
     "security_service:create": [["rule:default"]],
     "security_service:delete": [["rule:default"]],
     "security_service:update": [["rule:default"]],

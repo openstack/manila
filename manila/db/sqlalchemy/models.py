@@ -23,7 +23,7 @@ from oslo_config import cfg
 from oslo_db.sqlalchemy import models
 from oslo_utils import timeutils
 import six
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm
 from sqlalchemy import ForeignKey, DateTime, Boolean, Enum
@@ -205,6 +205,7 @@ class ShareTypes(BASE, ManilaBase):
     __tablename__ = "share_types"
     id = Column(String(36), primary_key=True)
     name = Column(String(255))
+    is_public = Column(Boolean, default=True)
     shares = orm.relationship(Share,
                               backref=orm.backref('share_type',
                                                   uselist=False),
@@ -212,6 +213,27 @@ class ShareTypes(BASE, ManilaBase):
                               primaryjoin='and_('
                               'Share.share_type_id == ShareTypes.id, '
                               'ShareTypes.deleted == False)')
+
+
+class ShareTypeProjects(BASE, ManilaBase):
+    """Represent projects associated share_types."""
+    __tablename__ = "share_type_projects"
+    __table_args__ = (schema.UniqueConstraint(
+        "share_type_id", "project_id", "deleted",
+        name="uniq_share_type_projects0share_type_id0project_id0deleted"),
+    )
+    id = Column(Integer, primary_key=True)
+    share_type_id = Column(Integer, ForeignKey('share_types.id'),
+                           nullable=False)
+    project_id = Column(String(255))
+
+    share_type = orm.relationship(
+        ShareTypes,
+        backref="projects",
+        foreign_keys=share_type_id,
+        primaryjoin='and_('
+                    'ShareTypeProjects.share_type_id == ShareTypes.id,'
+                    'ShareTypeProjects.deleted == False)')
 
 
 class ShareTypeExtraSpecs(BASE, ManilaBase):

@@ -52,7 +52,7 @@ def return_share_types_with_volumes_destroy(context, id):
     pass
 
 
-def return_share_types_create(context, name, specs):
+def return_share_types_create(context, name, specs, is_public):
     pass
 
 

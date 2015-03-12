@@ -32,6 +32,7 @@ import six
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import literal_column
+from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
 
 from manila.common import constants
@@ -2052,8 +2053,8 @@ to a single dict:
 
 
 @require_admin_context
-def share_type_create(context, values):
-    """Create a new instance type.
+def share_type_create(context, values, projects=None):
+    """Create a new share type.
 
     In order to pass in extra specs, the values dict should contain a
     'extra_specs' key/value pair:
@@ -2061,6 +2062,8 @@ def share_type_create(context, values):
     """
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
+
+    projects = projects or []
 
     session = get_session()
     with session.begin():
@@ -2074,7 +2077,37 @@ def share_type_create(context, values):
             raise exception.ShareTypeExists(id=values['name'])
         except Exception as e:
             raise db_exception.DBError(e)
+
+        for project in set(projects):
+            access_ref = models.ShareTypeProjects()
+            access_ref.update({"share_type_id": share_type_ref.id,
+                               "project_id": project})
+            access_ref.save(session=session)
+
         return share_type_ref
+
+
+def _share_type_get_query(context, session=None, read_deleted=None,
+                          expected_fields=None):
+    expected_fields = expected_fields or []
+    query = model_query(context,
+                        models.ShareTypes,
+                        session=session,
+                        read_deleted=read_deleted). \
+        options(joinedload('extra_specs')).options(joinedload('shares'))
+
+    if 'projects' in expected_fields:
+        query = query.options(joinedload('projects'))
+
+    if not context.is_admin:
+        the_filter = [models.ShareTypes.is_public == true()]
+        projects_attr = getattr(models.ShareTypes, 'projects')
+        the_filter.extend([
+            projects_attr.any(project_id=context.project_id)
+        ])
+        query = query.filter(or_(*the_filter))
+
+    return query
 
 
 @require_context
@@ -2083,12 +2116,22 @@ def share_type_get_all(context, inactive=False, filters=None):
     filters = filters or {}
 
     read_deleted = "yes" if inactive else "no"
-    rows = model_query(context, models.ShareTypes,
-                       read_deleted=read_deleted).\
-        options(joinedload('extra_specs')).\
-        options(joinedload('shares')).\
-        order_by("name").\
-        all()
+
+    query = _share_type_get_query(context, read_deleted=read_deleted)
+
+    if 'is_public' in filters and filters['is_public'] is not None:
+        the_filter = [models. ShareTypes.is_public == filters['is_public']]
+        if filters['is_public'] and context.project_id is not None:
+            projects_attr = getattr(models. ShareTypes, 'projects')
+            the_filter.extend([
+                projects_attr.any(project_id=context.project_id, deleted=False)
+            ])
+        if len(the_filter) > 1:
+            query = query.filter(or_(*the_filter))
+        else:
+            query = query.filter(the_filter[0])
+
+    rows = query.order_by("name").all()
 
     result = {}
     for row in rows:
@@ -2097,28 +2140,49 @@ def share_type_get_all(context, inactive=False, filters=None):
     return result
 
 
+def _share_type_get_id_from_share_type_query(context, id, session=None):
+    return model_query(
+        context, models.ShareTypes, read_deleted="no", session=session).\
+        filter_by(id=id)
+
+
+def _share_type_get_id_from_share_type(context, id, session=None):
+    result = _share_type_get_id_from_share_type_query(
+        context, id, session=session).first()
+    if not result:
+        raise exception.ShareTypeNotFound(share_type_id=id)
+    return result['id']
+
+
 @require_context
-def _share_type_get(context, id, session=None, inactive=False):
+def _share_type_get(context, id, session=None, inactive=False,
+                    expected_fields=None):
+    expected_fields = expected_fields or []
     read_deleted = "yes" if inactive else "no"
-    result = model_query(context,
-                         models.ShareTypes,
-                         session=session,
-                         read_deleted=read_deleted).\
-        options(joinedload('extra_specs')).\
-        filter_by(id=id).\
-        options(joinedload('shares')).\
+    result = _share_type_get_query(
+        context, session, read_deleted, expected_fields). \
+        filter_by(id=id). \
+        options(joinedload('shares')). \
         first()
 
     if not result:
         raise exception.ShareTypeNotFound(share_type_id=id)
 
-    return _dict_with_extra_specs(result)
+    share_type = _dict_with_extra_specs(result)
+
+    if 'projects' in expected_fields:
+        share_type['projects'] = [p['project_id'] for p in result['projects']]
+
+    return share_type
 
 
 @require_context
-def share_type_get(context, id, inactive=False):
+def share_type_get(context, id, inactive=False, expected_fields=None):
     """Return a dict describing specific share_type."""
-    return _share_type_get(context, id, None, inactive)
+    return _share_type_get(context, id,
+                           session=None,
+                           inactive=inactive,
+                           expected_fields=expected_fields)
 
 
 @require_context
@@ -2131,8 +2195,8 @@ def _share_type_get_by_name(context, name, session=None):
 
     if not result:
         raise exception.ShareTypeNotFoundByName(share_type_name=name)
-    else:
-        return _dict_with_extra_specs(result)
+
+    return _dict_with_extra_specs(result)
 
 
 @require_context
@@ -2163,6 +2227,51 @@ def share_type_destroy(context, id):
                 {'deleted': id,
                  'deleted_at': timeutils.utcnow(),
                  'updated_at': literal_column('updated_at')})
+
+
+def _share_type_access_query(context, session=None):
+    return model_query(context, models.ShareTypeProjects, session=session,
+                       read_deleted="no")
+
+
+@require_admin_context
+def share_type_access_get_all(context, type_id):
+    share_type_id = _share_type_get_id_from_share_type(context, type_id)
+    return _share_type_access_query(context).\
+        filter_by(share_type_id=share_type_id).all()
+
+
+@require_admin_context
+def share_type_access_add(context, type_id, project_id):
+    """Add given tenant to the share type access list."""
+    share_type_id = _share_type_get_id_from_share_type(context, type_id)
+
+    access_ref = models.ShareTypeProjects()
+    access_ref.update({"share_type_id": share_type_id,
+                       "project_id": project_id})
+
+    session = get_session()
+    with session.begin():
+        try:
+            access_ref.save(session=session)
+        except db_exception.DBDuplicateEntry:
+            raise exception.ShareTypeAccessExists(share_type_id=type_id,
+                                                  project_id=project_id)
+        return access_ref
+
+
+@require_admin_context
+def share_type_access_remove(context, type_id, project_id):
+    """Remove given tenant from the share type access list."""
+    share_type_id = _share_type_get_id_from_share_type(context, type_id)
+
+    count = _share_type_access_query(context).\
+        filter_by(share_type_id=share_type_id).\
+        filter_by(project_id=project_id).\
+        soft_delete(synchronize_session=False)
+    if count == 0:
+        raise exception.ShareTypeAccessNotFound(
+            share_type_id=type_id, project_id=project_id)
 
 
 @require_context
