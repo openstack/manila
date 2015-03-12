@@ -43,8 +43,6 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
         result = self.helper.create_share(fake.SHARE_NAME, fake.SHARE_ADDRESS)
 
-        self.mock_client.add_nfs_export_rules.assert_called_once_with(
-            fake.NFS_SHARE_PATH, ['localhost'])
         self.assertEqual(':'.join([fake.SHARE_ADDRESS, fake.NFS_SHARE_PATH]),
                          result)
 

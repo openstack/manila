@@ -32,7 +32,6 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     def create_share(self, share_name, export_ip):
         """Creates NFS share."""
         export_path = self._client.get_volume_junction_path(share_name)
-        self._client.add_nfs_export_rules(export_path, ['localhost'])
         export_location = ':'.join([export_ip, export_path])
         return export_location
 
