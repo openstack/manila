@@ -23,7 +23,6 @@ import copy
 import socket
 
 from oslo_log import log
-from oslo_utils import timeutils
 from oslo_utils import units
 import six
 
@@ -78,7 +77,6 @@ class NetAppCmodeFileStorageLibrary(object):
         self._client = None
         self._clients = {}
         self._ssc_stats = {}
-        self._last_ems = timeutils.utcnow()
         self._have_cluster_creds = None
 
         self._app_version = kwargs.get('app_version', 'unknown')
@@ -149,10 +147,17 @@ class NetAppCmodeFileStorageLibrary(object):
         # the first invocation of get_share_stats.
         self._update_ssc_info()
 
+        # Start the task that updates the slow-changing storage service catalog
         ssc_periodic_task = loopingcall.FixedIntervalLoopingCall(
             self._update_ssc_info)
         ssc_periodic_task.start(interval=self.SSC_UPDATE_INTERVAL_SECONDS,
                                 initial_delay=self.SSC_UPDATE_INTERVAL_SECONDS)
+
+        # Start the task that logs autosupport (EMS) data to the controller
+        ems_periodic_task = loopingcall.FixedIntervalLoopingCall(
+            self._handle_ems_logging)
+        ems_periodic_task.start(interval=self.AUTOSUPPORT_INTERVAL_SECONDS,
+                                initial_delay=0)
 
     @na_utils.trace
     def _get_valid_share_name(self, share_id):
@@ -217,18 +222,12 @@ class NetAppCmodeFileStorageLibrary(object):
             pools.append(pool)
 
         data['pools'] = pools
-
-        self._handle_ems_logging()
-
         return data
 
     @na_utils.trace
     def _handle_ems_logging(self):
-        """Send an EMS log message if one hasn't been sent recently."""
-        if timeutils.is_older_than(self._last_ems,
-                                   self.AUTOSUPPORT_INTERVAL_SECONDS):
-            self._last_ems = timeutils.utcnow()
-            self._client.send_ems_log_message(self._build_ems_log_message())
+        """Build and send an EMS log message."""
+        self._client.send_ems_log_message(self._build_ems_log_message())
 
     @na_utils.trace
     def _build_ems_log_message(self):

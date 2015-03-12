@@ -17,12 +17,10 @@ Unit tests for the NetApp Data ONTAP cDOT base storage driver library.
 """
 
 import copy
-import datetime
 import socket
 
 import mock
 from oslo_log import log
-from oslo_utils import timeutils
 
 from manila import exception
 from manila.openstack.common import loopingcall
@@ -79,7 +77,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertDictEqual({}, self.library._clients)
         self.assertDictEqual({}, self.library._ssc_stats)
         self.assertIsNotNone(self.library._app_version)
-        self.assertIsNotNone(self.library._last_ems)
 
     def test_do_setup(self):
         mock_setup_helpers = self.mock_object(self.library, '_setup_helpers')
@@ -207,17 +204,24 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_update_ssc_info = self.mock_object(self.library,
                                                 '_update_ssc_info')
+        mock_handle_ems_logging = self.mock_object(self.library,
+                                                   '_handle_ems_logging')
         mock_ssc_periodic_task = mock.Mock()
+        mock_ems_periodic_task = mock.Mock()
         mock_loopingcall = self.mock_object(
             loopingcall,
             'FixedIntervalLoopingCall',
-            mock.Mock(return_value=mock_ssc_periodic_task))
+            mock.Mock(side_effect=[mock_ssc_periodic_task,
+                                   mock_ems_periodic_task]))
 
         self.library._start_periodic_tasks()
 
         self.assertTrue(mock_update_ssc_info.called)
-        mock_loopingcall.assert_called_once_with(mock_update_ssc_info)
+        self.assertFalse(mock_handle_ems_logging.called)
+        mock_loopingcall.assert_has_calls([mock.call(mock_update_ssc_info),
+                                           mock.call(mock_handle_ems_logging)])
         self.assertTrue(mock_ssc_periodic_task.start.called)
+        self.assertTrue(mock_ems_periodic_task.start.called)
 
     def test_get_valid_share_name(self):
 
@@ -271,8 +275,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_aggregate_space',
                          mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
-        mock_handle_ems_logging = self.mock_object(self.library,
-                                                   '_handle_ems_logging')
         self.library._ssc_stats = fake.SSC_INFO
 
         result = self.library.get_share_stats()
@@ -309,36 +311,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         }
 
         self.assertDictEqual(expected, result)
-        self.assertTrue(mock_handle_ems_logging.called)
 
     def test_handle_ems_logging(self):
 
         self.mock_object(self.library,
                          '_build_ems_log_message',
                          mock.Mock(return_value=fake.EMS_MESSAGE))
-        test_now = timeutils.utcnow() - datetime.timedelta(
-            seconds=(self.library.AUTOSUPPORT_INTERVAL_SECONDS + 1))
-        self.library._last_ems = test_now
 
         self.library._handle_ems_logging()
 
-        self.assertTrue(self.library._last_ems > test_now)
         self.library._client.send_ems_log_message.assert_called_with(
             fake.EMS_MESSAGE)
-
-    def test_handle_ems_logging_not_yet(self):
-
-        self.mock_object(self.library,
-                         '_build_ems_log_message',
-                         mock.Mock(return_value=fake.EMS_MESSAGE))
-        test_now = timeutils.utcnow() - datetime.timedelta(
-            seconds=(self.library.AUTOSUPPORT_INTERVAL_SECONDS - 1))
-        self.library._last_ems = test_now
-
-        self.library._handle_ems_logging()
-
-        self.assertEqual(test_now, self.library._last_ems)
-        self.assertFalse(self.library._client.send_ems_log_message.called)
 
     def test_build_ems_log_message(self):
 
