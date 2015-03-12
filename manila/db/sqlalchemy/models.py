@@ -204,6 +204,7 @@ class ShareTypes(BASE, ManilaBase):
     """Represent possible share_types of volumes offered."""
     __tablename__ = "share_types"
     id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
     name = Column(String(255))
     is_public = Column(Boolean, default=True)
     shares = orm.relationship(Share,
@@ -212,7 +213,7 @@ class ShareTypes(BASE, ManilaBase):
                               foreign_keys=id,
                               primaryjoin='and_('
                               'Share.share_type_id == ShareTypes.id, '
-                              'ShareTypes.deleted == False)')
+                              'ShareTypes.deleted == "False")')
 
 
 class ShareTypeProjects(BASE, ManilaBase):
