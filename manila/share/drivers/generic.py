@@ -586,18 +586,21 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     @ensure_server
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
-        self._get_helper(share).allow_access(share_server['backend_details'],
-                                             share['name'],
-                                             access['access_type'],
-                                             access['access_to'])
+
+        # NOTE(vponomaryov): use direct verification for case some additional
+        # level is added.
+        access_level = access['access_level']
+        if access_level not in (const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO):
+            raise exception.InvalidShareAccessLevel(level=access_level)
+        self._get_helper(share).allow_access(
+            share_server['backend_details'], share['name'],
+            access['access_type'], access['access_level'], access['access_to'])
 
     @ensure_server
     def deny_access(self, context, share, access, share_server=None):
         """Deny access to the share."""
-        self._get_helper(share).deny_access(share_server['backend_details'],
-                                            share['name'],
-                                            access['access_type'],
-                                            access['access_to'])
+        self._get_helper(share).deny_access(
+            share_server['backend_details'], share['name'], access)
 
     def _get_helper(self, share):
         helper = self._helpers.get(share['share_proto'])
@@ -650,12 +653,12 @@ class NASHelperBase(object):
         """Remove export."""
         raise NotImplementedError()
 
-    def allow_access(self, server, share_name, access_type, access):
+    def allow_access(self, server, share_name, access_type, access_level,
+                     access_to):
         """Allow access to the host."""
         raise NotImplementedError()
 
-    def deny_access(self, local_path, share_name, access_type, access,
-                    force=False):
+    def deny_access(self, server, share_name, access, force=False):
         """Deny access to the host."""
         raise NotImplementedError()
 
@@ -698,33 +701,35 @@ class NFSHelper(NASHelperBase):
         pass
 
     @nfs_synchronized
-    def allow_access(self, server, share_name, access_type, access):
+    def allow_access(self, server, share_name, access_type, access_level,
+                     access_to):
         """Allow access to the host."""
         local_path = os.path.join(self.configuration.share_mount_path,
                                   share_name)
         if access_type != 'ip':
             reason = 'only ip access type allowed'
             raise exception.InvalidShareAccess(reason)
+
         # check if presents in export
         out, _ = self._ssh_exec(server, ['sudo', 'exportfs'])
-        out = re.search(re.escape(local_path) + '[\s\n]*' + re.escape(access),
-                        out)
+        out = re.search(
+            re.escape(local_path) + '[\s\n]*' + re.escape(access_to), out)
         if out is not None:
             raise exception.ShareAccessExists(access_type=access_type,
-                                              access=access)
-        self._ssh_exec(server,
-                       ['sudo', 'exportfs', '-o', 'rw,no_subtree_check',
-                        ':'.join([access, local_path])])
+                                              access=access_to)
+        self._ssh_exec(
+            server,
+            ['sudo', 'exportfs', '-o', '%s,no_subtree_check' % access_level,
+             ':'.join([access_to, local_path])])
         self._sync_nfs_temp_and_perm_files(server)
 
     @nfs_synchronized
-    def deny_access(self, server, share_name, access_type, access,
-                    force=False):
+    def deny_access(self, server, share_name, access, force=False):
         """Deny access to the host."""
         local_path = os.path.join(self.configuration.share_mount_path,
                                   share_name)
         self._ssh_exec(server, ['sudo', 'exportfs', '-u',
-                                ':'.join([access, local_path])])
+                                ':'.join([access['access_to'], local_path])])
         self._sync_nfs_temp_and_perm_files(server)
 
     def _sync_nfs_temp_and_perm_files(self, server):
@@ -809,28 +814,33 @@ class CIFSHelper(NASHelperBase):
             self._ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
                                     share_name])
 
-    def allow_access(self, server, share_name, access_type, access):
+    def allow_access(self, server, share_name, access_type, access_level,
+                     access_to):
         """Add access for share."""
         if access_type != 'ip':
             reason = _('Only ip access type allowed.')
             raise exception.InvalidShareAccess(reason=reason)
+        if access_level != const.ACCESS_LEVEL_RW:
+            raise exception.InvalidShareAccessLevel(level=access_level)
 
         hosts = self._get_allow_hosts(server, share_name)
-        if access in hosts:
-            raise exception.ShareAccessExists(access_type=access_type,
-                                              access=access)
-        hosts.append(access)
+        if access_to in hosts:
+            raise exception.ShareAccessExists(
+                access_type=access_type, access=access_to)
+        hosts.append(access_to)
         self._set_allow_hosts(server, hosts, share_name)
 
-    def deny_access(self, server, share_name, access_type, access,
-                    force=False):
+    def deny_access(self, server, share_name, access, force=False):
         """Remove access for share."""
+        access_to, access_level = access['access_to'], access['access_level']
+        if access_level != const.ACCESS_LEVEL_RW:
+            return
         try:
             hosts = self._get_allow_hosts(server, share_name)
-            if access in hosts:
+            if access_to in hosts:
                 # Access rule can be in error state, if so
                 # it can be absent in rules, hence - skip removal.
-                hosts.remove(access)
+                hosts.remove(access_to)
                 self._set_allow_hosts(server, hosts, share_name)
         except exception.ProcessExecutionError:
             if not force:
