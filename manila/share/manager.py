@@ -284,23 +284,32 @@ class ShareManager(manager.SchedulerDependentManager):
 
         try:
             if snapshot_ref:
-                export_location = self.driver.create_share_from_snapshot(
+                export_locations = self.driver.create_share_from_snapshot(
                     context, share_ref, snapshot_ref,
                     share_server=share_server)
             else:
-                export_location = self.driver.create_share(
+                export_locations = self.driver.create_share(
                     context, share_ref, share_server=share_server)
-            self.db.share_update(context, share_id,
-                                 {'export_location': export_location})
+
+            self.db.share_export_locations_update(context, share_id,
+                                                  export_locations)
+
         except Exception as e:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Share %s failed on creation."), share_id)
                 detail_data = getattr(e, 'detail_data', {})
-                if (isinstance(detail_data, dict) and
-                        detail_data.get('export_location')):
-                    self.db.share_update(
-                        context, share_id,
-                        {'export_location': detail_data['export_location']})
+
+                def get_export_location(details):
+                    if not isinstance(details, dict):
+                        return None
+                    return details.get('export_locations',
+                                       details.get('export_location'))
+
+                export_locations = get_export_location(detail_data)
+
+                if export_locations:
+                    self.db.share_export_locations_update(
+                        context, share_id, export_locations)
                 else:
                     LOG.warning(_LW('Share information in exception '
                                     'can not be written to db because it '

@@ -496,6 +496,22 @@ def share_metadata_update(context, share, metadata, delete):
 
 
 ###################
+
+def share_export_locations_get(context, share_id):
+    """Get all exports_locations of share."""
+    return IMPL.share_export_locations_get(context, share_id)
+
+
+def share_export_locations_update(context, share_id, export_locations,
+                                  delete=True):
+    """Update export locations of share."""
+    return IMPL.share_export_locations_update(context, share_id,
+                                              export_locations, delete)
+
+
+####################
+
+
 def share_network_create(context, values):
     """Create a share network DB record."""
     return IMPL.share_network_create(context, values)

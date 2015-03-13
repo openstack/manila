@@ -390,6 +390,8 @@ class ShareManagerTestCase(test.TestCase):
 
         shr = db.share_get(self.context, share_id)
         self.assertEqual(shr['status'], 'available')
+        self.assertTrue(len(shr['export_location']) > 0)
+        self.assertEqual(2, len(shr['export_locations']))
 
     def test_create_delete_share_snapshot(self):
         """Test share's snapshot can be created and deleted."""
@@ -606,15 +608,17 @@ class ShareManagerTestCase(test.TestCase):
         shr = db.share_get(self.context, share_id)
         self.assertEqual(shr['status'], 'available')
         self.assertEqual(shr['share_server_id'], share_srv['id'])
+        self.assertTrue(len(shr['export_location']) > 0)
+        self.assertEqual(1, len(shr['export_locations']))
 
-    def test_create_share_with_error_in_driver(self):
+    @ddt.data('export_location', 'export_locations')
+    def test_create_share_with_error_in_driver(self, details_key):
         """Test db updates if share creation fails in driver."""
         share = self._create_share()
         share_id = share['id']
         some_data = 'fake_location'
         self.share_manager.driver = mock.Mock()
-        e = exception.ManilaException(
-            detail_data={'export_location': some_data})
+        e = exception.ManilaException(detail_data={details_key: some_data})
         self.share_manager.driver.create_share.side_effect = e
         self.assertRaises(
             exception.ManilaException,

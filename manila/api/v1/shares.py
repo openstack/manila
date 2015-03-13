@@ -37,9 +37,12 @@ LOG = log.getLogger(__name__)
 
 
 def make_share(elem):
+    # NOTE(u_glide):
+    # export_location is backward-compatibility attribute, which contains first
+    # export location from export_locations list.
     attrs = ['id', 'size', 'availability_zone', 'status', 'name',
              'description', 'share_proto', 'export_location', 'links',
-             'snapshot_id', 'created_at', 'metadata']
+             'snapshot_id', 'created_at', 'metadata', 'export_locations']
     for attr in attrs:
         elem.set(attr)
 

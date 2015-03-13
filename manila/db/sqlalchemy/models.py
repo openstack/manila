@@ -176,6 +176,11 @@ class Share(BASE, ManilaBase):
     def name(self):
         return CONF.share_name_template % self.id
 
+    @property
+    def export_location(self):
+        if len(self.export_locations) > 0:
+            return self.export_locations[0]['path']
+
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
     user_id = Column(String(255))
@@ -191,7 +196,12 @@ class Share(BASE, ManilaBase):
     display_description = Column(String(255))
     snapshot_id = Column(String(36))
     share_proto = Column(String(255))
-    export_location = Column(String(255))
+    export_locations = orm.relationship(
+        "ShareExportLocations",
+        lazy='immediate',
+        primaryjoin='and_('
+                    'Share.id == ShareExportLocations.share_id, '
+                    'ShareExportLocations.deleted == False)')
     share_network_id = Column(String(36), ForeignKey('share_networks.id'),
                               nullable=True)
     share_type_id = Column(String(36), ForeignKey('share_types.id'),
@@ -199,6 +209,15 @@ class Share(BASE, ManilaBase):
     share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                              nullable=True)
     is_public = Column(Boolean, default=False)
+
+
+class ShareExportLocations(BASE, ManilaBase):
+    """Represents export locations of shares."""
+    __tablename__ = 'share_export_locations'
+
+    id = Column(Integer, primary_key=True)
+    share_id = Column(String(36), ForeignKey('shares.id'), nullable=False)
+    path = Column(String(2000))
 
 
 class ShareTypes(BASE, ManilaBase):

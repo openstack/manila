@@ -26,6 +26,8 @@ def stub_share(id, **kwargs):
         'id': id,
         'share_proto': 'FAKEPROTO',
         'export_location': 'fake_location',
+        'export_locations': [{'path': 'fake_location'},
+                             {'path': 'fake_location2'}],
         'user_id': 'fakeuser',
         'project_id': 'fakeproject',
         'host': 'fakehost',
