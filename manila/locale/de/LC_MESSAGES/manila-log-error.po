@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Manila\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-12 06:12+0000\n"
-"PO-Revision-Date: 2015-03-11 22:32+0000\n"
+"POT-Creation-Date: 2015-03-13 06:20+0000\n"
+"PO-Revision-Date: 2015-03-12 15:24+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/manila/language/"
 "de/)\n"
@@ -79,7 +79,33 @@ msgstr ""
 msgid "Exception while creating table."
 msgstr "Ausnahme beim Anlegen einer Tabelle."
 
-#: manila/db/sqlalchemy/api.py:2153
+#: manila/db/migrations/alembic/versions/30cb96d995fa_add_is_public_column_for_share.py:42
+msgid "Column shares.is_public not created!"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/30cb96d995fa_add_is_public_column_for_share.py:50
+msgid "Column shares.is_public not dropped!"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/ef0c02b4366_add_share_type_projects.py:45
+#, python-format
+msgid "Column |%s| not created!"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/ef0c02b4366_add_share_type_projects.py:65
+#, python-format
+msgid "Table |%s| not created!"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/ef0c02b4366_add_share_type_projects.py:73
+msgid "share_types.is_public column not dropped"
+msgstr ""
+
+#: manila/db/migrations/alembic/versions/ef0c02b4366_add_share_type_projects.py:79
+msgid "share_type_projects table not dropped"
+msgstr ""
+
+#: manila/db/sqlalchemy/api.py:2223
 #, python-format
 msgid "ShareType %s deletion failed, ShareType in use."
 msgstr ""
@@ -138,7 +164,7 @@ msgstr ""
 msgid "Free capacity not set: volume node info collection broken."
 msgstr ""
 
-#: manila/share/api.py:229
+#: manila/share/api.py:236
 msgid "Failed to update quota for deleting share"
 msgstr ""
 
@@ -194,17 +220,17 @@ msgstr ""
 msgid "Share server '%s' failed on deletion."
 msgstr ""
 
-#: manila/share/share_types.py:48
+#: manila/share/share_types.py:53
 #, python-format
 msgid "DB error: %s"
 msgstr "Datenbank Fehler: %s"
 
-#: manila/share/share_types.py:80
+#: manila/share/share_types.py:90
 #, python-format
 msgid "Share type %(share_type)s has invalid required extra specs: %(error)s"
 msgstr ""
 
-#: manila/share/share_types.py:152
+#: manila/share/share_types.py:162
 #, python-format
 msgid ""
 "Default share type is not found, please check default_share_type config: %s"
@@ -367,7 +393,7 @@ msgstr ""
 msgid "DNS exists for Vserver."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:139
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:137
 #, python-format
 msgid "Neither NFS nor CIFS is licensed on %(backend)s"
 msgstr ""

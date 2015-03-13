@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev97\n"
+"Project-Id-Version: manila 2015.1.dev144\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-05 06:13+0000\n"
+"POT-Creation-Date: 2015-03-13 06:20+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -95,14 +95,14 @@ msgid ""
 "manila.api.urlmap:urlmap_factory instead."
 msgstr ""
 
-#: manila/api/v1/share_networks.py:289
+#: manila/api/v1/share_networks.py:294
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create share-network "
 "(%(d_consumed)d of %(d_quota)d already consumed)"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:948
+#: manila/db/sqlalchemy/api.py:949
 #, python-format
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr ""
@@ -134,49 +134,49 @@ msgid ""
 "%(requested)s/%(available)s"
 msgstr ""
 
-#: manila/share/api.py:131
+#: manila/share/api.py:132
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG share "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: manila/share/api.py:140
+#: manila/share/api.py:141
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create share (%(d_consumed)d "
 "shares already consumed)"
 msgstr ""
 
-#: manila/share/api.py:286
+#: manila/share/api.py:293
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: manila/share/api.py:295
+#: manila/share/api.py:302
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
 "snapshots already consumed)"
 msgstr ""
 
-#: manila/share/manager.py:80
+#: manila/share/manager.py:81
 #, python-format
 msgid ""
 "Driver path %(old)s is deprecated, update your configuration to the new "
 "path %(new)s"
 msgstr ""
 
-#: manila/share/manager.py:296
+#: manila/share/manager.py:297
 #, python-format
 msgid ""
 "Share information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/manager.py:510
+#: manila/share/manager.py:531
 #, python-format
 msgid ""
 "Server Information in exception can not be written to db because it "
@@ -193,7 +193,7 @@ msgstr ""
 msgid "Mount point '%(path)s' does not exist on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:807
+#: manila/share/drivers/generic.py:812
 #, python-format
 msgid "Caught error trying delete share: %(error)s, trying delete it forcibly."
 msgstr ""
@@ -221,6 +221,20 @@ msgid ""
 " path_to_private_key (current value %(private_path)s) and "
 "path_to_public_key (current value %(public_path)s) in manila "
 "configuration file."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/isilon/isilon.py:143
+#, python-format
+msgid ""
+"Attempted to delete NFS Share \"%s\", but the share does not appear to "
+"exist."
+msgstr ""
+
+#: manila/share/drivers/emc/plugins/isilon/isilon.py:158
+#, python-format
+msgid ""
+"Attempted to delete CIFS Share \"%s\", but the share does not appear to "
+"exist."
 msgstr ""
 
 #: manila/share/drivers/emc/plugins/vnx/connection.py:195
@@ -372,19 +386,19 @@ msgstr ""
 msgid "Invalid trace flag: %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:514
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:515
 #, python-format
 msgid "No aggregates assigned to Vserver %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:988
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:1021
 msgid ""
 "Data ONTAP API 'nfs-exportfs-append-rules-2' compatibility action: "
 "remember behavior to send proper values with first attempt next time. Now"
 " trying send another request with changed value for 'pathname'."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:1074
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:1107
 #, python-format
 msgid "Failed to invoke EMS. %s"
 msgstr ""
