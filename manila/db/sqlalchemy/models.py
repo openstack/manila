@@ -21,7 +21,6 @@ SQLAlchemy models for Manila data.
 
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
-from oslo_utils import timeutils
 import six
 from sqlalchemy import Column, Integer, String, schema
 from sqlalchemy.ext.declarative import declarative_base
@@ -34,18 +33,12 @@ CONF = cfg.CONF
 BASE = declarative_base()
 
 
-class ManilaBase(models.ModelBase, models.TimestampMixin):
+class ManilaBase(models.ModelBase,
+                 models.TimestampMixin,
+                 models.SoftDeleteMixin):
     """Base class for Manila Models."""
     __table_args__ = {'mysql_engine': 'InnoDB'}
-    deleted_at = Column(DateTime)
-    deleted = Column(Integer, default=0)
     metadata = None
-
-    def delete(self, session=None):
-        """Delete this object."""
-        self.deleted = self.id
-        self.deleted_at = timeutils.utcnow()
-        self.save(session=session)
 
     def to_dict(self):
         model_dict = {}

@@ -300,7 +300,7 @@ def service_destroy(context, service_id):
     session = get_session()
     with session.begin():
         service_ref = service_get(context, service_id, session=session)
-        service_ref.delete(session=session)
+        service_ref.soft_delete(session)
 
 
 @require_admin_context
@@ -1676,7 +1676,7 @@ def security_service_delete(context, id):
         security_service_ref = security_service_get(context,
                                                     id,
                                                     session=session)
-        security_service_ref.delete(session=session)
+        security_service_ref.soft_delete(session)
 
 
 @require_context
@@ -1748,7 +1748,7 @@ def share_network_delete(context, id):
     session = get_session()
     with session.begin():
         network_ref = share_network_get(context, id, session=session)
-        network_ref.delete(session=session)
+        network_ref.soft_delete(session)
 
 
 @require_context
@@ -1840,7 +1840,7 @@ def share_network_remove_security_service(context, id, security_service_id):
             filter_by(security_service_id=security_service_id).first()
 
         if assoc_ref:
-            assoc_ref.delete(session=session)
+            assoc_ref.soft_delete(session)
         else:
             msg = "No association defined"
             raise exception.ShareNetworkSecurityServiceDissociationError(
@@ -1962,7 +1962,7 @@ def share_server_backend_details_delete(context, share_server_id,
                                        session=session)\
         .filter_by(share_server_id=share_server_id).all()
     for item in share_server_details:
-        item.delete(session=session)
+        item.soft_delete(session)
 
 
 @require_context
@@ -1995,7 +1995,7 @@ def network_allocation_delete(context, id):
     session = get_session()
     with session.begin():
         alloc_ref = network_allocation_get(context, id, session=session)
-        alloc_ref.delete(session=session)
+        alloc_ref.soft_delete(session)
 
 
 @require_context
