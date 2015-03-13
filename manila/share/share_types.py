@@ -20,6 +20,7 @@ from oslo_config import cfg
 from oslo_db import exception as db_exception
 from oslo_log import log
 from oslo_utils import strutils
+from oslo_utils import uuidutils
 import six
 
 from manila.common import constants
@@ -141,6 +142,20 @@ def get_share_type_by_name(context, name):
         raise exception.InvalidShareType(reason=msg)
 
     return db.share_type_get_by_name(context, name)
+
+
+def get_share_type_by_name_or_id(context, share_type=None):
+    if not share_type:
+        share_type_ref = get_default_share_type(context)
+        if not share_type_ref:
+            msg = _("Default share type not found")
+            raise exception.ShareTypeNotFound(reason=msg)
+        return share_type_ref
+
+    if uuidutils.is_uuid_like(share_type):
+        return get_share_type(context, share_type)
+    else:
+        return get_share_type_by_name(context, share_type)
 
 
 def get_default_share_type(ctxt=None):

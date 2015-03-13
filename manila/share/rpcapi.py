@@ -32,6 +32,7 @@ class ShareAPI(object):
     API version history:
 
         1.0 - Initial version.
+        1.1 - Add manage_share() and unmanage_share() methods
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -40,7 +41,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, '1.0')
+        self.client = rpc.get_client(target, version_cap='1.1')
 
     def create_share(self, ctxt, share, host,
                      request_spec, filter_properties,
@@ -56,6 +57,19 @@ class ShareAPI(object):
             filter_properties=filter_properties,
             snapshot_id=snapshot_id,
         )
+
+    def manage_share(self, ctxt, share, driver_options=None):
+        host = utils.extract_host(share['host'])
+        cctxt = self.client.prepare(server=host, version='1.1')
+        cctxt.cast(ctxt,
+                   'manage_share',
+                   share_id=share['id'],
+                   driver_options=driver_options)
+
+    def unmanage_share(self, ctxt, share):
+        host = utils.extract_host(share['host'])
+        cctxt = self.client.prepare(server=host, version='1.1')
+        cctxt.cast(ctxt, 'unmanage_share', share_id=share['id'])
 
     def delete_share(self, ctxt, share):
         host = utils.extract_host(share['host'])

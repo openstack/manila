@@ -30,6 +30,7 @@ import six
 from manila.common import constants
 from manila import context
 from manila import exception
+from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
@@ -49,6 +50,11 @@ share_manager_opts = [
                 default=False,
                 help='Whether share servers will '
                      'be deleted on deletion of the last share.'),
+    cfg.BoolOpt('unmanage_remove_access_rules',
+                default=False,
+                help='If set to True, then manila will deny access and remove '
+                     'all access rules on share unmanage.'
+                     'If set to False - nothing will be changed.'),
 ]
 
 CONF = cfg.CONF
@@ -65,6 +71,8 @@ QUOTAS = quota.QUOTAS
 
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
+
+    RPC_API_VERSION = '1.1'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -305,6 +313,110 @@ class ShareManager(manager.SchedulerDependentManager):
                                  {'status': 'available',
                                   'launched_at': timeutils.utcnow()})
 
+    def manage_share(self, context, share_id, driver_options):
+        context = context.elevated()
+        share_ref = self.db.share_get(context, share_id)
+        project_id = share_ref['project_id']
+
+        try:
+            if self.driver.driver_handles_share_servers:
+                msg = _("Manage share is not supported for "
+                        "driver_handles_share_servers=True mode.")
+                raise exception.InvalidShare(reason=msg)
+
+            share_update = (
+                self.driver.manage_existing(share_ref, driver_options) or {}
+            )
+
+            if not share_update.get('size'):
+                msg = _("Driver cannot calculate share size.")
+                raise exception.InvalidShare(reason=msg)
+
+            self._update_quota_usages(context, project_id, {
+                "shares": 1,
+                "gigabytes": share_update['size']
+            })
+
+            share_update.update({
+                'status': 'available',
+                'launched_at': timeutils.utcnow()
+            })
+            self.db.share_update(context, share_id, share_update)
+
+        except Exception as e:
+            LOG.error(_LW("Manage share failed: %s"), six.text_type(e))
+            self.db.share_update(context, share_id,
+                                 {'status': constants.STATUS_MANAGE_ERROR})
+
+    def _update_quota_usages(self, context, project_id, usages):
+        user_id = context.user_id
+        for resource, usage in six.iteritems(usages):
+            try:
+                current_usage = self.db.quota_usage_get(
+                    context, project_id, resource, user_id)
+                self.db.quota_usage_update(
+                    context, project_id, user_id, resource,
+                    in_use=current_usage['in_use'] + usage)
+            except exception.QuotaUsageNotFound:
+                self.db.quota_usage_create(context, project_id,
+                                           user_id, resource, usage)
+
+    def unmanage_share(self, context, share_id):
+        context = context.elevated()
+        share_ref = self.db.share_get(context, share_id)
+        share_server = self._get_share_server(context, share_ref)
+        project_id = share_ref['project_id']
+
+        def share_manage_set_error_status(msg, exception):
+            status = {'status': constants.STATUS_UNMANAGE_ERROR}
+            self.db.share_update(context, share_id, status)
+            LOG.error(msg, six.text_type(exception))
+
+        try:
+            if self.driver.driver_handles_share_servers:
+                msg = _("Unmanage share is not supported for "
+                        "driver_handles_share_servers=True mode.")
+                raise exception.InvalidShare(reason=msg)
+
+            if share_server:
+                msg = _("Unmanage share is not supported for "
+                        "shares with share servers.")
+                raise exception.InvalidShare(reason=msg)
+
+            self.driver.unmanage(share_ref)
+
+        except exception.InvalidShare as e:
+            share_manage_set_error_status(
+                _LE("Share can not be unmanaged: %s."), e)
+            return
+
+        try:
+            reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
+                                          shares=-1,
+                                          gigabytes=-share_ref['size'])
+            QUOTAS.commit(context, reservations, project_id=project_id)
+        except Exception as e:
+            # Note(imalinovskiy):
+            # Quota reservation errors here are not fatal, because
+            # unmanage is administrator API and he/she could update user
+            # quota usages later if it's required.
+            LOG.warning(_LE("Failed to update quota usages: %s."),
+                        six.text_type(e))
+
+        if self.configuration.safe_get('unmanage_remove_access_rules'):
+            try:
+                self._remove_share_access_rules(context, share_ref,
+                                                share_server)
+            except Exception as e:
+                share_manage_set_error_status(
+                    _LE("Can not remove access rules of share: %s."), e)
+                return
+
+        self.db.share_update(context, share_id,
+                             {'status': constants.STATUS_UNMANAGED,
+                              'deleted': True})
+
     def delete_share(self, context, share_id):
         """Delete a share."""
         context = context.elevated()
@@ -315,10 +427,9 @@ class ShareManager(manager.SchedulerDependentManager):
             project_id = share_ref['project_id']
         else:
             project_id = context.project_id
-        rules = self.db.share_access_get_all_for_share(context, share_id)
+
         try:
-            for access_ref in rules:
-                self._deny_access(context, access_ref, share_ref, share_server)
+            self._remove_share_access_rules(context, share_ref, share_server)
             self.driver.delete_share(context, share_ref,
                                      share_server=share_server)
         except Exception:
@@ -347,6 +458,13 @@ class ShareManager(manager.SchedulerDependentManager):
                           "with id '%s' automatically by "
                           "deletion of last share.", share_server['id'])
                 self.delete_share_server(context, share_server)
+
+    def _remove_share_access_rules(self, context, share_ref, share_server):
+        rules = self.db.share_access_get_all_for_share(
+            context, share_ref['id'])
+
+        for access_ref in rules:
+            self._deny_access(context, access_ref, share_ref, share_server)
 
     def create_snapshot(self, context, share_id, snapshot_id):
         """Create snapshot for share."""

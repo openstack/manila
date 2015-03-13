@@ -15,6 +15,7 @@
 
 import mock
 from oslo_log import log
+import six
 
 from manila.share import driver
 
@@ -25,7 +26,7 @@ class FakeShareDriver(driver.ShareDriver):
     """Fake share driver."""
 
     def __init__(self, *args, **kwargs):
-        super(FakeShareDriver, self).__init__(True, *args, **kwargs)
+        super(FakeShareDriver, self).__init__([True, False], *args, **kwargs)
         self.db = mock.Mock()
 
         def share_network_update(*args, **kwargs):
@@ -34,11 +35,22 @@ class FakeShareDriver(driver.ShareDriver):
         self.db.share_network_update = mock.Mock(
             side_effect=share_network_update)
 
+    def manage_existing(self, share, driver_options):
+        LOG.debug("Fake share driver: manage")
+        LOG.debug("Fake share driver: driver options: %s",
+                  six.text_type(driver_options))
+        return {'size': 1}
+
+    def unmanage(self, share):
+        LOG.debug("Fake share driver: unmanage")
+
     @property
     def driver_handles_share_servers(self):
         if not isinstance(self.configuration.safe_get(
                 'driver_handles_share_servers'), bool):
             return True
+
+        return self.configuration.driver_handles_share_servers
 
     def create_snapshot(self, context, snapshot, share_server=None):
         pass
@@ -84,3 +96,7 @@ class FakeShareDriver(driver.ShareDriver):
         # NOTE(vponomaryov): Simulate drivers that use share servers and
         # do not use 'service_instance' module.
         return 2
+
+    def _verify_share_server_handling(self, driver_handles_share_servers):
+        return super(FakeShareDriver, self)._verify_share_server_handling(
+            driver_handles_share_servers)

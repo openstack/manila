@@ -14,6 +14,7 @@
 #    under the License.
 """Unit tests for the Share API module."""
 
+import copy
 import datetime
 import uuid
 
@@ -464,6 +465,95 @@ class ShareAPITestCase(test.TestCase):
                 exception.InvalidInput,
                 self.api.create,
                 self.context, proto, '1', 'fakename', 'fakedesc')
+
+    def test_manage_new(self):
+        share_data = {
+            'host': 'fake',
+            'export_location': 'fake',
+            'share_proto': 'fake',
+        }
+        driver_options = {}
+        date = datetime.datetime(1, 1, 1, 1, 1, 1)
+        timeutils.utcnow.return_value = date
+        share = fake_share('fakeid',
+                           user_id=self.context.user_id,
+                           project_id=self.context.project_id,
+                           status='creating')
+        self.mock_object(db_driver, 'share_create',
+                         mock.Mock(return_value=share))
+        self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
+
+        self.api.manage(self.context,
+                        copy.deepcopy(share_data),
+                        driver_options)
+
+        share_data.update({
+            'user_id': self.context.user_id,
+            'project_id': self.context.project_id,
+            'status': constants.STATUS_MANAGING,
+            'scheduled_at': date,
+            'deleted': False,
+        })
+
+        self.api.get_all.assert_called_once_with(self.context, mock.ANY)
+        db_driver.share_create.assert_called_once_with(self.context,
+                                                       share_data)
+        self.share_rpcapi.manage_share.assert_called_once_with(
+            self.context, share, driver_options)
+
+    @ddt.data([{'id': 'fake', 'status': constants.STATUS_MANAGE_ERROR}],
+              [{'id': 'fake', 'status': constants.STATUS_UNMANAGED}],)
+    def test_manage_retry(self, shares):
+        share_data = {
+            'host': 'fake',
+            'export_location': 'fake',
+            'share_proto': 'fake',
+        }
+        driver_options = {}
+        self.mock_object(db_driver, 'share_update',
+                         mock.Mock(return_value=fake_share('fakeid')))
+        self.mock_object(self.api, 'get_all',
+                         mock.Mock(return_value=shares))
+
+        self.api.manage(self.context,
+                        copy.deepcopy(share_data),
+                        driver_options)
+
+        db_driver.share_update.assert_called_once_with(
+            self.context, 'fake', mock.ANY)
+        self.share_rpcapi.manage_share.assert_called_once_with(
+            self.context, mock.ANY, driver_options)
+
+    def test_manage_duplicate(self):
+        share_data = {
+            'host': 'fake',
+            'export_location': 'fake',
+            'share_proto': 'fake',
+        }
+        driver_options = {}
+        self.mock_object(self.api, 'get_all',
+                         mock.Mock(return_value=['fake', 'fake2']))
+
+        self.assertRaises(exception.ManilaException, self.api.manage,
+                          self.context, share_data, driver_options)
+
+    def test_unmanage(self):
+        share_data = {
+            'id': 'fakeid',
+            'host': 'fake',
+            'size': '1',
+            'status': 'available',
+            'user_id': self.context.user_id,
+            'project_id': self.context.project_id,
+        }
+        self.mock_object(db_driver, 'share_update', mock.Mock())
+
+        self.api.unmanage(self.context, share_data)
+
+        self.share_rpcapi.unmanage_share.assert_called_once_with(
+            self.context, mock.ANY)
+        db_driver.share_update.assert_called_once_with(
+            mock.ANY, share_data['id'], mock.ANY)
 
     @mock.patch.object(quota.QUOTAS, 'reserve',
                        mock.Mock(return_value='reservation'))

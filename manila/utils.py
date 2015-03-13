@@ -42,6 +42,7 @@ from oslo_utils import timeutils
 import paramiko
 import six
 
+from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
 
@@ -414,6 +415,15 @@ def service_is_up(service):
     # Timestamps in DB are UTC.
     elapsed = timeutils.total_seconds(timeutils.utcnow() - last_heartbeat)
     return abs(elapsed) <= CONF.service_down_time
+
+
+def validate_service_host(context, host):
+    service = db_api.service_get_by_host_and_topic(context, host,
+                                                   'manila-share')
+    if not service_is_up(service):
+        raise exception.ServiceIsDown(service=service['host'])
+
+    return service
 
 
 def read_file_as_root(file_path):

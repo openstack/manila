@@ -50,6 +50,9 @@ CONF.register_opts(test_service_opts)
 
 class FakeManager(manager.Manager):
     """Fake manager for tests."""
+
+    RPC_API_VERSION = "1.0"
+
     def __init__(self, host=None, db_driver=None, service_name=None):
         super(FakeManager, self).__init__(host=host, db_driver=db_driver)
 

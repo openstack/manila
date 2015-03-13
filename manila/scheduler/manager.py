@@ -19,7 +19,6 @@
 Scheduler Service
 """
 
-from oslo import messaging
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
@@ -48,8 +47,6 @@ class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
 
     RPC_API_VERSION = '1.1'
-
-    target = messaging.Target(version=RPC_API_VERSION)
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):

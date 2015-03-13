@@ -189,3 +189,13 @@ class ShareDriverTestCase(test.TestCase):
             NotImplementedError,
             share_driver.teardown_server,
             'fake_share_server_details')
+
+    @ddt.data('manage_existing',
+              'unmanage')
+    def test_drivers_methods_needed_by_manage_functionality(self, method):
+        share_driver = self._instantiate_share_driver(None, False)
+
+        def assert_is_callable(obj, attr):
+            self.assertTrue(callable(getattr(obj, attr)))
+
+        assert_is_callable(share_driver, method)

@@ -39,6 +39,8 @@
     "share_extension:share_type_access": "",
     "share_extension:share_type_access:addProjectAccess": "rule:admin_api",
     "share_extension:share_type_access:removeProjectAccess": "rule:admin_api",
+    "share_extension:manage": [["rule:admin_api"]],
+    "share_extension:unmanage": [["rule:admin_api"]],
 
      "security_service:index": [],
      "security_service:get_all_security_services": [["rule:admin_api"]],
