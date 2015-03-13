@@ -17,6 +17,7 @@
 import hashlib
 import inspect
 import logging
+import os
 
 from oslo_config import cfg
 import six
@@ -128,32 +129,30 @@ class HP3ParShareDriver(driver.ShareDriver):
         try:
             # Log the source SHA for support.  Only do this with DEBUG.
             if LOG.isEnabledFor(logging.DEBUG):
-                driver_source = inspect.getsourcelines(HP3ParShareDriver)
-                driver_sha1 = hashlib.sha1('blob %(source_size)s\0%('
-                                           'source_string)s' %
-                                           {
-                                               'source_size': len(
-                                                   driver_source),
-                                               'source_string': driver_source,
-                                           })
                 LOG.debug('HP3ParShareDriver SHA1: %s',
-                          driver_sha1.hexdigest())
-
-                mediator_source = inspect.getsourcelines(
-                    hp_3par_mediator.HP3ParMediator)
-                mediator_sha1 = hashlib.sha1(
-                    'blob %(source_size)s\0%(source_string)s' %
-                    {
-                        'source_size': len(mediator_source),
-                        'source_string': mediator_source,
-                    })
-                LOG.debug('HP3ParMediator SHA1: %s', mediator_sha1.hexdigest())
+                          self.sha1_hash(HP3ParShareDriver))
+                LOG.debug('HP3ParMediator SHA1: %s',
+                          self.sha1_hash(hp_3par_mediator.HP3ParMediator))
         except Exception as e:
             # Don't let any exceptions during the SHA1 logging interfere
             # with startup.  This is just debug info to identify the source
             # code.  If it doesn't work, just log a debug message.
             LOG.debug('Source code SHA1 not logged due to: %s',
                       six.text_type(e))
+
+    @staticmethod
+    def sha1_hash(clazz):
+        """Get the SHA1 hash for the source of a class."""
+        source_file = inspect.getsourcefile(clazz)
+        file_size = os.path.getsize(source_file)
+
+        sha1 = hashlib.sha1()
+        sha1.update(("blob %u\0" % file_size).encode('utf-8'))
+
+        with open(source_file, 'rb') as f:
+            sha1.update(f.read())
+
+        return sha1.hexdigest()
 
     @staticmethod
     def _build_export_location(protocol, ip, path):
