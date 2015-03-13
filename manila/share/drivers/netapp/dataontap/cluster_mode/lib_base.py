@@ -488,9 +488,9 @@ class NetAppCmodeFileStorageLibrary(object):
             msg_args = {'vserver': vserver, 'proto': share['share_proto']}
             raise exception.NetAppException(msg % msg_args)
 
-        ip_address = interfaces[0]['address']
-        export_location = helper.create_share(share_name, ip_address)
-        return export_location
+        export_addresses = [interface['address'] for interface in interfaces]
+        export_locations = helper.create_share(share_name, export_addresses)
+        return export_locations
 
     @na_utils.trace
     def _remove_export(self, share, vserver_client):

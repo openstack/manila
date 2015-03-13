@@ -15,6 +15,8 @@
 NetApp CIFS protocol helper class.
 """
 
+import re
+
 from oslo_log import log
 
 from manila import exception
@@ -31,11 +33,12 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
     """Netapp specific cluster-mode CIFS sharing driver."""
 
     @na_utils.trace
-    def create_share(self, share_name, export_ip):
+    def create_share(self, share_name, export_addresses):
         """Creates CIFS share on Data ONTAP Vserver."""
         self._client.create_cifs_share(share_name)
         self._client.remove_cifs_share_access(share_name, 'Everyone')
-        return "//%s/%s" % (export_ip, share_name)
+        return [r'\\%s\%s' % (export_address, share_name)
+                for export_address in export_addresses]
 
     @na_utils.trace
     def delete_share(self, share):
@@ -84,6 +87,10 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
     @staticmethod
     def _get_export_location(share):
         """Returns host ip and share name for a given CIFS share."""
-        export_location = share['export_location'] or '///'
-        _x, _x, host_ip, share_name = export_location.split('/')
-        return host_ip, share_name
+        export_location = share['export_location'] or '\\\\\\'
+        regex = r'^(?:\\\\|//)(?P<host_ip>.*)(?:\\|/)(?P<share_name>.*)$'
+        match = re.match(regex, export_location)
+        if match:
+            return match.group('host_ip'), match.group('share_name')
+        else:
+            return '', ''

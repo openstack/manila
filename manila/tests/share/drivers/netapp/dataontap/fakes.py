@@ -188,7 +188,7 @@ SNAPSHOT = {
 }
 
 LIF_NAMES = []
-LIF_ADDRESSES = ('10.10.10.10', '10.10.10.20')
+LIF_ADDRESSES = ['10.10.10.10', '10.10.10.20']
 LIFS = (
     {'address': LIF_ADDRESSES[0],
      'home-node': CLUSTER_NODES[0],
@@ -207,6 +207,9 @@ LIFS = (
      'vserver': VSERVER1
      },
 )
+
+NFS_EXPORTS = [':'.join([LIF_ADDRESSES[0], 'fake_export_path']),
+               ':'.join([LIF_ADDRESSES[1], 'fake_export_path'])]
 
 SHARE_ACCESS = {
     'access_type': 'user',

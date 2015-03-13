@@ -41,10 +41,24 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         self.mock_client.get_volume_junction_path.return_value = (
             fake.NFS_SHARE_PATH)
 
-        result = self.helper.create_share(fake.SHARE_NAME, fake.SHARE_ADDRESS)
+        result = self.helper.create_share(fake.SHARE_NAME,
+                                          [fake.SHARE_ADDRESS_1])
 
-        self.assertEqual(':'.join([fake.SHARE_ADDRESS, fake.NFS_SHARE_PATH]),
-                         result)
+        expected = [':'.join([fake.SHARE_ADDRESS_1, fake.NFS_SHARE_PATH])]
+        self.assertEqual(expected, result)
+
+    def test_create_share_multiple(self):
+
+        self.mock_client.get_volume_junction_path.return_value = (
+            fake.NFS_SHARE_PATH)
+
+        result = self.helper.create_share(fake.SHARE_NAME,
+                                          [fake.SHARE_ADDRESS_1,
+                                           fake.SHARE_ADDRESS_2])
+
+        expected = [':'.join([fake.SHARE_ADDRESS_1, fake.NFS_SHARE_PATH]),
+                    ':'.join([fake.SHARE_ADDRESS_2, fake.NFS_SHARE_PATH])]
+        self.assertEqual(expected, result)
 
     def test_delete_share(self):
 
@@ -123,7 +137,7 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
     def test_get_target(self):
 
         target = self.helper.get_target(fake.NFS_SHARE)
-        self.assertEqual(fake.SHARE_ADDRESS, target)
+        self.assertEqual(fake.SHARE_ADDRESS_1, target)
 
     def test_get_target_missing_location(self):
 
@@ -154,7 +168,7 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
         host_ip, export_path = self.helper._get_export_location(
             fake.NFS_SHARE)
-        self.assertEqual(fake.SHARE_ADDRESS, host_ip)
+        self.assertEqual(fake.SHARE_ADDRESS_1, host_ip)
         self.assertEqual('/' + fake.SHARE_NAME, export_path)
 
     def test_get_export_location_missing_location(self):

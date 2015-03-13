@@ -29,11 +29,11 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     """Netapp specific cluster-mode NFS sharing driver."""
 
     @na_utils.trace
-    def create_share(self, share_name, export_ip):
+    def create_share(self, share_name, export_addresses):
         """Creates NFS share."""
         export_path = self._client.get_volume_junction_path(share_name)
-        export_location = ':'.join([export_ip, export_path])
-        return export_location
+        return [':'.join([export_address, export_path])
+                for export_address in export_addresses]
 
     @na_utils.trace
     def delete_share(self, share):

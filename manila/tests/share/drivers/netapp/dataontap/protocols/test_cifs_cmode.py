@@ -45,14 +45,29 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_create_share(self):
 
-        result = self.helper.create_share(fake.SHARE_NAME, fake.SHARE_ADDRESS)
+        result = self.helper.create_share(fake.SHARE_NAME,
+                                          [fake.SHARE_ADDRESS_1])
 
+        expected = [r'\\%s\%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME)]
+        self.assertEqual(expected, result)
         self.mock_client.create_cifs_share.assert_called_once_with(
             fake.SHARE_NAME)
         self.mock_client.remove_cifs_share_access.assert_called_once_with(
             fake.SHARE_NAME, 'Everyone')
-        self.assertEqual('//%s/%s' % (fake.SHARE_ADDRESS, fake.SHARE_NAME),
-                         result)
+
+    def test_create_share_multiple(self):
+
+        result = self.helper.create_share(fake.SHARE_NAME,
+                                          [fake.SHARE_ADDRESS_1,
+                                           fake.SHARE_ADDRESS_2])
+
+        expected = [r'\\%s\%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME),
+                    r'\\%s\%s' % (fake.SHARE_ADDRESS_2, fake.SHARE_NAME)]
+        self.assertEqual(expected, result)
+        self.mock_client.create_cifs_share.assert_called_once_with(
+            fake.SHARE_NAME)
+        self.mock_client.remove_cifs_share_access.assert_called_once_with(
+            fake.SHARE_NAME, 'Everyone')
 
     def test_delete_share(self):
 
@@ -147,7 +162,7 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
     def test_get_target(self):
 
         target = self.helper.get_target(fake.CIFS_SHARE)
-        self.assertEqual(fake.SHARE_ADDRESS, target)
+        self.assertEqual(fake.SHARE_ADDRESS_1, target)
 
     def test_get_target_missing_location(self):
 
@@ -157,7 +172,17 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
     def test_get_export_location(self):
 
         host_ip, share_name = self.helper._get_export_location(fake.CIFS_SHARE)
-        self.assertEqual(fake.SHARE_ADDRESS, host_ip)
+        self.assertEqual(fake.SHARE_ADDRESS_1, host_ip)
+        self.assertEqual(fake.SHARE_NAME, share_name)
+
+    def test_get_export_location_legacy_forward_slashes(self):
+
+        fake_share = fake.CIFS_SHARE.copy()
+        fake_share['export_location'] = fake_share['export_location'].replace(
+            '\\', '/')
+
+        host_ip, share_name = self.helper._get_export_location(fake_share)
+        self.assertEqual(fake.SHARE_ADDRESS_1, host_ip)
         self.assertEqual(fake.SHARE_NAME, share_name)
 
     def test_get_export_location_missing_location(self):

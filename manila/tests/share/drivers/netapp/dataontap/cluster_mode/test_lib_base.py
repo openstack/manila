@@ -790,7 +790,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_create_export(self):
 
         protocol_helper = mock.Mock()
-        protocol_helper.create_share.return_value = 'fake_export_location'
+        protocol_helper.create_share.return_value = fake.NFS_EXPORTS
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=protocol_helper))
@@ -802,10 +802,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                              vserver_client)
 
         share_name = self.library._get_valid_share_name(fake.SHARE['id'])
-        self.assertEqual('fake_export_location', result)
+        self.assertEqual(fake.NFS_EXPORTS, result)
         protocol_helper.create_share.assert_called_once_with(
-            share_name,
-            fake.LIFS[0]['address'])
+            share_name, fake.LIF_ADDRESSES)
 
     def test_create_export_lifs_not_found(self):
 

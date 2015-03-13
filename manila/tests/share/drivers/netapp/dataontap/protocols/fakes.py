@@ -15,18 +15,19 @@
 
 SHARE_NAME = 'fake_share'
 SHARE_ID = '9dba208c-9aa7-11e4-89d3-123b93f75cba'
-SHARE_ADDRESS = '10.10.10.10'
+SHARE_ADDRESS_1 = '10.10.10.10'
+SHARE_ADDRESS_2 = '10.10.10.20'
 CLIENT_ADDRESS_1 = '20.20.20.10'
 CLIENT_ADDRESS_2 = '20.20.20.20'
 
 CIFS_SHARE = {
-    'export_location': '//%s/%s' % (SHARE_ADDRESS, SHARE_NAME),
+    'export_location': r'\\%s\%s' % (SHARE_ADDRESS_1, SHARE_NAME),
     'id': SHARE_ID
 }
 
 NFS_SHARE_PATH = '/%s' % SHARE_NAME
 NFS_SHARE = {
-    'export_location': '%s:%s' % (SHARE_ADDRESS, NFS_SHARE_PATH),
+    'export_location': '%s:%s' % (SHARE_ADDRESS_1, NFS_SHARE_PATH),
     'id': SHARE_ID
 }
 

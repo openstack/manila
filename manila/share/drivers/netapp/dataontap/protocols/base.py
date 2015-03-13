@@ -29,7 +29,7 @@ class NetAppBaseHelper(object):
         self._client = client
 
     @abc.abstractmethod
-    def create_share(self, share, export_ip):
+    def create_share(self, share, export_addresses):
         """Creates NAS share."""
 
     @abc.abstractmethod
