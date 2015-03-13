@@ -122,10 +122,12 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
         __, new_sn = self.create_share_network(
             neutron_net_id=share_network['neutron_net_id'],
             neutron_subnet_id=share_network['neutron_subnet_id'],
-            nova_net_id=share_network['nova_net_id'])
+            nova_net_id=share_network['nova_net_id'],
+            cleanup_in_class=False)
 
         # Create share with share network
-        __, share = self.create_share(share_network_id=new_sn['id'])
+        __, share = self.create_share(
+            share_network_id=new_sn['id'], cleanup_in_class=False)
 
         # Try delete share network
         self.assertRaises(
