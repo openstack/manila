@@ -30,10 +30,15 @@ LOG = log.getLogger('manila.tests.test_migrations')
 
 
 class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin):
-    """Test sqlalchemy-migrate migrations."""
+    """Test alembic migrations."""
 
-    snake_walk = False
-    downgrade = False
+    @property
+    def snake_walk(self):
+        return True
+
+    @property
+    def downgrade(self):
+        return True
 
     @property
     def INIT_VERSION(self):
@@ -67,24 +72,20 @@ class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin):
 
         LOG.debug('latest version is %s', versions[0].revision)
 
-        prev_version = 'base'
         for version in reversed(versions):
             self._migrate_up(version.revision, with_data=True)
-            if snake_walk and prev_version:
-                downgraded = self._migrate_down(prev_version, with_data=True)
+            if snake_walk:
+                downgraded = self._migrate_down(
+                    version.down_revision, with_data=True)
                 if downgraded:
                     self._migrate_up(version.revision)
-            prev_version = version.revision
 
-        prev_version = 'base'
         if downgrade:
             for version in versions:
-                self._migrate_down(version.revision)
-                downgraded = self._migrate_down(prev_version)
+                downgraded = self._migrate_down(version.down_revision)
                 if snake_walk and downgraded:
                     self._migrate_up(version.revision)
-                    self._migrate_down(prev_version)
-                prev_version = version.revision
+                    self._migrate_down(version.down_revision)
 
     def _migrate_down(self, version, with_data=False):
         try:
