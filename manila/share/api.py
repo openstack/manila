@@ -216,6 +216,47 @@ class API(base.Base):
 
         return share
 
+    def manage(self, context, share_data, driver_options):
+        policy.check_policy(context, 'share', 'manage')
+
+        shares = self.get_all(context, {
+            'host': share_data['host'],
+            'export_location': share_data['export_location'],
+            'share_proto': share_data['share_proto']
+        })
+
+        share_data.update({
+            'user_id': context.user_id,
+            'project_id': context.project_id,
+            'status': constants.STATUS_MANAGING,
+            'scheduled_at': timeutils.utcnow(),
+            'deleted': False,
+        })
+
+        retry_states = (constants.STATUS_MANAGE_ERROR,
+                        constants.STATUS_UNMANAGED)
+
+        if len(shares) == 0:
+            share = self.db.share_create(context, share_data)
+        # NOTE(u_glide): Case when administrator have fixed some problems and
+        # tries to manage share again
+        elif len(shares) == 1 and shares[0]['status'] in retry_states:
+            share = self.db.share_update(context, shares[0]['id'], share_data)
+        else:
+            msg = _("Share already exists.")
+            raise exception.ManilaException(msg)
+
+        self.share_rpcapi.manage_share(context, share, driver_options)
+
+    def unmanage(self, context, share):
+        policy.check_policy(context, 'share', 'unmanage')
+
+        update_data = {'status': constants.STATUS_UNMANAGING,
+                       'terminated_at': timeutils.utcnow()}
+        share_ref = self.db.share_update(context, share['id'], update_data)
+
+        self.share_rpcapi.unmanage_share(context, share_ref)
+
     @policy.wrap_check_policy('share')
     def delete(self, context, share, force=False):
         """Delete share."""

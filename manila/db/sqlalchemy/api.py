@@ -672,6 +672,14 @@ def _quota_usage_create(context, project_id, user_id, resource, in_use,
 
 
 @require_admin_context
+def quota_usage_create(context, project_id, user_id, resource, in_use,
+                       reserved, until_refresh):
+    session = get_session()
+    return _quota_usage_create(context, project_id, user_id, resource, in_use,
+                               reserved, until_refresh, session)
+
+
+@require_admin_context
 def quota_usage_update(context, project_id, user_id, resource, **kwargs):
     updates = {}
 

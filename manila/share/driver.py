@@ -324,6 +324,38 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
+    def manage_existing(self, share, driver_options):
+        """Brings an existing share under Manila management.
+
+        If provided share is not valid, then raise a
+        ManageInvalidShare exception, specifying a reason for the failure.
+
+        The share has a share_type, and the driver can inspect that and
+        compare against the properties of the referenced backend share.
+        If they are incompatible, raise a
+        ManageExistingShareTypeMismatch, specifying a reason for the failure.
+
+        :param share: Share model
+        :param driver_options: Driver-specific options provided by admin.
+        :return: share_update dictionary with required key 'size',
+                 which should contain size of the share.
+        """
+        raise NotImplementedError()
+
+    def unmanage(self, share):
+        """Removes the specified share from Manila management.
+
+        Does not delete the underlying backend share.
+
+        For most drivers, this will not need to do anything.  However, some
+        drivers might use this call as an opportunity to clean up any
+        Manila-specific configuration that they have associated with the
+        backend share.
+
+        If provided share cannot be unmanaged, then raise an
+        UnmanageInvalidShare exception, specifying a reason for the failure.
+        """
+
     def teardown_server(self, *args, **kwargs):
         if self.driver_handles_share_servers:
             return self._teardown_server(*args, **kwargs)

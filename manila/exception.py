@@ -198,6 +198,10 @@ class ServiceNotFound(NotFound):
     message = _("Service %(service_id)s could not be found.")
 
 
+class ServiceIsDown(Invalid):
+    message = _("Service %(service)s is down.")
+
+
 class HostNotFound(NotFound):
     message = _("Host %(host)s could not be found.")
 
@@ -334,6 +338,16 @@ class InvalidShare(Invalid):
     message = _("Invalid share: %(reason)s.")
 
 
+class ManageInvalidShare(InvalidShare):
+    message = _("Manage existing share failed due to "
+                "invalid share: %(reason)s")
+
+
+class UnmanageInvalidShare(InvalidShare):
+    message = _("Unmanage existing share failed due to "
+                "invalid share: %(reason)s")
+
+
 class PortLimitExceeded(QuotaError):
     message = _("Maximum number of ports exceeded.")
 
@@ -453,6 +467,11 @@ class ShareTypeAccessExists(ManilaException):
 class ShareTypeCreateFailed(ManilaException):
     message = _("Cannot create share_type with "
                 "name %(name)s and specs %(extra_specs)s.")
+
+
+class ManageExistingShareTypeMismatch(ManilaException):
+    message = _("Manage existing share failed due to share type mismatch: "
+                "%(reason)s")
 
 
 class InstanceNotFound(NotFound):

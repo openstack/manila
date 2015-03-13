@@ -128,6 +128,22 @@ class ManagerMeta(type):
 @six.add_metaclass(ManagerMeta)
 class Manager(base.Base):
 
+    @property
+    def RPC_API_VERSION(self):
+        """Redefine this in child classes."""
+        raise NotImplementedError
+
+    @property
+    def target(self):
+        """This property is used by oslo_messaging.
+
+        https://wiki.openstack.org/wiki/Oslo/Messaging#API_Version_Negotiation
+        """
+        if not hasattr(self, '_target'):
+            from oslo import messaging
+            self._target = messaging.Target(version=self.RPC_API_VERSION)
+        return self._target
+
     def __init__(self, host=None, db_driver=None):
         if not host:
             host = CONF.host
