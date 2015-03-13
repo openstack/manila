@@ -36,7 +36,8 @@ class SQLAlchemyAPIShareTestCase(test.TestCase):
                                         api.share_get_all_by_host(
                                             self.ctxt, 'foo'),
                                         ignored_keys=['share_type',
-                                                      'share_type_id'])
+                                                      'share_type_id',
+                                                      'export_locations'])
 
     def test_share_filter_all_by_host_with_pools_multiple_hosts(self):
         shares = [[api.share_create(self.ctxt, {'host': value})
@@ -47,4 +48,5 @@ class SQLAlchemyAPIShareTestCase(test.TestCase):
                                         api.share_get_all_by_host(
                                             self.ctxt, 'foo'),
                                         ignored_keys=['share_type',
-                                                      'share_type_id'])
+                                                      'share_type_id',
+                                                      'export_locations'])

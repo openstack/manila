@@ -47,11 +47,11 @@ class FakeShareDriver(driver.ShareDriver):
         pass
 
     def create_share(self, context, share, share_server=None):
-        pass
+        return ['/fake/path', '/fake/path2']
 
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
-        pass
+        return ['/fake/path', '/fake/path2']
 
     def delete_share(self, context, share, share_server=None):
         pass

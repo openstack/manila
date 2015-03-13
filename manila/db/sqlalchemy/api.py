@@ -1654,6 +1654,68 @@ def _share_metadata_get_item(context, share_id, key, session=None):
     return result
 
 
+#################################
+
+@require_context
+@require_share_exists
+def share_export_locations_get(context, share_id):
+    rows = _share_export_locations_get(context, share_id)
+
+    return [location['path'] for location in rows]
+
+
+def _share_export_locations_get(context, share_id, session=None):
+    if not session:
+        session = get_session()
+
+    return model_query(context, models.ShareExportLocations,
+                       session=session). \
+        filter_by(share_id=share_id).all()
+
+
+@require_context
+@require_share_exists
+def share_export_locations_update(context, share_id, export_locations, delete):
+    # NOTE(u_glide):
+    # Backward compatibility code for drivers,
+    # which returns single export_location as string
+    if not isinstance(export_locations, list):
+        export_locations = [export_locations]
+
+    session = get_session()
+
+    with session.begin():
+        location_rows = _share_export_locations_get(
+            context, share_id, session=session)
+
+        current_locations = set([l['path'] for l in location_rows])
+
+        new_locations = set(export_locations)
+        add_locations = new_locations.difference(current_locations)
+
+        # Set existing export location to deleted if delete argument is True
+        if delete:
+            delete_locations = current_locations.difference(new_locations)
+
+            for location in location_rows:
+                if location['path'] in delete_locations:
+                    location.update({'deleted': True})
+                    location.save(session=session)
+        else:
+            export_locations = list(current_locations.union(new_locations))
+
+        # Now add new export locations
+        for path in add_locations:
+            location_ref = models.ShareExportLocations()
+            location_ref.update({'path': path, 'share_id': share_id})
+            location_ref.save(session=session)
+
+        return export_locations
+
+
+#################################
+
+
 @require_context
 def security_service_create(context, values):
     if not values.get('id'):
