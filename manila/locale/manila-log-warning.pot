@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev144\n"
+"Project-Id-Version: manila 2015.1.dev158\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-13 06:20+0000\n"
+"POT-Creation-Date: 2015-03-14 06:15+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -102,7 +102,7 @@ msgid ""
 "(%(d_consumed)d of %(d_quota)d already consumed)"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:949
+#: manila/db/sqlalchemy/api.py:957
 #, python-format
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr ""
@@ -122,7 +122,7 @@ msgstr ""
 msgid "Can not find policy directories %s"
 msgstr ""
 
-#: manila/scheduler/manager.py:102
+#: manila/scheduler/manager.py:99
 #, python-format
 msgid "Failed to schedule_%(method)s: %(ex)s"
 msgstr ""
@@ -148,35 +148,40 @@ msgid ""
 "shares already consumed)"
 msgstr ""
 
-#: manila/share/api.py:293
+#: manila/share/api.py:334
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: manila/share/api.py:302
+#: manila/share/api.py:343
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
 "snapshots already consumed)"
 msgstr ""
 
-#: manila/share/manager.py:81
+#: manila/share/manager.py:89
 #, python-format
 msgid ""
 "Driver path %(old)s is deprecated, update your configuration to the new "
 "path %(new)s"
 msgstr ""
 
-#: manila/share/manager.py:297
+#: manila/share/manager.py:314
 #, python-format
 msgid ""
 "Share information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/manager.py:531
+#: manila/share/manager.py:356
+#, python-format
+msgid "Manage share failed: %s"
+msgstr ""
+
+#: manila/share/manager.py:658
 #, python-format
 msgid ""
 "Server Information in exception can not be written to db because it "

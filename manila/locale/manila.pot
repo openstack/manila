@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev144\n"
+"Project-Id-Version: manila 2015.1.dev158\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-13 06:20+0000\n"
+"POT-Creation-Date: 2015-03-14 06:15+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -75,8 +75,8 @@ msgstr ""
 msgid "Invalid host: %(reason)s"
 msgstr ""
 
-#: manila/exception.py:159 manila/exception.py:483 manila/exception.py:487
-#: manila/exception.py:491 manila/exception.py:495 manila/exception.py:524
+#: manila/exception.py:159 manila/exception.py:502 manila/exception.py:506
+#: manila/exception.py:510 manila/exception.py:514 manila/exception.py:543
 #, python-format
 msgid "%(err)s"
 msgstr ""
@@ -126,372 +126,392 @@ msgstr ""
 
 #: manila/exception.py:202
 #, python-format
-msgid "Host %(host)s could not be found."
+msgid "Service %(service)s is down."
 msgstr ""
 
 #: manila/exception.py:206
 #, python-format
-msgid "Scheduler host filter %(filter_name)s could not be found."
+msgid "Host %(host)s could not be found."
 msgstr ""
 
 #: manila/exception.py:210
 #, python-format
-msgid "Scheduler host weigher %(weigher_name)s could not be found."
+msgid "Scheduler host filter %(filter_name)s could not be found."
 msgstr ""
 
 #: manila/exception.py:214
 #, python-format
-msgid "Could not find binary %(binary)s on host %(host)s."
+msgid "Scheduler host weigher %(weigher_name)s could not be found."
 msgstr ""
 
 #: manila/exception.py:218
 #, python-format
-msgid "Invalid reservation expiration %(expire)s."
+msgid "Could not find binary %(binary)s on host %(host)s."
 msgstr ""
 
 #: manila/exception.py:222
+#, python-format
+msgid "Invalid reservation expiration %(expire)s."
+msgstr ""
+
+#: manila/exception.py:226
 #, python-format
 msgid ""
 "Change would make usage less than 0 for the following resources: "
 "%(unders)s."
 msgstr ""
 
-#: manila/exception.py:227
+#: manila/exception.py:231
 msgid "Quota could not be found."
 msgstr ""
 
-#: manila/exception.py:231
+#: manila/exception.py:235
 #, python-format
 msgid "Quota exists for project %(project_id)s, resource %(resource)s."
 msgstr ""
 
-#: manila/exception.py:236
+#: manila/exception.py:240
 #, python-format
 msgid "Unknown quota resources %(unknown)s."
 msgstr ""
 
-#: manila/exception.py:240
+#: manila/exception.py:244
 #, python-format
 msgid "Quota for user %(user_id)s in project %(project_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:245
+#: manila/exception.py:249
 #, python-format
 msgid "Quota for project %(project_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:249
+#: manila/exception.py:253
 #, python-format
 msgid "Quota class %(class_name)s could not be found."
 msgstr ""
 
-#: manila/exception.py:253
+#: manila/exception.py:257
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:257
+#: manila/exception.py:261
 #, python-format
 msgid "Quota reservation %(uuid)s could not be found."
 msgstr ""
 
-#: manila/exception.py:261
+#: manila/exception.py:265
 #, python-format
 msgid "Quota exceeded for resources: %(overs)s."
 msgstr ""
 
-#: manila/exception.py:265
+#: manila/exception.py:269
 #, python-format
 msgid "Migration %(migration_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:269
+#: manila/exception.py:273
 #, python-format
 msgid "Migration not found for instance %(instance_id)s with status %(status)s."
 msgstr ""
 
-#: manila/exception.py:274
+#: manila/exception.py:278
 #, python-format
 msgid "File %(file_path)s could not be found."
 msgstr ""
 
-#: manila/exception.py:278
+#: manila/exception.py:282
 #, python-format
 msgid "Migration error: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:282
+#: manila/exception.py:286
 #, python-format
 msgid "Malformed message body: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:286
+#: manila/exception.py:290
 #, python-format
 msgid "Could not find config at %(path)s."
 msgstr ""
 
-#: manila/exception.py:290
+#: manila/exception.py:294
 #, python-format
 msgid "Could not load paste app '%(name)s' from %(path)s."
 msgstr ""
 
-#: manila/exception.py:294
+#: manila/exception.py:298
 #, python-format
 msgid "No valid host was found. %(reason)s."
 msgstr ""
 
-#: manila/exception.py:298
+#: manila/exception.py:302
 #, python-format
 msgid "Host %(host)s is not up or doesn't exist."
 msgstr ""
 
-#: manila/exception.py:302
+#: manila/exception.py:306
 #, python-format
 msgid "Quota exceeded: code=%(code)s."
 msgstr ""
 
-#: manila/exception.py:309
+#: manila/exception.py:313
 msgid "Requested share exceeds allowed gigabytes quota."
 msgstr ""
 
-#: manila/exception.py:313
-msgid "Requested snapshot exceeds allowed gigabytes quota."
-msgstr ""
-
 #: manila/exception.py:317
-#, python-format
-msgid "Maximum number of shares allowed (%(allowed)d) exceeded."
+msgid "Requested snapshot exceeds allowed gigabytes quota."
 msgstr ""
 
 #: manila/exception.py:321
 #, python-format
-msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded."
+msgid "Maximum number of shares allowed (%(allowed)d) exceeded."
 msgstr ""
 
 #: manila/exception.py:325
 #, python-format
+msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded."
+msgstr ""
+
+#: manila/exception.py:329
+#, python-format
 msgid "Maximum number of share-networks allowed (%(allowed)d) exceeded."
 msgstr ""
 
-#: manila/exception.py:330
+#: manila/exception.py:334
 msgid "Unknown Gluster exception."
 msgstr ""
 
-#: manila/exception.py:334
+#: manila/exception.py:338
 #, python-format
 msgid "Invalid share: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:338
+#: manila/exception.py:342
+#, python-format
+msgid "Manage existing share failed due to invalid share: %(reason)s"
+msgstr ""
+
+#: manila/exception.py:347
+#, python-format
+msgid "Unmanage existing share failed due to invalid share: %(reason)s"
+msgstr ""
+
+#: manila/exception.py:352
 msgid "Maximum number of ports exceeded."
 msgstr ""
 
-#: manila/exception.py:342
+#: manila/exception.py:356
 #, python-format
 msgid "Share access %(access_type)s:%(access)s exists."
 msgstr ""
 
-#: manila/exception.py:346
+#: manila/exception.py:360
 #, python-format
 msgid "Invalid access_rule: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:350
+#: manila/exception.py:364
 #, python-format
 msgid "Invalid or unsupported share access level: %(level)s."
 msgstr ""
 
-#: manila/exception.py:354
+#: manila/exception.py:368
 msgid "Deleting $(share_name) share that used."
 msgstr ""
 
-#: manila/exception.py:358
+#: manila/exception.py:372
 #, python-format
 msgid "Share backend error: %(msg)s."
 msgstr ""
 
-#: manila/exception.py:362 manila/exception.py:417
+#: manila/exception.py:376 manila/exception.py:431
 #, python-format
 msgid "Snapshot %(snapshot_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:366
+#: manila/exception.py:380
 #, python-format
 msgid "Deleting snapshot %(snapshot_name)s that has dependent shares."
 msgstr ""
 
-#: manila/exception.py:371
+#: manila/exception.py:385
 #, python-format
 msgid "Invalid share snapshot: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:375
+#: manila/exception.py:389
 msgid "Metadata item is not found."
 msgstr ""
 
-#: manila/exception.py:379
+#: manila/exception.py:393
 msgid "Invalid metadata."
 msgstr ""
 
-#: manila/exception.py:383
+#: manila/exception.py:397
 msgid "Invalid metadata size."
 msgstr ""
 
-#: manila/exception.py:387
+#: manila/exception.py:401
 #, python-format
 msgid "Security service %(security_service_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:391
+#: manila/exception.py:405
 #, python-format
 msgid ""
 "Failed to associate share network %(share_network_id)s and security "
 "service %(security_service_id)s: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:396
+#: manila/exception.py:410
 #, python-format
 msgid ""
 "Failed to dissociate share network %(share_network_id)s and security "
 "service %(security_service_id)s: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:401
+#: manila/exception.py:415
 msgid "Invalid volume."
 msgstr ""
 
-#: manila/exception.py:405
+#: manila/exception.py:419
 #, python-format
 msgid "Invalid share type: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:409
+#: manila/exception.py:423
 #, python-format
 msgid "Invalid extra_spec: %(reason)s."
 msgstr ""
 
-#: manila/exception.py:413
+#: manila/exception.py:427
 #, python-format
 msgid "Volume %(volume_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:421
+#: manila/exception.py:435
 #, python-format
 msgid "Share type %(share_type_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:425
+#: manila/exception.py:439
 #, python-format
 msgid ""
 "Share type access not found for %(share_type_id)s / %(project_id)s "
 "combination."
 msgstr ""
 
-#: manila/exception.py:430
+#: manila/exception.py:444
 #, python-format
 msgid "Share type with name %(share_type_name)s could not be found."
 msgstr ""
 
-#: manila/exception.py:435
+#: manila/exception.py:449
 #, python-format
 msgid ""
 "Share Type %(share_type_id)s has no extra specs with key "
 "%(extra_specs_key)s."
 msgstr ""
 
-#: manila/exception.py:440
+#: manila/exception.py:454
 #, python-format
 msgid ""
 "Share Type %(share_type_id)s deletion is not allowed with shares present "
 "with the type."
 msgstr ""
 
-#: manila/exception.py:445
+#: manila/exception.py:459
 #, python-format
 msgid "Share Type %(id)s already exists."
 msgstr ""
 
-#: manila/exception.py:449
+#: manila/exception.py:463
 #, python-format
 msgid ""
 "Share type access for %(share_type_id)s / %(project_id)s combination "
 "already exists."
 msgstr ""
 
-#: manila/exception.py:454
+#: manila/exception.py:468
 #, python-format
 msgid "Cannot create share_type with name %(name)s and specs %(extra_specs)s."
 msgstr ""
 
-#: manila/exception.py:459
+#: manila/exception.py:473
+#, python-format
+msgid "Manage existing share failed due to share type mismatch: %(reason)s"
+msgstr ""
+
+#: manila/exception.py:478
 #, python-format
 msgid "Instance %(instance_id)s could not be found."
 msgstr ""
 
-#: manila/exception.py:463
+#: manila/exception.py:482
 #, python-format
 msgid "Bridge %(bridge)s does not exist."
 msgstr ""
 
-#: manila/exception.py:467
+#: manila/exception.py:486
 msgid "Exception in service instance manager occurred."
 msgstr ""
 
-#: manila/exception.py:471
+#: manila/exception.py:490
 msgid "Service instance is not available."
 msgstr ""
 
-#: manila/exception.py:475
+#: manila/exception.py:494
 msgid "Exception due to NetApp failure."
 msgstr ""
 
-#: manila/exception.py:479
+#: manila/exception.py:498
 #, python-format
 msgid "Vserver %(vserver)s is not available."
 msgstr ""
 
-#: manila/exception.py:499
+#: manila/exception.py:518
 msgid "GPFS exception occurred."
 msgstr ""
 
-#: manila/exception.py:503
+#: manila/exception.py:522
 msgid "GPFS Ganesha exception occurred."
 msgstr ""
 
-#: manila/exception.py:507
+#: manila/exception.py:526
 msgid "Ganesha management command failed."
 msgstr ""
 
-#: manila/exception.py:516
+#: manila/exception.py:535
 msgid "Invalid Sqlite database."
 msgstr ""
 
-#: manila/exception.py:520
+#: manila/exception.py:539
 msgid "Exception in SSH protocol negotiation or logic."
 msgstr ""
 
-#: manila/exception.py:528
+#: manila/exception.py:547
 msgid "HDFS exception occurred!"
 msgstr ""
 
-#: manila/utils.py:116
+#: manila/utils.py:117
 #, python-format
 msgid ""
 "Check whether private key or password are correctly set. Error connecting"
 " via ssh: %s"
 msgstr ""
 
-#: manila/utils.py:174
+#: manila/utils.py:175
 #, python-format
 msgid "Invalid backend: %s"
 msgstr ""
 
-#: manila/utils.py:494
+#: manila/utils.py:504
 #, python-format
 msgid "Invalid cidr supplied %s"
 msgstr ""
 
-#: manila/utils.py:504
+#: manila/utils.py:514
 #, python-format
 msgid "Provided improper IP version '%s'."
 msgstr ""
@@ -601,6 +621,19 @@ msgstr ""
 
 #: manila/api/contrib/share_actions.py:137
 msgid "Only 'ip','user',or'cert' access types are supported."
+msgstr ""
+
+#: manila/api/contrib/share_manage.py:63
+msgid "Share entity not found in request body"
+msgstr ""
+
+#: manila/api/contrib/share_manage.py:72
+#, python-format
+msgid "Required parameter %s not found"
+msgstr ""
+
+#: manila/api/contrib/share_manage.py:76
+msgid "service_host parameter should contain pool."
 msgstr ""
 
 #: manila/api/contrib/share_type_access.py:94
@@ -788,7 +821,7 @@ msgid ""
 " are %(allowed_statuses)s."
 msgstr ""
 
-#: manila/api/v1/share_types.py:45 manila/api/v1/shares.py:278
+#: manila/api/v1/share_types.py:45 manila/api/v1/shares.py:281
 msgid "Share type not found."
 msgstr ""
 
@@ -796,7 +829,7 @@ msgstr ""
 msgid "Share type not found"
 msgstr ""
 
-#: manila/api/v1/share_types.py:62
+#: manila/api/v1/share_types.py:62 manila/share/share_types.py:151
 msgid "Default share type not found"
 msgstr ""
 
@@ -847,19 +880,19 @@ msgstr ""
 msgid "Unrecognized read_deleted value '%s'"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1235 manila/db/sqlalchemy/api.py:1490
+#: manila/db/sqlalchemy/api.py:1243 manila/db/sqlalchemy/api.py:1498
 #, python-format
 msgid "Wrong sorting key provided - '%s'."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1242 manila/db/sqlalchemy/api.py:1497
+#: manila/db/sqlalchemy/api.py:1250 manila/db/sqlalchemy/api.py:1505
 #, python-format
 msgid ""
 "Wrong sorting data provided: sort key is '%(sort_key)s' and sort "
 "direction is '%(sort_dir)s'."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1480
+#: manila/db/sqlalchemy/api.py:1488
 #, python-format
 msgid "Wrong 'usage' key provided - '%(key)s'. Expected keys are '%(ek)s'."
 msgstr ""
@@ -1052,100 +1085,122 @@ msgid ""
 "unsupported. Available protocols: %(supported)s"
 msgstr ""
 
-#: manila/share/api.py:244
+#: manila/share/api.py:246
+msgid "Share already exists."
+msgstr ""
+
+#: manila/share/api.py:285
 msgid "Share status must be available or error"
 msgstr ""
 
-#: manila/share/api.py:249
+#: manila/share/api.py:290
 #, python-format
 msgid "Share still has %d dependent snapshots"
 msgstr ""
 
-#: manila/share/api.py:276
+#: manila/share/api.py:317
 msgid "must be available"
 msgstr ""
 
-#: manila/share/api.py:336
+#: manila/share/api.py:377
 msgid "Share Snapshot status must be 'available' or 'error'."
 msgstr ""
 
-#: manila/share/api.py:378
+#: manila/share/api.py:419
 #, python-format
 msgid "Wrong metadata filter provided: %s."
 msgstr ""
 
-#: manila/share/api.py:387
+#: manila/share/api.py:428
 #, python-format
 msgid "Wrong extra specs filter provided: %s."
 msgstr ""
 
-#: manila/share/api.py:391
+#: manila/share/api.py:432
 #, python-format
 msgid "Wrong sort_key filter provided: '%s'."
 msgstr ""
 
-#: manila/share/api.py:395
+#: manila/share/api.py:436
 #, python-format
 msgid "Wrong sort_dir filter provided: '%s'."
 msgstr ""
 
-#: manila/share/api.py:448
+#: manila/share/api.py:489
 #, python-format
 msgid "Wrong '%(k)s' filter provided: '%(v)s'."
 msgstr ""
 
-#: manila/share/api.py:480 manila/share/api.py:509
+#: manila/share/api.py:521 manila/share/api.py:550
 msgid "Share host is None"
 msgstr ""
 
-#: manila/share/api.py:483 manila/share/api.py:512
+#: manila/share/api.py:524 manila/share/api.py:553
 msgid "Share status must be available"
 msgstr ""
 
-#: manila/share/api.py:498
+#: manila/share/api.py:539
 #, python-format
 msgid "Invalid share access level: %s."
 msgstr ""
 
-#: manila/share/api.py:523
+#: manila/share/api.py:564
 msgid "Access policy should be active or in error state"
 msgstr ""
 
-#: manila/share/api.py:560
+#: manila/share/api.py:601
 msgid "Metadata property key is blank"
 msgstr ""
 
-#: manila/share/api.py:564
+#: manila/share/api.py:605
 msgid "Metadata property key is greater than 255 characters"
 msgstr ""
 
-#: manila/share/api.py:568
+#: manila/share/api.py:609
 msgid "Metadata property value is blank"
 msgstr ""
 
-#: manila/share/api.py:572
+#: manila/share/api.py:613
 msgid "Metadata property value is greater than 1023 characters"
 msgstr ""
 
-#: manila/share/share_types.py:62 manila/share/share_types.py:128
+#: manila/share/manager.py:332
+msgid "Manage share is not supported for driver_handles_share_servers=True mode."
+msgstr ""
+
+#: manila/share/manager.py:341
+msgid "Driver cannot calculate share size."
+msgstr ""
+
+#: manila/share/manager.py:386
+msgid ""
+"Unmanage share is not supported for driver_handles_share_servers=True "
+"mode."
+msgstr ""
+
+#: manila/share/manager.py:391
+msgid "Unmanage share is not supported for shares with share servers."
+msgstr ""
+
+#: manila/share/share_types.py:63 manila/share/share_types.py:129
 msgid "id cannot be None"
 msgstr ""
 
-#: manila/share/share_types.py:140
+#: manila/share/share_types.py:141
 msgid "name cannot be None"
 msgstr ""
 
-#: manila/share/share_types.py:213
+#: manila/share/share_types.py:228
 #, python-format
 msgid "Required extra specs '%s' not specified."
 msgstr ""
 
-#: manila/share/share_types.py:221
+#: manila/share/share_types.py:236
 #, python-format
 msgid "Value of required extra_spec %s is not valid"
 msgstr ""
 
-#: manila/share/share_types.py:232 manila/share/share_types.py:240
+#: manila/share/share_types.py:247 manila/share/share_types.py:255
 msgid "share_type_id cannot be None"
 msgstr ""
 
@@ -1855,11 +1910,11 @@ msgstr ""
 msgid "connection to SOPAPI timed out"
 msgstr ""
 
-#: manila/share/drivers/hp/hp_3par_driver.py:99
+#: manila/share/drivers/hp/hp_3par_driver.py:100
 msgid "Unsupported configuration.  hp3par_share_ip_address is not set."
 msgstr ""
 
-#: manila/share/drivers/hp/hp_3par_driver.py:165
+#: manila/share/drivers/hp/hp_3par_driver.py:164
 #, python-format
 msgid "Invalid protocol. Expected NFS or CIFS. Got %s."
 msgstr ""

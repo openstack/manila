@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev129\n"
+"Project-Id-Version: manila 2015.1.dev158\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-12 06:12+0000\n"
+"POT-Creation-Date: 2015-03-14 06:15+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -101,6 +101,11 @@ msgstr ""
 msgid "Loaded extension: %s"
 msgstr ""
 
+#: manila/api/contrib/share_unmanage.py:42
+#, python-format
+msgid "Unmanage share with id: %s"
+msgstr ""
+
 #: manila/api/middleware/fault.py:54
 #, python-format
 msgid "%(url)s returned with HTTP %(status)d"
@@ -131,12 +136,12 @@ msgstr ""
 msgid "Create snapshot from share %s"
 msgstr ""
 
-#: manila/api/v1/shares.py:87
+#: manila/api/v1/shares.py:90
 #, python-format
 msgid "Delete share with id: %s"
 msgstr ""
 
-#: manila/api/v1/shares.py:215
+#: manila/api/v1/shares.py:219
 #, python-format
 msgid "Create %(share_proto)s share of %(size)s GB"
 msgstr ""
@@ -234,34 +239,34 @@ msgstr ""
 msgid "Removing non-active host: %(host)s from scheduler cache."
 msgstr ""
 
-#: manila/share/manager.py:157
+#: manila/share/manager.py:165
 #, python-format
 msgid "Share %(name)s: skipping export, because it has '%(status)s' status."
 msgstr ""
 
-#: manila/share/manager.py:211
+#: manila/share/manager.py:219
 msgid "Share server created successfully."
 msgstr ""
 
-#: manila/share/manager.py:213
+#: manila/share/manager.py:221
 #, python-format
 msgid "Used already existed share server '%(share_server_id)s'"
 msgstr ""
 
-#: manila/share/manager.py:303
+#: manila/share/manager.py:320
 msgid "Share created successfully."
 msgstr ""
 
-#: manila/share/manager.py:338
+#: manila/share/manager.py:458
 #, python-format
 msgid "Share %s: deleted successfully."
 msgstr ""
 
-#: manila/share/manager.py:451
+#: manila/share/manager.py:578
 msgid "Updating share status"
 msgstr ""
 
-#: manila/share/manager.py:589
+#: manila/share/manager.py:716
 #, python-format
 msgid "Share server '%s' has been deleted successfully."
 msgstr ""
@@ -291,7 +296,7 @@ msgstr ""
 msgid "Loading Ganesha config from %s."
 msgstr ""
 
-#: manila/share/drivers/hp/hp_3par_driver.py:263
+#: manila/share/drivers/hp/hp_3par_driver.py:262
 msgid "Skipping share statistics update. Setup has not completed."
 msgstr ""
 
@@ -401,17 +406,17 @@ msgstr ""
 msgid "Could not run dpkg-query command: %(msg)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:135
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:133
 #, python-format
 msgid "Available licenses on %(backend)s are %(licenses)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:467
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:466
 #, python-format
 msgid "Share %s does not exist."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:562
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:561
 #, python-format
 msgid "Updating storage service catalog information for backend '%s'"
 msgstr ""

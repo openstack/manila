@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Manila\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-13 06:20+0000\n"
-"PO-Revision-Date: 2015-03-12 15:24+0000\n"
+"POT-Creation-Date: 2015-03-14 06:16+0000\n"
+"PO-Revision-Date: 2015-03-13 15:12+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/manila/language/"
 "de/)\n"
@@ -29,7 +29,7 @@ msgstr ""
 msgid "%(name)s: %(value)s"
 msgstr "%(name)s: %(value)s"
 
-#: manila/manager.py:161
+#: manila/manager.py:177
 #, python-format
 msgid "Error during %(full_task_name)s: %(e)s"
 msgstr "Fehler während %(full_task_name)s: %(e)s"
@@ -105,7 +105,7 @@ msgstr ""
 msgid "share_type_projects table not dropped"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:2223
+#: manila/db/sqlalchemy/api.py:2293
 #, python-format
 msgid "ShareType %s deletion failed, ShareType in use."
 msgstr ""
@@ -164,7 +164,7 @@ msgstr ""
 msgid "Free capacity not set: volume node info collection broken."
 msgstr ""
 
-#: manila/share/api.py:236
+#: manila/share/api.py:277
 msgid "Failed to update quota for deleting share"
 msgstr ""
 
@@ -173,19 +173,19 @@ msgstr ""
 msgid "Recovering from a failed execute. Try number %s"
 msgstr ""
 
-#: manila/share/manager.py:99
+#: manila/share/manager.py:107
 #, python-format
 msgid "Failed to fetch pool name for share: %(share)s. Error: %(error)s."
 msgstr ""
 
-#: manila/share/manager.py:128
+#: manila/share/manager.py:136
 #, python-format
 msgid ""
 "Caught exception trying ensure share '%(s_id)s'. Exception: \n"
 "%(e)s."
 msgstr ""
 
-#: manila/share/manager.py:145
+#: manila/share/manager.py:153
 #, python-format
 msgid ""
 "Unexpected exception during share access allow operation. Share id is "
@@ -193,44 +193,59 @@ msgid ""
 "'%(ar_id)s', exception is '%(e)s'."
 msgstr ""
 
-#: manila/share/manager.py:260
+#: manila/share/manager.py:268
 #, python-format
 msgid "Share server %s does not exist."
 msgstr "Share Server %s existiert nicht."
 
-#: manila/share/manager.py:270
+#: manila/share/manager.py:278
 msgid "Failed to get share server for share creation."
 msgstr ""
 
-#: manila/share/manager.py:289
+#: manila/share/manager.py:299
 #, python-format
 msgid "Share %s failed on creation."
 msgstr ""
 
-#: manila/share/manager.py:335
+#: manila/share/manager.py:399
+#, python-format
+msgid "Share can not be unmanaged: %s."
+msgstr ""
+
+#: manila/share/manager.py:413
+#, python-format
+msgid "Failed to update quota usages: %s."
+msgstr ""
+
+#: manila/share/manager.py:422
+#, python-format
+msgid "Can not remove access rules of share: %s."
+msgstr ""
+
+#: manila/share/manager.py:455
 msgid "Failed to update usages deleting share"
 msgstr ""
 
-#: manila/share/manager.py:408
+#: manila/share/manager.py:535
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: manila/share/manager.py:580
+#: manila/share/manager.py:707
 #, python-format
 msgid "Share server '%s' failed on deletion."
 msgstr ""
 
-#: manila/share/share_types.py:53
+#: manila/share/share_types.py:54
 #, python-format
 msgid "DB error: %s"
 msgstr "Datenbank Fehler: %s"
 
-#: manila/share/share_types.py:90
+#: manila/share/share_types.py:91
 #, python-format
 msgid "Share type %(share_type)s has invalid required extra specs: %(error)s"
 msgstr ""
 
-#: manila/share/share_types.py:162
+#: manila/share/share_types.py:177
 #, python-format
 msgid ""
 "Default share type is not found, please check default_share_type config: %s"
