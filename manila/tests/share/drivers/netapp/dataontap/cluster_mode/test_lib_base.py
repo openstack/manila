@@ -18,6 +18,7 @@ Unit tests for the NetApp Data ONTAP cDOT base storage driver library.
 
 import copy
 import socket
+import time
 
 import mock
 from oslo_log import log
@@ -708,6 +709,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             share_name,
             parent_share_name,
             parent_snapshot_name)
+        vserver_client.split_volume_clone.assert_called_once_with(share_name)
 
     def test_share_exists(self):
 
@@ -871,11 +873,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_delete_snapshot(self):
 
         vserver_client = mock.Mock()
-        vserver_client.is_snapshot_busy.return_value = False
         self.mock_object(self.library,
                          '_get_vserver',
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
+        mock_handle_busy_snapshot = self.mock_object(self.library,
+                                                     '_handle_busy_snapshot')
 
         self.library.delete_snapshot(self.context,
                                      fake.SNAPSHOT,
@@ -885,23 +888,72 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.SNAPSHOT['share_id'])
         snapshot_name = self.library._get_valid_snapshot_name(
             fake.SNAPSHOT['id'])
+        self.assertTrue(mock_handle_busy_snapshot.called)
         vserver_client.delete_snapshot.assert_called_once_with(share_name,
                                                                snapshot_name)
 
-    def test_delete_snapshot_busy(self):
+    def test_handle_busy_snapshot_not_busy(self):
 
         vserver_client = mock.Mock()
-        vserver_client.is_snapshot_busy.return_value = True
-        self.mock_object(self.library,
-                         '_get_vserver',
-                         mock.Mock(return_value=(fake.VSERVER1,
-                                                 vserver_client)))
+        vserver_client.get_snapshot.return_value = fake.CDOT_SNAPSHOT
+
+        result = self.library._handle_busy_snapshot(vserver_client,
+                                                    fake.SHARE_NAME,
+                                                    fake.SNAPSHOT_NAME)
+
+        self.assertIsNone(result)
+        self.assertEqual(1, vserver_client.get_snapshot.call_count)
+        self.assertEqual(0, lib_base.LOG.debug.call_count)
+
+    def test_handle_busy_snapshot_not_clone_dependency(self):
+
+        snapshot = copy.deepcopy(fake.CDOT_SNAPSHOT_BUSY_VOLUME_CLONE)
+        snapshot['owners'] = {'fake reason'}
+
+        vserver_client = mock.Mock()
+        vserver_client.get_snapshot.return_value = snapshot
 
         self.assertRaises(exception.ShareSnapshotIsBusy,
-                          self.library.delete_snapshot,
-                          self.context,
-                          fake.SNAPSHOT,
-                          share_server=fake.SHARE_SERVER)
+                          self.library._handle_busy_snapshot,
+                          vserver_client,
+                          fake.SHARE_NAME,
+                          fake.SNAPSHOT_NAME)
+        self.assertEqual(1, vserver_client.get_snapshot.call_count)
+        self.assertEqual(0, lib_base.LOG.debug.call_count)
+
+    def test_handle_busy_snapshot_clone_finishes(self):
+
+        get_snapshot_side_effect = [fake.CDOT_SNAPSHOT_BUSY_VOLUME_CLONE] * 10
+        get_snapshot_side_effect.append(fake.CDOT_SNAPSHOT)
+
+        vserver_client = mock.Mock()
+        vserver_client.get_snapshot.side_effect = get_snapshot_side_effect
+        mock_sleep = self.mock_object(time, 'sleep')
+
+        result = self.library._handle_busy_snapshot(vserver_client,
+                                                    fake.SHARE_NAME,
+                                                    fake.SNAPSHOT_NAME)
+
+        self.assertIsNone(result)
+        self.assertEqual(11, vserver_client.get_snapshot.call_count)
+        mock_sleep.assert_has_calls([mock.call(3)] * 10)
+        self.assertEqual(10, lib_base.LOG.debug.call_count)
+
+    def test_handle_busy_snapshot_clone_continues(self):
+
+        vserver_client = mock.Mock()
+        vserver_client.get_snapshot.side_effect = [
+            fake.CDOT_SNAPSHOT_BUSY_VOLUME_CLONE] * 30
+        mock_sleep = self.mock_object(time, 'sleep')
+
+        self.assertRaises(exception.ShareSnapshotIsBusy,
+                          self.library._handle_busy_snapshot,
+                          vserver_client,
+                          fake.SHARE_NAME,
+                          fake.SNAPSHOT_NAME)
+        self.assertEqual(21, vserver_client.get_snapshot.call_count)
+        mock_sleep.assert_has_calls([mock.call(3)] * 20)
+        self.assertEqual(20, lib_base.LOG.debug.call_count)
 
     def test_allow_access(self):
 

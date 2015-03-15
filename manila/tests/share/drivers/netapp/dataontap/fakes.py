@@ -31,6 +31,7 @@ VOLUME_NAME_TEMPLATE = 'share_%(share_id)s'
 VSERVER_NAME_TEMPLATE = 'os_%s'
 AGGREGATE_NAME_SEARCH_PATTERN = '(.*)'
 SHARE_NAME = 'fake_share'
+SNAPSHOT_NAME = 'fake_snapshot'
 SHARE_SIZE = 10
 TENANT_ID = '24cb2448-13d8-4f41-afd9-eff5c4fd2a57'
 SHARE_ID = '7cf7c200-d3af-4e05-b87e-9167c95dfcad'
@@ -185,6 +186,20 @@ SNAPSHOT = {
     'id': SNAPSHOT_ID,
     'project_id': TENANT_ID,
     'share_id': PARENT_SHARE_ID
+}
+
+CDOT_SNAPSHOT = {
+    'name': SNAPSHOT_NAME,
+    'volume': SHARE_NAME,
+    'busy': False,
+    'owners': set(),
+}
+
+CDOT_SNAPSHOT_BUSY_VOLUME_CLONE = {
+    'name': SNAPSHOT_NAME,
+    'volume': SHARE_NAME,
+    'busy': True,
+    'owners': {'volume clone'},
 }
 
 LIF_NAMES = []

@@ -17,6 +17,7 @@
 import copy
 import hashlib
 
+import ddt
 import mock
 from oslo_log import log
 
@@ -28,6 +29,7 @@ from manila import test
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
 
 
+@ddt.ddt
 class NetAppClientCmodeTestCase(test.TestCase):
 
     def setUp(self):
@@ -1448,6 +1450,17 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('volume-clone-create', volume_clone_create_args)])
 
+    def test_split_volume_clone(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.split_volume_clone(fake.SHARE_NAME)
+
+        volume_clone_split_args = {'volume': fake.SHARE_NAME}
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-clone-split-start', volume_clone_split_args)])
+
     def test_get_volume_junction_path(self):
 
         api_response = netapp_api.NaElement(
@@ -1551,49 +1564,56 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('snapshot-create', snapshot_create_args)])
 
-    def test_is_snapshot_busy(self):
+    @ddt.data({
+        'mock_return': fake.SNAPSHOT_GET_ITER_NOT_BUSY_RESPONSE,
+        'expected': {
+            'name': fake.SNAPSHOT_NAME,
+            'volume': fake.SHARE_NAME,
+            'busy': False,
+            'owners': set(),
+        }
+    }, {
+        'mock_return': fake.SNAPSHOT_GET_ITER_BUSY_RESPONSE,
+        'expected': {
+            'name': fake.SNAPSHOT_NAME,
+            'volume': fake.SHARE_NAME,
+            'busy': True,
+            'owners': {'volume clone'},
+        }
+    })
+    @ddt.unpack
+    def test_get_snapshot(self, mock_return, expected):
 
-        api_response = netapp_api.NaElement(
-            fake.SNAPSHOT_GET_ITER_BUSY_RESPONSE)
+        api_response = netapp_api.NaElement(mock_return)
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.is_snapshot_busy(fake.SHARE_NAME,
-                                              fake.SNAPSHOT_NAME)
+        result = self.client.get_snapshot(fake.SHARE_NAME, fake.SNAPSHOT_NAME)
 
         snapshot_get_iter_args = {
             'query': {
                 'snapshot-info': {
                     'name': fake.SNAPSHOT_NAME,
-                    'volume': fake.SHARE_NAME
-                }
+                    'volume': fake.SHARE_NAME,
+                },
             },
             'desired-attributes': {
                 'snapshot-info': {
-                    'busy': None
-                }
-            }
+                    'name': None,
+                    'volume': None,
+                    'busy': None,
+                    'snapshot-owners-list': {
+                        'snapshot-owner': None,
+                    }
+                },
+            },
         }
-
         self.client.send_request.assert_has_calls([
             mock.call('snapshot-get-iter', snapshot_get_iter_args)])
-        self.assertTrue(result)
+        self.assertDictEqual(expected, result)
 
-    def test_is_snapshot_busy_not_busy(self):
-
-        api_response = netapp_api.NaElement(
-            fake.SNAPSHOT_GET_ITER_NOT_BUSY_RESPONSE)
-        self.mock_object(self.client,
-                         'send_request',
-                         mock.Mock(return_value=api_response))
-
-        result = self.client.is_snapshot_busy(fake.SHARE_NAME,
-                                              fake.SNAPSHOT_NAME)
-
-        self.assertFalse(result)
-
-    def test_is_snapshot_busy_not_found(self):
+    def test_get_snapshot_not_found(self):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
@@ -1601,7 +1621,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
 
         self.assertRaises(exception.NetAppException,
-                          self.client.is_snapshot_busy,
+                          self.client.get_snapshot,
                           fake.SHARE_NAME,
                           fake.SNAPSHOT_NAME)
 
