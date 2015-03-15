@@ -72,6 +72,22 @@ def new_share(**kwargs):
     return share
 
 
+class GlusterXMLOut(object):
+
+    template = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cliOutput>
+  <opRet>%(ret)d</opRet>
+  <opErrno>%(errno)d</opErrno>
+  <opErrstr>fake error</opErrstr>
+</cliOutput>"""
+
+    def __init__(self, **kwargs):
+        self.params = kwargs
+
+    def __call__(self, *args, **kwargs):
+        return self.template % self.params, ''
+
+
 class GlusterfsNativeShareDriverTestCase(test.TestCase):
     """Tests GlusterfsNativeShareDriver."""
 
@@ -730,6 +746,114 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         self.assertTrue(self._driver._wipe_gluster_vol.called)
         self.assertFalse(self._driver._push_gluster_vol.called)
+
+    def test_create_snapshot(self):
+        share = fake_db_share1()[0]
+        self._db.share_get = mock.Mock(return_value=share)
+        self._driver.gluster_nosnap_vols_dict = {}
+
+        gmgr = glusterfs.GlusterManager
+        gmgr1 = gmgr(share['export_location'], self._execute, None, None)
+
+        self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
+        snapshot = {'id': 'fake_snap_id', 'share_id': share['id']}
+
+        args = ('--xml', 'snapshot', 'create', 'fake_snap_id',
+                gmgr1.volume)
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=GlusterXMLOut(ret=0, errno=0)))
+        ret = self._driver.create_snapshot(self._context, snapshot)
+        self.assertEqual(None, ret)
+        gmgr1.gluster_call.assert_called_once_with(*args)
+
+    def test_create_snapshot_error(self):
+        share = fake_db_share1()[0]
+        self._db.share_get = mock.Mock(return_value=share)
+        self._driver.gluster_nosnap_vols_dict = {}
+
+        gmgr = glusterfs.GlusterManager
+        gmgr1 = gmgr(share['export_location'], self._execute, None, None)
+
+        self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
+        snapshot = {'id': 'fake_snap_id', 'share_id': share['id']}
+
+        args = ('--xml', 'snapshot', 'create', 'fake_snap_id',
+                gmgr1.volume)
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=GlusterXMLOut(ret=-1, errno=2)))
+        self.assertRaises(exception.GlusterfsException,
+                          self._driver.create_snapshot, self._context,
+                          snapshot)
+        gmgr1.gluster_call.assert_called_once_with(*args)
+
+    def test_create_snapshot_no_snap(self):
+        share = fake_db_share1()[0]
+        self._db.share_get = mock.Mock(return_value=share)
+        self._driver.gluster_nosnap_vols_dict = {}
+
+        gmgr = glusterfs.GlusterManager
+        gmgr1 = gmgr(share['export_location'], self._execute, None, None)
+
+        self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
+        snapshot = {'id': 'fake_snap_id', 'share_id': share['id']}
+
+        args = ('--xml', 'snapshot', 'create', 'fake_snap_id',
+                gmgr1.volume)
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=GlusterXMLOut(ret=-1, errno=0)))
+        self.assertRaises(exception.ShareSnapshotNotSupported,
+                          self._driver.create_snapshot, self._context,
+                          snapshot)
+        gmgr1.gluster_call.assert_called_once_with(*args)
+
+    def test_create_snapshot_no_snap_cached(self):
+        share = fake_db_share1()[0]
+        self._db.share_get = mock.Mock(return_value=share)
+        self._driver.gluster_nosnap_vols_dict = {share['export_location']:
+                                                 'fake error'}
+
+        snapshot = {'id': 'fake_snap_id', 'share_id': share['id']}
+
+        self.assertRaises(exception.ShareSnapshotNotSupported,
+                          self._driver.create_snapshot, self._context,
+                          snapshot)
+
+    def test_delete_snapshot(self):
+        share = fake_db_share1()[0]
+        self._db.share_get = mock.Mock(return_value=share)
+        self._driver.gluster_nosnap_vols_dict = {}
+
+        gmgr = glusterfs.GlusterManager
+        gmgr1 = gmgr(share['export_location'], self._execute, None, None)
+
+        self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
+        snapshot = {'id': 'fake_snap_id', 'share_id': share['id']}
+
+        args = ('--xml', 'snapshot', 'delete', 'fake_snap_id')
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=GlusterXMLOut(ret=0, errno=0)))
+        ret = self._driver.delete_snapshot(self._context, snapshot)
+        self.assertEqual(None, ret)
+        gmgr1.gluster_call.assert_called_once_with(*args)
+
+    def test_delete_snapshot_error(self):
+        share = fake_db_share1()[0]
+        self._db.share_get = mock.Mock(return_value=share)
+        self._driver.gluster_nosnap_vols_dict = {}
+
+        gmgr = glusterfs.GlusterManager
+        gmgr1 = gmgr(share['export_location'], self._execute, None, None)
+
+        self._driver.gluster_used_vols_dict = {gmgr1.export: gmgr1}
+        snapshot = {'id': 'fake_snap_id', 'share_id': share['id']}
+
+        args = ('--xml', 'snapshot', 'delete', 'fake_snap_id')
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=GlusterXMLOut(ret=-1, errno=2)))
+        self.assertRaises(exception.GlusterfsException,
+                          self._driver.delete_snapshot, self._context,
+                          snapshot)
+        gmgr1.gluster_call.assert_called_once_with(*args)
 
     def test_allow_access(self):
         self._driver._restart_gluster_vol = mock.Mock()

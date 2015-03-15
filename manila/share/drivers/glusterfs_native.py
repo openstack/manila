@@ -29,6 +29,7 @@ import errno
 import pipes
 import shutil
 import tempfile
+import xml.etree.cElementTree as etree
 
 from oslo_config import cfg
 from oslo_log import log
@@ -36,6 +37,7 @@ import six
 
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.share import driver
 from manila.share.drivers import glusterfs
@@ -92,6 +94,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.gluster_used_vols_dict = {}
         self.configuration.append_config_values(
             glusterfs_native_manila_share_opts)
+        self.gluster_nosnap_vols_dict = {}
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'GlusterFS-Native'
 
@@ -428,6 +431,85 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise
 
         # TODO(deepakcs): Disable quota.
+
+    def create_snapshot(self, context, snapshot, share_server=None):
+        """Creates a snapshot."""
+        # FIXME: need to access db to retrieve share data
+        vol = self.db.share_get(context,
+                                snapshot['share_id'])['export_location']
+        if vol in self.gluster_nosnap_vols_dict:
+            opret, operrno = -1, 0
+            operrstr = self.gluster_nosnap_vols_dict[vol]
+        else:
+            gluster_mgr = self.gluster_used_vols_dict[vol]
+            args = ('--xml', 'snapshot', 'create', snapshot['id'],
+                    gluster_mgr.volume)
+            try:
+                out, err = gluster_mgr.gluster_call(*args)
+            except exception.ProcessExecutionError as exc:
+                LOG.error(_LE("Error retrieving volume info: %s"), exc.stderr)
+                raise exception.GlusterfsException("gluster %s failed" %
+                                                   ' '.join(args))
+
+            if not out:
+                raise exception.GlusterfsException(
+                    'gluster volume info %s: no data received' %
+                    gluster_mgr.volume
+                )
+
+            outxml = etree.fromstring(out)
+            opret = int(outxml.find('opRet').text)
+            operrno = int(outxml.find('opErrno').text)
+            operrstr = outxml.find('opErrstr').text
+
+        if opret == -1 and operrno == 0:
+            self.gluster_nosnap_vols_dict[vol] = operrstr
+            msg = _("Share %(share_id)s does not support snapshots: "
+                    "%(errstr)s.") % {'share_id': snapshot['share_id'],
+                                      'errstr': operrstr}
+            LOG.error(msg)
+            raise exception.ShareSnapshotNotSupported(msg)
+        elif operrno:
+            raise exception.GlusterfsException(
+                _("Creating snapshot for share %(share_id)s failed "
+                  "with %(errno)d: %(errstr)s") % {
+                      'share_id': snapshot['share_id'],
+                      'errno': operrno,
+                      'errstr': operrstr})
+
+    def delete_snapshot(self, context, snapshot, share_server=None):
+        """Deletes a snapshot."""
+        # FIXME: need to access db to retrieve share data
+        vol = self.db.share_get(context,
+                                snapshot['share_id'])['export_location']
+        gluster_mgr = self.gluster_used_vols_dict[vol]
+        args = ('--xml', 'snapshot', 'delete', snapshot['id'])
+        try:
+            out, err = gluster_mgr.gluster_call(*args)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_LE("Error retrieving volume info: %s"), exc.stderr)
+            raise exception.GlusterfsException("gluster %s failed" %
+                                               ' '.join(args))
+
+        if not out:
+            raise exception.GlusterfsException(
+                'gluster volume info %s: no data received' %
+                gluster_mgr.volume
+            )
+
+        outxml = etree.fromstring(out)
+        opret = int(outxml.find('opRet').text)
+        operrno = int(outxml.find('opErrno').text)
+        operrstr = outxml.find('opErrstr').text
+
+        if opret:
+            raise exception.GlusterfsException(
+                _("Deleting snapshot %(snap_id)s of share %(share_id)s failed "
+                  "with %(errno)d: %(errstr)s") % {
+                      'snap_id': snapshot['id'],
+                      'share_id': snapshot['share_id'],
+                      'errno': operrno,
+                      'errstr': operrstr})
 
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to a share using certs.
