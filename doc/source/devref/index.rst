@@ -86,6 +86,7 @@ Share backends
    glusterfs_native_driver
    huawei_nas_driver
    hdfs_native_driver
+   hp_3par_driver
 
 Indices and tables
 ------------------
