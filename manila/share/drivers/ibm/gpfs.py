@@ -15,17 +15,17 @@
 GPFS Driver for shares.
 
 Config Requirements:
-  GPFS file system must have quotas enabled (mmchfs -Q yes).
+  GPFS file system must have quotas enabled (`mmchfs -Q yes`).
 Notes:
   GPFS independent fileset is used for each share.
 
 TODO(nileshb): add support for share server creation/deletion/handling.
 
 Limitation:
-1. While using remote GPFS node, with Ganesha NFS, 'gpfs_ssh_private_key'
-   for remote login to the GPFS node must be specified and there must be
-   a passwordless authentication already setup between the Manila and the
-   remote GPFS node.
+  While using remote GPFS node, with Ganesha NFS, 'gpfs_ssh_private_key'
+  for remote login to the GPFS node must be specified and there must be
+  a passwordless authentication already setup between the Manila share
+  service and the remote GPFS node.
 
 """
 import abc
