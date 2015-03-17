@@ -40,6 +40,9 @@ iniset $BASE/new/tempest/etc/tempest.conf share share_creation_retry_number 2
 # Suppress errors in cleanup of resources
 iniset $BASE/new/tempest/etc/tempest.conf share suppress_errors_in_cleanup True
 
+# Enable manage/unmanage tests
+iniset $BASE/new/tempest/etc/tempest.conf share run_manage_unmanage_tests True
+
 # Define whether share drivers handle share servers or not.
 # Requires defined config option 'driver_handles_share_servers'.
 MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}

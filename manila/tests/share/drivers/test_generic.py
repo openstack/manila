@@ -29,6 +29,7 @@ from manila import context
 from manila import exception
 import manila.share.configuration
 from manila.share.drivers import generic
+from manila.share import share_types
 from manila import test
 from manila.tests import fake_compute
 from manila.tests import fake_service_instance
@@ -39,6 +40,16 @@ from manila import utils
 from manila import volume
 
 CONF = cfg.CONF
+
+
+def get_fake_manage_share():
+    return {
+        'id': 'fake',
+        'share_proto': 'NFS',
+        'share_type_id': 'fake',
+        'export_locations': [
+            '10.0.0.1:/foo/fake/path', '11.0.0.1:/bar/fake/path'],
+    }
 
 
 @ddt.ddt
@@ -185,21 +196,18 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_mount_device_not_present(self):
         server = {'instance_id': 'fake_server_id'}
-        mount_path = '/fake/mount/path'
+        mount_path = self._driver._get_mount_path(self.share)
         volume = {'mountpoint': 'fake_mount_point'}
         self.mock_object(self._driver, '_is_device_mounted',
                          mock.Mock(return_value=False))
         self.mock_object(self._driver, '_sync_mount_temp_and_perm_files')
-        self.mock_object(self._driver, '_get_mount_path',
-                         mock.Mock(return_value=mount_path))
         self.mock_object(self._driver, '_ssh_exec',
                          mock.Mock(return_value=('', '')))
 
         self._driver._mount_device(self.share, server, volume)
 
-        self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._is_device_mounted.assert_called_once_with(
-            self.share, server, volume)
+            mount_path, server, volume)
         self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
             server)
         self._driver._ssh_exec.assert_called_once_with(
@@ -222,13 +230,12 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._is_device_mounted.assert_called_once_with(
-            self.share, self.server, volume)
+            mount_path, self.server, volume)
         generic.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
 
     def test_mount_device_exception_raised(self):
         volume = {'mountpoint': 'fake_mount_point'}
-        self.mock_object(self._driver, '_get_mount_path',
-                         mock.Mock(return_value='fake'))
+
         self.mock_object(
             self._driver, '_is_device_mounted',
             mock.Mock(side_effect=exception.ProcessExecutionError))
@@ -240,9 +247,8 @@ class GenericShareDriverTestCase(test.TestCase):
             self.server,
             volume,
         )
-        self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._is_device_mounted.assert_called_once_with(
-            self.share, self.server, volume)
+            self._driver._get_mount_path(self.share), self.server, volume)
 
     def test_unmount_device_present(self):
         mount_path = '/fake/mount/path'
@@ -258,7 +264,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._is_device_mounted.assert_called_once_with(
-            self.share, self.server)
+            mount_path, self.server)
         self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
             self.server)
         self._driver._ssh_exec.assert_called_once_with(
@@ -278,7 +284,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._is_device_mounted.assert_called_once_with(
-            self.share, self.server)
+            mount_path, self.server)
         generic.LOG.warning.assert_called_once_with(mock.ANY, mock.ANY)
 
     def test_is_device_mounted_true(self):
@@ -288,13 +294,10 @@ class GenericShareDriverTestCase(test.TestCase):
                                           'path': mount_path}
         self.mock_object(self._driver, '_ssh_exec',
                          mock.Mock(return_value=(mounts, '')))
-        self.mock_object(self._driver, '_get_mount_path',
-                         mock.Mock(return_value=mount_path))
 
         result = self._driver._is_device_mounted(
-            self.share, self.server, volume)
+            mount_path, self.server, volume)
 
-        self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
         self.assertEqual(result, True)
@@ -304,12 +307,9 @@ class GenericShareDriverTestCase(test.TestCase):
         mounts = "/fake/dev/path on %(path)s type fake" % {'path': mount_path}
         self.mock_object(self._driver, '_ssh_exec',
                          mock.Mock(return_value=(mounts, '')))
-        self.mock_object(self._driver, '_get_mount_path',
-                         mock.Mock(return_value=mount_path))
 
-        result = self._driver._is_device_mounted(self.share, self.server)
+        result = self._driver._is_device_mounted(mount_path, self.server)
 
-        self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
         self.assertEqual(result, True)
@@ -321,13 +321,10 @@ class GenericShareDriverTestCase(test.TestCase):
                                           'path': mount_path}
         self.mock_object(self._driver, '_ssh_exec',
                          mock.Mock(return_value=(mounts, '')))
-        self.mock_object(self._driver, '_get_mount_path',
-                         mock.Mock(return_value=mount_path))
 
         result = self._driver._is_device_mounted(
-            self.share, self.server, volume)
+            mount_path, self.server, volume)
 
-        self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
         self.assertEqual(result, False)
@@ -340,9 +337,8 @@ class GenericShareDriverTestCase(test.TestCase):
         self.mock_object(self._driver, '_get_mount_path',
                          mock.Mock(return_value=mount_path))
 
-        result = self._driver._is_device_mounted(self.share, self.server)
+        result = self._driver._is_device_mounted(mount_path, self.server)
 
-        self._driver._get_mount_path.assert_called_once_with(self.share)
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
         self.assertEqual(result, False)
@@ -467,8 +463,12 @@ class GenericShareDriverTestCase(test.TestCase):
             self._driver.configuration.volume_name_template % self.share['id'])
         self.mock_object(self._driver.volume_api, 'get_all',
                          mock.Mock(return_value=[]))
-        result = self._driver._get_volume(self._context, self.share['id'])
-        self.assertEqual(result, None)
+
+        self.assertRaises(
+            exception.VolumeNotFound,
+            self._driver._get_volume,
+            self._context, self.share['id'])
+
         self._driver.volume_api.get_all.assert_called_once_with(
             self._context, {'all_tenants': True, 'name': vol_name})
 
@@ -1010,6 +1010,183 @@ class GenericShareDriverTestCase(test.TestCase):
             self.assertIn(key, result)
         self.assertEqual(True, result['driver_handles_share_servers'])
         self.assertEqual('Open Source', result['vendor_name'])
+
+    def test_manage_invalid_driver_mode(self):
+        CONF.set_default('driver_handles_share_servers', True)
+
+        self.assertRaises(exception.InvalidDriverMode,
+                          self._driver.manage_existing, 'fake', {})
+
+    def _setup_manage_mocks(self,
+                            get_share_type_extra_specs='False',
+                            is_device_mounted=True,
+                            server_details=None):
+        CONF.set_default('driver_handles_share_servers', False)
+
+        self.mock_object(share_types, 'get_share_type_extra_specs',
+                         mock.Mock(return_value=get_share_type_extra_specs))
+
+        self.mock_object(self._driver, '_is_device_mounted',
+                         mock.Mock(return_value=is_device_mounted))
+
+        self.mock_object(self._driver, 'service_instance_manager')
+        server = {'backend_details': server_details}
+        self.mock_object(self._driver.service_instance_manager,
+                         'get_common_server',
+                         mock.Mock(return_value=server))
+
+    def test_manage_invalid_protocol(self):
+        share = {'share_proto': 'fake_proto'}
+        self._setup_manage_mocks()
+
+        self.assertRaises(exception.InvalidShare,
+                          self._driver.manage_existing, share, {})
+
+    def test_manage_share_type_mismatch(self):
+        share = {'share_proto': 'NFS', 'share_type_id': 'fake'}
+        self._setup_manage_mocks(get_share_type_extra_specs='True')
+
+        self.assertRaises(exception.ManageExistingShareTypeMismatch,
+                          self._driver.manage_existing, share, {})
+
+        share_types.get_share_type_extra_specs.assert_called_once_with(
+            share['share_type_id'],
+            const.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+        )
+
+    def test_manage_not_mounted_share(self):
+        share = get_fake_manage_share()
+        fake_path = '/foo/bar'
+        self._setup_manage_mocks(is_device_mounted=False)
+        self.mock_object(
+            self._driver._helpers[share['share_proto']],
+            'get_share_path_by_export_location',
+            mock.Mock(return_value=fake_path))
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver.manage_existing, share, {})
+
+        self.assertEqual(
+            1,
+            self._driver.service_instance_manager.get_common_server.call_count)
+        self._driver._is_device_mounted.assert_called_once_with(
+            fake_path, None)
+        self._driver._helpers[share['share_proto']].\
+            get_share_path_by_export_location.assert_called_once_with(
+                None, share['export_locations'][0])
+
+    def test_manage_share_not_attached_to_cinder_volume_invalid_size(self):
+        share = get_fake_manage_share()
+        server_details = {}
+        fake_path = '/foo/bar'
+        self._setup_manage_mocks(server_details=server_details)
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(return_value=None))
+        error = exception.ManageInvalidShare(reason="fake")
+        self.mock_object(
+            self._driver, '_get_mounted_share_size',
+            mock.Mock(side_effect=error))
+        self.mock_object(
+            self._driver._helpers[share['share_proto']],
+            'get_share_path_by_export_location',
+            mock.Mock(return_value=fake_path))
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver.manage_existing, share, {})
+
+        self._driver._get_mounted_share_size.assert_called_once_with(
+            fake_path, server_details)
+        self._driver._helpers[share['share_proto']].\
+            get_share_path_by_export_location.assert_called_once_with(
+                server_details, share['export_locations'][0])
+
+    def test_manage_share_not_attached_to_cinder_volume(self):
+        share = get_fake_manage_share()
+        share_size = "fake"
+        server_details = {}
+        self._setup_manage_mocks(server_details=server_details)
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(return_value=None))
+        self.mock_object(self._driver, '_get_mounted_share_size',
+                         mock.Mock(return_value=share_size))
+
+        actual_result = self._driver.manage_existing(share, {})
+        self.assertEqual({'size': share_size}, actual_result)
+
+    def test_manage_share_attached_to_cinder_volume_not_found(self):
+        share = get_fake_manage_share()
+        server_details = {}
+        driver_options = {'volume_id': 'fake'}
+        self._setup_manage_mocks(server_details=server_details)
+        self.mock_object(
+            self._driver.volume_api, 'get',
+            mock.Mock(side_effect=exception.VolumeNotFound(volume_id="fake"))
+        )
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver.manage_existing, share, driver_options)
+
+        self._driver.volume_api.get.assert_called_once_with(
+            mock.ANY, driver_options['volume_id'])
+
+    def test_manage_share_attached_to_cinder_volume_not_mounted_to_srv(self):
+        share = get_fake_manage_share()
+        server_details = {'instance_id': 'fake'}
+        driver_options = {'volume_id': 'fake'}
+        volume = {'id': 'fake'}
+        self._setup_manage_mocks(server_details=server_details)
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self._driver.compute_api, 'instance_volumes_list',
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver.manage_existing, share, driver_options)
+
+        self._driver.volume_api.get.assert_called_once_with(
+            mock.ANY, driver_options['volume_id'])
+        self._driver.compute_api.instance_volumes_list.assert_called_once_with(
+            mock.ANY, server_details['instance_id'])
+
+    def test_manage_share_attached_to_cinder_volume(self):
+        share = get_fake_manage_share()
+        server_details = {'instance_id': 'fake'}
+        driver_options = {'volume_id': 'fake'}
+        volume = {'id': 'fake', 'name': 'fake_volume_1', 'size': 'fake'}
+        self._setup_manage_mocks(server_details=server_details)
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(return_value=volume))
+        self._driver.volume_api.update = mock.Mock()
+        fake_volume = mock.Mock()
+        fake_volume.id = 'fake'
+        self.mock_object(self._driver.compute_api, 'instance_volumes_list',
+                         mock.Mock(return_value=[fake_volume]))
+
+        actual_result = self._driver.manage_existing(share, driver_options)
+
+        self.assertEqual({'size': 'fake'}, actual_result)
+        expected_volume_update = {
+            'name': self._driver._get_volume_name(share['id'])
+        }
+        self._driver.volume_api.update.assert_called_once_with(
+            mock.ANY, volume['id'], expected_volume_update)
+
+    def test_get_mounted_share_size(self):
+        output = ("Filesystem   blocks  Used Available Capacity Mounted on\n"
+                  "/dev/fake  1G  1G  1G  4% /shares/share-fake")
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=(output, '')))
+
+        actual_result = self._driver._get_mounted_share_size('/fake/path', {})
+        self.assertEqual(1, actual_result)
+
+    @ddt.data("fake\nfake\n", "fake", "fake\n")
+    def test_get_mounted_share_size_invalid_output(self, output):
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=(output, '')))
+        self.assertRaises(exception.ManageInvalidShare,
+                          self._driver._get_mounted_share_size,
+                          '/fake/path', {})
 
 
 @generic.ensure_server

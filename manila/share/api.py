@@ -230,11 +230,13 @@ class API(base.Base):
             'project_id': context.project_id,
             'status': constants.STATUS_MANAGING,
             'scheduled_at': timeutils.utcnow(),
-            'deleted': False,
         })
 
-        retry_states = (constants.STATUS_MANAGE_ERROR,
-                        constants.STATUS_UNMANAGED)
+        LOG.debug("Manage: Found shares %s" % len(shares))
+
+        retry_states = (constants.STATUS_MANAGE_ERROR,)
+
+        export_location = share_data.pop('export_location')
 
         if len(shares) == 0:
             share = self.db.share_create(context, share_data)
@@ -246,7 +248,11 @@ class API(base.Base):
             msg = _("Share already exists.")
             raise exception.ManilaException(msg)
 
+        self.db.share_export_locations_update(context, share['id'],
+                                              export_location)
+
         self.share_rpcapi.manage_share(context, share, driver_options)
+        return self.db.share_get(context, share['id'])
 
     def unmanage(self, context, share):
         policy.check_policy(context, 'share', 'unmanage')

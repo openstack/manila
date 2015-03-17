@@ -550,6 +550,9 @@ class ShareAPITestCase(test.TestCase):
                            status='creating')
         self.mock_object(db_driver, 'share_create',
                          mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_export_locations_update')
+        self.mock_object(db_driver, 'share_get',
+                         mock.Mock(return_value=share))
         self.mock_object(self.api, 'get_all', mock.Mock(return_value=[]))
 
         self.api.manage(self.context,
@@ -561,17 +564,20 @@ class ShareAPITestCase(test.TestCase):
             'project_id': self.context.project_id,
             'status': constants.STATUS_MANAGING,
             'scheduled_at': date,
-            'deleted': False,
         })
 
+        export_location = share_data.pop('export_location')
         self.api.get_all.assert_called_once_with(self.context, mock.ANY)
         db_driver.share_create.assert_called_once_with(self.context,
                                                        share_data)
+        db_driver.share_get.assert_called_once_with(self.context, share['id'])
+        db_driver.share_export_locations_update.assert_called_once_with(
+            self.context, share['id'], export_location
+        )
         self.share_rpcapi.manage_share.assert_called_once_with(
             self.context, share, driver_options)
 
-    @ddt.data([{'id': 'fake', 'status': constants.STATUS_MANAGE_ERROR}],
-              [{'id': 'fake', 'status': constants.STATUS_UNMANAGED}],)
+    @ddt.data([{'id': 'fake', 'status': constants.STATUS_MANAGE_ERROR}])
     def test_manage_retry(self, shares):
         share_data = {
             'host': 'fake',
@@ -579,8 +585,12 @@ class ShareAPITestCase(test.TestCase):
             'share_proto': 'fake',
         }
         driver_options = {}
+        share = fake_share('fakeid')
         self.mock_object(db_driver, 'share_update',
-                         mock.Mock(return_value=fake_share('fakeid')))
+                         mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(db_driver, 'share_export_locations_update')
         self.mock_object(self.api, 'get_all',
                          mock.Mock(return_value=shares))
 
@@ -592,6 +602,9 @@ class ShareAPITestCase(test.TestCase):
             self.context, 'fake', mock.ANY)
         self.share_rpcapi.manage_share.assert_called_once_with(
             self.context, mock.ANY, driver_options)
+        db_driver.share_export_locations_update.assert_called_once_with(
+            self.context, share['id'], mock.ANY
+        )
 
     def test_manage_duplicate(self):
         share_data = {

@@ -26,6 +26,7 @@ from cinderclient.v2 import client as cinder_client
 from oslo_config import cfg
 from oslo_log import log
 
+import manila.context as ctxt
 from manila.db import base
 from manila import exception
 from manila.i18n import _
@@ -317,7 +318,12 @@ class API(base.Base):
 
     @translate_volume_exception
     def update(self, context, volume_id, fields):
-        raise NotImplementedError()
+        # Use Manila's context as far as Cinder's is restricted to update
+        # volumes.
+        manila_admin_context = ctxt.get_admin_context()
+        client = cinderclient(manila_admin_context)
+        item = client.volumes.get(volume_id)
+        client.volumes.update(item, **fields)
 
     def get_volume_encryption_metadata(self, context, volume_id):
         return cinderclient(context).volumes.get_encryption_metadata(volume_id)
