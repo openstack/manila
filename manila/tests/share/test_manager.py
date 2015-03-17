@@ -167,11 +167,15 @@ class ShareManagerTestCase(test.TestCase):
             FakeAccessRule(state='active'),
             FakeAccessRule(state='error'),
         ]
+        fake_export_locations = ['fake/path/1', 'fake/path']
         share_server = 'fake_share_server_type_does_not_matter'
         self.mock_object(self.share_manager.db,
                          'share_get_all_by_host',
                          mock.Mock(return_value=shares))
-        self.mock_object(self.share_manager.driver, 'ensure_share')
+        self.mock_object(self.share_manager.db,
+                         'share_export_locations_update')
+        self.mock_object(self.share_manager.driver, 'ensure_share',
+                         mock.Mock(return_value=fake_export_locations))
         self.mock_object(self.share_manager, '_ensure_share_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))
@@ -189,6 +193,9 @@ class ShareManagerTestCase(test.TestCase):
         # verification of call
         self.share_manager.db.share_get_all_by_host.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), self.share_manager.host)
+        exports_update = self.share_manager.db.share_export_locations_update
+        exports_update.assert_called_once_with(
+            mock.ANY, 'fake_id_1', fake_export_locations)
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
         self.share_manager.driver.check_for_setup_error.\
@@ -281,7 +288,8 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.db,
                          'share_get_all_by_host',
                          mock.Mock(return_value=shares))
-        self.mock_object(self.share_manager.driver, 'ensure_share')
+        self.mock_object(self.share_manager.driver, 'ensure_share',
+                         mock.Mock(return_value=None))
         self.mock_object(self.share_manager, '_ensure_share_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))

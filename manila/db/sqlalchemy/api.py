@@ -18,6 +18,7 @@
 
 """Implementation of SQLAlchemy backend."""
 
+import datetime
 import sys
 import uuid
 import warnings
@@ -1676,9 +1677,13 @@ def _share_export_locations_get(context, share_id, session=None):
     if not session:
         session = get_session()
 
-    return model_query(context, models.ShareExportLocations,
-                       session=session). \
-        filter_by(share_id=share_id).all()
+    return (
+        model_query(context, models.ShareExportLocations,
+                    session=session, read_deleted="no").
+        filter_by(share_id=share_id).
+        order_by("updated_at").
+        all()
+    )
 
 
 @require_context
@@ -1696,29 +1701,54 @@ def share_export_locations_update(context, share_id, export_locations, delete):
         location_rows = _share_export_locations_get(
             context, share_id, session=session)
 
-        current_locations = set([l['path'] for l in location_rows])
+        def get_path_list_from_rows(rows):
+            return set([l['path'] for l in rows])
 
-        new_locations = set(export_locations)
-        add_locations = new_locations.difference(current_locations)
+        current_locations = get_path_list_from_rows(location_rows)
 
-        # Set existing export location to deleted if delete argument is True
-        if delete:
-            delete_locations = current_locations.difference(new_locations)
+        def create_indexed_time_dict(key_list):
+            base = timeutils.utcnow()
+            return {
+                # NOTE(u_glide): Incrementing timestamp by microseconds to make
+                # timestamp order match index order.
+                key: base + datetime.timedelta(microseconds=index)
+                for index, key in enumerate(key_list)
+            }
 
-            for location in location_rows:
-                if location['path'] in delete_locations:
-                    location.update({'deleted': True})
-                    location.save(session=session)
-        else:
-            export_locations = list(current_locations.union(new_locations))
+        indexed_update_time = create_indexed_time_dict(export_locations)
+
+        for location in location_rows:
+            if delete and location['path'] not in export_locations:
+                location.update({'deleted': True})
+            else:
+                updated_at = indexed_update_time[location['path']]
+                location.update({
+                    'updated_at': updated_at,
+                    'deleted': False,
+                })
+
+            location.save(session=session)
 
         # Now add new export locations
-        for path in add_locations:
+        for path in export_locations:
+            if path in current_locations:
+                # Already updated
+                continue
+
             location_ref = models.ShareExportLocations()
-            location_ref.update({'path': path, 'share_id': share_id})
+            location_ref.update({
+                'path': path,
+                'share_id': share_id,
+                'updated_at': indexed_update_time[path],
+                'deleted': False,
+            })
             location_ref.save(session=session)
 
-        return export_locations
+        if delete:
+            return export_locations
+
+        return get_path_list_from_rows(_share_export_locations_get(
+            context, share_id, session=session))
 
 
 #################################
