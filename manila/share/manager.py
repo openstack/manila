@@ -125,47 +125,53 @@ class ShareManager(manager.SchedulerDependentManager):
         shares = self.db.share_get_all_by_host(ctxt, self.host)
         LOG.debug("Re-exporting %s shares", len(shares))
         for share in shares:
-            if share['status'] == 'available':
-                self._ensure_share_has_pool(ctxt, share)
-                share_server = self._get_share_server(ctxt, share)
-                try:
-                    self.driver.ensure_share(
-                        ctxt, share, share_server=share_server)
-                except Exception as e:
-                    LOG.error(
-                        _LE("Caught exception trying ensure share '%(s_id)s'. "
-                            "Exception: \n%(e)s."),
-                        {'s_id': share['id'], 'e': six.text_type(e)},
-                    )
-                    continue
-                rules = self.db.share_access_get_all_for_share(ctxt,
-                                                               share['id'])
-                for access_ref in rules:
-                    if access_ref['state'] == access_ref.STATE_ACTIVE:
-                        try:
-                            self.driver.allow_access(ctxt, share,
-                                                     access_ref,
-                                                     share_server=share_server)
-                        except exception.ShareAccessExists:
-                            pass
-                        except Exception as e:
-                            LOG.error(
-                                _LE("Unexpected exception during share access"
-                                    " allow operation. Share id is '%(s_id)s'"
-                                    ", access rule type is '%(ar_type)s', "
-                                    "access rule id is '%(ar_id)s', exception"
-                                    " is '%(e)s'."),
-                                {'s_id': share['id'],
-                                 'ar_type': access_ref['access_type'],
-                                 'ar_id': access_ref['id'],
-                                 'e': six.text_type(e)},
-                            )
-            else:
+            if share['status'] != 'available':
                 LOG.info(
                     _LI("Share %(name)s: skipping export, because it has "
                         "'%(status)s' status."),
                     {'name': share['name'], 'status': share['status']},
                 )
+                continue
+
+            self._ensure_share_has_pool(ctxt, share)
+            share_server = self._get_share_server(ctxt, share)
+            try:
+                export_locations = self.driver.ensure_share(
+                    ctxt, share, share_server=share_server)
+            except Exception as e:
+                LOG.error(
+                    _LE("Caught exception trying ensure share '%(s_id)s'. "
+                        "Exception: \n%(e)s."),
+                    {'s_id': share['id'], 'e': six.text_type(e)},
+                )
+                continue
+
+            if export_locations:
+                self.db.share_export_locations_update(
+                    ctxt, share['id'], export_locations)
+
+            rules = self.db.share_access_get_all_for_share(ctxt, share['id'])
+            for access_ref in rules:
+                if access_ref['state'] != access_ref.STATE_ACTIVE:
+                    continue
+
+                try:
+                    self.driver.allow_access(ctxt, share, access_ref,
+                                             share_server=share_server)
+                except exception.ShareAccessExists:
+                    pass
+                except Exception as e:
+                    LOG.error(
+                        _LE("Unexpected exception during share access"
+                            " allow operation. Share id is '%(s_id)s'"
+                            ", access rule type is '%(ar_type)s', "
+                            "access rule id is '%(ar_id)s', exception"
+                            " is '%(e)s'."),
+                        {'s_id': share['id'],
+                         'ar_type': access_ref['access_type'],
+                         'ar_id': access_ref['id'],
+                         'e': six.text_type(e)},
+                    )
 
         self.publish_service_capabilities(ctxt)
 

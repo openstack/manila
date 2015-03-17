@@ -50,3 +50,29 @@ class SQLAlchemyAPIShareTestCase(test.TestCase):
                                         ignored_keys=['share_type',
                                                       'share_type_id',
                                                       'export_locations'])
+
+    def test_share_export_locations_update_valid_order(self):
+        share = api.share_create(self.ctxt, {'host': 'foobar'})
+        initial_locations = ['fake1/1/', 'fake2/2', 'fake3/3']
+        update_locations = ['fake4/4', 'fake2/2', 'fake3/3']
+
+        # add initial locations
+        api.share_export_locations_update(self.ctxt, share['id'],
+                                          initial_locations, False)
+        # update locations
+        api.share_export_locations_update(self.ctxt, share['id'],
+                                          update_locations, True)
+        actual_result = api.share_export_locations_get(self.ctxt, share['id'])
+
+        # actual result should contain locations in exact same order
+        self.assertTrue(actual_result == update_locations)
+
+    def test_share_export_locations_update_string(self):
+        share = api.share_create(self.ctxt, {'host': 'foobar'})
+        initial_location = 'fake1/1/'
+
+        api.share_export_locations_update(self.ctxt, share['id'],
+                                          initial_location, False)
+        actual_result = api.share_export_locations_get(self.ctxt, share['id'])
+
+        self.assertTrue(actual_result == [initial_location])

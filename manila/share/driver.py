@@ -255,7 +255,14 @@ class ShareDriver(object):
         """
 
     def ensure_share(self, context, share, share_server=None):
-        """Invoked to sure that share is exported."""
+        """Invoked to ensure that share is exported.
+
+        Driver can use this method to update the list of export locations of
+        the share if it changes. To do that, you should return list with
+        export locations.
+
+        :return None or list with export locations
+        """
         raise NotImplementedError()
 
     def allow_access(self, context, share, access, share_server=None):
