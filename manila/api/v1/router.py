@@ -24,6 +24,7 @@ from oslo_log import log
 from manila.api import extensions
 import manila.api.openstack
 from manila.api.v1 import limits
+from manila.api.v1 import scheduler_stats
 from manila.api.v1 import security_service
 from manila.api.v1 import share_metadata
 from manila.api.v1 import share_networks
@@ -110,3 +111,13 @@ class APIRouter(manila.api.openstack.APIRouter):
                         controller=self.resources['types'],
                         collection={'detail': 'GET', 'default': 'GET'},
                         member={'action': 'POST'})
+
+        self.resources['scheduler_stats'] = scheduler_stats.create_resource()
+        mapper.connect('pools', '/{project_id}/scheduler-stats/pools',
+                       controller=self.resources['scheduler_stats'],
+                       action='pools_index',
+                       conditions={'method': ['GET']})
+        mapper.connect('pools', '/{project_id}/scheduler-stats/pools/detail',
+                       controller=self.resources['scheduler_stats'],
+                       action='pools_detail',
+                       conditions={'method': ['GET']})

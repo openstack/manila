@@ -1,5 +1,6 @@
 # Copyright (c) 2014 eBay Inc.
 # Copyright (c) 2015 Rushil Chugh
+# Copyright (c) 2015 Clinton Knight
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -22,25 +23,30 @@ class ViewBuilder(common.ViewBuilder):
 
     _collection_name = "scheduler-stats"
 
-    def summary(self, request, pool):
+    def pool_summary(self, pool):
         """Summary view of a single pool."""
         return {
             'pool': {
                 'name': pool.get('name'),
+                'host': pool.get('host'),
+                'backend': pool.get('backend'),
+                'pool': pool.get('pool'),
             }
         }
 
-    def detail(self, request, pool):
+    def pool_detail(self, pool):
         """Detailed view of a single pool."""
         return {
             'pool': {
                 'name': pool.get('name'),
+                'host': pool.get('host'),
+                'backend': pool.get('backend'),
+                'pool': pool.get('pool'),
                 'capabilities': pool.get('capabilities'),
             }
         }
 
-    def pools(self, request, pools, detail):
-        """Summary view of a list of pools seen by scheduler."""
-        pdict = self.detail if detail else self.summary
-
-        return {"pools": [pdict(request, pool)['pool'] for pool in pools]}
+    def pools(self, pools, detail=False):
+        """View of a list of pools seen by scheduler."""
+        view_method = self.pool_detail if detail else self.pool_summary
+        return {"pools": [view_method(pool)['pool'] for pool in pools]}

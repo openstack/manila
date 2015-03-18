@@ -1,5 +1,6 @@
 # Copyright (c) 2011 OpenStack, LLC.
 # Copyright (c) 2015 Rushil Chugh
+# Copyright (c) 2015 Clinton Knight
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,6 +19,7 @@
 Manage hosts in the current zone.
 """
 
+import re
 import UserDict
 
 from oslo_config import cfg
@@ -27,7 +29,7 @@ import six
 
 from manila import db
 from manila import exception
-from manila.i18n import _LI
+from manila.i18n import _LI, _LW
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common.scheduler import weights
 from manila.share import utils as share_utils
@@ -407,44 +409,40 @@ class HostManager(object):
 
     def update_service_capabilities(self, service_name, host, capabilities):
         """Update the per-service capabilities based on this notification."""
-        if service_name not in ('share'):
+        if service_name not in ('share',):
             LOG.debug('Ignoring %(service_name)s service update '
                       'from %(host)s',
                       {'service_name': service_name, 'host': host})
             return
 
         # Copy the capabilities, so we don't modify the original dict
-        capab_copy = dict(capabilities)
-        capab_copy["timestamp"] = timeutils.utcnow()  # Reported time
-        self.service_states[host] = capab_copy
+        capability_copy = dict(capabilities)
+        capability_copy["timestamp"] = timeutils.utcnow()  # Reported time
+        self.service_states[host] = capability_copy
 
         LOG.debug("Received %(service_name)s service update from "
                   "%(host)s: %(cap)s" %
                   {'service_name': service_name, 'host': host,
                    'cap': capabilities})
 
-    def get_all_host_states_share(self, context):
-        """Get all hosts and their states.
-
-        Returns a dict of all the hosts the HostManager knows
-        about. Also, each of the consumable resources in HostState are
-        pre-populated and adjusted based on data in the db.
-
-        For example:
-          {'192.168.1.100': HostState(), ...}
-        """
+    def _update_host_state_map(self, context):
 
         # Get resource usage across the available share nodes:
-        all_pools = {}
         topic = CONF.share_topic
         share_services = db.service_get_all_by_topic(context, topic)
+
         for service in share_services:
             host = service['host']
+
+            # Warn about down services and remove them from host_state_map
             if not utils.service_is_up(service) or service['disabled']:
-                LOG.info(_LI("Removing non-active host: %(host)s from "
-                             "scheduler cache.") % {'host': host})
-                self.host_state_map.pop(host, None)
+                LOG.warn(_LW("Share service is down. (host: %s)") % host)
+                if self.host_state_map.pop(host, None):
+                    LOG.info(_LI("Removing non-active host: %s from "
+                                 "scheduler cache.") % host)
                 continue
+
+            # Create and register host_state if not in host_state_map
             capabilities = self.service_states.get(host, None)
             host_state = self.host_state_map.get(host)
             if not host_state:
@@ -453,11 +451,26 @@ class HostManager(object):
                     capabilities=capabilities,
                     service=dict(six.iteritems(service)))
                 self.host_state_map[host] = host_state
-            # Update host_state
+
+            # Update capabilities and attributes in host_state
             host_state.update_from_share_capability(
                 capabilities, service=dict(six.iteritems(service)))
-            # Build a pool_state map and return that instead of host_state_map
-            state = self.host_state_map[host]
+
+    def get_all_host_states_share(self, context):
+        """Returns a dict of all the hosts the HostManager knows about.
+
+        Each of the consumable resources in HostState are
+        populated with capabilities scheduler received from RPC.
+
+        For example:
+          {'192.168.1.100': HostState(), ...}
+        """
+
+        self._update_host_state_map(context)
+
+        # Build a pool_state map and return that map instead of host_state_map
+        all_pools = {}
+        for host, state in self.host_state_map.items():
             for key in state.pools:
                 pool = state.pools[key]
                 # Use host.pool_name to make sure key is unique
@@ -466,17 +479,54 @@ class HostManager(object):
 
         return six.itervalues(all_pools)
 
-    def get_pools(self, context):
+    def get_pools(self, context, filters=None):
         """Returns a dict of all pools on all hosts HostManager knows about."""
 
-        all_pools = []
-        for host, state in self.host_state_map.items():
-            for key in state.pools:
-                pool = state.pools[key]
-                # Use host.pool_name to make sure key is unique
-                pool_key = share_utils.append_host(host, pool.pool_name)
-                new_pool = dict(name=pool_key)
-                new_pool.update(dict(capabilities=pool.capabilities))
-                all_pools.append(new_pool)
+        self._update_host_state_map(context)
 
+        all_pools = []
+        for host, host_state in self.host_state_map.items():
+            for pool in host_state.pools.values():
+
+                fully_qualified_pool_name = share_utils.append_host(
+                    host, pool.pool_name)
+                host_name = share_utils.extract_host(
+                    fully_qualified_pool_name, level='host')
+                backend_name = share_utils.extract_host(
+                    fully_qualified_pool_name, level='backend').split('@')[1] \
+                    if '@' in fully_qualified_pool_name else None
+                pool_name = share_utils.extract_host(
+                    fully_qualified_pool_name, level='pool')
+
+                new_pool = {
+                    'name': fully_qualified_pool_name,
+                    'host': host_name,
+                    'backend': backend_name,
+                    'pool': pool_name,
+                    'capabilities': pool.capabilities,
+                }
+                if self._passes_filters(new_pool, filters):
+                    all_pools.append(new_pool)
         return all_pools
+
+    def _passes_filters(self, dict_to_check, filter_dict):
+        """Applies a set of regex filters to a dictionary.
+
+        If no filter keys are supplied, the data passes unfiltered and
+        the method returns True.  Otherwise, each key in the filter
+        (filter_dict) must be present in the data (dict_to_check)
+        and the filter values are applied as regex expressions to
+        the data values.  If any of the filter values fail to match
+        their corresponding data values, the method returns False.
+        But if all filters match, the method returns True.
+        """
+        if not filter_dict:
+            return True
+
+        for filter_key, filter_value in six.iteritems(filter_dict):
+            if filter_key not in dict_to_check:
+                return False
+            if not re.match(filter_value, dict_to_check.get(filter_key)):
+                return False
+
+        return True
