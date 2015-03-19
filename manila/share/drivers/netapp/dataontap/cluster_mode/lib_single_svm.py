@@ -63,6 +63,15 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
                         'match supplied credentials.')
                 raise exception.InvalidInput(reason=msg)
 
+        # Ensure one or more aggregates are available to the vserver.
+        if not self._find_matching_aggregates():
+            msg = _('No aggregates are available to Vserver %s for '
+                    'provisioning shares. Ensure that one or more aggregates '
+                    'are assigned to the Vserver and that the configuration '
+                    'option netapp_aggregate_name_search_pattern is set '
+                    'correctly.') % self._vserver
+            raise exception.NetAppException(msg)
+
         msg = _LI('Using Vserver %(vserver)s for backend %(backend)s with '
                   '%(creds)s credentials.')
         msg_args = {'vserver': self._vserver, 'backend': self._backend_name}

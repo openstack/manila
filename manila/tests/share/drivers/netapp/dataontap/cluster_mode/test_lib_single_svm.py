@@ -62,6 +62,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library._client.vserver_exists.return_value = True
         self.library._have_cluster_creds = True
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
         mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
                                       'check_for_setup_error')
 
@@ -69,6 +72,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertTrue(lib_single_svm.LOG.info.called)
         mock_super.assert_called_once_with()
+        self.assertTrue(self.library._find_matching_aggregates.called)
 
     def test_check_for_setup_error_no_vserver(self):
         self.library._vserver = None
@@ -86,12 +90,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client.vserver_exists.return_value = True
         self.library._have_cluster_creds = False
         self.library._client.list_vservers.return_value = [fake.VSERVER1]
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
         mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
                                       'check_for_setup_error')
 
         self.library.check_for_setup_error()
 
         mock_super.assert_called_once_with()
+        self.assertTrue(self.library._find_matching_aggregates.called)
 
     def test_check_for_setup_error_cluster_creds_vserver_mismatch(self):
         self.library._client.vserver_exists.return_value = True
@@ -100,6 +108,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidInput,
                           self.library.check_for_setup_error)
+
+    def test_check_for_setup_error_no_aggregates(self):
+        self.library._client.vserver_exists.return_value = True
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.check_for_setup_error)
+        self.assertTrue(self.library._find_matching_aggregates.called)
 
     def test_get_vserver(self):
         self.library._client.vserver_exists.return_value = True

@@ -63,6 +63,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_check_for_setup_error_cluster_creds_no_vserver(self):
         self.library._have_cluster_creds = True
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
         mock_check_data_ontap_version = self.mock_object(
             self.library, '_check_data_ontap_version')
         mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
@@ -71,17 +74,22 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library.check_for_setup_error()
 
         self.assertTrue(mock_check_data_ontap_version.called)
+        self.assertTrue(self.library._find_matching_aggregates.called)
         mock_super.assert_called_once_with()
 
     def test_check_for_setup_error_cluster_creds_with_vserver(self):
         self.library._have_cluster_creds = True
         self.library.configuration.netapp_vserver = fake.VSERVER1
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=fake.AGGREGATES))
         mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
                                       'check_for_setup_error')
 
         self.library.check_for_setup_error()
 
         mock_super.assert_called_once_with()
+        self.assertTrue(self.library._find_matching_aggregates.called)
         self.assertTrue(lib_multi_svm.LOG.warning.called)
 
     def test_check_for_setup_error_vserver_creds(self):
@@ -89,6 +97,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidInput,
                           self.library.check_for_setup_error)
+
+    def test_check_for_setup_error_no_aggregates(self):
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library,
+                         '_find_matching_aggregates',
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.NetAppException,
+                          self.library.check_for_setup_error)
+        self.assertTrue(self.library._find_matching_aggregates.called)
 
     @ddt.data((1, 20), (1, 21))
     def test_check_data_ontap_version(self, version):
