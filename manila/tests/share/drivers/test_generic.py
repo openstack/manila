@@ -48,7 +48,9 @@ def get_fake_manage_share():
         'share_proto': 'NFS',
         'share_type_id': 'fake',
         'export_locations': [
-            '10.0.0.1:/foo/fake/path', '11.0.0.1:/bar/fake/path'],
+            {'path': '10.0.0.1:/foo/fake/path'},
+            {'path': '11.0.0.1:/bar/fake/path'},
+        ],
     }
 
 
@@ -464,11 +466,9 @@ class GenericShareDriverTestCase(test.TestCase):
         self.mock_object(self._driver.volume_api, 'get_all',
                          mock.Mock(return_value=[]))
 
-        self.assertRaises(
-            exception.VolumeNotFound,
-            self._driver._get_volume,
-            self._context, self.share['id'])
+        result = self._driver._get_volume(self._context, self.share['id'])
 
+        self.assertEqual(result, None)
         self._driver.volume_api.get_all.assert_called_once_with(
             self._context, {'all_tenants': True, 'name': vol_name})
 
@@ -826,6 +826,18 @@ class GenericShareDriverTestCase(test.TestCase):
         self._helper_nfs.create_export.assert_called_once_with(
             self.server['backend_details'], self.share['name'], recreate=True)
 
+    def test_ensure_share_volume_is_absent(self):
+        self.mock_object(
+            self._driver, '_get_volume', mock.Mock(return_value=None))
+        self.mock_object(self._driver, '_attach_volume')
+
+        self._driver.ensure_share(
+            self._context, self.share, share_server=self.server)
+
+        self._driver._get_volume.assert_called_once_with(
+            self._context, self.share['id'])
+        self.assertFalse(self._driver._attach_volume.called)
+
     def test_ensure_share_invalid_helper(self):
         self._driver._helpers = {'CIFS': self._helper_cifs}
         self.assertRaises(exception.InvalidShare, self._driver.ensure_share,
@@ -1073,7 +1085,7 @@ class GenericShareDriverTestCase(test.TestCase):
             fake_path, None)
         self._driver._helpers[share['share_proto']].\
             get_share_path_by_export_location.assert_called_once_with(
-                None, share['export_locations'][0])
+                None, share['export_locations'][0]['path'])
 
     def test_manage_share_not_attached_to_cinder_volume_invalid_size(self):
         share = get_fake_manage_share()
@@ -1098,7 +1110,7 @@ class GenericShareDriverTestCase(test.TestCase):
             fake_path, server_details)
         self._driver._helpers[share['share_proto']].\
             get_share_path_by_export_location.assert_called_once_with(
-                server_details, share['export_locations'][0])
+                server_details, share['export_locations'][0]['path'])
 
     def test_manage_share_not_attached_to_cinder_volume(self):
         share = get_fake_manage_share()

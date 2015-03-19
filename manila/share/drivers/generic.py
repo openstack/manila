@@ -376,8 +376,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         'name': volume_name, 'result': volumes_list})
             raise exception.ManilaException(
                 _("Error. Ambiguous volumes for name '%s'") % volume_name)
-        else:
-            raise exception.VolumeNotFound(volume_id=volume_name)
+        return None
 
     def _get_volume_snapshot(self, context, snapshot_id):
         """Find volume snapshot associated to the specific share snapshot."""
@@ -580,14 +579,17 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Ensure that storage are mounted and exported."""
         helper = self._get_helper(share)
         volume = self._get_volume(context, share['id'])
-        volume = self._attach_volume(
-            context,
-            share,
-            share_server['backend_details']['instance_id'],
-            volume)
-        self._mount_device(share, share_server['backend_details'], volume)
-        helper.create_export(share_server['backend_details'], share['name'],
-                             recreate=True)
+
+        # NOTE(vponomaryov): volume can be None for managed shares
+        if volume:
+            volume = self._attach_volume(
+                context,
+                share,
+                share_server['backend_details']['instance_id'],
+                volume)
+            self._mount_device(share, share_server['backend_details'], volume)
+            helper.create_export(
+                share_server['backend_details'], share['name'], recreate=True)
 
     @ensure_server
     def allow_access(self, context, share, access, share_server=None):
@@ -670,7 +672,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         server_details = share_server['backend_details']
 
         mount_path = helper.get_share_path_by_export_location(
-            share_server['backend_details'], share['export_locations'][0])
+            share_server['backend_details'],
+            share['export_locations'][0]['path'])
         LOG.debug("Manage: mount path = %s", mount_path)
 
         mounted = self._is_device_mounted(mount_path, server_details)
