@@ -710,8 +710,8 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.manage_share(self.context, share_id, {})
 
         self.share_manager.db.share_update.assert_called_once_with(
-            mock.ANY, share_id, {'status': constants.STATUS_MANAGE_ERROR}
-        )
+            mock.ANY, share_id,
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
     def test_manage_share_driver_exception(self):
         self.mock_object(self.share_manager, 'driver', mock.Mock())
@@ -729,8 +729,8 @@ class ShareManagerTestCase(test.TestCase):
             assert_called_once_with(mock.ANY, driver_options)
 
         self.share_manager.db.share_update.assert_called_once_with(
-            mock.ANY, share_id, {'status': constants.STATUS_MANAGE_ERROR}
-        )
+            mock.ANY, share_id,
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
     def test_manage_share_invalid_size(self):
         self.mock_object(self.share_manager, 'driver')
@@ -749,8 +749,8 @@ class ShareManagerTestCase(test.TestCase):
             assert_called_once_with(mock.ANY, driver_options)
 
         self.share_manager.db.share_update.assert_called_once_with(
-            mock.ANY, share_id, {'status': constants.STATUS_MANAGE_ERROR}
-        )
+            mock.ANY, share_id,
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
     def test_manage_share_quota_error(self):
         self.mock_object(self.share_manager, 'driver')
@@ -771,8 +771,8 @@ class ShareManagerTestCase(test.TestCase):
             assert_called_once_with(mock.ANY, driver_options)
 
         self.share_manager.db.share_update.assert_called_once_with(
-            mock.ANY, share_id, {'status': constants.STATUS_MANAGE_ERROR}
-        )
+            mock.ANY, share_id,
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
     @ddt.data({'size': 1},
               {'size': 1, 'name': 'fake'})

@@ -108,6 +108,11 @@ ShareGroup = [
                 help="Whether to suppress errors with clean up operation "
                      "or not. There are cases when we may want to skip "
                      "such errors and catch only test errors."),
+    cfg.BoolOpt("run_manage_unmanage_tests",
+                default=False,
+                help="Defines whether to run manage/unmanage tests or not. "
+                     "These test may leave orphaned resources, so be careful "
+                     "enabling this opt."),
 ]
 
 

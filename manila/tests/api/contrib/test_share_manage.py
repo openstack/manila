@@ -141,12 +141,14 @@ class ShareManageTest(test.TestCase):
     def test_share_manage(self):
         body = get_fake_manage_body()
         self._setup_manage_mocks()
-        self.mock_object(share_api.API, 'manage')
+        share = {'share_type_id': '', 'id': 'fake'}
+        self.mock_object(share_api.API, 'manage',
+                         mock.Mock(return_value=share))
 
         share = {
             'host': body['share']['service_host'],
             'export_location': body['share']['export_path'],
-            'share_proto': body['share']['protocol'],
+            'share_proto': body['share']['protocol'].upper(),
             'share_type_id': 'fake',
             'display_name': body['share']['display_name'],
             'display_description': body['share']['display_description'],
@@ -156,7 +158,7 @@ class ShareManageTest(test.TestCase):
 
         share_api.API.manage.assert_called_once_with(
             mock.ANY, share, {})
-        self.assertEqual(202, actual_result.status_int)
+        self.assertIsNotNone(actual_result)
 
     def test_wrong_permissions(self):
         body = get_fake_manage_body()

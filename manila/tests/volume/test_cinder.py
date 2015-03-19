@@ -129,8 +129,18 @@ class CinderApiTestCase(test.TestCase):
         self.assertIsNone(self.api.check_detach(self.ctx, volume))
 
     def test_update(self):
-        self.assertRaises(NotImplementedError,
-                          self.api.update, self.ctx, '', '')
+        fake_volume = {'fake': 'fake'}
+        self.mock_object(self.cinderclient.volumes, 'get',
+                         mock.Mock(return_value=fake_volume))
+        self.mock_object(self.cinderclient.volumes, 'update')
+        fake_volume_id = 'fake_volume'
+        fake_data = {'test': 'test'}
+
+        self.api.update(self.ctx, fake_volume_id, fake_data)
+
+        self.cinderclient.volumes.get.assert_called_once_with(fake_volume_id)
+        self.cinderclient.volumes.update.assert_called_once_with(fake_volume,
+                                                                 **fake_data)
 
     def test_reserve_volume(self):
         self.mock_object(self.cinderclient.volumes, 'reserve')

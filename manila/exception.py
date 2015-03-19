@@ -163,6 +163,10 @@ class InvalidUUID(Invalid):
     message = _("Expected a uuid but received %(uuid)s.")
 
 
+class InvalidDriverMode(Invalid):
+    message = _("Invalid driver mode: %(driver_mode)s.")
+
+
 class NotFound(ManilaException):
     message = _("Resource could not be found.")
     code = 404

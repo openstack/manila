@@ -84,6 +84,23 @@ class SharesClient(service_client.ServiceClient):
     def delete_share(self, share_id):
         return self.delete("shares/%s" % share_id)
 
+    def manage_share(self, service_host, protocol, export_path,
+                     share_type_id):
+        post_body = {
+            "share": {
+                "export_path": export_path,
+                "service_host": service_host,
+                "protocol": protocol,
+                "share_type": share_type_id,
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post("os-share-manage", body)
+        return resp, self._parse_resp(body)
+
+    def unmanage_share(self, share_id):
+        return self.post("os-share-unmanage/%s/unmanage" % share_id, None)
+
     def list_shares(self, detailed=False, params=None):
         """Get list of shares w/o filters."""
         uri = 'shares/detail' if detailed else 'shares'
@@ -176,7 +193,7 @@ class SharesClient(service_client.ServiceClient):
             share_status = body['status']
             if share_status == status:
                 return
-            elif 'error' in share_status:
+            elif 'error' in share_status.lower():
                 raise share_exceptions.\
                     ShareBuildErrorException(share_id=share_id)
 

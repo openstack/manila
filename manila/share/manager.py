@@ -340,8 +340,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 raise exception.InvalidShare(reason=msg)
 
             share_update = (
-                self.driver.manage_existing(share_ref, driver_options) or {}
-            )
+                self.driver.manage_existing(share_ref, driver_options) or {})
 
             if not share_update.get('size'):
                 msg = _("Driver cannot calculate share size.")
@@ -349,19 +348,22 @@ class ShareManager(manager.SchedulerDependentManager):
 
             self._update_quota_usages(context, project_id, {
                 "shares": 1,
-                "gigabytes": share_update['size']
+                "gigabytes": share_update['size'],
             })
 
             share_update.update({
                 'status': 'available',
-                'launched_at': timeutils.utcnow()
+                'launched_at': timeutils.utcnow(),
             })
             self.db.share_update(context, share_id, share_update)
-
         except Exception as e:
             LOG.error(_LW("Manage share failed: %s"), six.text_type(e))
-            self.db.share_update(context, share_id,
-                                 {'status': constants.STATUS_MANAGE_ERROR})
+            # NOTE(vponomaryov): set size as 1 because design expects size
+            # to be set, it also will allow us to handle delete/unmanage
+            # operations properly with this errored share according to quotas.
+            self.db.share_update(
+                context, share_id,
+                {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
     def _update_quota_usages(self, context, project_id, usages):
         user_id = context.user_id

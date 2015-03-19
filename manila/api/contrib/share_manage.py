@@ -13,11 +13,11 @@
 #   under the License.
 
 import six
-import webob
 from webob import exc
 
 from manila.api import extensions
 from manila.api.openstack import wsgi
+from manila.api.views import shares as share_views
 from manila import exception
 from manila.i18n import _
 from manila import share
@@ -29,6 +29,9 @@ authorize = extensions.extension_authorizer('share', 'manage')
 
 
 class ShareManageController(wsgi.Controller):
+
+    _view_builder_class = share_views.ViewBuilder
+
     def __init__(self, *args, **kwargs):
         super(ShareManageController, self).__init__(*args, **kwargs)
         self.share_api = share.API()
@@ -41,7 +44,7 @@ class ShareManageController(wsgi.Controller):
         share = {
             'host': share_data['service_host'],
             'export_location': share_data['export_path'],
-            'share_proto': share_data['protocol'],
+            'share_proto': share_data['protocol'].upper(),
             'share_type_id': share_data['share_type_id'],
             'display_name': share_data.get('display_name', ''),
             'display_description': share_data.get('display_description', ''),
@@ -50,13 +53,13 @@ class ShareManageController(wsgi.Controller):
         driver_options = share_data.get('driver_options', {})
 
         try:
-            self.share_api.manage(context, share, driver_options)
+            share_ref = self.share_api.manage(context, share, driver_options)
         except exception.PolicyNotAuthorized as e:
             raise exc.HTTPForbidden(explanation=six.text_type(e))
         except exception.ManilaException as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
 
-        return webob.Response(status_int=202)
+        return self._view_builder.detail(req, share_ref)
 
     def _validate_manage_parameters(self, context, body):
         if not (body and self.is_valid_body(body, 'share')):
@@ -70,6 +73,9 @@ class ShareManageController(wsgi.Controller):
         for parameter in required_parameters:
             if parameter not in data:
                 msg = _("Required parameter %s not found") % parameter
+                raise exc.HTTPUnprocessableEntity(explanation=msg)
+            if not data.get(parameter):
+                msg = _("Required parameter %s is empty") % parameter
                 raise exc.HTTPUnprocessableEntity(explanation=msg)
 
         if not share_utils.extract_host(data['service_host'], 'pool'):

@@ -24,6 +24,7 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import strutils
 import six
 
 from manila.common import constants as const
@@ -35,6 +36,7 @@ from manila.i18n import _LE
 from manila.i18n import _LW
 from manila.share import driver
 from manila.share.drivers import service_instance
+from manila.share import share_types
 from manila import utils
 from manila import volume
 
@@ -206,9 +208,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                    volume['mountpoint']]
         self._ssh_exec(server_details, command)
 
-    def _is_device_mounted(self, share, server_details, volume=None):
+    def _is_device_mounted(self, mount_path, server_details, volume=None):
         """Checks whether volume already mounted or not."""
-        mount_path = self._get_mount_path(share)
         log_data = {
             'mount_path': mount_path,
             'server_id': server_details['instance_id'],
@@ -274,7 +275,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 'server': server_details['instance_id'],
             }
             try:
-                if not self._is_device_mounted(share, server_details, volume):
+                if not self._is_device_mounted(mount_path, server_details,
+                                               volume):
                     LOG.debug("Mounting '%(dev)s' to path '%(path)s' on "
                               "server '%(server)s'.", log_data)
                     mount_cmd = ['sudo mkdir -p', mount_path, '&&']
@@ -303,7 +305,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 'path': mount_path,
                 'server': server_details['instance_id'],
             }
-            if self._is_device_mounted(share, server_details):
+            if self._is_device_mounted(mount_path, server_details):
                 LOG.debug("Unmounting path '%(path)s' on server "
                           "'%(server)s'.", log_data)
                 unmount_cmd = ['sudo umount', mount_path, '&& sudo rmdir',
@@ -354,24 +356,28 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     self.configuration.max_time_to_attach)
         return do_attach(volume)
 
+    def _get_volume_name(self, share_id):
+        return self.configuration.volume_name_template % share_id
+
     def _get_volume(self, context, share_id):
         """Finds volume, associated to the specific share."""
-        volume_name = self.configuration.volume_name_template % share_id
+        volume_name = self._get_volume_name(share_id)
         search_opts = {'name': volume_name}
         if context.is_admin:
             search_opts['all_tenants'] = True
         volumes_list = self.volume_api.get_all(context, search_opts)
-        volume = None
         if len(volumes_list) == 1:
-            volume = volumes_list[0]
+            return volumes_list[0]
         elif len(volumes_list) > 1:
             LOG.error(
                 _LE("Expected only one volume in volume list with name "
                     "'%(name)s', but got more than one in a result - "
                     "'%(result)s'."), {
                         'name': volume_name, 'result': volumes_list})
-            raise exception.ManilaException(_('Error. Ambiguous volumes'))
-        return volume
+            raise exception.ManilaException(
+                _("Error. Ambiguous volumes for name '%s'") % volume_name)
+        else:
+            raise exception.VolumeNotFound(volume_id=volume_name)
 
     def _get_volume_snapshot(self, context, snapshot_id):
         """Find volume snapshot associated to the specific share snapshot."""
@@ -633,6 +639,107 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.service_instance_manager.delete_service_instance(
             self.admin_context, server_details)
 
+    def manage_existing(self, share, driver_options):
+        """Manage existing share to manila.
+
+        Generic driver accepts only one driver_option 'volume_id'.
+        If an administrator provides this option, then appropriate Cinder
+        volume will be managed by Manila as well.
+
+        :param share: share data
+        :param driver_options: Empty dict or dict with 'volume_id' option.
+        :return: dict with share size, example: {'size': 1}
+        """
+        if self.driver_handles_share_servers:
+            msg = _('Operation "manage" for shares is supported only when '
+                    'driver does not handle share servers.')
+            raise exception.InvalidDriverMode(msg)
+
+        helper = self._get_helper(share)
+        driver_mode = share_types.get_share_type_extra_specs(
+            share['share_type_id'],
+            const.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS)
+
+        if strutils.bool_from_string(driver_mode):
+            msg = _("%(mode)s != False") % {
+                'mode': const.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+            }
+            raise exception.ManageExistingShareTypeMismatch(reason=msg)
+
+        share_server = self.service_instance_manager.get_common_server()
+        server_details = share_server['backend_details']
+
+        mount_path = helper.get_share_path_by_export_location(
+            share_server['backend_details'], share['export_locations'][0])
+        LOG.debug("Manage: mount path = %s", mount_path)
+
+        mounted = self._is_device_mounted(mount_path, server_details)
+        LOG.debug("Manage: is share mounted = %s", mounted)
+
+        if not mounted:
+            msg = _("Provided share %s is not mounted.") % share['id']
+            raise exception.ManageInvalidShare(reason=msg)
+
+        def get_volume():
+            if 'volume_id' in driver_options:
+                try:
+                    return self.volume_api.get(
+                        self.admin_context, driver_options['volume_id'])
+                except exception.VolumeNotFound as e:
+                    raise exception.ManageInvalidShare(reason=six.text_type(e))
+
+            # NOTE(vponomaryov): Manila can only combine volume name by itself,
+            # nowhere to get volume ID from. Return None since Cinder volume
+            # names are not unique or fixed, hence, they can not be used for
+            # sure.
+            return None
+
+        share_volume = get_volume()
+
+        if share_volume:
+            instance_volumes = self.compute_api.instance_volumes_list(
+                self.admin_context, server_details['instance_id'])
+
+            attached_volumes = [vol.id for vol in instance_volumes]
+            LOG.debug('Manage: attached volumes = %s',
+                      six.text_type(attached_volumes))
+
+            if share_volume['id'] not in attached_volumes:
+                msg = _("Provided volume %s is not attached "
+                        "to service instance.") % share_volume['id']
+                raise exception.ManageInvalidShare(reason=msg)
+
+            linked_volume_name = self._get_volume_name(share['id'])
+            if share_volume['name'] != linked_volume_name:
+                LOG.debug('Manage: volume_id = %s' % share_volume['id'])
+                self.volume_api.update(self.admin_context, share_volume['id'],
+                                       {'name': linked_volume_name})
+
+            share_size = share_volume['size']
+        else:
+            share_size = self._get_mounted_share_size(
+                mount_path, share_server['backend_details'])
+
+        # TODO(vponomaryov): need update export_locations too using driver's
+        # information.
+        return {'size': share_size}
+
+    def _get_mounted_share_size(self, mount_path, server_details):
+        share_size_cmd = ['df', '-PBG', mount_path]
+        output, __ = self._ssh_exec(server_details, share_size_cmd)
+        lines = output.split('\n')
+
+        try:
+            size = int(lines[1].split()[1][:-1])
+        except Exception as e:
+            msg = _("Cannot calculate size of share %(path)s : %(error)s") % {
+                'path': mount_path,
+                'error': six.text_type(e)
+            }
+            raise exception.ManageInvalidShare(reason=msg)
+
+        return size
+
 
 class NASHelperBase(object):
     """Interface to work with share."""
@@ -660,6 +767,10 @@ class NASHelperBase(object):
 
     def deny_access(self, server, share_name, access, force=False):
         """Deny access to the host."""
+        raise NotImplementedError()
+
+    def get_share_path_by_export_location(self, server, export_location):
+        """Returns share path by its export location."""
         raise NotImplementedError()
 
 
@@ -744,6 +855,9 @@ class NFSHelper(NASHelperBase):
             'sudo', 'exportfs', '-a',
         ]
         self._ssh_exec(server, sync_cmd)
+
+    def get_share_path_by_export_location(self, server, export_location):
+        return export_location.split(':')[-1]
 
 
 class CIFSHelper(NASHelperBase):
@@ -855,3 +969,21 @@ class CIFSHelper(NASHelperBase):
         value = "\"" + ' '.join(hosts) + "\""
         self._ssh_exec(server, ['sudo', 'net', 'conf', 'setparm', share_name,
                                 '\"hosts allow\"', value])
+
+    def get_share_path_by_export_location(self, server, export_location):
+        # Get name of group that contains share data on CIFS server
+        if export_location.startswith('\\\\'):
+            group_name = export_location.split('\\')[-1]
+        elif export_location.startswith('//'):
+            group_name = export_location.split('/')[-1]
+        else:
+            msg = _("Got incorrect CIFS export location "
+                    "'%s'.") % export_location
+            raise exception.InvalidShare(reason=msg)
+
+        # Get parameter 'path' from group that belongs to current share
+        (out, __) = self._ssh_exec(
+            server, ['sudo', 'net', 'conf', 'getparm', group_name, 'path'])
+
+        # Remove special symbols from response and return path
+        return out.strip()
