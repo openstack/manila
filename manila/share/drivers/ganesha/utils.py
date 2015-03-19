@@ -44,7 +44,7 @@ def walk(dct):
 
 
 class RootExecutor(object):
-    """Execute wrapper defaulting to root exection."""
+    """Execute wrapper defaulting to root execution."""
 
     def __init__(self, execute=utils.execute):
         self.execute = execute
