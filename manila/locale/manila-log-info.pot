@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev158\n"
+"Project-Id-Version: manila 2015.1.dev173\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-14 06:15+0000\n"
+"POT-Creation-Date: 2015-03-19 06:09+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -234,55 +234,55 @@ msgstr ""
 msgid "Filter %(cls_name)s returned %(obj_len)d host(s)"
 msgstr ""
 
-#: manila/scheduler/host_manager.py:444
+#: manila/scheduler/host_manager.py:441
 #, python-format
-msgid "Removing non-active host: %(host)s from scheduler cache."
+msgid "Removing non-active host: %s from scheduler cache."
 msgstr ""
 
-#: manila/share/manager.py:165
+#: manila/share/manager.py:130
 #, python-format
 msgid "Share %(name)s: skipping export, because it has '%(status)s' status."
 msgstr ""
 
-#: manila/share/manager.py:219
+#: manila/share/manager.py:225
 msgid "Share server created successfully."
 msgstr ""
 
-#: manila/share/manager.py:221
+#: manila/share/manager.py:227
 #, python-format
 msgid "Used already existed share server '%(share_server_id)s'"
 msgstr ""
 
-#: manila/share/manager.py:320
+#: manila/share/manager.py:326
 msgid "Share created successfully."
 msgstr ""
 
-#: manila/share/manager.py:458
+#: manila/share/manager.py:466
 #, python-format
 msgid "Share %s: deleted successfully."
 msgstr ""
 
-#: manila/share/manager.py:578
+#: manila/share/manager.py:586
 msgid "Updating share status"
 msgstr ""
 
-#: manila/share/manager.py:716
+#: manila/share/manager.py:724
 #, python-format
 msgid "Share server '%s' has been deleted successfully."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:113
+#: manila/share/drivers/glusterfs_native.py:116
 #, python-format
 msgid "Number of gluster volumes read from config: %(numvols)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:140
+#: manila/share/drivers/glusterfs_native.py:143
 msgid ""
 "Number of gluster volumes in use:  %(inuse-numvols)s. Number of gluster "
 "volumes available for use as share: %(unused-numvols)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:401
+#: manila/share/drivers/glusterfs_native.py:404
 #, python-format
 msgid "export_location sent back from create_share: %s"
 msgstr ""

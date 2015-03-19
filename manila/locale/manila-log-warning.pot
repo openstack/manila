@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev158\n"
+"Project-Id-Version: manila 2015.1.dev173\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-14 06:15+0000\n"
+"POT-Creation-Date: 2015-03-19 06:09+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -102,7 +102,7 @@ msgid ""
 "(%(d_consumed)d of %(d_quota)d already consumed)"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:957
+#: manila/db/sqlalchemy/api.py:958
 #, python-format
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr ""
@@ -120,6 +120,11 @@ msgstr ""
 #: manila/openstack/common/policy.py:248
 #, python-format
 msgid "Can not find policy directories %s"
+msgstr ""
+
+#: manila/scheduler/host_manager.py:439
+#, python-format
+msgid "Share service is down. (host: %s)"
 msgstr ""
 
 #: manila/scheduler/manager.py:99
@@ -148,14 +153,14 @@ msgid ""
 "shares already consumed)"
 msgstr ""
 
-#: manila/share/api.py:334
+#: manila/share/api.py:340
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: manila/share/api.py:343
+#: manila/share/api.py:349
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
@@ -169,36 +174,36 @@ msgid ""
 "path %(new)s"
 msgstr ""
 
-#: manila/share/manager.py:314
+#: manila/share/manager.py:320
 #, python-format
 msgid ""
 "Share information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/manager.py:356
+#: manila/share/manager.py:360
 #, python-format
 msgid "Manage share failed: %s"
 msgstr ""
 
-#: manila/share/manager.py:658
+#: manila/share/manager.py:666
 #, python-format
 msgid ""
 "Server Information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/drivers/generic.py:289
+#: manila/share/drivers/generic.py:291
 #, python-format
 msgid "Mount point '%(path)s' already exists on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:315
+#: manila/share/drivers/generic.py:317
 #, python-format
 msgid "Mount point '%(path)s' does not exist on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:812
+#: manila/share/drivers/generic.py:926
 #, python-format
 msgid "Caught error trying delete share: %(error)s, trying delete it forcibly."
 msgstr ""
@@ -412,5 +417,25 @@ msgstr ""
 msgid ""
 "Vserver is specified in the configuration. This is ignored when the "
 "driver is managing share servers."
+msgstr ""
+
+#: manila/share/drivers/quobyte/jsonrpc.py:98
+msgid ""
+"Will not verify the server certificate of the API service because the CA "
+"certificate is not available."
+msgstr ""
+
+#: manila/share/drivers/quobyte/jsonrpc.py:143
+msgid "Could not verify server certificate of API service against CA."
+msgstr ""
+
+#: manila/share/drivers/quobyte/jsonrpc.py:163
+#, python-format
+msgid "Encountered error, retrying: %s"
+msgstr ""
+
+#: manila/share/drivers/quobyte/quobyte.py:159
+#, python-format
+msgid "No volume found for share %(project_id)s/%(name)s"
 msgstr ""
 
