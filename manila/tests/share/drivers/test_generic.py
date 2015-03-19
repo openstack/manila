@@ -1115,15 +1115,35 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_manage_share_not_attached_to_cinder_volume(self):
         share = get_fake_manage_share()
         share_size = "fake"
+        fake_path = '/foo/bar'
+        fake_exports = ['foo', 'bar']
         server_details = {}
         self._setup_manage_mocks(server_details=server_details)
-        self.mock_object(self._driver, '_get_volume',
-                         mock.Mock(return_value=None))
+        self.mock_object(self._driver, '_get_volume')
         self.mock_object(self._driver, '_get_mounted_share_size',
                          mock.Mock(return_value=share_size))
+        self.mock_object(
+            self._driver._helpers[share['share_proto']],
+            'get_share_path_by_export_location',
+            mock.Mock(return_value=fake_path))
+        self.mock_object(
+            self._driver._helpers[share['share_proto']],
+            'get_exports_for_share',
+            mock.Mock(return_value=fake_exports))
 
-        actual_result = self._driver.manage_existing(share, {})
-        self.assertEqual({'size': share_size}, actual_result)
+        result = self._driver.manage_existing(share, {})
+
+        self.assertEqual(
+            {'size': share_size, 'export_locations': fake_exports}, result)
+        self._driver._helpers[share['share_proto']].get_exports_for_share.\
+            assert_called_once_with(
+                server_details, share['export_locations'][0]['path'])
+        self._driver._helpers[share['share_proto']].\
+            get_share_path_by_export_location.assert_called_once_with(
+                server_details, share['export_locations'][0]['path'])
+        self._driver._get_mounted_share_size.assert_called_once_with(
+            fake_path, server_details)
+        self.assertFalse(self._driver._get_volume.called)
 
     def test_manage_share_attached_to_cinder_volume_not_found(self):
         share = get_fake_manage_share()
@@ -1162,9 +1182,11 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_manage_share_attached_to_cinder_volume(self):
         share = get_fake_manage_share()
+        fake_size = 'foobar'
+        fake_exports = ['foo', 'bar']
         server_details = {'instance_id': 'fake'}
         driver_options = {'volume_id': 'fake'}
-        volume = {'id': 'fake', 'name': 'fake_volume_1', 'size': 'fake'}
+        volume = {'id': 'fake', 'name': 'fake_volume_1', 'size': fake_size}
         self._setup_manage_mocks(server_details=server_details)
         self.mock_object(self._driver.volume_api, 'get',
                          mock.Mock(return_value=volume))
@@ -1173,10 +1195,18 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_volume.id = 'fake'
         self.mock_object(self._driver.compute_api, 'instance_volumes_list',
                          mock.Mock(return_value=[fake_volume]))
+        self.mock_object(
+            self._driver._helpers[share['share_proto']],
+            'get_exports_for_share',
+            mock.Mock(return_value=fake_exports))
 
-        actual_result = self._driver.manage_existing(share, driver_options)
+        result = self._driver.manage_existing(share, driver_options)
 
-        self.assertEqual({'size': 'fake'}, actual_result)
+        self.assertEqual(
+            {'size': fake_size, 'export_locations': fake_exports}, result)
+        self._driver._helpers[share['share_proto']].get_exports_for_share.\
+            assert_called_once_with(
+                server_details, share['export_locations'][0]['path'])
         expected_volume_update = {
             'name': self._driver._get_volume_name(share['id'])
         }
@@ -1327,6 +1357,33 @@ class NFSHelperTestCase(test.TestCase):
     def test_sync_nfs_temp_and_perm_files(self):
         self._helper._sync_nfs_temp_and_perm_files(self.server)
         self._helper._ssh_exec.assert_called_once_with(self.server, mock.ANY)
+
+    @ddt.data('/foo/bar', '5.6.7.8:/bar/quuz', '5.6.7.88:/foo/quuz')
+    def test_get_exports_for_share(self, export_location):
+        server = dict(public_address='1.2.3.4')
+
+        result = self._helper.get_exports_for_share(server, export_location)
+
+        path = export_location.split(':')[-1]
+        self.assertEqual([':'.join([server['public_address'], path])], result)
+
+    @ddt.data(
+        {'public_address_with_suffix': 'foo'},
+        {'with_prefix_public_address': 'bar'},
+        {'with_prefix_public_address_and_with_suffix': 'quuz'}, {})
+    def test_get_exports_for_share_with_error(self, server):
+        export_location = '1.2.3.4:/foo/bar'
+
+        self.assertRaises(
+            exception.ManilaException,
+            self._helper.get_exports_for_share, server, export_location)
+
+    @ddt.data('/foo/bar', '5.6.7.8:/foo/bar', '5.6.7.88:fake:/foo/bar')
+    def test_get_share_path_by_export_location(self, export_location):
+        result = self._helper.get_share_path_by_export_location(
+            dict(), export_location)
+
+        self.assertEqual('/foo/bar', result)
 
 
 @ddt.ddt
@@ -1579,3 +1636,60 @@ class CIFSHelperTestCase(test.TestCase):
         self._helper._get_allow_hosts.assert_called_once_with(
             self.server_details, self.share_name)
         self._helper._set_allow_hosts.assert_has_calls([])
+
+    @ddt.data(
+        '', '1.2.3.4:/nfs/like/export', '/1.2.3.4/foo', '\\1.2.3.4\\foo',
+        '//1.2.3.4\\mixed_slashes_and_backslashes_one',
+        '\\\\1.2.3.4/mixed_slashes_and_backslashes_two')
+    def test__get_share_group_name_from_export_location(self, export_location):
+        self.assertRaises(
+            exception.InvalidShare,
+            self._helper._get_share_group_name_from_export_location,
+            export_location)
+
+    @ddt.data('//5.6.7.8/foo', '\\\\5.6.7.8\\foo')
+    def test_get_exports_for_share(self, export_location):
+        server = dict(public_address='1.2.3.4')
+        self.mock_object(
+            self._helper, '_get_share_group_name_from_export_location',
+            mock.Mock(side_effect=(
+                self._helper._get_share_group_name_from_export_location)))
+
+        result = self._helper.get_exports_for_share(server, export_location)
+
+        expected_export_location = ['\\\\%s\\foo' % server['public_address']]
+        self.assertEqual(expected_export_location, result)
+        self._helper._get_share_group_name_from_export_location.\
+            assert_called_once_with(export_location)
+
+    @ddt.data(
+        {'public_address_with_suffix': 'foo'},
+        {'with_prefix_public_address': 'bar'},
+        {'with_prefix_public_address_and_with_suffix': 'quuz'}, {})
+    def test_get_exports_for_share_with_exception(self, server):
+        export_location = '1.2.3.4:/foo/bar'
+
+        self.assertRaises(
+            exception.ManilaException,
+            self._helper.get_exports_for_share, server, export_location)
+
+    @ddt.data('//5.6.7.8/foo', '\\\\5.6.7.8\\foo')
+    def test_get_share_path_by_export_location(self, export_location):
+        fake_path = ' /bar/quuz\n '
+        fake_server = dict()
+        self.mock_object(
+            self._helper, '_ssh_exec',
+            mock.Mock(return_value=(fake_path, 'fake')))
+        self.mock_object(
+            self._helper, '_get_share_group_name_from_export_location',
+            mock.Mock(side_effect=(
+                self._helper._get_share_group_name_from_export_location)))
+
+        result = self._helper.get_share_path_by_export_location(
+            fake_server, export_location)
+
+        self.assertEqual('/bar/quuz', result)
+        self._helper._ssh_exec.assert_called_once_with(
+            fake_server, ['sudo', 'net', 'conf', 'getparm', 'foo', 'path'])
+        self._helper._get_share_group_name_from_export_location.\
+            assert_called_once_with(export_location)
