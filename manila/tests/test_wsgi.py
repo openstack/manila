@@ -17,6 +17,7 @@
 """Unit tests for `manila.wsgi`."""
 
 import os.path
+import ssl
 import tempfile
 import urllib2
 
@@ -145,7 +146,13 @@ class TestWSGIServer(test.TestCase):
         server = manila.wsgi.Server("test_app", hello_world)
         server.start()
 
-        response = urllib2.urlopen('https://127.0.0.1:%d/' % server.port)
+        if hasattr(ssl, '_create_unverified_context'):
+            response = urllib2.urlopen(
+                'https://127.0.0.1:%d/' % server.port,
+                context=ssl._create_unverified_context())
+        else:
+            response = urllib2.urlopen('https://127.0.0.1:%d/' % server.port)
+
         self.assertEqual(greetings, response.read())
 
         server.stop()
@@ -172,7 +179,13 @@ class TestWSGIServer(test.TestCase):
                                     port=0)
         server.start()
 
-        response = urllib2.urlopen('https://[::1]:%d/' % server.port)
+        if hasattr(ssl, '_create_unverified_context'):
+            response = urllib2.urlopen(
+                'https://[::1]:%d/' % server.port,
+                context=ssl._create_unverified_context())
+        else:
+            response = urllib2.urlopen('https://[::1]:%d/' % server.port)
+
         self.assertEqual(greetings, response.read())
 
         server.stop()
