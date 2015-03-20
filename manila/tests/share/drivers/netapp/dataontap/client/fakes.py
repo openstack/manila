@@ -60,6 +60,9 @@ NETMASK = '255.255.255.0'
 NET_ALLOCATION_ID = 'fake_allocation_id'
 LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
 LIF_NAME = LIF_NAME_TEMPLATE % {'net_allocation_id': NET_ALLOCATION_ID}
+IPSPACE = 'fake_ipspace'
+BROADCAST_DOMAIN = 'fake_domain'
+MTU = 9000
 
 EMS_MESSAGE = {
     'computer-name': 'fake_host',
@@ -430,6 +433,43 @@ SORTED_PORTS_ALL_SPEEDS = (
     {'node': NODE_NAME, 'port': 'port6', 'speed': 'undef'},
     {'node': NODE_NAME, 'port': 'port7'},
 )
+
+NET_PORT_GET_ITER_BROADCAST_DOMAIN_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <net-port-info>
+        <broadcast-domain>%(domain)s</broadcast-domain>
+        <node>%(node)s</node>
+        <port>%(port)s</port>
+      </net-port-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'domain': BROADCAST_DOMAIN, 'node': NODE_NAME, 'port': PORT})
+
+NET_PORT_GET_ITER_BROADCAST_DOMAIN_MISSING_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <net-port-info>
+        <node>%(node)s</node>
+        <port>%(port)s</port>
+      </net-port-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'node': NODE_NAME, 'port': PORT})
+
+NET_PORT_BROADCAST_DOMAIN_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <net-port-broadcast-domain-info>
+        <broadcast-domain>%(domain)s</broadcast-domain>
+        <ipspace>%(ipspace)s</ipspace>
+      </net-port-broadcast-domain-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'domain': BROADCAST_DOMAIN, 'ipspace': IPSPACE})
 
 NET_INTERFACE_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">

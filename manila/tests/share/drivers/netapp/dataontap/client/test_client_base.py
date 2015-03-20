@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 from oslo_log import log
 
@@ -55,6 +56,12 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.assertEqual(1, self.connection.get_api_version.call_count)
         self.assertEqual(1, major)
         self.assertEqual(20, minor)
+
+    def test_init_features(self):
+
+        self.client._init_features()
+
+        self.assertSetEqual(set(), self.client.features.defined_features)
 
     def test_check_is_naelement(self):
 
@@ -122,3 +129,38 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.assertRaises(NotImplementedError,
                           self.client.send_ems_log_message,
                           {})
+
+
+@ddt.ddt
+class FeaturesTestCase(test.TestCase):
+
+    def setUp(self):
+        super(FeaturesTestCase, self).setUp()
+        self.features = client_base.Features()
+
+    def test_init(self):
+        self.assertSetEqual(set(), self.features.defined_features)
+
+    def test_add_feature_default(self):
+        self.features.add_feature('FEATURE_1')
+
+        self.assertTrue(self.features.FEATURE_1)
+        self.assertIn('FEATURE_1', self.features.defined_features)
+
+    @ddt.data(True, False)
+    def test_add_feature(self, value):
+        self.features.add_feature('FEATURE_2', value)
+
+        self.assertEqual(value, self.features.FEATURE_2)
+        self.assertIn('FEATURE_2', self.features.defined_features)
+
+    @ddt.data('True', 'False', 0, 1, 1.0, None, [], {}, (True,))
+    def test_add_feature_type_error(self, value):
+        self.assertRaises(TypeError,
+                          self.features.add_feature,
+                          'FEATURE_3',
+                          value)
+        self.assertNotIn('FEATURE_3', self.features.defined_features)
+
+    def test_get_attr_missing(self):
+        self.assertRaises(AttributeError, getattr, self.features, 'FEATURE_4')

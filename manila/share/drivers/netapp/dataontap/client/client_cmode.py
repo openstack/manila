@@ -32,6 +32,8 @@ from manila.share.drivers.netapp import utils as na_utils
 
 LOG = log.getLogger(__name__)
 DELETED_PREFIX = 'deleted_manila_'
+DEFAULT_IPSPACE = 'Default'
+DEFAULT_BROADCAST_DOMAIN = 'OpenStack'
 
 
 class NetAppCmodeClient(client_base.NetAppBaseClient):
@@ -45,6 +47,19 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.connection.set_api_version(1, 15)
         (major, minor) = self.get_ontapi_version(cached=False)
         self.connection.set_api_version(major, minor)
+
+        self._init_features()
+
+    def _init_features(self):
+        """Initialize cDOT feature support map."""
+        super(NetAppCmodeClient, self)._init_features()
+
+        ontapi_version = self.get_ontapi_version(cached=True)
+        ontapi_1_30 = ontapi_version >= (1, 30)
+
+        self.features.add_feature('BROADCAST_DOMAINS', supported=ontapi_1_30)
+        self.features.add_feature('IPSPACES', supported=ontapi_1_30)
+        self.features.add_feature('SUBNETS', supported=ontapi_1_30)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -265,7 +280,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 },
             },
             'desired-attributes': {
-                'node-details-info': {
+                'net-port-info': {
                     'port': None,
                     'node': None,
                     'operational-speed': None,
@@ -350,6 +365,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self._create_vlan(node, port, vlan)
             home_port_name = '%(port)s-%(tag)s' % {'port': port, 'tag': vlan}
 
+        if self.features.BROADCAST_DOMAINS:
+            self._ensure_broadcast_domain_for_port(node, home_port_name)
+
         interface_name = (lif_name_template %
                           {'node': node, 'net_allocation_id': allocation_id})
 
@@ -391,6 +409,104 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 msg = _('Failed to create VLAN %(vlan)s on '
                         'port %(port)s. %(err_msg)s')
                 msg_args = {'vlan': vlan, 'port': port, 'err_msg': e.message}
+                raise exception.NetAppException(msg % msg_args)
+
+    @na_utils.trace
+    def _ensure_broadcast_domain_for_port(self, node, port,
+                                          domain=DEFAULT_BROADCAST_DOMAIN,
+                                          ipspace=DEFAULT_IPSPACE):
+        """Ensure a port is in a broadcast domain.  Create one if necessary."""
+
+        if self._get_broadcast_domain_for_port(node, port):
+            return
+
+        if not self._broadcast_domain_exists(domain, ipspace):
+            self._create_broadcast_domain(domain, ipspace)
+
+        self._add_port_to_broadcast_domain(node, port, domain, ipspace)
+
+    @na_utils.trace
+    def _get_broadcast_domain_for_port(self, node, port):
+        """Get broadcast domain for a specific port."""
+        api_args = {
+            'query': {
+                'net-port-info': {
+                    'node': node,
+                    'port': port,
+                },
+            },
+            'desired-attributes': {
+                'net-port-info': {
+                    'broadcast-domain': None,
+                },
+            },
+        }
+        result = self.send_request('net-port-get-iter', api_args)
+
+        net_port_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        port_info = net_port_info_list.get_children()
+        if not port_info:
+            msg = _('Could not find port %(port)s on node %(node)s.')
+            msg_args = {'port': port, 'node': node}
+            raise exception.NetAppException(msg % msg_args)
+
+        return port_info[0].get_child_content('broadcast-domain')
+
+    @na_utils.trace
+    def _broadcast_domain_exists(self, domain, ipspace):
+        """Check if a broadcast domain exists."""
+        api_args = {
+            'query': {
+                'net-port-broadcast-domain-info': {
+                    'ipspace': ipspace,
+                    'broadcast-domain': domain,
+                },
+            },
+            'desired-attributes': {
+                'net-port-broadcast-domain-info': None,
+            },
+        }
+        result = self.send_request('net-port-broadcast-domain-get-iter',
+                                   api_args)
+        return self._has_records(result)
+
+    @na_utils.trace
+    def _create_broadcast_domain(self, domain, ipspace, mtu=1500):
+        """Create a broadcast domain."""
+        api_args = {
+            'ipspace': ipspace,
+            'broadcast-domain': domain,
+            'mtu': mtu,
+        }
+        self.send_request('net-port-broadcast-domain-create', api_args)
+
+    @na_utils.trace
+    def _add_port_to_broadcast_domain(self, node, port, domain, ipspace):
+
+        qualified_port_name = ':'.join([node, port])
+        try:
+            api_args = {
+                'ipspace': ipspace,
+                'broadcast-domain': domain,
+                'ports': {
+                    'net-qualified-port-name': qualified_port_name,
+                }
+            }
+            self.send_request('net-port-broadcast-domain-add-ports', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code == (netapp_api.
+                          E_VIFMGR_PORT_ALREADY_ASSIGNED_TO_BROADCAST_DOMAIN):
+                LOG.debug('Port %(port)s already exists in broadcast domain '
+                          '%(domain)s', {'port': port, 'domain': domain})
+            else:
+                msg = _('Failed to add port %(port)s to broadcast domain '
+                        '%(domain)s. %(err_msg)s')
+                msg_args = {
+                    'port': qualified_port_name,
+                    'domain': domain,
+                    'err_msg': e.message,
+                }
                 raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
@@ -595,12 +711,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def setup_security_services(self, security_services, vserver_client,
                                 vserver_name):
         api_args = {
-            'name-mapping-switch': {
-                'nmswitch': 'ldap,file',
-            },
-            'name-server-switch': {
-                'nsswitch': 'ldap,file',
-            },
+            'name-mapping-switch': [
+                {'nmswitch': 'ldap'},
+                {'nmswitch': 'file'}
+            ],
+            'name-server-switch': [
+                {'nsswitch': 'ldap'},
+                {'nsswitch': 'file'}
+            ],
             'vserver-name': vserver_name,
         }
         self.send_request('vserver-modify', api_args)
