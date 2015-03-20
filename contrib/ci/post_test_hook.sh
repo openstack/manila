@@ -60,13 +60,13 @@ for CG in ${CONFIG_GROUPS//,/ }; do
         WITH_SHARE_SERVER_HANDLING_MODES=$((WITH_SHARE_SERVER_HANDLING_MODES+1))
     else
         echo "Config option 'driver_handles_share_servers' either is not defined or \
-              defined with improper value - '$DRIVER_HANDLES_SHARE_SERVERS'."
+            defined with improper value - '$DRIVER_HANDLES_SHARE_SERVERS'."
         exit 1
     fi
 done
 
 if [[ $NO_SHARE_SERVER_HANDLING_MODES -ge 1 && $WITH_SHARE_SERVER_HANDLING_MODES -ge 1 || \
-      $NO_SHARE_SERVER_HANDLING_MODES -eq 0 && $WITH_SHARE_SERVER_HANDLING_MODES -eq 0 ]]; then
+    $NO_SHARE_SERVER_HANDLING_MODES -eq 0 && $WITH_SHARE_SERVER_HANDLING_MODES -eq 0 ]]; then
     echo 'Allowed only same driver modes for all backends to be run with Tempest job.'
     exit 1
 elif [[ $NO_SHARE_SERVER_HANDLING_MODES -ge 1 ]]; then

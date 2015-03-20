@@ -99,7 +99,8 @@ DEPRECATED_TEXT="$DEPRECATED_TEXT\n'MANILA_MULTI_BACKEND' is deprecated,
     Use 'MANILA_ENABLED_BACKENDS' instead if you want to use custom setting.
     Set there a list of back end names to be enabled.\n
     To configure custom back ends use (any opt in any group can be set in this way) following:
-    MANILA_OPTGROUP_foo_bar=value, where 'foo' is name of config group and 'bar' is name of option.\n"
+    MANILA_OPTGROUP_foo_bar=value
+    where 'foo' is name of config group and 'bar' is name of option.\n"
 
 # First share backend data, that will be used in any installation
 MANILA_BACKEND1_CONFIG_GROUP_NAME=${MANILA_BACKEND1_CONFIG_GROUP_NAME:-generic1}  # deprecated
