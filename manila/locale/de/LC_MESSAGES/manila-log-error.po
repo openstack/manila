@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Manila\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-14 06:16+0000\n"
-"PO-Revision-Date: 2015-03-13 15:12+0000\n"
+"POT-Creation-Date: 2015-03-19 06:09+0000\n"
+"PO-Revision-Date: 2015-03-17 20:05+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/manila/language/"
 "de/)\n"
@@ -105,7 +105,7 @@ msgstr ""
 msgid "share_type_projects table not dropped"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:2293
+#: manila/db/sqlalchemy/api.py:2323
 #, python-format
 msgid "ShareType %s deletion failed, ShareType in use."
 msgstr ""
@@ -143,7 +143,7 @@ msgstr "Fehler die Regel %s zu verstehen."
 msgid "No handler for matches of kind %s"
 msgstr "Kein Handler für Matches der Art %s"
 
-#: manila/scheduler/filter_scheduler.py:228
+#: manila/scheduler/filter_scheduler.py:227
 #, python-format
 msgid ""
 "Error scheduling %(share_id)s from last share-service: %(last_host)s : "
@@ -164,7 +164,7 @@ msgstr ""
 msgid "Free capacity not set: volume node info collection broken."
 msgstr ""
 
-#: manila/share/api.py:277
+#: manila/share/api.py:283
 msgid "Failed to update quota for deleting share"
 msgstr ""
 
@@ -178,14 +178,14 @@ msgstr ""
 msgid "Failed to fetch pool name for share: %(share)s. Error: %(error)s."
 msgstr ""
 
-#: manila/share/manager.py:136
+#: manila/share/manager.py:143
 #, python-format
 msgid ""
 "Caught exception trying ensure share '%(s_id)s'. Exception: \n"
 "%(e)s."
 msgstr ""
 
-#: manila/share/manager.py:153
+#: manila/share/manager.py:165
 #, python-format
 msgid ""
 "Unexpected exception during share access allow operation. Share id is "
@@ -193,44 +193,44 @@ msgid ""
 "'%(ar_id)s', exception is '%(e)s'."
 msgstr ""
 
-#: manila/share/manager.py:268
+#: manila/share/manager.py:274
 #, python-format
 msgid "Share server %s does not exist."
 msgstr "Share Server %s existiert nicht."
 
-#: manila/share/manager.py:278
+#: manila/share/manager.py:284
 msgid "Failed to get share server for share creation."
 msgstr ""
 
-#: manila/share/manager.py:299
+#: manila/share/manager.py:305
 #, python-format
 msgid "Share %s failed on creation."
 msgstr ""
 
-#: manila/share/manager.py:399
+#: manila/share/manager.py:407
 #, python-format
 msgid "Share can not be unmanaged: %s."
 msgstr ""
 
-#: manila/share/manager.py:413
+#: manila/share/manager.py:421
 #, python-format
 msgid "Failed to update quota usages: %s."
 msgstr ""
 
-#: manila/share/manager.py:422
+#: manila/share/manager.py:430
 #, python-format
 msgid "Can not remove access rules of share: %s."
 msgstr ""
 
-#: manila/share/manager.py:455
+#: manila/share/manager.py:463
 msgid "Failed to update usages deleting share"
 msgstr ""
 
-#: manila/share/manager.py:535
+#: manila/share/manager.py:543
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: manila/share/manager.py:707
+#: manila/share/manager.py:715
 #, python-format
 msgid "Share server '%s' failed on deletion."
 msgstr ""
@@ -251,24 +251,24 @@ msgid ""
 "Default share type is not found, please check default_share_type config: %s"
 msgstr ""
 
-#: manila/share/drivers/generic.py:249
+#: manila/share/drivers/generic.py:250
 #, python-format
 msgid "Failed to sync mount files on server '%s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:256
+#: manila/share/drivers/generic.py:257
 #, python-format
 msgid "Failed to mount all shares on server '%s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:369
+#: manila/share/drivers/generic.py:373
 #, python-format
 msgid ""
 "Expected only one volume in volume list with name '%(name)s', but got more "
 "than one in a result - '%(result)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:387
+#: manila/share/drivers/generic.py:393
 #, python-format
 msgid ""
 "Expected only one volume snapshot in list with name '%(name)s', but got more "
@@ -276,6 +276,8 @@ msgid ""
 msgstr ""
 
 #: manila/share/drivers/glusterfs.py:136
+#: manila/share/drivers/glusterfs_native.py:450
+#: manila/share/drivers/glusterfs_native.py:490
 #, python-format
 msgid "Error retrieving volume info: %s"
 msgstr ""
@@ -417,15 +419,20 @@ msgstr ""
 msgid "Failed to create network interface(s)."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/protocols/cifs_cmode.py:73
+#: manila/share/drivers/netapp/dataontap/protocols/cifs_cmode.py:76
 #, python-format
 msgid "User %s does not exist."
 msgstr "Benutzer %s existiert nicht."
 
-#: manila/share/drivers/netapp/dataontap/protocols/cifs_cmode.py:75
+#: manila/share/drivers/netapp/dataontap/protocols/cifs_cmode.py:78
 #, python-format
 msgid "Rule %s does not exist."
 msgstr "Regel %s existiert nicht."
+
+#: manila/share/drivers/quobyte/quobyte.py:91
+#, python-format
+msgid "Could not connect to API: %s"
+msgstr ""
 
 #: manila/share/drivers/zfssa/zfssarest.py:237
 #, python-format
