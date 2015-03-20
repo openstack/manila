@@ -19,7 +19,9 @@ from webob import exc
 
 from manila.api import extensions
 from manila.api.openstack import wsgi
+from manila.common import constants
 from manila import exception
+from manila.i18n import _
 from manila.i18n import _LI
 from manila import share
 
@@ -43,6 +45,18 @@ class ShareUnmanageController(wsgi.Controller):
 
         try:
             share = self.share_api.get(context, id)
+            if share.get('share_server_id'):
+                msg = _("Operation 'unmanage' is not supported for shares "
+                        "that are created on top of share servers "
+                        "(created with share-networks).")
+                raise exc.HTTPForbidden(explanation=msg)
+            # NOTE(vponomaryov): use 'upper' translation because share
+            # statuses not always used from common place yet.
+            elif share['status'].upper() in constants.TRANSITIONAL_STATUSES:
+                msg = _("Share with transitional state can not be unmanaged. "
+                        "Share '%(s_id)s' is in '%(state)s' state.") % dict(
+                            state=share['status'], s_id=share['id'])
+                raise exc.HTTPForbidden(explanation=msg)
             self.share_api.unmanage(context, share)
         except exception.NotFound as e:
             raise exc.HTTPNotFound(explanation=six.text_type(e))
