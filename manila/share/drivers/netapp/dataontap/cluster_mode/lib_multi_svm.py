@@ -28,7 +28,6 @@ from oslo_utils import excutils
 from manila import context
 from manila import exception
 from manila.i18n import _, _LE, _LW
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp import utils as na_utils
 from manila import utils
@@ -121,7 +120,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             self._create_vserver_lifs(vserver_name,
                                       vserver_client,
                                       network_info)
-        except netapp_api.NaApiError:
+        except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Failed to create network interface(s)."))
                 self._client.delete_vserver(vserver_name, vserver_client)
@@ -145,7 +144,7 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         for node, net_info in node_network_info:
             net_id = net_info['id']
-            port = self._client.get_node_data_port(node)
+            port = self._get_node_data_port(node)
             ip = net_info['ip_address']
             self._create_lif_if_nonexistent(vserver_name,
                                             net_id,
@@ -155,6 +154,18 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                                             ip,
                                             netmask,
                                             vserver_client)
+
+    @na_utils.trace
+    def _get_node_data_port(self, node):
+        port_names = self._client.list_node_data_ports(node)
+        pattern = self.configuration.netapp_port_name_search_pattern
+        matched_port_names = [port_name for port_name in port_names
+                              if re.match(pattern, port_name)]
+        if not matched_port_names:
+            raise exception.NetAppException(
+                _('Could not find eligible network ports on node %s on which '
+                  'to create Vserver LIFs.') % node)
+        return matched_port_names[0]
 
     @na_utils.trace
     def _create_lif_if_nonexistent(self, vserver_name, allocation_id, vlan,
