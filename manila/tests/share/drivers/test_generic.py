@@ -1366,7 +1366,7 @@ class CIFSHelperTestCase(test.TestCase):
                          mock.Mock(side_effect=fake_ssh_exec))
 
         ret = self._helper.create_export(self.server_details, self.share_name)
-        expected_location = '//%s/%s' % (
+        expected_location = '\\\\%s\\%s' % (
             self.server_details['public_address'], self.share_name)
         self.assertEqual(ret, expected_location)
         share_path = os.path.join(
@@ -1390,7 +1390,7 @@ class CIFSHelperTestCase(test.TestCase):
     def test_create_export_share_exist_recreate_true(self):
         ret = self._helper.create_export(self.server_details, self.share_name,
                                          recreate=True)
-        expected_location = '//%s/%s' % (
+        expected_location = '\\\\%s\\%s' % (
             self.server_details['public_address'], self.share_name)
         self.assertEqual(ret, expected_location)
         share_path = os.path.join(
