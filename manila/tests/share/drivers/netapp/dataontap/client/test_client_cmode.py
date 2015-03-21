@@ -549,6 +549,35 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('net-interface-create', lif_create_args)])
 
+    def test_create_network_interface_no_vlan(self):
+
+        self.mock_object(self.client, '_create_vlan')
+        self.mock_object(self.client, 'send_request')
+
+        lif_create_args = {
+            'address': fake.IP_ADDRESS,
+            'administrative-status': 'up',
+            'data-protocols': [
+                {'data-protocol': 'nfs'},
+                {'data-protocol': 'cifs'}
+            ],
+            'home-node': fake.NODE_NAME,
+            'home-port': fake.PORT,
+            'netmask': fake.NETMASK,
+            'interface-name': fake.LIF_NAME,
+            'role': 'data',
+            'vserver': fake.VSERVER_NAME,
+        }
+        self.client.create_network_interface(fake.IP_ADDRESS, fake.NETMASK,
+                                             None, fake.NODE_NAME,
+                                             fake.PORT, fake.VSERVER_NAME,
+                                             fake.NET_ALLOCATION_ID,
+                                             fake.LIF_NAME_TEMPLATE)
+
+        self.assertFalse(self.client._create_vlan.called)
+        self.client.send_request.assert_has_calls([
+            mock.call('net-interface-create', lif_create_args)])
+
     def test_create_vlan(self):
 
         self.mock_object(self.client, 'send_request')
@@ -635,10 +664,26 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          'send_request',
                          mock.Mock(return_value=api_response))
 
+        net_interface_get_args = {
+            'query': {
+                'net-interface-info': {
+                    'address': fake.IP_ADDRESS,
+                    'home-node': fake.NODE_NAME,
+                    'home-port': fake.PORT,
+                    'netmask': fake.NETMASK,
+                    'vserver': fake.VSERVER_NAME}
+            },
+            'desired-attributes': {
+                'net-interface-info': {
+                    'interface-name': None,
+                }
+            }
+        }
         result = self.client.network_interface_exists(
             fake.VSERVER_NAME, fake.NODE_NAME, fake.PORT, fake.IP_ADDRESS,
-            fake.NETMASK, fake.VLAN)
-
+            fake.NETMASK, None)
+        self.client.send_request.assert_has_calls([
+            mock.call('net-interface-get-iter', net_interface_get_args)])
         self.assertFalse(result)
 
     def test_list_network_interfaces(self):

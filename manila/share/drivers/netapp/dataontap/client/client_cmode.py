@@ -307,9 +307,11 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                                  lif_name_template):
         """Creates LIF on VLAN port."""
 
-        self._create_vlan(node, port, vlan)
+        home_port_name = port
+        if vlan:
+            self._create_vlan(node, port, vlan)
+            home_port_name = '%(port)s-%(tag)s' % {'port': port, 'tag': vlan}
 
-        vlan_interface_name = '%(port)s-%(tag)s' % {'port': port, 'tag': vlan}
         interface_name = (lif_name_template %
                           {'node': node, 'net_allocation_id': allocation_id})
 
@@ -324,7 +326,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 {'data-protocol': 'cifs'},
             ],
             'home-node': node,
-            'home-port': vlan_interface_name,
+            'home-port': home_port_name,
             'netmask': netmask,
             'interface-name': interface_name,
             'role': 'data',
@@ -357,14 +359,16 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def network_interface_exists(self, vserver_name, node, port, ip, netmask,
                                  vlan):
         """Checks if LIF exists."""
-        vlan_interface_name = '%(port)s-%(tag)s' % {'port': port, 'tag': vlan}
+
+        home_port_name = (port if not vlan else
+                          '%(port)s-%(tag)s' % {'port': port, 'tag': vlan})
 
         api_args = {
             'query': {
                 'net-interface-info': {
                     'address': ip,
                     'home-node': node,
-                    'home-port': vlan_interface_name,
+                    'home-port': home_port_name,
                     'netmask': netmask,
                     'vserver': vserver_name,
                 },
@@ -400,7 +404,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         protocols = na_utils.convert_to_list(protocols)
         protocols = [protocol.lower() for protocol in protocols]
 
-        args = {
+        api_args = {
             'query': {
                 'net-interface-info': {
                     'data-protocols': {
@@ -410,7 +414,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             }
         } if protocols else None
 
-        result = self.send_request('net-interface-get-iter', args)
+        result = self.send_request('net-interface-get-iter', api_args)
         lif_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
 
