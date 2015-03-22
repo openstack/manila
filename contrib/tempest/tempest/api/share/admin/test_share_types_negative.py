@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib.common.utils import data_utils  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
 
 from tempest.api.share import base
 from tempest import clients_share as clients
-from tempest.common.utils import data_utils
-from tempest import exceptions
 from tempest import test
 
 
@@ -37,7 +36,7 @@ class ShareTypesAdminNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_share_type_with_user(self):
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.create_share_type,
                           data_utils.rand_name("used_user_creds"),
                           client=self.member_shares_client)
@@ -45,7 +44,7 @@ class ShareTypesAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_try_delete_share_type_with_user(self):
         st = self._create_share_type()
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.delete_share_type,
                           st["share_type"]["id"])
 
@@ -57,11 +56,11 @@ class ShareTypesAdminNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_create_share_type_with_empty_name(self):
-        self.assertRaises(exceptions.BadRequest, self.create_share_type, '')
+        self.assertRaises(lib_exc.BadRequest, self.create_share_type, '')
 
     @test.attr(type=["gate", "smoke", ])
     def test_create_share_type_with_too_big_name(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.create_share_type,
                           "x" * 256)
 

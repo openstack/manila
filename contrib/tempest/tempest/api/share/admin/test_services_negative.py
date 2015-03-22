@@ -30,7 +30,7 @@ class ServicesAdminNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_services_with_non_admin_user(self):
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.user_shares_client.list_services)
 
     @test.attr(type=["gate", "smoke", "negative", ])

@@ -13,30 +13,29 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log  # noqa
 import six  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
 import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config
-from tempest import exceptions
-from tempest.openstack.common import log as logging
 from tempest import test
 
 CONF = config.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class SecurityServicesNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_create_security_service_with_empty_type(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_security_service, "")
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_create_security_service_with_wrong_type(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_security_service,
                           "wrong_type")
 
@@ -107,7 +106,7 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
                         "that leads to share-server creation error. "
                         "%s" % six.text_type(e))
 
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.update_security_service,
                           ss["id"],
                           user="new_user")
@@ -129,6 +128,6 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_list_security_services_all_tenants(self):
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_security_services,
                           params={'all_tenants': 1})

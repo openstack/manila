@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib.common.utils import data_utils  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
 
 from tempest.api.share import base
 from tempest import clients_share as clients
-from tempest.common.utils import data_utils
 from tempest import test
 
 
@@ -30,18 +30,18 @@ class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_try_list_share_servers_with_member(self):
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.list_share_servers)
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_try_show_share_server_with_member(self):
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.show_share_server,
                           'fake_id')
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_try_show_share_server_details_with_member(self):
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.show_share_server_details,
                           'fake_id')
 
@@ -103,6 +103,6 @@ class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_delete_share_server_with_member(self):
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.delete_share_server,
                           "fake_nonexistent_share_server_id")

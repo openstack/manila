@@ -16,7 +16,6 @@
 from tempest_lib import exceptions as lib_exc  # noqa
 
 from tempest.api.share import base
-from tempest import exceptions
 from tempest import test
 
 
@@ -43,13 +42,13 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "negative", ])
     def test_try_set_metadata_with_empty_key(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.set_metadata,
                           self.share["id"], {"": "value"})
 
     @test.attr(type=["gate", "negative", ])
     def test_try_upd_metadata_with_empty_key(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_all_metadata,
                           self.share["id"], {"": "value"})
 
@@ -57,7 +56,7 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
     def test_try_set_metadata_with_too_big_key(self):
         too_big_key = "x" * 256
         md = {too_big_key: "value"}
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.set_metadata,
                           self.share["id"], md)
 
@@ -65,7 +64,7 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
     def test_try_upd_metadata_with_too_big_key(self):
         too_big_key = "x" * 256
         md = {too_big_key: "value"}
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_all_metadata,
                           self.share["id"], md)
 
@@ -73,7 +72,7 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
     def test_try_set_metadata_with_too_big_value(self):
         too_big_value = "x" * 1024
         md = {"key": too_big_value}
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.set_metadata,
                           self.share["id"], md)
 
@@ -81,7 +80,7 @@ class SharesMetadataNegativeTest(base.BaseSharesTest):
     def test_try_upd_metadata_with_too_big_value(self):
         too_big_value = "x" * 1024
         md = {"key": too_big_value}
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_all_metadata,
                           self.share["id"], md)
 

@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib.common.utils import data_utils  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
 
 from tempest.api.share import base
 from tempest import clients_share as clients
-from tempest.common.utils import data_utils
-from tempest import exceptions
 from tempest import test
 
 
@@ -39,7 +38,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_create_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            lib_exc.Unauthorized,
+            lib_exc.Forbidden,
             self.member_shares_client.create_share_type_extra_specs,
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({"key": "new_value"}))
@@ -48,7 +47,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_list_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            lib_exc.Unauthorized,
+            lib_exc.Forbidden,
             self.member_shares_client.list_share_types_extra_specs,
             st["share_type"]["id"])
 
@@ -56,7 +55,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_get_extra_spec_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            lib_exc.Unauthorized,
+            lib_exc.Forbidden,
             self.member_shares_client.get_share_type_extra_spec,
             st["share_type"]["id"], "key")
 
@@ -64,7 +63,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_get_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            lib_exc.Unauthorized,
+            lib_exc.Forbidden,
             self.member_shares_client.get_share_type_extra_specs,
             st["share_type"]["id"])
 
@@ -72,7 +71,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_update_extra_spec_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            lib_exc.Unauthorized,
+            lib_exc.Forbidden,
             self.member_shares_client.update_share_type_extra_spec,
             st["share_type"]["id"], "key", "new_value")
 
@@ -80,7 +79,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_update_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            lib_exc.Unauthorized,
+            lib_exc.Forbidden,
             self.member_shares_client.update_share_type_extra_specs,
             st["share_type"]["id"], {"key": "new_value"})
 
@@ -88,7 +87,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_delete_extra_specs_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
-            lib_exc.Unauthorized,
+            lib_exc.Forbidden,
             self.member_shares_client.delete_share_type_extra_spec,
             st["share_type"]["id"], "key")
 
@@ -97,7 +96,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
         too_big_key = "k" * 256
         st = self._create_share_type()
         self.assertRaises(
-            exceptions.BadRequest,
+            lib_exc.BadRequest,
             self.shares_client.create_share_type_extra_specs,
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({too_big_key: "value"}))
@@ -107,7 +106,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
         too_big_value = "v" * 256
         st = self._create_share_type()
         self.assertRaises(
-            exceptions.BadRequest,
+            lib_exc.BadRequest,
             self.shares_client.create_share_type_extra_specs,
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({"key": too_big_value}))
@@ -121,7 +120,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
             self.add_required_extra_specs_to_dict({"key": "value"}))
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertRaises(
-            exceptions.BadRequest,
+            lib_exc.BadRequest,
             self.shares_client.update_share_type_extra_specs,
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({"key": too_big_value}))
@@ -134,7 +133,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({"key": "value"}))
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_share_type_extra_spec,
                           st["share_type"]["id"], "key", too_big_value)
 
@@ -164,14 +163,14 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_es_with_empty_specs(self):
         st = self._create_share_type()
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share_type_extra_specs,
                           st["share_type"]["id"], "")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_create_es_with_invalid_specs(self):
         st = self._create_share_type()
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share_type_extra_specs,
                           st["share_type"]["id"], {"": "value_with_empty_key"})
 
@@ -248,6 +247,6 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_try_update_with_invalid_specs(self):
         st = self._create_share_type()
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_share_type_extra_specs,
                           st["share_type"]["id"], {"": "new_value"})

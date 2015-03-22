@@ -116,24 +116,17 @@ ShareGroup = [
 ]
 
 
-class TempestConfigPrivateManila(config.TempestConfigPrivate):
-
-    # manila's config wrap over standard config
-    def __init__(self, parse_conf=True):
-        super(TempestConfigPrivateManila, self).__init__()
-        config.register_opt_group(cfg.CONF, service_available_group,
-                                  ServiceAvailableGroup)
-        config.register_opt_group(cfg.CONF, share_group, ShareGroup)
-        self.share = cfg.CONF.share
-
-
 class TempestConfigProxyManila(object):
-    _config = None
+    """Wrapper over standard Tempest config that sets Manila opts."""
+
+    def __init__(self):
+        self._config = config.CONF
+        config.register_opt_group(
+            cfg.CONF, service_available_group, ServiceAvailableGroup)
+        config.register_opt_group(cfg.CONF, share_group, ShareGroup)
+        self._config.share = cfg.CONF.share
 
     def __getattr__(self, attr):
-        if not self._config:
-            self._config = TempestConfigPrivateManila()
-
         return getattr(self._config, attr)
 
 

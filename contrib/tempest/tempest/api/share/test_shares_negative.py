@@ -18,7 +18,6 @@ import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config
-from tempest import exceptions
 from tempest import share_exceptions
 from tempest import test
 
@@ -39,18 +38,18 @@ class SharesNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_create_share_with_invalid_protocol(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share,
                           share_protocol="nonexistent_protocol")
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_create_share_with_wrong_public_value(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share, is_public='truebar')
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_update_share_with_wrong_public_value(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_share, self.share["id"],
                           is_public="truebar")
 
@@ -68,7 +67,7 @@ class SharesNegativeTest(base.BaseSharesTest):
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_list_shares_nonadmin_with_nonexistent_share_server_filter(self):
         # filtering by share server allowed only for admins by default
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_shares_with_detail,
                           {'share_server_id': 'fake_share_server_id'})
 
@@ -97,17 +96,17 @@ class SharesNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_create_share_with_invalid_size(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share, size="#$%")
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_create_share_with_out_passing_size(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share, size="")
 
     @test.attr(type=["negative", "smoke", "gate", ])
     def test_create_share_with_zero_size(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_share, size=0)
 
     @test.attr(type=["negative", "gate", ])
@@ -121,7 +120,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         self.create_snapshot_wait_for_active(share["id"])
 
         # try delete share
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.delete_share, share["id"])
 
     @test.attr(type=["negative", "gate", ])
@@ -143,7 +142,7 @@ class SharesNegativeTest(base.BaseSharesTest):
             self.skip(skip_msg)
 
         # try create share from snapshot with less size
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.create_share,
                           size=1, snapshot_id=snap["id"],
                           cleanup_in_class=False)
@@ -182,7 +181,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         # try create share with snapshot using another share-network
         # 400 bad request is expected
         self.assertRaises(
-            exceptions.BadRequest,
+            lib_exc.BadRequest,
             self.create_share,
             cleanup_in_class=False,
             share_network_id=new_duplicated_sn["id"],
@@ -193,14 +192,14 @@ class SharesNegativeTest(base.BaseSharesTest):
     def test_update_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
-        self.assertRaises(lib_exc.Unauthorized, isolated_client.update_share,
+        self.assertRaises(lib_exc.Forbidden, isolated_client.update_share,
                           self.share["id"], name="new_name")
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_delete_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           isolated_client.delete_share,
                           self.share['id'])
 
@@ -208,7 +207,7 @@ class SharesNegativeTest(base.BaseSharesTest):
     def test_set_metadata_of_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           isolated_client.set_metadata,
                           self.share['id'],
                           {'key': 'value'})
@@ -217,7 +216,7 @@ class SharesNegativeTest(base.BaseSharesTest):
     def test_update_metadata_of_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           isolated_client.update_all_metadata,
                           self.share['id'],
                           {'key': 'value'})
@@ -226,7 +225,7 @@ class SharesNegativeTest(base.BaseSharesTest):
     def test_delete_metadata_of_other_tenants_public_share(self):
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           isolated_client.delete_metadata,
                           self.share['id'],
                           'key')

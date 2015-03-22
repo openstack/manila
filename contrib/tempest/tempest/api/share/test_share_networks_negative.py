@@ -18,7 +18,6 @@ import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config
-from tempest import exceptions
 from tempest import test
 
 CONF = config.CONF
@@ -65,7 +64,7 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
         resp, share = self.create_share(cleanup_in_class=False)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.update_share_network,
                           self.shares_client.share_network_id,
                           neutron_net_id="new_net_id")
@@ -87,27 +86,27 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_list_share_networks_all_tenants(self):
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_share_networks_with_detail,
                           params={'all_tenants': 1})
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_list_share_networks_project_id(self):
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.list_share_networks_with_detail,
                           params={'project_id': 'some_project'})
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_list_share_networks_wrong_created_since_value(self):
         self.assertRaises(
-            exceptions.BadRequest,
+            lib_exc.BadRequest,
             self.shares_client.list_share_networks_with_detail,
             params={'created_since': '2014-10-23T08:31:58.000000'})
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_list_share_networks_wrong_created_before_value(self):
         self.assertRaises(
-            exceptions.BadRequest,
+            lib_exc.BadRequest,
             self.shares_client.list_share_networks_with_detail,
             params={'created_before': '2014-10-23T08:31:58.000000'})
 

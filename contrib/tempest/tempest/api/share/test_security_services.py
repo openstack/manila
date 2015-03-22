@@ -13,16 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log  # noqa
 import six  # noqa
 import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config
-from tempest.openstack.common import log as logging
 from tempest import test
 
 CONF = config.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class SecurityServiceListMixin(object):

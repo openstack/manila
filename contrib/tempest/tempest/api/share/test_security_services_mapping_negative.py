@@ -105,7 +105,7 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         resp, share = self.create_share(share_network_id=fresh_sn["id"],
                                         cleanup_in_class=False)
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.cl.remove_sec_service_from_share_network,
                           fresh_sn["id"],
                           self.ss["id"])
@@ -160,7 +160,7 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Try delete ss, that has been assigned to some sn
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.cl.delete_security_service,
                           ss["id"], )
 

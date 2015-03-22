@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from tempest_lib.common.utils import data_utils  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
 import testtools  # noqa
 
 from tempest.api.share import base
-from tempest.common.utils import data_utils
 from tempest import config_share as config
 from tempest import test
 

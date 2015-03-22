@@ -17,27 +17,27 @@ import copy
 import inspect
 import traceback
 
+from oslo_concurrency import lockutils  # noqa
+from oslo_log import log  # noqa
+import six  # noqa
+from tempest_lib.common.utils import data_utils  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
 
-import six
 from tempest import clients_share as clients
 from tempest.common import isolated_creds
-from tempest.common.utils import data_utils
 from tempest import config_share as config
 from tempest import exceptions
-from tempest.openstack.common import lockutils
-from tempest.openstack.common import log as logging
 from tempest import share_exceptions
 from tempest import test
 
 CONF = config.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class handle_cleanup_exceptions(object):
     """Handle exceptions raised with cleanup operations.
 
-    Always suppress errors when lib_exc.NotFound or lib_exc.Unauthorized
+    Always suppress errors when lib_exc.NotFound or lib_exc.Forbidden
     are raised.
     Suppress all other exceptions only in case config opt
     'suppress_errors_in_cleanup' in config group 'share' is True.
@@ -48,7 +48,7 @@ class handle_cleanup_exceptions(object):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         if not (isinstance(exc_value,
-                           (lib_exc.NotFound, lib_exc.Unauthorized)) or
+                           (lib_exc.NotFound, lib_exc.Forbidden)) or
                 CONF.share.suppress_errors_in_cleanup):
             return False  # Do not suppress error if any
         if exc_traceback:

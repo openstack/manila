@@ -18,7 +18,6 @@ from tempest_lib import exceptions as lib_exc  # noqa
 from tempest.api.share import base
 from tempest import clients_share as clients
 from tempest import config_share as config
-from tempest import exceptions
 from tempest import test
 
 CONF = config.CONF
@@ -45,27 +44,27 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "negative", ])
     def test_reset_share_state_to_unacceptable_state(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.reset_state,
                           self.sh["id"], status="fake")
 
     @test.attr(type=["gate", "negative", ])
     def test_reset_snapshot_state_to_unacceptable_state(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.reset_state,
                           self.sn["id"], s_type="snapshots", status="fake")
 
     @test.attr(type=["gate", "negative", ])
     def test_try_reset_share_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.reset_state,
                           self.sh["id"])
 
     @test.attr(type=["gate", "negative", ])
     def test_try_reset_snapshot_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.reset_state,
                           self.sn["id"], s_type="snapshots")
 
@@ -84,13 +83,13 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "negative", ])
     def test_try_force_delete_share_with_member(self):
         # If a non-admin tries to do force_delete, it should be unauthorized
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.force_delete,
                           self.sh["id"])
 
     @test.attr(type=["gate", "negative", ])
     def test_try_force_delete_snapshot_with_member(self):
         # If a non-admin tries to do force_delete, it should be unauthorized
-        self.assertRaises(lib_exc.Unauthorized,
+        self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.force_delete,
                           self.sn["id"], s_type="snapshots")

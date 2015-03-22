@@ -17,7 +17,6 @@ from tempest_lib import exceptions as lib_exc  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config
-from tempest import exceptions
 from tempest import test
 
 CONF = config.CONF
@@ -40,55 +39,55 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_1(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "ip", "1.2.3.256")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_2(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "ip", "1.1.1.-")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_3(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "ip", "1.2.3.4/33")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_4(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "ip", "1.2.3.*")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_5(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "ip", "1.2.3.*/23")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_6(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "ip", "1.2.3.1|23")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_7(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "ip", "1.2.3.1/-1")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_8(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "ip", "1.2.3.1/")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_with_wrong_level(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"],
                           'ip',
@@ -111,7 +110,7 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
                                                        "active")
 
         # try create duplicate of rule
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], access_type, access_to)
 
@@ -137,32 +136,32 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_user_with_wrong_input_2(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "user",
                           "try+")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_user_with_empty_key(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "user", "")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_user_with_too_little_key(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "user", "abc")
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_user_with_too_big_key(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "user", "a" * 33)
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_user_with_wrong_input_1(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "user",
                           "try+")
@@ -185,7 +184,7 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_with_wrong_level(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"],
                           'user',
@@ -222,7 +221,7 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_type(self):
-        self.assertRaises(exceptions.BadRequest,
+        self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.create_access_rule,
                           self.share["id"], "wrong_type", "1.2.3.4")
 

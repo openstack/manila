@@ -18,10 +18,10 @@ import time
 import urllib
 
 import six  # noqa
+from tempest_lib.common.utils import data_utils  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
 
 from tempest.common import service_client
-from tempest.common.utils import data_utils
 from tempest import config_share as config
 from tempest import exceptions
 from tempest import share_exceptions
