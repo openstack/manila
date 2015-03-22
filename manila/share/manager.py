@@ -355,15 +355,24 @@ class ShareManager(manager.SchedulerDependentManager):
                 'status': 'available',
                 'launched_at': timeutils.utcnow(),
             })
+
+            # NOTE(vponomaryov): we should keep only those export locations
+            # that driver has calculated to avoid incompatibilities with one
+            # provided by user.
+            if 'export_locations' in share_update:
+                self.db.share_export_locations_update(
+                    context, share_id, share_update.pop('export_locations'),
+                    delete=True)
+
             self.db.share_update(context, share_id, share_update)
-        except Exception as e:
-            LOG.error(_LW("Manage share failed: %s"), six.text_type(e))
+        except Exception:
             # NOTE(vponomaryov): set size as 1 because design expects size
             # to be set, it also will allow us to handle delete/unmanage
             # operations properly with this errored share according to quotas.
             self.db.share_update(
                 context, share_id,
                 {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+            raise
 
     def _update_quota_usages(self, context, project_id, usages):
         user_id = context.user_id

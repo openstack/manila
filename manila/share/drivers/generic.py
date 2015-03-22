@@ -671,9 +671,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         share_server = self.service_instance_manager.get_common_server()
         server_details = share_server['backend_details']
 
+        old_export_location = share['export_locations'][0]['path']
         mount_path = helper.get_share_path_by_export_location(
-            share_server['backend_details'],
-            share['export_locations'][0]['path'])
+            share_server['backend_details'], old_export_location)
         LOG.debug("Manage: mount path = %s", mount_path)
 
         mounted = self._is_device_mounted(mount_path, server_details)
@@ -723,9 +723,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             share_size = self._get_mounted_share_size(
                 mount_path, share_server['backend_details'])
 
-        # TODO(vponomaryov): need update export_locations too using driver's
-        # information.
-        return {'size': share_size}
+        export_locations = helper.get_exports_for_share(
+            server_details, old_export_location)
+        return {'size': share_size, 'export_locations': export_locations}
 
     def _get_mounted_share_size(self, mount_path, server_details):
         share_size_cmd = ['df', '-PBG', mount_path]
@@ -770,6 +770,16 @@ class NASHelperBase(object):
 
     def deny_access(self, server, share_name, access, force=False):
         """Deny access to the host."""
+        raise NotImplementedError()
+
+    @staticmethod
+    def _verify_server_has_public_address(server):
+        if 'public_address' not in server:
+            raise exception.ManilaException(
+                _("Can not get 'public_address' for generation of export."))
+
+    def get_exports_for_share(self, server, old_export_location):
+        """Returns list of exports based on server info."""
         raise NotImplementedError()
 
     def get_share_path_by_export_location(self, server, export_location):
@@ -858,6 +868,11 @@ class NFSHelper(NASHelperBase):
             'sudo', 'exportfs', '-a',
         ]
         self._ssh_exec(server, sync_cmd)
+
+    def get_exports_for_share(self, server, old_export_location):
+        self._verify_server_has_public_address(server)
+        path = old_export_location.split(':')[-1]
+        return [':'.join([server['public_address'], path])]
 
     def get_share_path_by_export_location(self, server, export_location):
         return export_location.split(':')[-1]
@@ -973,16 +988,29 @@ class CIFSHelper(NASHelperBase):
         self._ssh_exec(server, ['sudo', 'net', 'conf', 'setparm', share_name,
                                 '\"hosts allow\"', value])
 
+    @staticmethod
+    def _get_share_group_name_from_export_location(export_location):
+        if '/' in export_location and '\\' in export_location:
+            pass
+        elif export_location.startswith('\\\\'):
+            return export_location.split('\\')[-1]
+        elif export_location.startswith('//'):
+            return export_location.split('/')[-1]
+
+        msg = _("Got incorrect CIFS export location '%s'.") % export_location
+        raise exception.InvalidShare(reason=msg)
+
+    def get_exports_for_share(self, server, old_export_location):
+        self._verify_server_has_public_address(server)
+        group_name = self._get_share_group_name_from_export_location(
+            old_export_location)
+        data = dict(ip=server['public_address'], share=group_name)
+        return ['\\\\%(ip)s\\%(share)s' % data]
+
     def get_share_path_by_export_location(self, server, export_location):
         # Get name of group that contains share data on CIFS server
-        if export_location.startswith('\\\\'):
-            group_name = export_location.split('\\')[-1]
-        elif export_location.startswith('//'):
-            group_name = export_location.split('/')[-1]
-        else:
-            msg = _("Got incorrect CIFS export location "
-                    "'%s'.") % export_location
-            raise exception.InvalidShare(reason=msg)
+        group_name = self._get_share_group_name_from_export_location(
+            export_location)
 
         # Get parameter 'path' from group that belongs to current share
         (out, __) = self._ssh_exec(

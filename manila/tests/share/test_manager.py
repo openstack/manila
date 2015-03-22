@@ -707,29 +707,36 @@ class ShareManagerTestCase(test.TestCase):
         share = self._create_share()
         share_id = share['id']
 
-        self.share_manager.manage_share(self.context, share_id, {})
+        self.assertRaises(
+            exception.InvalidShare,
+            self.share_manager.manage_share, self.context, share_id, {})
 
         self.share_manager.db.share_update.assert_called_once_with(
-            mock.ANY, share_id,
+            utils.IsAMatcher(context.RequestContext), share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
     def test_manage_share_driver_exception(self):
+        CustomException = type('CustomException', (Exception,), dict())
         self.mock_object(self.share_manager, 'driver', mock.Mock())
         self.share_manager.driver.driver_handles_share_servers = False
-        self.mock_object(self.share_manager.driver,
-                         "manage_existing", mock.Mock(side_effect=Exception()))
+        self.mock_object(
+            self.share_manager.driver,
+            "manage_existing", mock.Mock(side_effect=CustomException))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         share = self._create_share()
         share_id = share['id']
         driver_options = {'fake': 'fake'}
 
-        self.share_manager.manage_share(self.context, share_id, driver_options)
+        self.assertRaises(
+            CustomException,
+            self.share_manager.manage_share,
+            self.context, share_id, driver_options)
 
         self.share_manager.driver.manage_existing.\
             assert_called_once_with(mock.ANY, driver_options)
 
         self.share_manager.db.share_update.assert_called_once_with(
-            mock.ANY, share_id,
+            utils.IsAMatcher(context.RequestContext), share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
     def test_manage_share_invalid_size(self):
@@ -743,13 +750,15 @@ class ShareManagerTestCase(test.TestCase):
         share_id = share['id']
         driver_options = {'fake': 'fake'}
 
-        self.share_manager.manage_share(self.context, share_id, driver_options)
+        self.assertRaises(
+            exception.InvalidShare,
+            self.share_manager.manage_share,
+            self.context, share_id, driver_options)
 
         self.share_manager.driver.manage_existing.\
             assert_called_once_with(mock.ANY, driver_options)
-
         self.share_manager.db.share_update.assert_called_once_with(
-            mock.ANY, share_id,
+            utils.IsAMatcher(context.RequestContext), share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
 
     def test_manage_share_quota_error(self):
@@ -757,7 +766,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.driver_handles_share_servers = False
         self.mock_object(self.share_manager.driver,
                          "manage_existing",
-                         mock.Mock(return_value={'size': 1}))
+                         mock.Mock(return_value={'size': 3}))
         self.mock_object(self.share_manager, '_update_quota_usages',
                          mock.Mock(side_effect=exception.QuotaError))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
@@ -765,22 +774,35 @@ class ShareManagerTestCase(test.TestCase):
         share_id = share['id']
         driver_options = {'fake': 'fake'}
 
-        self.share_manager.manage_share(self.context, share_id, driver_options)
+        self.assertRaises(
+            exception.QuotaError,
+            self.share_manager.manage_share,
+            self.context, share_id, driver_options)
 
         self.share_manager.driver.manage_existing.\
             assert_called_once_with(mock.ANY, driver_options)
-
         self.share_manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id,
             {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+        self.share_manager._update_quota_usages.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            share['project_id'], {'shares': 1, 'gigabytes': 3})
 
-    @ddt.data({'size': 1},
-              {'size': 1, 'name': 'fake'})
+    @ddt.data(
+        {'size': 1},
+        {'size': 2, 'name': 'fake'},
+        {'size': 3, 'export_locations': ['foo', 'bar', 'quuz']})
     def test_manage_share_valid_share(self, driver_data):
+        export_locations = driver_data.get('export_locations')
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         self.mock_object(self.share_manager, 'driver', mock.Mock())
         self.mock_object(self.share_manager, '_update_quota_usages',
                          mock.Mock())
+        self.mock_object(
+            self.share_manager.db,
+            'share_export_locations_update',
+            mock.Mock(side_effect=(
+                self.share_manager.db.share_export_locations_update)))
         self.share_manager.driver.driver_handles_share_servers = False
         self.mock_object(self.share_manager.driver,
                          "manage_existing",
@@ -793,12 +815,19 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.driver.manage_existing.\
             assert_called_once_with(mock.ANY, driver_options)
-
+        if export_locations:
+            self.share_manager.db.share_export_locations_update.\
+                assert_called_once_with(
+                    utils.IsAMatcher(context.RequestContext),
+                    share_id, export_locations, delete=True)
+        else:
+            self.assertFalse(
+                self.share_manager.db.share_export_locations_update.called)
         valid_share_data = {'status': 'available', 'launched_at': mock.ANY}
         valid_share_data.update(driver_data)
         self.share_manager.db.share_update.assert_called_once_with(
-            mock.ANY, share_id, valid_share_data
-        )
+            utils.IsAMatcher(context.RequestContext),
+            share_id, valid_share_data)
 
     def test_update_quota_usages_new(self):
         self.mock_object(self.share_manager.db, 'quota_usage_get',
