@@ -17,7 +17,9 @@ NetApp NFS protocol helper class.
 
 from oslo_log import log
 
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
+from manila.common import constants
+from manila import exception
+from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.protocols import base
 from manila.share.drivers.netapp import utils as na_utils
 
@@ -29,73 +31,87 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     """Netapp specific cluster-mode NFS sharing driver."""
 
     @na_utils.trace
-    def create_share(self, share_name, export_addresses):
+    def create_share(self, share, share_name, export_addresses):
         """Creates NFS share."""
+        self._ensure_export_policy(share, share_name)
         export_path = self._client.get_volume_junction_path(share_name)
         return [':'.join([export_address, export_path])
                 for export_address in export_addresses]
 
     @na_utils.trace
-    def delete_share(self, share):
+    def delete_share(self, share, share_name):
         """Deletes NFS share."""
-        target, export_path = self._get_export_location(share)
-        LOG.debug('Deleting NFS rules for share %s', share['id'])
-        self._client.remove_nfs_export_rules(export_path)
+        LOG.debug('Deleting NFS export policy for share %s', share['id'])
+        export_policy_name = self._get_export_policy_name(share)
+        self._client.clear_nfs_export_policy_for_volume(share_name)
+        self._client.soft_delete_nfs_export_policy(export_policy_name)
 
     @na_utils.trace
-    def allow_access(self, context, share, access):
-        """Allows access to a given NFS storage."""
-        new_rules = access['access_to']
-        existing_rules = self._get_existing_rules(share)
+    def allow_access(self, context, share, share_name, access):
+        """Allows access to a given NFS share."""
+        if access['access_type'] != 'ip':
+            reason = _('Only ip access type allowed.')
+            raise exception.InvalidShareAccess(reason)
 
-        if not isinstance(new_rules, list):
-            new_rules = [new_rules]
+        self._ensure_export_policy(share, share_name)
+        export_policy_name = self._get_export_policy_name(share)
+        rule = access['access_to']
 
-        rules = existing_rules + new_rules
-        try:
-            self._modify_rule(share, rules)
-        except netapp_api.NaApiError:
-            self._modify_rule(share, existing_rules)
+        if access['access_level'] == constants.ACCESS_LEVEL_RW:
+            readonly = False
+        elif access['access_level'] == constants.ACCESS_LEVEL_RO:
+            readonly = True
+        else:
+            raise exception.InvalidShareAccessLevel(
+                level=access['access_level'])
+
+        self._client.add_nfs_export_rule(export_policy_name, rule, readonly)
 
     @na_utils.trace
-    def deny_access(self, context, share, access):
-        """Denies access to a given NFS storage."""
-        access_to = access['access_to']
-        existing_rules = self._get_existing_rules(share)
+    def deny_access(self, context, share, share_name, access):
+        """Denies access to a given NFS share."""
+        if access['access_type'] != 'ip':
+            return
 
-        if not isinstance(access_to, list):
-            access_to = [access_to]
-
-        for deny_rule in access_to:
-            if deny_rule in existing_rules:
-                existing_rules.remove(deny_rule)
-
-        self._modify_rule(share, existing_rules)
+        self._ensure_export_policy(share, share_name)
+        export_policy_name = self._get_export_policy_name(share)
+        rule = access['access_to']
+        self._client.remove_nfs_export_rule(export_policy_name, rule)
 
     @na_utils.trace
     def get_target(self, share):
         """Returns ID of target OnTap device based on export location."""
         return self._get_export_location(share)[0]
 
-    @na_utils.trace
-    def _modify_rule(self, share, rules):
-        """Modifies access rule for a given NFS share."""
-        target, export_path = self._get_export_location(share)
-        self._client.add_nfs_export_rules(export_path, rules)
-
-    @na_utils.trace
-    def _get_existing_rules(self, share):
-        """Returns available access rules for a given NFS share."""
-        target, export_path = self._get_export_location(share)
-        existing_rules = self._client.get_nfs_export_rules(export_path)
-
-        LOG.debug('Found existing rules %(rules)r for share %(share)s',
-                  {'rules': existing_rules, 'share': share['id']})
-
-        return existing_rules
-
     @staticmethod
     def _get_export_location(share):
-        """Returns IP address and export location of a NFS share."""
+        """Returns IP address and export location of an NFS share."""
         export_location = share['export_location'] or ':'
         return export_location.split(':')
+
+    @staticmethod
+    def _get_export_policy_name(share):
+        """Builds export policy name for an NFS share."""
+        return 'policy_' + share['id'].replace('-', '_')
+
+    @na_utils.trace
+    def _ensure_export_policy(self, share, share_name):
+        """Ensures a flexvol/share has an export policy.
+
+        This method ensures a flexvol has an export policy with a name
+        containing the share ID.  For legacy reasons, this may not
+        always be the case.
+        """
+        expected_export_policy = self._get_export_policy_name(share)
+        actual_export_policy = self._client.get_nfs_export_policy_for_volume(
+            share_name)
+
+        if actual_export_policy == expected_export_policy:
+            return
+        elif actual_export_policy == 'default':
+            self._client.create_nfs_export_policy(expected_export_policy)
+            self._client.set_nfs_export_policy_for_volume(
+                share_name, expected_export_policy)
+        else:
+            self._client.rename_nfs_export_policy(actual_export_policy,
+                                                  expected_export_policy)

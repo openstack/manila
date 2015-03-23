@@ -207,22 +207,30 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                 '_update_ssc_info')
         mock_handle_ems_logging = self.mock_object(self.library,
                                                    '_handle_ems_logging')
+        mock_handle_housekeeping_tasks = self.mock_object(
+            self.library, '_handle_housekeeping_tasks')
         mock_ssc_periodic_task = mock.Mock()
         mock_ems_periodic_task = mock.Mock()
+        mock_housekeeping_periodic_task = mock.Mock()
         mock_loopingcall = self.mock_object(
             loopingcall,
             'FixedIntervalLoopingCall',
             mock.Mock(side_effect=[mock_ssc_periodic_task,
-                                   mock_ems_periodic_task]))
+                                   mock_ems_periodic_task,
+                                   mock_housekeeping_periodic_task]))
 
         self.library._start_periodic_tasks()
 
         self.assertTrue(mock_update_ssc_info.called)
         self.assertFalse(mock_handle_ems_logging.called)
-        mock_loopingcall.assert_has_calls([mock.call(mock_update_ssc_info),
-                                           mock.call(mock_handle_ems_logging)])
+        self.assertFalse(mock_housekeeping_periodic_task.called)
+        mock_loopingcall.assert_has_calls(
+            [mock.call(mock_update_ssc_info),
+             mock.call(mock_handle_ems_logging),
+             mock.call(mock_handle_housekeeping_tasks)])
         self.assertTrue(mock_ssc_periodic_task.start.called)
         self.assertTrue(mock_ems_periodic_task.start.called)
+        self.assertTrue(mock_housekeeping_periodic_task.start.called)
 
     def test_get_valid_share_name(self):
 
@@ -803,10 +811,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                              fake.VSERVER1,
                                              vserver_client)
 
-        share_name = self.library._get_valid_share_name(fake.SHARE['id'])
         self.assertEqual(fake.NFS_EXPORTS, result)
         protocol_helper.create_share.assert_called_once_with(
-            share_name, fake.LIF_ADDRESSES)
+            fake.SHARE, fake.SHARE_NAME, fake.LIF_ADDRESSES)
 
     def test_create_export_lifs_not_found(self):
 
@@ -833,7 +840,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         protocol_helper.set_client.assert_called_once_with(vserver_client)
         protocol_helper.get_target.assert_called_once_with(fake.SHARE)
-        protocol_helper.delete_share.assert_called_once_with(fake.SHARE)
+        protocol_helper.delete_share.assert_called_once_with(fake.SHARE,
+                                                             fake.SHARE_NAME)
 
     def test_remove_export_target_not_found(self):
 
@@ -976,6 +984,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         protocol_helper.allow_access.assert_called_once_with(
             self.context,
             fake.SHARE,
+            fake.SHARE_NAME,
             fake.SHARE_ACCESS)
 
     def test_deny_access(self):
@@ -1000,6 +1009,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         protocol_helper.deny_access.assert_called_once_with(
             self.context,
             fake.SHARE,
+            fake.SHARE_NAME,
             fake.SHARE_ACCESS)
 
     def test_setup_server(self):

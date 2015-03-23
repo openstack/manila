@@ -656,9 +656,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_create_vlan_api_error(self):
 
-        self.mock_object(self.client,
-                         'send_request',
-                         self._mock_api_error())
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
 
         self.assertRaises(exception.NetAppException,
                           self.client._create_vlan,
@@ -1112,8 +1110,13 @@ class NetAppClientCmodeTestCase(test.TestCase):
         export_rule_create_args = {
             'client-match': '0.0.0.0/0',
             'policy-name': 'default',
-            'ro-rule': {'security-flavor': 'any'},
-            'rw-rule': {'security-flavor': 'any'}}
+            'ro-rule': {
+                'security-flavor': 'any'
+            },
+            'rw-rule': {
+                'security-flavor': 'never'
+            }
+        }
 
         self.client.send_request.assert_has_calls([
             mock.call('nfs-enable'),
@@ -1170,9 +1173,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_configure_active_directory_api_error(self):
 
-        self.mock_object(self.client,
-                         'send_request',
-                         self._mock_api_error())
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
         self.mock_object(self.client, 'configure_dns')
 
         self.assertRaises(exception.NetAppException,
@@ -1232,9 +1233,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_create_kerberos_realm_api_error(self):
 
-        self.mock_object(self.client,
-                         'send_request',
-                         self._mock_api_error())
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
 
         self.assertRaises(exception.NetAppException,
                           self.client.create_kerberos_realm,
@@ -1357,9 +1356,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_configure_dns_api_error(self):
 
-        self.mock_object(self.client,
-                         'send_request',
-                         self._mock_api_error())
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
 
         self.assertRaises(exception.NetAppException,
                           self.client.configure_dns,
@@ -1780,189 +1777,451 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('cifs-share-delete', cifs_share_delete_args)])
 
-    def _get_add_nfs_export_rules_request(self, export_path, rules):
+    def test_add_nfs_export_rule(self):
 
-        return {
-            'rules': {
-                'exports-rule-info-2': {
-                    'pathname': fake.VOLUME_JUNCTION_PATH,
-                    'security-rules': {
-                        'security-rule-info': {
-                            'read-write': [
-                                {
-                                    'exports-hostname-info': {
-                                        'name': fake.NFS_EXPORT_RULES[0],
-                                    }
-                                },
-                                {
-                                    'exports-hostname-info': {
-                                        'name': fake.NFS_EXPORT_RULES[1],
-                                    }
-                                }
-                            ],
-                            'root': [
-                                {
-                                    'exports-hostname-info': {
-                                        'name': fake.NFS_EXPORT_RULES[0],
-                                    }
-                                },
-                                {
-                                    'exports-hostname-info': {
-                                        'name': fake.NFS_EXPORT_RULES[1],
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
+        mock_get_nfs_export_rule_indices = self.mock_object(
+            self.client, '_get_nfs_export_rule_indices',
+            mock.Mock(return_value=[]))
+        mock_add_nfs_export_rule = self.mock_object(
+            self.client, '_add_nfs_export_rule')
+        mock_update_nfs_export_rule = self.mock_object(
+            self.client, '_update_nfs_export_rule')
+
+        self.client.add_nfs_export_rule(fake.EXPORT_POLICY_NAME,
+                                        fake.IP_ADDRESS,
+                                        False)
+
+        mock_get_nfs_export_rule_indices.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS)
+        mock_add_nfs_export_rule.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False)
+        self.assertFalse(mock_update_nfs_export_rule.called)
+
+    def test_add_nfs_export_rule_single_existing(self):
+
+        mock_get_nfs_export_rule_indices = self.mock_object(
+            self.client, '_get_nfs_export_rule_indices',
+            mock.Mock(return_value=['1']))
+        mock_add_nfs_export_rule = self.mock_object(
+            self.client, '_add_nfs_export_rule')
+        mock_update_nfs_export_rule = self.mock_object(
+            self.client, '_update_nfs_export_rule')
+        mock_remove_nfs_export_rules = self.mock_object(
+            self.client, '_remove_nfs_export_rules')
+
+        self.client.add_nfs_export_rule(fake.EXPORT_POLICY_NAME,
+                                        fake.IP_ADDRESS,
+                                        False)
+
+        mock_get_nfs_export_rule_indices.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS)
+        self.assertFalse(mock_add_nfs_export_rule.called)
+        mock_update_nfs_export_rule.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False, '1')
+        mock_remove_nfs_export_rules.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, [])
+
+    def test_add_nfs_export_rule_multiple_existing(self):
+
+        mock_get_nfs_export_rule_indices = self.mock_object(
+            self.client, '_get_nfs_export_rule_indices',
+            mock.Mock(return_value=['2', '4', '6']))
+        mock_add_nfs_export_rule = self.mock_object(
+            self.client, '_add_nfs_export_rule')
+        mock_update_nfs_export_rule = self.mock_object(
+            self.client, '_update_nfs_export_rule')
+        mock_remove_nfs_export_rules = self.mock_object(
+            self.client, '_remove_nfs_export_rules')
+
+        self.client.add_nfs_export_rule(fake.EXPORT_POLICY_NAME,
+                                        fake.IP_ADDRESS,
+                                        False)
+
+        mock_get_nfs_export_rule_indices.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS)
+        self.assertFalse(mock_add_nfs_export_rule.called)
+        mock_update_nfs_export_rule.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS, False, '2')
+        mock_remove_nfs_export_rules.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, ['4', '6'])
+
+    @ddt.data({'readonly': False, 'rw_security_flavor': 'sys'},
+              {'readonly': True, 'rw_security_flavor': 'never'})
+    @ddt.unpack
+    def test__add_nfs_export_rule(self, readonly, rw_security_flavor):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client._add_nfs_export_rule(fake.EXPORT_POLICY_NAME,
+                                         fake.IP_ADDRESS,
+                                         readonly)
+
+        export_rule_create_args = {
+            'policy-name': fake.EXPORT_POLICY_NAME,
+            'client-match': fake.IP_ADDRESS,
+            'ro-rule': {
+                'security-flavor': 'sys',
+            },
+            'rw-rule': {
+                'security-flavor': rw_security_flavor,
+            },
+            'super-user-security': {
+                'security-flavor': 'sys',
+            },
+        }
+        self.client.send_request.assert_has_calls(
+            [mock.call('export-rule-create', export_rule_create_args)])
+
+    @ddt.data({'readonly': False, 'rw_security_flavor': 'sys', 'index': '2'},
+              {'readonly': True, 'rw_security_flavor': 'never', 'index': '4'})
+    @ddt.unpack
+    def test_update_nfs_export_rule(self, readonly, rw_security_flavor, index):
+
+        self.mock_object(self.client, 'send_request')
+        self.client._update_nfs_export_rule(fake.EXPORT_POLICY_NAME,
+                                            fake.IP_ADDRESS,
+                                            readonly,
+                                            index)
+
+        export_rule_modify_args = {
+            'policy-name': fake.EXPORT_POLICY_NAME,
+            'rule-index': index,
+            'client-match': fake.IP_ADDRESS,
+            'ro-rule': {
+                'security-flavor': 'sys',
+            },
+            'rw-rule': {
+                'security-flavor': rw_security_flavor,
+            },
+            'super-user-security': {
+                'security-flavor': 'sys',
+            },
         }
 
-    def test_add_nfs_export_rules(self):
+        self.client.send_request.assert_has_calls(
+            [mock.call('export-rule-modify', export_rule_modify_args)])
 
-        self.mock_object(self.client, 'send_request')
-        self.client.nfs_exports_with_prefix = False
+    def test_get_nfs_export_rule_indices(self):
 
-        self.client.add_nfs_export_rules(fake.VOLUME_JUNCTION_PATH,
-                                         fake.NFS_EXPORT_RULES)
-
-        api_args = self._get_add_nfs_export_rules_request(
-            fake.VOLUME_JUNCTION_PATH, fake.NFS_EXPORT_RULES)
-
-        self.client.send_request.assert_has_calls([
-            mock.call('nfs-exportfs-append-rules-2', api_args)])
-
-    def test_add_nfs_export_rules_with_vol_prefix(self):
-
-        self.mock_object(self.client, 'send_request')
-        self.client.nfs_exports_with_prefix = True
-
-        self.client.add_nfs_export_rules(fake.VOLUME_JUNCTION_PATH,
-                                         fake.NFS_EXPORT_RULES)
-
-        api_args = self._get_add_nfs_export_rules_request(
-            fake.VOLUME_JUNCTION_PATH, fake.NFS_EXPORT_RULES)
-        api_args['rules']['exports-rule-info-2']['pathname'] = (
-            '/vol' + fake.VOLUME_JUNCTION_PATH)
-
-        self.client.send_request.assert_has_calls([
-            mock.call('nfs-exportfs-append-rules-2', api_args)])
-
-    def test_add_nfs_export_rules_retry_without_vol_prefix(self):
-
-        side_effects = [netapp_api.NaApiError(code=netapp_api.EINTERNALERROR),
-                        None]
-        self.mock_object(self.client,
-                         'send_request',
-                         mock.Mock(side_effect=side_effects))
-        self.client.nfs_exports_with_prefix = True
-
-        self.client.add_nfs_export_rules(fake.VOLUME_JUNCTION_PATH,
-                                         fake.NFS_EXPORT_RULES)
-
-        args_without_prefix = self._get_add_nfs_export_rules_request(
-            fake.VOLUME_JUNCTION_PATH, fake.NFS_EXPORT_RULES)
-
-        args_with_prefix = self._get_add_nfs_export_rules_request(
-            fake.VOLUME_JUNCTION_PATH, fake.NFS_EXPORT_RULES)
-        args_with_prefix['rules']['exports-rule-info-2']['pathname'] = (
-            '/vol' + fake.VOLUME_JUNCTION_PATH)
-
-        self.client.send_request.assert_has_calls([
-            mock.call('nfs-exportfs-append-rules-2', args_with_prefix),
-            mock.call('nfs-exportfs-append-rules-2', args_without_prefix)])
-        self.assertEqual(1, client_cmode.LOG.warning.call_count)
-
-        # Test side effect of setting the prefix flag to false.
-        self.assertFalse(self.client.nfs_exports_with_prefix)
-
-    def test_add_nfs_export_rules_retry_with_vol_prefix(self):
-
-        side_effects = [netapp_api.NaApiError(code=netapp_api.EINTERNALERROR),
-                        None]
-        self.mock_object(self.client,
-                         'send_request',
-                         mock.Mock(side_effect=side_effects))
-        self.client.nfs_exports_with_prefix = False
-
-        self.client.add_nfs_export_rules(fake.VOLUME_JUNCTION_PATH,
-                                         fake.NFS_EXPORT_RULES)
-
-        args_without_prefix = self._get_add_nfs_export_rules_request(
-            fake.VOLUME_JUNCTION_PATH, fake.NFS_EXPORT_RULES)
-
-        args_with_prefix = self._get_add_nfs_export_rules_request(
-            fake.VOLUME_JUNCTION_PATH, fake.NFS_EXPORT_RULES)
-        args_with_prefix['rules']['exports-rule-info-2']['pathname'] = (
-            '/vol' + fake.VOLUME_JUNCTION_PATH)
-
-        self.client.send_request.assert_has_calls([
-            mock.call('nfs-exportfs-append-rules-2', args_without_prefix),
-            mock.call('nfs-exportfs-append-rules-2', args_with_prefix)])
-        self.assertEqual(1, client_cmode.LOG.warning.call_count)
-
-        # Test side effect of setting the prefix flag to false.
-        self.assertTrue(self.client.nfs_exports_with_prefix)
-
-    def test_add_nfs_export_rules_api_error(self):
-
-        self.mock_object(self.client,
-                         'send_request',
-                         self._mock_api_error())
-
-        self.assertRaises(netapp_api.NaApiError,
-                          self.client.add_nfs_export_rules,
-                          fake.VOLUME_JUNCTION_PATH,
-                          fake.NFS_EXPORT_RULES)
-
-    def test_get_nfs_export_rules(self):
-
-        api_response = netapp_api.NaElement(
-            fake.NFS_EXPORTFS_LIST_RULES_2_RESPONSE)
+        api_response = netapp_api.NaElement(fake.EXPORT_RULE_GET_ITER_RESPONSE)
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_nfs_export_rules(fake.VOLUME_JUNCTION_PATH)
+        result = self.client._get_nfs_export_rule_indices(
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS)
 
-        nfs_exportfs_list_rules_2_args = {
-            'pathname': fake.VOLUME_JUNCTION_PATH
+        export_rule_get_iter_args = {
+            'query': {
+                'export-rule-info': {
+                    'policy-name': fake.EXPORT_POLICY_NAME,
+                    'client-match': fake.IP_ADDRESS,
+                },
+            },
+            'desired-attributes': {
+                'export-rule-info': {
+                    'vserver-name': None,
+                    'policy-name': None,
+                    'client-match': None,
+                    'rule-index': None,
+                },
+            },
         }
-
+        self.assertListEqual(['1', '3'], result)
         self.client.send_request.assert_has_calls([
-            mock.call('nfs-exportfs-list-rules-2',
-                      nfs_exportfs_list_rules_2_args)])
-        self.assertSequenceEqual(fake.NFS_EXPORT_RULES, result)
+            mock.call('export-rule-get-iter', export_rule_get_iter_args)])
 
-    def test_get_nfs_export_rules_not_found(self):
+    def test_remove_nfs_export_rule(self):
 
-        api_response = netapp_api.NaElement(
-            fake.NFS_EXPORTFS_LIST_RULES_2_NO_RULES_RESPONSE)
-        self.mock_object(self.client,
-                         'send_request',
-                         mock.Mock(return_value=api_response))
+        fake_indices = ['1', '3', '4']
+        mock_get_nfs_export_rule_indices = self.mock_object(
+            self.client, '_get_nfs_export_rule_indices',
+            mock.Mock(return_value=fake_indices))
+        mock_remove_nfs_export_rules = self.mock_object(
+            self.client, '_remove_nfs_export_rules')
 
-        result = self.client.get_nfs_export_rules(fake.VOLUME_JUNCTION_PATH)
+        self.client.remove_nfs_export_rule(fake.EXPORT_POLICY_NAME,
+                                           fake.IP_ADDRESS)
 
-        self.assertListEqual([], result)
+        mock_get_nfs_export_rule_indices.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, fake.IP_ADDRESS)
+        mock_remove_nfs_export_rules.assert_called_once_with(
+            fake.EXPORT_POLICY_NAME, fake_indices)
 
     def test_remove_nfs_export_rules(self):
 
+        fake_indices = ['1', '3']
         self.mock_object(self.client, 'send_request')
 
-        self.client.remove_nfs_export_rules(fake.VOLUME_JUNCTION_PATH)
-
-        nfs_exportfs_delete_rules_args = {
-            'pathnames': {
-                'pathname-info': {
-                    'name': fake.VOLUME_JUNCTION_PATH,
-                }
-            }
-        }
+        self.client._remove_nfs_export_rules(fake.EXPORT_POLICY_NAME,
+                                             fake_indices)
 
         self.client.send_request.assert_has_calls([
-            mock.call('nfs-exportfs-delete-rules',
-                      nfs_exportfs_delete_rules_args)])
+            mock.call(
+                'export-rule-destroy',
+                {'policy-name': fake.EXPORT_POLICY_NAME, 'rule-index': '1'}),
+            mock.call(
+                'export-rule-destroy',
+                {'policy-name': fake.EXPORT_POLICY_NAME, 'rule-index': '3'})])
+
+    def test_remove_nfs_export_rules_not_found(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         self._mock_api_error(code=netapp_api.EOBJECTNOTFOUND))
+
+        self.client._remove_nfs_export_rules(fake.EXPORT_POLICY_NAME, ['1'])
+
+        self.client.send_request.assert_has_calls([
+            mock.call(
+                'export-rule-destroy',
+                {'policy-name': fake.EXPORT_POLICY_NAME, 'rule-index': '1'})])
+
+    def test_remove_nfs_export_rules_api_error(self):
+
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client._remove_nfs_export_rules,
+                          fake.EXPORT_POLICY_NAME,
+                          ['1'])
+
+    def test_clear_nfs_export_policy_for_volume(self):
+
+        mock_set_nfs_export_policy_for_volume = self.mock_object(
+            self.client, 'set_nfs_export_policy_for_volume')
+
+        self.client.clear_nfs_export_policy_for_volume(fake.SHARE_NAME)
+
+        mock_set_nfs_export_policy_for_volume.assert_called_once_with(
+            fake.SHARE_NAME, 'default')
+
+    def test_set_nfs_export_policy_for_volume(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.set_nfs_export_policy_for_volume(fake.SHARE_NAME,
+                                                     fake.EXPORT_POLICY_NAME)
+
+        volume_modify_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-export-attributes': {
+                        'policy': fake.EXPORT_POLICY_NAME,
+                    },
+                },
+            },
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-modify-iter', volume_modify_iter_args)])
+
+    def test_get_nfs_export_policy_for_volume(self):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_EXPORT_POLICY_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_nfs_export_policy_for_volume(fake.SHARE_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-export-attributes': {
+                        'policy': None,
+                    },
+                },
+            },
+        }
+        self.assertEqual(fake.EXPORT_POLICY_NAME, result)
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-get-iter', volume_get_iter_args)])
+
+    def test_get_nfs_export_policy_for_volume_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_nfs_export_policy_for_volume,
+                          fake.SHARE_NAME)
+
+    def test_create_nfs_export_policy(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_nfs_export_policy(fake.EXPORT_POLICY_NAME)
+
+        export_policy_create_args = {'policy-name': fake.EXPORT_POLICY_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('export-policy-create', export_policy_create_args)])
+
+    def test_create_nfs_export_policy_already_present(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         self._mock_api_error(code=netapp_api.EDUPLICATEENTRY))
+
+        self.client.create_nfs_export_policy(fake.EXPORT_POLICY_NAME)
+
+        export_policy_create_args = {'policy-name': fake.EXPORT_POLICY_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('export-policy-create', export_policy_create_args)])
+
+    def test_create_nfs_export_policy_api_error(self):
+
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.create_nfs_export_policy,
+                          fake.EXPORT_POLICY_NAME)
+
+    def test_soft_delete_nfs_export_policy(self):
+
+        self.mock_object(self.client, 'delete_nfs_export_policy')
+        self.mock_object(self.client, 'rename_nfs_export_policy')
+
+        self.client.soft_delete_nfs_export_policy(fake.EXPORT_POLICY_NAME)
+
+        self.client.delete_nfs_export_policy.assert_has_calls([
+            mock.call(fake.EXPORT_POLICY_NAME)])
+        self.assertFalse(self.client.rename_nfs_export_policy.called)
+
+    def test_soft_delete_nfs_export_policy_api_error(self):
+
+        self.mock_object(self.client,
+                         'delete_nfs_export_policy',
+                         self._mock_api_error())
+        self.mock_object(self.client, 'rename_nfs_export_policy')
+
+        self.client.soft_delete_nfs_export_policy(fake.EXPORT_POLICY_NAME)
+
+        self.client.delete_nfs_export_policy.assert_has_calls([
+            mock.call(fake.EXPORT_POLICY_NAME)])
+        self.assertTrue(self.client.rename_nfs_export_policy.called)
+
+    def test_delete_nfs_export_policy(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_nfs_export_policy(fake.EXPORT_POLICY_NAME)
+
+        export_policy_destroy_args = {'policy-name': fake.EXPORT_POLICY_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('export-policy-destroy', export_policy_destroy_args)])
+
+    def test_delete_nfs_export_policy_not_found(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         self._mock_api_error(code=netapp_api.EOBJECTNOTFOUND))
+
+        self.client.delete_nfs_export_policy(fake.EXPORT_POLICY_NAME)
+
+        export_policy_destroy_args = {'policy-name': fake.EXPORT_POLICY_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('export-policy-destroy', export_policy_destroy_args)])
+
+    def test_delete_nfs_export_policy_api_error(self):
+
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.delete_nfs_export_policy,
+                          fake.EXPORT_POLICY_NAME)
+
+    def test_rename_nfs_export_policy(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.rename_nfs_export_policy(fake.EXPORT_POLICY_NAME,
+                                             'new_policy_name')
+
+        export_policy_rename_args = {
+            'policy-name': fake.EXPORT_POLICY_NAME,
+            'new-policy-name': 'new_policy_name'
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('export-policy-rename', export_policy_rename_args)])
+
+    def test_prune_deleted_nfs_export_policies(self):
+        # Mock client lest we not be able to see calls on its copy.
+        self.mock_object(copy,
+                         'deepcopy',
+                         mock.Mock(return_value=self.client))
+        self.mock_object(self.client,
+                         '_get_deleted_nfs_export_policies',
+                         mock.Mock(return_value=fake.DELETED_EXPORT_POLICIES))
+        self.mock_object(self.client, 'delete_nfs_export_policy')
+
+        self.client.prune_deleted_nfs_export_policies()
+
+        self.assertTrue(self.client.delete_nfs_export_policy.called)
+        self.client.delete_nfs_export_policy.assert_has_calls(
+            [mock.call(policy) for policy in
+             fake.DELETED_EXPORT_POLICIES[fake.VSERVER_NAME]])
+
+    def test_prune_deleted_nfs_export_policies_api_error(self):
+        self.mock_object(copy,
+                         'deepcopy',
+                         mock.Mock(return_value=self.client))
+        self.mock_object(self.client,
+                         '_get_deleted_nfs_export_policies',
+                         mock.Mock(return_value=fake.DELETED_EXPORT_POLICIES))
+        self.mock_object(self.client,
+                         'delete_nfs_export_policy',
+                         self._mock_api_error())
+
+        self.client.prune_deleted_nfs_export_policies()
+
+        self.assertTrue(self.client.delete_nfs_export_policy.called)
+        self.client.delete_nfs_export_policy.assert_has_calls(
+            [mock.call(policy) for policy in
+             fake.DELETED_EXPORT_POLICIES[fake.VSERVER_NAME]])
+
+    def test_get_deleted_nfs_export_policies(self):
+
+        api_response = netapp_api.NaElement(
+            fake.DELETED_EXPORT_POLICY_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client._get_deleted_nfs_export_policies()
+
+        export_policy_get_iter_args = {
+            'query': {
+                'export-policy-info': {
+                    'policy-name': 'deleted_manila_*',
+                },
+            },
+            'desired-attributes': {
+                'export-policy-info': {
+                    'policy-name': None,
+                    'vserver': None,
+                },
+            },
+        }
+        self.assertSequenceEqual(fake.DELETED_EXPORT_POLICIES, result)
+        self.client.send_request.assert_has_calls([
+            mock.call('export-policy-get-iter', export_policy_get_iter_args)])
 
     def test_get_ems_log_destination_vserver(self):
 
@@ -2070,9 +2329,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client,
                          '_get_ems_log_destination_vserver',
                          mock.Mock(return_value=fake.ADMIN_VSERVER_NAME))
-        self.mock_object(self.client,
-                         'send_request',
-                         self._mock_api_error())
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
 
         self.client.send_ems_log_message(fake.EMS_MESSAGE)
 
@@ -2189,9 +2446,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_check_for_cluster_credentials_api_error(self):
 
-        self.mock_object(self.client,
-                         'send_request',
-                         mock.Mock(side_effect=self._mock_api_error()))
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.check_for_cluster_credentials)

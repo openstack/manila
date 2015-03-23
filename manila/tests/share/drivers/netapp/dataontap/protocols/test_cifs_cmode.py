@@ -47,7 +47,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_create_share(self):
 
-        result = self.helper.create_share(fake.SHARE_NAME,
+        result = self.helper.create_share(fake.CIFS_SHARE,
+                                          fake.SHARE_NAME,
                                           [fake.SHARE_ADDRESS_1])
 
         expected = [r'\\%s\%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME)]
@@ -59,7 +60,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_create_share_multiple(self):
 
-        result = self.helper.create_share(fake.SHARE_NAME,
+        result = self.helper.create_share(fake.CIFS_SHARE,
+                                          fake.SHARE_NAME,
                                           [fake.SHARE_ADDRESS_1,
                                            fake.SHARE_ADDRESS_2])
 
@@ -73,18 +75,20 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_delete_share(self):
 
-        self.helper.delete_share(fake.CIFS_SHARE)
+        self.helper.delete_share(fake.CIFS_SHARE, fake.SHARE_NAME)
 
         self.mock_client.remove_cifs_share.assert_called_once_with(
             fake.SHARE_NAME)
 
     def test_allow_access(self):
 
-        self.helper.allow_access(self.mock_context, fake.CIFS_SHARE,
-                                 fake.ACCESS)
+        self.helper.allow_access(self.mock_context,
+                                 fake.CIFS_SHARE,
+                                 fake.SHARE_NAME,
+                                 fake.USER_ACCESS)
 
         self.mock_client.add_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.ACCESS['access_to'])
+            fake.SHARE_NAME, fake.USER_ACCESS['access_to'])
 
     def test_allow_access_preexisting(self):
 
@@ -95,7 +99,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
                           self.helper.allow_access,
                           self.mock_context,
                           fake.CIFS_SHARE,
-                          fake.ACCESS)
+                          fake.SHARE_NAME,
+                          fake.USER_ACCESS)
 
     def test_allow_access_api_error(self):
 
@@ -106,36 +111,42 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
                           self.helper.allow_access,
                           self.mock_context,
                           fake.CIFS_SHARE,
-                          fake.ACCESS)
+                          fake.SHARE_NAME,
+                          fake.USER_ACCESS)
 
     def test_allow_access_invalid_type(self):
 
-        fake_access = fake.ACCESS.copy()
+        fake_access = fake.USER_ACCESS.copy()
         fake_access['access_type'] = 'group'
         self.assertRaises(exception.NetAppException,
                           self.helper.allow_access,
                           self.mock_context,
                           fake.CIFS_SHARE,
+                          fake.SHARE_NAME,
                           fake_access)
 
     def test_deny_access(self):
 
-        self.helper.deny_access(self.mock_context, fake.CIFS_SHARE,
-                                fake.ACCESS)
+        self.helper.deny_access(self.mock_context,
+                                fake.CIFS_SHARE,
+                                fake.SHARE_NAME,
+                                fake.USER_ACCESS)
 
         self.mock_client.remove_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.ACCESS['access_to'])
+            fake.SHARE_NAME, fake.USER_ACCESS['access_to'])
 
     def test_deny_access_nonexistent_user(self):
 
         self.mock_client.remove_cifs_share_access.side_effect = (
             netapp_api.NaApiError(code=netapp_api.EONTAPI_EINVAL))
 
-        self.helper.deny_access(self.mock_context, fake.CIFS_SHARE,
-                                fake.ACCESS)
+        self.helper.deny_access(self.mock_context,
+                                fake.CIFS_SHARE,
+                                fake.SHARE_NAME,
+                                fake.USER_ACCESS)
 
         self.mock_client.remove_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.ACCESS['access_to'])
+            fake.SHARE_NAME, fake.USER_ACCESS['access_to'])
         self.assertEqual(1, cifs_cmode.LOG.error.call_count)
 
     def test_deny_access_nonexistent_rule(self):
@@ -143,11 +154,13 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
         self.mock_client.remove_cifs_share_access.side_effect = (
             netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND))
 
-        self.helper.deny_access(self.mock_context, fake.CIFS_SHARE,
-                                fake.ACCESS)
+        self.helper.deny_access(self.mock_context,
+                                fake.CIFS_SHARE,
+                                fake.SHARE_NAME,
+                                fake.USER_ACCESS)
 
         self.mock_client.remove_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.ACCESS['access_to'])
+            fake.SHARE_NAME, fake.USER_ACCESS['access_to'])
         self.assertEqual(1, cifs_cmode.LOG.error.call_count)
 
     def test_deny_access_api_error(self):
@@ -159,7 +172,8 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
                           self.helper.deny_access,
                           self.mock_context,
                           fake.CIFS_SHARE,
-                          fake.ACCESS)
+                          fake.SHARE_NAME,
+                          fake.USER_ACCESS)
 
     def test_get_target(self):
 

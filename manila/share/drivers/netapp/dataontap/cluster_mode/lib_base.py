@@ -45,6 +45,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
     AUTOSUPPORT_INTERVAL_SECONDS = 3600  # hourly
     SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
+    HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
 
     # Maps NetApp qualified extra specs keys to corresponding backend API
     # client library argument keywords.  When we expose more backend
@@ -160,6 +161,13 @@ class NetAppCmodeFileStorageLibrary(object):
         ems_periodic_task.start(interval=self.AUTOSUPPORT_INTERVAL_SECONDS,
                                 initial_delay=0)
 
+        # Start the task that runs other housekeeping tasks, such as deletion
+        # of previously soft-deleted storage artifacts.
+        housekeeping_periodic_task = loopingcall.FixedIntervalLoopingCall(
+            self._handle_housekeeping_tasks)
+        housekeeping_periodic_task.start(
+            interval=self.HOUSEKEEPING_INTERVAL_SECONDS, initial_delay=0)
+
     @na_utils.trace
     def _get_valid_share_name(self, share_id):
         """Get share name according to share name template."""
@@ -245,6 +253,10 @@ class NetAppCmodeFileStorageLibrary(object):
             'auto-support': 'false',
         }
         return ems_log
+
+    @na_utils.trace
+    def _handle_housekeeping_tasks(self):
+        """Handle various cleanup activities."""
 
     def _find_matching_aggregates(self):
         """Find all aggregates match pattern."""
@@ -491,7 +503,8 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.NetAppException(msg % msg_args)
 
         export_addresses = [interface['address'] for interface in interfaces]
-        export_locations = helper.create_share(share_name, export_addresses)
+        export_locations = helper.create_share(
+            share, share_name, export_addresses)
         return export_locations
 
     @na_utils.trace
@@ -499,10 +512,11 @@ class NetAppCmodeFileStorageLibrary(object):
         """Deletes NAS storage."""
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
+        share_name = self._get_valid_share_name(share['id'])
         target = helper.get_target(share)
         # Share may be in error state, so there's no share and target.
         if target:
-            helper.delete_share(share)
+            helper.delete_share(share, share_name)
 
     @na_utils.trace
     def create_snapshot(self, context, snapshot, share_server=None):
@@ -562,17 +576,19 @@ class NetAppCmodeFileStorageLibrary(object):
     def allow_access(self, context, share, access, share_server=None):
         """Allows access to a given NAS storage."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_name = self._get_valid_share_name(share['id'])
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
-        helper.allow_access(context, share, access)
+        helper.allow_access(context, share, share_name, access)
 
     @na_utils.trace
     def deny_access(self, context, share, access, share_server=None):
         """Denies access to a given NAS storage."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_name = self._get_valid_share_name(share['id'])
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
-        helper.deny_access(context, share, access)
+        helper.deny_access(context, share, share_name, access)
 
     def setup_server(self, network_info, metadata=None):
         raise NotImplementedError()

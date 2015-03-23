@@ -25,6 +25,7 @@ CONNECTION_INFO = {
 
 NODE_NAME = 'fake_node'
 VSERVER_NAME = 'fake_vserver'
+VSERVER_NAME_2 = 'fake_vserver_2'
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
 NODE_VSERVER_NAME = 'fake_node_vserver'
 ROOT_VOLUME_AGGREGATE_NAME = 'fake_root_aggr'
@@ -38,6 +39,16 @@ SNAPSHOT_NAME = 'fake_snapshot'
 PARENT_SHARE_NAME = 'fake_parent_share'
 PARENT_SNAPSHOT_NAME = 'fake_parent_snapshot'
 MAX_FILES = 5000
+EXPORT_POLICY_NAME = 'fake_export_policy'
+DELETED_EXPORT_POLICIES = {
+    VSERVER_NAME: [
+        'deleted_manila_fake_policy_1',
+        'deleted_manila_fake_policy_2',
+    ],
+    VSERVER_NAME_2: [
+        'deleted_manila_fake_policy_3',
+    ],
+}
 
 USER_NAME = 'fake_user'
 
@@ -1154,4 +1165,67 @@ GET_AGGREGATE_FOR_VOLUME_RESPONSE = etree.XML("""
 """ % {
     'aggr': SHARE_AGGREGATE_NAME,
     'share': SHARE_NAME
+})
+
+EXPORT_RULE_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <export-rule-info>
+        <client-match>%(rule)s</client-match>
+        <policy-name>%(policy)s</policy-name>
+        <rule-index>3</rule-index>
+        <vserver-name>manila_svm</vserver-name>
+      </export-rule-info>
+      <export-rule-info>
+        <client-match>%(rule)s</client-match>
+        <policy-name>%(policy)s</policy-name>
+        <rule-index>1</rule-index>
+        <vserver-name>manila_svm</vserver-name>
+      </export-rule-info>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""" % {'policy': EXPORT_POLICY_NAME, 'rule': IP_ADDRESS})
+
+VOLUME_GET_EXPORT_POLICY_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-export-attributes>
+          <policy>%(policy)s</policy>
+        </volume-export-attributes>
+        <volume-id-attributes>
+          <name>%(volume)s</name>
+          <owning-vserver-name>manila_svm</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'policy': EXPORT_POLICY_NAME, 'volume': SHARE_NAME})
+
+DELETED_EXPORT_POLICY_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <export-policy-info>
+        <policy-name>%(policy1)s</policy-name>
+        <vserver>%(vserver)s</vserver>
+      </export-policy-info>
+      <export-policy-info>
+        <policy-name>%(policy2)s</policy-name>
+        <vserver>%(vserver)s</vserver>
+      </export-policy-info>
+      <export-policy-info>
+        <policy-name>%(policy3)s</policy-name>
+        <vserver>%(vserver2)s</vserver>
+      </export-policy-info>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""" % {
+    'vserver': VSERVER_NAME,
+    'vserver2': VSERVER_NAME_2,
+    'policy1': DELETED_EXPORT_POLICIES[VSERVER_NAME][0],
+    'policy2': DELETED_EXPORT_POLICIES[VSERVER_NAME][1],
+    'policy3': DELETED_EXPORT_POLICIES[VSERVER_NAME_2][0],
 })

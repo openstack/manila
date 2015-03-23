@@ -30,6 +30,7 @@ from manila.share.drivers.netapp import utils as na_utils
 
 
 LOG = log.getLogger(__name__)
+DELETED_PREFIX = 'deleted_manila_'
 
 
 class NetAppCmodeClient(client_base.NetAppBaseClient):
@@ -43,13 +44,6 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.connection.set_api_version(1, 15)
         (major, minor) = self.get_ontapi_version(cached=False)
         self.connection.set_api_version(major, minor)
-
-        # NOTE(vponomaryov): Different versions of Data ONTAP API has
-        # different behavior for API call "nfs-exportfs-append-rules-2", that
-        # can require prefix "/vol" or not for path to apply rules for.
-        # Following attr used by "add_rules" method to handle setting up nfs
-        # exports properly in long term.
-        self.nfs_exports_with_prefix = False
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -641,7 +635,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'security-flavor': 'any',
             },
             'rw-rule': {
-                'security-flavor': 'any',
+                'security-flavor': 'never',
             },
         }
         self.send_request('export-rule-create', api_args)
@@ -1002,143 +996,236 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('cifs-share-delete', {'share-name': share_name})
 
     @na_utils.trace
-    def add_nfs_export_rules(self, export_path, rules):
+    def add_nfs_export_rule(self, policy_name, rule, readonly):
+        rule_indices = self._get_nfs_export_rule_indices(policy_name, rule)
+        if not rule_indices:
+            self._add_nfs_export_rule(policy_name, rule, readonly)
+        else:
+            # Update first rule and delete the rest
+            self._update_nfs_export_rule(
+                policy_name, rule, readonly, rule_indices.pop(0))
+            self._remove_nfs_export_rules(policy_name, rule_indices)
 
-        # This method builds up a complicated structure needed by the
-        # nfs-exportfs-append-rules-2 ZAPI.  Here is how the end result
-        # should appear:
-        #
-        # {
-        #     'rules': {
-        #         'exports-rule-info-2': {
-        #             'pathname': <share pathname>,
-        #             'security-rules': {
-        #                 'security-rule-info': {
-        #                     'read-write': [
-        #                         {
-        #                             'exports-hostname-info': {
-        #                                 'name': <ip address 1>,
-        #                             }
-        #                         },
-        #                         {
-        #                             'exports-hostname-info': {
-        #                                 'name': <ip address 2>,
-        #                             }
-        #                         }
-        #                     ],
-        #                     'root': [
-        #                         {
-        #                             'exports-hostname-info': {
-        #                                 'name': <ip address 1>,
-        #                             }
-        #                         },
-        #                         {
-        #                             'exports-hostname-info': {
-        #                                 'name': <ip address 2>,
-        #                             }
-        #                         }
-        #                     ]
-        #                 }
-        #             }
-        #         }
-        #     }
-        # }
+    @na_utils.trace
+    def _add_nfs_export_rule(self, policy_name, rule, readonly):
+        api_args = {
+            'policy-name': policy_name,
+            'client-match': rule,
+            'ro-rule': {
+                'security-flavor': 'sys',
+            },
+            'rw-rule': {
+                'security-flavor': 'sys' if not readonly else 'never',
+            },
+            'super-user-security': {
+                'security-flavor': 'sys',
+            },
+        }
+        self.send_request('export-rule-create', api_args)
 
-        # Default API request, some of which is overwritten below.
-        request = {
-            'rules': {
-                'exports-rule-info-2': {
-                    'pathname': export_path,
-                    'security-rules': {},
+    @na_utils.trace
+    def _update_nfs_export_rule(self, policy_name, rule, readonly, rule_index):
+        api_args = {
+            'policy-name': policy_name,
+            'rule-index': rule_index,
+            'client-match': rule,
+            'ro-rule': {
+                'security-flavor': 'sys'
+            },
+            'rw-rule': {
+                'security-flavor': 'sys' if not readonly else 'never'
+            },
+            'super-user-security': {
+                'security-flavor': 'sys'
+            },
+        }
+        self.send_request('export-rule-modify', api_args)
+
+    @na_utils.trace
+    def _get_nfs_export_rule_indices(self, policy_name, rule):
+        api_args = {
+            'query': {
+                'export-rule-info': {
+                    'policy-name': policy_name,
+                    'client-match': rule,
+                },
+            },
+            'desired-attributes': {
+                'export-rule-info': {
+                    'vserver-name': None,
+                    'policy-name': None,
+                    'client-match': None,
+                    'rule-index': None,
                 },
             },
         }
+        result = self.send_request('export-rule-get-iter', api_args)
 
-        allowed_hosts_xml = []
-        for ip in rules:
-            allowed_hosts_xml.append({'exports-hostname-info': {'name': ip}})
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        export_rule_info_list = attributes_list.get_children()
 
-        # Build security rules to be grafted into request.
-        security_rule = {
-            'security-rule-info': {
-                'read-write': allowed_hosts_xml,
-                'root': allowed_hosts_xml,
+        rule_indices = [int(export_rule_info.get_child_content('rule-index'))
+                        for export_rule_info in export_rule_info_list]
+        rule_indices.sort()
+        return [six.text_type(rule_index) for rule_index in rule_indices]
+
+    @na_utils.trace
+    def remove_nfs_export_rule(self, policy_name, rule):
+        rule_indices = self._get_nfs_export_rule_indices(policy_name, rule)
+        self._remove_nfs_export_rules(policy_name, rule_indices)
+
+    @na_utils.trace
+    def _remove_nfs_export_rules(self, policy_name, rule_indices):
+        for rule_index in rule_indices:
+            api_args = {
+                'policy-name': policy_name,
+                'rule-index': rule_index
+            }
+            try:
+                self.send_request('export-rule-destroy', api_args)
+            except netapp_api.NaApiError as e:
+                if e.code != netapp_api.EOBJECTNOTFOUND:
+                    raise
+
+    @na_utils.trace
+    def clear_nfs_export_policy_for_volume(self, volume_name):
+        self.set_nfs_export_policy_for_volume(volume_name, 'default')
+
+    @na_utils.trace
+    def set_nfs_export_policy_for_volume(self, volume_name, policy_name):
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-export-attributes': {
+                        'policy': policy_name,
+                    },
+                },
             },
         }
+        self.send_request('volume-modify-iter', api_args)
 
-        # Insert security rules section into request.
-        request['rules']['exports-rule-info-2']['security-rules'] = (
-            security_rule)
+    @na_utils.trace
+    def get_nfs_export_policy_for_volume(self, volume_name):
+        """Get the name of the export policy for a volume."""
 
-        # Make a second copy of the request with /vol prefix on export path.
-        request_with_prefix = copy.deepcopy(request)
-        request_with_prefix['rules']['exports-rule-info-2']['pathname'] = (
-            '/vol' + export_path)
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-export-attributes': {
+                        'policy': None,
+                    },
+                },
+            },
+        }
+        result = self.send_request('volume-get-iter', api_args)
 
-        LOG.debug('Appending NFS rules %r', rules)
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        volume_attributes = attributes_list.get_child_by_name(
+            'volume-attributes') or netapp_api.NaElement('none')
+        volume_export_attributes = volume_attributes.get_child_by_name(
+            'volume-export-attributes') or netapp_api.NaElement('none')
+
+        export_policy = volume_export_attributes.get_child_content('policy')
+
+        if not export_policy:
+            msg = _('Could not find export policy for volume %s.')
+            raise exception.NetAppException(msg % volume_name)
+
+        return export_policy
+
+    @na_utils.trace
+    def create_nfs_export_policy(self, policy_name):
+        api_args = {'policy-name': policy_name}
         try:
-            if self.nfs_exports_with_prefix:
-                self.send_request('nfs-exportfs-append-rules-2',
-                                  request_with_prefix)
-            else:
-                self.send_request('nfs-exportfs-append-rules-2', request)
+            self.send_request('export-policy-create', api_args)
         except netapp_api.NaApiError as e:
-            if e.code == netapp_api.EINTERNALERROR:
-                # We expect getting here only in one case - when received first
-                # call of this method per backend, that is not covered by
-                # default value. Change its value, to send proper requests from
-                # first time.
-                self.nfs_exports_with_prefix = not self.nfs_exports_with_prefix
-                LOG.warning(_LW("Data ONTAP API 'nfs-exportfs-append-rules-2' "
-                                "compatibility action: remember behavior to "
-                                "send proper values with first attempt next "
-                                "time. Now trying send another request with "
-                                "changed value for 'pathname'."))
-
-                if self.nfs_exports_with_prefix:
-                    self.send_request('nfs-exportfs-append-rules-2',
-                                      request_with_prefix)
-                else:
-                    self.send_request('nfs-exportfs-append-rules-2', request)
-            else:
+            if e.code != netapp_api.EDUPLICATEENTRY:
                 raise
 
     @na_utils.trace
-    def get_nfs_export_rules(self, export_path):
-        """Returns available access rules for a given NFS share."""
-        api_args = {'pathname': export_path}
-        response = self.send_request('nfs-exportfs-list-rules-2', api_args)
-
-        rules = response.get_child_by_name('rules')
-        allowed_hosts = []
-        if rules and rules.get_child_by_name('exports-rule-info-2'):
-            security_rule = rules.get_child_by_name(
-                'exports-rule-info-2').get_child_by_name('security-rules')
-            security_info = security_rule.get_child_by_name(
-                'security-rule-info')
-            if security_info:
-                root_rules = security_info.get_child_by_name('root')
-                if root_rules:
-                    allowed_hosts = root_rules.get_children()
-
-        existing_rules = []
-
-        for allowed_host in allowed_hosts:
-            if 'exports-hostname-info' in allowed_host.get_name():
-                existing_rules.append(allowed_host.get_child_content('name'))
-
-        return existing_rules
+    def soft_delete_nfs_export_policy(self, policy_name):
+        try:
+            self.delete_nfs_export_policy(policy_name)
+        except netapp_api.NaApiError:
+            # NOTE(cknight): Policy deletion can fail if called too soon after
+            # removing from a flexvol.  So rename for later harvesting.
+            self.rename_nfs_export_policy(policy_name,
+                                          DELETED_PREFIX + policy_name)
 
     @na_utils.trace
-    def remove_nfs_export_rules(self, export_path):
+    def delete_nfs_export_policy(self, policy_name):
+        api_args = {'policy-name': policy_name}
+        try:
+            self.send_request('export-policy-destroy', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EOBJECTNOTFOUND:
+                return
+            raise
+
+    @na_utils.trace
+    def rename_nfs_export_policy(self, policy_name, new_policy_name):
         api_args = {
-            'pathnames': {
-                'pathname-info': {
-                    'name': export_path,
+            'policy-name': policy_name,
+            'new-policy-name': new_policy_name
+        }
+        self.send_request('export-policy-rename', api_args)
+
+    @na_utils.trace
+    def prune_deleted_nfs_export_policies(self):
+        deleted_policy_map = self._get_deleted_nfs_export_policies()
+        for vserver in deleted_policy_map:
+            client = copy.deepcopy(self)
+            client.set_vserver(vserver)
+            for policy in deleted_policy_map[vserver]:
+                try:
+                    client.delete_nfs_export_policy(policy)
+                except netapp_api.NaApiError:
+                    LOG.debug('Could not delete export policy %s.' % policy)
+
+    @na_utils.trace
+    def _get_deleted_nfs_export_policies(self):
+        api_args = {
+            'query': {
+                'export-policy-info': {
+                    'policy-name': DELETED_PREFIX + '*',
+                },
+            },
+            'desired-attributes': {
+                'export-policy-info': {
+                    'policy-name': None,
+                    'vserver': None,
                 },
             },
         }
-        self.send_request('nfs-exportfs-delete-rules', api_args)
+        result = self.send_request('export-policy-get-iter', api_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        policy_map = {}
+        for export_info in attributes_list.get_children():
+            vserver = export_info.get_child_content('vserver')
+            policies = policy_map.get(vserver, [])
+            policies.append(export_info.get_child_content('policy-name'))
+            policy_map[vserver] = policies
+
+        return policy_map
 
     @na_utils.trace
     def _get_ems_log_destination_vserver(self):

@@ -148,6 +148,21 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.VserverUnavailable,
                           self.library._get_vserver)
 
+    def test_handle_housekeeping_tasks(self):
+
+        mock_vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_api_client',
+                         mock.Mock(return_value=mock_vserver_client))
+        mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
+                                      '_handle_housekeeping_tasks')
+
+        self.library._handle_housekeeping_tasks()
+
+        self.assertTrue(
+            mock_vserver_client.prune_deleted_nfs_export_policies.called)
+        self.assertTrue(mock_super.called)
+
     def test_find_matching_aggregates(self):
 
         mock_vserver_client = mock.Mock()

@@ -29,19 +29,19 @@ class NetAppBaseHelper(object):
         self._client = client
 
     @abc.abstractmethod
-    def create_share(self, share, export_addresses):
+    def create_share(self, share, share_name, export_addresses):
         """Creates NAS share."""
 
     @abc.abstractmethod
-    def delete_share(self, share):
+    def delete_share(self, share, share_name):
         """Deletes NAS share."""
 
     @abc.abstractmethod
-    def allow_access(self, context, share, access):
+    def allow_access(self, context, share, share_name, access):
         """Allows new_rules to a given NAS storage in new_rules."""
 
     @abc.abstractmethod
-    def deny_access(self, context, share, access):
+    def deny_access(self, context, share, share_name, access):
         """Denies new_rules to a given NAS storage in new_rules."""
 
     @abc.abstractmethod
