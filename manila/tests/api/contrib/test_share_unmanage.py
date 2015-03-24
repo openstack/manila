@@ -18,6 +18,7 @@ import mock
 import webob
 
 from manila.api.contrib import share_unmanage
+from manila.common import constants
 from manila import exception
 from manila.share import api as share_api
 from manila import test
@@ -46,12 +47,40 @@ class ShareUnmanageTest(test.TestCase):
         )
 
     def test_unmanage_share(self):
-        self.mock_object(share_api.API, 'get', mock.Mock(return_value={}))
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, 'unmanage', mock.Mock())
 
         actual_result = self.controller.unmanage(self.request, self.share_id)
 
         self.assertEqual(202, actual_result.status_int)
+
+    def test_unmanage_share_based_on_share_server(self):
+        share = dict(share_server_id='foo_id', id='bar_id')
+        self.mock_object(
+            self.controller.share_api, 'get',
+            mock.Mock(return_value=share))
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.unmanage, self.request, share['id'])
+
+        self.controller.share_api.get.assert_called_once_with(
+            self.request.environ['manila.context'], share['id'])
+
+    @ddt.data(*constants.TRANSITIONAL_STATUSES)
+    def test_unmanage_share_with_transitional_state(self, share_status):
+        share = dict(status=share_status, id='foo_id')
+        self.mock_object(
+            self.controller.share_api, 'get',
+            mock.Mock(return_value=share))
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.unmanage, self.request, share['id'])
+
+        self.controller.share_api.get.assert_called_once_with(
+            self.request.environ['manila.context'], share['id'])
 
     def test_unmanage_share_not_found(self):
         self.mock_object(share_api.API, 'get', mock.Mock(
@@ -65,7 +94,8 @@ class ShareUnmanageTest(test.TestCase):
     @ddt.data(exception.InvalidShare(reason="fake"),
               exception.PolicyNotAuthorized(action="fake"),)
     def test_unmanage_share_invalid(self, side_effect):
-        self.mock_object(share_api.API, 'get', mock.Mock(return_value={}))
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, 'unmanage', mock.Mock(
             side_effect=side_effect))
 
