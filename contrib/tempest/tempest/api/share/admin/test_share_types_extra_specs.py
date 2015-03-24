@@ -13,139 +13,101 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from tempest_lib.common.utils import data_utils  # noqa
 
 from tempest.api.share import base
 from tempest import test
 
 
-class ExtraSpecsAdminTest(base.BaseSharesAdminTest):
+class ExtraSpecsReadAdminTest(base.BaseSharesAdminTest):
 
     @classmethod
     def resource_setup(cls):
-        super(ExtraSpecsAdminTest, cls).resource_setup()
-        shr_type_name = data_utils.rand_name("share-type")
-        extra_specs = cls.add_required_extra_specs_to_dict()
-        __, cls.share_type = cls.create_share_type(shr_type_name,
-                                                   extra_specs=extra_specs)
-        cls.share_type_id = cls.share_type["share_type"]["id"]
+        super(ExtraSpecsReadAdminTest, cls).resource_setup()
+        cls.share_type_name = data_utils.rand_name("share-type")
+        cls.required_extra_specs = cls.add_required_extra_specs_to_dict()
 
-    @test.attr(type=["gate", "smoke", ])
-    def test_share_type_extra_specs_list(self):
-        extra_specs = self.add_required_extra_specs_to_dict({
-            "key1": "value1",
-            "key2": "value2",
-        })
-        resp, es_create = self.shares_client.create_share_type_extra_specs(
-            self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(extra_specs, es_create)
+        __, cls.share_type = cls.create_share_type(
+            cls.share_type_name, extra_specs=cls.required_extra_specs)
 
-        resp, es_list = self.shares_client.list_share_types_extra_specs(
-            self.share_type_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(extra_specs, es_list)
+        cls.st_id = cls.share_type["share_type"]["id"]
+        cls.custom_extra_specs = {"key1": "value1", "key2": "value2"}
+        cls.expected_extra_specs = copy.copy(cls.custom_extra_specs)
+        cls.expected_extra_specs.update(cls.required_extra_specs)
 
-    @test.attr(type=["gate", "smoke", ])
-    def test_update_one_share_type_extra_spec(self):
-        extra_specs = self.add_required_extra_specs_to_dict({
-            "key1": "value1",
-            "key2": "value2",
-        })
-
-        # Create extra specs for share type
-        resp, es_create = self.shares_client.create_share_type_extra_specs(
-            self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(extra_specs, es_create)
-
-        # Update extra specs of share type
-        extra_specs["key1"] = "fake_value1_updated"
-        resp, update_one = self.shares_client.update_share_type_extra_spec(
-            self.share_type_id, "key1", extra_specs["key1"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual({"key1": extra_specs["key1"]}, update_one)
-
-    @test.attr(type=["gate", "smoke", ])
-    def test_update_all_share_type_extra_specs(self):
-        extra_specs = self.add_required_extra_specs_to_dict({
-            "key1": "value1",
-            "key2": "value2",
-        })
-
-        # Create extra specs for share type
-        resp, es_create = self.shares_client.create_share_type_extra_specs(
-            self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(extra_specs, es_create)
-
-        # Update extra specs of share type
-        extra_specs["key2"] = "value2_updated"
-        resp, update_all = self.shares_client.update_share_type_extra_specs(
-            self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(extra_specs, update_all)
-
-    @test.attr(type=["gate", "smoke", ])
-    def test_get_all_share_type_extra_specs(self):
-        extra_specs = self.add_required_extra_specs_to_dict({
-            "key1": "value1",
-            "key2": "value2",
-        })
-
-        # Create extra specs for share type
-        resp, es_create = self.shares_client.create_share_type_extra_specs(
-            self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(extra_specs, es_create)
-
-        # Get all extra specs for share type
-        resp, es_get_all = self.shares_client.get_share_type_extra_specs(
-            self.share_type_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(extra_specs, es_get_all)
+        cls.shares_client.create_share_type_extra_specs(
+            cls.st_id, cls.custom_extra_specs)
 
     @test.attr(type=["gate", "smoke", ])
     def test_get_one_share_type_extra_spec(self):
-        extra_specs = self.add_required_extra_specs_to_dict({
-            "key1": "value1",
-            "key2": "value2",
-        })
+        resp, es_get_one = self.shares_client.get_share_type_extra_spec(
+            self.st_id, "key1")
+
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.assertEqual({"key1": self.custom_extra_specs["key1"]}, es_get_one)
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_get_all_share_type_extra_specs(self):
+        resp, es_get_all = self.shares_client.get_share_type_extra_specs(
+            self.st_id)
+
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.assertEqual(self.expected_extra_specs, es_get_all)
+
+
+class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
+
+    def setUp(self):
+        super(ExtraSpecsWriteAdminTest, self).setUp()
+        self.required_extra_specs = self.add_required_extra_specs_to_dict()
+        self.custom_extra_specs = {"key1": "value1", "key2": "value2"}
+        self.share_type_name = data_utils.rand_name("share-type")
+
+        # Create share type
+        __, self.share_type = self.create_share_type(
+            self.share_type_name, extra_specs=self.required_extra_specs)
+
+        self.st_id = self.share_type['share_type']['id']
 
         # Create extra specs for share type
-        resp, es_create = self.shares_client.create_share_type_extra_specs(
-            self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(extra_specs, es_create)
+        self.shares_client.create_share_type_extra_specs(
+            self.st_id, self.custom_extra_specs)
 
-        # Get one extra spec for share type
-        resp, es_get_one = self.shares_client.get_share_type_extra_spec(
-            self.share_type_id, "key1")
+    @test.attr(type=["gate", "smoke", ])
+    def test_update_one_share_type_extra_spec(self):
+        self.custom_extra_specs["key1"] = "fake_value1_updated"
+
+        # Update extra specs of share type
+        resp, update_one = self.shares_client.update_share_type_extra_spec(
+            self.st_id, "key1", self.custom_extra_specs["key1"])
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual({"key1": "value1", }, es_get_one)
+        self.assertEqual({"key1": self.custom_extra_specs["key1"]}, update_one)
+
+        resp, get = self.shares_client.get_share_type_extra_specs(self.st_id)
+        expected_extra_specs = self.custom_extra_specs
+        expected_extra_specs.update(self.required_extra_specs)
+        self.assertEqual(self.custom_extra_specs, get)
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_update_all_share_type_extra_specs(self):
+        self.custom_extra_specs["key2"] = "value2_updated"
+
+        # Update extra specs of share type
+        resp, update_all = self.shares_client.update_share_type_extra_specs(
+            self.st_id, self.custom_extra_specs)
+        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.assertEqual(self.custom_extra_specs, update_all)
+
+        resp, get = self.shares_client.get_share_type_extra_specs(self.st_id)
+        expected_extra_specs = self.custom_extra_specs
+        expected_extra_specs.update(self.required_extra_specs)
+        self.assertEqual(self.custom_extra_specs, get)
 
     @test.attr(type=["gate", "smoke", ])
     def test_delete_one_share_type_extra_spec(self):
-        extra_specs = self.add_required_extra_specs_to_dict({
-            "key1": "value1",
-            "key2": "value2",
-        })
-
-        # Create extra specs for share type
-        resp, es_create = self.shares_client.create_share_type_extra_specs(
-            self.share_type_id, extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(extra_specs, es_create)
-
         # Delete one extra spec for share type
         resp, __ = self.shares_client.delete_share_type_extra_spec(
-            self.share_type_id, "key1")
+            self.st_id, "key1")
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-
-        # Get all extra specs for share type
-        resp, es_get_all = self.shares_client.get_share_type_extra_specs(
-            self.share_type_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.assertEqual(
-            self.add_required_extra_specs_to_dict({"key2": "value2", }),
-            es_get_all)

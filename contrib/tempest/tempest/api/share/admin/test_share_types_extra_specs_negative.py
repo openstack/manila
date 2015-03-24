@@ -48,7 +48,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
         st = self._create_share_type()
         self.assertRaises(
             lib_exc.Forbidden,
-            self.member_shares_client.list_share_types_extra_specs,
+            self.member_shares_client.get_share_type_extra_specs,
             st["share_type"]["id"])
 
     @test.attr(type=["gate", "smoke", ])
@@ -140,12 +140,12 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_try_list_es_with_empty_shr_type_id(self):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.list_share_types_extra_specs, "")
+                          self.shares_client.get_share_type_extra_specs, "")
 
     @test.attr(type=["gate", "smoke", ])
     def test_try_list_es_with_invalid_shr_type_id(self):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.list_share_types_extra_specs,
+                          self.shares_client.get_share_type_extra_specs,
                           data_utils.rand_name("fake"))
 
     @test.attr(type=["gate", "smoke", ])

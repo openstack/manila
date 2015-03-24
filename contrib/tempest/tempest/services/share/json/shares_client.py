@@ -549,13 +549,6 @@ class SharesClient(service_client.ServiceClient):
 
 ###############
 
-    def list_share_types_extra_specs(self, share_type_id, params=None):
-        uri = 'types/%s/extra_specs' % share_type_id
-        if params is not None:
-            uri += '?%s' % urllib.urlencode(params)
-        resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
-
     def create_share_type_extra_specs(self, share_type_id, extra_specs):
         url = "types/%s/extra_specs" % share_type_id
         post_body = json.dumps({'extra_specs': extra_specs})
@@ -567,8 +560,10 @@ class SharesClient(service_client.ServiceClient):
         resp, body = self.get(uri)
         return resp, self._parse_resp(body)
 
-    def get_share_type_extra_specs(self, share_type_id):
+    def get_share_type_extra_specs(self, share_type_id, params=None):
         uri = "types/%s/extra_specs" % share_type_id
+        if params is not None:
+            uri += '?%s' % urllib.urlencode(params)
         resp, body = self.get(uri)
         return resp, self._parse_resp(body)
 
