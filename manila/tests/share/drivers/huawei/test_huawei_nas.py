@@ -275,7 +275,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'id': 'fake_uuid',
             'project_id': 'fake_tenant_id',
             'display_name': 'fake',
-            'name': 'share_fake_uuid',
+            'name': 'share-fake-uuid',
             'size': 1,
             'share_proto': 'NFS',
             'share_network_id': 'fake_net_id',
@@ -286,7 +286,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'id': 'fake_uuid',
             'project_id': 'fake_tenant_id',
             'display_name': 'fake',
-            'name': 'share_fake_uuid',
+            'name': 'share-fake-uuid',
             'size': 1,
             'share_proto': 'CIFS',
             'share_network_id': 'fake_net_id',
@@ -357,13 +357,13 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.driver.helper.login()
         location = self.driver.create_share(self._context, self.share_nfs,
                                             self.share_server)
-        self.assertEqual("100.115.10.68:/share_fake_uuid/", location)
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
 
     def test_create_share_cifs_success(self):
         self.driver.helper.login()
         location = self.driver.create_share(self._context, self.share_cifs,
                                             self.share_server)
-        self.assertEqual("100.115.10.68:/share_fake_uuid/", location)
+        self.assertEqual("\\\\100.115.10.68\\share_fake_uuid", location)
 
     def test_login_fail(self):
         self.driver.helper.test_normal = False

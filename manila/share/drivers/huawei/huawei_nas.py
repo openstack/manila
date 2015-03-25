@@ -72,6 +72,7 @@ class HuaweiNasDriver(driver.ShareDriver):
         """Create a share."""
         LOG.debug("Create a share.")
         share_name = share['name']
+        share_proto = share['share_proto']
         size = share['size'] * units.Mi * 2
 
         fs_id = None
@@ -96,18 +97,13 @@ class HuaweiNasDriver(driver.ShareDriver):
                 raise exception.InvalidShare('The status of filesystem error.')
 
         try:
-            self.helper._create_share(share_name, fs_id, share['share_proto'])
+            self.helper._create_share(share_name, fs_id, share_proto)
         except Exception:
             with excutils.save_and_reraise_exception():
                 if fs_id is not None:
                     self.helper._delete_fs(fs_id)
 
-        share_path = self.helper._get_share_path(share_name)
-
-        root = self.helper._read_xml()
-        target_ip = root.findtext('Storage/LogicalPortIP').strip()
-        location = ':'.join([target_ip, share_path])
-
+        location = self.helper._get_location_path(share_name, share_proto)
         return location
 
     def create_share_from_snapshot(self, context, share, snapshot,

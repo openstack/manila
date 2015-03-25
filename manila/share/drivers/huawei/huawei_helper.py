@@ -708,6 +708,24 @@ class RestHelper():
         share_path = "/" + share_name.replace("-", "_") + "/"
         return share_path
 
+    def _get_location_path(self, share_name, share_proto):
+        root = self._read_xml()
+        target_ip = root.findtext('Storage/LogicalPortIP').strip()
+
+        location = None
+        if share_proto == 'NFS':
+            location = '%s:/%s' % (target_ip,
+                                   share_name.replace("-", "_"))
+        elif share_proto == 'CIFS':
+            location = '\\\\%s\\%s' % (target_ip,
+                                       share_name.replace("-", "_"))
+        else:
+            raise exception.InvalidShare(
+                reason=(_('Invalid NAS protocol supplied: %s.')
+                        % share_proto))
+
+        return location
+
     def _get_share_name_by_id(self, share_id):
         share_name = "share_" + share_id
         return share_name
