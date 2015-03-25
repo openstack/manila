@@ -365,7 +365,7 @@ class ServiceInstanceManager(object):
                 self.compute_api.server_get(context, server_id)
             except exception.InstanceNotFound:
                 LOG.debug("Service instance '%s' was deleted "
-                          "succesfully.", server_id)
+                          "successfully.", server_id)
                 break
             time.sleep(2)
         else:
@@ -556,7 +556,7 @@ class ServiceInstanceManager(object):
     def _check_server_availability(self, server):
         t = time.time()
         while time.time() - t < self.max_time_to_build_instance:
-            LOG.debug('Checking service VM availablity.')
+            LOG.debug('Checking service VM availability.')
             try:
                 socket.socket().connect((server['ip'], 22))
                 LOG.debug('Service VM is available via SSH.')
