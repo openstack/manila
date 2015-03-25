@@ -90,7 +90,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
 
         self._check_type(context, type_id)
         specs = body['extra_specs']
-        self._verify_extra_specs(specs)
+        self._verify_extra_specs(specs, False)
         self._check_key_names(specs.keys())
         db.share_type_extra_specs_update_or_create(context, type_id, specs)
         notifier_info = dict(type_id=type_id, specs=specs)

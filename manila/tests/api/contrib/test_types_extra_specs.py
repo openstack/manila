@@ -17,6 +17,7 @@
 
 import ddt
 import mock
+from oslo_utils import strutils
 import webob
 
 from manila.api.contrib import types_extra_specs
@@ -26,6 +27,10 @@ from manila import test
 from manila.tests.api import fakes
 from manila.tests import fake_notifier
 import manila.wsgi
+
+
+DRIVER_HANDLES_SHARE_SERVERS = (
+    constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS)
 
 
 def return_create_share_type_extra_specs(context, share_type_id, extra_specs):
@@ -71,7 +76,7 @@ def get_extra_specs_dict(extra_specs, include_required=True):
         extra_specs = {}
 
     if include_required:
-        extra_specs[constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS] = False
+        extra_specs[DRIVER_HANDLES_SHARE_SERVERS] = False
 
     return {'extra_specs': extra_specs}
 
@@ -87,7 +92,6 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.controller = types_extra_specs.ShareTypeExtraSpecsController()
 
         """to reset notifier drivers left over from other api/contrib tests"""
-        fake_notifier.reset()
         self.addCleanup(fake_notifier.reset)
 
     def test_index(self):
@@ -143,81 +147,107 @@ class ShareTypesExtraSpecsTest(test.TestCase):
                           req, 1, 'key6')
 
     def test_delete_forbidden(self):
-        key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
-        req = fakes.HTTPRequest.blank(self.api_path + '/' + key)
+        req = fakes.HTTPRequest.blank(
+            self.api_path + '/' + DRIVER_HANDLES_SHARE_SERVERS)
 
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete,
-                          req, 1, key)
+                          req, 1, DRIVER_HANDLES_SHARE_SERVERS)
 
-    def test_create(self):
-        self.mock_object(manila.db,
-                         'share_type_extra_specs_update_or_create',
-                         return_create_share_type_extra_specs)
-        body = get_extra_specs_dict({})
-
+    @ddt.data(
+        get_extra_specs_dict({}),
+        {'foo': 'bar'},
+        {DRIVER_HANDLES_SHARE_SERVERS + 'foo': True},
+        {'foo' + DRIVER_HANDLES_SHARE_SERVERS: False},
+        *[{DRIVER_HANDLES_SHARE_SERVERS: v}
+          for v in strutils.TRUE_STRINGS + strutils.FALSE_STRINGS]
+    )
+    def test_create(self, data):
+        body = {'extra_specs': data}
+        self.mock_object(
+            manila.db, 'share_type_extra_specs_update_or_create',
+            mock.Mock(return_value=return_create_share_type_extra_specs))
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path)
-        res_dict = self.controller.create(req, 1, body)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
 
-        self.assertTrue(
-            constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
-            in res_dict['extra_specs'])
+        res_dict = self.controller.create(req, 1, body)
+
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        for k, v in data.items():
+            self.assertIn(k, res_dict['extra_specs'])
+            self.assertEqual(v, res_dict['extra_specs'][k])
+        manila.db.share_type_extra_specs_update_or_create.\
+            assert_called_once_with(
+                req.environ['manila.context'], 1, body['extra_specs'])
 
     def test_create_with_too_small_key(self):
-        self.mock_object(manila.db,
-                         'share_type_extra_specs_update_or_create',
-                         return_create_share_type_extra_specs)
+        self.mock_object(
+            manila.db, 'share_type_extra_specs_update_or_create',
+            mock.Mock(return_value=return_create_share_type_extra_specs))
         too_small_key = ""
         body = {"extra_specs": {too_small_key: "value"}}
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path)
+
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, 1, body)
 
+        self.assertFalse(
+            manila.db.share_type_extra_specs_update_or_create.called)
+
     def test_create_with_too_big_key(self):
-        self.mock_object(manila.db,
-                         'share_type_extra_specs_update_or_create',
-                         return_create_share_type_extra_specs)
+        self.mock_object(
+            manila.db, 'share_type_extra_specs_update_or_create',
+            mock.Mock(return_value=return_create_share_type_extra_specs))
         too_big_key = "k" * 256
         body = {"extra_specs": {too_big_key: "value"}}
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path)
+
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, 1, body)
 
+        self.assertFalse(
+            manila.db.share_type_extra_specs_update_or_create.called)
+
     def test_create_with_too_small_value(self):
-        self.mock_object(manila.db,
-                         'share_type_extra_specs_update_or_create',
-                         return_create_share_type_extra_specs)
+        self.mock_object(
+            manila.db, 'share_type_extra_specs_update_or_create',
+            mock.Mock(return_value=return_create_share_type_extra_specs))
         too_small_value = ""
         body = {"extra_specs": {"key": too_small_value}}
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path)
+
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, 1, body)
 
+        self.assertFalse(
+            manila.db.share_type_extra_specs_update_or_create.called)
+
     def test_create_with_too_big_value(self):
-        self.mock_object(manila.db,
-                         'share_type_extra_specs_update_or_create',
-                         return_create_share_type_extra_specs)
+        self.mock_object(
+            manila.db, 'share_type_extra_specs_update_or_create',
+            mock.Mock(return_value=return_create_share_type_extra_specs))
         too_big_value = "v" * 256
         body = {"extra_specs": {"key": too_big_value}}
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
         req = fakes.HTTPRequest.blank(self.api_path)
+
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, 1, body)
 
-    @mock.patch.object(manila.db, 'share_type_extra_specs_update_or_create')
-    def test_create_key_allowed_chars(
-            self, share_type_extra_specs_update_or_create):
+        self.assertFalse(
+            manila.db.share_type_extra_specs_update_or_create.called)
+
+    def test_create_key_allowed_chars(self):
         mock_return_value = {"key1": "value1",
                              "key2": "value2",
                              "key3": "value3",
                              "key4": "value4",
                              "key5": "value5"}
-        share_type_extra_specs_update_or_create.\
-            return_value = mock_return_value
+        self.mock_object(
+            manila.db, 'share_type_extra_specs_update_or_create',
+            mock.Mock(return_value=mock_return_value))
 
         body = get_extra_specs_dict({"other_alphanum.-_:": "value1"})
 
@@ -226,19 +256,21 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.create(req, 1, body)
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
-        self.assertEqual('value1',
+        self.assertEqual(mock_return_value['key1'],
                          res_dict['extra_specs']['other_alphanum.-_:'])
+        manila.db.share_type_extra_specs_update_or_create.\
+            assert_called_once_with(
+                req.environ['manila.context'], 1, body['extra_specs'])
 
-    @mock.patch.object(manila.db, 'share_type_extra_specs_update_or_create')
-    def test_create_too_many_keys_allowed_chars(
-            self, share_type_extra_specs_update_or_create):
+    def test_create_too_many_keys_allowed_chars(self):
         mock_return_value = {"key1": "value1",
                              "key2": "value2",
                              "key3": "value3",
                              "key4": "value4",
                              "key5": "value5"}
-        share_type_extra_specs_update_or_create.\
-            return_value = mock_return_value
+        self.mock_object(
+            manila.db, 'share_type_extra_specs_update_or_create',
+            mock.Mock(return_value=mock_return_value))
 
         body = get_extra_specs_dict({
             "other_alphanum.-_:": "value1",
@@ -247,56 +279,62 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         })
 
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
-
         req = fakes.HTTPRequest.blank(self.api_path)
+
         res_dict = self.controller.create(req, 1, body)
+
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
-        self.assertEqual('value1',
+        self.assertEqual(mock_return_value['key1'],
                          res_dict['extra_specs']['other_alphanum.-_:'])
-        self.assertEqual('value2',
+        self.assertEqual(mock_return_value['key2'],
                          res_dict['extra_specs']['other2_alphanum.-_:'])
-        self.assertEqual('value3',
+        self.assertEqual(mock_return_value['key3'],
                          res_dict['extra_specs']['other3_alphanum.-_:'])
+        manila.db.share_type_extra_specs_update_or_create.\
+            assert_called_once_with(
+                req.environ['manila.context'], 1, body['extra_specs'])
 
     def test_update_item(self):
-        self.mock_object(manila.db,
-                         'share_type_extra_specs_update_or_create',
-                         return_create_share_type_extra_specs)
-        key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
-        body = {key: True}
-
+        self.mock_object(
+            manila.db, 'share_type_extra_specs_update_or_create',
+            mock.Mock(return_value=return_create_share_type_extra_specs))
+        body = {DRIVER_HANDLES_SHARE_SERVERS: True}
         self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
-        req = fakes.HTTPRequest.blank(self.api_path + '/' + key)
-        res_dict = self.controller.update(req, 1, key, body)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        req = fakes.HTTPRequest.blank(
+            self.api_path + '/' + DRIVER_HANDLES_SHARE_SERVERS)
 
-        self.assertEqual(True, res_dict[key])
+        res_dict = self.controller.update(
+            req, 1, DRIVER_HANDLES_SHARE_SERVERS, body)
+
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(True, res_dict[DRIVER_HANDLES_SHARE_SERVERS])
+        manila.db.share_type_extra_specs_update_or_create.\
+            assert_called_once_with(
+                req.environ['manila.context'], 1, body)
 
     def test_update_item_too_many_keys(self):
-        self.mock_object(manila.db,
-                         'share_type_extra_specs_update_or_create',
-                         return_create_share_type_extra_specs)
+        self.mock_object(manila.db, 'share_type_extra_specs_update_or_create')
         body = {"key1": "value1", "key2": "value2"}
-
         req = fakes.HTTPRequest.blank(self.api_path + '/key1')
+
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           req, 1, 'key1', body)
 
-    def test_update_item_body_uri_mismatch(self):
-        self.mock_object(manila.db,
-                         'share_type_extra_specs_update_or_create',
-                         return_create_share_type_extra_specs)
-        body = {"key1": "value1"}
+        self.assertFalse(
+            manila.db.share_type_extra_specs_update_or_create.called)
 
+    def test_update_item_body_uri_mismatch(self):
+        self.mock_object(manila.db, 'share_type_extra_specs_update_or_create')
+        body = {"key1": "value1"}
         req = fakes.HTTPRequest.blank(self.api_path + '/bad')
+
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           req, 1, 'bad', body)
 
-    @ddt.data(None,
-              {},
-              {"extra_specs": {
-                  constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: ""
-              }})
+        self.assertFalse(
+            manila.db.share_type_extra_specs_update_or_create.called)
+
+    @ddt.data(None, {}, {"extra_specs": {DRIVER_HANDLES_SHARE_SERVERS: ""}})
     def test_update_invalid_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1/extra_specs')
         req.method = 'POST'
@@ -304,25 +342,17 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update, req, '1', body)
 
-    @ddt.data(None,
-              {},
-              {'foo': {'a': 'b'}},
-              {'extra_specs': 'string'},
-              {"extra_specs": {"ke/y1": "value1"}},
-              {"key1": "value1", "ke/y2": "value2", "key3": "value3"},
-              {"extra_specs": {
-                  constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: ""}},
-              {"extra_specs": {
-                  constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: "111"}},
-              {"extra_specs": {
-                  constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS + "FAKE":
-                      "fake"}},
-              {"extra_specs": {"": "value"}},
-              {"extra_specs": {"t": get_large_string()}},
-              {"extra_specs": {get_large_string(): get_large_string()}},
-              {"extra_specs": {get_large_string(): "v"}},
-              {"extra_specs": {"k": ""}},
-              )
+    @ddt.data(
+        None, {}, {'foo': {'a': 'b'}}, {'extra_specs': 'string'},
+        {"extra_specs": {"ke/y1": "value1"}},
+        {"key1": "value1", "ke/y2": "value2", "key3": "value3"},
+        {"extra_specs": {DRIVER_HANDLES_SHARE_SERVERS: ""}},
+        {"extra_specs": {DRIVER_HANDLES_SHARE_SERVERS: "111"}},
+        {"extra_specs": {"": "value"}},
+        {"extra_specs": {"t": get_large_string()}},
+        {"extra_specs": {get_large_string(): get_large_string()}},
+        {"extra_specs": {get_large_string(): "v"}},
+        {"extra_specs": {"k": ""}})
     def test_create_invalid_body(self, body):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1/extra_specs')
         req.method = 'POST'

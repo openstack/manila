@@ -194,7 +194,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
                     "nonexistent share type '%(st)s'." % {
                         "s_id": share["id"], "st": share["share_type"]}
                 )
-            __, extra_specs = self.shares_client.list_share_types_extra_specs(
+            __, extra_specs = self.shares_client.get_share_type_extra_specs(
                 st_id)
             self.assertDictContainsSubset(filters["extra_specs"], extra_specs)
 
