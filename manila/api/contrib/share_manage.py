@@ -41,13 +41,21 @@ class ShareManageController(wsgi.Controller):
         authorize(context)
         share_data = self._validate_manage_parameters(context, body)
 
+        # NOTE(vponomaryov): compatibility actions are required between API and
+        # DB layers for 'name' and 'description' API params that are
+        # represented in DB as 'display_name' and 'display_description'
+        # appropriately.
+        name = share_data.get('display_name', share_data.get('name', None))
+        description = share_data.get(
+            'display_description', share_data.get('description', None))
+
         share = {
             'host': share_data['service_host'],
             'export_location': share_data['export_path'],
             'share_proto': share_data['protocol'].upper(),
             'share_type_id': share_data['share_type_id'],
-            'display_name': share_data.get('display_name', ''),
-            'display_description': share_data.get('display_description', ''),
+            'display_name': name,
+            'display_description': description,
         }
 
         driver_options = share_data.get('driver_options', {})

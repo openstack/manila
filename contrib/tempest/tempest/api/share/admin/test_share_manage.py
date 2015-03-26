@@ -85,12 +85,18 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke"])
     def test_manage(self):
-        # manage share
+        name = "Name for 'managed' share that had ID %s" % self.share1["id"]
+        description = "Description for 'managed' share"
+
+        # Manage share
         resp, share = self.shares_client.manage_share(
             service_host=self.share1['host'],
             export_path=self.share1['export_locations'][0],
             protocol=self.share1['share_proto'],
-            share_type_id=self.st['share_type']['id'])
+            share_type_id=self.st['share_type']['id'],
+            name=name,
+            description=description,
+        )
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Add managed share to cleanup queue
@@ -101,7 +107,15 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
         # Wait for success
         self.shares_client.wait_for_share_status(share['id'], 'available')
 
-        # delete share
+        # Verify data of managed share
+        __, get = self.shares_client.get_share(share['id'])
+        self.assertEqual(name, get['name'])
+        self.assertEqual(description, get['description'])
+        self.assertEqual(self.share1['host'], get['host'])
+        self.assertEqual(self.share1['share_proto'], get['share_proto'])
+        self.assertEqual(self.st['share_type']['name'], get['share_type'])
+
+        # Delete share
         resp, __ = self.shares_client.delete_share(share['id'])
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_resource_deletion(share_id=share['id'])
@@ -111,7 +125,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke"])
     def test_manage_retry(self):
-        # manage share with invalid parameters
+        # Manage share with invalid parameters
         share = None
         parameters = [(self.st_invalid['share_type']['id'], 'MANAGE_ERROR'),
                       (self.st['share_type']['id'], 'available')]
@@ -132,7 +146,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
             # Wait for success
             self.shares_client.wait_for_share_status(share['id'], status)
 
-        # delete share
+        # Delete share
         resp, __ = self.shares_client.delete_share(share['id'])
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.shares_client.wait_for_resource_deletion(share_id=share['id'])
