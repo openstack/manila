@@ -129,8 +129,8 @@ class VNXStorageConnection(driver.StorageConnection):
             raise exception.EMCVnxXMLAPIError(err=message)
         interface = cifs_server['interfaces'][0]
 
-        location = '//%(interface)s/%(name)s' % {'interface': interface,
-                                                 'name': share_name}
+        location = '\\\\%(interface)s\\%(name)s' % {'interface': interface,
+                                                    'name': share_name}
 
         return location
 

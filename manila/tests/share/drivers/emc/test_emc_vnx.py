@@ -1383,7 +1383,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         ]
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
         helper.SSHConnector.run_ssh.assert_has_calls(ssh_calls)
-        self.assertEqual(location, '//192.168.1.2/%s' % share['name'],
+        self.assertEqual(location, '\\\\192.168.1.2\\%s' % share['name'],
                          "CIFS export path is incorrect")
 
     def test_delete_cifs_share_default(self):
