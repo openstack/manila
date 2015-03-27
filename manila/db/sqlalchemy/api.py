@@ -1321,6 +1321,8 @@ def share_delete(context, share_id):
         update({'deleted': True,
                 'deleted_at': timeutils.utcnow(),
                 'updated_at': literal_column('updated_at')})
+    session.query(models.ShareExportLocations).\
+        filter_by(share_id=share_id).soft_delete()
 
     share_ref.save(session)
 
@@ -1719,7 +1721,7 @@ def share_export_locations_update(context, share_id, export_locations, delete):
 
         for location in location_rows:
             if delete and location['path'] not in export_locations:
-                location.update({'deleted': True})
+                location.soft_delete(session)
             else:
                 updated_at = indexed_update_time[location['path']]
                 location.update({
