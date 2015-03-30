@@ -933,7 +933,7 @@ class CIFSHelper(NASHelperBase):
             set_of_commands.extend(['&&', 'sudo', 'net', 'conf', 'setparm',
                                     share_name, param, value])
         self._ssh_exec(server, set_of_commands)
-        return '//%s/%s' % (server['public_address'], share_name)
+        return '\\\\%s\\%s' % (server['public_address'], share_name)
 
     def remove_export(self, server, share_name):
         """Remove share definition from samba server."""
