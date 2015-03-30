@@ -50,10 +50,42 @@ class ShareUnmanageTest(test.TestCase):
         share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, 'unmanage', mock.Mock())
+        self.mock_object(
+            self.controller.share_api.db, 'share_snapshot_get_all_for_share',
+            mock.Mock(return_value=[]))
 
-        actual_result = self.controller.unmanage(self.request, self.share_id)
+        actual_result = self.controller.unmanage(self.request, share['id'])
 
         self.assertEqual(202, actual_result.status_int)
+        self.controller.share_api.db.share_snapshot_get_all_for_share.\
+            assert_called_once_with(
+                self.request.environ['manila.context'], share['id'])
+        self.controller.share_api.get.assert_called_once_with(
+            self.request.environ['manila.context'], share['id'])
+        share_api.API.unmanage.assert_called_once_with(
+            self.request.environ['manila.context'], share)
+
+    def test_unmanage_share_that_has_snapshots(self):
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
+        snapshots = ['foo', 'bar']
+        self.mock_object(self.controller.share_api, 'unmanage')
+        self.mock_object(
+            self.controller.share_api.db, 'share_snapshot_get_all_for_share',
+            mock.Mock(return_value=snapshots))
+        self.mock_object(
+            self.controller.share_api, 'get',
+            mock.Mock(return_value=share))
+
+        self.assertRaises(
+            webob.exc.HTTPForbidden,
+            self.controller.unmanage, self.request, share['id'])
+
+        self.assertFalse(self.controller.share_api.unmanage.called)
+        self.controller.share_api.db.share_snapshot_get_all_for_share.\
+            assert_called_once_with(
+                self.request.environ['manila.context'], share['id'])
+        self.controller.share_api.get.assert_called_once_with(
+            self.request.environ['manila.context'], share['id'])
 
     def test_unmanage_share_based_on_share_server(self):
         share = dict(share_server_id='foo_id', id='bar_id')

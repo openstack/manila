@@ -57,6 +57,13 @@ class ShareUnmanageController(wsgi.Controller):
                         "Share '%(s_id)s' is in '%(state)s' state.") % dict(
                             state=share['status'], s_id=share['id'])
                 raise exc.HTTPForbidden(explanation=msg)
+            snapshots = self.share_api.db.share_snapshot_get_all_for_share(
+                context, id)
+            if snapshots:
+                msg = _("Share '%(s_id)s' can not be unmanaged because it has "
+                        "'%(amount)s' dependent snapshot(s).") % {
+                            's_id': id, 'amount': len(snapshots)}
+                raise exc.HTTPForbidden(explanation=msg)
             self.share_api.unmanage(context, share)
         except exception.NotFound as e:
             raise exc.HTTPNotFound(explanation=six.text_type(e))
