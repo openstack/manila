@@ -17,6 +17,7 @@ Unit tests for the NetApp Data ONTAP cDOT multi-SVM storage driver library.
 
 import copy
 
+import ddt
 import mock
 from oslo_log import log
 
@@ -30,6 +31,7 @@ from manila import test
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
 
 
+@ddt.ddt
 class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def setUp(self):
@@ -55,16 +57,20 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary(
             self.mock_db, fake.DRIVER_NAME, **kwargs)
         self.library._client = mock.Mock()
+        self.library._client.get_ontapi_version.return_value = (1, 21)
         self.client = self.library._client
         self.context = mock.Mock()
 
     def test_check_for_setup_error_cluster_creds_no_vserver(self):
         self.library._have_cluster_creds = True
+        mock_check_data_ontap_version = self.mock_object(
+            self.library, '_check_data_ontap_version')
         mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
                                       'check_for_setup_error')
 
         self.library.check_for_setup_error()
 
+        self.assertTrue(mock_check_data_ontap_version.called)
         mock_super.assert_called_once_with()
 
     def test_check_for_setup_error_cluster_creds_with_vserver(self):
@@ -83,6 +89,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidInput,
                           self.library.check_for_setup_error)
+
+    @ddt.data((1, 20), (1, 21))
+    def test_check_data_ontap_version(self, version):
+        self.library._client.get_ontapi_version.return_value = version
+        self.assertIsNone(self.library._check_data_ontap_version())
+
+    @ddt.data((1, 30), (1, 31), (1, 40), (2, 0))
+    def test_check_data_ontap_version_too_new(self, version):
+        self.library._client.get_ontapi_version.return_value = version
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_data_ontap_version)
 
     def test_get_vserver_no_share_server(self):
 

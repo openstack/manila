@@ -43,6 +43,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     @na_utils.trace
     def check_for_setup_error(self):
 
+        self._check_data_ontap_version()
+
         if self._have_cluster_creds:
             if self.configuration.netapp_vserver:
                 msg = _LW('Vserver is specified in the configuration. This is '
@@ -56,6 +58,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
         super(NetAppCmodeMultiSVMFileStorageLibrary, self).\
             check_for_setup_error()
+
+    def _check_data_ontap_version(self):
+        # Temporary check to indicate that the Kilo multi-SVM driver does not
+        # support cDOT 8.3 or higher.
+        ontapi_version = self._client.get_ontapi_version()
+        if ontapi_version >= (1, 30):
+            msg = _('Clustered Data ONTAP 8.3.0 or higher is not '
+                    'supported by this version of the driver when the '
+                    'configuration option driver_handles_share_servers '
+                    'is set to True.')
+            raise exception.NetAppException(msg)
 
     @na_utils.trace
     def _get_vserver(self, share_server=None):
