@@ -30,23 +30,12 @@ from manila.i18n import _LI
 from manila.openstack.common import log as logging
 
 import sqlalchemy as sa
+from sqlalchemy.sql import table
 
 LOG = logging.getLogger(__name__)
 
 
 def upgrade():
-    LOG.info(_LI("Renaming column name volume_type_extra_specs.key to "
-             "volume_type_extra_specs.spec_key"))
-    op.alter_column("volume_type_extra_specs", "key",
-                    new_column_name="spec_key",
-                    type_=sa.String(length=255))
-
-    LOG.info(_LI("Renaming column name volume_type_extra_specs.value to "
-             "volume_type_extra_specs.spec_value"))
-    op.alter_column("volume_type_extra_specs", "value",
-                    new_column_name="spec_value",
-                    type_=sa.String(length=255))
-
     LOG.info(_LI("Renaming column name shares.volume_type_id to "
              "shares.share_type.id"))
     op.alter_column("shares", "volume_type_id",
@@ -60,7 +49,7 @@ def upgrade():
                                 ['name', 'deleted'])
 
     LOG.info(_LI("Creating share_type_extra_specs table"))
-    op.create_table(
+    st_es = op.create_table(
         'share_type_extra_specs',
         sa.Column('created_at', sa.DateTime),
         sa.Column('updated_at', sa.DateTime),
@@ -72,17 +61,11 @@ def upgrade():
                   nullable=False),
         sa.Column('spec_key', sa.String(length=255)),
         sa.Column('spec_value', sa.String(length=255)),
-        mysql_engine='InnoDB'
-    )
+        mysql_engine='InnoDB')
 
     LOG.info(_LI("Migrating volume_type_extra_specs to "
                  "share_type_extra_specs"))
-    op.execute("INSERT INTO share_type_extra_specs "
-               "(created_at, updated_at, deleted_at, deleted, "
-               "id, share_type_id, spec_key, spec_value) "
-               "SELECT created_at, updated_at, deleted_at, deleted, "
-               "id, volume_type_id, spec_key, spec_value "
-               "FROM volume_type_extra_specs")
+    _copy_records(destination_table=st_es, up_migration=True)
 
     LOG.info(_LI("Dropping volume_type_extra_specs table"))
     op.drop_table("volume_type_extra_specs")
@@ -90,7 +73,7 @@ def upgrade():
 
 def downgrade():
     LOG.info(_LI("Creating volume_type_extra_specs table"))
-    op.create_table(
+    vt_es = op.create_table(
         'volume_type_extra_specs',
         sa.Column('created_at', sa.DateTime),
         sa.Column('updated_at', sa.DateTime),
@@ -99,19 +82,13 @@ def downgrade():
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
         sa.Column('volume_type_id', sa.String(length=36),
                   sa.ForeignKey('share_types.id'), nullable=False),
-        sa.Column('spec_key', sa.String(length=255)),
-        sa.Column('spec_value', sa.String(length=255)),
-        mysql_engine='InnoDB'
-    )
+        sa.Column('key', sa.String(length=255)),
+        sa.Column('value', sa.String(length=255)),
+        mysql_engine='InnoDB')
 
     LOG.info(_LI("Migrating share_type_extra_specs to "
              "volume_type_extra_specs"))
-    op.execute("INSERT INTO volume_type_extra_specs "
-               "(created_at, updated_at, deleted_at, deleted, "
-               "id, volume_type_id, spec_key, spec_value) "
-               "SELECT created_at, updated_at, deleted_at, deleted, "
-               "id, share_type_id, spec_key, spec_value "
-               "FROM share_type_extra_specs")
+    _copy_records(destination_table=vt_es, up_migration=False)
 
     LOG.info(_LI("Dropping share_type_extra_specs table"))
     op.drop_table("share_type_extra_specs")
@@ -128,14 +105,32 @@ def downgrade():
                     new_column_name="volume_type_id",
                     type_=sa.String(length=36))
 
-    LOG.info(_LI("Renaming column name volume_type_extra_specs.spec_key to "
-             "volume_type_extra_specs.key"))
-    op.alter_column("volume_type_extra_specs", "spec_key",
-                    new_column_name="key",
-                    type_=sa.String(length=255))
 
-    LOG.info(_LI("Renaming column name volume_type_extra_specs.spec_value to "
-             "volume_type_extra_specs.value"))
-    op.alter_column("volume_type_extra_specs", "spec_value",
-                    new_column_name="value",
-                    type_=sa.String(length=255))
+def _copy_records(destination_table, up_migration=True):
+    old = ('volume', '')
+    new = ('share', 'spec_')
+    data_from, data_to = (old, new) if up_migration else (new, old)
+    from_table = table(
+        data_from[0] + '_type_extra_specs',
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column(data_from[0] + '_type_id', sa.String(length=36)),
+        sa.Column(data_from[1] + 'key', sa.String(length=255)),
+        sa.Column(data_from[1] + 'value', sa.String(length=255)))
+
+    extra_specs = []
+    for es in op.get_bind().execute(from_table.select()):
+        extra_specs.append({
+            'created_at': es.created_at,
+            'updated_at': es.updated_at,
+            'deleted_at': es.deleted_at,
+            'deleted': es.deleted,
+            'id': es.id,
+            data_to[0] + '_type_id': getattr(es, data_from[0] + '_type_id'),
+            data_to[1] + 'key': getattr(es, data_from[1] + 'key'),
+            data_to[1] + 'value': getattr(es, data_from[1] + 'value'),
+        })
+    op.bulk_insert(destination_table, extra_specs)
