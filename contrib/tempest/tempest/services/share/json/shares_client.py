@@ -85,13 +85,15 @@ class SharesClient(service_client.ServiceClient):
         return self.delete("shares/%s" % share_id)
 
     def manage_share(self, service_host, protocol, export_path,
-                     share_type_id):
+                     share_type_id, name=None, description=None):
         post_body = {
             "share": {
                 "export_path": export_path,
                 "service_host": service_host,
                 "protocol": protocol,
                 "share_type": share_type_id,
+                "name": name,
+                "description": description,
             }
         }
         body = json.dumps(post_body)

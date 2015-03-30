@@ -28,20 +28,15 @@ from manila import utils
 
 
 def get_fake_manage_body(export_path='/fake', service_host='fake@host#POOL',
-                         protocol='fake', share_type='fake', name='name',
-                         description='desc'):
+                         protocol='fake', share_type='fake', **kwargs):
     fake_share = {
-        'share': {
-            'export_path': export_path,
-            'service_host': service_host,
-            'protocol': protocol,
-            'share_type': share_type,
-            'display_name': name,
-            'display_description': description,
-        }
+        'export_path': export_path,
+        'service_host': service_host,
+        'protocol': protocol,
+        'share_type': share_type,
     }
-
-    return fake_share
+    fake_share.update(kwargs)
+    return {'share': fake_share}
 
 
 @ddt.ddt
@@ -138,26 +133,33 @@ class ShareManageTest(test.TestCase):
                           self.request,
                           body)
 
-    def test_share_manage(self):
-        body = get_fake_manage_body()
+    @ddt.data(
+        get_fake_manage_body(name='foo', description='bar'),
+        get_fake_manage_body(display_name='foo', description='bar'),
+        get_fake_manage_body(name='foo', display_description='bar'),
+        get_fake_manage_body(display_name='foo', display_description='bar'),
+        get_fake_manage_body(display_name='foo', display_description='bar',
+                             driver_options=dict(volume_id='quuz')),
+    )
+    def test_share_manage(self, data):
         self._setup_manage_mocks()
-        share = {'share_type_id': '', 'id': 'fake'}
-        self.mock_object(share_api.API, 'manage',
-                         mock.Mock(return_value=share))
-
+        return_share = {'share_type_id': '', 'id': 'fake'}
+        self.mock_object(
+            share_api.API, 'manage', mock.Mock(return_value=return_share))
         share = {
-            'host': body['share']['service_host'],
-            'export_location': body['share']['export_path'],
-            'share_proto': body['share']['protocol'].upper(),
+            'host': data['share']['service_host'],
+            'export_location': data['share']['export_path'],
+            'share_proto': data['share']['protocol'].upper(),
             'share_type_id': 'fake',
-            'display_name': body['share']['display_name'],
-            'display_description': body['share']['display_description'],
+            'display_name': 'foo',
+            'display_description': 'bar',
         }
+        driver_options = data['share'].get('driver_options', {})
 
-        actual_result = self.controller.create(self.request, body)
+        actual_result = self.controller.create(self.request, data)
 
         share_api.API.manage.assert_called_once_with(
-            mock.ANY, share, {})
+            mock.ANY, share, driver_options)
         self.assertIsNotNone(actual_result)
 
     def test_wrong_permissions(self):
