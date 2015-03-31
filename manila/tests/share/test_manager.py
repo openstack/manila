@@ -1151,6 +1151,7 @@ class ShareManagerTestCase(test.TestCase):
             })
         sec_services = network_info['security_services']
         server_info = {'fake_server_info_key': 'fake_server_info_value'}
+        network_info['network_type'] = 'fake_network_type'
 
         # mock required stuff
         self.mock_object(self.share_manager.db, 'share_network_get',
@@ -1158,6 +1159,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.driver, 'allocate_network')
         self.mock_object(self.share_manager, '_form_server_setup_info',
                          mock.Mock(return_value=network_info))
+        self.mock_object(self.share_manager, '_validate_segmentation_id')
         self.mock_object(self.share_manager.driver, 'setup_server',
                          mock.Mock(return_value=server_info))
         self.mock_object(self.share_manager.db,
@@ -1179,6 +1181,8 @@ class ShareManagerTestCase(test.TestCase):
             self.context, share_server, share_network)
         self.share_manager._form_server_setup_info.assert_called_once_with(
             self.context, share_server, share_network)
+        self.share_manager._validate_segmentation_id.assert_called_once_with(
+            network_info)
         self.share_manager.driver.setup_server.assert_called_once_with(
             network_info, metadata=metadata)
         self.share_manager.db.share_server_backend_details_set.\
@@ -1209,6 +1213,7 @@ class ShareManagerTestCase(test.TestCase):
         network_info = {
             'fake_network_info_key': 'fake_network_info_value',
             'security_services': [],
+            'network_type': 'fake_network_type',
         }
         server_info = {}
 
@@ -1253,6 +1258,7 @@ class ShareManagerTestCase(test.TestCase):
         network_info = {
             'fake_network_info_key': 'fake_network_info_value',
             'security_services': [],
+            'network_type': 'fake_network_type',
         }
         if detail_data_proper:
             detail_data = {'server_details': server_info}
@@ -1347,7 +1353,8 @@ class ShareManagerTestCase(test.TestCase):
             neutron_net_id='fake_neutron_net_id',
             neutron_subnet_id='fake_neutron_subnet_id',
             nova_net_id='fake_nova_net_id',
-            security_services='fake_security_services')
+            security_services='fake_security_services',
+            network_type='fake_network_type')
         expected = dict(
             server_id=fake_share_server['id'],
             segmentation_id=fake_share_network['segmentation_id'],
@@ -1357,7 +1364,8 @@ class ShareManagerTestCase(test.TestCase):
             nova_net_id=fake_share_network['nova_net_id'],
             security_services=fake_share_network['security_services'],
             network_allocations=fake_network_allocations,
-            backend_details=fake_share_server['backend_details'])
+            backend_details=fake_share_server['backend_details'],
+            network_type=fake_share_network['network_type'])
 
         network_info = self.share_manager._form_server_setup_info(
             self.context, fake_share_server, fake_share_network)
@@ -1365,6 +1373,47 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(expected, network_info)
         self.share_manager.db.network_allocations_get_for_share_server.\
             assert_called_once_with(self.context, fake_share_server['id'])
+
+    @ddt.data(
+        {'network_info': {'network_type': 'vlan', 'segmentation_id': '100'}},
+        {'network_info': {'network_type': 'vlan', 'segmentation_id': '1'}},
+        {'network_info': {'network_type': 'vlan', 'segmentation_id': '4094'}},
+        {'network_info': {'network_type': 'vxlan', 'segmentation_id': '100'}},
+        {'network_info': {'network_type': 'vxlan', 'segmentation_id': '1'}},
+        {'network_info': {'network_type': 'vxlan',
+                          'segmentation_id': '16777215'}},
+        {'network_info': {'network_type': 'gre', 'segmentation_id': '100'}},
+        {'network_info': {'network_type': 'gre', 'segmentation_id': '1'}},
+        {'network_info': {'network_type': 'gre',
+                          'segmentation_id': '4294967295'}},
+        {'network_info': {'network_type': 'flat', 'segmentation_id': None}},
+        {'network_info': {'network_type': 'flat', 'segmentation_id': 0}},
+        {'network_info': {'network_type': None, 'segmentation_id': None}},
+        {'network_info': {'network_type': None, 'segmentation_id': 0}})
+    @ddt.unpack
+    def test_validate_segmentation_id_with_valid_values(self, network_info):
+        self.share_manager._validate_segmentation_id(network_info)
+
+    @ddt.data(
+        {'network_info': {'network_type': 'vlan', 'segmentation_id': None}},
+        {'network_info': {'network_type': 'vlan', 'segmentation_id': -1}},
+        {'network_info': {'network_type': 'vlan', 'segmentation_id': 0}},
+        {'network_info': {'network_type': 'vlan', 'segmentation_id': '4095'}},
+        {'network_info': {'network_type': 'vxlan', 'segmentation_id': None}},
+        {'network_info': {'network_type': 'vxlan', 'segmentation_id': 0}},
+        {'network_info': {'network_type': 'vxlan',
+                          'segmentation_id': '16777216'}},
+        {'network_info': {'network_type': 'gre', 'segmentation_id': None}},
+        {'network_info': {'network_type': 'gre', 'segmentation_id': 0}},
+        {'network_info': {'network_type': 'gre',
+                          'segmentation_id': '4294967296'}},
+        {'network_info': {'network_type': 'flat', 'segmentation_id': '1000'}},
+        {'network_info': {'network_type': None, 'segmentation_id': '1000'}})
+    @ddt.unpack
+    def test_validate_segmentation_id_with_invalid_values(self, network_info):
+        self.assertRaises(exception.NetworkBadConfigurationException,
+                          self.share_manager._validate_segmentation_id,
+                          network_info)
 
     @ddt.data(5, 70)
     def test_verify_server_cleanup_interval_invalid_cases(self, val):

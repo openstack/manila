@@ -652,6 +652,7 @@ class ShareManager(manager.SchedulerDependentManager):
             'security_services': share_network['security_services'],
             'network_allocations': network_allocations,
             'backend_details': share_server.get('backend_details'),
+            'network_type': share_network['network_type'],
         }
         return network_info
 
@@ -666,6 +667,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 context, share_server['share_network_id'])
             network_info = self._form_server_setup_info(
                 context, share_server, share_network)
+            self._validate_segmentation_id(network_info)
 
             # NOTE(vponomaryov): Save security services data to share server
             # details table to remove dependency from share network after
@@ -715,6 +717,44 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_server_update(context, share_server['id'],
                                             {'status': constants.STATUS_ERROR})
                 self.driver.deallocate_network(context, share_server['id'])
+
+    def _validate_segmentation_id(self, network_info):
+        """Raises exception if the segmentation type is incorrect."""
+        if (network_info['network_type'] in (None, 'flat') and
+                network_info['segmentation_id']):
+            msg = _('A segmentation ID %(vlan_id)s was specified but can not '
+                    'be used with a network of type %(seg_type)s; the '
+                    'segmentation ID option must be omitted or set to 0')
+            raise exception.NetworkBadConfigurationException(
+                reason=msg % {'vlan_id': network_info['segmentation_id'],
+                              'seg_type': network_info['network_type']})
+        elif (network_info['network_type'] == 'vlan'
+              and (network_info['segmentation_id'] is None
+                   or int(network_info['segmentation_id']) > 4094
+                   or int(network_info['segmentation_id'] < 1))):
+            msg = _('A segmentation ID %s was specified but is not valid for '
+                    'a VLAN network type; the segmentation ID must be an '
+                    'integer value in the range of [1,4094]')
+            raise exception.NetworkBadConfigurationException(
+                reason=msg % network_info['segmentation_id'])
+        elif (network_info['network_type'] == 'vxlan'
+              and (network_info['segmentation_id'] is None
+                   or int(network_info['segmentation_id']) > 16777215
+                   or int(network_info['segmentation_id'] < 1))):
+            msg = _('A segmentation ID %s was specified but is not valid for '
+                    'a VXLAN network type; the segmentation ID must be an '
+                    'integer value in the range of [1,16777215]')
+            raise exception.NetworkBadConfigurationException(
+                reason=msg % network_info['segmentation_id'])
+        elif (network_info['network_type'] == 'gre'
+              and (network_info['segmentation_id'] is None
+                   or int(network_info['segmentation_id']) > 4294967295
+                   or int(network_info['segmentation_id'] < 1))):
+            msg = _('A segmentation ID %s was specified but is not valid for '
+                    'a GRE network type; the segmentation ID must be an '
+                    'integer value in the range of [1, 4294967295]')
+            raise exception.NetworkBadConfigurationException(
+                reason=msg % network_info['segmentation_id'])
 
     def delete_share_server(self, context, share_server):
 
