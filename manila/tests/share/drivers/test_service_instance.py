@@ -82,6 +82,7 @@ class FakeServiceInstance(object):
         super(FakeServiceInstance, self).__init__()
         self.compute_api = service_instance.compute.API()
         self.admin_context = service_instance.context.get_admin_context()
+        self.driver_config = driver_config
 
     def get_config_option(self, key):
         return fake_get_config_option(key)
@@ -1227,7 +1228,6 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
     def test_init_neutron_network_plugin(self):
         instance = self._init_neutron_network_plugin()
-
         self.assertEqual(service_instance.NEUTRON_NAME, instance.NAME)
         attrs = [
             'neutron_api', 'vif_driver', 'service_network_id',
@@ -1236,6 +1236,26 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             self.assertTrue(hasattr(instance, attr), "No attr '%s'" % attr)
         service_instance.NeutronNetworkHelper.get_service_network_id.\
             assert_called_once_with()
+        self.assertEqual('DEFAULT', instance.neutron_api.config_group_name)
+
+    def test_init_neutron_network_plugin_with_driver_config_group(self):
+        self.fake_manager.driver_config = mock.Mock()
+        self.fake_manager.driver_config.config_group =\
+            'fake_config_group'
+        self.fake_manager.driver_config.network_config_group = None
+        instance = self._init_neutron_network_plugin()
+        self.assertEqual('fake_config_group',
+                         instance.neutron_api.config_group_name)
+
+    def test_init_neutron_network_plugin_with_network_config_group(self):
+        self.fake_manager.driver_config = mock.Mock()
+        self.fake_manager.driver_config.config_group =\
+            "fake_config_group"
+        self.fake_manager.driver_config.network_config_group =\
+            "fake_network_config_group"
+        instance = self._init_neutron_network_plugin()
+        self.assertEqual('fake_network_config_group',
+                         instance.neutron_api.config_group_name)
 
     def test_admin_project_id(self):
         instance = self._init_neutron_network_plugin()

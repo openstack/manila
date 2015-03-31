@@ -611,7 +611,15 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         self.get_config_option = service_instance_manager.get_config_option
         self.vif_driver = importutils.import_class(
             self.get_config_option("interface_driver"))()
-        self.neutron_api = neutron.API()
+
+        if service_instance_manager.driver_config:
+            network_config_group = (
+                service_instance_manager.driver_config.network_config_group or
+                service_instance_manager.driver_config.config_group)
+        else:
+            network_config_group = None
+
+        self.neutron_api = neutron.API(config_group_name=network_config_group)
         self.service_network_id = self.get_service_network_id()
         self.connect_share_server_to_tenant_network = (
             self.get_config_option('connect_share_server_to_tenant_network'))
