@@ -21,9 +21,9 @@ import sys
 from novaclient import exceptions as nova_exception
 from novaclient import service_catalog
 from novaclient import utils
-from novaclient.v1_1 import client as nova_client
-from novaclient.v1_1.contrib import assisted_volume_snapshots
-from novaclient.v1_1 import servers as nova_servers
+from novaclient.v2 import client as nova_client
+from novaclient.v2.contrib import assisted_volume_snapshots
+from novaclient.v2 import servers as nova_servers
 from oslo_config import cfg
 from oslo_log import log
 

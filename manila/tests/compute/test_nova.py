@@ -15,7 +15,7 @@
 import mock
 from novaclient import exceptions as nova_exception
 from novaclient import utils
-from novaclient.v1_1 import servers as nova_servers
+from novaclient.v2 import servers as nova_servers
 
 from manila.compute import nova
 from manila import context
