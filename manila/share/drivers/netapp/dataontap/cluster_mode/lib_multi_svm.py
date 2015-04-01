@@ -56,6 +56,13 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                     'configuration when the driver is managing share servers.')
             raise exception.InvalidInput(reason=msg)
 
+        # Ensure one or more aggregates are available.
+        if not self._find_matching_aggregates():
+            msg = _('No aggregates are available for provisioning shares. '
+                    'Ensure that the configuration option '
+                    'netapp_aggregate_name_search_pattern is set correctly.')
+            raise exception.NetAppException(msg)
+
         super(NetAppCmodeMultiSVMFileStorageLibrary, self).\
             check_for_setup_error()
 
