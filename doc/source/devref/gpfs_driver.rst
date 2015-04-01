@@ -46,6 +46,7 @@ Requirements
 
 - Install GPFS with server license, version >= 2.0, on the storage backend.
 - Install Kernel NFS or Ganesha NFS server on the storage backend servers.
+- If using Ganesha NFS, currently NFS Ganesha v1.5 and v2.0 are supported.
 - Create a GPFS cluster and create a filesystem on the cluster, that will be
   used to create the Manila shares.
 - Enable quotas for the GPFS file system (`mmchfs -Q yes`).
@@ -86,7 +87,6 @@ Known Restrictions
 
 - The driver does not support a segmented-network multi-tenancy model but
   instead works over a flat network where the tenants share a network.
-- Currently, NFS Ganesha v1.5 and v2.0 are supported.
 - While using remote GPFS node, with Ganesha NFS, 'gpfs_ssh_private_key' for
   remote login to the GPFS node must be specified and there must be a
   passwordless authentication already setup between the Manila share service
