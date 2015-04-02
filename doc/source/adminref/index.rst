@@ -18,4 +18,5 @@ Admin Reference
    :maxdepth: 3
 
    intro
+   quick_start
    multi_backends
