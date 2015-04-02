@@ -971,35 +971,42 @@ class ShareAPITestCase(test.TestCase):
                           self.context, 'nfs', 'some', 'fakename',
                           'fakedesc', availability_zone='fakeaz')
 
-    def test_delete_available(self):
+    def _setup_delete_mocks(self, status, share_server_id='fake'):
         date = datetime.datetime(2, 2, 2, 2, 2, 2)
         timeutils.utcnow.return_value = date
-        share = fake_share('fakeid', status='available')
+        share = fake_share('fakeid', status=status,
+                           share_server_id=share_server_id)
         options = {'status': 'deleting', 'terminated_at': date}
         deleting_share = share.copy()
         deleting_share.update(options)
-        with mock.patch.object(db_driver, 'share_update',
-                               mock.Mock(return_value=deleting_share)):
-            self.api.delete(self.context, share)
-            db_driver.share_update.assert_called_once_with(
-                self.context, share['id'], options)
-            self.share_rpcapi.delete_share.assert_called_once_with(
-                self.context, deleting_share)
+        self.mock_object(db_driver, 'share_update',
+                         mock.Mock(return_value=deleting_share))
+        self.mock_object(db_driver, 'share_server_update')
 
-    def test_delete_error(self):
-        date = datetime.datetime(2, 2, 2, 2, 2, 2)
-        timeutils.utcnow.return_value = date
-        share = fake_share('fakeid', status='error')
-        options = {'status': 'deleting', 'terminated_at': date}
-        deleting_share = share.copy()
-        deleting_share.update(options)
-        with mock.patch.object(db_driver, 'share_update',
-                               mock.Mock(return_value=deleting_share)):
-            self.api.delete(self.context, share)
-            db_driver.share_update.assert_called_once_with(
-                self.context, share['id'], options)
-            self.share_rpcapi.delete_share.assert_called_once_with(
-                self.context, deleting_share)
+        return share, deleting_share, options
+
+    @ddt.data('available', 'error')
+    def test_delete(self, status):
+        share_server_id = 'fake-ss-id'
+        share, deleting_share, options = self._setup_delete_mocks(
+            status, share_server_id)
+
+        self.api.delete(self.context, share)
+
+        db_driver.share_update.assert_called_once_with(
+            self.context, share['id'], options)
+        self.share_rpcapi.delete_share.assert_called_once_with(
+            self.context, deleting_share)
+        db_driver.share_server_update.assert_called_once_with(
+            self.context, share_server_id, mock.ANY)
+
+    def test_delete_share_without_share_server(self):
+        share, deleting_share, options = self._setup_delete_mocks(
+            'available', share_server_id=None)
+
+        self.api.delete(self.context, share)
+
+        self.assertEqual(0, db_driver.share_server_update.call_count)
 
     def test_delete_wrong_status(self):
         share = fake_share('fakeid')

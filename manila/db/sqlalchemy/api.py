@@ -2038,6 +2038,21 @@ def share_server_get_all(context):
 
 
 @require_context
+def share_server_get_all_unused_deletable(context, host, updated_before):
+    valid_server_status = (
+        constants.STATUS_INACTIVE,
+        constants.STATUS_ACTIVE,
+        constants.STATUS_ERROR,
+    )
+    result = _server_get_query(context)\
+        .filter_by(host=host)\
+        .filter(~models.ShareServer.shares.any())\
+        .filter(models.ShareServer.status.in_(valid_server_status))\
+        .filter(models.ShareServer.updated_at < updated_before).all()
+    return result
+
+
+@require_context
 def share_server_backend_details_set(context, share_server_id, server_details):
     share_server_get(context, share_server_id)
 
