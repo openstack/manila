@@ -26,28 +26,46 @@ revision = '56cdbe267881'
 down_revision = '30cb96d995fa'
 
 from alembic import op
-import sqlalchemy as sql
+import sqlalchemy as sa
+from sqlalchemy import func
+from sqlalchemy.sql import table
 
 
 def upgrade():
-    op.create_table(
+    export_locations_table = op.create_table(
         'share_export_locations',
-        sql.Column('id', sql.Integer, primary_key=True, nullable=False),
-        sql.Column('created_at', sql.DateTime),
-        sql.Column('updated_at', sql.DateTime),
-        sql.Column('deleted_at', sql.DateTime),
-        sql.Column('deleted', sql.Integer, default=0),
-        sql.Column('path', sql.String(2000)),
-        sql.Column('share_id', sql.String(36),
-                   sql.ForeignKey('shares.id', name="sel_id_fk")),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Integer, default=0),
+        sa.Column('path', sa.String(2000)),
+        sa.Column('share_id', sa.String(36),
+                  sa.ForeignKey('shares.id', name="sel_id_fk")),
         mysql_engine='InnoDB',
-        mysql_charset='utf8'
-    )
+        mysql_charset='utf8')
 
-    op.execute("INSERT INTO share_export_locations "
-               "(created_at, deleted, path, share_id) "
-               "SELECT created_at, 0, export_location, id "
-               "FROM shares")
+    shares_table = table(
+        'shares',
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Integer),
+        sa.Column('export_location', sa.String(length=255)),
+        sa.Column('id', sa.String(length=36)),
+        sa.Column('updated_at', sa.DateTime))
+
+    export_locations = []
+    for share in op.get_bind().execute(shares_table.select()):
+        deleted = share.deleted if isinstance(share.deleted, int) else 0
+        export_locations.append({
+            'created_at': share.created_at,
+            'updated_at': share.updated_at,
+            'deleted_at': share.deleted_at,
+            'deleted': deleted,
+            'share_id': share.id,
+            'path': share.export_location,
+        })
+    op.bulk_insert(export_locations_table, export_locations)
 
     op.drop_column('shares', 'export_location')
 
@@ -60,22 +78,31 @@ def downgrade():
     """
 
     op.add_column('shares',
-                  sql.Column('export_location', sql.String(255)))
+                  sa.Column('export_location', sa.String(255)))
+
+    export_locations_table = table(
+        'share_export_locations',
+        sa.Column('share_id', sa.String(length=36)),
+        sa.Column('path', sa.String(length=255)),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted', sa.Integer))
 
     connection = op.get_bind()
+    session = sa.orm.Session(bind=connection.connect())
+    export_locations = session.query(
+        func.min(export_locations_table.c.updated_at),
+        export_locations_table.c.share_id,
+        export_locations_table.c.path).filter(
+            export_locations_table.c.deleted == 0).group_by(
+                export_locations_table.c.share_id,
+                export_locations_table.c.path).all()
 
-    export_locations = connection.execute(
-        "SELECT share_id, path FROM share_export_locations sel WHERE deleted=0"
-        " AND updated_at = ("
-        " SELECT MIN(updated_at) FROM share_export_locations sel2 "
-        " WHERE sel.share_id = sel2.share_id)")
-
-    shares = sql.Table('shares', sql.MetaData(),
-                       autoload=True, autoload_with=connection)
+    shares = sa.Table('shares', sa.MetaData(),
+                      autoload=True, autoload_with=connection)
 
     for location in export_locations:
-        update = shares.update().where(shares.c.id == location['share_id']). \
-            values(export_location=location['path'])
+        update = shares.update().where(shares.c.id == location.share_id). \
+            values(export_location=location.path)
         connection.execute(update)
 
     op.drop_table('share_export_locations')

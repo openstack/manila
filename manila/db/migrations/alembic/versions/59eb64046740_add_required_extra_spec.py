@@ -25,30 +25,49 @@ revision = '59eb64046740'
 down_revision = '4ee2cf4be19a'
 
 from alembic import op
-from sqlalchemy import sql
+from oslo_utils import timeutils
+import sqlalchemy as sa
+from sqlalchemy.sql import table
 
 
 def upgrade():
-    connection = op.get_bind()
+    session = sa.orm.Session(bind=op.get_bind().connect())
 
-    def escape_column_name(name):
-        return sql.column(name).compile(bind=connection)
+    es_table = table(
+        'share_type_extra_specs',
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('deleted', sa.Integer),
+        sa.Column('share_type_id', sa.String(length=36)),
+        sa.Column('spec_key', sa.String(length=255)),
+        sa.Column('spec_value', sa.String(length=255)))
 
-    insert_required_extra_spec = (
-        "INSERT INTO share_type_extra_specs "
-        " (%(deleted)s, %(share_type_id)s, %(key)s, %(value)s)"
-        " SELECT '0', st.id, 'driver_handles_share_servers', 'True'"
-        " FROM share_types as st "
-        " WHERE st.id NOT IN ( "
-        " SELECT es.share_type_id FROM share_type_extra_specs as es "
-        " WHERE es.spec_key = 'driver_handles_share_servers' )" % ({
-            'deleted': escape_column_name('deleted'),
-            'share_type_id': escape_column_name('share_type_id'),
-            'key': escape_column_name('spec_key'),
-            'value': escape_column_name('spec_value'),
-        }))
+    st_table = table(
+        'share_types',
+        sa.Column('deleted', sa.Integer),
+        sa.Column('id', sa.Integer))
 
-    connection.execute(insert_required_extra_spec)
+    existing_required_extra_specs = session.query(es_table).\
+        filter(es_table.c.spec_key == 'driver_handles_share_servers').\
+        filter(es_table.c.deleted.in_(('0', False))).\
+        all()
+    exclude_st_ids = [es.share_type_id for es in existing_required_extra_specs]
+
+    share_types = session.query(st_table).\
+        filter(st_table.c.deleted.in_(('0', 'False', ))).\
+        filter(st_table.c.id.notin_(exclude_st_ids)).\
+        all()
+
+    extra_specs = []
+    for st in share_types:
+        extra_specs.append({
+            'spec_key': 'driver_handles_share_servers',
+            'spec_value': 'True',
+            'deleted': 0,
+            'created_at': timeutils.utcnow(),
+            'share_type_id': st.id,
+        })
+
+    op.bulk_insert(es_table, extra_specs)
 
 
 def downgrade():
@@ -57,4 +76,3 @@ def downgrade():
     We can't determine, which extra specs should be removed after insertion,
     that's why do nothing here.
     """
-    pass
