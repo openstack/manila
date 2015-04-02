@@ -21,6 +21,7 @@ single-SVM or multi-SVM functionality needed by the cDOT Manila drivers.
 
 import copy
 import socket
+import time
 
 from oslo_log import log
 from oslo_utils import units
@@ -449,6 +450,7 @@ class NetAppCmodeFileStorageLibrary(object):
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(share_name, parent_share_name,
                                            parent_snapshot_name)
+        vserver_client.split_volume_clone(share_name)
 
     @na_utils.trace
     def _share_exists(self, share_name, vserver_client):
@@ -518,12 +520,43 @@ class NetAppCmodeFileStorageLibrary(object):
         share_name = self._get_valid_share_name(snapshot['share_id'])
         snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
 
-        if vserver_client.is_snapshot_busy(share_name, snapshot_name):
-            raise exception.ShareSnapshotIsBusy(snapshot_name=snapshot_name)
+        self._handle_busy_snapshot(vserver_client, share_name, snapshot_name)
 
         LOG.debug('Deleting snapshot %(snap)s for share %(share)s.',
                   {'snap': snapshot_name, 'share': share_name})
         vserver_client.delete_snapshot(share_name, snapshot_name)
+
+    @na_utils.trace
+    def _handle_busy_snapshot(self, vserver_client, share_name, snapshot_name,
+                              wait_seconds=60):
+        """Checks for and handles a busy snapshot.
+
+        If a snapshot is not busy, take no action.  If a snapshot is busy for
+        reasons other than a clone dependency, raise immediately.  Otherwise,
+        since we always start a clone split operation after cloning a share,
+        wait up to a minute for a clone dependency to clear before giving up.
+        """
+        snapshot = vserver_client.get_snapshot(share_name, snapshot_name)
+        if not snapshot['busy']:
+            return
+
+        # Fail fast if snapshot is not busy due to a clone dependency
+        if snapshot['owners'] != {'volume clone'}:
+            raise exception.ShareSnapshotIsBusy(snapshot_name=snapshot_name)
+
+        # Wait for clone dependency to clear.
+        retry_interval = 3  # seconds
+        for retry in range(wait_seconds / retry_interval):
+            LOG.debug('Snapshot %(snap)s for share %(share)s is busy, waiting '
+                      'for volume clone dependency to clear.',
+                      {'snap': snapshot_name, 'share': share_name})
+
+            time.sleep(retry_interval)
+            snapshot = vserver_client.get_snapshot(share_name, snapshot_name)
+            if not snapshot['busy']:
+                return
+
+        raise exception.ShareSnapshotIsBusy(snapshot_name=snapshot_name)
 
     @na_utils.trace
     def allow_access(self, context, share, access, share_server=None):

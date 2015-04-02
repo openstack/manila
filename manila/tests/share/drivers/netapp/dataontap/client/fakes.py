@@ -981,6 +981,11 @@ SNAPSHOT_GET_ITER_BUSY_RESPONSE = etree.XML("""
         <name>%(snap)s</name>
         <volume>%(volume)s</volume>
         <vserver>%(vserver)s</vserver>
+        <snapshot-owners-list>
+          <snapshot-owner>
+            <owner>volume clone</owner>
+          </snapshot-owner>
+        </snapshot-owners-list>
       </snapshot-info>
     </attributes-list>
     <num-records>1</num-records>

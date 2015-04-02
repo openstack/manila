@@ -19,6 +19,7 @@ import copy
 import hashlib
 
 from oslo_log import log
+from oslo_utils import strutils
 import six
 
 from manila import exception
@@ -92,7 +93,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def vserver_exists(self, vserver_name):
         """Checks if Vserver exists."""
-        LOG.debug('Checking if Vserver %s exists' % vserver_name)
+        LOG.debug('Checking if Vserver %s exists', vserver_name)
 
         api_args = {
             'query': {
@@ -838,6 +839,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('volume-clone-create', api_args)
 
     @na_utils.trace
+    def split_volume_clone(self, volume_name):
+        """Begins splitting a clone from its parent."""
+        api_args = {'volume': volume_name}
+        self.send_request('volume-clone-split-start', api_args)
+
+    @na_utils.trace
     def get_volume_junction_path(self, volume_name, is_style_cifs=False):
         """Gets a volume junction path."""
         api_args = {
@@ -873,8 +880,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('snapshot-create', api_args)
 
     @na_utils.trace
-    def is_snapshot_busy(self, volume_name, snapshot_name):
-        """Checks if volume snapshot is busy."""
+    def get_snapshot(self, volume_name, snapshot_name):
+        """Gets a single snapshot."""
         api_args = {
             'query': {
                 'snapshot-info': {
@@ -884,7 +891,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             },
             'desired-attributes': {
                 'snapshot-info': {
+                    'name': None,
+                    'volume': None,
                     'busy': None,
+                    'snapshot-owners-list': {
+                        'snapshot-owner': None,
+                    }
                 },
             },
         }
@@ -901,8 +913,21 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise exception.NetAppException(msg % msg_args)
 
         snapshot_info = snapshot_info_list[0]
-        busy = snapshot_info.get_child_content('busy').lower()
-        return busy == 'true'
+        snapshot = {
+            'name': snapshot_info.get_child_content('name'),
+            'volume': snapshot_info.get_child_content('volume'),
+            'busy': strutils.bool_from_string(
+                snapshot_info.get_child_content('busy')),
+        }
+
+        snapshot_owners_list = snapshot_info.get_child_by_name(
+            'snapshot-owners-list') or netapp_api.NaElement('none')
+        snapshot_owners = set([
+            snapshot_owner.get_child_content('owner')
+            for snapshot_owner in snapshot_owners_list.get_children()])
+        snapshot['owners'] = snapshot_owners
+
+        return snapshot
 
     @na_utils.trace
     def delete_snapshot(self, volume_name, snapshot_name):
