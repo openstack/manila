@@ -1,6 +1,7 @@
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -36,6 +37,7 @@ from manila import policy
 from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila.share import rpcapi as share_rpcapi
+from manila.share import share_types
 
 share_api_opts = [
     cfg.BoolOpt('use_scheduler_creating_share_from_snapshot',
@@ -99,13 +101,25 @@ class API(base.Base):
                      "than snapshot size") % size)
             raise exception.InvalidInput(reason=msg)
 
-        if snapshot and share_type:
+        if snapshot is None:
+            share_type_id = share_type['id'] if share_type else None
+        else:
             source_share = self.db.share_get(context, snapshot['share_id'])
-            if share_type['id'] != source_share['share_type_id']:
-                msg = _("Invalid share_type provided (requested type "
-                        "must match source snapshot, or be omitted). "
-                        "You should omit the argument.")
-                raise exception.InvalidInput(reason=msg)
+            if share_type is None:
+                share_type_id = source_share['share_type_id']
+                if share_type_id is not None:
+                    share_type = share_types.get_share_type(context,
+                                                            share_type_id)
+            else:
+                share_type_id = share_type['id']
+                if share_type_id != source_share['share_type_id']:
+                    msg = _("Invalid share type specified: the requested "
+                            "share type must match the type of the source "
+                            "share. If a share type is not specified when "
+                            "requesting a new share from a snapshot, the "
+                            "share type of the source share will be applied "
+                            "to the new share.")
+                    raise exception.InvalidInput(reason=msg)
 
         supported_share_protocols = (
             proto.upper() for proto in CONF.enabled_share_protocols)
@@ -165,7 +179,7 @@ class API(base.Base):
                    'display_name': name,
                    'display_description': description,
                    'share_proto': share_proto,
-                   'share_type_id': share_type['id'] if share_type else None,
+                   'share_type_id': share_type_id,
                    'is_public': is_public,
                    }
 

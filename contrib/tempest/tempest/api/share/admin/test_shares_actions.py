@@ -1,5 +1,5 @@
-# Copyright 2014 Mirantis Inc.
-# All Rights Reserved.
+# Copyright 2014 Mirantis Inc.  All Rights Reserved.
+# Copyright (c) 2015 Yogesh Kshirsagar.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -178,7 +178,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         self.assertTrue(len(shares) > 0)
         shares_ids = [s["id"] for s in shares]
         self.assertTrue(self.share["id"] in shares_ids)
-        self.assertFalse(self.share2["id"] in shares_ids)
+        self.assertTrue(self.share2["id"] in shares_ids)
         for share in shares:
             __, st_list = self.shares_client.list_share_types()
             # find its name or id, get id
@@ -224,7 +224,9 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
                 )
             self.assertEqual(
                 filters['share_type_id'], st_id)
-        self.assertFalse(self.share2['id'] in [s['id'] for s in shares])
+        share_ids = [share['id'] for share in shares]
+        self.assertTrue(self.share['id'] in share_ids)
+        self.assertTrue(self.share2['id'] in share_ids)
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_host(self):
