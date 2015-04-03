@@ -121,7 +121,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_get_vserver_no_share_server(self):
 
-        self.assertRaises(exception.NetAppException,
+        self.assertRaises(exception.InvalidInput,
                           self.library._get_vserver)
 
     def test_get_vserver_no_backend_details(self):
@@ -130,7 +130,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_share_server.pop('backend_details')
         kwargs = {'share_server': fake_share_server}
 
-        self.assertRaises(exception.NetAppException,
+        self.assertRaises(exception.VserverNotSpecified,
                           self.library._get_vserver,
                           **kwargs)
 
@@ -140,7 +140,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_share_server['backend_details'] = None
         kwargs = {'share_server': fake_share_server}
 
-        self.assertRaises(exception.NetAppException,
+        self.assertRaises(exception.VserverNotSpecified,
                           self.library._get_vserver,
                           **kwargs)
 
@@ -150,7 +150,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_share_server['backend_details'].pop('vserver_name')
         kwargs = {'share_server': fake_share_server}
 
-        self.assertRaises(exception.NetAppException,
+        self.assertRaises(exception.VserverNotSpecified,
                           self.library._get_vserver,
                           **kwargs)
 
@@ -160,7 +160,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         fake_share_server['backend_details']['vserver_name'] = None
         kwargs = {'share_server': fake_share_server}
 
-        self.assertRaises(exception.NetAppException,
+        self.assertRaises(exception.VserverNotSpecified,
                           self.library._get_vserver,
                           **kwargs)
 
@@ -169,7 +169,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.library._client.vserver_exists.return_value = False
         kwargs = {'share_server': fake.SHARE_SERVER}
 
-        self.assertRaises(exception.VserverUnavailable,
+        self.assertRaises(exception.VserverNotFound,
                           self.library._get_vserver,
                           **kwargs)
 
@@ -432,12 +432,36 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_api_client',
                          mock.Mock(return_value=vserver_client))
+        self.library._client.vserver_exists.return_value = True
 
         self.library.teardown_server(
             fake.SHARE_SERVER['backend_details'],
             security_services=fake.NETWORK_INFO['security_services'])
 
+        self.library._client.vserver_exists.assert_called_once_with(
+            fake.VSERVER1)
         self.library._client.delete_vserver.assert_called_once_with(
             fake.VSERVER1,
             vserver_client,
             security_services=fake.NETWORK_INFO['security_services'])
+
+    @ddt.data(None, {}, {'vserver_name': None})
+    def test_teardown_server_no_share_server(self, server_details):
+
+        self.library.teardown_server(server_details)
+
+        self.assertFalse(self.library._client.delete_vserver.called)
+        self.assertTrue(lib_multi_svm.LOG.warning.called)
+
+    def test_teardown_server_no_vserver(self):
+
+        self.library._client.vserver_exists.return_value = False
+
+        self.library.teardown_server(
+            fake.SHARE_SERVER['backend_details'],
+            security_services=fake.NETWORK_INFO['security_services'])
+
+        self.library._client.vserver_exists.assert_called_once_with(
+            fake.VSERVER1)
+        self.assertFalse(self.library._client.delete_vserver.called)
+        self.assertTrue(lib_multi_svm.LOG.warning.called)

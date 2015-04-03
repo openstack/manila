@@ -498,12 +498,32 @@ class ServiceInstanceUnavailable(ServiceInstanceException):
     message = _("Service instance is not available.")
 
 
+class StorageResourceException(ManilaException):
+    message = _("Storage resource exception.")
+
+
+class StorageResourceNotFound(StorageResourceException):
+    message = _("Storage resource %(name)s not found.")
+
+
+class SnapshotNotFound(StorageResourceNotFound):
+    message = _("Snapshot %(name)s not found.")
+
+
+class SnapshotUnavailable(StorageResourceException):
+    message = _("Snapshot %(name)s info not available.")
+
+
 class NetAppException(ManilaException):
     message = _("Exception due to NetApp failure.")
 
 
-class VserverUnavailable(NetAppException):
-    message = _("Vserver %(vserver)s is not available.")
+class VserverNotFound(NetAppException):
+    message = _("Vserver %(vserver)s not found.")
+
+
+class VserverNotSpecified(NetAppException):
+    message = _("Vserver not specified.")
 
 
 class EMCVnxXMLAPIError(Invalid):

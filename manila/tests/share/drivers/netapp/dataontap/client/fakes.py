@@ -1019,6 +1019,62 @@ SNAPSHOT_GET_ITER_BUSY_RESPONSE = etree.XML("""
   </results>
 """ % {'snap': SNAPSHOT_NAME, 'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
 
+SNAPSHOT_GET_ITER_NOT_UNIQUE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapshot-info>
+        <busy>false</busy>
+        <name>%(snap)s</name>
+        <volume>%(volume)s</volume>
+        <vserver>%(vserver)s</vserver>
+      </snapshot-info>
+      <snapshot-info>
+        <busy>false</busy>
+        <name>%(snap)s</name>
+        <volume>%(root_volume)s</volume>
+        <vserver>%(admin_vserver)s</vserver>
+      </snapshot-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'snap': SNAPSHOT_NAME,
+    'volume': SHARE_NAME,
+    'vserver': VSERVER_NAME,
+    'root_volume': ROOT_VOLUME_NAME,
+    'admin_vserver': ADMIN_VSERVER_NAME,
+})
+
+SNAPSHOT_GET_ITER_UNAVAILABLE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <num-records>0</num-records>
+    <volume-errors>
+      <volume-error>
+        <errno>13023</errno>
+        <name>%(volume)s</name>
+        <reason>Unable to get information for Snapshot copies of volume \
+"%(volume)s" on Vserver "%(vserver)s". Reason: Volume not online.</reason>
+        <vserver>%(vserver)s</vserver>
+      </volume-error>
+    </volume-errors>
+  </results>
+""" % {'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+
+SNAPSHOT_GET_ITER_OTHER_ERROR_RESPONSE = etree.XML("""
+  <results status="passed">
+    <num-records>0</num-records>
+    <volume-errors>
+      <volume-error>
+        <errno>99999</errno>
+        <name>%(volume)s</name>
+        <reason>Unable to get information for Snapshot copies of volume \
+"%(volume)s" on Vserver "%(vserver)s".</reason>
+        <vserver>%(vserver)s</vserver>
+      </volume-error>
+    </volume-errors>
+  </results>
+""" % {'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+
 NFS_EXPORT_RULES = ('10.10.10.10', '10.10.10.20')
 
 NFS_EXPORTFS_LIST_RULES_2_NO_RULES_RESPONSE = etree.XML("""

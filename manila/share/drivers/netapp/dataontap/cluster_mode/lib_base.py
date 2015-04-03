@@ -28,7 +28,7 @@ from oslo_utils import units
 import six
 
 from manila import exception
-from manila.i18n import _, _LE, _LI
+from manila.i18n import _, _LE, _LI, _LW
 from manila.openstack.common import loopingcall
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
@@ -459,8 +459,19 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def delete_share(self, context, share, share_server=None):
         """Deletes share."""
+        try:
+            vserver, vserver_client = self._get_vserver(
+                share_server=share_server)
+        except (exception.InvalidInput,
+                exception.VserverNotSpecified,
+                exception.VserverNotFound) as error:
+            LOG.warning(_LW("Could not determine share server for share being "
+                            "deleted: %(share)s. Deletion of share record "
+                            "will proceed anyway. Error: %(error)s"),
+                        {'share': share['id'], 'error': error})
+            return
+
         share_name = self._get_valid_share_name(share['id'])
-        vserver, vserver_client = self._get_vserver(share_server=share_server)
         if self._share_exists(share_name, vserver_client):
             self._remove_export(share, vserver_client)
             self._deallocate_container(share_name, vserver_client)
@@ -516,11 +527,27 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot of a share."""
-        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        try:
+            vserver, vserver_client = self._get_vserver(
+                share_server=share_server)
+        except (exception.InvalidInput,
+                exception.VserverNotSpecified,
+                exception.VserverNotFound) as error:
+            LOG.warning(_LW("Could not determine share server for snapshot "
+                            "being deleted: %(snap)s. Deletion of snapshot "
+                            "record will proceed anyway. Error: %(error)s"),
+                        {'snap': snapshot['id'], 'error': error})
+            return
+
         share_name = self._get_valid_share_name(snapshot['share_id'])
         snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
 
-        self._handle_busy_snapshot(vserver_client, share_name, snapshot_name)
+        try:
+            self._handle_busy_snapshot(vserver_client, share_name,
+                                       snapshot_name)
+        except exception.SnapshotNotFound:
+            LOG.info(_LI("Snapshot %s does not exist."), snapshot_name)
+            return
 
         LOG.debug('Deleting snapshot %(snap)s for share %(share)s.',
                   {'snap': snapshot_name, 'share': share_name})

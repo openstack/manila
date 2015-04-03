@@ -1594,6 +1594,30 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('volume-offline', volume_offline_args)])
 
+    def test_offline_volume_already_offline(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error(
+                             netapp_api.EVOLUMEOFFLINE)))
+
+        self.client.offline_volume(fake.SHARE_NAME)
+
+        volume_offline_args = {'name': fake.SHARE_NAME}
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-offline', volume_offline_args)])
+
+    def test_offline_volume_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.offline_volume,
+                          fake.SHARE_NAME)
+
     def test_unmount_volume(self):
 
         self.mock_object(self.client, 'send_request')
@@ -1614,13 +1638,35 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.unmount_volume(fake.SHARE_NAME, force=True)
 
-        volume_unmount_args = {
-            'volume-name': fake.SHARE_NAME,
-            'force': 'true'
-        }
+        volume_unmount_args = {'volume-name': fake.SHARE_NAME, 'force': 'true'}
 
         self.client.send_request.assert_has_calls([
             mock.call('volume-unmount', volume_unmount_args)])
+
+    def test_unmount_volume_already_unmounted(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error(
+                             netapp_api.EVOL_NOT_MOUNTED)))
+
+        self.client.unmount_volume(fake.SHARE_NAME, force=True)
+
+        volume_unmount_args = {'volume-name': fake.SHARE_NAME, 'force': 'true'}
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-unmount', volume_unmount_args)])
+
+    def test_unmount_volume_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.unmount_volume,
+                          fake.SHARE_NAME,
+                          force=True)
 
     def test_delete_volume(self):
 
@@ -1696,14 +1742,28 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('snapshot-get-iter', snapshot_get_iter_args)])
         self.assertDictEqual(expected, result)
 
-    def test_get_snapshot_not_found(self):
+    @ddt.data({
+        'api_response_xml': fake.NO_RECORDS_RESPONSE,
+        'raised_exception': exception.SnapshotNotFound,
+    }, {
+        'api_response_xml': fake.SNAPSHOT_GET_ITER_NOT_UNIQUE_RESPONSE,
+        'raised_exception': exception.NetAppException,
+    }, {
+        'api_response_xml': fake.SNAPSHOT_GET_ITER_UNAVAILABLE_RESPONSE,
+        'raised_exception': exception.SnapshotUnavailable,
+    }, {
+        'api_response_xml': fake.SNAPSHOT_GET_ITER_OTHER_ERROR_RESPONSE,
+        'raised_exception': exception.NetAppException,
+    })
+    @ddt.unpack
+    def test_get_snapshot_error(self, api_response_xml, raised_exception):
 
-        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        api_response = netapp_api.NaElement(api_response_xml)
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(return_value=api_response))
 
-        self.assertRaises(exception.NetAppException,
+        self.assertRaises(raised_exception,
                           self.client.get_snapshot,
                           fake.SHARE_NAME,
                           fake.SNAPSHOT_NAME)
