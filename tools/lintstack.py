@@ -151,6 +151,25 @@ def generate_error_keys(msg=None):
         ErrorKeys.print_json(errors, output=f)
 
 
+def check():
+    print("Running pylint. Be patient...")
+    newmsg = run_pylint()
+    errors = LintOutput.from_msg_to_dict(newmsg)
+
+    passed = True
+    for err_key, err_list in errors.items():
+        for err in err_list:
+            print(err.review_str() + "\n")
+            passed = False
+
+    if passed:
+        print("Congrats! pylint check passed.")
+    else:
+        print("\nPlease fix the errors above. If you believe they are false "
+              "positives, run 'tools/lintstack.py generate' to overwrite.")
+        sys.exit(1)
+
+
 def validate(newmsg=None):
     print("Loading", KNOWN_PYLINT_EXCEPTIONS_FILE)
     known = ErrorKeys.from_file(KNOWN_PYLINT_EXCEPTIONS_FILE)
@@ -197,6 +216,8 @@ def main():
         generate_error_keys()
     elif option == "validate":
         validate()
+    elif option == "check":
+        check()
     else:
         usage()
 
