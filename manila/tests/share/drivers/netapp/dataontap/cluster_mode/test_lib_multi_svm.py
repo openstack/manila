@@ -272,7 +272,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             vserver_id,
             {'vserver_name': vserver_name})
 
-    def test_create_vserver_if_nonexistent_lif_creation_failure(self):
+    @ddt.data(netapp_api.NaApiError, exception.NetAppException)
+    def test_create_vserver_if_nonexistent_lif_creation_failure(self,
+                                                                lif_exception):
 
         vserver_id = fake.NETWORK_INFO['server_id']
         vserver_name = fake.VSERVER_NAME_TEMPLATE % vserver_id
@@ -292,9 +294,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake.AGGREGATES))
         self.mock_object(self.library,
                          '_create_vserver_lifs',
-                         mock.Mock(side_effect=netapp_api.NaApiError))
+                         mock.Mock(side_effect=lif_exception))
 
-        self.assertRaises(netapp_api.NaApiError,
+        self.assertRaises(lif_exception,
                           self.library._create_vserver_if_nonexistent,
                           fake.NETWORK_INFO)
 
@@ -319,8 +321,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library._client,
                          'list_cluster_nodes',
                          mock.Mock(return_value=fake.CLUSTER_NODES))
-        self.mock_object(self.library._client,
-                         'get_node_data_port',
+        self.mock_object(self.library,
+                         '_get_node_data_port',
                          mock.Mock(return_value=fake.NODE_DATA_PORT))
         self.mock_object(self.library, '_create_lif_if_nonexistent')
 
@@ -347,6 +349,30 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                 fake.NETWORK_INFO['network_allocations'][1]['ip_address'],
                 fake.NETWORK_INFO_NETMASK,
                 'fake_vserver_client')])
+
+    def test_get_node_data_port(self):
+
+        self.mock_object(self.client,
+                         'list_node_data_ports',
+                         mock.Mock(return_value=fake.NODE_DATA_PORTS))
+        self.library.configuration.netapp_port_name_search_pattern = 'e0c'
+
+        result = self.library._get_node_data_port(fake.CLUSTER_NODE)
+
+        self.assertEqual('e0c', result)
+        self.library._client.list_node_data_ports.assert_has_calls([
+            mock.call(fake.CLUSTER_NODE)])
+
+    def test_get_node_data_port_no_match(self):
+
+        self.mock_object(self.client,
+                         'list_node_data_ports',
+                         mock.Mock(return_value=fake.NODE_DATA_PORTS))
+        self.library.configuration.netapp_port_name_search_pattern = 'ifgroup1'
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._get_node_data_port,
+                          fake.CLUSTER_NODE)
 
     def test_create_lif_if_nonexistent(self):
 

@@ -15,6 +15,7 @@
 Mock unit tests for the NetApp driver protocols CIFS class module.
 """
 
+import ddt
 import mock
 from oslo_log import log
 
@@ -26,6 +27,7 @@ from manila.tests.share.drivers.netapp.dataontap.protocols \
     import fakes as fake
 
 
+@ddt.ddt
 class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def setUp(self):
@@ -169,28 +171,26 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
         target = self.helper.get_target({'export_location': ''})
         self.assertEqual('', target)
 
-    def test_get_export_location(self):
+    @ddt.data(
+        {
+            'location': r'\\%s\%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME),
+            'ip': fake.SHARE_ADDRESS_1,
+            'share_name': fake.SHARE_NAME,
+        }, {
+            'location': r'//%s/%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME),
+            'ip': fake.SHARE_ADDRESS_1,
+            'share_name': fake.SHARE_NAME,
+        },
+        {'location': '', 'ip': '', 'share_name': ''},
+        {'location': 'invalid', 'ip': '', 'share_name': ''},
+    )
+    @ddt.unpack
+    def test_get_export_location(self, location, ip, share_name):
 
-        host_ip, share_name = self.helper._get_export_location(fake.CIFS_SHARE)
-        self.assertEqual(fake.SHARE_ADDRESS_1, host_ip)
-        self.assertEqual(fake.SHARE_NAME, share_name)
+        share = fake.CIFS_SHARE.copy()
+        share['export_location'] = location
 
-    def test_get_export_location_legacy_forward_slashes(self):
+        result_ip, result_share_name = self.helper._get_export_location(share)
 
-        fake_share = fake.CIFS_SHARE.copy()
-        fake_share['export_location'] = fake_share['export_location'].replace(
-            '\\', '/')
-
-        host_ip, share_name = self.helper._get_export_location(fake_share)
-        self.assertEqual(fake.SHARE_ADDRESS_1, host_ip)
-        self.assertEqual(fake.SHARE_NAME, share_name)
-
-    def test_get_export_location_missing_location(self):
-
-        fake_share = fake.CIFS_SHARE.copy()
-        fake_share['export_location'] = ''
-
-        host_ip, share_name = self.helper._get_export_location(fake_share)
-
-        self.assertEqual('', host_ip)
-        self.assertEqual('', share_name)
+        self.assertEqual(ip, result_ip)
+        self.assertEqual(share_name, result_share_name)

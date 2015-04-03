@@ -69,6 +69,10 @@ netapp_provisioning_opts = [
     cfg.StrOpt('netapp_vserver_name_template',
                default='os_%s',
                help='Name template to use for new Vserver.'),
+    cfg.StrOpt('netapp_port_name_search_pattern',
+               default='(.*)',
+               help='Pattern for overriding the selection of network ports '
+                    'on which to create Vserver LIFs.'),
     cfg.StrOpt('netapp_lif_name_template',
                default='os_%(net_allocation_id)s',
                help='Logical interface (LIF) name template'),

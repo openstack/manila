@@ -457,27 +457,65 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertListEqual([], result)
 
-    def test_get_node_data_port(self):
+    def test_list_node_data_ports(self):
+
+        self.mock_object(self.client,
+                         'get_node_data_ports',
+                         mock.Mock(return_value=fake.SPEED_SORTED_PORTS))
+
+        result = self.client.list_node_data_ports(fake.NODE_NAME)
+
+        self.assertSequenceEqual(fake.SPEED_SORTED_PORT_NAMES, result)
+
+    def test_get_node_data_ports(self):
 
         api_response = netapp_api.NaElement(fake.NET_PORT_GET_ITER_RESPONSE)
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_node_data_port(fake.NODE_NAME)
+        result = self.client.get_node_data_ports(fake.NODE_NAME)
 
-        self.assertEqual(fake.PORTS[0], result)
+        net_port_get_iter_args = {
+            'query': {
+                'net-port-info': {
+                    'node': fake.NODE_NAME,
+                    'link-status': 'up',
+                    'port-type': 'physical|if_group',
+                    'role': 'data',
+                },
+            },
+            'desired-attributes': {
+                'node-details-info': {
+                    'port': None,
+                    'node': None,
+                    'operational-speed': None,
+                    'ifgrp-port': None,
+                },
+            },
+        }
 
-    def test_get_node_data_port_not_found(self):
+        self.assertSequenceEqual(fake.SPEED_SORTED_PORTS, result)
+        self.client.send_request.assert_has_calls([
+            mock.call('net-port-get-iter', net_port_get_iter_args)])
+
+    def test_get_node_data_ports_not_found(self):
 
         api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(return_value=api_response))
 
-        self.assertRaises(exception.NetAppException,
-                          self.client.get_node_data_port,
-                          fake.NODE_NAME)
+        result = self.client.get_node_data_ports(fake.NODE_NAME)
+
+        self.assertSequenceEqual([], result)
+
+    def test_sort_data_ports_by_speed(self):
+
+        result = self.client._sort_data_ports_by_speed(
+            fake.UNSORTED_PORTS_ALL_SPEEDS)
+
+        self.assertSequenceEqual(fake.SORTED_PORTS_ALL_SPEEDS, result)
 
     def test_list_aggregates(self):
 

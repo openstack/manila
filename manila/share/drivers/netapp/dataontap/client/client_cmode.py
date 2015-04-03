@@ -253,26 +253,68 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 in nodes_info_list.get_children()]
 
     @na_utils.trace
-    def get_node_data_port(self, node):
-        """Get data port on the node."""
+    def list_node_data_ports(self, node):
+        ports = self.get_node_data_ports(node)
+        return [port.get('port') for port in ports]
+
+    @na_utils.trace
+    def get_node_data_ports(self, node):
+        """Get applicable data ports on the node."""
         api_args = {
             'query': {
                 'net-port-info': {
                     'node': node,
-                    'port-type': 'physical',
+                    'link-status': 'up',
+                    'port-type': 'physical|if_group',
                     'role': 'data',
                 },
             },
+            'desired-attributes': {
+                'node-details-info': {
+                    'port': None,
+                    'node': None,
+                    'operational-speed': None,
+                    'ifgrp-port': None,
+                },
+            },
         }
-        port_info = self.send_request('net-port-get-iter', api_args)
-        try:
-            port = port_info.get_child_by_name(
-                'attributes-list').get_child_by_name(
-                    'net-port-info').get_child_content('port')
-        except AttributeError:
-            msg = _("Data port does not exist for node %s.")
-            raise exception.NetAppException(msg % node)
-        return port
+        result = self.send_request('net-port-get-iter', api_args)
+        net_port_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        ports = []
+        for port_info in net_port_info_list.get_children():
+
+            # Skip physical ports that are part of interface groups.
+            if port_info.get_child_content('ifgrp-port'):
+                continue
+
+            port = {
+                'node': port_info.get_child_content('node'),
+                'port': port_info.get_child_content('port'),
+                'speed': port_info.get_child_content('operational-speed'),
+            }
+            ports.append(port)
+
+        return self._sort_data_ports_by_speed(ports)
+
+    @na_utils.trace
+    def _sort_data_ports_by_speed(self, ports):
+
+        def sort_key(port):
+            value = port.get('speed')
+            if not (value and isinstance(value, six.string_types)):
+                return 0
+            elif value.isdigit():
+                return int(value)
+            elif value == 'auto':
+                return 3
+            elif value == 'undef':
+                return 2
+            else:
+                return 1
+
+        return sorted(ports, key=sort_key, reverse=True)
 
     @na_utils.trace
     def list_aggregates(self):

@@ -327,7 +327,7 @@ NET_PORT_GET_ITER_RESPONSE = etree.XML("""
         <node>%(node_name)s</node>
         <operational-duplex>full</operational-duplex>
         <operational-flowcontrol>none</operational-flowcontrol>
-        <operational-speed>1000</operational-speed>
+        <operational-speed>10</operational-speed>
         <port>e0a</port>
         <port-type>physical</port-type>
         <role>data</role>
@@ -345,7 +345,7 @@ NET_PORT_GET_ITER_RESPONSE = etree.XML("""
         <node>%(node_name)s</node>
         <operational-duplex>full</operational-duplex>
         <operational-flowcontrol>none</operational-flowcontrol>
-        <operational-speed>1000</operational-speed>
+        <operational-speed>100</operational-speed>
         <port>e0b</port>
         <port-type>physical</port-type>
         <role>data</role>
@@ -381,7 +381,7 @@ NET_PORT_GET_ITER_RESPONSE = etree.XML("""
         <node>%(node_name)s</node>
         <operational-duplex>full</operational-duplex>
         <operational-flowcontrol>none</operational-flowcontrol>
-        <operational-speed>1000</operational-speed>
+        <operational-speed>10000</operational-speed>
         <port>e0d</port>
         <port-type>physical</port-type>
         <role>data</role>
@@ -391,7 +391,34 @@ NET_PORT_GET_ITER_RESPONSE = etree.XML("""
   </results>
 """ % {'node_name': NODE_NAME})
 
-PORTS = ('e0a', 'e0b', 'e0c', 'e0d')
+SPEED_SORTED_PORTS = (
+    {'node': NODE_NAME, 'port': 'e0d', 'speed': '10000'},
+    {'node': NODE_NAME, 'port': 'e0c', 'speed': '1000'},
+    {'node': NODE_NAME, 'port': 'e0b', 'speed': '100'},
+    {'node': NODE_NAME, 'port': 'e0a', 'speed': '10'},
+)
+PORT_NAMES = ('e0a', 'e0b', 'e0c', 'e0d')
+SPEED_SORTED_PORT_NAMES = ('e0d', 'e0c', 'e0b', 'e0a')
+
+UNSORTED_PORTS_ALL_SPEEDS = (
+    {'node': NODE_NAME, 'port': 'port6', 'speed': 'undef'},
+    {'node': NODE_NAME, 'port': 'port3', 'speed': '100'},
+    {'node': NODE_NAME, 'port': 'port1', 'speed': '10000'},
+    {'node': NODE_NAME, 'port': 'port4', 'speed': '10'},
+    {'node': NODE_NAME, 'port': 'port7'},
+    {'node': NODE_NAME, 'port': 'port2', 'speed': '1000'},
+    {'node': NODE_NAME, 'port': 'port5', 'speed': 'auto'},
+)
+
+SORTED_PORTS_ALL_SPEEDS = (
+    {'node': NODE_NAME, 'port': 'port1', 'speed': '10000'},
+    {'node': NODE_NAME, 'port': 'port2', 'speed': '1000'},
+    {'node': NODE_NAME, 'port': 'port3', 'speed': '100'},
+    {'node': NODE_NAME, 'port': 'port4', 'speed': '10'},
+    {'node': NODE_NAME, 'port': 'port5', 'speed': 'auto'},
+    {'node': NODE_NAME, 'port': 'port6', 'speed': 'undef'},
+    {'node': NODE_NAME, 'port': 'port7'},
+)
 
 NET_INTERFACE_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
