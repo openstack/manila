@@ -447,11 +447,11 @@ class BaseSharesTest(test.BaseTestCase):
         return resp, ss
 
     @classmethod
-    def create_share_type(cls, name, client=None, cleanup_in_class=True,
-                          **kwargs):
+    def create_share_type(cls, name, is_public=True, client=None,
+                          cleanup_in_class=True, **kwargs):
         if client is None:
             client = cls.shares_client
-        resp, st = client.create_share_type(name, **kwargs)
+        resp, st = client.create_share_type(name, is_public, **kwargs)
         resource = {
             "type": "share_type",
             "id": st["share_type"]["id"],
