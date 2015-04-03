@@ -194,7 +194,7 @@ class Share(BASE, ManilaBase):
         lazy='immediate',
         primaryjoin='and_('
                     'Share.id == ShareExportLocations.share_id, '
-                    'ShareExportLocations.deleted == False)')
+                    'ShareExportLocations.deleted == 0)')
     share_network_id = Column(String(36), ForeignKey('share_networks.id'),
                               nullable=True)
     share_type_id = Column(String(36), ForeignKey('share_types.id'),
@@ -247,7 +247,7 @@ class ShareTypeProjects(BASE, ManilaBase):
         foreign_keys=share_type_id,
         primaryjoin='and_('
                     'ShareTypeProjects.share_type_id == ShareTypes.id,'
-                    'ShareTypeProjects.deleted == False)')
+                    'ShareTypeProjects.deleted == 0)')
 
 
 class ShareTypeExtraSpecs(BASE, ManilaBase):
@@ -264,7 +264,7 @@ class ShareTypeExtraSpecs(BASE, ManilaBase):
         foreign_keys=share_type_id,
         primaryjoin='and_('
         'ShareTypeExtraSpecs.share_type_id == ShareTypes.id,'
-        'ShareTypeExtraSpecs.deleted == False)'
+        'ShareTypeExtraSpecs.deleted == 0)'
     )
 
 
