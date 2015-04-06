@@ -533,10 +533,11 @@ class SharesClient(service_client.ServiceClient):
         resp, body = self.get(uri)
         return resp, self._parse_resp(body)
 
-    def create_share_type(self, name, **kwargs):
+    def create_share_type(self, name, is_public=True, **kwargs):
         post_body = {
             'name': name,
             'extra_specs': kwargs.get('extra_specs'),
+            'os-share-type-access:is_public': is_public,
         }
         post_body = json.dumps({'share_type': post_body})
         resp, body = self.post('types', post_body)
@@ -547,6 +548,24 @@ class SharesClient(service_client.ServiceClient):
 
     def get_share_type(self, share_type_id):
         resp, body = self.get("types/%s" % share_type_id)
+        return resp, self._parse_resp(body)
+
+    def add_access_to_share_type(self, share_type_id, project_id):
+        uri = 'types/%s/action' % share_type_id
+        post_body = {'project': project_id}
+        post_body = json.dumps({'addProjectAccess': post_body})
+        return self.post(uri, post_body)
+
+    def remove_access_from_share_type(self, share_type_id, project_id):
+        uri = 'types/%s/action' % share_type_id
+        post_body = {'project': project_id}
+        post_body = json.dumps({'removeProjectAccess': post_body})
+        return self.post(uri, post_body)
+
+    def list_access_to_share_type(self, share_type_id):
+        uri = 'types/%s/os-share-type-access' % share_type_id
+        resp, body = self.get(uri)
+        # [{"share_type_id": "%st_id%", "project_id": "%project_id%"}, ]
         return resp, self._parse_resp(body)
 
 ###############
