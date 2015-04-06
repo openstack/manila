@@ -29,6 +29,7 @@ from alembic import op
 from manila.i18n import _LI
 from manila.openstack.common import log as logging
 
+from oslo_utils import strutils
 import sqlalchemy as sa
 from sqlalchemy.sql import table
 
@@ -54,7 +55,7 @@ def upgrade():
         sa.Column('created_at', sa.DateTime),
         sa.Column('updated_at', sa.DateTime),
         sa.Column('deleted_at', sa.DateTime),
-        sa.Column('deleted', sa.Boolean),
+        sa.Column('deleted', sa.Integer),
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
         sa.Column('share_type_id', sa.String(length=36),
                   sa.ForeignKey('share_types.id', name="st_id_fk"),
@@ -115,7 +116,7 @@ def _copy_records(destination_table, up_migration=True):
         sa.Column('created_at', sa.DateTime),
         sa.Column('updated_at', sa.DateTime),
         sa.Column('deleted_at', sa.DateTime),
-        sa.Column('deleted', sa.Boolean),
+        sa.Column('deleted', sa.Integer if up_migration else sa.Boolean),
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
         sa.Column(data_from[0] + '_type_id', sa.String(length=36)),
         sa.Column(data_from[1] + 'key', sa.String(length=255)),
@@ -123,11 +124,15 @@ def _copy_records(destination_table, up_migration=True):
 
     extra_specs = []
     for es in op.get_bind().execute(from_table.select()):
+        if up_migration:
+            deleted = strutils.int_from_bool_as_string(es.deleted)
+        else:
+            deleted = strutils.bool_from_string(es.deleted)
         extra_specs.append({
             'created_at': es.created_at,
             'updated_at': es.updated_at,
             'deleted_at': es.deleted_at,
-            'deleted': es.deleted,
+            'deleted': deleted,
             'id': es.id,
             data_to[0] + '_type_id': getattr(es, data_from[0] + '_type_id'),
             data_to[1] + 'key': getattr(es, data_from[1] + 'key'),

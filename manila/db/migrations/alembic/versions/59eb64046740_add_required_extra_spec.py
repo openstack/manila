@@ -46,12 +46,14 @@ def upgrade():
         sa.Column('deleted', sa.Integer),
         sa.Column('id', sa.Integer))
 
+    # NOTE(vponomaryov): field 'deleted' is integer here.
     existing_required_extra_specs = session.query(es_table).\
         filter(es_table.c.spec_key == 'driver_handles_share_servers').\
-        filter(es_table.c.deleted.in_(('0', False))).\
+        filter(es_table.c.deleted == 0).\
         all()
     exclude_st_ids = [es.share_type_id for es in existing_required_extra_specs]
 
+    # NOTE(vponomaryov): field 'deleted' is string here.
     share_types = session.query(st_table).\
         filter(st_table.c.deleted.in_(('0', 'False', ))).\
         filter(st_table.c.id.notin_(exclude_st_ids)).\
