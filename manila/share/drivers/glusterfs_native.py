@@ -42,6 +42,7 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LI
+from manila.i18n import _LW
 from manila.share import driver
 from manila.share.drivers import glusterfs
 from manila import utils
@@ -264,6 +265,22 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # Enable gluster volumes for SSL access only.
 
         gluster_mgr = self._glustermanager(vol)
+
+        ssl_allow_opt = gluster_mgr.get_gluster_vol_option(AUTH_SSL_ALLOW)
+        if not ssl_allow_opt:
+            # Not having AUTH_SSL_ALLOW set is a problematic edge case.
+            # - In GlusterFS 3.6, it implies that access is allowed to
+            #   noone, including intra-service access, which causes
+            #   problems internally in GlusterFS
+            # - In GlusterFS 3.7, it implies that access control is
+            #   disabled, which defeats the purpose of this driver --
+            # so to avoid these possiblitiies, we throw an error in this case.
+            msg = (_("Option %(option)s is not defined on gluster volume. "
+                     "Volume: %(volname)s") %
+                   {'volname': gluster_mgr.volume,
+                    'option': AUTH_SSL_ALLOW})
+            LOG.error(msg)
+            raise exception.GlusterfsException(msg)
 
         for option, value in six.iteritems(
             {NFS_EXPORT_VOL: 'off', CLIENT_SSL: 'on', SERVER_SSL: 'on'}
@@ -638,6 +655,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                       'errno': operrno,
                       'errstr': operrstr})
 
+    @utils.synchronized("glusterfs_native_access", external=False)
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to a share using certs.
 
@@ -650,17 +668,34 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         exp_locn = share.get('export_location', None)
         gluster_mgr = self.gluster_used_vols_dict.get(exp_locn)
 
+        ssl_allow_opt = gluster_mgr.get_gluster_vol_option(AUTH_SSL_ALLOW)
+        # wrt. GlusterFS' parsing of auth.ssl-allow, please see code from
+        # https://github.com/gluster/glusterfs/blob/v3.6.2/
+        # xlators/protocol/auth/login/src/login.c#L80
+        # until end of gf_auth() function
+        ssl_allow = re.split('[ ,]', ssl_allow_opt)
+        access_to = access['access_to']
+        if access_to in ssl_allow:
+            LOG.warn(_LW("Access to %(share)s at %(export)s is already "
+                         "granted for %(access_to)s. GlusterFS volume "
+                         "options might have been changed externally."),
+                     {'share': share['id'], 'export': exp_locn,
+                      'access_to': access_to})
+            return
+
+        ssl_allow.append(access_to)
+        ssl_allow_opt = ','.join(ssl_allow)
         try:
             gluster_mgr.gluster_call(
                 'volume', 'set', gluster_mgr.volume,
-                AUTH_SSL_ALLOW, access['access_to'])
+                AUTH_SSL_ALLOW, ssl_allow_opt)
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during allow access. "
                      "Volume: %(volname)s, Option: %(option)s, "
                      "access_to: %(access_to)s, Error: %(error)s"),
                    {'volname': gluster_mgr.volume,
-                    'option': AUTH_SSL_ALLOW,
-                    'access_to': access['access_to'], 'error': exc.stderr})
+                    'option': AUTH_SSL_ALLOW, 'access_to': access_to,
+                    'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
@@ -668,6 +703,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # set dynamically.
         self._restart_gluster_vol(gluster_mgr)
 
+    @utils.synchronized("glusterfs_native_access", external=False)
     def deny_access(self, context, share, access, share_server=None):
         """Deny access to a share that's using cert based auth.
 
@@ -681,16 +717,30 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         exp_locn = share.get('export_location', None)
         gluster_mgr = self.gluster_used_vols_dict.get(exp_locn)
 
+        ssl_allow_opt = gluster_mgr.get_gluster_vol_option(AUTH_SSL_ALLOW)
+        ssl_allow = re.split('[ ,]', ssl_allow_opt)
+        access_to = access['access_to']
+        if access_to not in ssl_allow:
+            LOG.warn(_LW("Access to %(share)s at %(export)s is already "
+                         "denied for %(access_to)s. GlusterFS volume "
+                         "options might have been changed externally."),
+                     {'share': share['id'], 'export': exp_locn,
+                      'access_to': access_to})
+            return
+
+        ssl_allow.remove(access_to)
+        ssl_allow_opt = ','.join(ssl_allow)
         try:
             gluster_mgr.gluster_call(
-                'volume', 'reset', gluster_mgr.volume,
-                AUTH_SSL_ALLOW)
+                'volume', 'set', gluster_mgr.volume,
+                AUTH_SSL_ALLOW, ssl_allow_opt)
         except exception.ProcessExecutionError as exc:
-            msg = (_("Error in gluster volume reset during deny access. "
+            msg = (_("Error in gluster volume set during deny access. "
                      "Volume: %(volname)s, Option: %(option)s, "
-                     "Error: %(error)s"),
+                     "access_to: %(access_to)s, Error: %(error)s"),
                    {'volname': gluster_mgr.volume,
-                    'option': AUTH_SSL_ALLOW, 'error': exc.stderr})
+                    'option': AUTH_SSL_ALLOW, 'access_to': access_to,
+                    'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
