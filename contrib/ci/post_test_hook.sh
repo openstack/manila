@@ -38,44 +38,50 @@ iniset $BASE/new/tempest/etc/tempest.conf share backend_names $BACKENDS_NAMES
 iniset $BASE/new/tempest/etc/tempest.conf share share_creation_retry_number 2
 
 # Suppress errors in cleanup of resources
-iniset $BASE/new/tempest/etc/tempest.conf share suppress_errors_in_cleanup True
+SUPPRESS_ERRORS=${SUPPRESS_ERRORS_IN_CLEANUP:-True}
+iniset $BASE/new/tempest/etc/tempest.conf share suppress_errors_in_cleanup $SUPPRESS_ERRORS
 
 # Enable manage/unmanage tests
-iniset $BASE/new/tempest/etc/tempest.conf share run_manage_unmanage_tests True
+RUN_MANILA_MANAGE_TESTS=${RUN_MANILA_MANAGE_TESTS:-True}
+iniset $BASE/new/tempest/etc/tempest.conf share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS
 
-# Define whether share drivers handle share servers or not.
-# Requires defined config option 'driver_handles_share_servers'.
-MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
-NO_SHARE_SERVER_HANDLING_MODES=0
-WITH_SHARE_SERVER_HANDLING_MODES=0
+if [[ -z "$MULTITENANCY_ENABLED" ]]; then
+    # Define whether share drivers handle share servers or not.
+    # Requires defined config option 'driver_handles_share_servers'.
+    MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
+    NO_SHARE_SERVER_HANDLING_MODES=0
+    WITH_SHARE_SERVER_HANDLING_MODES=0
 
-# Convert backend names to config groups using lowercase translation
-CONFIG_GROUPS=${BACKENDS_NAMES,,}
+    # Convert backend names to config groups using lowercase translation
+    CONFIG_GROUPS=${BACKENDS_NAMES,,}
 
-for CG in ${CONFIG_GROUPS//,/ }; do
-    DRIVER_HANDLES_SHARE_SERVERS=$(iniget $MANILA_CONF $CG driver_handles_share_servers)
-    if [[ $DRIVER_HANDLES_SHARE_SERVERS == False ]]; then
-        NO_SHARE_SERVER_HANDLING_MODES=$((NO_SHARE_SERVER_HANDLING_MODES+1))
-    elif [[ $DRIVER_HANDLES_SHARE_SERVERS == True ]]; then
-        WITH_SHARE_SERVER_HANDLING_MODES=$((WITH_SHARE_SERVER_HANDLING_MODES+1))
+    for CG in ${CONFIG_GROUPS//,/ }; do
+        DRIVER_HANDLES_SHARE_SERVERS=$(iniget $MANILA_CONF $CG driver_handles_share_servers)
+        if [[ $DRIVER_HANDLES_SHARE_SERVERS == False ]]; then
+            NO_SHARE_SERVER_HANDLING_MODES=$((NO_SHARE_SERVER_HANDLING_MODES+1))
+        elif [[ $DRIVER_HANDLES_SHARE_SERVERS == True ]]; then
+            WITH_SHARE_SERVER_HANDLING_MODES=$((WITH_SHARE_SERVER_HANDLING_MODES+1))
+        else
+            echo "Config option 'driver_handles_share_servers' either is not defined or \
+                    defined with improper value - '$DRIVER_HANDLES_SHARE_SERVERS'."
+            exit 1
+        fi
+    done
+
+    if [[ $NO_SHARE_SERVER_HANDLING_MODES -ge 1 && $WITH_SHARE_SERVER_HANDLING_MODES -ge 1 || \
+            $NO_SHARE_SERVER_HANDLING_MODES -eq 0 && $WITH_SHARE_SERVER_HANDLING_MODES -eq 0 ]]; then
+        echo 'Allowed only same driver modes for all backends to be run with Tempest job.'
+        exit 1
+    elif [[ $NO_SHARE_SERVER_HANDLING_MODES -ge 1 ]]; then
+        iniset $BASE/new/tempest/etc/tempest.conf share multitenancy_enabled False
+    elif [[ $WITH_SHARE_SERVER_HANDLING_MODES -ge 1 ]]; then
+        iniset $BASE/new/tempest/etc/tempest.conf share multitenancy_enabled True
     else
-        echo "Config option 'driver_handles_share_servers' either is not defined or \
-            defined with improper value - '$DRIVER_HANDLES_SHARE_SERVERS'."
+        echo 'Should never get here. If get, then error occured.'
         exit 1
     fi
-done
-
-if [[ $NO_SHARE_SERVER_HANDLING_MODES -ge 1 && $WITH_SHARE_SERVER_HANDLING_MODES -ge 1 || \
-    $NO_SHARE_SERVER_HANDLING_MODES -eq 0 && $WITH_SHARE_SERVER_HANDLING_MODES -eq 0 ]]; then
-    echo 'Allowed only same driver modes for all backends to be run with Tempest job.'
-    exit 1
-elif [[ $NO_SHARE_SERVER_HANDLING_MODES -ge 1 ]]; then
-    iniset $BASE/new/tempest/etc/tempest.conf share multitenancy_enabled False
-elif [[ $WITH_SHARE_SERVER_HANDLING_MODES -ge 1 ]]; then
-    iniset $BASE/new/tempest/etc/tempest.conf share multitenancy_enabled True
 else
-    echo 'Should never get here. If get, then error occurred.'
-    exit 1
+    iniset $BASE/new/tempest/etc/tempest.conf share multitenancy_enabled $MULTITENANCY_ENABLED
 fi
 
 # let us control if we die or not
