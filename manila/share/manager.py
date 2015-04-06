@@ -19,6 +19,8 @@
 :share_driver: Used by :class:`ShareManager`.
 """
 
+import datetime
+
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -55,6 +57,24 @@ share_manager_opts = [
                 help='If set to True, then manila will deny access and remove '
                      'all access rules on share unmanage.'
                      'If set to False - nothing will be changed.'),
+    cfg.BoolOpt('automatic_share_server_cleanup',
+                default=True,
+                help='If set to True, then Manila will delete all share '
+                     'servers which were unused more than specified time .'
+                     'If set to False - automatic deletion of share servers '
+                     'will be disabled.',
+                deprecated_group='DEFAULT'),
+    cfg.IntOpt('unused_share_server_cleanup_interval',
+               default=10,
+               help='Unallocated share servers reclamation time interval '
+                    '(minutes). Minimum value is 10 minutes, maximum is 60 '
+                    'minutes. The reclamation function is run every '
+                    '10 minutes and delete share servers which were unused '
+                    'more than unused_share_server_cleanup_interval option '
+                    'defines. This value reflects the shortest time Manila '
+                    'will wait for a share server to go unutilized before '
+                    'deleting it.',
+               deprecated_group='DEFAULT'),
 ]
 
 CONF = cfg.CONF
@@ -79,6 +99,7 @@ class ShareManager(manager.SchedulerDependentManager):
         self.configuration = manila.share.configuration.Configuration(
             share_manager_opts,
             config_group=service_name)
+        self._verify_unused_share_server_cleanup_interval()
         super(ShareManager, self).__init__(service_name='share',
                                            *args, **kwargs)
 
@@ -485,6 +506,20 @@ class ShareManager(manager.SchedulerDependentManager):
                           "deletion of last share.", share_server['id'])
                 self.delete_share_server(context, share_server)
 
+    @manager.periodic_task(ticks_between_runs=600 / CONF.periodic_interval)
+    def delete_free_share_servers(self, ctxt):
+        if not (self.driver.driver_handles_share_servers and
+                self.configuration.automatic_share_server_cleanup):
+            return
+        LOG.info(_LI("Check for unused share servers to delete."))
+        updated_before = timeutils.utcnow() - datetime.timedelta(
+            minutes=self.configuration.unused_share_server_cleanup_interval)
+        servers = self.db.share_server_get_all_unused_deletable(ctxt,
+                                                                self.host,
+                                                                updated_before)
+        for server in servers:
+            self.delete_share_server(ctxt, server)
+
     def _remove_share_access_rules(self, context, share_ref, share_server):
         rules = self.db.share_access_get_all_for_share(
             context, share_ref['id'])
@@ -733,3 +768,10 @@ class ShareManager(manager.SchedulerDependentManager):
             _LI("Share server '%s' has been deleted successfully."),
             share_server['id'])
         self.driver.deallocate_network(context, share_server['id'])
+
+    def _verify_unused_share_server_cleanup_interval(self):
+        if not 10 <= self.configuration.\
+                unused_share_server_cleanup_interval <= 60:
+            raise exception.InvalidParameterValue(
+                "Option unused_share_server_cleanup_interval should be "
+                "between 10 minutes and 1 hour.")

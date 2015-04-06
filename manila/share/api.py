@@ -277,6 +277,10 @@ class API(base.Base):
 
         self.share_rpcapi.unmanage_share(context, share_ref)
 
+        # NOTE(u_glide): We should update 'updated_at' timestamp of
+        # share server here, when manage/unmanage operations will be supported
+        # for driver_handles_share_servers=True mode
+
     @policy.wrap_check_policy('share')
     def delete(self, context, share, force=False):
         """Delete share."""
@@ -315,6 +319,18 @@ class API(base.Base):
                                                          'terminated_at': now})
 
         self.share_rpcapi.delete_share(context, share)
+
+        # NOTE(u_glide): 'updated_at' timestamp is used to track last usage of
+        # share server. This is required for automatic share servers cleanup
+        # because we should track somehow period of time when share server
+        # doesn't have shares (unused). We do this update only on share
+        # deletion because share server with shares cannot be deleted, so no
+        # need to do this update on share creation or any other share operation
+        if share['share_server_id']:
+            self.db.share_server_update(
+                context,
+                share['share_server_id'],
+                {'updated_at': timeutils.utcnow()})
 
     def delete_share_server(self, context, server):
         """Delete share server."""

@@ -14,11 +14,13 @@
 #    under the License.
 
 """Test of Share Manager for Manila."""
+import datetime
 
 import ddt
 import mock
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
+from oslo_utils import timeutils
 
 from manila.common import constants
 from manila import context
@@ -28,6 +30,7 @@ from manila import exception
 from manila import quota
 from manila.share import manager
 from manila import test
+from manila.tests import utils as test_utils
 from manila import utils
 
 
@@ -1362,3 +1365,56 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(expected, network_info)
         self.share_manager.db.network_allocations_get_for_share_server.\
             assert_called_once_with(self.context, fake_share_server['id'])
+
+    @ddt.data(5, 70)
+    def test_verify_server_cleanup_interval_invalid_cases(self, val):
+        data = dict(DEFAULT=dict(unused_share_server_cleanup_interval=val))
+        with test_utils.create_temp_config_with_opts(data):
+            self.assertRaises(exception.InvalidParameterValue,
+                              manager.ShareManager)
+
+    @ddt.data(10, 36, 60)
+    def test_verify_server_cleanup_interval_valid_cases(self, val):
+        data = dict(DEFAULT=dict(unused_share_server_cleanup_interval=val))
+        with test_utils.create_temp_config_with_opts(data):
+            manager.ShareManager()
+
+    @mock.patch.object(db, 'share_server_get_all_unused_deletable',
+                       mock.Mock())
+    @mock.patch.object(manager.ShareManager, 'delete_share_server',
+                       mock.Mock())
+    def test_delete_free_share_servers_cleanup_disabled(self):
+        data = dict(DEFAULT=dict(automatic_share_server_cleanup=False))
+        with test_utils.create_temp_config_with_opts(data):
+            share_manager = manager.ShareManager()
+            share_manager.delete_free_share_servers(self.context)
+            self.assertFalse(db.share_server_get_all_unused_deletable.called)
+
+    @mock.patch.object(db, 'share_server_get_all_unused_deletable',
+                       mock.Mock())
+    @mock.patch.object(manager.ShareManager, 'delete_share_server',
+                       mock.Mock())
+    def test_delete_free_share_servers_driver_handles_ss_disabled(self):
+        data = dict(DEFAULT=dict(driver_handles_share_servers=False))
+        with test_utils.create_temp_config_with_opts(data):
+            share_manager = manager.ShareManager()
+            share_manager.delete_free_share_servers(self.context)
+            self.assertFalse(db.share_server_get_all_unused_deletable.called)
+            self.assertFalse(share_manager.delete_share_server.called)
+
+    @mock.patch.object(db, 'share_server_get_all_unused_deletable',
+                       mock.Mock(return_value=['server1', ]))
+    @mock.patch.object(manager.ShareManager, 'delete_share_server',
+                       mock.Mock())
+    @mock.patch.object(timeutils, 'utcnow', mock.Mock(
+                       return_value=datetime.timedelta(minutes=20)))
+    def test_delete_free_share_servers(self):
+        self.share_manager.delete_free_share_servers(self.context)
+        db.share_server_get_all_unused_deletable.assert_called_once_with(
+            self.context,
+            self.share_manager.host,
+            datetime.timedelta(minutes=10))
+        self.share_manager.delete_share_server.assert_called_once_with(
+            self.context,
+            'server1')
+        timeutils.utcnow.assert_called_once_with()

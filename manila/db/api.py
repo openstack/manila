@@ -640,6 +640,12 @@ def share_server_get_all(context):
     return IMPL.share_server_get_all(context)
 
 
+def share_server_get_all_unused_deletable(context, host, updated_before):
+    """Get all free share servers DB records."""
+    return IMPL.share_server_get_all_unused_deletable(context, host,
+                                                      updated_before)
+
+
 def share_server_backend_details_set(context, share_server_id, server_details):
     """Create DB record with backend details."""
     return IMPL.share_server_backend_details_set(context, share_server_id,
