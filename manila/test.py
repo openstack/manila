@@ -30,6 +30,7 @@ import mock
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
+import oslo_i18n
 from oslo_log import log
 from oslo_messaging import conffixture as messaging_conffixture
 import oslotest.base as base_test
@@ -108,6 +109,7 @@ class TestCase(base_test.BaseTestCase):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
 
+        oslo_i18n.enable_lazy(enable=False)
         conf_fixture.set_defaults(CONF)
         CONF([], default_config_files=[])
 

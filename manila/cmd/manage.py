@@ -58,27 +58,19 @@ from __future__ import print_function
 import os
 import sys
 
-
-# If ../manila/__init__.py exists, add ../ to Python search path, so that
-# it will override what happens to be installed in /usr/(local/)lib/python...
-POSSIBLE_TOPDIR = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
-                                   os.pardir,
-                                   os.pardir))
-if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'manila', '__init__.py')):
-    sys.path.insert(0, POSSIBLE_TOPDIR)
-
 from manila import i18n
 i18n.enable_lazy()
 
 from oslo_config import cfg
+from oslo_log import log
 from oslo_utils import uuidutils
+import six
 
 from manila.common import config  # Need to register global_opts  # noqa
 from manila import context
 from manila import db
 from manila.db import migration
 from manila.i18n import _
-from manila.openstack.common import log as logging
 from manila import utils
 from manila import version
 
@@ -145,13 +137,20 @@ class ShellCommands(object):
                 shell = 'ipython'
         if shell == 'ipython':
             try:
-                import IPython
-                # Explicitly pass an empty list as arguments, because
-                # otherwise IPython would use sys.argv from this script.
-                shell = IPython.Shell.IPShell(argv=[])
-                shell.mainloop()
+                from IPython import embed
+                embed()
             except ImportError:
-                shell = 'python'
+                # Ipython < 0.11
+                try:
+                    import IPython
+
+                    # Explicitly pass an empty list as arguments, because
+                    # otherwise IPython would use sys.argv from this script.
+                    shell = IPython.Shell.IPShell(argv=[])
+                    shell.mainloop()
+                except ImportError:
+                    # no IPython module
+                    shell = 'python'
 
         if shell == 'python':
             import code
@@ -174,14 +173,6 @@ class ShellCommands(object):
         arguments: path
         """
         exec(compile(open(path).read(), path, 'exec'), locals(), globals())
-
-
-def _db_error(caught_exception):
-    print(caught_exception)
-    print(_("The above error may show that the database has not "
-            "been created.\nPlease create a database using "
-            "'manila-manage db sync' before running this command."))
-    exit(1)
 
 
 class HostCommands(object):
@@ -253,9 +244,6 @@ class DbCommands(object):
 class VersionCommands(object):
     """Class for exposing the codebase version."""
 
-    def __init__(self):
-        pass
-
     def list(self):
         print(version.version_string())
 
@@ -266,11 +254,8 @@ class VersionCommands(object):
 class ConfigCommands(object):
     """Class for exposing the flags defined by flag_file(s)."""
 
-    def __init__(self):
-        pass
-
     def list(self):
-        for key, value in CONF.iteritems():
+        for key, value in six.iteritems(CONF):
             if value is not None:
                 print('%s = %s' % (key, value))
 
@@ -410,7 +395,7 @@ def get_arg_string(args):
             # This is long optional arg
             arg = args[2:]
         else:
-            arg = args[3:]
+            arg = args[1:]
     else:
         arg = args
 
@@ -442,7 +427,7 @@ def main():
     try:
         CONF(sys.argv[1:], project='manila',
              version=version.version_string())
-        logging.setup("manila")
+        log.setup(CONF, "manila")
     except cfg.ConfigFilesNotFoundError:
         cfgfile = CONF.config_file[-1] if CONF.config_file else None
         if cfgfile and not os.access(cfgfile, os.R_OK):
@@ -460,6 +445,7 @@ def main():
 
     fn_args = fetch_func_args(fn)
     fn(*fn_args)
+
 
 if __name__ == '__main__':
     main()
