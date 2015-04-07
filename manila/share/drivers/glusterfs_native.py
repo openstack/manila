@@ -311,7 +311,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 'volume', 'stop', gluster_mgr.volume, '--mode=script')
         except exception.ProcessExecutionError as exc:
             msg = (_("Error stopping gluster volume. "
-                     "Volume: %(volname)s, Error: %(error)s"),
+                     "Volume: %(volname)s, Error: %(error)s") %
                    {'volname': gluster_mgr.volume, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
@@ -321,7 +321,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 'volume', 'start', gluster_mgr.volume)
         except exception.ProcessExecutionError as exc:
             msg = (_("Error starting gluster volume. "
-                     "Volume: %(volname)s, Error: %(error)s"),
+                     "Volume: %(volname)s, Error: %(error)s") %
                    {'volname': gluster_mgr.volume, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
@@ -423,7 +423,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError as exc:
             msg = (_("Unable to mount gluster volume. "
-                     "gluster_export: %(export)s, Error: %(error)s"),
+                     "gluster_export: %(export)s, Error: %(error)s") %
                    {'export': gluster_export, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
@@ -435,7 +435,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError as exc:
             msg = (_("Unable to unmount gluster volume. "
-                     "mount_dir: %(mntdir)s, Error: %(error)s"),
+                     "mount_dir: %(mntdir)s, Error: %(error)s") %
                    {'mntdir': mntdir, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
@@ -450,7 +450,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during _wipe_gluster_vol. "
                      "Volume: %(volname)s, Option: %(option)s, "
-                     "Error: %(error)s"),
+                     "Error: %(error)s") %
                    {'volname': gluster_mgr.volume,
                     'option': CLIENT_SSL, 'error': exc.stderr})
             LOG.error(msg)
@@ -463,7 +463,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during _wipe_gluster_vol. "
                      "Volume: %(volname)s, Option: %(option)s, "
-                     "Error: %(error)s"),
+                     "Error: %(error)s") %
                    {'volname': gluster_mgr.volume,
                     'option': SERVER_SSL, 'error': exc.stderr})
             LOG.error(msg)
@@ -486,7 +486,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError as exc:
             msg = (_("Error trying to wipe gluster volume. "
-                     "gluster_export: %(export)s, Error: %(error)s"),
+                     "gluster_export: %(export)s, Error: %(error)s") %
                    {'export': gluster_export, 'error': exc.stderr})
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
@@ -503,7 +503,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during _wipe_gluster_vol. "
                      "Volume: %(volname)s, Option: %(option)s, "
-                     "Error: %(error)s"),
+                     "Error: %(error)s") %
                    {'volname': gluster_mgr.volume,
                     'option': CLIENT_SSL, 'error': exc.stderr})
             LOG.error(msg)
@@ -516,7 +516,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during _wipe_gluster_vol. "
                      "Volume: %(volname)s, Option: %(option)s, "
-                     "Error: %(error)s"),
+                     "Error: %(error)s") %
                    {'volname': gluster_mgr.volume,
                     'option': SERVER_SSL, 'error': exc.stderr})
             LOG.error(msg)
@@ -536,7 +536,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             export_location = self._pop_gluster_vol(share['size'])
         except exception.GlusterfsException:
-            msg = (_("Error creating share %(share_id)s"),
+            msg = (_LE("Error creating share %(share_id)s"),
                    {'share_id': share['id']})
             LOG.error(msg)
             raise
@@ -560,8 +560,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             # Get the gluster address associated with the export.
             gmgr = self.gluster_used_vols_dict[exp_locn]
         except KeyError:
-            msg = (_("Invalid request. Ignoring delete_share request for "
-                     "share %(share_id)s"), {'share_id': share['id']},)
+            msg = (_LW("Invalid request. Ignoring delete_share request for "
+                       "share %(share_id)s"), {'share_id': share['id']})
             LOG.warn(msg)
             return
 
@@ -569,8 +569,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self._wipe_gluster_vol(gmgr)
             self._push_gluster_vol(exp_locn)
         except exception.GlusterfsException:
-            msg = (_("Error during delete_share request for "
-                     "share %(share_id)s"), {'share_id': share['id']},)
+            msg = (_LE("Error during delete_share request for "
+                       "share %(share_id)s"), {'share_id': share['id']})
             LOG.error(msg)
             raise
 
@@ -692,7 +692,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during allow access. "
                      "Volume: %(volname)s, Option: %(option)s, "
-                     "access_to: %(access_to)s, Error: %(error)s"),
+                     "access_to: %(access_to)s, Error: %(error)s") %
                    {'volname': gluster_mgr.volume,
                     'option': AUTH_SSL_ALLOW, 'access_to': access_to,
                     'error': exc.stderr})
@@ -737,7 +737,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         except exception.ProcessExecutionError as exc:
             msg = (_("Error in gluster volume set during deny access. "
                      "Volume: %(volname)s, Option: %(option)s, "
-                     "access_to: %(access_to)s, Error: %(error)s"),
+                     "access_to: %(access_to)s, Error: %(error)s") %
                    {'volname': gluster_mgr.volume,
                     'option': AUTH_SSL_ALLOW, 'access_to': access_to,
                     'error': exc.stderr})

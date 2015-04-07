@@ -151,10 +151,10 @@ def parse_ganesha_config(configpath):
     if export_count != len(exports):
         msg = (_('Invalid export config file %(configpath)s: '
                  '%(exports)s export clauses found, but '
-                 '%(export_ids)s export_ids.'),
-               {"configpath": configpath,
-                "exports": str(export_count),
-                "export_ids": str(len(exports))})
+                 '%(export_ids)s export_ids.')
+               % {"configpath": configpath,
+                  "exports": str(export_count),
+                  "export_ids": str(len(exports))})
 
         LOG.error(msg)
         raise exception.GPFSGaneshaException(msg)
@@ -201,7 +201,7 @@ def _convert_ipstring_to_ipn(ipstring):
         try:
             ipns = [netaddr.IPNetwork(ipstring)]
         except netaddr.AddrFormatError:
-            msg = (_('Invalid IP access string %s.'), ipstring)
+            msg = (_('Invalid IP access string %s.') % ipstring)
             LOG.error(msg)
             raise exception.GPFSGaneshaException(msg)
     return ipns
@@ -241,7 +241,7 @@ def _publish_local_config(configpath, pre_lines, exports):
         utils.execute(*cpcmd, run_as_root=True)
     except exception.ProcessExecutionError as e:
         msg = (_('Failed while publishing ganesha config locally. '
-                 'Error: %s.'), six.text_type(e))
+                 'Error: %s.') % six.text_type(e))
         LOG.error(msg)
         raise exception.GPFSGaneshaException(msg)
 
@@ -252,7 +252,7 @@ def _publish_local_config(configpath, pre_lines, exports):
         utils.execute(*chmodcmd, run_as_root=True)
     except exception.ProcessExecutionError as e:
         msg = (_('Failed while publishing ganesha config locally. '
-                 'Error: %s.'), six.text_type(e))
+                 'Error: %s.') % six.text_type(e))
         LOG.error(msg)
         raise exception.GPFSGaneshaException(msg)
 
@@ -270,7 +270,7 @@ def _publish_local_config(configpath, pre_lines, exports):
         utils.execute(*mvcmd, run_as_root=True)
     except exception.ProcessExecutionError as e:
         msg = (_('Failed while publishing ganesha config locally. '
-                 'Error: %s.'), six.text_type(e))
+                 'Error: %s.') % six.text_type(e))
         LOG.error(msg)
         raise exception.GPFSGaneshaException(msg)
     LOG.info(_LI('Ganesha config %s published locally.'), configpath)
@@ -283,7 +283,7 @@ def _publish_remote_config(server, sshlogin, sshkey, configpath):
         utils.execute(*scpcmd, run_as_root=False)
     except exception.ProcessExecutionError as e:
         msg = (_('Failed while publishing ganesha config on remote server. '
-                 'Error: %s.'), six.text_type(e))
+                 'Error: %s.') % six.text_type(e))
         LOG.error(msg)
         raise exception.GPFSGaneshaException(msg)
     LOG.info(_LI('Ganesha config %(path)s published to %(server)s.'),
@@ -333,9 +333,9 @@ def reload_ganesha_config(servers, sshlogin, service='ganesha.nfsd'):
             utils.execute(*reload_cmd, run_as_root=run_local)
         except exception.ProcessExecutionError as e:
             msg = (_('Could not restart service %(service)s on '
-                     '%(server)s: %(excmsg)s'),
-                   {'service': service,
-                    'server': server,
-                    'excmsg': six.text_type(e)})
+                     '%(server)s: %(excmsg)s')
+                   % {'service': service,
+                      'server': server,
+                      'excmsg': six.text_type(e)})
             LOG.error(msg)
             raise exception.GPFSGaneshaException(msg)

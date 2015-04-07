@@ -237,8 +237,8 @@ class HuaweiNasDriver(driver.ShareDriver):
                 raise loopingcall.LoopingCallDone()
 
             if int(time.time()) - int(start_time) > int(timeout):
-                msg = (_('_wait_for_condition: %s timed out.'),
-                       func.__name__)
+                msg = (_('_wait_for_condition: %s timed out.')
+                       % func.__name__)
                 LOG.error(msg)
                 raise exception.InvalidShare(data=msg)
 

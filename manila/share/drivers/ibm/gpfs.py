@@ -511,25 +511,25 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
         gpfs_base_dir = self.configuration.gpfs_mount_point_base
         if not gpfs_base_dir.startswith('/'):
-            msg = (_('%s must be an absolute path.'), gpfs_base_dir)
+            msg = (_('%s must be an absolute path.') % gpfs_base_dir)
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
         if not self._is_dir(gpfs_base_dir):
-            msg = (_('%s is not a directory.'), gpfs_base_dir)
+            msg = (_('%s is not a directory.') % gpfs_base_dir)
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
         if not self._is_gpfs_path(gpfs_base_dir):
-            msg = (_('%s is not on GPFS. Perhaps GPFS not mounted.'),
-                   gpfs_base_dir)
+            msg = (_('%s is not on GPFS. Perhaps GPFS not mounted.')
+                   % gpfs_base_dir)
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
         if self.configuration.gpfs_nfs_server_type not in ['KNFS', 'GNFS']:
             msg = (_('Invalid gpfs_nfs_server_type value: %s. '
-                     'Valid values are: "KNFS", "GNFS".'),
-                   self.configuration.gpfs_nfs_server_type)
+                     'Valid values are: "KNFS", "GNFS".')
+                   % self.configuration.gpfs_nfs_server_type)
             LOG.error(msg)
             raise exception.InvalidParameterValue(err=msg)
 
@@ -559,8 +559,8 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         if share['share_proto'] == 'NFS':
             return self._helpers[self.configuration.gpfs_nfs_server_type]
         else:
-            msg = (_('Share protocol %s not supported by GPFS driver.'),
-                   share['share_proto'])
+            msg = (_('Share protocol %s not supported by GPFS driver.')
+                   % share['share_proto'])
             LOG.error(msg)
             raise exception.InvalidShare(reason=msg)
 
@@ -642,7 +642,7 @@ class KNFSHelper(NASHelperBase):
             if item['key'] == 'export_options':
                 options = item['value']
             else:
-                msg = (_('Unknown metadata key %s.'), item['key'])
+                msg = (_('Unknown metadata key %s.') % item['key'])
                 LOG.error(msg)
                 raise exception.InvalidInput(reason=msg)
         if not options:
