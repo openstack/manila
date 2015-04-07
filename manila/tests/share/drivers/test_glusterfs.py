@@ -238,6 +238,57 @@ class GlusterManagerTestCase(test.TestCase):
         self.assertEqual('/foo(10.0.0.1|10.0.0.2),/bar(10.0.0.1)', ret)
         self._gluster_manager.gluster_call.assert_called_once_with(*args)
 
+    def test_get_gluster_version(self):
+        self.mock_object(self._gluster_manager, 'gluster_call',
+                         mock.Mock(return_value=('glusterfs 3.6.2beta3', '')))
+        ret = self._gluster_manager.get_gluster_version()
+        self.assertEqual(['3', '6', '2beta3'], ret)
+        self._gluster_manager.gluster_call.assert_called_once_with(
+            '--version')
+
+    @ddt.data("foo 1.1.1", "glusterfs 3-6", "glusterfs 3.6beta3")
+    def test_get_gluster_version_exception(self, versinfo):
+        self.mock_object(self._gluster_manager, 'gluster_call',
+                         mock.Mock(return_value=(versinfo, '')))
+        self.assertRaises(exception.GlusterfsException,
+                          self._gluster_manager.get_gluster_version)
+        self._gluster_manager.gluster_call.assert_called_once_with(
+            '--version')
+
+    def test_get_gluster_version_process_error(self):
+        def raise_exception(*args, **kwargs):
+            raise exception.ProcessExecutionError()
+
+        self.mock_object(self._gluster_manager, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
+        self.assertRaises(exception.GlusterfsException,
+                          self._gluster_manager.get_gluster_version)
+        self._gluster_manager.gluster_call.assert_called_once_with(
+            '--version')
+
+    def test_check_gluster_version(self):
+        self.mock_object(self._gluster_manager, 'get_gluster_version',
+                         mock.Mock(return_value=('3', '6')))
+
+        ret = self._gluster_manager.check_gluster_version((3, 5, 2))
+        self.assertEqual(None, ret)
+        self._gluster_manager.get_gluster_version.assert_called_once_with()
+
+    def test_check_gluster_version_unmet(self):
+        self.mock_object(self._gluster_manager, 'get_gluster_version',
+                         mock.Mock(return_value=('3', '5', '2')))
+
+        self.assertRaises(exception.GlusterfsException,
+                          self._gluster_manager.check_gluster_version, (3, 6))
+        self._gluster_manager.get_gluster_version.assert_called_once_with()
+
+    @ddt.data(('3', '6'),
+              ('3', '6', '2beta'),
+              ('3', '6', '2beta', '4'))
+    def test_numreduct(self, vers):
+        ret = glusterfs.GlusterManager.numreduct(vers)
+        self.assertEqual((3, 6), ret)
+
 
 class GlusterfsShareDriverTestCase(test.TestCase):
     """Tests GlusterfsShareDriver."""
@@ -270,6 +321,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
 
     def test_do_setup(self):
         fake_gluster_manager = mock.Mock(**fake_gluster_manager_attrs)
+        self.mock_object(fake_gluster_manager, 'get_gluster_version',
+                         mock.Mock(return_value=('3', '5')))
         methods = ('_ensure_gluster_vol_mounted', '_setup_helpers')
         for method in methods:
             self.mock_object(self._driver, method)

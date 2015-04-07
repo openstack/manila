@@ -85,6 +85,8 @@ CONF.register_opts(GlusterfsManilaShare_opts)
 NFS_EXPORT_DIR = 'nfs.export-dir'
 NFS_EXPORT_VOL = 'nfs.export-volumes'
 
+GLUSTERFS_VERSION_MIN = (3, 5)
+
 
 class GlusterManager(object):
     """Interface with a GlusterFS volume."""
@@ -162,6 +164,63 @@ class GlusterManager(object):
             if o == option:
                 return v
 
+    def get_gluster_version(self):
+        """Retrieve GlusterFS version.
+
+        :returns: version (as tuple of strings, example: ('3', '6', '0beta2'))
+        """
+        try:
+            out, err = self.gluster_call('--version')
+        except exception.ProcessExecutionError as exc:
+            raise exception.GlusterfsException(
+                _("'gluster version' failed on server "
+                  "%(server)s: %(message)s") %
+                {'server': self.host, 'message': exc.message})
+        try:
+            owords = out.split()
+            if owords[0] != 'glusterfs':
+                raise RuntimeError
+            vers = owords[1].split('.')
+            # provoke an exception if vers does not start with two numerals
+            int(vers[0])
+            int(vers[1])
+        except Exception:
+            raise exception.GlusterfsException(
+                _("Cannot parse version info obtained from server "
+                  "%(server)s, version info: %(info)s") %
+                {'server': self.host, 'info': out})
+        return vers
+
+    def check_gluster_version(self, minvers):
+        """Retrieve and check GlusterFS version.
+
+        :param minvers: minimum version to require
+                        (given as tuple of integers, example: (3, 6))
+        """
+        vers = self.get_gluster_version()
+        if self.numreduct(vers) < minvers:
+            raise exception.GlusterfsException(_(
+                "Unsupported GlusterFS version %(version)s on server "
+                "%(server)s, minimum requirement: %(minvers)s") % {
+                'server': self.host,
+                'version': '.'.join(vers),
+                'minvers': '.'.join(six.text_type(c) for c in minvers)})
+
+    @staticmethod
+    def numreduct(vers):
+        """The numeric reduct of a tuple of strings.
+
+        That is, applying an integer conversion map on the longest
+        initial segment of vers which consists of numerals.
+        """
+        numvers = []
+        for c in vers:
+            try:
+                numvers.append(int(c))
+            except ValueError:
+                break
+        return tuple(numvers)
+
 
 class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                            driver.ShareDriver,):
@@ -189,6 +248,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             self.configuration.glusterfs_path_to_private_key,
             self.configuration.glusterfs_server_password,
         )
+        self.gluster_manager.check_gluster_version(GLUSTERFS_VERSION_MIN)
         try:
             self._execute('mount.glusterfs', check_exit_code=False)
         except OSError as exc:
