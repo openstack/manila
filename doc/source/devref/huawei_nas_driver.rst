@@ -94,8 +94,19 @@ Backend Configuration
 manila_huawei_conf_file items.
 Example for configuring a storage system:
 
-    share_driver = manila.share.drivers.huawei.huawei_nas.HuaweiNasDriver
-    manila_huawei_conf_file = /etc/manila/manila_huawei_conf.xml
+- `share_driver` = manila.share.drivers.huawei.huawei_nas.HuaweiNasDriver
+- `manila_huawei_conf_file` = /etc/manila/manila_huawei_conf.xml
+- `driver_handles_share_servers` = False
+
+.. note::
+    As far as Manila requires `share type` for creation of shares, make sure that
+    used `share type` has extra spec `driver_handles_share_servers` set to `False`
+    otherwise Huawei backend will be filtered by `manila-scheduler`.
+    If you do not provide `share type` with share creation request then default
+    `share type` and its extra specs will be used.
+
+Restart of manila-share service is needed for the configuration changes to take
+effect.
 
 Restrictions
 ------------
