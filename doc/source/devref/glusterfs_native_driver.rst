@@ -21,7 +21,7 @@ GlusterFS Native driver uses GlusterFS, an open source distributed file system,
 as the storage backend for serving file shares to Manila clients.
 
 A Manila share is a GlusterFS volume. This driver uses flat-network
-(share-server less) model.  Instances directly talk with the GlusterFS backend
+(share-server-less) model. Instances directly talk with the GlusterFS backend
 storage pool. The instances use 'glusterfs' protocol to mount the GlusterFS
 shares. Access to each share is allowed via TLS Certificates. Only the instance
 which has the TLS trust established with the GlusterFS backend can mount and
@@ -51,6 +51,8 @@ Supported Operations
 - Delete GlusterFS Share
 - Allow GlusterFS Share access (rw)
 - Deny GlusterFS Share access
+- Create GlusterFS Snapshot
+- Delete GlusterFS Snapshot
 
 Requirements
 ------------
@@ -68,17 +70,24 @@ The following parameters in Manila's configuration file need to be set:
 
 - `share_driver` =
     manila.share.drivers.glusterfs_native.GlusterfsNativeShareDriver
-- `glusterfs_targets` = List of GlusterFS volumes that can be used to create
-     shares. Each GlusterFS volume should be of the form
-       ``[remoteuser@]<glustervolserver>:/<glustervolid>``
+- `glusterfs_servers` = List of GlusterFS servers which provide volumes
+    that can be used to create shares. The servers are expected to be of
+    distinct Gluster clusters (ie. should not be gluster peers). Each server
+    should be of the form ``[<remoteuser>@]<glustervolserver>``.
 
-If the backend GlusterFS server runs on the host running the Manila share
-service, each member of the `glusterfs_targets` list can be of the form
-``<glustervolserver>:/<glustervolid>``
-
-If the backend GlusterFS server runs remotely, each member of the
-`glusterfs_targets` list can be of the form
-``<remoteuser>@<glustervolserver>:/<glustervolid>``
+    The optional ``<remoteuser>@`` part of the server URI indicates SSH
+    access for cluster management (see related optional parameters below).
+    If it is not given, direct command line management is performed (ie.
+    Manila host is assumed to be part of the GlusterFS cluster the server
+    belongs to).
+- `glusterfs_volume_pattern` = Regular expression template
+    used to filter GlusterFS volumes for share creation. The regex template can
+    contain the #{size} parameter which matches a number (sequence of digits)
+    and the value shall be intepreted as size of the volume in GB. Examples:
+    ``manila-share-volume-\d+$``, ``manila-share-volume-#{size}G-\d+$``; with
+    matching volume names, respectively: *manila-share-volume-12*,
+    *manila-share-volume-3G-13*". In latter example, the number that matches
+    ``#{size}``, that is, 3, is an indication that the size of volume is 3G.
 
 The following configuration parameters are optional:
 
@@ -91,11 +100,18 @@ The following configuration parameters are optional:
 Known Restrictions
 ------------------
 
-- GlusterFS volumes are not created on the fly. A pre-existing list of
-  GlusterFS volumes must be supplied in `glusterfs_targets`.
+- GlusterFS volumes are not created on demand. A pre-existing set of
+  GlusterFS volumes should be supplied by the GlusterFS cluster(s), conforming
+  to the naming convention encoded by ``glusterfs_volume_pattern``. However,
+  the GlusterFS endpoint is allowed to extend this set any time (so Manila
+  and GlusterFS endpoints are expected to communicate volume supply/demand
+  out-of-band). ``glusterfs_volume_pattern`` can include a size hint (with
+  ``#{size}`` syntax), which, if present, requires the GlusterFS end to
+  indicate the size of the shares in GB in the name. (On share creation,
+  Manila picks volumes *at least* as big as the requested one.)
 - Certificate setup (aka trust setup) between instance and storage backend is
   out of band of Manila.
-- Support for 'create_snapshot' and 'create_share_from_snapshot' is planned for Liberty release.
+- Support for 'create_share_from_snapshot' is planned for Liberty release.
 
 The :mod:`manila.share.drivers.glusterfs_native.GlusterfsNativeShareDriver` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
