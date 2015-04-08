@@ -199,7 +199,7 @@ for the VNX driver:
 - `emc_nas_pool_name` is the pool name user wants to create volume from. The
   pools can be created using Unisphere for VNX.
 
-Restart of manila-share service is needed for the configuration changes to take
+Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
 
 Restrictions

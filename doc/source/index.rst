@@ -58,6 +58,14 @@ API Extensions
 
 Go to http://api.openstack.org for information about Manila API extensions.
 
+Information
+===========
+
+.. toctree::
+   :maxdepth: 1
+
+   glossary
+
 Outstanding Documentation Tasks
 ===============================
 

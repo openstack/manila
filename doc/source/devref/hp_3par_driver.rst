@@ -99,7 +99,7 @@ FPG's VFS. This IP address is used in export locations for shares that are
 created. Networking must be configured to allow connectivity from clients to
 shares.
 
-Restart of manila-share service is needed for the configuration changes to take
+Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
 
 Network Approach

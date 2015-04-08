@@ -33,12 +33,9 @@ net-id and subnet-id before even trying to create a share.
 
 The current low-level services available in Manila are:
 
-- manila-api: The manila-api service is a service that authenticates and
-  routes requests throughout the Shared Filesystem service.
+- :term:`manila-api`
 
-- manila-scheduler: The manila-scheduler is responsible for
-  scheduling/routing requests to the appropriate share service. It does that
-  by picking one back-end while filtering all except one back-end.
+- :term:`manila-scheduler`
 
-- manila-share: The manila-share service is responsible for managing Shared
-  File Service devices, specifically the back-end devices.
+- :term:`manila-share`
+

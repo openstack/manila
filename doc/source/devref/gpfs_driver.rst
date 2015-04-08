@@ -79,7 +79,7 @@ The following configuration parameters are optional:
 - `knfs_export_options` = <options to use when creating a share using kernel
                           NFS server>
 
-Restart of manila-share service is needed for the configuration changes to take
+Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
 
 Known Restrictions

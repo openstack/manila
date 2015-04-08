@@ -63,7 +63,7 @@ for the Isilon driver:
     emc_nas_password = <password>
     isilon_share_root_dir = <directory on Isilon where shares will be created>
 
-Restart of manila-share service is needed for the configuration changes to take
+Restart of :term:`manila-share` service is needed for the configuration changes to take
 effect.
 
 Restrictions
