@@ -81,7 +81,8 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     def _get_vserver(self, share_server=None):
 
         if not share_server:
-            raise exception.NetAppException(_('Share server not provided.'))
+            msg = _('Share server not provided')
+            raise exception.InvalidInput(reason=msg)
 
         backend_details = share_server.get('backend_details')
         vserver = backend_details.get(
@@ -90,10 +91,10 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         if not vserver:
             msg = _('Vserver name is absent in backend details. Please '
                     'check whether Vserver was created properly.')
-            raise exception.NetAppException(msg)
+            raise exception.VserverNotSpecified(msg)
 
         if not self._client.vserver_exists(vserver):
-            raise exception.VserverUnavailable(vserver=vserver)
+            raise exception.VserverNotFound(vserver=vserver)
 
         vserver_client = self._get_api_client(vserver)
         return vserver, vserver_client
@@ -224,8 +225,23 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
 
     @na_utils.trace
     def teardown_server(self, server_details, security_services=None):
-        """Teardown share network."""
-        vserver = server_details['vserver_name']
+        """Teardown share server."""
+        vserver = server_details.get(
+            'vserver_name') if server_details else None
+
+        if not vserver:
+            LOG.warning(_LW("Vserver not specified for share server being "
+                            "deleted. Deletion of share server record will "
+                            "proceed anyway."))
+            return
+
+        elif not self._client.vserver_exists(vserver):
+            LOG.warning(_LW("Could not find Vserver for share server being "
+                            "deleted: %s. Deletion of share server "
+                            "record will proceed anyway."), vserver)
+            return
+
         vserver_client = self._get_api_client(vserver=vserver)
-        self._client.delete_vserver(vserver, vserver_client,
+        self._client.delete_vserver(vserver,
+                                    vserver_client,
                                     security_services=security_services)

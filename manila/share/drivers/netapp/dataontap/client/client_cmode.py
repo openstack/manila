@@ -893,7 +893,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def offline_volume(self, volume_name):
         """Offlines a volume."""
-        self.send_request('volume-offline', {'name': volume_name})
+        try:
+            self.send_request('volume-offline', {'name': volume_name})
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EVOLUMEOFFLINE:
+                return
+            raise
 
     @na_utils.trace
     def unmount_volume(self, volume_name, force=False):
@@ -902,7 +907,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'volume-name': volume_name,
             'force': six.text_type(force).lower(),
         }
-        self.send_request('volume-unmount', api_args)
+        try:
+            self.send_request('volume-unmount', api_args)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EVOL_NOT_MOUNTED:
+                return
+            raise
 
     @na_utils.trace
     def delete_volume(self, volume_name):
@@ -938,11 +948,33 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         }
         result = self.send_request('snapshot-get-iter', api_args)
 
+        error_record_list = result.get_child_by_name(
+            'volume-errors') or netapp_api.NaElement('none')
+        errors = error_record_list.get_children()
+
+        if errors:
+            error = errors[0]
+            error_code = error.get_child_content('errno')
+            error_reason = error.get_child_content('reason')
+            msg = _('Could not read information for snapshot %(name)s. '
+                    'Code: %(code)s. Reason: %(reason)s')
+            msg_args = {
+                'name': snapshot_name,
+                'code': error_code,
+                'reason': error_reason
+            }
+            if error_code == netapp_api.ESNAPSHOTNOTALLOWED:
+                raise exception.SnapshotUnavailable(msg % msg_args)
+            else:
+                raise exception.NetAppException(msg % msg_args)
+
         attributes_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
         snapshot_info_list = attributes_list.get_children()
 
-        if not self._has_records(result) or len(snapshot_info_list) != 1:
+        if not self._has_records(result):
+            raise exception.SnapshotNotFound(name=snapshot_name)
+        elif len(snapshot_info_list) > 1:
             msg = _('Could not find unique snapshot %(snap)s on '
                     'volume %(vol)s.')
             msg_args = {'snap': snapshot_name, 'vol': volume_name}

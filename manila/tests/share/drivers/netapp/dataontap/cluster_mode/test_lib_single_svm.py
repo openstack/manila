@@ -83,7 +83,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_check_for_setup_error_vserver_not_found(self):
         self.library._client.vserver_exists.return_value = False
 
-        self.assertRaises(exception.VserverUnavailable,
+        self.assertRaises(exception.VserverNotFound,
                           self.library.check_for_setup_error)
 
     def test_check_for_setup_error_cluster_creds_vserver_match(self):
@@ -145,7 +145,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_get_vserver_vserver_not_found(self):
         self.library._client.vserver_exists.return_value = False
 
-        self.assertRaises(exception.VserverUnavailable,
+        self.assertRaises(exception.VserverNotFound,
                           self.library._get_vserver)
 
     def test_handle_housekeeping_tasks(self):

@@ -53,7 +53,7 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
 
         # Ensure vserver exists.
         if not self._client.vserver_exists(self._vserver):
-            raise exception.VserverUnavailable(vserver=self._vserver)
+            raise exception.VserverNotFound(vserver=self._vserver)
 
         # If we have vserver credentials, ensure the vserver they connect
         # to matches the vserver specified in the configuration.
@@ -95,7 +95,7 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
             raise exception.InvalidInput(reason=msg)
 
         if not self._client.vserver_exists(self._vserver):
-            raise exception.VserverUnavailable(vserver=self._vserver)
+            raise exception.VserverNotFound(vserver=self._vserver)
 
         vserver_client = self._get_api_client(self._vserver)
         return self._vserver, vserver_client

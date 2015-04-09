@@ -20,6 +20,7 @@ import copy
 import socket
 import time
 
+import ddt
 import mock
 from oslo_log import log
 
@@ -36,6 +37,7 @@ from manila import test
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
 
 
+@ddt.ddt
 class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def setUp(self):
@@ -49,6 +51,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(lib_base.LOG,
                          'info',
                          mock.Mock(side_effect=mock_logger.info))
+        self.mock_object(lib_base.LOG,
+                         'warning',
+                         mock.Mock(side_effect=mock_logger.warning))
         self.mock_object(lib_base.LOG,
                          'error',
                          mock.Mock(side_effect=mock_logger.error))
@@ -762,6 +767,30 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                                                           vserver_client)
         self.assertEqual(0, lib_base.LOG.info.call_count)
 
+    @ddt.data(exception.InvalidInput(reason='fake_reason'),
+              exception.VserverNotSpecified(),
+              exception.VserverNotFound(vserver='fake_vserver'))
+    def test_delete_share_no_share_server(self, get_vserver_exception):
+
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(side_effect=get_vserver_exception))
+        mock_share_exists = self.mock_object(self.library,
+                                             '_share_exists',
+                                             mock.Mock(return_value=False))
+        mock_remove_export = self.mock_object(self.library, '_remove_export')
+        mock_deallocate_container = self.mock_object(self.library,
+                                                     '_deallocate_container')
+
+        self.library.delete_share(self.context,
+                                  fake.SHARE,
+                                  share_server=fake.SHARE_SERVER)
+
+        self.assertFalse(mock_share_exists.called)
+        self.assertFalse(mock_remove_export.called)
+        self.assertFalse(mock_deallocate_container.called)
+        self.assertEqual(1, lib_base.LOG.warning.call_count)
+
     def test_delete_share_not_found(self):
 
         vserver_client = mock.Mock()
@@ -899,6 +928,64 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         vserver_client.delete_snapshot.assert_called_once_with(share_name,
                                                                snapshot_name)
 
+    @ddt.data(exception.InvalidInput(reason='fake_reason'),
+              exception.VserverNotSpecified(),
+              exception.VserverNotFound(vserver='fake_vserver'))
+    def test_delete_snapshot_no_share_server(self, get_vserver_exception):
+
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(side_effect=get_vserver_exception))
+        mock_handle_busy_snapshot = self.mock_object(self.library,
+                                                     '_handle_busy_snapshot')
+
+        self.library.delete_snapshot(self.context,
+                                     fake.SNAPSHOT,
+                                     share_server=fake.SHARE_SERVER)
+
+        self.assertFalse(mock_handle_busy_snapshot.called)
+        self.assertEqual(1, lib_base.LOG.warning.call_count)
+
+    def test_delete_snapshot_not_found(self):
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        mock_handle_busy_snapshot = self.mock_object(
+            self.library, '_handle_busy_snapshot',
+            mock.Mock(side_effect=exception.SnapshotNotFound(
+                name=fake.SNAPSHOT_NAME)))
+
+        self.library.delete_snapshot(self.context,
+                                     fake.SNAPSHOT,
+                                     share_server=fake.SHARE_SERVER)
+
+        self.assertTrue(mock_handle_busy_snapshot.called)
+        self.assertFalse(vserver_client.delete_snapshot.called)
+
+    def test_delete_snapshot_busy(self):
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        mock_handle_busy_snapshot = self.mock_object(
+            self.library, '_handle_busy_snapshot',
+            mock.Mock(side_effect=exception.ShareSnapshotIsBusy(
+                snapshot_name=fake.SNAPSHOT_NAME)))
+
+        self.assertRaises(exception.ShareSnapshotIsBusy,
+                          self.library.delete_snapshot,
+                          self.context,
+                          fake.SNAPSHOT,
+                          share_server=fake.SHARE_SERVER)
+
+        self.assertTrue(mock_handle_busy_snapshot.called)
+        self.assertFalse(vserver_client.delete_snapshot.called)
+
     def test_handle_busy_snapshot_not_busy(self):
 
         vserver_client = mock.Mock()
@@ -911,6 +998,18 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertIsNone(result)
         self.assertEqual(1, vserver_client.get_snapshot.call_count)
         self.assertEqual(0, lib_base.LOG.debug.call_count)
+
+    def test_handle_busy_snapshot_not_found(self):
+
+        vserver_client = mock.Mock()
+        vserver_client.get_snapshot.side_effect = exception.SnapshotNotFound(
+            name=fake.SNAPSHOT_NAME)
+
+        self.assertRaises(exception.SnapshotNotFound,
+                          self.library._handle_busy_snapshot,
+                          vserver_client,
+                          fake.SHARE_NAME,
+                          fake.SNAPSHOT_NAME)
 
     def test_handle_busy_snapshot_not_clone_dependency(self):
 
