@@ -34,6 +34,7 @@ from manila import utils
 
 
 LOG = log.getLogger(__name__)
+SUPPORTED_NETWORK_TYPES = (None, 'flat', 'vlan')
 
 
 class NetAppCmodeMultiSVMFileStorageLibrary(
@@ -117,8 +118,18 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
     def setup_server(self, network_info, metadata=None):
         """Creates and configures new Vserver."""
         LOG.debug('Creating server %s', network_info['server_id'])
+        self._validate_network_type(network_info)
         vserver_name = self._create_vserver_if_nonexistent(network_info)
         return {'vserver_name': vserver_name}
+
+    @na_utils.trace
+    def _validate_network_type(self, network_info):
+        """Raises exception if the segmentation type is incorrect."""
+        if network_info['network_type'] not in SUPPORTED_NETWORK_TYPES:
+            msg = _('The specified network type %s is unsupported by the '
+                    'NetApp clustered Data ONTAP driver')
+            raise exception.NetworkBadConfigurationException(
+                reason=msg % network_info['network_type'])
 
     @na_utils.trace
     def _create_vserver_if_nonexistent(self, network_info):

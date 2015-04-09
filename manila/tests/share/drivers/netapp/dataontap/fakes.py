@@ -169,6 +169,7 @@ NETWORK_INFO = {
     'cidr': '10.0.0.0/24',
     'security_services': ['fake_ldap', 'fake_kerberos', 'fake_ad', ],
     'segmentation_id': '1000',
+    'network_type': 'vlan',
     'network_allocations': [
         {'id': '132dbb10-9a36-46f2-8d89-3d909830c356',
          'ip_address': '10.10.10.10'},

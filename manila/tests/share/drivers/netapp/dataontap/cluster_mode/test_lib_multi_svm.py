@@ -213,10 +213,35 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             '_create_vserver_if_nonexistent',
             mock.Mock(return_value=fake.VSERVER1))
 
+        mock_validate_network_type = self.mock_object(
+            self.library,
+            '_validate_network_type',
+            mock.Mock())
+
         result = self.library.setup_server(fake.NETWORK_INFO)
 
+        self.assertTrue(mock_validate_network_type.called)
         self.assertTrue(mock_create_vserver.called)
         self.assertDictEqual({'vserver_name': fake.VSERVER1}, result)
+
+    @ddt.data(
+        {'network_info': {'network_type': 'vlan', 'segmentation_id': 1000}},
+        {'network_info': {'network_type': None, 'segmentation_id': None}},
+        {'network_info': {'network_type': 'flat', 'segmentation_id': None}})
+    @ddt.unpack
+    def test_validate_network_type_with_valid_network_types(self,
+                                                            network_info):
+        self.library._validate_network_type(network_info)
+
+    @ddt.data(
+        {'network_info': {'network_type': 'vxlan', 'segmentation_id': 1000}},
+        {'network_info': {'network_type': 'gre', 'segmentation_id': 100}})
+    @ddt.unpack
+    def test_validate_network_type_with_invalid_network_types(self,
+                                                              network_info):
+        self.assertRaises(exception.NetworkBadConfigurationException,
+                          self.library._validate_network_type,
+                          network_info)
 
     def test_create_vserver_if_nonexistent(self):
 
