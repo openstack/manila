@@ -33,7 +33,7 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
     """Netapp specific cluster-mode CIFS sharing driver."""
 
     @na_utils.trace
-    def create_share(self, share_name, export_addresses):
+    def create_share(self, share, share_name, export_addresses):
         """Creates CIFS share on Data ONTAP Vserver."""
         self._client.create_cifs_share(share_name)
         self._client.remove_cifs_share_access(share_name, 'Everyone')
@@ -41,13 +41,13 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
                 for export_address in export_addresses]
 
     @na_utils.trace
-    def delete_share(self, share):
+    def delete_share(self, share, share_name):
         """Deletes CIFS share on Data ONTAP Vserver."""
         host_ip, share_name = self._get_export_location(share)
         self._client.remove_cifs_share(share_name)
 
     @na_utils.trace
-    def allow_access(self, context, share, access):
+    def allow_access(self, context, share, share_name, access):
         """Allows access to the CIFS share for a given user."""
         if access['access_type'] != 'user':
             msg = _("Cluster Mode supports only 'user' type for share access"
@@ -65,7 +65,7 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
             raise e
 
     @na_utils.trace
-    def deny_access(self, context, share, access):
+    def deny_access(self, context, share, share_name, access):
         """Denies access to the CIFS share for a given user."""
         host_ip, share_name = self._get_export_location(share)
         user_name = access['access_to']

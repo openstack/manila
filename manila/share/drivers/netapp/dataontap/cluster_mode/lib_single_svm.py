@@ -101,6 +101,15 @@ class NetAppCmodeSingleSVMFileStorageLibrary(
         return self._vserver, vserver_client
 
     @na_utils.trace
+    def _handle_housekeeping_tasks(self):
+        """Handle various cleanup activities."""
+        vserver_client = self._get_api_client(vserver=self._vserver)
+        vserver_client.prune_deleted_nfs_export_policies()
+
+        super(NetAppCmodeSingleSVMFileStorageLibrary, self).\
+            _handle_housekeeping_tasks()
+
+    @na_utils.trace
     def _find_matching_aggregates(self):
         """Find all aggregates match pattern."""
         vserver_client = self._get_api_client(vserver=self._vserver)

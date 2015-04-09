@@ -98,6 +98,14 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         return vserver, vserver_client
 
     @na_utils.trace
+    def _handle_housekeeping_tasks(self):
+        """Handle various cleanup activities."""
+        self._client.prune_deleted_nfs_export_policies()
+
+        super(NetAppCmodeMultiSVMFileStorageLibrary, self).\
+            _handle_housekeeping_tasks()
+
+    @na_utils.trace
     def _find_matching_aggregates(self):
         """Find all aggregates match pattern."""
         aggregate_names = self._client.list_aggregates()

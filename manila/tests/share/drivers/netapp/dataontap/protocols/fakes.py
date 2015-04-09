@@ -12,9 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from manila.common import constants
+
 
 SHARE_NAME = 'fake_share'
 SHARE_ID = '9dba208c-9aa7-11e4-89d3-123b93f75cba'
+EXPORT_POLICY_NAME = 'policy_9dba208c_9aa7_11e4_89d3_123b93f75cba'
 SHARE_ADDRESS_1 = '10.10.10.10'
 SHARE_ADDRESS_2 = '10.10.10.20'
 CLIENT_ADDRESS_1 = '20.20.20.10'
@@ -31,9 +34,14 @@ NFS_SHARE = {
     'id': SHARE_ID
 }
 
-NFS_ACCESS_HOSTS = [CLIENT_ADDRESS_1]
+IP_ACCESS = {
+    'access_type': 'ip',
+    'access_to': CLIENT_ADDRESS_1,
+    'access_level': constants.ACCESS_LEVEL_RW,
+}
 
-ACCESS = {
+USER_ACCESS = {
     'access_type': 'user',
-    'access_to': NFS_ACCESS_HOSTS
+    'access_to': 'fake_user',
+    'access_level': constants.ACCESS_LEVEL_RW,
 }

@@ -184,6 +184,17 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertTupleEqual((fake.VSERVER1, 'fake_client'), result)
 
+    def test_handle_housekeeping_tasks(self):
+
+        self.mock_object(self.client, 'prune_deleted_nfs_export_policies')
+        mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
+                                      '_handle_housekeeping_tasks')
+
+        self.library._handle_housekeeping_tasks()
+
+        self.assertTrue(self.client.prune_deleted_nfs_export_policies.called)
+        self.assertTrue(mock_super.called)
+
     def test_find_matching_aggregates(self):
 
         self.mock_object(self.client,
