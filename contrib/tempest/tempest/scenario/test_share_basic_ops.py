@@ -109,12 +109,26 @@ class TestShareBasicOps(manager.ShareScenarioTest):
         self.share = self._create_share(share_protocol=self.protocol,
                                         share_network_id=share_net_id)
 
+    def allow_access_ip(self, share_id, ip=None, instance=None):
+        if instance and not ip:
+            try:
+                net_addresses = instance['addresses']
+                first_address = net_addresses.values()[0][0]
+                ip = first_address['addr']
+            except Exception:
+                # In case on an error ip will be still none
+                LOG.exception("Instance does not have a valid IP address."
+                              "Falling back to default")
+        if not ip:
+            ip = '0.0.0.0/0'
+        self._allow_access(share_id, access_type='ip', access_to=ip)
+
     @test.services('compute', 'network')
     def test_server_basicops(self):
         self.security_group = self._create_security_group()
         self.create_share_network()
         self.create_share(self.share_net['id'])
         self.boot_instance(self.net)
-        self._allow_access(self.share['id'])
+        self.allow_access_ip(self.share['id'], instance=self.instance)
         self.verify_ssh()
         self.servers_client.delete_server(self.instance['id'])
