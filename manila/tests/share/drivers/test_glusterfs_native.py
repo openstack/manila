@@ -863,7 +863,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
         snapshot = {'id': 'fake_snap_id', 'share_id': self.share1['id']}
 
-        args = ('--xml', 'snapshot', 'delete', 'fake_snap_id')
+        args = ('--xml', 'snapshot', 'delete', 'fake_snap_id',
+                '--mode=script')
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=GlusterXMLOut(ret=0, errno=0)))
         ret = self._driver.delete_snapshot(self._context, snapshot)
@@ -880,7 +881,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
         snapshot = {'id': 'fake_snap_id', 'share_id': self.share1['id']}
 
-        args = ('--xml', 'snapshot', 'delete', 'fake_snap_id')
+        args = ('--xml', 'snapshot', 'delete', 'fake_snap_id', '--mode=script')
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=GlusterXMLOut(ret=-1, errno=2)))
         self.assertRaises(exception.GlusterfsException,
