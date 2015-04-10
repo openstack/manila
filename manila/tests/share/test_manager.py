@@ -1313,6 +1313,53 @@ class ShareManagerTestCase(test.TestCase):
     def test_setup_server_exception_in_driver(self):
         self.setup_server_raise_exception(detail_data_proper=True)
 
+    @ddt.data({},
+              {'detail_data': 'fake'},
+              {'detail_data': {'server_details': 'fake'}},
+              {'detail_data': {'server_details': {'fake': 'fake'}}},
+              {'detail_data': {
+                  'server_details': {'fake': 'fake', 'fake2': 'fake2'}}},)
+    def test_setup_server_exception_in_cleanup_after_error(self, data):
+
+        def get_server_details_from_data(data):
+            d = data.get('detail_data')
+            if not isinstance(d, dict):
+                return {}
+            d = d.get('server_details')
+            if not isinstance(d, dict):
+                return {}
+            return d
+
+        share_server = {'id': 'fake', 'share_network_id': 'fake'}
+        details = get_server_details_from_data(data)
+
+        exc_mock = mock.Mock(side_effect=exception.ManilaException(**data))
+        details_mock = mock.Mock(side_effect=exception.ManilaException())
+        self.mock_object(self.share_manager.db, 'share_network_get', exc_mock)
+        self.mock_object(self.share_manager.db,
+                         'share_server_backend_details_set', details_mock)
+        self.mock_object(self.share_manager.db, 'share_server_update')
+        self.mock_object(self.share_manager.driver, 'deallocate_network')
+
+        self.assertRaises(
+            exception.ManilaException,
+            self.share_manager._setup_server,
+            self.context,
+            share_server,
+        )
+
+        self.assertTrue(self.share_manager.db.share_network_get.called)
+        if details:
+            self.assertEqual(len(details), details_mock.call_count)
+            expected = [mock.call(mock.ANY, share_server['id'], {k: v})
+                        for k, v in details.items()]
+            self.assertEqual(expected, details_mock.call_args_list)
+        self.share_manager.db.share_server_update.assert_called_once_with(
+            self.context, share_server['id'], {'status': 'ERROR'})
+        self.share_manager.driver.deallocate_network.assert_called_once_with(
+            self.context, share_server['id']
+        )
+
     def test_ensure_share_has_pool_with_only_host(self):
         fake_share = {'status': 'available', 'host': 'host1', 'id': 1}
         host = self.share_manager._ensure_share_has_pool(context.
