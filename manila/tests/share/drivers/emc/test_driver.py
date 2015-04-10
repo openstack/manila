@@ -18,6 +18,7 @@ from oslo_log import log
 from stevedore import extension
 
 from manila.share import configuration as conf
+from manila.share import driver
 from manila.share.drivers.emc import driver as emcdriver
 from manila.share.drivers.emc.plugins import base
 from manila import test
@@ -112,6 +113,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         self.configuration.append_config_values = mock.Mock(return_value=0)
         self.configuration.share_backend_name = FAKE_BACKEND
         self.mock_object(self.configuration, 'safe_get', self._fake_safe_get)
+        self.mock_object(driver.ShareDriver, '__init__')
         self.driver = emcdriver.EMCShareDriver(
             configuration=self.configuration)
 
