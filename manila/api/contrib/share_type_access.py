@@ -125,7 +125,7 @@ class ShareTypeActionController(wsgi.Controller):
         if soft_authorize(context):
             # Attach our slave template to the response object
             resp_obj.attach(xml=ShareTypeTemplate())
-            share_type = share_types.get_share_type(context, id)
+            share_type = req.get_db_share_type(id)
             self._extend_share_type(resp_obj.obj['share_type'], share_type)
 
     @wsgi.extends
@@ -136,7 +136,7 @@ class ShareTypeActionController(wsgi.Controller):
             resp_obj.attach(xml=ShareTypesTemplate())
             for share_type_rval in list(resp_obj.obj['share_types']):
                 type_id = share_type_rval['id']
-                share_type = share_types.get_share_type(context, type_id)
+                share_type = req.get_db_share_type(type_id)
                 self._extend_share_type(share_type_rval, share_type)
 
     @wsgi.extends(action='create')
@@ -146,7 +146,7 @@ class ShareTypeActionController(wsgi.Controller):
             # Attach our slave template to the response object
             resp_obj.attach(xml=ShareTypeTemplate())
             type_id = resp_obj.obj['share_type']['id']
-            share_type = share_types.get_share_type(context, type_id)
+            share_type = req.get_db_share_type(type_id)
             self._extend_share_type(resp_obj.obj['share_type'], share_type)
 
     @wsgi.action('addProjectAccess')

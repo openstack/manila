@@ -33,6 +33,7 @@ class ShareTypesController(wsgi.Controller):
     def index(self, req):
         """Returns the list of share types."""
         limited_types = self._get_share_types(req)
+        req.cache_db_share_types(limited_types)
         return self._view_builder.index(req, limited_types)
 
     def show(self, req, id):
@@ -46,6 +47,7 @@ class ShareTypesController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=msg)
 
         share_type['id'] = six.text_type(share_type['id'])
+        req.cache_db_share_type(share_type)
         return self._view_builder.show(req, share_type)
 
     def default(self, req):

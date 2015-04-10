@@ -1,3 +1,4 @@
+import ddt
 import inspect
 import webob
 
@@ -7,6 +8,7 @@ from manila import test
 from manila.tests.api import fakes
 
 
+@ddt.ddt
 class RequestTest(test.TestCase):
     def test_content_type_missing(self):
         request = wsgi.Request.blank('/tests/123', method='POST')
@@ -72,6 +74,67 @@ class RequestTest(test.TestCase):
         request.headers["Accept"] = "application/unsupported1"
         result = request.best_match_content_type()
         self.assertEqual(result, "application/json")
+
+    def test_cache_and_retrieve_resources(self):
+        request = wsgi.Request.blank('/foo')
+        # Test that trying to retrieve a cached object on
+        # an empty cache fails gracefully
+        self.assertIsNone(request.cached_resource())
+        self.assertIsNone(request.cached_resource_by_id('r-0'))
+
+        resources = [{'id': 'r-%s' % x} for x in range(3)]
+
+        # Cache an empty list of resources using the default name
+        request.cache_resource([])
+        self.assertEqual({}, request.cached_resource())
+        self.assertIsNone(request.cached_resource('r-0'))
+        # Cache some resources
+        request.cache_resource(resources[:2])
+        # Cache  one resource
+        request.cache_resource(resources[2])
+        # Cache  a different resource name
+        other_resource = {'id': 'o-0'}
+        request.cache_resource(other_resource, name='other-resource')
+
+        self.assertEqual(resources[0], request.cached_resource_by_id('r-0'))
+        self.assertEqual(resources[1], request.cached_resource_by_id('r-1'))
+        self.assertEqual(resources[2], request.cached_resource_by_id('r-2'))
+        self.assertIsNone(request.cached_resource_by_id('r-3'))
+        self.assertEqual(
+            {'r-0': resources[0], 'r-1': resources[1], 'r-2': resources[2]},
+            request.cached_resource())
+        self.assertEqual(
+            other_resource,
+            request.cached_resource_by_id('o-0', name='other-resource'))
+
+    @ddt.data(
+        'share_type',
+    )
+    def test_cache_and_retrieve_resources_by_resource(self, resource_name):
+        cache_all_func = 'cache_db_%ss' % resource_name
+        cache_one_func = 'cache_db_%s' % resource_name
+        get_db_all_func = 'get_db_%ss' % resource_name
+        get_db_one_func = 'get_db_%s' % resource_name
+
+        r = wsgi.Request.blank('/foo')
+        amount = 5
+        res_range = range(amount)
+        resources = [{'id': 'id%s' % x} for x in res_range]
+
+        # Store 2
+        getattr(r, cache_all_func)(resources[:amount - 1])
+        # Store 1
+        getattr(r, cache_one_func)(resources[amount - 1])
+
+        for i in res_range:
+            self.assertEqual(
+                resources[i],
+                getattr(r, get_db_one_func)('id%s' % i),
+            )
+        self.assertIsNone(getattr(r, get_db_one_func)('id%s' % amount))
+        self.assertEqual(
+            {'id%s' % i: resources[i] for i in res_range},
+            getattr(r, get_db_all_func)())
 
 
 class ActionDispatcherTest(test.TestCase):
