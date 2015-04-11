@@ -12,7 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import doctest
+
 import ddt
+from lxml import doctestcompare
 import mock
 from oslo_log import log
 from oslo_utils import units
@@ -333,12 +337,9 @@ disks     = d7
     @query
     def req_get_mover():
         return (
-            '<MoverQueryParams><AspectSelection'
-            ' moverDeduplicationSettings="false" moverDnsDomains="false"'
-            ' moverInterfaces="true" moverNetworkDevices="false"'
-            ' moverNisDomains="false" moverRoutes="false"'
-            ' moverStatuses="false"'
-            ' movers="true"/></MoverQueryParams>'
+            '<MoverQueryParams>'
+            '<AspectSelection moverInterfaces="true" movers="true"/>'
+            '</MoverQueryParams>'
         )
 
     @staticmethod
@@ -408,12 +409,9 @@ disks     = d7
     @query
     def req_get_mover_ref():
         return (
-            '<MoverQueryParams><AspectSelection'
-            ' moverDeduplicationSettings="false" moverDnsDomains="false"'
-            ' moverInterfaces="false" moverNetworkDevices="false"'
-            ' moverNisDomains="false" moverRoutes="false"'
-            ' moverStatuses="false"'
-            ' movers="true"/></MoverQueryParams>'
+            '<MoverQueryParams>'
+            '<AspectSelection movers="true"/>'
+            '</MoverQueryParams>'
         )
 
     @staticmethod
@@ -431,10 +429,10 @@ disks     = d7
     def req_get_mover_by_id():
         return (
             '<MoverQueryParams mover="%(mover_id)s">'
-            '<AspectSelection moverDeduplicationSettings="true" '
-            'moverDnsDomains="true" moverInterfaces="true" '
-            'moverNetworkDevices="true" moverNisDomains="true" '
-            'moverRoutes="true" moverStatuses="true" movers="true"/>'
+            '<AspectSelection moverInterfaces="true" moverStatuses="true" '
+            'movers="true" moverNisDomains="true" moverNetworkDevices="true" '
+            'moverDnsDomains="true" moverRoutes="true" '
+            'moverDeduplicationSettings="true"/>'
             '</MoverQueryParams>'
             % {'mover_id': TD.default_mover_id}
         )
@@ -469,7 +467,7 @@ disks     = d7
     @start_task
     def req_create_file_system(name='fakename', size=1):
         return (
-            '<NewFileSystem cwormState="off" name="%(name)s" type="uxfs">'
+            '<NewFileSystem name="%(name)s">'
             '<Vdm vdm="%(vdm_id)s"/><StoragePool mayContainSlices="true"'
             ' pool="%(pool)s" size="%(size)s"/>'
             '</NewFileSystem>'
@@ -483,9 +481,9 @@ disks     = d7
     @start_task
     def req_create_file_system_on_vdm(name='fakename', size=1):
         return (
-            '<NewFileSystem cwormState="off" name="%(name)s" type="uxfs">'
-            '<Vdm vdm="%(id)s"/><StoragePool mayContainSlices="true"'
-            ' pool="%(pool)s" size="%(size)s"/>'
+            '<NewFileSystem name="%(name)s">'
+            '<Vdm vdm="%(id)s"/><StoragePool mayContainSlices="true" '
+            'pool="%(pool)s" size="%(size)s"/>'
             '</NewFileSystem>'
             % {'name': name,
                'size': size * units.Ki,
@@ -543,8 +541,7 @@ disks     = d7
     def req_create_cifs_share(name='fakename',
                               servername=default_cifsserver_name):
         return (
-            '<NewCifsShare name="%(name)s"'
-            ' path="/%(name)s">'
+            '<NewCifsShare path="/%(name)s" name="%(name)s">'
             '<MoverOrVdm mover="%(vdm_id)s" moverIdIsVdm="true"/>'
             '<CifsServers><li>%(servername)s</li>'
             '</CifsServers>'
@@ -592,8 +589,8 @@ disks     = d7
     @start_task
     def req_delete_mount(path='/fakename'):
         return (
-            '<DeleteMount mover="%(moverid)s"'
-            ' moverIdIsVdm="true" path="%(path)s"/>'
+            '<DeleteMount path="%(path)s" '
+            'mover="%(moverid)s" moverIdIsVdm="true"/>'
             % {'path': path,
                'moverid': TD.default_vdm_id}
         )
@@ -603,11 +600,9 @@ disks     = d7
     def req_get_filesystem(name='fakename', need_capacity=False):
         return (
             '<FileSystemQueryParams><AspectSelection '
-            'fileSystemCapabilities="false" fileSystemCapacityInfos='
-            '"%(needcapacity)s" '
-            'fileSystemCheckpointInfos="false" fileSystemDhsmInfos="false" '
-            'fileSystemRdeInfos="false" '
-            'fileSystems="true"/><Alias name="%(name)s"/>'
+            'fileSystemCapacityInfos="%(needcapacity)s" '
+            'fileSystems="true"/>'
+            '<Alias name="%(name)s"/>'
             '</FileSystemQueryParams>'
             % {'name': name,
                'needcapacity': 'true' if need_capacity else 'false'}
@@ -724,10 +719,10 @@ disks     = d7
 
     @staticmethod
     @start_task
-    def req_delete_snapshot(snap_id='1', force='false'):
+    def req_delete_snapshot(snap_id='1'):
         return (
-            '<DeleteCheckpoint checkpoint="%(id)s" force="%(force)s"/>'
-            % {'id': snap_id, 'force': force}
+            '<DeleteCheckpoint checkpoint="%(id)s"/>'
+            % {'id': snap_id}
         )
 
     @staticmethod
@@ -942,21 +937,20 @@ disks     = d7
     @start_task
     def req_create_mover_interface(if_name, ip_addr):
         return (
-            '<NewMoverInterface device="cge-2-0" '
-            'ipAddress="%(ip)s" ipVersion="IPv4" mover="1" '
-            'mtu="1500" name="%(if_name)s" netMask="255.255.255.0" '
-            'vlanid="%(vlan)s"/>'
-            % {'ip': ip_addr,
-               'if_name': if_name,
-               'vlan': TD.fake_share_network()['segmentation_id']}
+            '<NewMoverInterface name="%(if_name)s" vlanid="%(vlan)s" '
+            'netMask="255.255.255.0" device="cge-2-0" '
+            'mover="1" ipAddress="%(ip)s"/>'
+            % {'if_name': if_name,
+               'vlan': TD.fake_share_network()['segmentation_id'],
+               'ip': ip_addr}
         )
 
     @staticmethod
     @start_task
     def req_create_dns_domain():
         return (
-            '<NewMoverDnsDomain mover="%s" name="win2012.openstack" '
-            'protocol="udp" servers="192.168.1.82"/>'
+            '<NewMoverDnsDomain mover="%s" protocol="udp" '
+            'name="win2012.openstack" servers="192.168.1.82"/>'
             % TD.default_mover_id
         )
 
@@ -965,14 +959,14 @@ disks     = d7
     def req_create_cifs_server(ip):
         vdm_name = 'vdm-' + TD.fake_share_server()['id']
         return (
-            '<NewW2KCifsServer compName="%(vdm_name)s" '
-            'domain="win2012.openstack" interfaces="%(ip)s"'
-            ' name="%(name)s"><MoverOrVdm mover="%(vdm_id)s" '
-            'moverIdIsVdm="true"/><Aliases><li>%(alias)s</li>'
-            '</Aliases><JoinDomain password="welcome" '
-            'userName="administrator"/></NewW2KCifsServer>'
-            % {'vdm_name': vdm_name,
-               'ip': ip,
+            '<NewW2KCifsServer interfaces="%(ip)s" compName="%(vdm_name)s" '
+            'name="%(name)s" domain="win2012.openstack">'
+            '<MoverOrVdm mover="%(vdm_id)s" moverIdIsVdm="true"/>'
+            '<Aliases><li>%(alias)s</li></Aliases>'
+            '<JoinDomain userName="administrator" password="welcome"/>'
+            '</NewW2KCifsServer>'
+            % {'ip': ip,
+               'vdm_name': vdm_name,
                'name': vdm_name[-14:],
                'vdm_id': TD.default_vdm_id,
                'alias': vdm_name[-12:]}
@@ -1047,13 +1041,14 @@ Interfaces to services mapping:
     def req_modify_cifs_server():
         return (
             '<ModifyW2KCifsServer mover="%(vdmid)s" moverIdIsVdm="true" '
-            'name="%(cifsserver)s"><DomainSetting joinDomain="false" '
-            'password="%(pw)s" userName="%(username)s"/>'
+            'name="%(cifsserver)s">'
+            '<DomainSetting userName="%(username)s" password="%(pw)s" '
+            'joinDomain="false"/>'
             '</ModifyW2KCifsServer>'
             % {'vdmid': TD.default_vdm_id,
                'cifsserver': TD.default_cifsserver_name,
-               'pw': TD.fake_security_services()[0]['password'],
-               'username': TD.fake_security_services()[0]['user']}
+               'username': TD.fake_security_services()[0]['user'],
+               'pw': TD.fake_security_services()[0]['password']}
         )
 
     @staticmethod
@@ -1070,7 +1065,7 @@ Interfaces to services mapping:
     @start_task
     def delete_mover_interface(ip):
         return (
-            '<DeleteMoverInterface ipAddress="%(ipaddr)s" mover="1"/>'
+            '<DeleteMoverInterface mover="1" ipAddress="%(ipaddr)s"/>'
             % {'ipaddr': ip}
         )
 
@@ -1081,6 +1076,8 @@ Interfaces to services mapping:
 
 
 TD = EMCVNXDriverTestData
+CHECKER = doctestcompare.LXMLOutputChecker()
+PARSE_XML = doctest.register_optionflag('PARSE_XML')
 
 
 class RequestSideEffect(object):
@@ -1127,6 +1124,37 @@ class SSHSideEffect(object):
                 return item[1]
 
 
+class EMCMock(mock.Mock):
+    def _get_req_from_call(self, call):
+        if len(call) == 3:
+            return call[1][0]
+        elif len(call) == 2:
+            return call[0][0]
+
+    def assert_has_calls(self, calls):
+        if len(calls) != len(self.mock_calls):
+            raise AssertionError(
+                'Mismatch error.\nExpected: %r\n'
+                'Actual: %r' % (calls, self.mock_calls)
+            )
+
+        iter_expect = iter(calls)
+        iter_actual = iter(self.mock_calls)
+
+        while True:
+            try:
+                expect = self._get_req_from_call(iter_expect.next())
+                actual = self._get_req_from_call(iter_actual.next())
+            except StopIteration:
+                return True
+
+            if not CHECKER.check_output(expect, actual, PARSE_XML):
+                raise AssertionError(
+                    'Mismatch error.\nExpected: %r\n'
+                    'Actual: %r' % (calls, self.mock_calls)
+                )
+
+
 @ddt.ddt
 class EMCShareDriverVNXTestCase(test.TestCase):
     def setUp(self):
@@ -1150,8 +1178,8 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook = RequestSideEffect()
         hook.append(TD.resp_get_mover_ref())
         hook.append(TD.resp_get_storage_pools())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
-        helper.XMLAPIConnector.do_setup = mock.Mock()
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
+        helper.XMLAPIConnector.do_setup = EMCMock()
         self.driver.do_setup(None)
         expected_calls = [
             mock.call(TD.req_get_mover_ref()),
@@ -1184,7 +1212,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_task_succeed())
         hook.append(TD.resp_task_succeed())
         ssh_hook.append('', '')
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         helper.SSHConnector.run_ssh = mock.Mock(side_effect=ssh_hook)
         self.driver.setup_server(network_info, None)
         expected_calls = [
@@ -1215,7 +1243,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_task_succeed())
         hook.append(TD.resp_task_succeed())
 
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
 
         ssh_hook = SSHSideEffect()
         ssh_hook.append(TD.resp_get_interfaces_by_vdm())
@@ -1248,7 +1276,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_get_vdm())
         hook.append(TD.resp_task_succeed())
         hook.append(TD.resp_task_succeed())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         sshHook = SSHSideEffect()
         sshHook.append(TD.CREATE_NFS_EXPORT_OUT, TD.FAKE_ERROR)
         helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
@@ -1263,7 +1291,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_get_vdm())
         hook.append(TD.resp_task_succeed())
         hook.append(TD.resp_task_succeed())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         sshHook = SSHSideEffect()
         sshHook.append(TD.CREATE_NFS_EXPORT_OUT, TD.FAKE_ERROR)
         helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
@@ -1295,7 +1323,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_task_succeed())
         hook.append(TD.resp_get_filesystem(share['name']))
         hook.append(TD.resp_task_succeed())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         self.assertRaises(exception.InvalidShare,
                           self.driver.delete_share,
                           None, share, share_server)
@@ -1315,7 +1343,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_task_succeed())
         hook.append(TD.resp_get_filesystem(share['name']))
         hook.append(TD.resp_task_succeed())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         self.driver.delete_share(None, share, share_server)
         expected_calls = [
             mock.call(TD.req_get_nfs_share_by_path(mover_name, path)),
@@ -1344,7 +1372,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_task_succeed())
         hook.append(TD.resp_get_filesystem(share['name']))
         hook.append(TD.resp_task_succeed())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         self.driver.delete_share(None, share, share_server)
         expected_calls = [
             mock.call(TD.req_get_nfs_share_by_path(mover_name, path)),
@@ -1371,7 +1399,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_task_succeed())
 
         ssh_hook.append('Command succeeded')
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         helper.SSHConnector.run_ssh = mock.Mock(side_effect=ssh_hook)
         location = self.driver.create_share(None, share, share_server)
         ssh_calls = [mock.call(TD.req_disable_cifs_access())]
@@ -1395,7 +1423,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_task_succeed())
         hook.append(TD.resp_get_filesystem(share['name']))
         hook.append(TD.resp_task_succeed())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         self.driver.delete_share(
             None, TD.fake_share(share_proto='CIFS'), share_server)
         expected_calls = [
@@ -1416,7 +1444,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_task_succeed())
         hook.append(TD.resp_get_filesystem(share['name']))
         hook.append(TD.resp_task_succeed())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         self.driver.delete_share(
             None, TD.fake_share(share_proto='CIFS'), share_server)
         expected_calls = [
@@ -1433,7 +1461,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook = RequestSideEffect()
         hook.append(TD.resp_get_filesystem(snap['share_name']))
         hook.append(TD.resp_task_succeed())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         self.driver.create_snapshot(None, snap)
         expected_calls = [
             mock.call(TD.req_get_filesystem(snap['share_name'],
@@ -1446,7 +1474,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         snap = TD.fake_snapshot()
         hook = RequestSideEffect()
         hook.append(TD.resp_get_filesystem_error())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         self.assertRaises(exception.EMCVnxXMLAPIError,
                           self.driver.create_snapshot,
                           None,
@@ -1462,7 +1490,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook = RequestSideEffect()
         hook.append(TD.resp_query_snapshot())
         hook.append(TD.resp_task_succeed())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         self.driver.delete_snapshot(None, snap)
         expected_calls = [
             mock.call(TD.req_query_snapshot(snap['name'])),
@@ -1473,7 +1501,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
     def test_delete_snapshot_not_exist(self):
         hook = RequestSideEffect()
         hook.append(TD.resp_query_snapshot_error())
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         self.driver.delete_snapshot(None, TD.fake_snapshot())
         expected_calls = [mock.call(TD.req_query_snapshot('fakesnapshotname'))]
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
@@ -1641,7 +1669,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook = RequestSideEffect()
         hook.append(TD.resp_get_filesystem(share['name']))
 
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         sshHook = SSHSideEffect()
         sshHook.append(TD.GET_INTERCONNECT_ID_OUT, TD.FAKE_ERROR)
         sshHook.append(TD.FAKE_OUTPUT, TD.FAKE_ERROR)
@@ -1666,7 +1694,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook = RequestSideEffect()
         hook.append(TD.resp_get_filesystem(share['name']))
 
-        helper.XMLAPIConnector.request = mock.Mock(side_effect=hook)
+        helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
         sshHook = SSHSideEffect()
         sshHook.append(TD.GET_INTERCONNECT_ID_OUT, TD.FAKE_ERROR)
         sshHook.append(TD.FAKE_OUTPUT, TD.FAKE_ERROR)

@@ -27,3 +27,6 @@ MSG_JOIN_DOMAIN_FAILED = '17986748527'
 IP_ALLOCATIONS = 2
 
 CONTENT_TYPE_URLENCODE = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+XML_NAMESPACE = 'http://www.emc.com/schemas/celerra/xml_api'
