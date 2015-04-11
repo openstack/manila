@@ -174,24 +174,53 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.assertTrue(glusterfs_native.LOG.error.called)
 
     def test_do_setup(self):
+        self._driver.glusterfs_servers = {self.glusterfs_server1: self.gmgr1}
+        self.mock_object(self.gmgr1, 'get_gluster_version',
+                         mock.Mock(return_value=('3', '6')))
         self.mock_object(self._driver, '_fetch_gluster_volumes',
                          mock.Mock(return_value=self.glusterfs_volumes_dict))
         self.mock_object(self._driver, '_update_gluster_vols_dict')
         self._driver.gluster_used_vols_dict = self.glusterfs_volumes_dict
         self.mock_object(glusterfs_native.LOG, 'warn')
+
         expected_exec = ['mount.glusterfs']
 
         self._driver.do_setup(self._context)
 
         self._driver._fetch_gluster_volumes.assert_called_once_with()
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
+        self.gmgr1.get_gluster_version.assert_once_called_with()
         self._driver._update_gluster_vols_dict.assert_called_once_with(
             self._context)
         glusterfs_native.LOG.warn.assert_called_once_with(mock.ANY)
 
+    def test_do_setup_unsupported_glusterfs_version(self):
+        self._driver.glusterfs_servers = {self.glusterfs_server1: self.gmgr1}
+        self.mock_object(self.gmgr1, 'get_gluster_version',
+                         mock.Mock(return_value=('3', '5')))
+
+        self.assertRaises(exception.GlusterfsException,
+                          self._driver.do_setup, self._context)
+        self.gmgr1.get_gluster_version.assert_once_called_with()
+
+    @ddt.data(exception.GlusterfsException, RuntimeError)
+    def test_do_setup_get_gluster_version_fails(self, exc):
+        def raise_exception(*args, **kwargs):
+            raise exc
+
+        self._driver.glusterfs_servers = {self.glusterfs_server1: self.gmgr1}
+        self.mock_object(self.gmgr1, 'get_gluster_version',
+                         mock.Mock(side_effect=raise_exception))
+        self.assertRaises(exc, self._driver.do_setup, self._context)
+        self.gmgr1.get_gluster_version.assert_once_called_with()
+
     def test_do_setup_glusterfs_no_volumes_provided_by_backend(self):
+        self._driver.glusterfs_servers = {self.glusterfs_server1: self.gmgr1}
+        self.mock_object(self.gmgr1, 'get_gluster_version',
+                         mock.Mock(return_value=('3', '6')))
         self.mock_object(self._driver, '_fetch_gluster_volumes',
                          mock.Mock(return_value={}))
+
         self.assertRaises(exception.GlusterfsException,
                           self._driver.do_setup, self._context)
         self._driver._fetch_gluster_volumes.assert_called_once_with()
@@ -748,6 +777,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     def test_create_snapshot(self):
         self._db.share_get = mock.Mock(return_value=self.share1)
         self._driver.gluster_nosnap_vols_dict = {}
+        self._driver.glusterfs_versions = {self.glusterfs_target1: ('3', '6')}
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
@@ -766,6 +796,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     def test_create_snapshot_error(self):
         self._db.share_get = mock.Mock(return_value=self.share1)
         self._driver.gluster_nosnap_vols_dict = {}
+        self._driver.glusterfs_versions = {self.glusterfs_target1: ('3', '6')}
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
@@ -782,9 +813,15 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                           snapshot)
         gmgr1.gluster_call.assert_called_once_with(*args)
 
-    def test_create_snapshot_no_snap(self):
+    @ddt.data({"vers_minor": '6', "exctype": exception.GlusterfsException},
+              {"vers_minor": '7',
+               "exctype": exception.ShareSnapshotNotSupported})
+    @ddt.unpack
+    def test_create_snapshot_no_snap(self, vers_minor, exctype):
         self._db.share_get = mock.Mock(return_value=self.share1)
         self._driver.gluster_nosnap_vols_dict = {}
+        self._driver.glusterfs_versions = {
+            self.glusterfs_target1: ('3', vers_minor)}
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
@@ -796,20 +833,24 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                 gmgr1.volume)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=GlusterXMLOut(ret=-1, errno=0)))
-        self.assertRaises(exception.ShareSnapshotNotSupported,
-                          self._driver.create_snapshot, self._context,
+        self.assertRaises(exctype, self._driver.create_snapshot, self._context,
                           snapshot)
         gmgr1.gluster_call.assert_called_once_with(*args)
 
-    def test_create_snapshot_no_snap_cached(self):
+    @ddt.data({"vers_minor": '6', "exctype": exception.GlusterfsException},
+              {"vers_minor": '7',
+               "exctype": exception.ShareSnapshotNotSupported})
+    @ddt.unpack
+    def test_create_snapshot_no_snap_cached(self, vers_minor, exctype):
         self._db.share_get = mock.Mock(return_value=self.share1)
         self._driver.gluster_nosnap_vols_dict = {
             self.share1['export_location']: 'fake error'}
+        self._driver.glusterfs_versions = {
+            self.glusterfs_target1: ('3', vers_minor)}
 
         snapshot = {'id': 'fake_snap_id', 'share_id': self.share1['id']}
 
-        self.assertRaises(exception.ShareSnapshotNotSupported,
-                          self._driver.create_snapshot, self._context,
+        self.assertRaises(exctype, self._driver.create_snapshot, self._context,
                           snapshot)
 
     def test_delete_snapshot(self):

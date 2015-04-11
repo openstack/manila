@@ -102,6 +102,8 @@ SERVER_SSL = 'server.ssl'
 # Currently we handle only #{size}.
 PATTERN_DICT = {'size': {'pattern': '(?P<size>\d+)', 'trans': int}}
 
+GLUSTERFS_VERSION_MIN = (3, 6)
+
 
 class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     """GlusterFS native protocol (glusterfs) share driver.
@@ -133,6 +135,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             glusterfs_servers[srvaddr] = self._glustermanager(
                 srvaddr, has_volume=False)
         self.glusterfs_servers = glusterfs_servers
+        self.glusterfs_versions = {}
 
     def _compile_volume_pattern(self):
         """Compile a RegexObject from the config specified regex template.
@@ -159,6 +162,42 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # We don't use a service mount as its not necessary for us.
         # Do some sanity checks.
+        glusterfs_versions, exceptions = {}, {}
+        for srvaddr, gluster_mgr in six.iteritems(self.glusterfs_servers):
+            try:
+                glusterfs_versions[srvaddr] = gluster_mgr.get_gluster_version()
+            except exception.GlusterfsException as exc:
+                exceptions[srvaddr] = exc.message
+        if exceptions:
+            for srvaddr, excmsg in six.iteritems(exceptions):
+                LOG.error(_LE("'gluster version' failed on server "
+                              "%(server)s with: %(message)s"),
+                          {'server': srvaddr, 'message': excmsg})
+            raise exception.GlusterfsException(_(
+                "'gluster version' failed on servers %s") % (
+                ','.join(exceptions.keys())))
+        notsupp_servers = []
+        for srvaddr, vers in six.iteritems(glusterfs_versions):
+            if glusterfs.GlusterManager.numreduct(
+               vers) < GLUSTERFS_VERSION_MIN:
+                notsupp_servers.append(srvaddr)
+        if notsupp_servers:
+            gluster_version_min_str = '.'.join(
+                six.text_type(c) for c in GLUSTERFS_VERSION_MIN)
+            for srvaddr in notsupp_servers:
+                LOG.error(_LE("GlusterFS version %(version)s on server "
+                              "%(server)s is not supported, "
+                              "minimum requirement: %(minvers)s"),
+                          {'server': srvaddr,
+                           'version': '.'.join(glusterfs_versions[srvaddr]),
+                           'minvers': gluster_version_min_str})
+            raise exception.GlusterfsException(_(
+                "Unsupported GlusterFS version on servers %(servers)s, "
+                "minimum requirement: %(minvers)s") % {
+                'servers': ','.join(notsupp_servers),
+                'minvers': gluster_version_min_str})
+        self.glusterfs_versions = glusterfs_versions
+
         gluster_volumes_initial = set(self._fetch_gluster_volumes())
         if not gluster_volumes_initial:
             # No suitable volumes are found on the Gluster end.
@@ -606,14 +645,17 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             operrno = int(outxml.find('opErrno').text)
             operrstr = outxml.find('opErrstr').text
 
-        if opret == -1 and operrno == 0:
-            self.gluster_nosnap_vols_dict[vol] = operrstr
-            msg = _("Share %(share_id)s does not support snapshots: "
-                    "%(errstr)s.") % {'share_id': snapshot['share_id'],
-                                      'errstr': operrstr}
-            LOG.error(msg)
-            raise exception.ShareSnapshotNotSupported(msg)
-        elif operrno:
+        if opret == -1:
+            vers = self.glusterfs_versions[vol]
+            if glusterfs.GlusterManager.numreduct(vers) > (3, 6):
+                # This logic has not yet been implemented in GlusterFS 3.6
+                if operrno == 0:
+                    self.gluster_nosnap_vols_dict[vol] = operrstr
+                    msg = _("Share %(share_id)s does not support snapshots: "
+                            "%(errstr)s.") % {'share_id': snapshot['share_id'],
+                                              'errstr': operrstr}
+                    LOG.error(msg)
+                    raise exception.ShareSnapshotNotSupported(msg)
             raise exception.GlusterfsException(
                 _("Creating snapshot for share %(share_id)s failed "
                   "with %(errno)d: %(errstr)s") % {
