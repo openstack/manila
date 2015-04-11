@@ -345,7 +345,12 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     @staticmethod
     def _restart_gluster_vol(gluster_mgr):
         try:
-            # TODO(csaba): eradicate '--mode=script' as it's unnecessary.
+            # TODO(csaba): '--mode=script' ensures that the Gluster CLI runs in
+            # script mode. This seems unnecessary as the Gluster CLI is
+            # expected to run in non-interactive mode when the stdin is not
+            # a terminal, as is the case below. But on testing, found the
+            # behaviour of Gluster-CLI to be the contrary. Need to investigate
+            # this odd-behaviour of Gluster-CLI.
             gluster_mgr.gluster_call(
                 'volume', 'stop', gluster_mgr.volume, '--mode=script')
         except exception.ProcessExecutionError as exc:
@@ -669,7 +674,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         vol = self.db.share_get(context,
                                 snapshot['share_id'])['export_location']
         gluster_mgr = self.gluster_used_vols_dict[vol]
-        args = ('--xml', 'snapshot', 'delete', snapshot['id'])
+        args = ('--xml', 'snapshot', 'delete', snapshot['id'], '--mode=script')
         try:
             out, err = gluster_mgr.gluster_call(*args)
         except exception.ProcessExecutionError as exc:
