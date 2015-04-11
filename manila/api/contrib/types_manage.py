@@ -70,6 +70,7 @@ class ShareTypesManageController(wsgi.Controller):
             share_types.create(context, name, specs, is_public)
             share_type = share_types.get_share_type_by_name(context, name)
             share_type['required_extra_specs'] = required_extra_specs
+            req.cache_db_share_type(share_type)
             notifier_info = dict(share_types=share_type)
             rpc.get_notifier('shareType').info(
                 context, 'share_type.create', notifier_info)

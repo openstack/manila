@@ -96,7 +96,7 @@ class FakeResponse(object):
 class FakeRequest(object):
     environ = {"manila.context": context.get_admin_context()}
 
-    def cached_resource_by_id(self, resource_id, name=None):
+    def get_db_share_type(self, resource_id):
         return SHARE_TYPES[resource_id]
 
 
