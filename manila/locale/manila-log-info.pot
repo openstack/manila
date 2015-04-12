@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev173\n"
+"Project-Id-Version: manila 2015.1.dev92\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-19 06:09+0000\n"
+"POT-Creation-Date: 2015-04-12 06:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -101,7 +101,7 @@ msgstr ""
 msgid "Loaded extension: %s"
 msgstr ""
 
-#: manila/api/contrib/share_unmanage.py:42
+#: manila/api/contrib/share_unmanage.py:44
 #, python-format
 msgid "Unmanage share with id: %s"
 msgstr ""
@@ -111,12 +111,12 @@ msgstr ""
 msgid "%(url)s returned with HTTP %(status)d"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:587
+#: manila/api/openstack/wsgi.py:699
 #, python-format
 msgid "Fault thrown: %s"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:590
+#: manila/api/openstack/wsgi.py:702
 #, python-format
 msgid "HTTP exception thrown: %s"
 msgstr ""
@@ -146,68 +146,44 @@ msgstr ""
 msgid "Create %(share_proto)s share of %(size)s GB"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:38
-msgid ""
-"Renaming column name volume_type_extra_specs.key to "
-"volume_type_extra_specs.spec_key"
-msgstr ""
-
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:44
-msgid ""
-"Renaming column name volume_type_extra_specs.value to "
-"volume_type_extra_specs.spec_value"
-msgstr ""
-
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:50
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:40
 msgid "Renaming column name shares.volume_type_id to shares.share_type.id"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:56
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:46
 msgid "Renaming volume_types table to share_types"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:62
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:52
 msgid "Creating share_type_extra_specs table"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:78
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:67
 msgid "Migrating volume_type_extra_specs to share_type_extra_specs"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:87
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:71
 msgid "Dropping volume_type_extra_specs table"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:92
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:76
 msgid "Creating volume_type_extra_specs table"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:107
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:90
 msgid "Migrating share_type_extra_specs to volume_type_extra_specs"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:116
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:94
 msgid "Dropping share_type_extra_specs table"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:119
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:97
 msgid "Renaming share_types table to volume_types"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:125
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:103
 msgid "Renaming column name shares.share_type_id to shares.volume_type.id"
-msgstr ""
-
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:131
-msgid ""
-"Renaming column name volume_type_extra_specs.spec_key to "
-"volume_type_extra_specs.key"
-msgstr ""
-
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:137
-msgid ""
-"Renaming column name volume_type_extra_specs.spec_value to "
-"volume_type_extra_specs.value"
 msgstr ""
 
 #: manila/openstack/common/eventlet_backdoor.py:140
@@ -239,50 +215,54 @@ msgstr ""
 msgid "Removing non-active host: %s from scheduler cache."
 msgstr ""
 
-#: manila/share/manager.py:130
+#: manila/share/manager.py:151
 #, python-format
 msgid "Share %(name)s: skipping export, because it has '%(status)s' status."
 msgstr ""
 
-#: manila/share/manager.py:225
+#: manila/share/manager.py:246
 msgid "Share server created successfully."
 msgstr ""
 
-#: manila/share/manager.py:227
+#: manila/share/manager.py:248
 #, python-format
 msgid "Used already existed share server '%(share_server_id)s'"
 msgstr ""
 
-#: manila/share/manager.py:326
+#: manila/share/manager.py:347
 msgid "Share created successfully."
 msgstr ""
 
-#: manila/share/manager.py:466
+#: manila/share/manager.py:496
 #, python-format
 msgid "Share %s: deleted successfully."
 msgstr ""
 
-#: manila/share/manager.py:586
+#: manila/share/manager.py:514
+msgid "Check for unused share servers to delete."
+msgstr ""
+
+#: manila/share/manager.py:630
 msgid "Updating share status"
 msgstr ""
 
-#: manila/share/manager.py:724
+#: manila/share/manager.py:808
 #, python-format
 msgid "Share server '%s' has been deleted successfully."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:116
+#: manila/share/drivers/glusterfs_native.py:211
 #, python-format
-msgid "Number of gluster volumes read from config: %(numvols)s"
+msgid "Found %d Gluster volumes allocated for Manila."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:143
+#: manila/share/drivers/glusterfs_native.py:238
 msgid ""
 "Number of gluster volumes in use:  %(inuse-numvols)s. Number of gluster "
 "volumes available for use as share: %(unused-numvols)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:404
+#: manila/share/drivers/glusterfs_native.py:592
 #, python-format
 msgid "export_location sent back from create_share: %s"
 msgstr ""
@@ -300,19 +280,19 @@ msgstr ""
 msgid "Skipping share statistics update. Setup has not completed."
 msgstr ""
 
-#: manila/share/drivers/huawei/huawei_nas.py:143
+#: manila/share/drivers/huawei/huawei_nas.py:139
 #, python-format
 msgid "Creating snapshot id %s."
 msgstr ""
 
-#: manila/share/drivers/huawei/huawei_nas.py:207
+#: manila/share/drivers/huawei/huawei_nas.py:203
 #, python-format
 msgid ""
 "Wait interval is not configured in huawei conf file. Use default: "
 "%(default_wait_interval)d."
 msgstr ""
 
-#: manila/share/drivers/huawei/huawei_nas.py:220
+#: manila/share/drivers/huawei/huawei_nas.py:216
 #, python-format
 msgid ""
 "Timeout is not configured in huawei conf file. Use default: "
@@ -406,22 +386,27 @@ msgstr ""
 msgid "Could not run dpkg-query command: %(msg)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:133
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:135
 #, python-format
 msgid "Available licenses on %(backend)s are %(licenses)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:466
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:491
 #, python-format
 msgid "Share %s does not exist."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:561
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:563
+#, python-format
+msgid "Snapshot %s does not exist."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:637
 #, python-format
 msgid "Updating storage service catalog information for backend '%s'"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_single_svm.py:66
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_single_svm.py:75
 #, python-format
 msgid ""
 "Using Vserver %(vserver)s for backend %(backend)s with %(creds)s "

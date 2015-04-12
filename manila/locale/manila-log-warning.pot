@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev173\n"
+"Project-Id-Version: manila 2015.1.dev92\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-19 06:09+0000\n"
+"POT-Creation-Date: 2015-04-12 06:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -102,7 +102,7 @@ msgid ""
 "(%(d_consumed)d of %(d_quota)d already consumed)"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:958
+#: manila/db/sqlalchemy/api.py:953
 #, python-format
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr ""
@@ -139,54 +139,49 @@ msgid ""
 "%(requested)s/%(available)s"
 msgstr ""
 
-#: manila/share/api.py:132
+#: manila/share/api.py:146
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG share "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: manila/share/api.py:141
+#: manila/share/api.py:155
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create share (%(d_consumed)d "
 "shares already consumed)"
 msgstr ""
 
-#: manila/share/api.py:340
+#: manila/share/api.py:370
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG snapshot "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: manila/share/api.py:349
+#: manila/share/api.py:379
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create snapshot (%(d_consumed)d "
 "snapshots already consumed)"
 msgstr ""
 
-#: manila/share/manager.py:89
+#: manila/share/manager.py:110
 #, python-format
 msgid ""
 "Driver path %(old)s is deprecated, update your configuration to the new "
 "path %(new)s"
 msgstr ""
 
-#: manila/share/manager.py:320
+#: manila/share/manager.py:341
 #, python-format
 msgid ""
 "Share information in exception can not be written to db because it "
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/manager.py:360
-#, python-format
-msgid "Manage share failed: %s"
-msgstr ""
-
-#: manila/share/manager.py:666
+#: manila/share/manager.py:712
 #, python-format
 msgid ""
 "Server Information in exception can not be written to db because it "
@@ -203,14 +198,33 @@ msgstr ""
 msgid "Mount point '%(path)s' does not exist on server '%(server)s'."
 msgstr ""
 
-#: manila/share/drivers/generic.py:926
+#: manila/share/drivers/generic.py:944
 #, python-format
 msgid "Caught error trying delete share: %(error)s, trying delete it forcibly."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:236
+#: manila/share/drivers/glusterfs.py:307
 #, python-format
 msgid "%s is already mounted"
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:607
+#, python-format
+msgid "Invalid request. Ignoring delete_share request for share %(share_id)s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:726
+#, python-format
+msgid ""
+"Access to %(share)s at %(export)s is already granted for %(access_to)s. "
+"GlusterFS volume options might have been changed externally."
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:771
+#, python-format
+msgid ""
+"Access to %(share)s at %(export)s is already denied for %(access_to)s. "
+"GlusterFS volume options might have been changed externally."
 msgstr ""
 
 #: manila/share/drivers/service_instance.py:309
@@ -375,12 +389,12 @@ msgstr ""
 msgid "Can not get access id from share. share_name: %s"
 msgstr ""
 
-#: manila/share/drivers/huawei/huawei_nas.py:154
+#: manila/share/drivers/huawei/huawei_nas.py:150
 #, python-format
 msgid "Delete snapshot share id %s fs has been deleted."
 msgstr ""
 
-#: manila/share/drivers/huawei/huawei_nas.py:164
+#: manila/share/drivers/huawei/huawei_nas.py:160
 #, python-format
 msgid "Can not find snapshot %s in array."
 msgstr ""
@@ -396,27 +410,47 @@ msgstr ""
 msgid "Invalid trace flag: %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:515
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:556
 #, python-format
 msgid "No aggregates assigned to Vserver %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:1021
-msgid ""
-"Data ONTAP API 'nfs-exportfs-append-rules-2' compatibility action: "
-"remember behavior to send proper values with first attempt next time. Now"
-" trying send another request with changed value for 'pathname'."
-msgstr ""
-
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:1107
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:1297
 #, python-format
 msgid "Failed to invoke EMS. %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:48
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:480
+#, python-format
+msgid ""
+"Could not determine share server for share being deleted: %(share)s. "
+"Deletion of share record will proceed anyway. Error: %(error)s"
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:550
+#, python-format
+msgid ""
+"Could not determine share server for snapshot being deleted: %(snap)s. "
+"Deletion of snapshot record will proceed anyway. Error: %(error)s"
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:50
 msgid ""
 "Vserver is specified in the configuration. This is ignored when the "
 "driver is managing share servers."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:233
+msgid ""
+"Vserver not specified for share server being deleted. Deletion of share "
+"server record will proceed anyway."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:239
+#, python-format
+msgid ""
+"Could not find Vserver for share server being deleted: %s. Deletion of "
+"share server record will proceed anyway."
 msgstr ""
 
 #: manila/share/drivers/quobyte/jsonrpc.py:98

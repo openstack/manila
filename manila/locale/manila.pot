@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev173\n"
+"Project-Id-Version: manila 2015.1.dev92\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-19 06:09+0000\n"
+"POT-Creation-Date: 2015-04-12 06:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -75,8 +75,8 @@ msgstr ""
 msgid "Invalid host: %(reason)s"
 msgstr ""
 
-#: manila/exception.py:159 manila/exception.py:510 manila/exception.py:514
-#: manila/exception.py:518 manila/exception.py:522 manila/exception.py:551
+#: manila/exception.py:159 manila/exception.py:530 manila/exception.py:534
+#: manila/exception.py:538 manila/exception.py:542 manila/exception.py:571
 #, python-format
 msgid "%(err)s"
 msgstr ""
@@ -472,44 +472,67 @@ msgid "Service instance is not available."
 msgstr ""
 
 #: manila/exception.py:502
-msgid "Exception due to NetApp failure."
+msgid "Storage resource exception."
 msgstr ""
 
 #: manila/exception.py:506
 #, python-format
-msgid "Vserver %(vserver)s is not available."
+msgid "Storage resource %(name)s not found."
+msgstr ""
+
+#: manila/exception.py:510
+#, python-format
+msgid "Snapshot %(name)s not found."
+msgstr ""
+
+#: manila/exception.py:514
+#, python-format
+msgid "Snapshot %(name)s info not available."
+msgstr ""
+
+#: manila/exception.py:518
+msgid "Exception due to NetApp failure."
+msgstr ""
+
+#: manila/exception.py:522
+#, python-format
+msgid "Vserver %(vserver)s not found."
 msgstr ""
 
 #: manila/exception.py:526
+msgid "Vserver not specified."
+msgstr ""
+
+#: manila/exception.py:546
 msgid "GPFS exception occurred."
 msgstr ""
 
-#: manila/exception.py:530
+#: manila/exception.py:550
 msgid "GPFS Ganesha exception occurred."
 msgstr ""
 
-#: manila/exception.py:534
+#: manila/exception.py:554
 msgid "Ganesha management command failed."
 msgstr ""
 
-#: manila/exception.py:543
+#: manila/exception.py:563
 msgid "Invalid Sqlite database."
 msgstr ""
 
-#: manila/exception.py:547
+#: manila/exception.py:567
 msgid "Exception in SSH protocol negotiation or logic."
 msgstr ""
 
-#: manila/exception.py:555
+#: manila/exception.py:575
 msgid "HDFS exception occurred!"
 msgstr ""
 
-#: manila/exception.py:559
+#: manila/exception.py:579
 #, python-format
 msgid "Quobyte exception occurred: %(msg)s"
 msgstr ""
 
-#: manila/exception.py:564
+#: manila/exception.py:584
 #, python-format
 msgid ""
 "Quobyte JsonRpc call to backend raised an exception: %(result)s, Quobyte "
@@ -645,21 +668,21 @@ msgstr ""
 msgid "Only 'ip','user',or'cert' access types are supported."
 msgstr ""
 
-#: manila/api/contrib/share_manage.py:66
+#: manila/api/contrib/share_manage.py:74
 msgid "Share entity not found in request body"
 msgstr ""
 
-#: manila/api/contrib/share_manage.py:75
+#: manila/api/contrib/share_manage.py:83
 #, python-format
 msgid "Required parameter %s not found"
 msgstr ""
 
-#: manila/api/contrib/share_manage.py:78
+#: manila/api/contrib/share_manage.py:86
 #, python-format
 msgid "Required parameter %s is empty"
 msgstr ""
 
-#: manila/api/contrib/share_manage.py:82
+#: manila/api/contrib/share_manage.py:90
 msgid "service_host parameter should contain pool."
 msgstr ""
 
@@ -679,6 +702,26 @@ msgstr ""
 
 #: manila/api/contrib/share_type_access.py:163
 msgid "You cannot add project to public share_type."
+msgstr ""
+
+#: manila/api/contrib/share_unmanage.py:49
+msgid ""
+"Operation 'unmanage' is not supported for shares that are created on top "
+"of share servers (created with share-networks)."
+msgstr ""
+
+#: manila/api/contrib/share_unmanage.py:56
+#, python-format
+msgid ""
+"Share with transitional state can not be unmanaged. Share '%(s_id)s' is "
+"in '%(state)s' state."
+msgstr ""
+
+#: manila/api/contrib/share_unmanage.py:63
+#, python-format
+msgid ""
+"Share '%(s_id)s' can not be unmanaged because it has '%(amount)s' "
+"dependent snapshot(s)."
 msgstr ""
 
 #: manila/api/contrib/types_extra_specs.py:72
@@ -727,43 +770,43 @@ msgstr ""
 msgid "Must specify an ExtensionManager class"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:136 manila/api/openstack/wsgi.py:539
+#: manila/api/openstack/wsgi.py:248 manila/api/openstack/wsgi.py:651
 msgid "cannot understand JSON"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:160
+#: manila/api/openstack/wsgi.py:272
 msgid "cannot understand XML"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:544
+#: manila/api/openstack/wsgi.py:656
 msgid "too many body keys"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:817
+#: manila/api/openstack/wsgi.py:929
 #, python-format
 msgid "There is no such action: %s"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:820 manila/api/openstack/wsgi.py:833
+#: manila/api/openstack/wsgi.py:932 manila/api/openstack/wsgi.py:945
 #: manila/api/v1/share_metadata.py:54 manila/api/v1/share_metadata.py:72
 #: manila/api/v1/share_metadata.py:97 manila/api/v1/share_metadata.py:119
 msgid "Malformed request body"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:830
+#: manila/api/openstack/wsgi.py:942
 msgid "Unsupported Content-Type"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:842
+#: manila/api/openstack/wsgi.py:954
 msgid "Malformed request url"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:887
+#: manila/api/openstack/wsgi.py:999
 #, python-format
 msgid "%(url)s returned with HTTP %(status)d"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:890
+#: manila/api/openstack/wsgi.py:1002
 #, python-format
 msgid "%(url)s returned a fault: %(e)s"
 msgstr ""
@@ -848,19 +891,19 @@ msgid ""
 " are %(allowed_statuses)s."
 msgstr ""
 
-#: manila/api/v1/share_types.py:45 manila/api/v1/shares.py:281
+#: manila/api/v1/share_types.py:46 manila/api/v1/shares.py:281
 msgid "Share type not found."
 msgstr ""
 
-#: manila/api/v1/share_types.py:58
+#: manila/api/v1/share_types.py:60
 msgid "Share type not found"
 msgstr ""
 
-#: manila/api/v1/share_types.py:62 manila/share/share_types.py:151
+#: manila/api/v1/share_types.py:64 manila/share/share_types.py:151
 msgid "Default share type not found"
 msgstr ""
 
-#: manila/api/v1/share_types.py:99
+#: manila/api/v1/share_types.py:101
 #, python-format
 msgid "Invalid is_public filter [%s]"
 msgstr ""
@@ -898,28 +941,23 @@ msgstr ""
 msgid "Failed to get Nova VM. %s"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:87
+#: manila/db/sqlalchemy/api.py:88
 msgid "Use of empty request context is deprecated"
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:200
-#, python-format
-msgid "Unrecognized read_deleted value '%s'"
-msgstr ""
-
-#: manila/db/sqlalchemy/api.py:1244 manila/db/sqlalchemy/api.py:1499
+#: manila/db/sqlalchemy/api.py:1239 manila/db/sqlalchemy/api.py:1495
 #, python-format
 msgid "Wrong sorting key provided - '%s'."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1251 manila/db/sqlalchemy/api.py:1506
+#: manila/db/sqlalchemy/api.py:1246 manila/db/sqlalchemy/api.py:1502
 #, python-format
 msgid ""
 "Wrong sorting data provided: sort key is '%(sort_key)s' and sort "
 "direction is '%(sort_dir)s'."
 msgstr ""
 
-#: manila/db/sqlalchemy/api.py:1489
+#: manila/db/sqlalchemy/api.py:1485
 #, python-format
 msgid "Wrong 'usage' key provided - '%(key)s'. Expected keys are '%(ek)s'."
 msgstr ""
@@ -1085,128 +1123,162 @@ msgstr ""
 msgid "Not enough allocatable share gigabytes remaining"
 msgstr ""
 
-#: manila/share/api.py:74 manila/volume/cinder.py:233
+#: manila/share/api.py:76 manila/volume/cinder.py:233
 msgid "status must be 'available'"
 msgstr ""
 
-#: manila/share/api.py:93
+#: manila/share/api.py:95
 #, python-format
 msgid "Share size '%s' must be an integer and greater than 0"
 msgstr ""
 
-#: manila/share/api.py:98
+#: manila/share/api.py:100
 #, python-format
 msgid "Share size '%s' must be equal or greater than snapshot size"
 msgstr ""
 
-#: manila/share/api.py:105
+#: manila/share/api.py:116
 msgid ""
-"Invalid share_type provided (requested type must match source snapshot, "
-"or be omitted). You should omit the argument."
+"Invalid share type specified: the requested share type must match the "
+"type of the source share. If a share type is not specified when "
+"requesting a new share from a snapshot, the share type of the source "
+"share will be applied to the new share."
 msgstr ""
 
-#: manila/share/api.py:114
+#: manila/share/api.py:128
 #, python-format
 msgid ""
 "Invalid share protocol provided: %(provided)s. It is either disabled or "
 "unsupported. Available protocols: %(supported)s"
 msgstr ""
 
-#: manila/share/api.py:248
+#: manila/share/api.py:262
 msgid "Share already exists."
 msgstr ""
 
-#: manila/share/api.py:291
+#: manila/share/api.py:309
 msgid "Share status must be available or error"
 msgstr ""
 
-#: manila/share/api.py:296
+#: manila/share/api.py:314
 #, python-format
 msgid "Share still has %d dependent snapshots"
 msgstr ""
 
-#: manila/share/api.py:323
+#: manila/share/api.py:353
 msgid "must be available"
 msgstr ""
 
-#: manila/share/api.py:383
+#: manila/share/api.py:413
 msgid "Share Snapshot status must be 'available' or 'error'."
 msgstr ""
 
-#: manila/share/api.py:425
+#: manila/share/api.py:455
 #, python-format
 msgid "Wrong metadata filter provided: %s."
 msgstr ""
 
-#: manila/share/api.py:434
+#: manila/share/api.py:464
 #, python-format
 msgid "Wrong extra specs filter provided: %s."
 msgstr ""
 
-#: manila/share/api.py:438
+#: manila/share/api.py:468
 #, python-format
 msgid "Wrong sort_key filter provided: '%s'."
 msgstr ""
 
-#: manila/share/api.py:442
+#: manila/share/api.py:472
 #, python-format
 msgid "Wrong sort_dir filter provided: '%s'."
 msgstr ""
 
-#: manila/share/api.py:495
+#: manila/share/api.py:525
 #, python-format
 msgid "Wrong '%(k)s' filter provided: '%(v)s'."
 msgstr ""
 
-#: manila/share/api.py:527 manila/share/api.py:556
+#: manila/share/api.py:557 manila/share/api.py:586
 msgid "Share host is None"
 msgstr ""
 
-#: manila/share/api.py:530 manila/share/api.py:559
+#: manila/share/api.py:560 manila/share/api.py:589
 msgid "Share status must be available"
 msgstr ""
 
-#: manila/share/api.py:545
+#: manila/share/api.py:575
 #, python-format
 msgid "Invalid share access level: %s."
 msgstr ""
 
-#: manila/share/api.py:570
+#: manila/share/api.py:600
 msgid "Access policy should be active or in error state"
 msgstr ""
 
-#: manila/share/api.py:607
+#: manila/share/api.py:637
 msgid "Metadata property key is blank"
 msgstr ""
 
-#: manila/share/api.py:611
+#: manila/share/api.py:641
 msgid "Metadata property key is greater than 255 characters"
 msgstr ""
 
-#: manila/share/api.py:615
+#: manila/share/api.py:645
 msgid "Metadata property value is blank"
 msgstr ""
 
-#: manila/share/api.py:619
+#: manila/share/api.py:649
 msgid "Metadata property value is greater than 1023 characters"
 msgstr ""
 
-#: manila/share/manager.py:338
+#: manila/share/manager.py:359
 msgid "Manage share is not supported for driver_handles_share_servers=True mode."
 msgstr ""
 
-#: manila/share/manager.py:346
+#: manila/share/manager.py:367
 msgid "Driver cannot calculate share size."
 msgstr ""
 
-#: manila/share/manager.py:394
+#: manila/share/manager.py:424
 msgid ""
 "Unmanage share is not supported for driver_handles_share_servers=True "
 "mode."
 msgstr ""
 
-#: manila/share/manager.py:399
+#: manila/share/manager.py:429
 msgid "Unmanage share is not supported for shares with share servers."
+msgstr ""
+
+#: manila/share/manager.py:725
+#, python-format
+msgid ""
+"A segmentation ID %(vlan_id)s was specified but can not be used with a "
+"network of type %(seg_type)s; the segmentation ID option must be omitted "
+"or set to 0"
+msgstr ""
+
+#: manila/share/manager.py:735
+#, python-format
+msgid ""
+"A segmentation ID %s was specified but is not valid for a VLAN network "
+"type; the segmentation ID must be an integer value in the range of "
+"[1,4094]"
+msgstr ""
+
+#: manila/share/manager.py:744
+#, python-format
+msgid ""
+"A segmentation ID %s was specified but is not valid for a VXLAN network "
+"type; the segmentation ID must be an integer value in the range of "
+"[1,16777215]"
+msgstr ""
+
+#: manila/share/manager.py:753
+#, python-format
+msgid ""
+"A segmentation ID %s was specified but is not valid for a GRE network "
+"type; the segmentation ID must be an integer value in the range of [1, "
+"4294967295]"
 msgstr ""
 
 #: manila/share/share_types.py:63 manila/share/share_types.py:129
@@ -1269,249 +1341,274 @@ msgstr ""
 msgid "Error. Ambiguous volumes for name '%s'"
 msgstr ""
 
-#: manila/share/drivers/generic.py:399
+#: manila/share/drivers/generic.py:398
 msgid "Error. Ambiguous volume snaphots"
 msgstr ""
 
-#: manila/share/drivers/generic.py:427
+#: manila/share/drivers/generic.py:426
 #, python-format
 msgid "Volume have not been detached in %ss. Giving up"
 msgstr ""
 
-#: manila/share/drivers/generic.py:450
+#: manila/share/drivers/generic.py:449
 msgid "Failed to create volume"
 msgstr ""
 
-#: manila/share/drivers/generic.py:455
+#: manila/share/drivers/generic.py:454
 #, python-format
 msgid "Volume have not been created in %ss. Giving up"
 msgstr ""
 
-#: manila/share/drivers/generic.py:467
+#: manila/share/drivers/generic.py:466
 msgid "Volume is still in use and cannot be deleted now."
 msgstr ""
 
-#: manila/share/drivers/generic.py:481
+#: manila/share/drivers/generic.py:480
 #, python-format
 msgid "Volume have not been deleted in %ss. Giving up"
 msgstr ""
 
-#: manila/share/drivers/generic.py:543
+#: manila/share/drivers/generic.py:542
 msgid "Failed to create volume snapshot"
 msgstr ""
 
-#: manila/share/drivers/generic.py:551
+#: manila/share/drivers/generic.py:550
 #, python-format
 msgid "Volume snapshot have not been created in %ss. Giving up"
 msgstr ""
 
-#: manila/share/drivers/generic.py:574
+#: manila/share/drivers/generic.py:573
 #, python-format
 msgid "Volume snapshot have not been deleted in %ss. Giving up"
 msgstr ""
 
-#: manila/share/drivers/generic.py:654
+#: manila/share/drivers/generic.py:656
 msgid ""
 "Operation \"manage\" for shares is supported only when driver does not "
 "handle share servers."
 msgstr ""
 
-#: manila/share/drivers/generic.py:664
+#: manila/share/drivers/generic.py:666
 #, python-format
 msgid "%(mode)s != False"
 msgstr ""
 
-#: manila/share/drivers/generic.py:680
+#: manila/share/drivers/generic.py:683
 #, python-format
 msgid "Provided share %s is not mounted."
 msgstr ""
 
-#: manila/share/drivers/generic.py:708
+#: manila/share/drivers/generic.py:711
 #, python-format
 msgid "Provided volume %s is not attached to service instance."
 msgstr ""
 
-#: manila/share/drivers/generic.py:735
+#: manila/share/drivers/generic.py:738
 #, python-format
 msgid "Cannot calculate size of share %(path)s : %(error)s"
 msgstr ""
 
-#: manila/share/drivers/generic.py:806
+#: manila/share/drivers/generic.py:779
+msgid "Can not get 'public_address' for generation of export."
+msgstr ""
+
+#: manila/share/drivers/generic.py:819
 #, python-format
 msgid "NFS server is not installed on %s"
 msgstr ""
 
-#: manila/share/drivers/generic.py:902
+#: manila/share/drivers/generic.py:920
 #, python-format
 msgid "Share section %s already defined."
 msgstr ""
 
-#: manila/share/drivers/generic.py:935
+#: manila/share/drivers/generic.py:953
 #: manila/share/drivers/emc/plugins/isilon/isilon.py:182
 #: manila/share/drivers/emc/plugins/vnx/connection.py:387
 #: manila/share/drivers/emc/plugins/vnx/connection.py:442
+#: manila/share/drivers/netapp/dataontap/protocols/nfs_cmode.py:53
 #: manila/share/drivers/zfssa/zfssarest.py:326
 #: manila/share/drivers/zfssa/zfssarest.py:362
 msgid "Only ip access type allowed."
 msgstr ""
 
-#: manila/share/drivers/generic.py:980
+#: manila/share/drivers/generic.py:1000
 #, python-format
 msgid "Got incorrect CIFS export location '%s'."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:173
+#: manila/share/drivers/glusterfs.py:119
+#, python-format
+msgid "Invalid gluster address %s."
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:176
+#, python-format
+msgid "'gluster version' failed on server %(server)s: %(message)s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:189
+#, python-format
+msgid ""
+"Cannot parse version info obtained from server %(server)s, version info: "
+"%(info)s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:202
+#, python-format
+msgid ""
+"Unsupported GlusterFS version %(version)s on server %(server)s, minimum "
+"requirement: %(minvers)s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs.py:243
 msgid ""
 "glusterfs_target configuration that specifies the GlusterFS volume to be "
 "mounted on the Manila host is not set."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:186
-#: manila/share/drivers/glusterfs_native.py:124
+#: manila/share/drivers/glusterfs.py:257
+#: manila/share/drivers/glusterfs_native.py:218
 msgid "mount.glusterfs is not installed."
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:276
+#: manila/share/drivers/glusterfs.py:347
 msgid "GlusterFS control mount is not available"
 msgstr ""
 
-#: manila/share/drivers/glusterfs.py:361
+#: manila/share/drivers/glusterfs.py:432
 #, python-format
 msgid "Unsupported share type, %s."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:109
-msgid ""
-"glusterfs_targets list seems to be empty! Add one or more gluster volumes"
-" to work with in the glusterfs_targets configuration parameter."
+#: manila/share/drivers/glusterfs_native.py:176
+#, python-format
+msgid "'gluster version' failed on servers %s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:128
+#: manila/share/drivers/glusterfs_native.py:194
+#, python-format
+msgid ""
+"Unsupported GlusterFS version on servers %(servers)s, minimum "
+"requirement: %(minvers)s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:205
+#, python-format
+msgid "Gluster backend does not provide any volume matching pattern %s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:222
 msgid "Error running mount.glusterfs."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:137
+#: manila/share/drivers/glusterfs_native.py:232
 msgid ""
 "No unused gluster volumes available for use as share! Create share won't "
-"be supported unless existing shares are deleted or add one or more "
-"gluster volumes to work with in the glusterfs_targets configuration "
-"parameter."
+"be supported unless existing shares are deleted or some gluster volumes "
+"are created with names matching 'glusterfs_volume_pattern'."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:193
+#: manila/share/drivers/glusterfs_native.py:275
+msgid "gluster volume list failed"
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:317
+#, python-format
+msgid "Option %(option)s is not defined on gluster volume. Volume: %(volname)s"
+msgstr ""
+
+#: manila/share/drivers/glusterfs_native.py:332
 #, python-format
 msgid ""
-"Error in gluster volume set during volume setup. Volume: %(volname)s, "
-"Option: %(option)s, rror: %(error)s"
+"Error in gluster volume set during volume setup. volume: %(volname)s, "
+"option: %(option)s, value: %(value)s, error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:206
-#: manila/share/drivers/glusterfs_native.py:219
-#, python-format
-msgid ""
-"Error in gluster volume set during volume setup. Volume: %(volname)s, "
-"Option: %(option)s, Error: %(error)s"
-msgstr ""
-
-#: manila/share/drivers/glusterfs_native.py:236
+#: manila/share/drivers/glusterfs_native.py:357
 #, python-format
 msgid "Error stopping gluster volume. Volume: %(volname)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:246
+#: manila/share/drivers/glusterfs_native.py:367
 #, python-format
 msgid "Error starting gluster volume. Volume: %(volname)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:257
+#: manila/share/drivers/glusterfs_native.py:440
 msgid "Couldn't find a free gluster volume to use."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:269
+#: manila/share/drivers/glusterfs_native.py:459
 msgid "Couldn't find the share in used list."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:281
+#: manila/share/drivers/glusterfs_native.py:469
 #, python-format
 msgid ""
 "Unable to mount gluster volume. gluster_export: %(export)s, Error: "
 "%(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:293
+#: manila/share/drivers/glusterfs_native.py:481
 #, python-format
 msgid "Unable to unmount gluster volume. mount_dir: %(mntdir)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:307
-#: manila/share/drivers/glusterfs_native.py:320
-#: manila/share/drivers/glusterfs_native.py:360
-#: manila/share/drivers/glusterfs_native.py:373
+#: manila/share/drivers/glusterfs_native.py:495
+#: manila/share/drivers/glusterfs_native.py:508
+#: manila/share/drivers/glusterfs_native.py:548
+#: manila/share/drivers/glusterfs_native.py:561
 #, python-format
 msgid ""
 "Error in gluster volume set during _wipe_gluster_vol. Volume: "
 "%(volname)s, Option: %(option)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:344
+#: manila/share/drivers/glusterfs_native.py:532
 #, python-format
 msgid ""
 "Error trying to wipe gluster volume. gluster_export: %(export)s, Error: "
 "%(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:395
-#, python-format
-msgid "Error creating share %(share_id)s"
-msgstr ""
-
-#: manila/share/drivers/glusterfs_native.py:419
-#, python-format
-msgid "Invalid request. Ignoring delete_share request for share %(share_id)s"
-msgstr ""
-
-#: manila/share/drivers/glusterfs_native.py:428
-#, python-format
-msgid "Error during delete_share request for share %(share_id)s"
-msgstr ""
-
-#: manila/share/drivers/glusterfs_native.py:467
+#: manila/share/drivers/glusterfs_native.py:659
 #, python-format
 msgid "Share %(share_id)s does not support snapshots: %(errstr)s."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:474
+#: manila/share/drivers/glusterfs_native.py:665
 #, python-format
 msgid "Creating snapshot for share %(share_id)s failed with %(errno)d: %(errstr)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:507
+#: manila/share/drivers/glusterfs_native.py:698
 #, python-format
 msgid ""
 "Deleting snapshot %(snap_id)s of share %(share_id)s failed with "
 "%(errno)d: %(errstr)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:521
+#: manila/share/drivers/glusterfs_native.py:713
 msgid "Only 'cert' access type allowed"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:531
+#: manila/share/drivers/glusterfs_native.py:740
 #, python-format
 msgid ""
 "Error in gluster volume set during allow access. Volume: %(volname)s, "
 "Option: %(option)s, access_to: %(access_to)s, Error: %(error)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:551
+#: manila/share/drivers/glusterfs_native.py:761
 msgid "Only 'cert' access type allowed for access removal."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:562
+#: manila/share/drivers/glusterfs_native.py:785
 #, python-format
 msgid ""
-"Error in gluster volume reset during deny access. Volume: %(volname)s, "
-"Option: %(option)s, Error: %(error)s"
+"Error in gluster volume set during deny access. Volume: %(volname)s, "
+"Option: %(option)s, access_to: %(access_to)s, Error: %(error)s"
 msgstr ""
 
 #: manila/share/drivers/service_instance.py:178
@@ -1653,6 +1750,7 @@ msgstr ""
 #: manila/share/drivers/huawei/huawei_helper.py:192
 #: manila/share/drivers/huawei/huawei_helper.py:536
 #: manila/share/drivers/huawei/huawei_helper.py:642
+#: manila/share/drivers/huawei/huawei_helper.py:724
 #, python-format
 msgid "Invalid NAS protocol supplied: %s."
 msgstr ""
@@ -2233,11 +2331,11 @@ msgstr ""
 msgid "Huawei configuration missing."
 msgstr ""
 
-#: manila/share/drivers/huawei/huawei_nas.py:135
+#: manila/share/drivers/huawei/huawei_nas.py:131
 msgid "Create a snapshot,share fs id is empty."
 msgstr ""
 
-#: manila/share/drivers/huawei/huawei_nas.py:244
+#: manila/share/drivers/huawei/huawei_nas.py:240
 #, python-format
 msgid "_wait_for_condition: %s timed out."
 msgstr ""
@@ -2436,133 +2534,168 @@ msgstr ""
 msgid "Configuration value %s is not set."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/api.py:458
+#: manila/share/drivers/netapp/dataontap/client/api.py:462
 #, python-format
 msgid "No element by given name %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/api.py:478
+#: manila/share/drivers/netapp/dataontap/client/api.py:482
 msgid "Not a valid value for NaElement."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/api.py:482
+#: manila/share/drivers/netapp/dataontap/client/api.py:486
 msgid "NaElement name cannot be null."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/api.py:525
+#: manila/share/drivers/netapp/dataontap/client/api.py:529
 msgid "Type cannot be converted into NaElement."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/api.py:558
+#: manila/share/drivers/netapp/dataontap/client/api.py:562
 msgid "Requires an NaServer instance."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:134
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:129
 #, python-format
 msgid "Could not determine root volume name for Vserver %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:211
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:206
 #, python-format
 msgid "Cannot delete Vserver. Vserver %s has shares."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:272
-#, python-format
-msgid "Data port does not exist for node %s."
-msgstr ""
-
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:291
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:328
 msgid "Could not list aggregates."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:351
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:390
 #, python-format
 msgid "Failed to create VLAN %(vlan)s on port %(port)s. %(err_msg)s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:580
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:621
 #, python-format
 msgid "Unsupported security service type %s for Data ONTAP driver"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:639
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:680
 #, python-format
 msgid "Failed to create CIFS server entry. %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:665
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:706
 #, python-format
 msgid "Failed to create Kerberos realm. %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:678
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:719
 msgid "Cannot set up Kerberos. There are no LIFs configured."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:715
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:756
 #, python-format
 msgid "Failed to configure DNS. %s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:819
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:860
 #, python-format
 msgid "Could not find aggregate for volume %s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:894
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:959
+#, python-format
+msgid ""
+"Could not read information for snapshot %(name)s. Code: %(code)s. Reason:"
+" %(reason)s"
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:978
 #, python-format
 msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:268
+#: manila/share/drivers/netapp/dataontap/client/client_cmode.py:1179
+#, python-format
+msgid "Could not find export policy for volume %s."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:281
 #, python-format
 msgid "Invalid NAS protocol supplied: %s. "
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:284
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:297
 #, python-format
 msgid "The protocol %(protocol)s is not licensed on controller %(host)s"
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:321
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:334
 msgid "Pool is not available in the share host field."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:359
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:375
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:372
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:388
 #, python-format
 msgid ""
 "Invalid value \"%(value)s\" for extra_spec \"%(key)s\" in share_type "
 "%(type_id)s for share %(share_id)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:486
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:511
 #, python-format
 msgid ""
 "Cannot find network interfaces for Vserver %(vserver)s and protocol "
 "%(proto)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:53
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:55
 msgid ""
 "Cluster credentials must be specified in the configuration when the "
 "driver is managing share servers."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:64
-msgid "Share server not provided."
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:61
+msgid ""
+"No aggregates are available for provisioning shares. Ensure that the "
+"configuration option netapp_aggregate_name_search_pattern is set "
+"correctly."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:71
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:74
+msgid ""
+"Clustered Data ONTAP 8.3.0 or higher is not supported by this version of "
+"the driver when the configuration option driver_handles_share_servers is "
+"set to True."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:84
+msgid "Share server not provided"
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:92
 msgid ""
 "Vserver name is absent in backend details. Please check whether Vserver "
 "was created properly."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:109
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:130
+#, python-format
+msgid ""
+"The specified network type %s is unsupported by the NetApp clustered Data"
+" ONTAP driver"
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:148
 #, python-format
 msgid "Vserver %s already exists."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_multi_svm.py:206
+#, python-format
+msgid ""
+"Could not find eligible network ports on node %s on which to create "
+"Vserver LIFs."
 msgstr ""
 
 #: manila/share/drivers/netapp/dataontap/cluster_mode/lib_single_svm.py:50
@@ -2577,13 +2710,22 @@ msgid ""
 "credentials."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_single_svm.py:80
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_single_svm.py:68
+#, python-format
+msgid ""
+"No aggregates are available to Vserver %s for provisioning shares. Ensure"
+" that one or more aggregates are assigned to the Vserver and that the "
+"configuration option netapp_aggregate_name_search_pattern is set "
+"correctly."
+msgstr ""
+
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_single_svm.py:89
 msgid ""
 "Share server must not be passed to the driver when the driver is not "
 "managing share servers."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_single_svm.py:85
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_single_svm.py:94
 msgid "Vserver not specified in configuration."
 msgstr ""
 
