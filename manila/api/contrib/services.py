@@ -17,8 +17,6 @@ from oslo_log import log
 import webob.exc
 
 from manila.api import extensions
-from manila.api.openstack import wsgi
-from manila.api import xmlutil
 from manila import db
 from manila import exception
 from manila import utils
@@ -27,33 +25,7 @@ LOG = log.getLogger(__name__)
 authorize = extensions.extension_authorizer('share', 'services')
 
 
-class ServicesIndexTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('services')
-        elem = xmlutil.SubTemplateElement(root, 'service', selector='services')
-        elem.set('binary')
-        elem.set('host')
-        elem.set('zone')
-        elem.set('status')
-        elem.set('state')
-        elem.set('update_at')
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('host')
-        root.set('host')
-        root.set('disabled')
-        root.set('binary')
-        root.set('status')
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
 class ServiceController(object):
-    @wsgi.serializers(xml=ServicesIndexTemplate)
     def index(self, req):
         """Return a list of all running services."""
         context = req.environ['manila.context']
@@ -90,7 +62,6 @@ class ServiceController(object):
 
         return {'services': services}
 
-    @wsgi.serializers(xml=ServicesUpdateTemplate)
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service."""
         context = req.environ['manila.context']
@@ -126,7 +97,6 @@ class Services(extensions.ExtensionDescriptor):
 
     name = "Services"
     alias = "os-services"
-    namespace = "http://docs.openstack.org/volume/ext/services/api/v2"
     updated = "2012-10-28T00:00:00-00:00"
 
     def get_resources(self):

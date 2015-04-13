@@ -25,7 +25,6 @@ from webob import exc
 from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import share_networks as share_networks_views
-from manila.api import xmlutil
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
@@ -39,43 +38,6 @@ RESOURCE_NAME = 'share_network'
 RESOURCES_NAME = 'share_networks'
 LOG = log.getLogger(__name__)
 QUOTAS = quota.QUOTAS
-SHARE_NETWORK_ATTRS = (
-    'id',
-    'project_id',
-    'user_id',
-    'created_at',
-    'updated_at',
-    'nova_net_id',
-    'neutron_net_id',
-    'neutron_subnet_id',
-    'network_type',
-    'segmentation_id',
-    'cidr',
-    'ip_version',
-    'name',
-    'description',
-)
-
-
-def _make_share_network(elem):
-    for attr in SHARE_NETWORK_ATTRS:
-        elem.set(attr)
-
-
-class ShareNetworkTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement(RESOURCE_NAME, selector=RESOURCE_NAME)
-        _make_share_network(root)
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class ShareNetworksTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement(RESOURCES_NAME)
-        elem = xmlutil.SubTemplateElement(root, RESOURCE_NAME,
-                                          selector=RESOURCES_NAME)
-        _make_share_network(elem)
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class ShareNetworkController(wsgi.Controller):
@@ -87,7 +49,6 @@ class ShareNetworkController(wsgi.Controller):
         super(ShareNetworkController, self).__init__()
         self.share_rpcapi = share_rpcapi.ShareAPI()
 
-    @wsgi.serializers(xml=ShareNetworkTemplate)
     def show(self, req, id):
         """Return data about the requested network info."""
         context = req.environ['manila.context']
@@ -132,7 +93,6 @@ class ShareNetworkController(wsgi.Controller):
                           project_id=share_network['project_id'])
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=ShareNetworksTemplate)
     def _get_share_networks(self, req, is_detail=True):
         """Returns a list of share networks."""
         context = req.environ['manila.context']
@@ -200,14 +160,12 @@ class ShareNetworkController(wsgi.Controller):
         limited_list = common.limited(networks, req)
         return self._view_builder.build_share_networks(limited_list, is_detail)
 
-    @wsgi.serializers(xml=ShareNetworksTemplate)
     def index(self, req):
         """Returns a summary list of share networks."""
         policy.check_policy(req.environ['manila.context'], RESOURCE_NAME,
                             'index')
         return self._get_share_networks(req, is_detail=False)
 
-    @wsgi.serializers(xml=ShareNetworksTemplate)
     def detail(self, req):
         """Returns a detailed list of share networks."""
         policy.check_policy(req.environ['manila.context'], RESOURCE_NAME,
@@ -231,7 +189,6 @@ class ShareNetworkController(wsgi.Controller):
                     "exclusive. Only one of these are allowed at a time.")
             raise exc.HTTPBadRequest(explanation=msg)
 
-    @wsgi.serializers(xml=ShareNetworkTemplate)
     def update(self, req, id, body):
         """Update specified share network."""
         context = req.environ['manila.context']
@@ -267,7 +224,6 @@ class ShareNetworkController(wsgi.Controller):
 
         return self._view_builder.build_share_network(share_network)
 
-    @wsgi.serializers(xml=ShareNetworkTemplate)
     def create(self, req, body):
         """Creates a new share network."""
         context = req.environ['manila.context']
@@ -309,7 +265,6 @@ class ShareNetworkController(wsgi.Controller):
             QUOTAS.commit(context, reservations)
             return self._view_builder.build_share_network(share_network)
 
-    @wsgi.serializers(xml=ShareNetworkTemplate)
     def action(self, req, id, body):
         _actions = {
             'add_security_service': self._add_security_service,

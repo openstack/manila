@@ -13,14 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from xml.dom import minidom
-
 from oslo_serialization import jsonutils
 import webob
 import webob.dec
 import webob.exc
 
-from manila.api import common
 from manila.api.openstack import wsgi
 from manila import test
 
@@ -88,9 +85,9 @@ class TestFaults(test.TestCase):
         def raiser(req):
             raise wsgi.Fault(webob.exc.HTTPNotFound(explanation='whut?'))
 
-        req = webob.Request.blank('/.xml')
+        req = webob.Request.blank('/.json')
         resp = req.get_response(raiser)
-        self.assertEqual(resp.content_type, "application/xml")
+        self.assertEqual(resp.content_type, "application/json")
         self.assertEqual(resp.status_int, 404)
         self.assertTrue('whut?' in resp.body)
 
@@ -100,9 +97,9 @@ class TestFaults(test.TestCase):
         def raiser(req):
             raise wsgi.Fault(webob.exc.HTTPForbidden(explanation='whut?'))
 
-        req = webob.Request.blank('/.xml')
+        req = webob.Request.blank('/.json')
         resp = req.get_response(raiser)
-        self.assertEqual(resp.content_type, "application/xml")
+        self.assertEqual(resp.content_type, "application/json")
         self.assertEqual(resp.status_int, 403)
         self.assertTrue('resizeNotAllowed' not in resp.body)
         self.assertTrue('forbidden' in resp.body)
@@ -111,104 +108,3 @@ class TestFaults(test.TestCase):
         """Ensure the status_int is set correctly on faults."""
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
         self.assertEqual(fault.status_int, 400)
-
-    def test_xml_serializer(self):
-        """Ensure that a v1.1 request responds with a v1 xmlns."""
-        request = webob.Request.blank('/v1',
-                                      headers={"Accept": "application/xml"})
-
-        fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='scram'))
-        response = request.get_response(fault)
-
-        self.assertTrue(common.XML_NS_V1 in response.body)
-        self.assertEqual(response.content_type, "application/xml")
-        self.assertEqual(response.status_int, 400)
-
-
-class FaultsXMLSerializationTestV11(test.TestCase):
-    """Tests covering `manila.api.openstack.faults:Fault` class."""
-
-    def _prepare_xml(self, xml_string):
-        xml_string = xml_string.replace("  ", "")
-        xml_string = xml_string.replace("\n", "")
-        xml_string = xml_string.replace("\t", "")
-        return xml_string
-
-    def test_400_fault(self):
-        metadata = {'attributes': {"badRequest": 'code'}}
-        serializer = wsgi.XMLDictSerializer(metadata=metadata,
-                                            xmlns=common.XML_NS_V1)
-
-        fixture = {
-            "badRequest": {
-                "message": "scram",
-                "code": 400,
-            },
-        }
-
-        output = serializer.serialize(fixture)
-        actual = minidom.parseString(self._prepare_xml(output))
-
-        expected = minidom.parseString(self._prepare_xml("""
-                <badRequest code="400" xmlns="%s">
-                    <message>scram</message>
-                </badRequest>
-            """) % common.XML_NS_V1)
-
-        self.assertEqual(expected.toxml(), actual.toxml())
-
-    def test_413_fault(self):
-        metadata = {'attributes': {"overLimit": 'code'}}
-        serializer = wsgi.XMLDictSerializer(metadata=metadata,
-                                            xmlns=common.XML_NS_V1)
-
-        fixture = {
-            "overLimit": {
-                "message": "sorry",
-                "code": 413,
-                "retryAfter": 4,
-            },
-        }
-
-        output = serializer.serialize(fixture)
-        result = minidom.parseString(self._prepare_xml(output))
-
-        # result has 1 child - overLimit
-        self.assertEqual(result.firstChild, result.lastChild)
-        self.assertEqual(result.firstChild.tagName, 'overLimit')
-
-        # overLimit has attrs code = '413' and xmlns = common.XML_NS_V1
-        self.assertEqual(result.firstChild.getAttribute('code'), '413')
-        self.assertEqual(result.firstChild.getAttribute('xmlns'),
-                         common.XML_NS_V1)
-
-        # overLimit has childs message = 'sorry' and retryAfter = '4'
-        message = result.firstChild.getElementsByTagName('message')
-        retry_after = result.firstChild.getElementsByTagName('retryAfter')
-        self.assertEqual(len(message), 1)
-        self.assertEqual(len(retry_after), 1)
-        self.assertEqual(message[0].toxml(), '<message>sorry</message>')
-        self.assertEqual(retry_after[0].toxml(), '<retryAfter>4</retryAfter>')
-
-    def test_404_fault(self):
-        metadata = {'attributes': {"itemNotFound": 'code'}}
-        serializer = wsgi.XMLDictSerializer(metadata=metadata,
-                                            xmlns=common.XML_NS_V1)
-
-        fixture = {
-            "itemNotFound": {
-                "message": "sorry",
-                "code": 404,
-            },
-        }
-
-        output = serializer.serialize(fixture)
-        actual = minidom.parseString(self._prepare_xml(output))
-
-        expected = minidom.parseString(self._prepare_xml("""
-                <itemNotFound code="404" xmlns="%s">
-                    <message>sorry</message>
-                </itemNotFound>
-            """) % common.XML_NS_V1)
-
-        self.assertEqual(expected.toxml(), actual.toxml())

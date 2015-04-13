@@ -23,36 +23,11 @@ from webob import exc
 from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import share_snapshots as snapshot_views
-from manila.api import xmlutil
 from manila import exception
 from manila.i18n import _LI
 from manila import share
 
 LOG = log.getLogger(__name__)
-
-
-def make_snapshot(elem):
-    attrs = ['id', 'size', 'status', 'name', 'description', 'share_proto',
-             'links', 'share_id', 'created_at', 'share_size']
-    for attr in attrs:
-        elem.set(attr)
-
-
-class SnapshotTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('snapshot',
-                                       selector='snapshot')
-        make_snapshot(root)
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class SnapshotsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('snapshots')
-        elem = xmlutil.SubTemplateElement(root, 'snapshot',
-                                          selector='snapshots')
-        make_snapshot(elem)
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class ShareSnapshotsController(wsgi.Controller):
@@ -64,7 +39,6 @@ class ShareSnapshotsController(wsgi.Controller):
         super(ShareSnapshotsController, self).__init__()
         self.share_api = share.API()
 
-    @wsgi.serializers(xml=SnapshotTemplate)
     def show(self, req, id):
         """Return data about the given snapshot."""
         context = req.environ['manila.context']
@@ -89,12 +63,10 @@ class ShareSnapshotsController(wsgi.Controller):
             raise exc.HTTPNotFound()
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=SnapshotsTemplate)
     def index(self, req):
         """Returns a summary list of snapshots."""
         return self._get_snapshots(req, is_detail=False)
 
-    @wsgi.serializers(xml=SnapshotsTemplate)
     def detail(self, req):
         """Returns a detailed list of snapshots."""
         return self._get_snapshots(req, is_detail=True)
@@ -138,7 +110,6 @@ class ShareSnapshotsController(wsgi.Controller):
         """Return share search options allowed by non-admin."""
         return ('display_name', 'name', 'status', 'share_id', 'size')
 
-    @wsgi.serializers(xml=SnapshotTemplate)
     def update(self, req, id, body):
         """Update a snapshot."""
         context = req.environ['manila.context']
@@ -167,7 +138,6 @@ class ShareSnapshotsController(wsgi.Controller):
         return self._view_builder.detail(req, snapshot)
 
     @wsgi.response(202)
-    @wsgi.serializers(xml=SnapshotTemplate)
     def create(self, req, body):
         """Creates a new snapshot."""
         context = req.environ['manila.context']
@@ -204,18 +174,3 @@ class ShareSnapshotsController(wsgi.Controller):
 
 def create_resource():
     return wsgi.Resource(ShareSnapshotsController())
-
-#
-# class Share_snapshots(extensions.ExtensionDescriptor):
-#     """Enable share snapshtos API."""
-#     name = 'ShareSnapshots'
-#     alias = 'snapshots'
-#     namespace = ''
-#     updated = '2013-03-01T00:00:00+00:00'
-#
-#     def get_resources(self):
-#         controller = ShareSnapshotsController()
-#         resource = extensions.ResourceExtension(
-#             'snapshots', controller,
-#             collection_actions={'detail': 'GET'})
-#         return [resource]

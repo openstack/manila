@@ -124,7 +124,6 @@ class Types_manage(extensions.ExtensionDescriptor):
 
     name = "TypesManage"
     alias = "os-types-manage"
-    namespace = "http://docs.openstack.org/share/ext/types-manage/api/v1"
     updated = "2011-08-24T00:00:00+00:00"
 
     def get_controller_extensions(self):

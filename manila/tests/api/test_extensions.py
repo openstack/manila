@@ -16,7 +16,6 @@
 
 import ddt
 import iso8601
-from lxml import etree
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
@@ -24,7 +23,6 @@ import webob
 
 from manila.api import extensions
 from manila.api.v1 import router
-from manila.api import xmlutil
 from manila import policy
 from manila import test
 
@@ -70,8 +68,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         (fox_ext, ) = [
             x for x in data['extensions'] if x['alias'] == 'FOXNSOX']
         self.assertEqual(
-            fox_ext, {'namespace': 'http://www.fox.in.socks/api/ext/pie/v1.0',
-                      'name': 'Fox In Socks',
+            fox_ext, {'name': 'Fox In Socks',
                       'updated': '2011-01-22T13:25:27-06:00',
                       'description': 'The Fox In Socks Extension.',
                       'alias': 'FOXNSOX',
@@ -93,8 +90,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         data = jsonutils.loads(response.body)
         self.assertEqual(
             data['extension'],
-            {"namespace": "http://www.fox.in.socks/api/ext/pie/v1.0",
-             "name": "Fox In Socks",
+            {"name": "Fox In Socks",
              "updated": "2011-01-22T13:25:27-06:00",
              "description": "The Fox In Socks Extension.",
              "alias": "FOXNSOX",
@@ -105,55 +101,6 @@ class ExtensionControllerTest(ExtensionTestCase):
         request = webob.Request.blank("/fake/extensions/4")
         response = request.get_response(app)
         self.assertEqual(404, response.status_int)
-
-    def test_list_extensions_xml(self):
-        app = router.APIRouter()
-        request = webob.Request.blank("/fake/extensions")
-        request.accept = "application/xml"
-        response = request.get_response(app)
-        self.assertEqual(200, response.status_int)
-
-        root = etree.XML(response.body)
-        self.assertEqual(root.tag.split('extensions')[0], NS)
-
-        # Make sure we have all the extensions, extras extensions being OK.
-        exts = root.findall('{0}extension'.format(NS))
-        self.assertTrue(len(exts) >= len(self.ext_list))
-
-        # Make sure that at least Fox in Sox is correct.
-        (fox_ext, ) = [x for x in exts if x.get('alias') == 'FOXNSOX']
-        self.assertEqual(fox_ext.get('name'), 'Fox In Socks')
-        self.assertEqual(
-            fox_ext.get('namespace'),
-            'http://www.fox.in.socks/api/ext/pie/v1.0')
-        self.assertEqual(fox_ext.get('updated'), '2011-01-22T13:25:27-06:00')
-        self.assertEqual(
-            fox_ext.findtext('{0}description'.format(NS)),
-            'The Fox In Socks Extension.')
-
-        xmlutil.validate_schema(root, 'extensions')
-
-    def test_get_extension_xml(self):
-        app = router.APIRouter()
-        request = webob.Request.blank("/fake/extensions/FOXNSOX")
-        request.accept = "application/xml"
-        response = request.get_response(app)
-        self.assertEqual(200, response.status_int)
-        xml = response.body
-
-        root = etree.XML(xml)
-        self.assertEqual(root.tag.split('extension')[0], NS)
-        self.assertEqual(root.get('alias'), 'FOXNSOX')
-        self.assertEqual(root.get('name'), 'Fox In Socks')
-        self.assertEqual(
-            root.get('namespace'),
-            'http://www.fox.in.socks/api/ext/pie/v1.0')
-        self.assertEqual(root.get('updated'), '2011-01-22T13:25:27-06:00')
-        self.assertEqual(
-            root.findtext('{0}description'.format(NS)),
-            'The Fox In Socks Extension.')
-
-        xmlutil.validate_schema(root, 'extension')
 
 
 @ddt.ddt

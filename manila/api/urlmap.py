@@ -253,23 +253,15 @@ class URLMap(paste.urlmap.URLMap):
         path_info = environ['PATH_INFO']
         path_info = self.normalize_url(path_info, False)[1]
 
-        # The MIME type for the response is determined in one of two ways:
-        # 1) URL path suffix (eg /servers/detail.json)
-        # 2) Accept header (eg application/json;q=0.8, application/xml;q=0.2)
-
         # The API version is determined in one of three ways:
         # 1) URL path prefix (eg /v1.1/tenant/servers/detail)
         # 2) Content-Type header (eg application/json;version=1.1)
         # 3) Accept header (eg application/json;q=0.8;version=1.1)
 
+        # Manila supports only application/json as MIME type for the responses.
         supported_content_types = list(wsgi.SUPPORTED_CONTENT_TYPES)
 
         mime_type, app, app_url = self._path_strategy(host, port, path_info)
-
-        # Accept application/atom+xml for the index query of each API
-        # version mount point as well as the root index
-        if (app_url and app_url + '/' == path_info) or path_info == '/':
-            supported_content_types.append('application/atom+xml')
 
         if not app:
             app = self._content_type_strategy(host, port, environ)

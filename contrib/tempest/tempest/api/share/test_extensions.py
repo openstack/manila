@@ -27,5 +27,5 @@ class ExtensionsTest(base.BaseSharesTest):
 
         # verify response
         self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        keys = ["alias", "updated", "namespace", "name", "description"]
+        keys = ["alias", "updated", "name", "description"]
         [self.assertIn(key, ext.keys()) for ext in extensions for key in keys]

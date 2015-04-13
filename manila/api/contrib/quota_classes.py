@@ -16,30 +16,12 @@
 import webob
 
 from manila.api import extensions
-from manila.api.openstack import wsgi
-from manila.api import xmlutil
 from manila import db
 from manila import exception
 from manila import quota
 
-
 QUOTAS = quota.QUOTAS
-
-
 authorize = extensions.extension_authorizer('share', 'quota_classes')
-
-
-class QuotaClassTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('quota_class_set',
-                                       selector='quota_class_set')
-        root.set('id')
-
-        for resource in QUOTAS.resources:
-            elem = xmlutil.SubTemplateElement(root, resource)
-            elem.text = resource
-
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class QuotaClassSetsController(object):
@@ -54,7 +36,6 @@ class QuotaClassSetsController(object):
 
         return dict(quota_class_set=result)
 
-    @wsgi.serializers(xml=QuotaClassTemplate)
     def show(self, req, id):
         context = req.environ['manila.context']
         authorize(context)
@@ -66,7 +47,6 @@ class QuotaClassSetsController(object):
         return self._format_quota_set(id,
                                       QUOTAS.get_class_quotas(context, id))
 
-    @wsgi.serializers(xml=QuotaClassTemplate)
     def update(self, req, id, body):
         context = req.environ['manila.context']
         authorize(context)
@@ -89,8 +69,6 @@ class Quota_classes(extensions.ExtensionDescriptor):
 
     name = "QuotaClasses"
     alias = "os-quota-class-sets"
-    namespace = ("http://docs.openstack.org/volume/ext/"
-                 "quota-classes-sets/api/v1.1")
     updated = "2012-03-12T00:00:00+00:00"
 
     def get_resources(self):

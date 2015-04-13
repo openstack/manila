@@ -22,6 +22,4 @@ class User_quotas(extensions.ExtensionDescriptor):
 
     name = "UserQuotas"
     alias = "os-user-quotas"
-    namespace = ("http://docs.openstack.org/compute/ext/user_quotas"
-                 "/api/v1.1")
     updated = "2013-07-18T00:00:00+00:00"

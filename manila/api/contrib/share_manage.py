@@ -120,8 +120,6 @@ class Share_manage(extensions.ExtensionDescriptor):
 
     name = 'ShareManage'
     alias = 'os-share-manage'
-    namespace = ('http://docs.openstack.org/share/ext/'
-                 'os-share-manage/api/v1')
     updated = '2015-02-17T00:00:00+00:00'
 
     def get_resources(self):

@@ -29,14 +29,13 @@ class RequestTest(test.TestCase):
         self.assertEqual(result, "application/json")
 
     def test_content_type_from_accept(self):
-        for content_type in ('application/xml',
-                             'application/vnd.openstack.volume+xml',
-                             'application/json',
-                             'application/vnd.openstack.volume+json'):
-            request = wsgi.Request.blank('/tests/123')
-            request.headers["Accept"] = content_type
-            result = request.best_match_content_type()
-            self.assertEqual(result, content_type)
+        content_type = 'application/json'
+        request = wsgi.Request.blank('/tests/123')
+        request.headers["Accept"] = content_type
+
+        result = request.best_match_content_type()
+
+        self.assertEqual(result, content_type)
 
     def test_content_type_from_accept_best(self):
         request = wsgi.Request.blank('/tests/123')
@@ -48,13 +47,9 @@ class RequestTest(test.TestCase):
         request.headers["Accept"] = ("application/json; q=0.3, "
                                      "application/xml; q=0.9")
         result = request.best_match_content_type()
-        self.assertEqual(result, "application/xml")
+        self.assertEqual(result, "application/json")
 
     def test_content_type_from_query_extension(self):
-        request = wsgi.Request.blank('/tests/123.xml')
-        result = request.best_match_content_type()
-        self.assertEqual(result, "application/xml")
-
         request = wsgi.Request.blank('/tests/123.json')
         result = request.best_match_content_type()
         self.assertEqual(result, "application/json")
@@ -62,12 +57,6 @@ class RequestTest(test.TestCase):
         request = wsgi.Request.blank('/tests/123.invalid')
         result = request.best_match_content_type()
         self.assertEqual(result, "application/json")
-
-    def test_content_type_accept_and_query_extension(self):
-        request = wsgi.Request.blank('/tests/123.xml')
-        request.headers["Accept"] = "application/json"
-        result = request.best_match_content_type()
-        self.assertEqual(result, "application/xml")
 
     def test_content_type_accept_default(self):
         request = wsgi.Request.blank('/tests/123.unsupported')
@@ -162,16 +151,6 @@ class DictSerializerTest(test.TestCase):
         self.assertEqual(serializer.serialize({}, 'update'), '')
 
 
-class XMLDictSerializerTest(test.TestCase):
-    def test_xml(self):
-        input_dict = dict(servers=dict(a=(2, 3)))
-        expected_xml = '<serversxmlns="asdf"><a>(2,3)</a></servers>'
-        serializer = wsgi.XMLDictSerializer(xmlns="asdf")
-        result = serializer.serialize(input_dict)
-        result = result.replace('\n', '').replace(' ', '')
-        self.assertEqual(result, expected_xml)
-
-
 class JSONDictSerializerTest(test.TestCase):
     def test_json(self):
         input_dict = dict(servers=dict(a=(2, 3)))
@@ -209,37 +188,6 @@ class JSONDeserializerTest(test.TestCase):
         }
         deserializer = wsgi.JSONDeserializer()
         self.assertEqual(deserializer.deserialize(data), as_dict)
-
-
-class XMLDeserializerTest(test.TestCase):
-    def test_xml(self):
-        xml = """
-            <a a1="1" a2="2">
-              <bs><b>1</b><b>2</b><b>3</b><b><c c1="1"/></b></bs>
-              <d><e>1</e></d>
-              <f>1</f>
-            </a>
-            """.strip()
-        as_dict = {
-            'body': {
-                'a': {
-                    'a1': '1',
-                    'a2': '2',
-                    'bs': ['1', '2', '3', {'c': {'c1': '1'}}],
-                    'd': {'e': '1'},
-                    'f': '1',
-                },
-            },
-        }
-        metadata = {'plurals': {'bs': 'b', 'ts': 't'}}
-        deserializer = wsgi.XMLDeserializer(metadata=metadata)
-        self.assertEqual(deserializer.deserialize(xml), as_dict)
-
-    def test_xml_empty(self):
-        xml = """<a></a>"""
-        as_dict = {"body": {"a": {}}}
-        deserializer = wsgi.XMLDeserializer()
-        self.assertEqual(deserializer.deserialize(xml), as_dict)
 
 
 class ResourceTest(test.TestCase):
@@ -297,19 +245,6 @@ class ResourceTest(test.TestCase):
         method, extensions = resource.get_method(None, 'action',
                                                  'application/json',
                                                  '{"fooAction": true}')
-        self.assertEqual(controller._action_foo, method)
-
-    def test_get_method_action_xml(self):
-        class Controller(wsgi.Controller):
-            @wsgi.action('fooAction')
-            def _action_foo(self, req, id, body):
-                return body
-
-        controller = Controller()
-        resource = wsgi.Resource(controller)
-        method, extensions = resource.get_method(None, 'action',
-                                                 'application/xml',
-                                                 '<fooAction>true</fooAction>')
         self.assertEqual(controller._action_foo, method)
 
     def test_get_method_action_bad_body(self):
@@ -467,20 +402,15 @@ class ResourceTest(test.TestCase):
             def deserialize(self, body):
                 return 'json'
 
-        class XMLDeserializer(object):
-            def deserialize(self, body):
-                return 'xml'
-
         class Controller(object):
-            @wsgi.deserializers(xml=XMLDeserializer)
             def index(self, req, pants=None):
                 return pants
 
         controller = Controller()
         resource = wsgi.Resource(controller, json=JSONDeserializer)
 
-        obj = resource.deserialize(controller.index, 'application/xml', 'foo')
-        self.assertEqual(obj, 'xml')
+        obj = resource.deserialize(controller.index, 'application/json', 'foo')
+        self.assertEqual(obj, 'json')
 
     def test_register_actions(self):
         class Controller(object):

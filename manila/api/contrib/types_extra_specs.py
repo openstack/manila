@@ -162,7 +162,6 @@ class Types_extra_specs(extensions.ExtensionDescriptor):
 
     name = "TypesExtraSpecs"
     alias = "os-types-extra-specs"
-    namespace = "http://docs.openstack.org/share/ext/types-extra-specs/api/v1"
     updated = "2011-08-24T00:00:00+00:00"
 
     def get_resources(self):
