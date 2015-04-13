@@ -25,7 +25,6 @@ import webob.exc
 
 import manila.api.openstack
 from manila.api.openstack import wsgi
-from manila.api import xmlutil
 from manila import exception
 from manila.i18n import _LE
 from manila.i18n import _LI
@@ -51,10 +50,6 @@ class ExtensionDescriptor(object):
     alias = None
 
     # Description comes from the docstring for the class
-
-    # The XML namespace for the extension, e.g.,
-    # 'http://www.fox.in.socks/api/ext/pie/v1.0'
-    namespace = None
 
     # The timestamp when the extension was last updated, e.g.,
     # '2011-01-22T13:25:27-06:00'
@@ -83,55 +78,6 @@ class ExtensionDescriptor(object):
         controller_exts = []
         return controller_exts
 
-    @classmethod
-    def nsmap(cls):
-        """Synthesize a namespace map from extension."""
-
-        # Start with a base nsmap
-        nsmap = ext_nsmap.copy()
-
-        # Add the namespace for the extension
-        nsmap[cls.alias] = cls.namespace
-
-        return nsmap
-
-    @classmethod
-    def xmlname(cls, name):
-        """Synthesize element and attribute names."""
-
-        return '{%s}%s' % (cls.namespace, name)
-
-
-def make_ext(elem):
-    elem.set('name')
-    elem.set('namespace')
-    elem.set('alias')
-    elem.set('updated')
-
-    desc = xmlutil.SubTemplateElement(elem, 'description')
-    desc.text = 'description'
-
-    xmlutil.make_links(elem, 'links')
-
-
-ext_nsmap = {None: xmlutil.XMLNS_COMMON_V10, 'atom': xmlutil.XMLNS_ATOM}
-
-
-class ExtensionTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('extension', selector='extension')
-        make_ext(root)
-        return xmlutil.MasterTemplate(root, 1, nsmap=ext_nsmap)
-
-
-class ExtensionsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('extensions')
-        elem = xmlutil.SubTemplateElement(root, 'extension',
-                                          selector='extensions')
-        make_ext(elem)
-        return xmlutil.MasterTemplate(root, 1, nsmap=ext_nsmap)
-
 
 class ExtensionsResource(wsgi.Resource):
 
@@ -144,19 +90,16 @@ class ExtensionsResource(wsgi.Resource):
         ext_data['name'] = ext.name
         ext_data['alias'] = ext.alias
         ext_data['description'] = ext.__doc__
-        ext_data['namespace'] = ext.namespace
         ext_data['updated'] = ext.updated
         ext_data['links'] = []  # TODO(dprince): implement extension links
         return ext_data
 
-    @wsgi.serializers(xml=ExtensionsTemplate)
     def index(self, req):
         extensions = []
         for _alias, ext in six.iteritems(self.extension_manager.extensions):
             extensions.append(self._translate(ext))
         return dict(extensions=extensions)
 
-    @wsgi.serializers(xml=ExtensionTemplate)
     def show(self, req, id):
         try:
             # NOTE(dprince): the extensions alias is used as the 'id' for show
@@ -240,7 +183,6 @@ class ExtensionManager(object):
             LOG.debug('Ext alias: %s', extension.alias)
             LOG.debug('Ext description: %s',
                       ' '.join(extension.__doc__.strip().split()))
-            LOG.debug('Ext namespace: %s', extension.namespace)
             LOG.debug('Ext updated: %s', extension.updated)
         except AttributeError as ex:
             LOG.exception(_LE("Exception loading extension: %s"),

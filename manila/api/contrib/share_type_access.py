@@ -20,7 +20,6 @@ import webob
 
 from manila.api import extensions
 from manila.api.openstack import wsgi
-from manila.api import xmlutil
 from manila import exception
 from manila.i18n import _
 from manila.share import share_types
@@ -29,45 +28,6 @@ from manila.share import share_types
 soft_authorize = extensions.soft_extension_authorizer('share',
                                                       'share_type_access')
 authorize = extensions.extension_authorizer('share', 'share_type_access')
-
-
-def make_share_type(elem):
-    elem.set('{%s}is_public' % Share_type_access.namespace,
-             '%s:is_public' % Share_type_access.alias)
-
-
-def make_share_type_access(elem):
-    elem.set('share_type_id')
-    elem.set('project_id')
-
-
-class ShareTypeTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('share_type', selector='share_type')
-        make_share_type(root)
-        alias = Share_type_access.alias
-        namespace = Share_type_access.namespace
-        return xmlutil.SlaveTemplate(root, 1, nsmap={alias: namespace})
-
-
-class ShareTypesTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('share_types')
-        elem = xmlutil.SubTemplateElement(
-            root, 'share_type', selector='share_types')
-        make_share_type(elem)
-        alias = Share_type_access.alias
-        namespace = Share_type_access.namespace
-        return xmlutil.SlaveTemplate(root, 1, nsmap={alias: namespace})
-
-
-class ShareTypeAccessTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('share_type_access')
-        elem = xmlutil.SubTemplateElement(root, 'access',
-                                          selector='share_type_access')
-        make_share_type_access(elem)
-        return xmlutil.MasterTemplate(root, 1)
 
 
 def _marshall_share_type_access(share_type):
@@ -82,7 +42,6 @@ def _marshall_share_type_access(share_type):
 class ShareTypeAccessController(object):
     """The share type access API controller for the OpenStack API."""
 
-    @wsgi.serializers(xml=ShareTypeAccessTemplate)
     def index(self, req, type_id):
         context = req.environ['manila.context']
         authorize(context)
@@ -123,8 +82,6 @@ class ShareTypeActionController(wsgi.Controller):
     def show(self, req, resp_obj, id):
         context = req.environ['manila.context']
         if soft_authorize(context):
-            # Attach our slave template to the response object
-            resp_obj.attach(xml=ShareTypeTemplate())
             share_type = req.get_db_share_type(id)
             self._extend_share_type(resp_obj.obj['share_type'], share_type)
 
@@ -132,8 +89,6 @@ class ShareTypeActionController(wsgi.Controller):
     def index(self, req, resp_obj):
         context = req.environ['manila.context']
         if soft_authorize(context):
-            # Attach our slave template to the response object
-            resp_obj.attach(xml=ShareTypesTemplate())
             for share_type_rval in list(resp_obj.obj['share_types']):
                 type_id = share_type_rval['id']
                 share_type = req.get_db_share_type(type_id)
@@ -143,8 +98,6 @@ class ShareTypeActionController(wsgi.Controller):
     def create(self, req, body, resp_obj):
         context = req.environ['manila.context']
         if soft_authorize(context):
-            # Attach our slave template to the response object
-            resp_obj.attach(xml=ShareTypeTemplate())
             type_id = resp_obj.obj['share_type']['id']
             share_type = req.get_db_share_type(type_id)
             self._extend_share_type(resp_obj.obj['share_type'], share_type)
@@ -193,8 +146,6 @@ class Share_type_access(extensions.ExtensionDescriptor):
 
     name = "ShareTypeAccess"
     alias = "os-share-type-access"
-    namespace = ("http://docs.openstack.org/share/"
-                 "ext/os-share-type-access/api/v1")
     updated = "2015-03-02T00:00:00Z"
 
     def get_resources(self):

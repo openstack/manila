@@ -31,7 +31,6 @@ import webob.exc
 
 from manila.api.openstack import wsgi
 from manila.api.views import limits as limits_views
-from manila.api import xmlutil
 from manila.i18n import _
 from manila import quota
 from manila import wsgi as base_wsgi
@@ -46,38 +45,9 @@ PER_HOUR = 60 * 60
 PER_DAY = 60 * 60 * 24
 
 
-limits_nsmap = {None: xmlutil.XMLNS_COMMON_V10, 'atom': xmlutil.XMLNS_ATOM}
-
-
-class LimitsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('limits', selector='limits')
-
-        rates = xmlutil.SubTemplateElement(root, 'rates')
-        rate = xmlutil.SubTemplateElement(rates, 'rate', selector='rate')
-        rate.set('uri', 'uri')
-        rate.set('regex', 'regex')
-        limit = xmlutil.SubTemplateElement(rate, 'limit', selector='limit')
-        limit.set('value', 'value')
-        limit.set('verb', 'verb')
-        limit.set('remaining', 'remaining')
-        limit.set('unit', 'unit')
-        limit.set('next-available', 'next-available')
-
-        absolute = xmlutil.SubTemplateElement(root, 'absolute',
-                                              selector='absolute')
-        limit = xmlutil.SubTemplateElement(absolute, 'limit',
-                                           selector=xmlutil.get_items)
-        limit.set('name', 0)
-        limit.set('value', 1)
-
-        return xmlutil.MasterTemplate(root, 1, nsmap=limits_nsmap)
-
-
 class LimitsController(object):
     """Controller for accessing limits in the OpenStack API."""
 
-    @wsgi.serializers(xml=LimitsTemplate)
     def index(self, req):
         """Return all global and rate limit information."""
         context = req.environ['manila.context']

@@ -19,8 +19,6 @@ from six.moves.urllib import parse
 import webob
 
 from manila.api import extensions
-from manila.api.openstack import wsgi
-from manila.api import xmlutil
 from manila import db
 from manila.db.sqlalchemy import api as sqlalchemy_api
 from manila import exception
@@ -36,18 +34,6 @@ NON_QUOTA_KEYS = ['tenant_id', 'id', 'force']
 authorize_update = extensions.extension_authorizer('compute', 'quotas:update')
 authorize_show = extensions.extension_authorizer('compute', 'quotas:show')
 authorize_delete = extensions.extension_authorizer('compute', 'quotas:delete')
-
-
-class QuotaTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('quota_set', selector='quota_set')
-        root.set('id')
-
-        for resource in QUOTAS.resources:
-            elem = xmlutil.SubTemplateElement(root, resource)
-            elem.text = resource
-
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class QuotaSetsController(object):
@@ -90,7 +76,6 @@ class QuotaSetsController(object):
         else:
             return dict((k, v['limit']) for k, v in values.items())
 
-    @wsgi.serializers(xml=QuotaTemplate)
     def show(self, req, id):
         context = req.environ['manila.context']
         authorize_show(context)
@@ -105,7 +90,6 @@ class QuotaSetsController(object):
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
-    @wsgi.serializers(xml=QuotaTemplate)
     def update(self, req, id, body):
         context = req.environ['manila.context']
         authorize_update(context)
@@ -209,7 +193,6 @@ class QuotaSetsController(object):
                 raise webob.exc.HTTPForbidden()
         return {'quota_set': self._get_quotas(context, id, user_id=user_id)}
 
-    @wsgi.serializers(xml=QuotaTemplate)
     def defaults(self, req, id):
         context = req.environ['manila.context']
         authorize_show(context)
@@ -241,7 +224,6 @@ class Quotas(extensions.ExtensionDescriptor):
 
     name = "Quotas"
     alias = "os-quota-sets"
-    namespace = "http://docs.openstack.org/compute/ext/quotas-sets/api/v1.1"
     updated = "2011-08-08T00:00:00+00:00"
 
     def get_resources(self):

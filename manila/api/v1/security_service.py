@@ -23,7 +23,6 @@ from webob import exc
 from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import security_service as security_service_views
-from manila.api import xmlutil
 from manila.common import constants
 from manila import db
 from manila import exception
@@ -36,36 +35,11 @@ RESOURCE_NAME = 'security_service'
 LOG = log.getLogger(__name__)
 
 
-def make_security_service(elem):
-    attrs = ['id', 'name', 'description', 'type', 'server', 'domain', 'user',
-             'password', 'dns_ip', 'status', 'updated_at', 'created_at']
-    for attr in attrs:
-        elem.set(attr)
-
-
-class SecurityServiceTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('security_service',
-                                       selector='security_service')
-        make_security_service(root)
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class SecurityServicesTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('security_services')
-        elem = xmlutil.SubTemplateElement(root, 'security_service',
-                                          selector='security_services')
-        make_security_service(elem)
-        return xmlutil.MasterTemplate(root, 1)
-
-
 class SecurityServiceController(wsgi.Controller):
     """The Shares API controller for the OpenStack API."""
 
     _view_builder_class = security_service_views.ViewBuilder
 
-    @wsgi.serializers(xml=SecurityServiceTemplate)
     def show(self, req, id):
         """Return data about the given security service."""
         context = req.environ['manila.context']
@@ -102,14 +76,12 @@ class SecurityServiceController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=SecurityServicesTemplate)
     def index(self, req):
         """Returns a summary list of security services."""
         policy.check_policy(req.environ['manila.context'], RESOURCE_NAME,
                             'index')
         return self._get_security_services(req, is_detail=False)
 
-    @wsgi.serializers(xml=SecurityServicesTemplate)
     def detail(self, req):
         """Returns a detailed list of security services."""
         policy.check_policy(req.environ['manila.context'], RESOURCE_NAME,
@@ -181,7 +153,6 @@ class SecurityServiceController(wsgi.Controller):
                 return True
         return False
 
-    @wsgi.serializers(xml=SecurityServiceTemplate)
     def update(self, req, id, body):
         """Update a security service."""
         context = req.environ['manila.context']
@@ -221,7 +192,6 @@ class SecurityServiceController(wsgi.Controller):
         security_service = db.security_service_update(context, id, update_dict)
         return self._view_builder.detail(req, security_service)
 
-    @wsgi.serializers(xml=SecurityServiceTemplate)
     def create(self, req, body):
         """Creates a new security service."""
         context = req.environ['manila.context']

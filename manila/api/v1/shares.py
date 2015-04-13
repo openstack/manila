@@ -26,7 +26,6 @@ from webob import exc
 from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import shares as share_views
-from manila.api import xmlutil
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
@@ -34,32 +33,6 @@ from manila import share
 from manila.share import share_types
 
 LOG = log.getLogger(__name__)
-
-
-def make_share(elem):
-    # NOTE(u_glide):
-    # export_location is backward-compatibility attribute, which contains first
-    # export location from export_locations list.
-    attrs = ['id', 'size', 'availability_zone', 'status', 'name',
-             'description', 'share_proto', 'export_location', 'links',
-             'snapshot_id', 'created_at', 'metadata', 'export_locations']
-    for attr in attrs:
-        elem.set(attr)
-
-
-class ShareTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('share', selector='share')
-        make_share(root)
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class SharesTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('shares')
-        elem = xmlutil.SubTemplateElement(root, 'share', selector='shares')
-        make_share(elem)
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class ShareController(wsgi.Controller):
@@ -71,7 +44,6 @@ class ShareController(wsgi.Controller):
         super(ShareController, self).__init__()
         self.share_api = share.API()
 
-    @wsgi.serializers(xml=ShareTemplate)
     def show(self, req, id):
         """Return data about the given share."""
         context = req.environ['manila.context']
@@ -99,12 +71,10 @@ class ShareController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=SharesTemplate)
     def index(self, req):
         """Returns a summary list of shares."""
         return self._get_shares(req, is_detail=False)
 
-    @wsgi.serializers(xml=SharesTemplate)
     def detail(self, req):
         """Returns a detailed list of shares."""
         return self._get_shares(req, is_detail=True)
@@ -164,7 +134,6 @@ class ShareController(wsgi.Controller):
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
         )
 
-    @wsgi.serializers(xml=ShareTemplate)
     def update(self, req, id, body):
         """Update a share."""
         context = req.environ['manila.context']
@@ -192,7 +161,6 @@ class ShareController(wsgi.Controller):
         share.update(update_dict)
         return self._view_builder.detail(req, share)
 
-    @wsgi.serializers(xml=ShareTemplate)
     def create(self, req, body):
         """Creates a new share."""
         context = req.environ['manila.context']

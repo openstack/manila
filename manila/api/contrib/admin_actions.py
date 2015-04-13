@@ -131,7 +131,6 @@ class Admin_actions(extensions.ExtensionDescriptor):
 
     name = "AdminActions"
     alias = "os-admin-actions"
-    namespace = "http://docs.openstack.org/share/ext/admin-actions/api/v1.1"
     updated = "2012-08-25T00:00:00+00:00"
 
     def get_controller_extensions(self):

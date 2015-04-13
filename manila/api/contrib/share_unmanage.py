@@ -78,8 +78,6 @@ class Share_unmanage(extensions.ExtensionDescriptor):
 
     name = 'ShareUnmanage'
     alias = 'os-share-unmanage'
-    namespace = ('http://docs.openstack.org/share/ext/'
-                 'os-share-unmanage/api/v1')
     updated = '2015-02-17T00:00:00+00:00'
 
     def get_resources(self):

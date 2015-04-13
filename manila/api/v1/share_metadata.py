@@ -16,7 +16,6 @@
 import webob
 from webob import exc
 
-from manila.api import common
 from manila.api.openstack import wsgi
 from manila import exception
 from manila.i18n import _
@@ -39,14 +38,11 @@ class ShareMetadataController(object):
             raise exc.HTTPNotFound(explanation=msg)
         return meta
 
-    @wsgi.serializers(xml=common.MetadataTemplate)
     def index(self, req, share_id):
         """Returns the list of metadata for a given share."""
         context = req.environ['manila.context']
         return {'metadata': self._get_metadata(context, share_id)}
 
-    @wsgi.serializers(xml=common.MetadataTemplate)
-    @wsgi.deserializers(xml=common.MetadataDeserializer)
     def create(self, req, share_id, body):
         try:
             metadata = body['metadata']
@@ -63,8 +59,6 @@ class ShareMetadataController(object):
 
         return {'metadata': new_metadata}
 
-    @wsgi.serializers(xml=common.MetaItemTemplate)
-    @wsgi.deserializers(xml=common.MetaItemDeserializer)
     def update(self, req, share_id, id, body):
         try:
             meta_item = body['meta']
@@ -88,8 +82,6 @@ class ShareMetadataController(object):
 
         return {'meta': meta_item}
 
-    @wsgi.serializers(xml=common.MetadataTemplate)
-    @wsgi.deserializers(xml=common.MetadataDeserializer)
     def update_all(self, req, share_id, body):
         try:
             metadata = body['metadata']
@@ -125,7 +117,6 @@ class ShareMetadataController(object):
         except exception.InvalidShareMetadataSize as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-    @wsgi.serializers(xml=common.MetaItemTemplate)
     def show(self, req, share_id, id):
         """Return a single metadata item."""
         context = req.environ['manila.context']

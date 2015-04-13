@@ -20,7 +20,6 @@ from webob import exc
 
 from manila.api.openstack import wsgi
 from manila.api.views import share_servers as share_servers_views
-from manila.api import xmlutil
 from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
@@ -31,37 +30,6 @@ from manila import share
 RESOURCE_NAME = 'share_server'
 RESOURCES_NAME = 'share_servers'
 LOG = log.getLogger(__name__)
-SHARE_SERVER_ATTRS = (
-    'id',
-    'project_id',
-    'updated_at',
-    'status',
-    'host',
-    'share_network_name',
-)
-
-
-def _make_share_server(elem, details=False):
-    for attr in SHARE_SERVER_ATTRS:
-        elem.set(attr)
-    if details:
-        elem.set('backend_details')
-
-
-class ShareServerTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement(RESOURCE_NAME, selector=RESOURCE_NAME)
-        _make_share_server(root, details=True)
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class ShareServersTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement(RESOURCES_NAME)
-        elem = xmlutil.SubTemplateElement(root, RESOURCE_NAME,
-                                          selector=RESOURCES_NAME)
-        _make_share_server(elem)
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class ShareServerController(wsgi.Controller):
@@ -72,7 +40,6 @@ class ShareServerController(wsgi.Controller):
         self._view_builder_class = share_servers_views.ViewBuilder
         super(ShareServerController, self).__init__()
 
-    @wsgi.serializers(xml=ShareServersTemplate)
     def index(self, req):
         """Returns a list of share servers."""
 
@@ -98,7 +65,6 @@ class ShareServerController(wsgi.Controller):
                                         s.share_network['id']])]
         return self._view_builder.build_share_servers(share_servers)
 
-    @wsgi.serializers(xml=ShareServerTemplate)
     def show(self, req, id):
         """Return data about the requested share server."""
         context = req.environ['manila.context']
