@@ -113,6 +113,16 @@ ShareGroup = [
                 help="Defines whether to run manage/unmanage tests or not. "
                      "These test may leave orphaned resources, so be careful "
                      "enabling this opt."),
+    cfg.StrOpt("image_with_share_tools",
+               default="ubuntu_1204_nfs_cifs",
+               help="Image name for vm booting with nfs/smb clients tool."),
+    cfg.StrOpt("image_username",
+               default="ubuntu",
+               help="Image username."),
+    # HINT(mkoderer): workaround for bug #1421104
+    cfg.StrOpt("image_password",
+               default="ubuntu",
+               help="Image password."),
 ]
 
 

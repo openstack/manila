@@ -17,6 +17,7 @@ from oslo_log import log as logging  # noqa
 from tempest_lib.common.utils import data_utils  # noqa
 
 from tempest import config
+from tempest import exceptions
 from tempest.scenario import manager_share as manager
 from tempest.scenario import utils as test_utils
 from tempest import test
@@ -37,6 +38,7 @@ class TestShareBasicOps(manager.ShareScenarioTest):
      * Launch an instance
      * Allow access
      * Perform ssh to instance
+     * Mount share
      * Terminate the instance
     """
     protocol = "NFS"
@@ -45,10 +47,18 @@ class TestShareBasicOps(manager.ShareScenarioTest):
         super(TestShareBasicOps, self).setUp()
         # Setup image and flavor the test instance
         # Support both configured and injected values
-        if not hasattr(self, 'image_ref'):
-            self.image_ref = CONF.compute.image_ref
         if not hasattr(self, 'flavor_ref'):
             self.flavor_ref = CONF.compute.flavor_ref
+        if CONF.share.image_with_share_tools:
+            images = self.images_client.list_images()
+            for img in images:
+                if img["name"] == CONF.share.image_with_share_tools:
+                    self.image_ref = img['id']
+                    break
+            if not self.image_ref:
+                msg = ("Image %s not found" %
+                       CONF.share.image_with_share_tools)
+                raise exceptions.InvalidConfiguration(message=msg)
         self.image_utils = test_utils.ImageUtils()
         if not self.image_utils.is_flavor_enough(self.flavor_ref,
                                                  self.image_ref):
@@ -73,7 +83,8 @@ class TestShareBasicOps(manager.ShareScenarioTest):
             'key_name': self.keypair['name'],
             'security_groups': security_groups,
         }
-        self.instance = self.create_server(create_kwargs=create_kwargs)
+        self.instance = self.create_server(image=self.image_ref,
+                                           create_kwargs=create_kwargs)
 
     def verify_ssh(self):
         # Obtain a floating IP
@@ -85,13 +96,19 @@ class TestShareBasicOps(manager.ShareScenarioTest):
         self.floating_ips_client.associate_floating_ip_to_server(
             floating_ip['ip'], self.instance['id'])
         # Check ssh
-        ssh_client = self.get_remote_client(
+        self.ssh_client = self.get_remote_client(
             server_or_ip=floating_ip['ip'],
             username=self.ssh_user,
             private_key=self.keypair['private_key'])
-        share = self.shares_client.get_share(self.share['id'])
-        server_ip = share['export_location'].split(":")[0]
-        ssh_client.exec_command("ping -c 1 %s" % server_ip)
+        self.share = self.shares_client.get_share(self.share['id'])
+        server_ip = self.share['export_location'].split(":")[0]
+        self.ssh_client.exec_command("ping -c 1 %s" % server_ip)
+
+    def mount_share(self, location):
+        self.ssh_client.exec_command("sudo mount \"%s\" /mnt" % location)
+
+    def umount_share(self):
+        self.ssh_client.exec_command("sudo umount /mnt")
 
     def create_share_network(self):
         self.net = self._create_network(namestart="manila-share")
@@ -131,4 +148,7 @@ class TestShareBasicOps(manager.ShareScenarioTest):
         self.boot_instance(self.net)
         self.allow_access_ip(self.share['id'], instance=self.instance)
         self.verify_ssh()
+        for location in self.share['export_locations']:
+            self.mount_share(location)
+            self.umount_share()
         self.servers_client.delete_server(self.instance['id'])
