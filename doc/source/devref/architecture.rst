@@ -30,28 +30,28 @@ Below you will a brief explanation of the different components.
 
 ::
 
-                                                  /- ( LDAP )
-                              [ Auth Manager ] ---
-                                     |            \- ( DB )
-                                     |
-                                     |
+                                                     /- ( LDAP )
+                                 [ Auth Manager ] ---
+                                        |            \- ( DB )
+                                        |
+                                        |
 
-                                     |
- [ Web Dashboard ]- manilaclient -[ api ] -- < AMQP > -- [ scheduler ] -- [ share ] -- ( shared filesystem )
-                                     |
-                                     |
-                                     |
-                                     |
-                                     |
-                                  < REST >
+                                        |
+ [ Web Dashboard ]- manilaclient -[ manila-api ] -- < AMQP > -- [ manila-scheduler ] -- [ manila-share ] -- ( shared filesystem )
+                                        |
+                                        |
+                                        |
+                                        |
+                                        |
+                                     < REST >
 
 
 * DB: sql database for data storage. Used by all components (LINKS NOT SHOWN)
 * Web Dashboard: external component that talks to the api. Beta extended Horizon available here: https://github.com/NetApp/horizon/tree/manila
-* api: component that receives http requests, converts commands and communicates with other components via the queue or http
+* :term:`manila-api`
 * Auth Manager: component responsible for users/projects/and roles.  Can backend to DB or LDAP.  This is not a separate binary, but rather a python class that is used by most components in the system.
-* scheduler: decides which host will handle create share request.
-* share: manages shared filesystems.
+* :term:`manila-scheduler`
+* :term:`manila-share`
 
 Further Challenges
 ------------------
