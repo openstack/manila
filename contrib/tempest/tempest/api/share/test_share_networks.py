@@ -27,8 +27,7 @@ class ShareNetworkListMixin(object):
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_networks(self):
-        resp, listed = self.shares_client.list_share_networks()
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        listed = self.shares_client.list_share_networks()
         any(self.sn_with_ldap_ss["id"] in sn["id"] for sn in listed)
 
         # verify keys
@@ -37,8 +36,7 @@ class ShareNetworkListMixin(object):
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_networks_with_detail(self):
-        resp, listed = self.shares_client.list_share_networks_with_detail()
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        listed = self.shares_client.list_share_networks_with_detail()
         any(self.sn_with_ldap_ss["id"] in sn["id"] for sn in listed)
 
         # verify keys
@@ -52,14 +50,13 @@ class ShareNetworkListMixin(object):
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_networks_filter_by_ss(self):
-        resp, listed = self.shares_client.list_share_networks_with_detail(
+        listed = self.shares_client.list_share_networks_with_detail(
             {'security_service_id': self.ss_ldap['id']})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(any(self.sn_with_ldap_ss['id'] == sn['id']
                             for sn in listed))
         for sn in listed:
-            resp, ss_list = self.shares_client.\
-                list_sec_services_for_share_network(sn['id'])
+            ss_list = self.shares_client.list_sec_services_for_share_network(
+                sn['id'])
             self.assertTrue(any(ss['id'] == self.ss_ldap['id']
                                 for ss in ss_list))
 
@@ -77,9 +74,8 @@ class ShareNetworkListMixin(object):
             'name': 'sn_with_ldap_ss'
         }
 
-        resp, listed = self.shares_client.list_share_networks_with_detail(
+        listed = self.shares_client.list_share_networks_with_detail(
             valid_filter_opts)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(any(self.sn_with_ldap_ss['id'] == sn['id']
                             for sn in listed))
         created_before = valid_filter_opts.pop('created_before')
@@ -97,7 +93,7 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
     def resource_setup(cls):
         super(ShareNetworksTest, cls).resource_setup()
         ss_data = cls.generate_security_service_data()
-        resp, cls.ss_ldap = cls.create_security_service(**ss_data)
+        cls.ss_ldap = cls.create_security_service(**ss_data)
 
         cls.data_sn_with_ldap_ss = {
             'name': 'sn_with_ldap_ss',
@@ -111,11 +107,11 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
             'ip_version': 4,
             'description': 'fake description',
         }
-        __, cls.sn_with_ldap_ss = cls.create_share_network(
+        cls.sn_with_ldap_ss = cls.create_share_network(
             cleanup_in_class=True,
             **cls.data_sn_with_ldap_ss)
 
-        resp, body = cls.shares_client.add_sec_service_to_share_network(
+        cls.shares_client.add_sec_service_to_share_network(
             cls.sn_with_ldap_ss["id"],
             cls.ss_ldap["id"])
 
@@ -134,15 +130,15 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
             'description': 'fake description',
         }
 
-        resp, cls.ss_kerberos = cls.create_security_service(
+        cls.ss_kerberos = cls.create_security_service(
             ss_type='kerberos',
             **cls.data_sn_with_ldap_ss)
 
-        __, cls.sn_with_kerberos_ss = cls.create_share_network(
+        cls.sn_with_kerberos_ss = cls.create_share_network(
             cleanup_in_class=True,
             **cls.data_sn_with_kerberos_ss)
 
-        resp, body = cls.shares_client.add_sec_service_to_share_network(
+        cls.shares_client.add_sec_service_to_share_network(
             cls.sn_with_kerberos_ss["id"],
             cls.ss_kerberos["id"])
 
@@ -152,19 +148,15 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         data = self.generate_share_network_data()
 
         # create share network
-        resp, created = self.shares_client.create_share_network(**data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        created = self.shares_client.create_share_network(**data)
         self.assertDictContainsSubset(data, created)
 
         # Delete share_network
-        resp, __ = self.shares_client.delete_share_network(created["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_share_network(created["id"])
 
     @test.attr(type=["gate", "smoke", ])
     def test_get_share_network(self):
-        resp, get = self.shares_client.get_share_network(
-            self.sn_with_ldap_ss["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get = self.shares_client.get_share_network(self.sn_with_ldap_ss["id"])
         self.assertEqual('2002-02-02T00:00:00.000000', get['created_at'])
         data = self.data_sn_with_ldap_ss.copy()
         del data['created_at']
@@ -173,25 +165,22 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
     @test.attr(type=["gate", "smoke", ])
     def test_update_share_network(self):
         update_data = self.generate_share_network_data()
-        resp, updated = self.shares_client.update_share_network(
+        updated = self.shares_client.update_share_network(
             self.sn_with_ldap_ss["id"],
             **update_data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertDictContainsSubset(update_data, updated)
 
     @test.attr(type=["gate", "smoke"])
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_update_valid_keys_sh_server_exists(self):
-        resp, share = self.create_share(cleanup_in_class=False)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.create_share(cleanup_in_class=False)
         update_dict = {
             "name": "new_name",
             "description": "new_description",
         }
-        resp, updated = self.shares_client.update_share_network(
+        updated = self.shares_client.update_share_network(
             self.shares_client.share_network_id, **update_dict)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertDictContainsSubset(update_dict, updated)
 
     @test.attr(type=["gate", "smoke", ])
@@ -200,22 +189,18 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         data = self.generate_share_network_data()
 
         # create share network
-        resp, sn1 = self.shares_client.create_share_network(**data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        sn1 = self.shares_client.create_share_network(**data)
         self.assertDictContainsSubset(data, sn1)
 
         # Delete first share network
-        resp, __ = self.shares_client.delete_share_network(sn1["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_share_network(sn1["id"])
 
         # create second share network with same data
-        resp, sn2 = self.shares_client.create_share_network(**data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        sn2 = self.shares_client.create_share_network(**data)
         self.assertDictContainsSubset(data, sn2)
 
         # Delete second share network
-        resp, __ = self.shares_client.delete_share_network(sn2["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_share_network(sn2["id"])
 
     @test.attr(type=["gate", "smoke", ])
     def test_create_two_share_networks_with_same_net_and_subnet(self):
@@ -223,11 +208,9 @@ class ShareNetworksTest(base.BaseSharesTest, ShareNetworkListMixin):
         data = self.generate_share_network_data()
 
         # create first share network
-        resp, sn1 = self.create_share_network(**data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        sn1 = self.create_share_network(**data)
         self.assertDictContainsSubset(data, sn1)
 
         # create second share network
-        resp, sn2 = self.create_share_network(**data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        sn2 = self.create_share_network(**data)
         self.assertDictContainsSubset(data, sn2)

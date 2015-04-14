@@ -98,9 +98,8 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_create_share_with_size_bigger_than_quota(self):
-        resp, quotas = self.shares_client.show_quotas(
+        quotas = self.shares_client.show_quotas(
             self.shares_client.tenant_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         overquota = int(quotas['gigabytes']) + 2
 
         # try schedule share with size, bigger than gigabytes quota
@@ -113,7 +112,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         client = self.get_client_with_isolated_creds()
 
         # get current quotas for tenant
-        __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
+        tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
 
         # try set user quota for shares bigger than tenant quota
         bigger_value = int(tenant_quotas["shares"]) + 2
@@ -128,7 +127,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         client = self.get_client_with_isolated_creds()
 
         # get current quotas for tenant
-        __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
+        tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
 
         # try set user quota for snapshots bigger than tenant quota
         bigger_value = int(tenant_quotas["snapshots"]) + 2
@@ -143,7 +142,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         client = self.get_client_with_isolated_creds()
 
         # get current quotas for tenant
-        __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
+        tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
 
         # try set user quota for gigabytes bigger than tenant quota
         bigger_value = int(tenant_quotas["gigabytes"]) + 2
@@ -158,7 +157,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         client = self.get_client_with_isolated_creds()
 
         # get current quotas for tenant
-        __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
+        tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
 
         # try set user quota for snapshot gigabytes bigger than tenant quota
         bigger_value = int(tenant_quotas["snapshot_gigabytes"]) + 2
@@ -173,7 +172,7 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
         client = self.get_client_with_isolated_creds()
 
         # get current quotas for tenant
-        __, tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
+        tenant_quotas = client.show_quotas(client.creds["tenant"]["id"])
 
         # try set user quota for share_networks bigger than tenant quota
         bigger_value = int(tenant_quotas["share_networks"]) + 2

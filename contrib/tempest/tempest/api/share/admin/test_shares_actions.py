@@ -34,7 +34,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         cls.st_name = data_utils.rand_name("tempest-st-name")
         cls.extra_specs = cls.add_required_extra_specs_to_dict(
             {'storage_protocol': CONF.share.storage_protocol})
-        __, cls.st = cls.create_share_type(
+        cls.st = cls.create_share_type(
             name=cls.st_name,
             cleanup_in_class=True,
             extra_specs=cls.extra_specs,
@@ -48,7 +48,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
             'bar_key_share_1': 'foo_value_share_1',
         }
         cls.share_size = 1
-        __, cls.share = cls.create_share(
+        cls.share = cls.create_share(
             name=cls.share_name,
             description=cls.share_desc,
             size=cls.share_size,
@@ -59,9 +59,8 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         # create snapshot
         cls.snap_name = data_utils.rand_name("tempest-snapshot-name")
         cls.snap_desc = data_utils.rand_name("tempest-snapshot-description")
-        __, cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"],
-                                                           cls.snap_name,
-                                                           cls.snap_desc)
+        cls.snap = cls.create_snapshot_wait_for_active(
+            cls.share["id"], cls.snap_name, cls.snap_desc)
 
         # create second share from snapshot for purposes of sorting and
         # snapshot filtering
@@ -71,7 +70,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
             'foo_key_share_2': 'foo_value_share_2',
             'bar_key_share_2': 'foo_value_share_2',
         }
-        __, cls.share2 = cls.create_share(
+        cls.share2 = cls.create_share(
             name=cls.share_name2,
             description=cls.share_desc2,
             size=cls.share_size,
@@ -83,10 +82,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     def test_get_share(self):
 
         # get share
-        resp, share = self.shares_client.get_share(self.share['id'])
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        share = self.shares_client.get_share(self.share['id'])
 
         # verify keys
         expected_keys = ["status", "description", "links", "availability_zone",
@@ -113,10 +109,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     def test_list_shares(self):
 
         # list shares
-        resp, shares = self.shares_client.list_shares()
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares()
 
         # verify keys
         keys = ["name", "id", "links"]
@@ -132,10 +125,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     def test_list_shares_with_detail(self):
 
         # list shares
-        resp, shares = self.shares_client.list_shares_with_detail()
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail()
 
         # verify keys
         keys = [
@@ -156,7 +146,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         filters = {'metadata': self.metadata}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
@@ -172,7 +162,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         }
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
@@ -180,7 +170,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         self.assertTrue(self.share["id"] in shares_ids)
         self.assertTrue(self.share2["id"] in shares_ids)
         for share in shares:
-            __, st_list = self.shares_client.list_share_types()
+            st_list = self.shares_client.list_share_types()
             # find its name or id, get id
             sts = st_list["share_types"]
             st_id = None
@@ -194,8 +184,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
                     "nonexistent share type '%(st)s'." % {
                         "s_id": share["id"], "st": share["share_type"]}
                 )
-            __, extra_specs = self.shares_client.get_share_type_extra_specs(
-                st_id)
+            extra_specs = self.shares_client.get_share_type_extra_specs(st_id)
             self.assertDictContainsSubset(filters["extra_specs"], extra_specs)
 
     @test.attr(type=["gate", ])
@@ -203,12 +192,12 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         filters = {'share_type_id': self.st['share_type']['id']}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
         for share in shares:
-            __, st_list = self.shares_client.list_share_types()
+            st_list = self.shares_client.list_share_types()
             # find its name or id, get id
             sts = st_list["share_types"]
             st_id = None
@@ -230,11 +219,11 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_host(self):
-        __, base_share = self.shares_client.get_share(self.share['id'])
+        base_share = self.shares_client.get_share(self.share['id'])
         filters = {'host': base_share['host']}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
@@ -245,11 +234,11 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_list_shares_with_detail_filter_by_share_network_id(self):
-        __, base_share = self.shares_client.get_share(self.share['id'])
+        base_share = self.shares_client.get_share(self.share['id'])
         filters = {'share_network_id': base_share['share_network_id']}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 1)
@@ -262,7 +251,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         filters = {'snapshot_id': self.snap['id']}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
@@ -275,7 +264,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         filters = {'sort_key': 'created_at', 'sort_dir': 'asc'}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
@@ -286,24 +275,21 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     def test_list_shares_with_detail_filter_by_existed_name(self):
         # list shares by name, at least one share is expected
         params = {"name": self.share_name}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail(params)
         self.assertEqual(shares[0]["name"], self.share_name)
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_fake_name(self):
         # list shares by fake name, no shares are expected
         params = {"name": data_utils.rand_name("fake-nonexistent-name")}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail(params)
         self.assertEqual(0, len(shares))
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_active_status(self):
         # list shares by active status, at least one share is expected
         params = {"status": "available"}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail(params)
         self.assertTrue(len(shares) > 0)
         for share in shares:
             self.assertEqual(share["status"], params["status"])
@@ -312,18 +298,14 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     def test_list_shares_with_detail_filter_by_fake_status(self):
         # list shares by fake status, no shares are expected
         params = {"status": 'fake'}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail(params)
         self.assertEqual(0, len(shares))
 
     @test.attr(type=["gate", ])
     def test_get_snapshot(self):
 
         # get snapshot
-        resp, get = self.shares_client.get_snapshot(self.snap["id"])
-
-        # verify data
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get = self.shares_client.get_snapshot(self.snap["id"])
 
         # verify keys
         expected_keys = ["status", "links", "share_id", "name",
@@ -349,10 +331,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     def test_list_snapshots(self):
 
         # list share snapshots
-        resp, snaps = self.shares_client.list_snapshots()
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        snaps = self.shares_client.list_snapshots()
 
         # verify keys
         keys = ["id", "name", "links"]
@@ -367,10 +346,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
     def test_list_snapshots_with_detail(self):
 
         # list share snapshots
-        resp, snaps = self.shares_client.list_snapshots_with_detail()
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        snaps = self.shares_client.list_snapshots_with_detail()
 
         # verify keys
         keys = ["status", "links", "share_id", "name",

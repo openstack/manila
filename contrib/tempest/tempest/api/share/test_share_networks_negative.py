@@ -61,8 +61,7 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_invalid_keys_sh_server_exists(self):
-        resp, share = self.create_share(cleanup_in_class=False)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.create_share(cleanup_in_class=False)
 
         self.assertRaises(lib_exc.Forbidden,
                           self.shares_client.update_share_network,
@@ -72,12 +71,10 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
     @test.attr(type=["gate", "smoke", "negative"])
     def test_try_get_deleted_share_network(self):
         data = self.generate_share_network_data()
-        resp, sn = self.create_share_network(**data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        sn = self.create_share_network(**data)
         self.assertDictContainsSubset(data, sn)
 
-        resp, __ = self.shares_client.delete_share_network(sn["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_share_network(sn["id"])
 
         # try get deleted share network entity
         self.assertRaises(lib_exc.NotFound,
@@ -116,16 +113,16 @@ class ShareNetworksNegativeTest(base.BaseSharesTest):
                       'creation. Skipping.')
     def test_try_delete_share_network_with_existing_shares(self):
         # Get valid network data for successful share creation
-        __, share_network = self.shares_client.get_share_network(
+        share_network = self.shares_client.get_share_network(
             self.shares_client.share_network_id)
-        __, new_sn = self.create_share_network(
+        new_sn = self.create_share_network(
             neutron_net_id=share_network['neutron_net_id'],
             neutron_subnet_id=share_network['neutron_subnet_id'],
             nova_net_id=share_network['nova_net_id'],
             cleanup_in_class=False)
 
         # Create share with share network
-        __, share = self.create_share(
+        self.create_share(
             share_network_id=new_sn['id'], cleanup_in_class=False)
 
         # Try delete share network

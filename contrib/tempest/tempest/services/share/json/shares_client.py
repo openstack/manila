@@ -79,10 +79,13 @@ class SharesClient(service_client.ServiceClient):
             post_body["share"]["share_type"] = share_type_id
         body = json.dumps(post_body)
         resp, body = self.post("shares", body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def delete_share(self, share_id):
-        return self.delete("shares/%s" % share_id)
+        resp, body = self.delete("shares/%s" % share_id)
+        self.expected_success(202, resp.status)
+        return body
 
     def manage_share(self, service_host, protocol, export_path,
                      share_type_id, name=None, description=None):
@@ -98,17 +101,22 @@ class SharesClient(service_client.ServiceClient):
         }
         body = json.dumps(post_body)
         resp, body = self.post("os-share-manage", body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def unmanage_share(self, share_id):
-        return self.post("os-share-unmanage/%s/unmanage" % share_id, None)
+        resp, body = self.post(
+            "os-share-unmanage/%s/unmanage" % share_id, None)
+        self.expected_success(202, resp.status)
+        return body
 
     def list_shares(self, detailed=False, params=None):
         """Get list of shares w/o filters."""
         uri = 'shares/detail' if detailed else 'shares'
         uri += '?%s' % urllib.urlencode(params) if params else ''
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def list_shares_with_detail(self, params=None):
         """Get detailed list of shares w/o filters."""
@@ -116,7 +124,8 @@ class SharesClient(service_client.ServiceClient):
 
     def get_share(self, share_id):
         resp, body = self.get("shares/%s" % share_id)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def create_access_rule(self, share_id, access_type="ip",
                            access_to="0.0.0.0", access_level=None):
@@ -129,12 +138,14 @@ class SharesClient(service_client.ServiceClient):
         }
         body = json.dumps(post_body)
         resp, body = self.post("shares/%s/action" % share_id, body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def list_access_rules(self, share_id):
         body = {"os-access_list": None}
         resp, body = self.post("shares/%s/action" % share_id, json.dumps(body))
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def delete_access_rule(self, share_id, rule_id):
         post_body = {
@@ -143,7 +154,9 @@ class SharesClient(service_client.ServiceClient):
             }
         }
         body = json.dumps(post_body)
-        return self.post("shares/%s/action" % share_id, body)
+        resp, body = self.post("shares/%s/action" % share_id, body)
+        self.expected_success(202, resp.status)
+        return body
 
     def create_snapshot(self, share_id, name=None, description=None,
                         force=False):
@@ -162,36 +175,41 @@ class SharesClient(service_client.ServiceClient):
         }
         body = json.dumps(post_body)
         resp, body = self.post("snapshots", body)
-        return resp, self._parse_resp(body)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
 
     def get_snapshot(self, snapshot_id):
         resp, body = self.get("snapshots/%s" % snapshot_id)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def list_snapshots(self, detailed=False, params=None):
         """Get list of share snapshots w/o filters."""
         uri = 'snapshots/detail' if detailed else 'snapshots'
         uri += '?%s' % urllib.urlencode(params) if params else ''
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def list_snapshots_with_detail(self, params=None):
         """Get detailed list of share snapshots w/o filters."""
         return self.list_snapshots(detailed=True, params=params)
 
     def delete_snapshot(self, snap_id):
-        return self.delete("snapshots/%s" % snap_id)
+        resp, body = self.delete("snapshots/%s" % snap_id)
+        self.expected_success(202, resp.status)
+        return body
 
     def wait_for_share_status(self, share_id, status):
         """Waits for a Share to reach a given status."""
-        __, body = self.get_share(share_id)
+        body = self.get_share(share_id)
         share_name = body['name']
         share_status = body['status']
         start = int(time.time())
 
         while share_status != status:
             time.sleep(self.build_interval)
-            __, body = self.get_share(share_id)
+            body = self.get_share(share_id)
             share_status = body['status']
             if share_status == status:
                 return
@@ -207,14 +225,14 @@ class SharesClient(service_client.ServiceClient):
 
     def wait_for_snapshot_status(self, snapshot_id, status):
         """Waits for a Share to reach a given status."""
-        __, body = self.get_snapshot(snapshot_id)
+        body = self.get_snapshot(snapshot_id)
         snapshot_name = body['name']
         snapshot_status = body['status']
         start = int(time.time())
 
         while snapshot_status != status:
             time.sleep(self.build_interval)
-            __, body = self.get_snapshot(snapshot_id)
+            body = self.get_snapshot(snapshot_id)
             snapshot_status = body['status']
             if 'error' in snapshot_status:
                 raise exceptions.\
@@ -232,7 +250,7 @@ class SharesClient(service_client.ServiceClient):
         start = int(time.time())
         while rule_status != status:
             time.sleep(self.build_interval)
-            __, rules = self.list_access_rules(share_id)
+            rules = self.list_access_rules(share_id)
             for rule in rules:
                 if rule["id"] in rule_id:
                     rule_status = rule['state']
@@ -249,20 +267,24 @@ class SharesClient(service_client.ServiceClient):
 
     def default_quotas(self, tenant_id):
         resp, body = self.get("os-quota-sets/%s/defaults" % tenant_id)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def show_quotas(self, tenant_id, user_id=None):
         uri = "os-quota-sets/%s" % tenant_id
         if user_id is not None:
             uri += "?user_id=%s" % user_id
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def reset_quotas(self, tenant_id, user_id=None):
         uri = "os-quota-sets/%s" % tenant_id
         if user_id is not None:
             uri += "?user_id=%s" % user_id
-        return self.delete(uri)
+        resp, body = self.delete(uri)
+        self.expected_success(202, resp.status)
+        return body
 
     def update_quotas(self, tenant_id, user_id=None, shares=None,
                       snapshots=None, gigabytes=None, snapshot_gigabytes=None,
@@ -287,11 +309,13 @@ class SharesClient(service_client.ServiceClient):
         put_body = json.dumps({"quota_set": put_body})
 
         resp, body = self.put(uri, put_body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def get_limits(self):
         resp, body = self.get("limits")
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def is_resource_deleted(self, *args, **kwargs):
         """Verifies whether provided resource deleted or not.
@@ -327,10 +351,11 @@ class SharesClient(service_client.ServiceClient):
 
     def _is_resource_deleted(self, func, res_id):
         try:
-            r, s = func(res_id)
+            res = func(res_id)
         except lib_exc.NotFound:
             return True
-        if (func.__name__ == 'get_share' and s['status'] == 'error_deleting'):
+        if (func.__name__ == 'get_share' and
+                res['status'] == 'error_deleting'):
             # Share has "error_deleting" status and can not be deleted.
             raise share_exceptions.ResourceReleaseFailed(
                 res_type='share', res_id=res_id)
@@ -348,7 +373,8 @@ class SharesClient(service_client.ServiceClient):
 
     def list_extensions(self):
         resp, extensions = self.get("extensions")
-        return resp, self._parse_resp(extensions)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(extensions)
 
     def update_share(self, share_id, name=None, desc=None, is_public=None):
         body = {"share": {}}
@@ -360,7 +386,8 @@ class SharesClient(service_client.ServiceClient):
             body["share"].update({"is_public": is_public})
         body = json.dumps(body)
         resp, body = self.put("shares/%s" % share_id, body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def rename_snapshot(self, snapshot_id, name, desc=None):
         body = {"snapshot": {"display_name": name}}
@@ -368,7 +395,8 @@ class SharesClient(service_client.ServiceClient):
             body["snapshot"].update({"display_description": desc})
         body = json.dumps(body)
         resp, body = self.put("snapshots/%s" % snapshot_id, body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def reset_state(self, s_id, status="error", s_type="shares"):
         """Resets the state of a share or a snapshot.
@@ -378,7 +406,9 @@ class SharesClient(service_client.ServiceClient):
         """
         body = {"os-reset_status": {"status": status}}
         body = json.dumps(body)
-        return self.post("%s/%s/action" % (s_type, s_id), body)
+        resp, body = self.post("%s/%s/action" % (s_type, s_id), body)
+        self.expected_success(202, resp.status)
+        return body
 
     def force_delete(self, s_id, s_type="shares"):
         """Force delete share or snapshot.
@@ -387,7 +417,9 @@ class SharesClient(service_client.ServiceClient):
         """
         body = {"os-force_delete": None}
         body = json.dumps(body)
-        return self.post("%s/%s/action" % (s_type, s_id), body)
+        resp, body = self.post("%s/%s/action" % (s_type, s_id), body)
+        self.expected_success(202, resp.status)
+        return body
 
 ###############
 
@@ -397,7 +429,8 @@ class SharesClient(service_client.ServiceClient):
         if params:
             uri += '?%s' % urllib.urlencode(params)
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
 ###############
 
@@ -411,7 +444,8 @@ class SharesClient(service_client.ServiceClient):
             resp, metadata = self.post(uri, body)
         if method is "put":
             resp, metadata = self.put(uri, body)
-        return resp, self._parse_resp(metadata)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(metadata)
 
     def set_metadata(self, share_id, metadata=None):
         return self._update_metadata(share_id, metadata)
@@ -420,11 +454,14 @@ class SharesClient(service_client.ServiceClient):
         return self._update_metadata(share_id, metadata, method="put")
 
     def delete_metadata(self, share_id, key):
-        return self.delete("shares/%s/metadata/%s" % (share_id, key))
+        resp, body = self.delete("shares/%s/metadata/%s" % (share_id, key))
+        self.expected_success(200, resp.status)
+        return body
 
     def get_metadata(self, share_id):
         resp, body = self.get("shares/%s/metadata" % share_id)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
 ###############
 
@@ -435,7 +472,8 @@ class SharesClient(service_client.ServiceClient):
         post_body.update(kwargs)
         body = json.dumps({"security_service": post_body})
         resp, body = self.post("security-services", body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def update_security_service(self, ss_id, **kwargs):
         # ss_id - id of security-service entity
@@ -444,11 +482,13 @@ class SharesClient(service_client.ServiceClient):
         # only 'name' and 'description' fields
         body = json.dumps({"security_service": kwargs})
         resp, body = self.put("security-services/%s" % ss_id, body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def get_security_service(self, ss_id):
         resp, body = self.get("security-services/%s" % ss_id)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def list_security_services(self, detailed=False, params=None):
         uri = "security-services"
@@ -457,10 +497,13 @@ class SharesClient(service_client.ServiceClient):
         if params:
             uri += "?%s" % urllib.urlencode(params)
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def delete_security_service(self, ss_id):
-        return self.delete("security-services/%s" % ss_id)
+        resp, body = self.delete("security-services/%s" % ss_id)
+        self.expected_success(202, resp.status)
+        return body
 
 ###############
 
@@ -469,22 +512,26 @@ class SharesClient(service_client.ServiceClient):
         # + for neutron: neutron_net_id, neutron_subnet_id
         body = json.dumps({"share_network": kwargs})
         resp, body = self.post("share-networks", body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def update_share_network(self, sn_id, **kwargs):
         # kwargs: name, description
         # + for neutron: neutron_net_id, neutron_subnet_id
         body = json.dumps({"share_network": kwargs})
         resp, body = self.put("share-networks/%s" % sn_id, body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def get_share_network(self, sn_id):
         resp, body = self.get("share-networks/%s" % sn_id)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def list_share_networks(self):
         resp, body = self.get("share-networks")
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def list_share_networks_with_detail(self, params=None):
         """List the details of all shares."""
@@ -492,10 +539,13 @@ class SharesClient(service_client.ServiceClient):
         if params:
             uri += "?%s" % urllib.urlencode(params)
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def delete_share_network(self, sn_id):
-        return self.delete("share-networks/%s" % sn_id)
+        resp, body = self.delete("share-networks/%s" % sn_id)
+        self.expected_success(202, resp.status)
+        return body
 
 ###############
 
@@ -511,18 +561,22 @@ class SharesClient(service_client.ServiceClient):
         }
         body = json.dumps(data)
         resp, body = self.post("share-networks/%s/action" % sn_id, body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def add_sec_service_to_share_network(self, sn_id, ss_id):
-        return self._map_security_service_and_share_network(sn_id, ss_id)
+        body = self._map_security_service_and_share_network(sn_id, ss_id)
+        return body
 
     def remove_sec_service_from_share_network(self, sn_id, ss_id):
-        return self._map_security_service_and_share_network(sn_id, ss_id,
-                                                            "remove")
+        body = self._map_security_service_and_share_network(
+            sn_id, ss_id, "remove")
+        return body
 
     def list_sec_services_for_share_network(self, sn_id):
         resp, body = self.get("security-services?share_network_id=%s" % sn_id)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
 ###############
 
@@ -531,7 +585,8 @@ class SharesClient(service_client.ServiceClient):
         if params is not None:
             uri += '?%s' % urllib.urlencode(params)
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def create_share_type(self, name, is_public=True, **kwargs):
         post_body = {
@@ -541,32 +596,41 @@ class SharesClient(service_client.ServiceClient):
         }
         post_body = json.dumps({'share_type': post_body})
         resp, body = self.post('types', post_body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def delete_share_type(self, share_type_id):
-        return self.delete("types/%s" % share_type_id)
+        resp, body = self.delete("types/%s" % share_type_id)
+        self.expected_success(202, resp.status)
+        return body
 
     def get_share_type(self, share_type_id):
         resp, body = self.get("types/%s" % share_type_id)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def add_access_to_share_type(self, share_type_id, project_id):
         uri = 'types/%s/action' % share_type_id
         post_body = {'project': project_id}
         post_body = json.dumps({'addProjectAccess': post_body})
-        return self.post(uri, post_body)
+        resp, body = self.post(uri, post_body)
+        self.expected_success(202, resp.status)
+        return body
 
     def remove_access_from_share_type(self, share_type_id, project_id):
         uri = 'types/%s/action' % share_type_id
         post_body = {'project': project_id}
         post_body = json.dumps({'removeProjectAccess': post_body})
-        return self.post(uri, post_body)
+        resp, body = self.post(uri, post_body)
+        self.expected_success(202, resp.status)
+        return body
 
     def list_access_to_share_type(self, share_type_id):
         uri = 'types/%s/os-share-type-access' % share_type_id
         resp, body = self.get(uri)
         # [{"share_type_id": "%st_id%", "project_id": "%project_id%"}, ]
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
 ###############
 
@@ -574,19 +638,22 @@ class SharesClient(service_client.ServiceClient):
         url = "types/%s/extra_specs" % share_type_id
         post_body = json.dumps({'extra_specs': extra_specs})
         resp, body = self.post(url, post_body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def get_share_type_extra_spec(self, share_type_id, extra_spec_name):
         uri = "types/%s/extra_specs/%s" % (share_type_id, extra_spec_name)
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def get_share_type_extra_specs(self, share_type_id, params=None):
         uri = "types/%s/extra_specs" % share_type_id
         if params is not None:
             uri += '?%s' % urllib.urlencode(params)
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def update_share_type_extra_spec(self, share_type_id, spec_name,
                                      spec_value):
@@ -594,18 +661,22 @@ class SharesClient(service_client.ServiceClient):
         extra_spec = {spec_name: spec_value}
         post_body = json.dumps(extra_spec)
         resp, body = self.put(uri, post_body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def update_share_type_extra_specs(self, share_type_id, extra_specs):
         uri = "types/%s/extra_specs" % share_type_id
         extra_specs = {"extra_specs": extra_specs}
         post_body = json.dumps(extra_specs)
         resp, body = self.post(uri, post_body)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def delete_share_type_extra_spec(self, share_type_id, extra_spec_name):
         uri = "types/%s/extra_specs/%s" % (share_type_id, extra_spec_name)
-        return self.delete(uri)
+        resp, body = self.delete(uri)
+        self.expected_success(202, resp.status)
+        return body
 
 ###############
 
@@ -615,24 +686,29 @@ class SharesClient(service_client.ServiceClient):
         if search_opts:
             uri += "?%s" % urllib.urlencode(search_opts)
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def delete_share_server(self, share_server_id):
         """Delete share server by its ID."""
         uri = "share-servers/%s" % share_server_id
-        return self.delete(uri)
+        resp, body = self.delete(uri)
+        self.expected_success(202, resp.status)
+        return body
 
     def show_share_server(self, share_server_id):
         """Get share server info."""
         uri = "share-servers/%s" % share_server_id
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
     def show_share_server_details(self, share_server_id):
         """Get share server details only."""
         uri = "share-servers/%s/details" % share_server_id
         resp, body = self.get(uri)
-        return resp, self._parse_resp(body)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
 ###############
 
@@ -645,4 +721,4 @@ class SharesClient(service_client.ServiceClient):
             uri += "?%s" % urllib.urlencode(search_opts)
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
-        return resp, json.loads(body)
+        return json.loads(body)

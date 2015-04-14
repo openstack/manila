@@ -33,9 +33,9 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
             msg = "IP rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
         # create share
-        __, cls.share = cls.create_share(cls.protocol)
+        cls.share = cls.create_share(cls.protocol)
         # create snapshot
-        __, cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
+        cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_1(self):
@@ -101,13 +101,10 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
         access_to = "1.2.3.4"
 
         # create rule
-        resp, rule = self.shares_client.create_access_rule(self.share["id"],
-                                                           access_type,
-                                                           access_to)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        self.shares_client.wait_for_access_rule_status(self.share["id"],
-                                                       rule["id"],
-                                                       "active")
+        rule = self.shares_client.create_access_rule(
+            self.share["id"], access_type, access_to)
+        self.shares_client.wait_for_access_rule_status(
+            self.share["id"], rule["id"], "active")
 
         # try create duplicate of rule
         self.assertRaises(lib_exc.BadRequest,
@@ -130,9 +127,9 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
             msg = "USER rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
         # create share
-        __, cls.share = cls.create_share(cls.protocol)
+        cls.share = cls.create_share(cls.protocol)
         # create snapshot
-        __, cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
+        cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_user_with_wrong_input_2(self):
@@ -209,9 +206,9 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
             cls.message = "Rule tests are disabled"
             raise cls.skipException(cls.message)
         # create share
-        __, cls.share = cls.create_share()
+        cls.share = cls.create_share()
         # create snapshot
-        __, cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
+        cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
     def test_delete_access_rule_with_wrong_id(self):

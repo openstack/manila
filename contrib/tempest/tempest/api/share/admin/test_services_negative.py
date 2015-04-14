@@ -36,10 +36,9 @@ class ServicesAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_params(self):
         # All services are expected if send the request with invalid parameter
-        resp, services = self.shares_client.list_services()
+        services = self.shares_client.list_services()
         params = {'fake_param': 'fake_param_value'}
-        resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        services_fake = self.shares_client.list_services(params)
         self.assertEqual(len(services), len(services_fake))
 
         # "update_at" field could be updated before second request,
@@ -51,34 +50,29 @@ class ServicesAdminNegativeTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_host(self):
         params = {'host': 'fake_host'}
-        resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        services_fake = self.shares_client.list_services(params)
         self.assertEqual(0, len(services_fake))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_binary(self):
         params = {'binary': 'fake_binary'}
-        resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        services_fake = self.shares_client.list_services(params)
         self.assertEqual(0, len(services_fake))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_zone(self):
         params = {'zone': 'fake_zone'}
-        resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        services_fake = self.shares_client.list_services(params)
         self.assertEqual(0, len(services_fake))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_status(self):
         params = {'status': 'fake_status'}
-        resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        services_fake = self.shares_client.list_services(params)
         self.assertEqual(0, len(services_fake))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_state(self):
         params = {'state': 'fake_state'}
-        resp, services_fake = self.shares_client.list_services(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        services_fake = self.shares_client.list_services(params)
         self.assertEqual(0, len(services_fake))

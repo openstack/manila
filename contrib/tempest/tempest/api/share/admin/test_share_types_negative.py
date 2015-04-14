@@ -26,8 +26,7 @@ class ShareTypesAdminNegativeTest(base.BaseSharesAdminTest):
     def _create_share_type(self):
         name = data_utils.rand_name("unique_st_name")
         extra_specs = self.add_required_extra_specs_to_dict({"key": "value"})
-        __, st = self.create_share_type(name, extra_specs=extra_specs)
-        return st
+        return self.create_share_type(name, extra_specs=extra_specs)
 
     @classmethod
     def resource_setup(cls):

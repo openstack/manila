@@ -26,8 +26,7 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def _create_share_type(self):
         name = data_utils.rand_name("unique_st_name")
         extra_specs = self.add_required_extra_specs_to_dict({"key": "value"})
-        __, st = self.create_share_type(name, extra_specs=extra_specs)
-        return st
+        return self.create_share_type(name, extra_specs=extra_specs)
 
     @classmethod
     def resource_setup(cls):
@@ -115,10 +114,9 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_set_too_long_value_with_update(self):
         too_big_value = "v" * 256
         st = self._create_share_type()
-        resp, body = self.shares_client.create_share_type_extra_specs(
+        self.shares_client.create_share_type_extra_specs(
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({"key": "value"}))
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertRaises(
             lib_exc.BadRequest,
             self.shares_client.update_share_type_extra_specs,
@@ -129,10 +127,9 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
     def test_try_set_too_long_value_with_update_of_one_key(self):
         too_big_value = "v" * 256
         st = self._create_share_type()
-        resp, body = self.shares_client.create_share_type_extra_specs(
+        self.shares_client.create_share_type_extra_specs(
             st["share_type"]["id"],
             self.add_required_extra_specs_to_dict({"key": "value"}))
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_share_type_extra_spec,
                           st["share_type"]["id"], "key", too_big_value)

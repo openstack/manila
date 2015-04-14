@@ -31,15 +31,13 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         extra_specs = self.add_required_extra_specs_to_dict()
 
         # Create share type
-        resp, st_create = self.shares_client.create_share_type(
+        st_create = self.shares_client.create_share_type(
             name, extra_specs=extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(name, st_create['share_type']['name'])
         st_id = st_create['share_type']['id']
 
         # Delete share type
-        resp, __ = self.shares_client.delete_share_type(st_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_share_type(st_id)
 
         # Verify deletion of share type
         self.shares_client.wait_for_resource_deletion(st_id=st_id)
@@ -53,15 +51,12 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         extra_specs = self.add_required_extra_specs_to_dict({"key": "value", })
 
         # Create share type
-        resp, st_create = self.create_share_type(name,
-                                                 extra_specs=extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        st_create = self.create_share_type(name, extra_specs=extra_specs)
         self.assertEqual(name, st_create['share_type']['name'])
         st_id = st_create["share_type"]["id"]
 
         # Get share type
-        resp, get = self.shares_client.get_share_type(st_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get = self.shares_client.get_share_type(st_id)
         self.assertEqual(name, get["share_type"]["name"])
         self.assertEqual(st_id, get["share_type"]["id"])
         self.assertEqual(extra_specs, get["share_type"]["extra_specs"])
@@ -75,13 +70,11 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         extra_specs = self.add_required_extra_specs_to_dict()
 
         # Create share type
-        resp, st_create = self.create_share_type(name, extra_specs=extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        st_create = self.create_share_type(name, extra_specs=extra_specs)
         st_id = st_create["share_type"]["id"]
 
         # list share types
-        resp, st_list = self.shares_client.list_share_types()
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        st_list = self.shares_client.list_share_types()
         sts = st_list["share_types"]
         self.assertTrue(len(sts) >= 1)
         self.assertTrue(any(st_id in st["id"] for st in sts))
@@ -103,20 +96,17 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         })
 
         # Create share type
-        resp, st_create = self.create_share_type(shr_type_name,
-                                                 extra_specs=extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        st_create = self.create_share_type(
+            shr_type_name, extra_specs=extra_specs)
 
         # Create share with share type
-        resp, share = self.create_share(
+        share = self.create_share(
             name=share_name, share_type_id=st_create["share_type"]["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(share["name"], share_name)
         self.shares_client.wait_for_share_status(share["id"], "available")
 
         # Verify share info
-        resp, get = self.shares_client.get_share(share["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get = self.shares_client.get_share(share["id"])
         self.assertEqual(share_name, get["name"])
         self.assertEqual(share["id"], get["id"])
         self.assertEqual(shr_type_name, get["share_type"])
@@ -127,52 +117,43 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         project_id = self.shares_client.tenant_id
 
         # Create private share type
-        resp, st_create = self.create_share_type(
+        st_create = self.create_share_type(
             name, False, extra_specs=extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(name, st_create['share_type']['name'])
         st_id = st_create["share_type"]["id"]
 
         # It should not be listed without access
-        resp, st_list = self.shares_client.list_share_types()
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        st_list = self.shares_client.list_share_types()
         sts = st_list["share_types"]
         self.assertFalse(any(st_id in st["id"] for st in sts))
 
         # List projects that have access for share type - none expected
-        resp, access = self.shares_client.list_access_to_share_type(st_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        access = self.shares_client.list_access_to_share_type(st_id)
         self.assertEqual([], access)
 
         # Add project access to share type
-        resp, access = self.shares_client.add_access_to_share_type(
+        access = self.shares_client.add_access_to_share_type(
             st_id, project_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Now it should be listed
-        resp, st_list = self.shares_client.list_share_types()
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        st_list = self.shares_client.list_share_types()
         sts = st_list["share_types"]
         self.assertTrue(any(st_id in st["id"] for st in sts))
 
         # List projects that have access for share type - one expected
-        resp, access = self.shares_client.list_access_to_share_type(st_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        access = self.shares_client.list_access_to_share_type(st_id)
         expected = [{'share_type_id': st_id, 'project_id': project_id}, ]
         self.assertEqual(expected, access)
 
         # Remove project access from share type
-        resp, access = self.shares_client.remove_access_from_share_type(
+        access = self.shares_client.remove_access_from_share_type(
             st_id, project_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # It should not be listed without access
-        resp, st_list = self.shares_client.list_share_types()
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        st_list = self.shares_client.list_share_types()
         sts = st_list["share_types"]
         self.assertFalse(any(st_id in st["id"] for st in sts))
 
         # List projects that have access for share type - none expected
-        resp, access = self.shares_client.list_access_to_share_type(st_id)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        access = self.shares_client.list_access_to_share_type(st_id)
         self.assertEqual([], access)

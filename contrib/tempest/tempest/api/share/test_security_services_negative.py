@@ -78,26 +78,23 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_invalid_keys_sh_server_exists(self):
         ss_data = self.generate_security_service_data()
-        resp, ss = self.create_security_service(**ss_data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        ss = self.create_security_service(**ss_data)
 
         sn = self.shares_client.get_share_network(
-            self.os.shares_client.share_network_id)[1]
-        resp, fresh_sn = self.create_share_network(
+            self.os.shares_client.share_network_id)
+        fresh_sn = self.create_share_network(
             neutron_net_id=sn["neutron_net_id"],
             neutron_subnet_id=sn["neutron_subnet_id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
-        resp, body = self.shares_client.add_sec_service_to_share_network(
+        self.shares_client.add_sec_service_to_share_network(
             fresh_sn["id"], ss["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Security service with fake data is used, so if we use backend driver
         # that fails on wrong data, we expect error here.
         # We require any share that uses our share-network.
         try:
-            resp, share = self.create_share(share_network_id=fresh_sn["id"],
-                                            cleanup_in_class=False)
+            self.create_share(
+                share_network_id=fresh_sn["id"], cleanup_in_class=False)
         except Exception as e:
             # we do wait for either 'error' or 'available' status because
             # it is the only available statuses for proper deletion.
@@ -114,12 +111,10 @@ class SecurityServicesNegativeTest(base.BaseSharesTest):
     @test.attr(type=["gate", "smoke", "negative"])
     def test_get_deleted_security_service(self):
         data = self.generate_security_service_data()
-        resp, ss = self.create_security_service(**data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        ss = self.create_security_service(**data)
         self.assertDictContainsSubset(data, ss)
 
-        resp, __ = self.shares_client.delete_security_service(ss["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_security_service(ss["id"])
 
         # try get deleted security service entity
         self.assertRaises(lib_exc.NotFound,

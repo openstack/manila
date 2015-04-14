@@ -28,7 +28,7 @@ class SharesNegativeTest(base.BaseSharesTest):
     @classmethod
     def resource_setup(cls):
         super(SharesNegativeTest, cls).resource_setup()
-        resp, cls.share = cls.shares_client.create_share(
+        cls.share = cls.shares_client.create_share(
             name='public_share',
             description='public_share_desc',
             size=1,
@@ -114,7 +114,7 @@ class SharesNegativeTest(base.BaseSharesTest):
         # share can not be deleted while snapshot exists
 
         # create share
-        __, share = self.create_share()
+        share = self.create_share()
 
         # create snapshot
         self.create_snapshot_wait_for_active(share["id"])
@@ -130,13 +130,12 @@ class SharesNegativeTest(base.BaseSharesTest):
         skip_msg = "Check disc space for this test"
 
         try:  # create share
-            __, share = self.create_share(
-                size=2, cleanup_in_class=False)
+            share = self.create_share(size=2, cleanup_in_class=False)
         except share_exceptions.ShareBuildErrorException:
             self.skip(skip_msg)
 
         try:  # create snapshot
-            __, snap = self.create_snapshot_wait_for_active(
+            snap = self.create_snapshot_wait_for_active(
                 share["id"], cleanup_in_class=False)
         except share_exceptions.SnapshotBuildErrorException:
             self.skip(skip_msg)
@@ -160,22 +159,22 @@ class SharesNegativeTest(base.BaseSharesTest):
                       "Only for multitenancy.")
     def test_create_share_from_snap_with_different_share_network(self):
         # create share
-        __, share = self.create_share(cleanup_in_class=False)
+        share = self.create_share(cleanup_in_class=False)
 
         # get parent's share network
-        __, parent_share = self.shares_client.get_share(share["id"])
-        __, parent_sn = self.shares_client.get_share_network(
+        parent_share = self.shares_client.get_share(share["id"])
+        parent_sn = self.shares_client.get_share_network(
             parent_share["share_network_id"])
 
         # create new share-network - net duplicate of parent's share
-        __, new_duplicated_sn = self.create_share_network(
+        new_duplicated_sn = self.create_share_network(
             cleanup_in_class=False,
             neutron_net_id=parent_sn["neutron_net_id"],
             neutron_subnet_id=parent_sn["neutron_subnet_id"],
         )
 
         # create snapshot of parent share
-        __, snap = self.create_snapshot_wait_for_active(
+        snap = self.create_snapshot_wait_for_active(
             share["id"], cleanup_in_class=False)
 
         # try create share with snapshot using another share-network

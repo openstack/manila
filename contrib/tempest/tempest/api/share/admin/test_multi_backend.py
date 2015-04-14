@@ -45,7 +45,7 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
             extra_specs = {
                 "share_backend_name": CONF.share.backend_names[i],
             }
-            __, st = cls.create_share_type(
+            st = cls.create_share_type(
                 name=st_name,
                 extra_specs=cls.add_required_extra_specs_to_dict(extra_specs))
             cls.sts.append(st["share_type"])
@@ -59,14 +59,14 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
     def test_share_backend_name_reporting(self):
         # Share's 'host' should be like "hostname@backend_name"
         for share in self.shares:
-            __, get = self.shares_client.get_share(share['id'])
+            get = self.shares_client.get_share(share['id'])
             self.assertTrue(len(get["host"].split("@")) == 2)
 
     @test.attr(type=["gate", "smoke", ])
     def test_share_share_type(self):
         # Share type should be the same as provided with share creation
         for i in [0, 1]:
-            __, get = self.shares_client.get_share(self.shares[i]['id'])
+            get = self.shares_client.get_share(self.shares[i]['id'])
             self.assertEqual(get["share_type"], self.sts[i]["name"])
 
     @test.attr(type=["gate", ])
@@ -78,7 +78,7 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
                                      "configured with same name. Skipping.")
         ips = []
         for share in self.shares:
-            __, get = self.shares_client.get_share(share['id'])
+            get = self.shares_client.get_share(share['id'])
             if get["share_proto"].lower() == "nfs":
                 # %ip%:/%share_path%
                 ip = get["export_location"].split(":")[0]
@@ -95,6 +95,6 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
         if CONF.share.backend_names[0] == CONF.share.backend_names[1]:
             raise self.skipException("Share backends "
                                      "configured with same name. Skipping.")
-        __, get1 = self.shares_client.get_share(self.shares[0]['id'])
-        __, get2 = self.shares_client.get_share(self.shares[1]['id'])
+        get1 = self.shares_client.get_share(self.shares[0]['id'])
+        get2 = self.shares_client.get_share(self.shares[1]['id'])
         self.assertNotEqual(get1["host"], get2["host"])

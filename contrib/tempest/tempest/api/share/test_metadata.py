@@ -22,7 +22,7 @@ class SharesMetadataTest(base.BaseSharesTest):
     @classmethod
     def resource_setup(cls):
         super(SharesMetadataTest, cls).resource_setup()
-        __, cls.share = cls.create_share()
+        cls.share = cls.create_share()
 
     @test.attr(type=["gate", ])
     def test_set_metadata_in_share_creation(self):
@@ -30,11 +30,10 @@ class SharesMetadataTest(base.BaseSharesTest):
         md = {u"key1": u"value1", u"key2": u"value2", }
 
         # create share with metadata
-        __, share = self.create_share(metadata=md, cleanup_in_class=False)
+        share = self.create_share(metadata=md, cleanup_in_class=False)
 
         # get metadata of share
-        resp, metadata = self.shares_client.get_metadata(share["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        metadata = self.shares_client.get_metadata(share["id"])
 
         # verify metadata
         self.assertEqual(md, metadata)
@@ -45,27 +44,23 @@ class SharesMetadataTest(base.BaseSharesTest):
         md = {u"key3": u"value3", u"key4": u"value4", }
 
         # create share
-        __, share = self.create_share(cleanup_in_class=False)
+        share = self.create_share(cleanup_in_class=False)
 
         # set metadata
-        resp, __ = self.shares_client.set_metadata(share["id"], md)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.set_metadata(share["id"], md)
 
         # read metadata
-        resp, get_md = self.shares_client.get_metadata(share["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get_md = self.shares_client.get_metadata(share["id"])
 
         # verify metadata
         self.assertEqual(md, get_md)
 
         # delete metadata
         for key in md.keys():
-            resp, __ = self.shares_client.delete_metadata(share["id"], key)
-            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+            self.shares_client.delete_metadata(share["id"], key)
 
         # verify deletion of metadata
-        resp, get_metadata = self.shares_client.get_metadata(share["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get_metadata = self.shares_client.get_metadata(share["id"])
         self.assertEqual({}, get_metadata)
 
     @test.attr(type=["gate", ])
@@ -75,71 +70,93 @@ class SharesMetadataTest(base.BaseSharesTest):
         md2 = {u"key7": u"value7", u"key8": u"value8", }
 
         # create share
-        __, share = self.create_share(cleanup_in_class=False)
+        share = self.create_share(cleanup_in_class=False)
 
         # set metadata
-        resp, __ = self.shares_client.set_metadata(share["id"], md1)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.set_metadata(share["id"], md1)
 
         # update metadata
-        resp, __ = self.shares_client.update_all_metadata(share["id"], md2)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.update_all_metadata(share["id"], md2)
 
         # get metadata
-        resp, get_md = self.shares_client.get_metadata(share["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get_md = self.shares_client.get_metadata(share["id"])
 
         # verify metadata
         self.assertEqual(md2, get_md)
 
     @test.attr(type=["gate", ])
     def test_set_metadata_min_size_key(self):
-        resp, min = self.shares_client.set_metadata(self.share["id"],
-                                                    {"k": "value"})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        data = {"k": "value"}
+
+        self.shares_client.set_metadata(self.share["id"], data)
+
+        body_get = self.shares_client.get_metadata(self.share["id"])
+        self.assertEqual(data['k'], body_get.get('k'))
 
     @test.attr(type=["gate", ])
     def test_set_metadata_max_size_key(self):
         max_key = "k" * 255
-        resp, max = self.shares_client.set_metadata(self.share["id"],
-                                                    {max_key: "value"})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        data = {max_key: "value"}
+
+        self.shares_client.set_metadata(self.share["id"], data)
+
+        body_get = self.shares_client.get_metadata(self.share["id"])
+        self.assertIn(max_key, body_get)
+        self.assertEqual(data[max_key], body_get.get(max_key))
 
     @test.attr(type=["gate", ])
     def test_set_metadata_min_size_value(self):
-        resp, min = self.shares_client.set_metadata(self.share["id"],
-                                                    {"key": "v"})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        data = {"key": "v"}
+
+        self.shares_client.set_metadata(self.share["id"], data)
+
+        body_get = self.shares_client.get_metadata(self.share["id"])
+        self.assertEqual(data['key'], body_get['key'])
 
     @test.attr(type=["gate", ])
     def test_set_metadata_max_size_value(self):
         max_value = "v" * 1023
-        resp, body = self.shares_client.set_metadata(self.share["id"],
-                                                     {"key": max_value})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        data = {"key": max_value}
+
+        self.shares_client.set_metadata(self.share["id"], data)
+
+        body_get = self.shares_client.get_metadata(self.share["id"])
+        self.assertEqual(data['key'], body_get['key'])
 
     @test.attr(type=["gate", ])
     def test_upd_metadata_min_size_key(self):
-        resp, body = self.shares_client.update_all_metadata(self.share["id"],
-                                                            {"k": "value"})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        data = {"k": "value"}
+
+        self.shares_client.update_all_metadata(self.share["id"], data)
+
+        body_get = self.shares_client.get_metadata(self.share["id"])
+        self.assertEqual(data, body_get)
 
     @test.attr(type=["gate", ])
     def test_upd_metadata_max_size_key(self):
         max_key = "k" * 255
-        resp, body = self.shares_client.update_all_metadata(self.share["id"],
-                                                            {max_key: "value"})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        data = {max_key: "value"}
+
+        self.shares_client.update_all_metadata(self.share["id"], data)
+
+        body_get = self.shares_client.get_metadata(self.share["id"])
+        self.assertEqual(data, body_get)
 
     @test.attr(type=["gate", ])
     def test_upd_metadata_min_size_value(self):
-        resp, body = self.shares_client.update_all_metadata(self.share["id"],
-                                                            {"key": "v"})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        data = {"key": "v"}
+
+        self.shares_client.update_all_metadata(self.share["id"], data)
+
+        body_get = self.shares_client.get_metadata(self.share["id"])
+        self.assertEqual(data, body_get)
 
     @test.attr(type=["gate", ])
     def test_upd_metadata_max_size_value(self):
         max_value = "v" * 1023
-        resp, body = self.shares_client.update_all_metadata(self.share["id"],
-                                                            {"key": max_value})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        data = {"key": max_value}
+
+        self.shares_client.update_all_metadata(self.share["id"], data)
+
+        body_get = self.shares_client.get_metadata(self.share["id"])
+        self.assertEqual(data, body_get)

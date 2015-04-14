@@ -95,9 +95,6 @@ class BaseSharesTest(test.BaseTestCase):
     # Will be cleaned up in tearDown method
     method_isolated_creds = []
 
-    # All the successful HTTP status codes from RFC 2616
-    HTTP_SUCCESS = (200, 201, 202, 203, 204, 205, 206)
-
     @classmethod
     def get_client_with_isolated_creds(cls,
                                        name=None,
@@ -266,7 +263,7 @@ class BaseSharesTest(test.BaseTestCase):
                     subnet_id = subnet["id"]
 
                 # Try get suitable share-network
-                __, share_networks = sc.list_share_networks_with_detail()
+                share_networks = sc.list_share_networks_with_detail()
                 for sn in share_networks:
                     if (net_id == sn["neutron_net_id"] and
                             subnet_id == sn["neutron_subnet_id"] and
@@ -285,10 +282,10 @@ class BaseSharesTest(test.BaseTestCase):
             # Create suitable share-network
             if share_network_id is None:
                 sn_desc = "This share-network was created by tempest"
-                __, sn = sc.create_share_network(name=sn_name,
-                                                 description=sn_desc,
-                                                 neutron_net_id=net_id,
-                                                 neutron_subnet_id=subnet_id)
+                sn = sc.create_share_network(name=sn_name,
+                                             description=sn_desc,
+                                             neutron_net_id=net_id,
+                                             neutron_subnet_id=subnet_id)
                 share_network_id = sn["id"]
 
         return share_network_id
@@ -313,22 +310,21 @@ class BaseSharesTest(test.BaseTestCase):
             'share_type_id': share_type_id,
             'is_public': is_public,
         }
-        resp, share = client.create_share(**kwargs)
+        share = client.create_share(**kwargs)
         resource = {"type": "share", "id": share["id"], "client": client}
         cleanup_list = (cls.class_resources if cleanup_in_class else
                         cls.method_resources)
         cleanup_list.insert(0, resource)
-        return resp, share
+        return share
 
     @classmethod
     def create_share(cls, *args, **kwargs):
         """Create one share and wait for available state. Retry if allowed."""
-        result = cls.create_shares(
-            [{"args": args, "kwargs": kwargs}], with_resp=True)
+        result = cls.create_shares([{"args": args, "kwargs": kwargs}])
         return result[0]
 
     @classmethod
-    def create_shares(cls, share_data_list, with_resp=False):
+    def create_shares(cls, share_data_list):
         """Creates several shares in parallel with retries.
 
         Use this method when you want to create more than one share at same
@@ -341,8 +337,6 @@ class BaseSharesTest(test.BaseTestCase):
             'kwargs' for '_create_share' method of this base class.
             example of data:
                 share_data_list=[{'args': ['quuz'], 'kwargs': {'foo': 'bar'}}}]
-        :param with_resp: boolean -- whether to return list of
-            tuples (resp, share) or just list of shares.
         :returns: list -- list of shares created using provided data.
         """
 
@@ -361,8 +355,7 @@ class BaseSharesTest(test.BaseTestCase):
                     "Provided %s" % list(d))
             d["kwargs"]["client"] = d["kwargs"].get(
                 "client", cls.shares_client)
-            d["resp"], d["share"] = cls._create_share(
-                *d["args"], **d["kwargs"])
+            d["share"] = cls._create_share(*d["args"], **d["kwargs"])
             d["cnt"] = 0
             d["available"] = False
 
@@ -382,13 +375,11 @@ class BaseSharesTest(test.BaseTestCase):
                                "Trying create another." % d["share"]["id"])
                         LOG.error(msg)
                         LOG.error(e)
-                        d["resp"], d["share"] = cls._create_share(
+                        d["share"] = cls._create_share(
                             *d["args"], **d["kwargs"])
                     else:
                         raise e
 
-        if with_resp:
-            return [(d["resp"], d["share"]) for d in data]
         return [d["share"] for d in data]
 
     @classmethod
@@ -399,69 +390,69 @@ class BaseSharesTest(test.BaseTestCase):
             client = cls.shares_client
         if description is None:
             description = "Tempest's snapshot"
-        r, s = client.create_snapshot(share_id, name, description, force)
+        snapshot = client.create_snapshot(share_id, name, description, force)
         resource = {
             "type": "snapshot",
-            "id": s["id"],
+            "id": snapshot["id"],
             "client": client,
         }
         if cleanup_in_class:
             cls.class_resources.insert(0, resource)
         else:
             cls.method_resources.insert(0, resource)
-        client.wait_for_snapshot_status(s["id"], "available")
-        return r, s
+        client.wait_for_snapshot_status(snapshot["id"], "available")
+        return snapshot
 
     @classmethod
     def create_share_network(cls, client=None,
                              cleanup_in_class=False, **kwargs):
         if client is None:
             client = cls.shares_client
-        resp, sn = client.create_share_network(**kwargs)
+        share_network = client.create_share_network(**kwargs)
         resource = {
             "type": "share_network",
-            "id": sn["id"],
+            "id": share_network["id"],
             "client": client,
         }
         if cleanup_in_class:
             cls.class_resources.insert(0, resource)
         else:
             cls.method_resources.insert(0, resource)
-        return resp, sn
+        return share_network
 
     @classmethod
     def create_security_service(cls, ss_type="ldap", client=None,
                                 cleanup_in_class=False, **kwargs):
         if client is None:
             client = cls.shares_client
-        resp, ss = client.create_security_service(ss_type, **kwargs)
+        security_service = client.create_security_service(ss_type, **kwargs)
         resource = {
             "type": "security_service",
-            "id": ss["id"],
+            "id": security_service["id"],
             "client": client,
         }
         if cleanup_in_class:
             cls.class_resources.insert(0, resource)
         else:
             cls.method_resources.insert(0, resource)
-        return resp, ss
+        return security_service
 
     @classmethod
     def create_share_type(cls, name, is_public=True, client=None,
                           cleanup_in_class=True, **kwargs):
         if client is None:
             client = cls.shares_client
-        resp, st = client.create_share_type(name, is_public, **kwargs)
+        share_type = client.create_share_type(name, is_public, **kwargs)
         resource = {
             "type": "share_type",
-            "id": st["share_type"]["id"],
+            "id": share_type["share_type"]["id"],
             "client": client,
         }
         if cleanup_in_class:
             cls.class_resources.insert(0, resource)
         else:
             cls.method_resources.insert(0, resource)
-        return resp, st
+        return share_type
 
     @staticmethod
     def add_required_extra_specs_to_dict(extra_specs=None):

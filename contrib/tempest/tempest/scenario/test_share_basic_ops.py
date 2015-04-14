@@ -89,7 +89,7 @@ class TestShareBasicOps(manager.ShareScenarioTest):
             server_or_ip=floating_ip['ip'],
             username=self.ssh_user,
             private_key=self.keypair['private_key'])
-        _, share = self.shares_client.get_share(self.share['id'])
+        share = self.shares_client.get_share(self.share['id'])
         server_ip = share['export_location'].split(":")[0]
         ssh_client.exec_command("ping -c 1 %s" % server_ip)
 

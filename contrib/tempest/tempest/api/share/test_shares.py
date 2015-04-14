@@ -33,14 +33,13 @@ class SharesNFSTest(base.BaseSharesTest):
         if cls.protocol not in CONF.share.enable_protocols:
             message = "%s tests are disabled" % cls.protocol
             raise cls.skipException(message)
-        __, cls.share = cls.create_share(cls.protocol)
+        cls.share = cls.create_share(cls.protocol)
 
     @test.attr(type=["gate", ])
     def test_create_delete_share(self):
 
         # create share
-        resp, share = self.create_share(self.protocol)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        share = self.create_share(self.protocol)
         detailed_elements = {'name', 'id', 'availability_zone',
                              'description', 'export_location', 'project_id',
                              'host', 'created_at', 'share_proto', 'metadata',
@@ -55,8 +54,7 @@ class SharesNFSTest(base.BaseSharesTest):
         self.assertFalse(share['is_public'])
 
         # delete share
-        resp, __ = self.shares_client.delete_share(share['id'])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_share(share['id'])
         self.shares_client.wait_for_resource_deletion(share_id=share['id'])
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share,
@@ -66,8 +64,7 @@ class SharesNFSTest(base.BaseSharesTest):
     def test_create_delete_snapshot(self):
 
         # create snapshot
-        resp, snap = self.create_snapshot_wait_for_active(self.share["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        snap = self.create_snapshot_wait_for_active(self.share["id"])
         detailed_elements = {'name', 'id', 'description',
                              'created_at', 'share_proto', 'size', 'share_size',
                              'share_id', 'status', 'links'}
@@ -78,8 +75,7 @@ class SharesNFSTest(base.BaseSharesTest):
                             "actual": snap.keys()})
 
         # delete snapshot
-        resp, __ = self.shares_client.delete_snapshot(snap["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_snapshot(snap["id"])
         self.shares_client.wait_for_resource_deletion(snapshot_id=snap["id"])
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_snapshot, snap['id'])
@@ -89,17 +85,15 @@ class SharesNFSTest(base.BaseSharesTest):
         # If multitenant driver used, share_network will be provided by default
 
         # create snapshot
-        __, snap = self.create_snapshot_wait_for_active(self.share["id"],
-                                                        cleanup_in_class=False)
+        snap = self.create_snapshot_wait_for_active(
+            self.share["id"], cleanup_in_class=False)
 
         # create share from snapshot
-        resp, s2 = self.create_share(self.protocol, snapshot_id=snap["id"],
-                                     cleanup_in_class=False)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        s2 = self.create_share(
+            self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
 
         # verify share, created from snapshot
-        resp, get = self.shares_client.get_share(s2["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get = self.shares_client.get_share(s2["id"])
         msg = "Expected snapshot_id %s as "\
               "source of share %s" % (snap["id"], get["snapshot_id"])
         self.assertEqual(get["snapshot_id"], snap["id"], msg)
@@ -112,19 +106,18 @@ class SharesNFSTest(base.BaseSharesTest):
         # when creating share from snapshot using multitenant driver.
 
         # get parent share
-        __, parent = self.shares_client.get_share(self.share["id"])
+        parent = self.shares_client.get_share(self.share["id"])
 
         # create snapshot
-        __, snap = self.create_snapshot_wait_for_active(
+        snap = self.create_snapshot_wait_for_active(
             self.share["id"], cleanup_in_class=False)
 
         # create share from snapshot
-        resp, child = self.create_share(
+        child = self.create_share(
             self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # verify share, created from snapshot
-        resp, get = self.shares_client.get_share(child["id"])
+        get = self.shares_client.get_share(child["id"])
         keys = {
             "share": self.share["id"],
             "actual_sn": get["share_network_id"],

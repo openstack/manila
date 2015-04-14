@@ -60,31 +60,31 @@ class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_wrong_filter_key(self):
         search_opts = {'fake_filter_key': 'ACTIVE'}
-        __, servers = self.shares_client.list_share_servers(search_opts)
+        servers = self.shares_client.list_share_servers(search_opts)
         self.assertEqual(len(servers), 0)
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_wrong_filter_value(self):
         search_opts = {'host': 123}
-        __, servers = self.shares_client.list_share_servers(search_opts)
+        servers = self.shares_client.list_share_servers(search_opts)
         self.assertEqual(len(servers), 0)
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_fake_status(self):
         search_opts = {"status": data_utils.rand_name("fake_status")}
-        __, servers = self.shares_client.list_share_servers(search_opts)
+        servers = self.shares_client.list_share_servers(search_opts)
         self.assertEqual(len(servers), 0)
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_fake_host(self):
         search_opts = {"host": data_utils.rand_name("fake_host")}
-        __, servers = self.shares_client.list_share_servers(search_opts)
+        servers = self.shares_client.list_share_servers(search_opts)
         self.assertEqual(len(servers), 0)
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_fake_project(self):
         search_opts = {"project_id": data_utils.rand_name("fake_project_id")}
-        __, servers = self.shares_client.list_share_servers(search_opts)
+        servers = self.shares_client.list_share_servers(search_opts)
         self.assertEqual(len(servers), 0)
 
     @test.attr(type=["gate", "smoke", "negative", ])
@@ -92,7 +92,7 @@ class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
         search_opts = {
             "share_network": data_utils.rand_name("fake_share_network"),
         }
-        __, servers = self.shares_client.list_share_servers(search_opts)
+        servers = self.shares_client.list_share_servers(search_opts)
         self.assertEqual(len(servers), 0)
 
     @test.attr(type=["gate", "smoke", "negative", ])

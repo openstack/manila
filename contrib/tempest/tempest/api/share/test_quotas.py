@@ -32,8 +32,7 @@ class SharesQuotasTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_default_quotas(self):
-        resp, quotas = self.shares_client.default_quotas(self.tenant["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        quotas = self.shares_client.default_quotas(self.tenant["id"])
         self.assertGreater(int(quotas["gigabytes"]), -2)
         self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)
@@ -42,8 +41,7 @@ class SharesQuotasTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_show_quotas(self):
-        resp, quotas = self.shares_client.show_quotas(self.tenant["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        quotas = self.shares_client.show_quotas(self.tenant["id"])
         self.assertGreater(int(quotas["gigabytes"]), -2)
         self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)
@@ -52,9 +50,8 @@ class SharesQuotasTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_show_quotas_for_user(self):
-        resp, quotas = self.shares_client.show_quotas(self.tenant["id"],
-                                                      self.user["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        quotas = self.shares_client.show_quotas(
+            self.tenant["id"], self.user["id"])
         self.assertGreater(int(quotas["gigabytes"]), -2)
         self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)

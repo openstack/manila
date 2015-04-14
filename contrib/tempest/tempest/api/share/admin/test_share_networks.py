@@ -26,7 +26,7 @@ class ShareNetworkAdminTest(
     def resource_setup(cls):
         super(ShareNetworkAdminTest, cls).resource_setup()
         ss_data = cls.generate_security_service_data()
-        resp, cls.ss_ldap = cls.create_security_service(**ss_data)
+        cls.ss_ldap = cls.create_security_service(**ss_data)
 
         cls.data_sn_with_ldap_ss = {
             'name': 'sn_with_ldap_ss',
@@ -40,11 +40,11 @@ class ShareNetworkAdminTest(
             'ip_version': 4,
             'description': 'fake description',
         }
-        __, cls.sn_with_ldap_ss = cls.create_share_network(
+        cls.sn_with_ldap_ss = cls.create_share_network(
             cleanup_in_class=True,
             **cls.data_sn_with_ldap_ss)
 
-        resp, body = cls.shares_client.add_sec_service_to_share_network(
+        cls.shares_client.add_sec_service_to_share_network(
             cls.sn_with_ldap_ss["id"],
             cls.ss_ldap["id"])
 
@@ -65,23 +65,22 @@ class ShareNetworkAdminTest(
             'description': 'fake description',
         }
 
-        resp, cls.ss_kerberos = cls.isolated_client.create_security_service(
+        cls.ss_kerberos = cls.isolated_client.create_security_service(
             ss_type='kerberos',
             **cls.data_sn_with_ldap_ss)
 
-        __, cls.sn_with_kerberos_ss = cls.isolated_client.create_share_network(
+        cls.sn_with_kerberos_ss = cls.isolated_client.create_share_network(
             cleanup_in_class=True,
             **cls.data_sn_with_kerberos_ss)
 
-        resp, body = cls.isolated_client.add_sec_service_to_share_network(
+        cls.isolated_client.add_sec_service_to_share_network(
             cls.sn_with_kerberos_ss["id"],
             cls.ss_kerberos["id"])
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_networks_all_tenants(self):
-        resp, listed = self.shares_client.list_share_networks_with_detail(
+        listed = self.shares_client.list_share_networks_with_detail(
             {'all_tenants': 1})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(any(self.sn_with_ldap_ss['id'] == sn['id']
                             for sn in listed))
         self.assertTrue(any(self.sn_with_kerberos_ss['id'] == sn['id']
@@ -89,9 +88,8 @@ class ShareNetworkAdminTest(
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_share_networks_filter_by_project_id(self):
-        resp, listed = self.shares_client.list_share_networks_with_detail(
+        listed = self.shares_client.list_share_networks_with_detail(
             {'project_id': self.sn_with_kerberos_ss['project_id']})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(any(self.sn_with_kerberos_ss['id'] == sn['id']
                             for sn in listed))
         self.assertTrue(all(self.sn_with_kerberos_ss['project_id'] ==

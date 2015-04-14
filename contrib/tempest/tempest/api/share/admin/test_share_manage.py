@@ -56,12 +56,12 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
             'driver_handles_share_servers': True
         }
 
-        __, cls.st = cls.create_share_type(
+        cls.st = cls.create_share_type(
             name=cls.st_name,
             cleanup_in_class=True,
             extra_specs=cls.extra_specs)
 
-        __, cls.st_invalid = cls.create_share_type(
+        cls.st_invalid = cls.create_share_type(
             name=cls.st_name_invalid,
             cleanup_in_class=True,
             extra_specs=cls.extra_specs_invalid)
@@ -74,8 +74,8 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
         cls.shares = cls.create_shares([creation_data, creation_data])
 
         # Load all share data (host, etc.)
-        __, cls.share1 = cls.shares_client.get_share(cls.shares[0]['id'])
-        __, cls.share2 = cls.shares_client.get_share(cls.shares[1]['id'])
+        cls.share1 = cls.shares_client.get_share(cls.shares[0]['id'])
+        cls.share2 = cls.shares_client.get_share(cls.shares[1]['id'])
 
         # Unmanage shares from manila
         cls.shares_client.unmanage_share(cls.share1['id'])
@@ -89,7 +89,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
         description = "Description for 'managed' share"
 
         # Manage share
-        resp, share = self.shares_client.manage_share(
+        share = self.shares_client.manage_share(
             service_host=self.share1['host'],
             export_path=self.share1['export_locations'][0],
             protocol=self.share1['share_proto'],
@@ -97,7 +97,6 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
             name=name,
             description=description,
         )
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Add managed share to cleanup queue
         self.method_resources.insert(
@@ -108,7 +107,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
         self.shares_client.wait_for_share_status(share['id'], 'available')
 
         # Verify data of managed share
-        __, get = self.shares_client.get_share(share['id'])
+        get = self.shares_client.get_share(share['id'])
         self.assertEqual(name, get['name'])
         self.assertEqual(description, get['description'])
         self.assertEqual(self.share1['host'], get['host'])
@@ -116,8 +115,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
         self.assertEqual(self.st['share_type']['name'], get['share_type'])
 
         # Delete share
-        resp, __ = self.shares_client.delete_share(share['id'])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_share(share['id'])
         self.shares_client.wait_for_resource_deletion(share_id=share['id'])
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share,
@@ -131,12 +129,11 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
                       (self.st['share_type']['id'], 'available')]
 
         for share_type_id, status in parameters:
-            resp, share = self.shares_client.manage_share(
+            share = self.shares_client.manage_share(
                 service_host=self.share2['host'],
                 export_path=self.share2['export_locations'][0],
                 protocol=self.share2['share_proto'],
                 share_type_id=share_type_id)
-            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
             # Add managed share to cleanup queue
             self.method_resources.insert(
@@ -147,8 +144,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
             self.shares_client.wait_for_share_status(share['id'], status)
 
         # Delete share
-        resp, __ = self.shares_client.delete_share(share['id'])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_share(share['id'])
         self.shares_client.wait_for_resource_deletion(share_id=share['id'])
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share,

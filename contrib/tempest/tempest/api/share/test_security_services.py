@@ -29,8 +29,7 @@ class SecurityServiceListMixin(object):
 
     @test.attr(type=["gate", "smoke"])
     def test_list_security_services(self):
-        resp, listed = self.shares_client.list_security_services()
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        listed = self.shares_client.list_security_services()
         self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
         self.assertTrue(any(self.ss_kerberos['id'] == ss['id']
                             for ss in listed))
@@ -41,8 +40,7 @@ class SecurityServiceListMixin(object):
 
     @test.attr(type=["gate", "smoke"])
     def test_list_security_services_with_detail(self):
-        resp, listed = self.shares_client.list_security_services(detailed=True)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        listed = self.shares_client.list_security_services(detailed=True)
         self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
         self.assertTrue(any(self.ss_kerberos['id'] == ss['id']
                             for ss in listed))
@@ -60,23 +58,20 @@ class SecurityServiceListMixin(object):
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_list_security_services_filter_by_share_network(self):
         sn = self.shares_client.get_share_network(
-            self.os.shares_client.share_network_id)[1]
+            self.os.shares_client.share_network_id)
         fresh_sn = []
         for i in range(2):
-            resp, sn = self.create_share_network(
+            sn = self.create_share_network(
                 neutron_net_id=sn["neutron_net_id"],
                 neutron_subnet_id=sn["neutron_subnet_id"])
             fresh_sn.append(sn)
-            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
-        resp, body = self.shares_client.add_sec_service_to_share_network(
+        self.shares_client.add_sec_service_to_share_network(
             fresh_sn[0]["id"], self.ss_ldap["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        resp, body = self.shares_client.add_sec_service_to_share_network(
+        self.shares_client.add_sec_service_to_share_network(
             fresh_sn[1]["id"], self.ss_kerberos["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
-        resp, listed = self.shares_client.list_security_services(
+        listed = self.shares_client.list_security_services(
             params={'share_network_id': fresh_sn[0]['id']})
         self.assertEqual(1, len(listed))
         self.assertEqual(self.ss_ldap['id'], listed[0]['id'])
@@ -95,7 +90,7 @@ class SecurityServiceListMixin(object):
             'dns_ip': '1.1.1.1',
             'domain': 'fake_domain_1',
         }
-        resp, listed = self.shares_client.list_security_services(
+        listed = self.shares_client.list_security_services(
             detailed=True,
             params=search_opts)
         self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
@@ -124,51 +119,40 @@ class SecurityServicesTest(base.BaseSharesTest,
             'user': 'test_user',
             'password': 'word',
         }
-        resp, self.ss_ldap = self.create_security_service('ldap',
-                                                          **ss_ldap_data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        resp, self.ss_kerberos = self.create_security_service(
-            'kerberos',
-            **ss_kerberos_data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.ss_ldap = self.create_security_service('ldap', **ss_ldap_data)
+        self.ss_kerberos = self.create_security_service(
+            'kerberos', **ss_kerberos_data)
 
     @test.attr(type=["gate", "smoke"])
     def test_create_delete_security_service(self):
         data = self.generate_security_service_data()
         self.service_names = ["ldap", "kerberos", "active_directory"]
         for ss_name in self.service_names:
-            resp, ss = self.create_security_service(ss_name, **data)
-            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+            ss = self.create_security_service(ss_name, **data)
             self.assertDictContainsSubset(data, ss)
             self.assertEqual(ss_name, ss["type"])
-
-            resp, __ = self.shares_client.delete_security_service(ss["id"])
-            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+            self.shares_client.delete_security_service(ss["id"])
 
     @test.attr(type=["gate", "smoke"])
     def test_get_security_service(self):
         data = self.generate_security_service_data()
-        resp, ss = self.create_security_service(**data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        ss = self.create_security_service(**data)
         self.assertDictContainsSubset(data, ss)
 
-        resp, get = self.shares_client.get_security_service(ss["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get = self.shares_client.get_security_service(ss["id"])
         self.assertDictContainsSubset(data, get)
 
     @test.attr(type=["gate", "smoke"])
     def test_update_security_service(self):
         data = self.generate_security_service_data()
-        resp, ss = self.create_security_service(**data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        ss = self.create_security_service(**data)
         self.assertDictContainsSubset(data, ss)
 
         upd_data = self.generate_security_service_data()
-        resp, updated = self.shares_client.update_security_service(ss["id"],
-                                                                   **upd_data)
+        updated = self.shares_client.update_security_service(
+            ss["id"], **upd_data)
 
-        resp, get = self.shares_client.get_security_service(ss["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get = self.shares_client.get_security_service(ss["id"])
         self.assertDictContainsSubset(upd_data, updated)
         self.assertDictContainsSubset(upd_data, get)
 
@@ -177,26 +161,23 @@ class SecurityServicesTest(base.BaseSharesTest,
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_try_update_valid_keys_sh_server_exists(self):
         ss_data = self.generate_security_service_data()
-        resp, ss = self.create_security_service(**ss_data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        ss = self.create_security_service(**ss_data)
 
         sn = self.shares_client.get_share_network(
-            self.os.shares_client.share_network_id)[1]
-        resp, fresh_sn = self.create_share_network(
+            self.os.shares_client.share_network_id)
+        fresh_sn = self.create_share_network(
             neutron_net_id=sn["neutron_net_id"],
             neutron_subnet_id=sn["neutron_subnet_id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
-        resp, body = self.shares_client.add_sec_service_to_share_network(
+        self.shares_client.add_sec_service_to_share_network(
             fresh_sn["id"], ss["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Security service with fake data is used, so if we use backend driver
         # that fails on wrong data, we expect error here.
         # We require any share that uses our share-network.
         try:
-            resp, share = self.create_share(share_network_id=fresh_sn["id"],
-                                            cleanup_in_class=False)
+            self.create_share(
+                share_network_id=fresh_sn["id"], cleanup_in_class=False)
         except Exception as e:
             # we do wait for either 'error' or 'available' status because
             # it is the only available statuses for proper deletion.
@@ -209,16 +190,14 @@ class SecurityServicesTest(base.BaseSharesTest,
             "name": "name",
             "description": "new_description",
         }
-        resp, updated = self.shares_client.update_security_service(
+        updated = self.shares_client.update_security_service(
             ss["id"], **update_data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertDictContainsSubset(update_data, updated)
 
     @test.attr(type=["gate", "smoke"])
     def test_list_security_services_filter_by_invalid_opt(self):
-        resp, listed = self.shares_client.list_security_services(
+        listed = self.shares_client.list_security_services(
             params={'fake_opt': 'some_value'})
-        self.assertIn(int(resp['status']), self.HTTP_SUCCESS)
         self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
         self.assertTrue(any(self.ss_kerberos['id'] == ss['id']
                             for ss in listed))

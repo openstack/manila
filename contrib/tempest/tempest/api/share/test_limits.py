@@ -23,11 +23,9 @@ class ShareLimitsTest(base.BaseSharesTest):
     def test_limits_keys(self):
 
         # list limits
-        resp, limits = self.shares_client.get_limits()
+        limits = self.shares_client.get_limits()
 
         # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-
         keys = ["rate", "absolute"]
         [self.assertIn(key, limits.keys()) for key in keys]
 
@@ -47,10 +45,7 @@ class ShareLimitsTest(base.BaseSharesTest):
     def test_limits_values(self):
 
         # list limits
-        resp, limits = self.shares_client.get_limits()
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        limits = self.shares_client.get_limits()
 
         # verify integer values for absolute limits
         abs_l = limits["absolute"]

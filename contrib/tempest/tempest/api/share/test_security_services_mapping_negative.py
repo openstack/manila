@@ -28,15 +28,13 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
     @classmethod
     def resource_setup(cls):
         super(SecServicesMappingNegativeTest, cls).resource_setup()
-        __, cls.sn = cls.create_share_network(cleanup_in_class=True)
-        __, cls.ss = cls.create_security_service(cleanup_in_class=True)
+        cls.sn = cls.create_share_network(cleanup_in_class=True)
+        cls.ss = cls.create_security_service(cleanup_in_class=True)
         cls.cl = cls.shares_client
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_add_sec_service_twice_to_share_network(self):
-        resp, __ = self.cl.add_sec_service_to_share_network(self.sn["id"],
-                                                            self.ss["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.cl.add_sec_service_to_share_network(self.sn["id"], self.ss["id"])
         self.assertRaises(lib_exc.Conflict,
                           self.cl.add_sec_service_to_share_network,
                           self.sn["id"], self.ss["id"])
@@ -94,17 +92,15 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_delete_ss_from_sn_used_by_share_server(self):
         sn = self.shares_client.get_share_network(
-            self.os.shares_client.share_network_id)[1]
-        resp, fresh_sn = self.create_share_network(
+            self.os.shares_client.share_network_id)
+        fresh_sn = self.create_share_network(
             neutron_net_id=sn["neutron_net_id"],
             neutron_subnet_id=sn["neutron_subnet_id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
-        resp, body = self.shares_client.add_sec_service_to_share_network(
+        self.shares_client.add_sec_service_to_share_network(
             fresh_sn["id"], self.ss["id"])
-        resp, share = self.create_share(share_network_id=fresh_sn["id"],
-                                        cleanup_in_class=False)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.create_share(
+            share_network_id=fresh_sn["id"], cleanup_in_class=False)
         self.assertRaises(lib_exc.Forbidden,
                           self.cl.remove_sec_service_from_share_network,
                           fresh_sn["id"],
@@ -115,23 +111,20 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         # create share network
         data = self.generate_share_network_data()
 
-        resp, sn = self.create_share_network(client=self.cl, **data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        sn = self.create_share_network(client=self.cl, **data)
         self.assertDictContainsSubset(data, sn)
 
         # create security services with same type
         security_services = []
         for i in range(2):
             data = self.generate_security_service_data()
-            resp, ss = self.create_security_service(client=self.cl, **data)
-            self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+            ss = self.create_security_service(client=self.cl, **data)
             self.assertDictContainsSubset(data, ss)
             security_services.insert(i, ss)
 
         # Add security service to share network
-        resp, __ = self.cl.add_sec_service_to_share_network(
+        self.cl.add_sec_service_to_share_network(
             sn["id"], security_services[0]["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
         # Try to add security service with same type
         self.assertRaises(lib_exc.Conflict,
@@ -143,21 +136,17 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
         # create share network
         data = self.generate_share_network_data()
 
-        resp, sn = self.create_share_network(client=self.cl, **data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        sn = self.create_share_network(client=self.cl, **data)
         self.assertDictContainsSubset(data, sn)
 
         # create security service
         data = self.generate_security_service_data()
 
-        resp, ss = self.create_security_service(client=self.cl, **data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        ss = self.create_security_service(client=self.cl, **data)
         self.assertDictContainsSubset(data, ss)
 
         # Add security service to share network
-        resp, __ = self.cl.add_sec_service_to_share_network(sn["id"],
-                                                            ss["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.cl.add_sec_service_to_share_network(sn["id"], ss["id"])
 
         # Try delete ss, that has been assigned to some sn
         self.assertRaises(lib_exc.Forbidden,
@@ -165,6 +154,4 @@ class SecServicesMappingNegativeTest(base.BaseSharesTest):
                           ss["id"], )
 
         # remove seurity service from share-network
-        resp, __ = self.cl.remove_sec_service_from_share_network(sn["id"],
-                                                                 ss["id"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.cl.remove_sec_service_from_share_network(sn["id"], ss["id"])

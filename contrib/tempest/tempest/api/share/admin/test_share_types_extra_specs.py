@@ -29,7 +29,7 @@ class ExtraSpecsReadAdminTest(base.BaseSharesAdminTest):
         cls.share_type_name = data_utils.rand_name("share-type")
         cls.required_extra_specs = cls.add_required_extra_specs_to_dict()
 
-        __, cls.share_type = cls.create_share_type(
+        cls.share_type = cls.create_share_type(
             cls.share_type_name, extra_specs=cls.required_extra_specs)
 
         cls.st_id = cls.share_type["share_type"]["id"]
@@ -42,18 +42,15 @@ class ExtraSpecsReadAdminTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_get_one_share_type_extra_spec(self):
-        resp, es_get_one = self.shares_client.get_share_type_extra_spec(
+        es_get_one = self.shares_client.get_share_type_extra_spec(
             self.st_id, "key1")
 
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual({"key1": self.custom_extra_specs["key1"]}, es_get_one)
 
     @test.attr(type=["gate", "smoke", ])
     def test_get_all_share_type_extra_specs(self):
-        resp, es_get_all = self.shares_client.get_share_type_extra_specs(
-            self.st_id)
+        es_get_all = self.shares_client.get_share_type_extra_specs(self.st_id)
 
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(self.expected_extra_specs, es_get_all)
 
 
@@ -66,7 +63,7 @@ class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
         self.share_type_name = data_utils.rand_name("share-type")
 
         # Create share type
-        __, self.share_type = self.create_share_type(
+        self.share_type = self.create_share_type(
             self.share_type_name, extra_specs=self.required_extra_specs)
 
         self.st_id = self.share_type['share_type']['id']
@@ -80,12 +77,11 @@ class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
         self.custom_extra_specs["key1"] = "fake_value1_updated"
 
         # Update extra specs of share type
-        resp, update_one = self.shares_client.update_share_type_extra_spec(
+        update_one = self.shares_client.update_share_type_extra_spec(
             self.st_id, "key1", self.custom_extra_specs["key1"])
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual({"key1": self.custom_extra_specs["key1"]}, update_one)
 
-        resp, get = self.shares_client.get_share_type_extra_specs(self.st_id)
+        get = self.shares_client.get_share_type_extra_specs(self.st_id)
         expected_extra_specs = self.custom_extra_specs
         expected_extra_specs.update(self.required_extra_specs)
         self.assertEqual(self.custom_extra_specs, get)
@@ -95,12 +91,11 @@ class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
         self.custom_extra_specs["key2"] = "value2_updated"
 
         # Update extra specs of share type
-        resp, update_all = self.shares_client.update_share_type_extra_specs(
+        update_all = self.shares_client.update_share_type_extra_specs(
             self.st_id, self.custom_extra_specs)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(self.custom_extra_specs, update_all)
 
-        resp, get = self.shares_client.get_share_type_extra_specs(self.st_id)
+        get = self.shares_client.get_share_type_extra_specs(self.st_id)
         expected_extra_specs = self.custom_extra_specs
         expected_extra_specs.update(self.required_extra_specs)
         self.assertEqual(self.custom_extra_specs, get)
@@ -108,6 +103,9 @@ class ExtraSpecsWriteAdminTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", "smoke", ])
     def test_delete_one_share_type_extra_spec(self):
         # Delete one extra spec for share type
-        resp, __ = self.shares_client.delete_share_type_extra_spec(
-            self.st_id, "key1")
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        self.shares_client.delete_share_type_extra_spec(self.st_id, "key1")
+
+        # Get metadata
+        get = self.shares_client.get_share_type_extra_specs(self.st_id)
+
+        self.assertNotIn('key1', get)

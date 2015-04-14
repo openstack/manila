@@ -38,7 +38,7 @@ class SharesActionsTest(base.BaseSharesTest):
             'bar_key_share_1': 'foo_value_share_1',
         }
         cls.share_size = 1
-        __, cls.share = cls.create_share(
+        cls.share = cls.create_share(
             name=cls.share_name,
             description=cls.share_desc,
             size=cls.share_size,
@@ -48,7 +48,7 @@ class SharesActionsTest(base.BaseSharesTest):
         # create snapshot
         cls.snap_name = data_utils.rand_name("tempest-snapshot-name")
         cls.snap_desc = data_utils.rand_name("tempest-snapshot-description")
-        __, cls.snap = cls.create_snapshot_wait_for_active(
+        cls.snap = cls.create_snapshot_wait_for_active(
             cls.share["id"], cls.snap_name, cls.snap_desc)
 
         # create second share from snapshot for purposes of sorting and
@@ -59,7 +59,7 @@ class SharesActionsTest(base.BaseSharesTest):
             'foo_key_share_2': 'foo_value_share_2',
             'bar_key_share_2': 'foo_value_share_2',
         }
-        __, cls.share2 = cls.create_share(
+        cls.share2 = cls.create_share(
             name=cls.share_name2,
             description=cls.share_desc2,
             size=cls.share_size,
@@ -71,10 +71,7 @@ class SharesActionsTest(base.BaseSharesTest):
     def test_get_share(self):
 
         # get share
-        resp, share = self.shares_client.get_share(self.share['id'])
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        share = self.shares_client.get_share(self.share['id'])
 
         # verify keys
         expected_keys = ["status", "description", "links", "availability_zone",
@@ -101,10 +98,7 @@ class SharesActionsTest(base.BaseSharesTest):
     def test_list_shares(self):
 
         # list shares
-        resp, shares = self.shares_client.list_shares()
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares()
 
         # verify keys
         keys = ["name", "id", "links"]
@@ -120,10 +114,7 @@ class SharesActionsTest(base.BaseSharesTest):
     def test_list_shares_with_detail(self):
 
         # list shares
-        resp, shares = self.shares_client.list_shares_with_detail()
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail()
 
         # verify keys
         keys = [
@@ -144,7 +135,7 @@ class SharesActionsTest(base.BaseSharesTest):
         filters = {'metadata': self.metadata}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
@@ -155,11 +146,11 @@ class SharesActionsTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_host(self):
-        __, base_share = self.shares_client.get_share(self.share['id'])
+        base_share = self.shares_client.get_share(self.share['id'])
         filters = {'host': base_share['host']}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
@@ -170,11 +161,11 @@ class SharesActionsTest(base.BaseSharesTest):
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_list_shares_with_detail_filter_by_share_network_id(self):
-        __, base_share = self.shares_client.get_share(self.share['id'])
+        base_share = self.shares_client.get_share(self.share['id'])
         filters = {'share_network_id': base_share['share_network_id']}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 1)
@@ -187,7 +178,7 @@ class SharesActionsTest(base.BaseSharesTest):
         filters = {'snapshot_id': self.snap['id']}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
@@ -200,7 +191,7 @@ class SharesActionsTest(base.BaseSharesTest):
         filters = {'sort_key': 'created_at', 'sort_dir': 'asc'}
 
         # list shares
-        __, shares = self.shares_client.list_shares_with_detail(params=filters)
+        shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
         self.assertTrue(len(shares) > 0)
@@ -211,24 +202,21 @@ class SharesActionsTest(base.BaseSharesTest):
     def test_list_shares_with_detail_filter_by_existed_name(self):
         # list shares by name, at least one share is expected
         params = {"name": self.share_name}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail(params)
         self.assertEqual(shares[0]["name"], self.share_name)
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_fake_name(self):
         # list shares by fake name, no shares are expected
         params = {"name": data_utils.rand_name("fake-nonexistent-name")}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail(params)
         self.assertEqual(len(shares), 0)
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_active_status(self):
         # list shares by active status, at least one share is expected
         params = {"status": "available"}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail(params)
         self.assertTrue(len(shares) > 0)
         for share in shares:
             self.assertEqual(share["status"], params["status"])
@@ -237,33 +225,31 @@ class SharesActionsTest(base.BaseSharesTest):
     def test_list_shares_with_detail_filter_by_fake_status(self):
         # list shares by fake status, no shares are expected
         params = {"status": 'fake'}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail(params)
         self.assertEqual(len(shares), 0)
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_all_tenants(self):
         # non-admin user can get shares only from his project
         params = {"all_tenants": 1}
-        resp, shares = self.shares_client.list_shares_with_detail(params)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = self.shares_client.list_shares_with_detail(params)
         self.assertTrue(len(shares) > 0)
 
         # get share with detailed info, we need its 'project_id'
-        __, share = self.shares_client.get_share(self.share["id"])
+        share = self.shares_client.get_share(self.share["id"])
         project_id = share["project_id"]
         for share in shares:
             self.assertEqual(share["project_id"], project_id)
 
     @test.attr(type=["gate", ])
     def test_list_shares_public_with_detail(self):
-        resp, public_share = self.shares_client.create_share(
+        public_share = self.shares_client.create_share(
             name='public_share',
             description='public_share_desc',
             size=1,
             is_public=True
         )
-        resp, private_share = self.shares_client.create_share(
+        private_share = self.shares_client.create_share(
             name='private_share',
             description='private_share_desc',
             size=1,
@@ -273,9 +259,7 @@ class SharesActionsTest(base.BaseSharesTest):
         params = {"is_public": True}
         isolated_client = self.get_client_with_isolated_creds(
             type_of_creds='alt')
-        resp, shares = isolated_client.list_shares_with_detail(params)
-
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        shares = isolated_client.list_shares_with_detail(params)
 
         keys = [
             "status", "description", "links", "availability_zone",
@@ -294,10 +278,7 @@ class SharesActionsTest(base.BaseSharesTest):
     def test_get_snapshot(self):
 
         # get snapshot
-        resp, get = self.shares_client.get_snapshot(self.snap["id"])
-
-        # verify data
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        get = self.shares_client.get_snapshot(self.snap["id"])
 
         # verify keys
         expected_keys = ["status", "links", "share_id", "name",
@@ -323,10 +304,7 @@ class SharesActionsTest(base.BaseSharesTest):
     def test_list_snapshots(self):
 
         # list share snapshots
-        resp, snaps = self.shares_client.list_snapshots()
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        snaps = self.shares_client.list_snapshots()
 
         # verify keys
         keys = ["id", "name", "links"]
@@ -341,10 +319,7 @@ class SharesActionsTest(base.BaseSharesTest):
     def test_list_snapshots_with_detail(self):
 
         # list share snapshots
-        resp, snaps = self.shares_client.list_snapshots_with_detail()
-
-        # verify response
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        snaps = self.shares_client.list_snapshots_with_detail()
 
         # verify keys
         keys = ["status", "links", "share_id", "name",
@@ -363,14 +338,14 @@ class SharesActionsTest(base.BaseSharesTest):
             filters = {'limit': l, 'offset': o, 'share_id': self.share['id']}
 
             # list snapshots
-            __, snaps = self.shares_client.list_snapshots_with_detail(
+            snaps = self.shares_client.list_snapshots_with_detail(
                 params=filters)
 
             # Our snapshot should not be listed
             self.assertEqual(0, len(snaps))
 
         # Only our one snapshot should be listed
-        __, snaps = self.shares_client.list_snapshots_with_detail(
+        snaps = self.shares_client.list_snapshots_with_detail(
             params={'limit': '1', 'offset': '0', 'share_id': self.share['id']})
 
         self.assertEqual(1, len(snaps['snapshots']))
@@ -381,7 +356,7 @@ class SharesActionsTest(base.BaseSharesTest):
         filters = {'status': 'available', 'name': self.snap_name}
 
         # list snapshots
-        __, snaps = self.shares_client.list_snapshots_with_detail(
+        snaps = self.shares_client.list_snapshots_with_detail(
             params=filters)
 
         # verify response
@@ -395,7 +370,7 @@ class SharesActionsTest(base.BaseSharesTest):
         filters = {'sort_key': 'share_id', 'sort_dir': 'asc'}
 
         # list snapshots
-        __, snaps = self.shares_client.list_snapshots_with_detail(
+        snaps = self.shares_client.list_snapshots_with_detail(
             params=filters)
 
         # verify response
@@ -414,21 +389,21 @@ class SharesRenameTest(base.BaseSharesTest):
         cls.share_name = data_utils.rand_name("tempest-share-name")
         cls.share_desc = data_utils.rand_name("tempest-share-description")
         cls.share_size = 1
-        __, cls.share = cls.create_share(name=cls.share_name,
-                                         description=cls.share_desc,
-                                         size=cls.share_size)
+        cls.share = cls.create_share(
+            name=cls.share_name, description=cls.share_desc,
+            size=cls.share_size)
+
         # create snapshot
         cls.snap_name = data_utils.rand_name("tempest-snapshot-name")
         cls.snap_desc = data_utils.rand_name("tempest-snapshot-description")
-        __, cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"],
-                                                           cls.snap_name,
-                                                           cls.snap_desc)
+        cls.snap = cls.create_snapshot_wait_for_active(
+            cls.share["id"], cls.snap_name, cls.snap_desc)
 
     @test.attr(type=["gate", ])
     def test_update_share(self):
 
         # get share
-        __, share = self.shares_client.get_share(self.share['id'])
+        share = self.shares_client.get_share(self.share['id'])
         self.assertEqual(self.share_name, share["name"])
         self.assertEqual(self.share_desc, share["description"])
         self.assertFalse(share["is_public"])
@@ -436,17 +411,14 @@ class SharesRenameTest(base.BaseSharesTest):
         # update share
         new_name = data_utils.rand_name("tempest-new-name")
         new_desc = data_utils.rand_name("tempest-new-description")
-        resp, updated = self.shares_client.update_share(share["id"],
-                                                        new_name,
-                                                        new_desc,
-                                                        is_public=True)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        updated = self.shares_client.update_share(
+            share["id"], new_name, new_desc, is_public=True)
         self.assertEqual(new_name, updated["name"])
         self.assertEqual(new_desc, updated["description"])
         self.assertTrue(updated["is_public"])
 
         # get share
-        resp, share = self.shares_client.get_share(self.share['id'])
+        share = self.shares_client.get_share(self.share['id'])
         self.assertEqual(new_name, share["name"])
         self.assertEqual(new_desc, share["description"])
         self.assertTrue(share["is_public"])
@@ -455,21 +427,19 @@ class SharesRenameTest(base.BaseSharesTest):
     def test_rename_snapshot(self):
 
         # get snapshot
-        __, get = self.shares_client.get_snapshot(self.snap["id"])
+        get = self.shares_client.get_snapshot(self.snap["id"])
         self.assertEqual(self.snap_name, get["name"])
         self.assertEqual(self.snap_desc, get["description"])
 
         # rename snapshot
         new_name = data_utils.rand_name("tempest-new-name-for-snapshot")
         new_desc = data_utils.rand_name("tempest-new-description-for-snapshot")
-        resp, renamed = self.shares_client.rename_snapshot(self.snap["id"],
-                                                           new_name,
-                                                           new_desc)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
+        renamed = self.shares_client.rename_snapshot(
+            self.snap["id"], new_name, new_desc)
         self.assertEqual(new_name, renamed["name"])
         self.assertEqual(new_desc, renamed["description"])
 
         # get snapshot
-        resp, get = self.shares_client.get_snapshot(self.snap["id"])
+        get = self.shares_client.get_snapshot(self.snap["id"])
         self.assertEqual(new_name, get["name"])
         self.assertEqual(new_desc, get["description"])

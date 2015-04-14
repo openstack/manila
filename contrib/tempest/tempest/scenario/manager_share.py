@@ -74,14 +74,13 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
             'share_network_id': share_network_id,
             'share_type_id': share_type_id,
         }
-        resp, share = self.shares_client.create_share(**kwargs)
+        share = self.shares_client.create_share(**kwargs)
 
         self.addCleanup(client.wait_for_resource_deletion,
                         share_id=share['id'])
         self.addCleanup(client.delete_share,
                         share['id'])
 
-        self.assertEqual(resp['status'], '200')
         client.wait_for_share_status(share['id'], 'available')
         return share
 
@@ -92,12 +91,11 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         :param client: client object
         """
         client = client or self.shares_admin_client
-        resp, servers = client.list_share_servers(search_opts={
-                                                  "share_network": sn_id})
-        if resp['status'] == '200':
-            for server in servers:
-                client.delete_share_server(server['id'])
-                client.wait_for_resource_deletion(server_id=server['id'])
+        servers = client.list_share_servers(
+            search_opts={"share_network": sn_id})
+        for server in servers:
+            client.delete_share_server(server['id'])
+            client.wait_for_resource_deletion(server_id=server['id'])
 
     def _create_share_network(self, client=None, **kwargs):
         """Create a share network
@@ -107,7 +105,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         """
 
         client = client or self.shares_client
-        resp, sn = client.create_share_network(**kwargs)
+        sn = client.create_share_network(**kwargs)
 
         self.addCleanup(client.wait_for_resource_deletion,
                         sn_id=sn['id'])
@@ -115,7 +113,6 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
                         sn['id'])
         self.addCleanup(self._wait_for_share_server_deletion,
                         sn['id'])
-        self.assertEqual(resp['status'], '200')
         return sn
 
     def _allow_access(self, share_id, client=None,
@@ -129,9 +126,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         :returns: access object
         """
         client = client or self.shares_client
-        resp, access = client.create_access_rule(share_id, access_type,
-                                                 access_to)
-        self.assertEqual(resp['status'], '200')
+        access = client.create_access_rule(share_id, access_type, access_to)
         client.wait_for_access_rule_status(share_id, access['id'], "active")
         self.addCleanup(client.delete_access_rule,
                         share_id, access['id'])

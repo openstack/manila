@@ -40,19 +40,15 @@ class SecurityServiceAdminTest(
             'user': 'test_user',
             'password': 'word',
         }
-        resp, self.ss_ldap = self.create_security_service('ldap',
-                                                          **ss_ldap_data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
-        resp, self.ss_kerberos = self.create_security_service(
+        self.ss_ldap = self.create_security_service('ldap', **ss_ldap_data)
+        self.ss_kerberos = self.create_security_service(
             'kerberos',
             **ss_kerberos_data)
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_security_services_all_tenants(self):
-        resp, listed = self.shares_client.list_security_services(
+        listed = self.shares_client.list_security_services(
             params={'all_tenants': 1})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertTrue(any(self.ss_ldap['id'] == ss['id'] for ss in listed))
         self.assertTrue(any(self.ss_kerberos['id'] == ss['id']
                             for ss in listed))
@@ -62,7 +58,6 @@ class SecurityServiceAdminTest(
 
     @test.attr(type=["gate", "smoke", ])
     def test_list_security_services_invalid_filters(self):
-        resp, listed = self.shares_client.list_security_services(
+        listed = self.shares_client.list_security_services(
             params={'fake_opt': 'some_value'})
-        self.assertIn(int(resp["status"]), self.HTTP_SUCCESS)
         self.assertEqual(0, len(listed))

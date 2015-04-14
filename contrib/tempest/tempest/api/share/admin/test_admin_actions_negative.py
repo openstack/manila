@@ -28,8 +28,8 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     @classmethod
     def resource_setup(cls):
         super(AdminActionsNegativeTest, cls).resource_setup()
-        __, cls.sh = cls.create_share()
-        __, cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
+        cls.sh = cls.create_share()
+        cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
         cls.member_shares_client = clients.Manager().shares_client
 
     @test.attr(type=["gate", "negative", ])
