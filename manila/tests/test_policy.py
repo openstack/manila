@@ -169,7 +169,7 @@ class DefaultPolicyTestCase(test.TestCase):
 
         self.rules = {
             "default": [],
-            "example:exist": [["false:false"]]
+            "example:exist": "false:false"
         }
         self._set_rules('default')
         self.context = context.RequestContext('fake', 'fake')
@@ -238,8 +238,8 @@ class ContextIsAdminPolicyTestCase(test.TestCase):
 
     def test_context_is_admin_undefined(self):
         rules = {
-            "admin_or_owner": [["role:admin"], ["project_id:%(project_id)s"]],
-            "default": [["rule:admin_or_owner"]],
+            "admin_or_owner": "role:admin or project_id:%(project_id)s",
+            "default": "rule:admin_or_owner",
         }
         self._set_rules(rules, CONF.policy_default_rule)
         ctx = context.RequestContext('fake', 'fake')
