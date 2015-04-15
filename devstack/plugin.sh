@@ -338,7 +338,7 @@ function create_manila_service_flavor {
 # create_manila_service_image - creates image, that will be used by backends
 # with configured generic driver to boot Nova VMs from.
 function create_manila_service_image {
-    TOKEN=$(keystone token-get | grep ' id ' | get_field 2)
+    TOKEN=$(openstack token issue -c id -f value)
 
     # Download Manila's image
     if is_service_enabled g-reg; then
@@ -393,30 +393,29 @@ function create_manila_service_secgroup {
 # ------------------------------------------------------------------
 # service              manila     admin        # if enabled
 function create_manila_accounts {
-    SERVICE_TENANT=$(keystone tenant-list | awk "/ $SERVICE_TENANT_NAME / { print \$2 }")
-    ADMIN_ROLE=$(keystone role-list | awk "/ admin / { print \$2 }")
-    MANILA_USER=$(keystone user-create \
-        --name=manila \
-        --pass="$SERVICE_PASSWORD" \
-        --tenant_id $SERVICE_TENANT \
+    SERVICE_TENANT=$(openstack project show $SERVICE_TENANT_NAME -f value -c id)
+    ADMIN_ROLE=$(openstack role show admin -f value -c id)
+    MANILA_USER=$(openstack user create \
+        --password="$SERVICE_PASSWORD" \
+        --project=$SERVICE_TENANT \
         --email=manila@example.com \
-        | grep " id " | get_field 2)
-    keystone user-role-add \
-        --tenant_id $SERVICE_TENANT \
-        --user_id $MANILA_USER \
-        --role_id $ADMIN_ROLE
+        manila \
+        -f value -c id)
+    openstack role add \
+        --project $SERVICE_TENANT \
+        --user $MANILA_USER \
+        $ADMIN_ROLE
     if [[ "$KEYSTONE_CATALOG_BACKEND" = 'sql' ]]; then
-        MANILA_SERVICE=$(keystone service-create \
-            --name=manila \
+        MANILA_SERVICE=$(openstack service create \
             --type=share \
             --description="Manila Shared Filesystem Service" \
-            | grep " id " | get_field 2)
-        keystone endpoint-create \
+            manila -f value -c id)
+        openstack endpoint create \
             --region RegionOne \
-            --service_id $MANILA_SERVICE \
             --publicurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
             --adminurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
-            --internalurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s"
+            --internalurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
+            $MANILA_SERVICE
     fi
 }
 
