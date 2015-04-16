@@ -197,8 +197,8 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         try:
             self.rpc.call('method', {'param': 'value'})
         except exception.QBException as me:
-            self.assertEqual("Client SSL subsystem returned error: ",
-                             six.text_type(me))
+            (self.assertTrue(six.text_type(me).startswith
+                             ('Client SSL subsystem returned error:')))
 
         except Exception as e:
             self.fail('Unexpected exception thrown: %s' % e)
