@@ -25,7 +25,6 @@ import re
 from oslo_log import log
 from oslo_utils import excutils
 
-from manila import context
 from manila import exception
 from manila.i18n import _, _LE, _LW
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
@@ -120,8 +119,17 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
         """Creates and configures new Vserver."""
         LOG.debug('Creating server %s', network_info['server_id'])
         self._validate_network_type(network_info)
-        vserver_name = self._create_vserver_if_nonexistent(network_info)
-        return {'vserver_name': vserver_name}
+
+        vserver_name = self._get_vserver_name(network_info['server_id'])
+        server_details = {'vserver_name': vserver_name}
+
+        try:
+            self._create_vserver_if_nonexistent(vserver_name, network_info)
+        except Exception as e:
+            e.detail_data = {'server_details': server_details}
+            raise
+
+        return server_details
 
     @na_utils.trace
     def _validate_network_type(self, network_info):
@@ -133,16 +141,12 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
                 reason=msg % network_info['network_type'])
 
     @na_utils.trace
-    def _create_vserver_if_nonexistent(self, network_info):
+    def _get_vserver_name(self, server_id):
+        return self.configuration.netapp_vserver_name_template % server_id
+
+    @na_utils.trace
+    def _create_vserver_if_nonexistent(self, vserver_name, network_info):
         """Creates Vserver with given parameters if it doesn't exist."""
-        vserver_name = (self.configuration.netapp_vserver_name_template %
-                        network_info['server_id'])
-        context_adm = context.get_admin_context()
-        self.db.share_server_backend_details_set(
-            context_adm,
-            network_info['server_id'],
-            {'vserver_name': vserver_name},
-        )
 
         if self._client.vserver_exists(vserver_name):
             msg = _('Vserver %s already exists.')
@@ -172,7 +176,6 @@ class NetAppCmodeMultiSVMFileStorageLibrary(
             self._client.setup_security_services(security_services,
                                                  vserver_client,
                                                  vserver_name)
-        return vserver_name
 
     @na_utils.trace
     def _create_vserver_lifs(self, vserver_name, vserver_client,
