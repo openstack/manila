@@ -237,7 +237,13 @@ class ShareDriver(object):
         raise NotImplementedError()
 
     def create_snapshot(self, context, snapshot, share_server=None):
-        """Is called to create snapshot."""
+        """Is called to create snapshot.
+
+        :param context: Current context
+        :param snapshot: Snapshot model. Share model could be
+            retrieved through snapshot['share'].
+        :param share_server: Share server model or None.
+        """
         raise NotImplementedError()
 
     def delete_share(self, context, share, share_server=None):
@@ -245,7 +251,13 @@ class ShareDriver(object):
         raise NotImplementedError()
 
     def delete_snapshot(self, context, snapshot, share_server=None):
-        """Is called to remove snapshot."""
+        """Is called to remove snapshot.
+
+        :param context: Current context
+        :param snapshot: Snapshot model. Share model could be
+            retrieved through snapshot['share'].
+        :param share_server: Share server model or None.
+        """
         raise NotImplementedError()
 
     def get_pool(self, share):
