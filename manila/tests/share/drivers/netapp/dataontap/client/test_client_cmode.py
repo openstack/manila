@@ -16,6 +16,7 @@
 
 import copy
 import hashlib
+import time
 
 import ddt
 import mock
@@ -1615,11 +1616,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           self.client.offline_volume,
                           fake.SHARE_NAME)
 
-    def test_unmount_volume(self):
+    def test__unmount_volume(self):
 
         self.mock_object(self.client, 'send_request')
 
-        self.client.unmount_volume(fake.SHARE_NAME)
+        self.client._unmount_volume(fake.SHARE_NAME)
 
         volume_unmount_args = {
             'volume-name': fake.SHARE_NAME,
@@ -1629,41 +1630,99 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('volume-unmount', volume_unmount_args)])
 
-    def test_unmount_volume_force(self):
+    def test__unmount_volume_force(self):
 
         self.mock_object(self.client, 'send_request')
 
-        self.client.unmount_volume(fake.SHARE_NAME, force=True)
+        self.client._unmount_volume(fake.SHARE_NAME, force=True)
 
         volume_unmount_args = {'volume-name': fake.SHARE_NAME, 'force': 'true'}
 
         self.client.send_request.assert_has_calls([
             mock.call('volume-unmount', volume_unmount_args)])
 
-    def test_unmount_volume_already_unmounted(self):
+    def test__unmount_volume_already_unmounted(self):
 
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(side_effect=self._mock_api_error(
                              netapp_api.EVOL_NOT_MOUNTED)))
 
-        self.client.unmount_volume(fake.SHARE_NAME, force=True)
+        self.client._unmount_volume(fake.SHARE_NAME, force=True)
 
         volume_unmount_args = {'volume-name': fake.SHARE_NAME, 'force': 'true'}
 
         self.client.send_request.assert_has_calls([
             mock.call('volume-unmount', volume_unmount_args)])
 
-    def test_unmount_volume_api_error(self):
+    def test__unmount_volume_api_error(self):
 
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(side_effect=self._mock_api_error()))
 
         self.assertRaises(netapp_api.NaApiError,
-                          self.client.unmount_volume,
+                          self.client._unmount_volume,
                           fake.SHARE_NAME,
                           force=True)
+
+    def test_unmount_volume(self):
+
+        self.mock_object(self.client, '_unmount_volume')
+
+        self.client.unmount_volume(fake.SHARE_NAME)
+
+        self.client._unmount_volume.assert_called_once_with(fake.SHARE_NAME,
+                                                            force=False)
+        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+        self.assertEqual(0, client_cmode.LOG.warning.call_count)
+
+    def test_unmount_volume_api_error(self):
+
+        self.mock_object(self.client,
+                         '_unmount_volume',
+                         self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.unmount_volume,
+                          fake.SHARE_NAME)
+
+        self.assertEqual(1, self.client._unmount_volume.call_count)
+        self.assertEqual(0, client_cmode.LOG.debug.call_count)
+        self.assertEqual(0, client_cmode.LOG.warning.call_count)
+
+    def test_unmount_volume_with_retries(self):
+
+        side_effect = [netapp_api.NaApiError(code=netapp_api.EAPIERROR,
+                                             message='...job ID...')] * 5
+        side_effect.append(None)
+        self.mock_object(self.client,
+                         '_unmount_volume',
+                         mock.Mock(side_effect=side_effect))
+        self.mock_object(time, 'sleep')
+
+        self.client.unmount_volume(fake.SHARE_NAME)
+
+        self.assertEqual(6, self.client._unmount_volume.call_count)
+        self.assertEqual(1, client_cmode.LOG.debug.call_count)
+        self.assertEqual(5, client_cmode.LOG.warning.call_count)
+
+    def test_unmount_volume_with_max_retries(self):
+
+        side_effect = [netapp_api.NaApiError(code=netapp_api.EAPIERROR,
+                                             message='...job ID...')] * 30
+        self.mock_object(self.client,
+                         '_unmount_volume',
+                         mock.Mock(side_effect=side_effect))
+        self.mock_object(time, 'sleep')
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.unmount_volume,
+                          fake.SHARE_NAME)
+
+        self.assertEqual(10, self.client._unmount_volume.call_count)
+        self.assertEqual(0, client_cmode.LOG.debug.call_count)
+        self.assertEqual(10, client_cmode.LOG.warning.call_count)
 
     def test_delete_volume(self):
 

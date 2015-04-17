@@ -17,6 +17,7 @@
 
 import copy
 import hashlib
+import time
 
 from oslo_log import log
 from oslo_utils import strutils
@@ -901,7 +902,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             raise
 
     @na_utils.trace
-    def unmount_volume(self, volume_name, force=False):
+    def _unmount_volume(self, volume_name, force=False):
         """Unmounts a volume."""
         api_args = {
             'volume-name': volume_name,
@@ -913,6 +914,44 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             if e.code == netapp_api.EVOL_NOT_MOUNTED:
                 return
             raise
+
+    @na_utils.trace
+    def unmount_volume(self, volume_name, force=False, wait_seconds=30):
+        """Unmounts a volume, retrying if a clone split is ongoing.
+
+        NOTE(cknight): While unlikely to happen in normal operation, any client
+        that tries to delete volumes immediately after creating volume clones
+        is likely to experience failures if cDOT isn't quite ready for the
+        delete.  The volume unmount is the first operation in the delete
+        path that fails in this case, and there is no proactive check we can
+        use to reliably predict the failure.  And there isn't a specific error
+        code from volume-unmount, so we have to check for a generic error code
+        plus certain language in the error code.  It's ugly, but it works, and
+        it's better than hard-coding a fixed delay.
+        """
+
+        # Do the unmount, handling split-related errors with retries.
+        retry_interval = 3  # seconds
+        for retry in range(wait_seconds / retry_interval):
+            try:
+                self._unmount_volume(volume_name, force=force)
+                LOG.debug('Volume %s unmounted.', volume_name)
+                return
+            except netapp_api.NaApiError as e:
+                if e.code == netapp_api.EAPIERROR and 'job ID' in e.message:
+                    msg = _LW('Could not unmount volume %(volume)s due to '
+                              'ongoing volume operation: %(exception)s')
+                    msg_args = {'volume': volume_name, 'exception': e}
+                    LOG.warning(msg, msg_args)
+                    time.sleep(retry_interval)
+                    continue
+                raise
+
+        msg = _('Failed to unmount volume %(volume)s after '
+                'waiting for %(wait_seconds)s seconds.')
+        msg_args = {'volume': volume_name, 'wait_seconds': wait_seconds}
+        LOG.error(msg, msg_args)
+        raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
     def delete_volume(self, volume_name):
