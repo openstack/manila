@@ -225,9 +225,7 @@ function configure_manila {
     # Remove old conf file if exists
     rm -f $MANILA_CONF
 
-    iniset $MANILA_CONF keystone_authtoken auth_host $KEYSTONE_AUTH_HOST
-    iniset $MANILA_CONF keystone_authtoken auth_port $KEYSTONE_AUTH_PORT
-    iniset $MANILA_CONF keystone_authtoken auth_protocol $KEYSTONE_AUTH_PROTOCOL
+    iniset $MANILA_CONF keystone_authtoken identity_uri $KEYSTONE_AUTH_URI
     iniset $MANILA_CONF keystone_authtoken admin_tenant_name $SERVICE_TENANT_NAME
     iniset $MANILA_CONF keystone_authtoken admin_user manila
     iniset $MANILA_CONF keystone_authtoken admin_password $SERVICE_PASSWORD
