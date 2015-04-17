@@ -21,34 +21,30 @@
 import eventlet
 eventlet.monkey_patch()
 
-import os
 import sys
 
 from oslo_config import cfg
-
-# If ../manila/__init__.py exists, add ../ to Python search path, so that
-# it will override what happens to be installed in /usr/(local/)lib/python...
-possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
-                                   os.pardir,
-                                   os.pardir))
-if os.path.exists(os.path.join(possible_topdir, 'manila', '__init__.py')):
-    sys.path.insert(0, possible_topdir)
+from oslo_log import log
 
 from manila import i18n
 i18n.enable_lazy()
 from manila.common import config  # Need to register global_opts  # noqa
-from manila.openstack.common import log as logging
 from manila import service
 from manila import utils
 from manila import version
 
 CONF = cfg.CONF
 
-if __name__ == '__main__':
+
+def main():
     CONF(sys.argv[1:], project='manila',
          version=version.version_string())
-    logging.setup("manila")
+    log.setup(CONF, "manila")
     utils.monkey_patch()
     server = service.Service.create(binary='manila-scheduler')
     service.serve(server)
     service.wait()
+
+
+if __name__ == '__main__':
+    main()
