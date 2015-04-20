@@ -50,6 +50,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
         expected = [':'.join([fake.SHARE_ADDRESS_1, fake.NFS_SHARE_PATH])]
         self.assertEqual(expected, result)
+        self.mock_client.clear_nfs_export_policy_for_volume.\
+            assert_called_once_with(fake.SHARE_NAME)
         self.assertTrue(mock_ensure_export_policy.called)
 
     def test_create_share_multiple(self):
@@ -67,6 +69,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         expected = [':'.join([fake.SHARE_ADDRESS_1, fake.NFS_SHARE_PATH]),
                     ':'.join([fake.SHARE_ADDRESS_2, fake.NFS_SHARE_PATH])]
         self.assertEqual(expected, result)
+        self.mock_client.clear_nfs_export_policy_for_volume.\
+            assert_called_once_with(fake.SHARE_NAME)
         self.assertTrue(mock_ensure_export_policy.called)
 
     def test_delete_share(self):
