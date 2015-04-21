@@ -36,9 +36,9 @@ LOG = log.getLogger(__name__)
 class NetAppCmodeSingleSVMFileStorageLibrary(
         lib_base.NetAppCmodeFileStorageLibrary):
 
-    def __init__(self, db, driver_name, **kwargs):
+    def __init__(self, driver_name, **kwargs):
         super(NetAppCmodeSingleSVMFileStorageLibrary, self).__init__(
-            db, driver_name, **kwargs)
+            driver_name, **kwargs)
 
         self._vserver = self.configuration.netapp_vserver
 

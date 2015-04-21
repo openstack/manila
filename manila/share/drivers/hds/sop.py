@@ -52,9 +52,8 @@ CONF.register_opts(hdssop_share_opts)
 class SopShareDriver(driver.ShareDriver):
     """Execute commands relating to Shares."""
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(SopShareDriver, self).__init__(False, *args, **kwargs)
-        self.db = db
         self.configuration.append_config_values(hdssop_share_opts)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'HDS_SOP'

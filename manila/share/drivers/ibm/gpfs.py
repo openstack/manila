@@ -122,10 +122,9 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         1.0 - Initial version.
     """
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Do initialization."""
         super(GPFSShareDriver, self).__init__(False, *args, **kwargs)
-        self.db = db
         self._helpers = {}
         self.configuration.append_config_values(gpfs_share_opts)
         self.backend_name = self.configuration.safe_get(

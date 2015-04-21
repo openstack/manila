@@ -39,7 +39,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          'info',
                          mock.Mock(side_effect=mock_logger.info))
 
-        self.mock_db = mock.Mock()
         config = fake.get_config_cmode()
         config.netapp_vserver = fake.VSERVER1
 
@@ -49,7 +48,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         }
 
         self.library = lib_single_svm.NetAppCmodeSingleSVMFileStorageLibrary(
-            self.mock_db, fake.DRIVER_NAME, **kwargs)
+            fake.DRIVER_NAME, **kwargs)
 
         self.library._client = mock.Mock()
         self.client = self.library._client

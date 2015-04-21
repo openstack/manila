@@ -49,9 +49,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
         CONF.set_default('driver_handles_share_servers', False)
 
         self.fake_conf = config.Configuration(None)
-        self._db = mock.Mock()
-        self._driver = quobyte.QuobyteShareDriver(self._db,
-                                                  configuration=self.fake_conf)
+        self._driver = quobyte.QuobyteShareDriver(configuration=self.fake_conf)
         self._driver.rpc = mock.Mock()
         self.share = fake_share.fake_share(share_proto='NFS')
         self.access = fake_share.fake_access()

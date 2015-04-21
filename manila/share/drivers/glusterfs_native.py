@@ -117,10 +117,9 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         1.1 - Support for working with multiple gluster volumes.
     """
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(GlusterfsNativeShareDriver, self).__init__(
             False, *args, **kwargs)
-        self.db = db
         self._helpers = None
         self.gluster_used_vols_dict = {}
         self.configuration.append_config_values(

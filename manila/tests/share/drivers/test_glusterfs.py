@@ -311,9 +311,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         CONF.set_default('driver_handles_share_servers', False)
 
         self.fake_conf = config.Configuration(None)
-        self._db = mock.Mock()
         self._driver = glusterfs.GlusterfsShareDriver(
-            self._db, execute=self._execute,
+            execute=self._execute,
             configuration=self.fake_conf)
         self._driver.gluster_manager = mock.Mock(**fake_gluster_manager_attrs)
         self._helper_nfs = mock.Mock()

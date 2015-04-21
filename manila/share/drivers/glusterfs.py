@@ -226,9 +226,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                            driver.ShareDriver,):
     """Execute commands relating to Shares."""
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(GlusterfsShareDriver, self).__init__(False, *args, **kwargs)
-        self.db = db
         self._helpers = {}
         self.gluster_manager = None
         self.configuration.append_config_values(GlusterfsManilaShare_opts)

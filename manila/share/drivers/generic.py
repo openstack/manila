@@ -121,12 +121,11 @@ def ensure_server(f):
 class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     """Executes commands relating to Shares."""
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Do initialization."""
         super(GenericShareDriver, self).__init__(
             [False, True], *args, **kwargs)
         self.admin_context = context.get_admin_context()
-        self.db = db
         self.configuration.append_config_values(share_opts)
         self._helpers = {}
         self.backend_name = self.configuration.safe_get(
@@ -134,7 +133,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.ssh_connections = {}
         self.service_instance_manager = (
             service_instance.ServiceInstanceManager(
-                self.db, driver_config=self.configuration))
+                driver_config=self.configuration))
 
     def _ssh_exec(self, server, command):
         connection = self.ssh_connections.get(server['instance_id'])

@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 from oslo_log import log
 import six
 
@@ -27,13 +26,6 @@ class FakeShareDriver(driver.ShareDriver):
 
     def __init__(self, *args, **kwargs):
         super(FakeShareDriver, self).__init__([True, False], *args, **kwargs)
-        self.db = mock.Mock()
-
-        def share_network_update(*args, **kwargs):
-            pass
-
-        self.db.share_network_update = mock.Mock(
-            side_effect=share_network_update)
 
     def manage_existing(self, share, driver_options):
         LOG.debug("Fake share driver: manage")
