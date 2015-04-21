@@ -25,15 +25,14 @@ revision = '38e632621e5a'
 down_revision = '211836bf835c'
 
 from alembic import op
-
-from manila.i18n import _LI
-from manila.openstack.common import log as logging
-
+from oslo_log import log
 from oslo_utils import strutils
 import sqlalchemy as sa
 from sqlalchemy.sql import table
 
-LOG = logging.getLogger(__name__)
+from manila.i18n import _LI
+
+LOG = log.getLogger(__name__)
 
 
 def upgrade():

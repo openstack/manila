@@ -20,12 +20,12 @@ import logging
 import os
 
 from oslo_config import cfg
+from oslo_log import log
 import six
 
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
-from manila.openstack.common import log
 from manila.share import driver
 from manila.share.drivers.hp import hp_3par_mediator
 
