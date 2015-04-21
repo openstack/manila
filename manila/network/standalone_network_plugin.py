@@ -15,13 +15,13 @@
 
 import netaddr
 from oslo_config import cfg
+from oslo_log import log
 import six
 
 from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila import network
-from manila.openstack.common import log as logging
 from manila import utils
 
 standalone_network_plugin_opts = [
@@ -59,7 +59,7 @@ standalone_network_plugin_opts = [
 ]
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 
 class StandaloneNetworkPlugin(network.NetworkBaseAPI):

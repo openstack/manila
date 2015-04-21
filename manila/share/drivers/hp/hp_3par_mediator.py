@@ -18,20 +18,20 @@ This 'mediator' de-couples the 3PAR focused client from the OpenStack focused
 driver.
 """
 
+from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import units
 import six
 
 from manila import exception
 from manila.i18n import _
-from manila.openstack.common import log as logging
 
 hp3parclient = importutils.try_import("hp3parclient")
 if hp3parclient:
     from hp3parclient import file_client
 
 
-LOG = logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 DENY = '-'
 ALLOW = '+'
 OPEN_STACK_MANILA_FSHARE = 'OpenStack Manila fshare'
