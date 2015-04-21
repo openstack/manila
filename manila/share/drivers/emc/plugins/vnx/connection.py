@@ -30,7 +30,7 @@ from manila.share.drivers.emc.plugins.vnx import utils as vnx_utils
 from manila import utils
 
 
-VERSION = "0.1.0"
+VERSION = "1.0.0"
 
 LOG = log.getLogger(__name__)
 
