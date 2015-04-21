@@ -37,6 +37,7 @@ CONF = cfg.CONF
 
 
 def main():
+    log.register_options(CONF)
     CONF(sys.argv[1:], project='manila',
          version=version.version_string())
     log.setup(CONF, "manila")

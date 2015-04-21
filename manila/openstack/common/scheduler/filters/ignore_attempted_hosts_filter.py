@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from manila.openstack.common import log as logging
+import logging
+
 from manila.openstack.common.scheduler import filters
 
 LOG = logging.getLogger(__name__)

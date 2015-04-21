@@ -27,6 +27,7 @@ class ManilaCmdSchedulerTestCase(test.TestCase):
     def test_main(self):
         sys.argv = ['manila-scheduler']
         self.mock_object(manila_scheduler.log, 'setup')
+        self.mock_object(manila_scheduler.log, 'register_options')
         self.mock_object(manila_scheduler.utils, 'monkey_patch')
         self.mock_object(manila_scheduler.service.Service, 'create')
         self.mock_object(manila_scheduler.service, 'serve')
@@ -37,6 +38,7 @@ class ManilaCmdSchedulerTestCase(test.TestCase):
         self.assertEqual(CONF.project, 'manila')
         self.assertEqual(CONF.version, version.version_string())
         manila_scheduler.log.setup.assert_called_once_with(CONF, "manila")
+        manila_scheduler.log.register_options.assert_called_once_with(CONF)
         manila_scheduler.utils.monkey_patch.assert_called_once_with()
         manila_scheduler.service.Service.create.assert_called_once_with(
             binary='manila-scheduler')

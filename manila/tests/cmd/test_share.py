@@ -30,6 +30,7 @@ class ManilaCmdShareTestCase(test.TestCase):
     @ddt.data(None, [], ['foo', ], ['foo', 'bar', ])
     def test_main(self, backends):
         self.mock_object(manila_share.log, 'setup')
+        self.mock_object(manila_share.log, 'register_options')
         self.mock_object(manila_share.utils, 'monkey_patch')
         self.mock_object(manila_share.service, 'ProcessLauncher')
         self.mock_object(manila_share.service.Service, 'create')
@@ -45,6 +46,7 @@ class ManilaCmdShareTestCase(test.TestCase):
         manila_share.main()
 
         manila_share.log.setup.assert_called_once_with(CONF, "manila")
+        manila_share.log.register_options.assert_called_once_with(CONF)
         manila_share.utils.monkey_patch.assert_called_once_with()
         manila_share.service.ProcessLauncher.assert_called_once_with()
         self.launcher.wait.assert_called_once_with()

@@ -35,6 +35,7 @@ class ManilaCmdAllTestCase(test.TestCase):
         sys.argv = ['manila-all']
 
         self.mock_object(log, 'setup')
+        self.mock_object(log, 'register_options')
         self.mock_object(log, 'getLogger')
         self.mock_object(utils, 'monkey_patch')
         self.mock_object(service, 'WSGIService')
@@ -49,6 +50,7 @@ class ManilaCmdAllTestCase(test.TestCase):
         self.assertEqual(CONF.project, 'manila')
         self.assertEqual(CONF.version, version.version_string())
         log.setup.assert_called_once_with(CONF, "manila")
+        log.register_options.assert_called_once_with(CONF)
         log.getLogger.assert_called_once_with('manila.all')
         utils.monkey_patch.assert_called_once_with()
         service.WSGIService.assert_called_once_with('osapi_share')
