@@ -13,10 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six  # noqa
+
 from oslo_log import log  # noqa
 from tempest_lib.common.utils import data_utils  # noqa
 
 from tempest import clients_share
+from tempest.common.utils.linux import remote_client
 from tempest import config
 from tempest.scenario import manager
 
@@ -150,3 +153,30 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
                                                    subnet_id)
         self.addCleanup(client.remove_router_interface_with_subnet_id,
                         router_id, subnet_id)
+
+    def get_remote_client(self, *args, **kwargs):
+        if not CONF.share.image_with_share_tools:
+            return super(ShareScenarioTest,
+                         self).get_remote_client(*args, **kwargs)
+        # HINT(mkoderer): as workaround for bug #1421104 we have to ignore the
+        # keypair and use the configured username and password
+        server_or_ip = kwargs['server_or_ip']
+        if isinstance(server_or_ip, six.string_types):
+            ip = server_or_ip
+        else:
+            addr = server_or_ip['addresses'][CONF.compute.network_for_ssh][0]
+            ip = addr['addr']
+
+        username = CONF.share.image_username
+        password = CONF.share.image_password
+
+        linux_client = remote_client.RemoteClient(ip, username=username,
+                                                  password=password, pkey=None)
+        try:
+            linux_client.validate_authentication()
+        except Exception:
+            LOG.exception('Initializing SSH connection to %s failed' % ip)
+            self._log_console_output()
+            raise
+
+        return linux_client
