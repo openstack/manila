@@ -107,7 +107,6 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         CONF.set_default('driver_handles_share_servers', False)
 
         self.fake_conf = config.Configuration(None)
-        self._db = mock.Mock()
         self.mock_object(tempfile, 'mkdtemp',
                          mock.Mock(return_value='/tmp/tmpKGHKJ'))
         self.mock_object(glusterfs.GlusterManager, 'make_gluster_call')
@@ -116,7 +115,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                                '_glustermanager',
                                side_effect=[self.gmgr1, self.gmgr2]):
             self._driver = glusterfs_native.GlusterfsNativeShareDriver(
-                self._db, execute=self._execute,
+                execute=self._execute,
                 configuration=self.fake_conf)
 
         self.addCleanup(fake_utils.fake_execute_set_repliers, [])

@@ -78,9 +78,8 @@ def fake_get_config_option(key):
 
 class FakeServiceInstance(object):
 
-    def __init__(self, db=None, driver_config=None):
+    def __init__(self, driver_config=None):
         super(FakeServiceInstance, self).__init__()
-        self.db = db or mock.Mock()
         self.compute_api = service_instance.compute.API()
         self.admin_context = service_instance.context.get_admin_context()
 
@@ -121,7 +120,6 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.instance_id = 'fake_instance_id'
         self.config = configuration.Configuration(None)
         self.config.safe_get = mock.Mock(side_effect=fake_get_config_option)
-        self._db = mock.Mock()
         self.mock_object(service_instance.compute, 'API', fake_compute.API)
         self.mock_object(
             service_instance.os.path, 'exists', mock.Mock(return_value=True))
@@ -129,8 +127,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                          mock.Mock(side_effect=FakeNetworkHelper))
         self.mock_object(service_instance, 'NovaNetworkHelper',
                          mock.Mock(side_effect=FakeNetworkHelper))
-        self._manager = service_instance.ServiceInstanceManager(
-            self._db, self.config)
+        self._manager = service_instance.ServiceInstanceManager(self.config)
         self._manager._execute = mock.Mock(return_value=('', ''))
 
     def test_get_config_option_from_driver_config(self):
@@ -143,7 +140,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self.config = configuration.Configuration(
                 service_instance.common_opts, config_group='CUSTOM')
             self._manager = service_instance.ServiceInstanceManager(
-                self._db, self.config)
+                self.config)
         result = self._manager.get_config_option('service_instance_user')
         self.assertEqual(username2, result)
 
@@ -151,7 +148,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         username = 'fake_username_%s' % self.id()
         config_data = dict(DEFAULT=dict(service_instance_user=username))
         with test_utils.create_temp_config_with_opts(config_data):
-            self._manager = service_instance.ServiceInstanceManager(self._db)
+            self._manager = service_instance.ServiceInstanceManager()
         result = self._manager.get_config_option('service_instance_user')
         self.assertEqual(username, result)
 
@@ -164,7 +161,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             driver_handles_share_servers=True,
             service_instance_network_helper_type=service_instance.NOVA_NAME))
         with test_utils.create_temp_config_with_opts(config_data):
-            self._manager = service_instance.ServiceInstanceManager(self._db)
+            self._manager = service_instance.ServiceInstanceManager()
         service_instance.NovaNetworkHelper.assert_called_once_with(
             self._manager)
         self.assertFalse(service_instance.NeutronNetworkHelper.called)
@@ -179,7 +176,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             service_instance_network_helper_type=service_instance.NEUTRON_NAME)
         )
         with test_utils.create_temp_config_with_opts(config_data):
-            self._manager = service_instance.ServiceInstanceManager(self._db)
+            self._manager = service_instance.ServiceInstanceManager()
         service_instance.NeutronNetworkHelper.assert_called_once_with(
             self._manager)
         self.assertFalse(service_instance.NovaNetworkHelper.called)
@@ -200,7 +197,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         with test_utils.create_temp_config_with_opts(config_data):
             self.assertRaises(
                 exception.ManilaException,
-                service_instance.ServiceInstanceManager, self._db)
+                service_instance.ServiceInstanceManager)
         self.assertFalse(service_instance.NeutronNetworkHelper.called)
         self.assertFalse(service_instance.NovaNetworkHelper.called)
 
@@ -215,7 +212,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         with test_utils.create_temp_config_with_opts(config_data):
             self.config = configuration.Configuration(opts, 'CUSTOM')
             self._manager = service_instance.ServiceInstanceManager(
-                self._db, self.config)
+                self.config)
         self.assertEqual(
             True,
             self._manager.get_config_option("driver_handles_share_servers"))
@@ -234,7 +231,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         with test_utils.create_temp_config_with_opts(config_data):
             self.config = configuration.Configuration(opts, 'CUSTOM')
             self._manager = service_instance.ServiceInstanceManager(
-                self._db, self.config)
+                self.config)
         self.assertNotEqual(None, self._manager.driver_config)
         self.assertFalse(hasattr(self._manager, 'network_helper'))
         self.assertFalse(service_instance.NovaNetworkHelper.called)
@@ -248,7 +245,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             driver_handles_share_servers=True,
             service_instance_network_helper_type=service_instance.NOVA_NAME))
         with test_utils.create_temp_config_with_opts(config_data):
-            self._manager = service_instance.ServiceInstanceManager(self._db)
+            self._manager = service_instance.ServiceInstanceManager()
         self.assertEqual(
             True,
             self._manager.get_config_option("driver_handles_share_servers"))
@@ -264,7 +261,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             service_instance_user='fake_username',
             driver_handles_share_servers=False))
         with test_utils.create_temp_config_with_opts(config_data):
-            self._manager = service_instance.ServiceInstanceManager(self._db)
+            self._manager = service_instance.ServiceInstanceManager()
         self.assertEqual(
             False,
             self._manager.get_config_option("driver_handles_share_servers"))
@@ -281,7 +278,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                 service_instance.common_opts, config_group=group_name)
         self.assertRaises(
             exception.ServiceInstanceException,
-            service_instance.ServiceInstanceManager, self._db, config)
+            service_instance.ServiceInstanceManager, config)
 
     def test_get_service_instance_name_using_driver_config(self):
         fake_server_id = 'fake_share_server_id_%s' % self.id()
@@ -295,7 +292,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         with test_utils.create_temp_config_with_opts(config_data):
             self.config = configuration.Configuration(opts, 'CUSTOM')
             self._manager = service_instance.ServiceInstanceManager(
-                self._db, self.config)
+                self.config)
         result = self._manager._get_service_instance_name(fake_server_id)
         self.assertNotEqual(None, self._manager.driver_config)
         self.assertEqual(
@@ -316,7 +313,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             service_instance_user='fake_user',
             service_instance_network_helper_type=service_instance.NOVA_NAME))
         with test_utils.create_temp_config_with_opts(config_data):
-            self._manager = service_instance.ServiceInstanceManager(self._db)
+            self._manager = service_instance.ServiceInstanceManager()
         result = self._manager._get_service_instance_name(fake_server_id)
         self.assertEqual(None, self._manager.driver_config)
         self.assertEqual(
@@ -899,7 +896,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             service_instance_user='fake_user',
             service_instance_network_helper_type=helper_type))
         with test_utils.create_temp_config_with_opts(config_data):
-            self._manager = service_instance.ServiceInstanceManager(self._db)
+            self._manager = service_instance.ServiceInstanceManager()
 
         server_create = dict(id='fakeid', status='CREATING', networks=dict())
         net_name = self._manager.get_config_option("service_network_name")

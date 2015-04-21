@@ -46,9 +46,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         self._helper_fake = mock.Mock()
         CONF.set_default('driver_handles_share_servers', False)
         self.fake_conf = config.Configuration(None)
-        self._db = mock.Mock()
-        self._driver = gpfs.GPFSShareDriver(self._db,
-                                            execute=self._gpfs_execute,
+        self._driver = gpfs.GPFSShareDriver(execute=self._gpfs_execute,
                                             configuration=self.fake_conf)
         self._knfs_helper = gpfs.KNFSHelper(self._gpfs_execute,
                                             self.fake_conf)

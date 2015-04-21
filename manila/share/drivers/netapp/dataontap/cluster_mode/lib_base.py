@@ -59,10 +59,9 @@ class NetAppCmodeFileStorageLibrary(object):
         'netapp:max_files': 'max_files',
     }
 
-    def __init__(self, db, driver_name, **kwargs):
+    def __init__(self, driver_name, **kwargs):
         na_utils.validate_driver_instantiation(**kwargs)
 
-        self.db = db
         self.driver_name = driver_name
 
         self.configuration = kwargs['configuration']

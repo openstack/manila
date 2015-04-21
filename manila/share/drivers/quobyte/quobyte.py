@@ -69,9 +69,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
 
     DRIVER_VERSION = '1.0'
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(QuobyteShareDriver, self).__init__(False, *args, **kwargs)
-        self.db = db
         self.configuration.append_config_values(quobyte_manila_share_opts)
         self.backend_name = (self.configuration.safe_get('share_backend_name')
                              or CONF.share_backend_name or 'Quobyte')

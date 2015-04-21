@@ -113,7 +113,7 @@ class ShareManager(manager.SchedulerDependentManager):
             share_driver = MAPPING[share_driver]
 
         self.driver = importutils.import_object(
-            share_driver, self.db, configuration=self.configuration)
+            share_driver, configuration=self.configuration)
 
     def _ensure_share_has_pool(self, ctxt, share):
         pool = share_utils.extract_host(share['host'], 'pool')

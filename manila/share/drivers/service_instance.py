@@ -181,9 +181,8 @@ class ServiceInstanceManager(object):
                       provided=network_helper_type,
                       allowed=[NOVA_NAME, NEUTRON_NAME]))
 
-    def __init__(self, db, driver_config=None):
+    def __init__(self, driver_config=None):
         super(ServiceInstanceManager, self).__init__()
-        self.db = db
         self.driver_config = driver_config
 
         if self.driver_config:

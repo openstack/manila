@@ -49,9 +49,7 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
         CONF.set_default('hdfs_ssh_private_key', 'fake_sshkey')
 
         self.fake_conf = config.Configuration(None)
-        self._db = mock.Mock()
         self._driver = hdfs_native.HDFSNativeShareDriver(
-            self._db,
             execute=self._hdfs_execute,
             configuration=self.fake_conf)
         self._driver._hdfs_bin = 'fake_hdfs_bin'

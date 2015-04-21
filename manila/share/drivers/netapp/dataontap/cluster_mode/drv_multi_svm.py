@@ -30,11 +30,11 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
 
     DRIVER_NAME = 'NetApp_Cluster_MultiSVM'
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(NetAppCmodeMultiSvmShareDriver, self).__init__(
             True, *args, **kwargs)
         self.library = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary(
-            db, self.DRIVER_NAME, **kwargs)
+            self.DRIVER_NAME, **kwargs)
 
     def do_setup(self, context):
         self.library.do_setup(context)

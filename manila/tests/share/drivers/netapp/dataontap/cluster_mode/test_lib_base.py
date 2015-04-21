@@ -61,13 +61,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          'debug',
                          mock.Mock(side_effect=mock_logger.debug))
 
-        self.mock_db = mock.Mock()
         kwargs = {
             'configuration': fake.get_config_cmode(),
             'app_version': fake.APP_VERSION
         }
-        self.library = lib_base.NetAppCmodeFileStorageLibrary(self.mock_db,
-                                                              fake.DRIVER_NAME,
+        self.library = lib_base.NetAppCmodeFileStorageLibrary(fake.DRIVER_NAME,
                                                               **kwargs)
         self.library._client = mock.Mock()
         self.client = self.library._client
@@ -75,7 +73,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_init(self):
         self.assertEqual(fake.DRIVER_NAME, self.library.driver_name)
-        self.assertEqual(self.mock_db, self.library.db)
         self.assertEqual(1, na_utils.validate_driver_instantiation.call_count)
         self.assertEqual(1, na_utils.setup_tracing.call_count)
         self.assertIsNone(self.library._helpers)

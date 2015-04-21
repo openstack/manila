@@ -48,14 +48,13 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          'error',
                          mock.Mock(side_effect=mock_logger.error))
 
-        self.mock_db = mock.Mock()
         kwargs = {
             'configuration': fake.get_config_cmode(),
             'app_version': fake.APP_VERSION
         }
 
         self.library = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary(
-            self.mock_db, fake.DRIVER_NAME, **kwargs)
+            fake.DRIVER_NAME, **kwargs)
         self.library._client = mock.Mock()
         self.library._client.get_ontapi_version.return_value = (1, 21)
         self.client = self.library._client

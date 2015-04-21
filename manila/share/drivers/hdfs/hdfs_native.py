@@ -80,9 +80,8 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         1.0 - Initial Version
     """
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(HDFSNativeShareDriver, self).__init__(False, *args, **kwargs)
-        self.db = db
         self.configuration.append_config_values(hdfs_native_share_opts)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'HDFS-Native'
