@@ -425,6 +425,7 @@ def main():
         sys.exit(2)
 
     try:
+        log.register_options(CONF)
         CONF(sys.argv[1:], project='manila',
              version=version.version_string())
         log.setup(CONF, "manila")
