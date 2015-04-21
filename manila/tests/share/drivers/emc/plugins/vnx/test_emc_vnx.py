@@ -1267,6 +1267,18 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
         helper.SSHConnector.run_ssh.assert_has_calls(ssh_calls)
 
+    def test_teardown_server_without_share_server_name(self):
+        security_services = TD.fake_security_services()
+        server_details = {}
+
+        helper.XMLAPIConnector.request = EMCMock()
+        helper.SSHConnector.run_ssh = mock.Mock()
+
+        self.driver.teardown_server(server_details, security_services)
+
+        helper.XMLAPIConnector.request.assert_has_calls([])
+        helper.SSHConnector.run_ssh.assert_has_calls([])
+
     @ddt.data(fake_share.fake_share(),
               fake_share.fake_share(share_proto='NFSBOGUS'),
               fake_share.fake_share(share_proto='CIFSBOGUS'))

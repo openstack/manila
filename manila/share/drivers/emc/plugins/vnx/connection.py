@@ -667,10 +667,14 @@ class VNXStorageConnection(driver.StorageConnection):
             LOG.debug('Server details are empty.')
             return
 
-        vdm_name = server_details['share_server_name']
-        vdm_id = server_details['share_server_id']
-        cifs_if = server_details['cifs_if']
-        nfs_if = server_details['nfs_if']
+        vdm_name = server_details.get('share_server_name')
+        if not vdm_name:
+            LOG.debug('No share server found in server details.')
+            return
+
+        vdm_id = server_details.get('share_server_id')
+        cifs_if = server_details.get('cifs_if')
+        nfs_if = server_details.get('nfs_if')
 
         status, vdmRef = self._XMLAPI_helper.get_vdm_by_name(vdm_name)
         if constants.STATUS_OK != status or vdmRef['id'] != vdm_id:
