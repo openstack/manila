@@ -279,7 +279,7 @@ class VNXStorageConnection(driver.StorageConnection):
                 path,
                 'true')
             if constants.STATUS_OK != status:
-                if self._XMLAPI_helper._is_mount_point_unexist_error(out):
+                if self._XMLAPI_helper._is_mount_point_nonexistent(out):
                     LOG.warn(_LW("Mount point %(path)s on %(vdm)s not found."),
                              {'path': path, 'vdm': vdm_name})
                 else:
@@ -566,11 +566,11 @@ class VNXStorageConnection(driver.StorageConnection):
         except Exception as ex:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Could not setup server. Reason: %s.'), ex)
-                server_details = self._contruct_backend_details(
+                server_details = self._construct_backend_details(
                     vdm_name, vdmRef, interface_info)
                 self.teardown_server(None, server_details, sec_services)
 
-    def _contruct_backend_details(self, vdm_name, vdmRef, interfaces):
+    def _construct_backend_details(self, vdm_name, vdmRef, interfaces):
         vdm_id = vdmRef['id'] if vdmRef else ""
         if_number = len(interfaces)
         cifs_if = interfaces[0]['ip'] if if_number > 0 else None

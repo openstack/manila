@@ -47,10 +47,11 @@ class XMLAPIConnector(object):
         self.auth_url = 'https://' + self.storage_ip + '/Login'
         self._url = ('https://' + self.storage_ip
                      + '/servlets/CelerraManagementServices')
-        https_hander = url_request.HTTPSHandler()
+        https_handler = url_request.HTTPSHandler()
         cookie_jar = cookielib.CookieJar()
-        cookie_hander = url_request.HTTPCookieProcessor(cookie_jar)
-        self.url_opener = url_request.build_opener(https_hander, cookie_hander)
+        cookie_handler = url_request.HTTPCookieProcessor(cookie_jar)
+        self.url_opener = url_request.build_opener(https_handler,
+                                                   cookie_handler)
         self.do_setup()
 
     def do_setup(self):
@@ -75,7 +76,7 @@ class XMLAPIConnector(object):
             string_parts.append(header)
 
         if req.data:
-            string_parts.append(" -d '%s'" % (req.data))
+            string_parts.append(" -d '%s'" % req.data)
         string_parts.append(' ' + req.get_full_url())
         LOG.debug("\nREQ: %s\n", "".join(string_parts))
 
@@ -523,11 +524,11 @@ class XMLAPIHelper(object):
 
         return status, data
 
-    def _copy_properties(self, source, dist, properties):
+    def _copy_properties(self, source, dest, properties):
         for key in properties:
             if key in source:
-                dist[key] = source[key]
-        return dist
+                dest[key] = source[key]
+        return dest
 
     def send_request(self, req):
         req_xml = constants.XML_HEADER + ET.tostring(req)
@@ -547,14 +548,14 @@ class XMLAPIHelper(object):
                 return False
         return True
 
-    def _is_mount_point_unexist_error(self, out):
+    def _is_mount_point_nonexistent(self, out):
         if 'info' in out.keys():
             for problem in out['info']:
                 if ((problem['messageCode'] == constants.MSG_GENERAL_ERROR
                         and problem['message'].find("No such path or invalid "
                                                     "operation") != -1)
                         or (problem['messageCode'] ==
-                            constants.MSG_INVALID_VMD_ID)):
+                            constants.MSG_INVALID_VDM_ID)):
                     return True
 
         return False
