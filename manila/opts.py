@@ -21,6 +21,7 @@ import itertools
 
 import oslo_concurrency.opts
 import oslo_log._options
+import oslo_policy.opts
 
 import manila.api.common
 import manila.api.middleware.auth
@@ -39,7 +40,6 @@ import manila.network.nova_network_plugin
 import manila.network.standalone_network_plugin
 import manila.openstack.common.eventlet_backdoor
 import manila.openstack.common.log
-import manila.openstack.common.policy
 import manila.quota
 import manila.scheduler.driver
 import manila.scheduler.host_manager
@@ -98,7 +98,6 @@ _global_opt_lists = [
     manila.openstack.common.log.generic_log_opts,
     manila.openstack.common.log.log_opts,
     manila.openstack.common.log.logging_cli_opts,
-    manila.openstack.common.policy.policy_opts,
     manila.quota.quota_opts,
     manila.scheduler.driver.scheduler_driver_opts,
     manila.scheduler.host_manager.host_manager_opts,
@@ -147,6 +146,7 @@ _opts = [
 
 _opts.extend(oslo_concurrency.opts.list_opts())
 _opts.extend(oslo_log._options.list_opts())
+_opts.extend(oslo_policy.opts.list_opts())
 
 
 def list_opts():

@@ -17,9 +17,12 @@
 
 import functools
 
-from manila import exception
-from manila.openstack.common import policy
+from oslo_config import cfg
+from oslo_policy import policy
 
+from manila import exception
+
+CONF = cfg.CONF
 _ENFORCER = None
 
 
@@ -33,7 +36,7 @@ def reset():
 def init(policy_path=None):
     global _ENFORCER
     if not _ENFORCER:
-        _ENFORCER = policy.Enforcer()
+        _ENFORCER = policy.Enforcer(CONF)
         if policy_path:
             _ENFORCER.policy_path = policy_path
     _ENFORCER.load_rules()

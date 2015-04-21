@@ -335,10 +335,11 @@ class ManilaCmdManageTestCase(test.TestCase):
         self.assertEqual(exit.code, 2)
 
     @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
-    @mock.patch('manila.openstack.common.log.setup')
+    @mock.patch('oslo_log.log.register_options')
+    @mock.patch('oslo_log.log.setup')
     @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
     def test_main_sudo_failed(self, register_cli_opt, log_setup,
-                              config_opts_call):
+                              register_log_opts, config_opts_call):
         script_name = 'manila-manage'
         sys.argv = [script_name, 'fake_category', 'fake_action']
         config_opts_call.side_effect = cfg.ConfigFilesNotFoundError(
@@ -347,6 +348,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         exit = self.assertRaises(SystemExit, manila_manage.main)
 
         self.assertTrue(register_cli_opt.called)
+        register_log_opts.assert_called_once_with(CONF)
         config_opts_call.assert_called_once_with(
             sys.argv[1:], project='manila',
             version=version.version_string())
@@ -355,7 +357,8 @@ class ManilaCmdManageTestCase(test.TestCase):
 
     @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
     @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
-    def test_main(self, register_cli_opt, config_opts_call):
+    @mock.patch('oslo_log.log.register_options')
+    def test_main(self, register_log_opts, register_cli_opt, config_opts_call):
         script_name = 'manila-manage'
         sys.argv = [script_name, 'config', 'list']
         action_fn = mock.MagicMock()
@@ -364,6 +367,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         manila_manage.main()
 
         self.assertTrue(register_cli_opt.called)
+        register_log_opts.assert_called_once_with(CONF)
         config_opts_call.assert_called_once_with(
             sys.argv[1:], project='manila', version=version.version_string())
         self.assertTrue(action_fn.called)
