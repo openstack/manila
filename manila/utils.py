@@ -146,16 +146,6 @@ class SSHPool(pools.Pool):
             self.current_size -= 1
 
 
-def maniladir():
-    import manila
-    return os.path.abspath(manila.__file__).split('manila/__init__.py')[0]
-
-
-def debug(arg):
-    LOG.debug('debug in callback: %s', arg)
-    return arg
-
-
 class LazyPluggable(object):
     """A pluggable backend loaded lazily based on some value."""
 
