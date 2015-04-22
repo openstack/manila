@@ -55,7 +55,7 @@ class VNXStorageConnection(driver.StorageConnection):
         share_name = share['name']
         size = share['size'] * units.Ki
         vdm = self.share_server_validation(share_server)
-        self.allocate_container(share_name, size, vdm['id'])
+        self._allocate_container(share_name, size, vdm['id'])
 
         if share['share_proto'] == 'NFS':
             location = self._create_nfs_share(share_name, vdm['name'],
@@ -88,7 +88,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         return {'id': vdm_id, 'name': vdm_name}
 
-    def allocate_container(self, share_name, size, vdm_id):
+    def _allocate_container(self, share_name, size, vdm_id):
         """Is called to allocate container for share."""
         status, out = self._XMLAPI_helper.create_file_system(
             share_name, size, self._pool['id'], vdm_id)
@@ -97,7 +97,7 @@ class VNXStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.EMCVnxXMLAPIError(err=message)
 
-    def allocate_container_from_snapshot(self, share, snapshot, vdm_ref):
+    def _allocate_container_from_snapshot(self, share, snapshot, vdm_ref):
         """Is called to create share from snapshot."""
         self._replicate_snapshot(share, snapshot, self._mover_name, vdm_ref)
 
@@ -154,7 +154,7 @@ class VNXStorageConnection(driver.StorageConnection):
         """Is called to create share from snapshot."""
         share_name = share['name']
         vdm_ref = self.share_server_validation(share_server)
-        self.allocate_container_from_snapshot(share, snapshot, vdm_ref)
+        self._allocate_container_from_snapshot(share, snapshot, vdm_ref)
 
         if share['share_proto'] == 'NFS':
             self._create_nfs_share(share_name, vdm_ref['name'], share_server)
@@ -270,7 +270,7 @@ class VNXStorageConnection(driver.StorageConnection):
         name = share_name
         path = '/' + name
         if vdm_id is None:
-            vdm = self.get_vdm_by_name(vdm_name, allow_absence=True)
+            vdm = self._get_vdm_by_name(vdm_name, allow_absence=True)
             vdm_id = vdm['id'] if vdm else None
 
         if vdm_id is not None:
@@ -279,7 +279,7 @@ class VNXStorageConnection(driver.StorageConnection):
                 path,
                 'true')
             if constants.STATUS_OK != status:
-                if self._XMLAPI_helper._is_mount_point_nonexistent(out):
+                if self._XMLAPI_helper.is_mount_point_nonexistent(out):
                     LOG.warn(_LW("Mount point %(path)s on %(vdm)s not found."),
                              {'path': path, 'vdm': vdm_name})
                 else:
@@ -471,7 +471,7 @@ class VNXStorageConnection(driver.StorageConnection):
         self._NASCmd_helper = helper.NASCommandHelper(configuration)
 
         # To verify the input from manila configuration
-        self.get_mover_ref_by_name(self._mover_name)
+        self._get_mover_ref_by_name(self._mover_name)
         self._pool = self._get_available_pool_by_name(self._pool_name)
 
     def update_share_stats(self, stats_dict):
@@ -510,7 +510,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         try:
             # Refresh DataMover/VDM by the configuration
-            moverRef = self.get_mover_ref_by_name(self._mover_name)
+            moverRef = self._get_mover_ref_by_name(self._mover_name)
             if not self._vdm_exist(vdm_name):
                 LOG.debug('Share server %s not found, creating.', vdm_name)
                 self._create_vdm(vdm_name, moverRef)
@@ -620,7 +620,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
     def _configure_active_directory(self, security_service, vdmRef, interface):
 
-        moverRef = self.get_mover_ref_by_name(self._mover_name)
+        moverRef = self._get_mover_ref_by_name(self._mover_name)
         self._configure_dns(security_service, moverRef)
 
         data = {
@@ -747,7 +747,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         return self._pool
 
-    def get_mover_ref_by_name(self, name):
+    def _get_mover_ref_by_name(self, name):
         status, mover = self._XMLAPI_helper.get_mover_ref_by_name(name)
         if constants.STATUS_ERROR == status:
             message = _("Could not find Data Mover by name: %s.") % name
@@ -756,7 +756,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         return mover
 
-    def get_vdm_by_name(self, name, allow_absence=False):
+    def _get_vdm_by_name(self, name, allow_absence=False):
         status, vdm = self._XMLAPI_helper.get_vdm_by_name(name)
         if constants.STATUS_OK != status:
             if allow_absence and constants.STATUS_NOT_FOUND == status:

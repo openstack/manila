@@ -1179,14 +1179,14 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         hook.append(TD.resp_get_mover_ref())
         hook.append(TD.resp_get_storage_pools())
         helper.XMLAPIConnector.request = EMCMock(side_effect=hook)
-        helper.XMLAPIConnector.do_setup = EMCMock()
+        helper.XMLAPIConnector._do_setup = EMCMock()
         self.driver.do_setup(None)
         expected_calls = [
             mock.call(TD.req_get_mover_ref()),
             mock.call(TD.req_get_storage_pools()),
         ]
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
-        helper.XMLAPIConnector.do_setup.assert_called_once_with()
+        helper.XMLAPIConnector._do_setup.assert_called_once_with()
         pool_id = self.driver.plugin._pool['id']
         self.assertEqual(pool_id, TD.storage_pool_id_default,
                          "Storage pool id parse error")

@@ -52,9 +52,9 @@ class XMLAPIConnector(object):
         cookie_handler = url_request.HTTPCookieProcessor(cookie_jar)
         self.url_opener = url_request.build_opener(https_handler,
                                                    cookie_handler)
-        self.do_setup()
+        self._do_setup()
 
-    def do_setup(self):
+    def _do_setup(self):
         credential = ('user=' + self.user_name
                       + '&password=' + self.pass_word
                       + '&Login=Login')
@@ -143,7 +143,7 @@ class XMLAPIConnector(object):
         except manila.exception.NotAuthorized:
             LOG.debug("Login again because client certification "
                       "may be expired.")
-            self.do_setup()
+            self._do_setup()
             resp_body = self._request(req_body, method, header)
 
         return resp_body
@@ -158,9 +158,6 @@ class XMLAPIHelper(object):
 
         self.elt_maker = builder.ElementMaker(
             nsmap={None: constants.XML_NAMESPACE})
-
-    def setup_connector(self):
-        self._conn.do_setup()
 
     def _translate_response(self, status, info):
         """Translate different status to ok/error status."""
@@ -188,17 +185,16 @@ class XMLAPIHelper(object):
         status = constants.STATUS_OK
 
         for child in response:
-            if (child[0] == 'Fault'
-                    or child[0] == 'QueryStatus'
-                    or child[0] == 'TaskResponse'):
+            if (child[0] == 'Fault' or
+                    child[0] == 'QueryStatus' or child[0] == 'TaskResponse'):
 
                 if 'maxSeverity' in child[1].keys():
                     status = child[1]['maxSeverity']
 
                 if 'taskId' in child[1].keys():
-                    taskId = child[1]['taskId']
+                    task_id = child[1]['taskId']
                 else:
-                    taskId = None
+                    task_id = None
 
                 # It indicate that there is a problem in this operation
                 if len(child) > 2 and len(child[2]) > 0:
@@ -207,7 +203,7 @@ class XMLAPIHelper(object):
                     for item in problems:
                         if item[0] == 'Problem':
                             info = {
-                                'taskId': taskId,
+                                'taskId': task_id,
                                 'message': None,
                                 'messageCode': None,
                                 'description': None,
@@ -229,7 +225,7 @@ class XMLAPIHelper(object):
                 if len(data['info']) == 0:
                     data['info'].append(
                         {
-                            'taskId': taskId,
+                            'taskId': task_id,
                             'message': None,
                             'messageCode': None,
                             'description': None,
@@ -240,7 +236,7 @@ class XMLAPIHelper(object):
             status = self._translate_response(status, data['info'])
         return status, data
 
-    def get_message_codes(self, data):
+    def _get_message_codes(self, data):
         if 'info' not in data:
             return []
         return map(lambda info: info['messageCode'], data['info'])
@@ -278,7 +274,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
         return status, msg
 
     def delete_file_system(self, fs_id):
@@ -286,7 +282,7 @@ class XMLAPIHelper(object):
             self.elt_maker.DeleteFileSystem(fileSystem=fs_id)
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
         return status, msg
 
     def get_file_system_by_name(self, fs_name, need_capacity=True):
@@ -314,7 +310,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         if constants.STATUS_OK != status:
             return status, msg
@@ -341,50 +337,6 @@ class XMLAPIHelper(object):
 
         return status, data
 
-    def rename_file_system(self, filesystem, new_name):
-
-        data = {
-            'name': '',
-            'id': '',
-            'type': '',
-            'size': '',
-            'volume_id': '',
-            'pool_id': '',
-            'dataServicePolicies': '',
-            'containsSlices': '',
-            'cwormState': '',
-        }
-
-        request = self._build_task_package(
-            self.elt_maker.ModifyFileSystem(
-                fileSystem=filesystem['id'],
-                newName=new_name
-            )
-        )
-
-        status, msg, result = self.send_request(request)
-
-        if constants.STATUS_OK != status:
-            return status, msg
-
-        for item in result:
-            if item[0] == 'FileSystem':
-                list_properties = [
-                    'name',
-                    'type',
-                    'cwormState'
-                    'dataServicePolicies',
-                    'containsSlices',
-                ]
-                self._copy_properties(item[1], data, list_properties)
-                data['id'] = item[1].get('fileSystem', '')
-                data['volume_id'] = item[1].get('volume', '')
-                data['pool_id'] = item[1].get('storagePools', '')
-            elif item[0] == 'FileSystemCapacityInfo':
-                data['size'] = item[1].get('volumeSize', '')
-
-        return status, data
-
     def create_mount_point(self, fs_id, mount_path, mover_id):
         request = self._build_task_package(
             self.elt_maker.NewMount(
@@ -394,7 +346,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -407,7 +359,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -420,7 +372,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         if constants.STATUS_OK != status:
             return status, msg
@@ -454,7 +406,7 @@ class XMLAPIHelper(object):
 
         return status, mount_points
 
-    def create_cifs_share(self, share_name, netbiosname, mover_id,
+    def create_cifs_share(self, share_name, netbios_name, mover_id,
                           is_vdm=True):
 
         share_path = '/' + share_name
@@ -465,32 +417,32 @@ class XMLAPIHelper(object):
                     mover=mover_id,
                     moverIdIsVdm='true' if is_vdm else 'false'
                 ),
-                self.elt_maker.CifsServers(self.elt_maker.li(netbiosname)),
+                self.elt_maker.CifsServers(self.elt_maker.li(netbios_name)),
                 name=share_name,
                 path=share_path
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
-    def delete_cifs_share(self, share_name, mover_id, netbiosnames,
+    def delete_cifs_share(self, share_name, mover_id, netbios_names,
                           is_vdm='true'):
-        if not isinstance(netbiosnames, list):
-            netbiosnames = [netbiosnames]
+        if not isinstance(netbios_names, list):
+            netbios_names = [netbios_names]
 
         request = self._build_task_package(
             self.elt_maker.DeleteCifsShare(
                 self.elt_maker.CifsServers(*map(lambda a: self.elt_maker.li(a),
-                                                netbiosnames)),
+                                                netbios_names)),
                 mover=mover_id,
                 moverIdIsVdm=is_vdm,
                 name=share_name
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -509,7 +461,7 @@ class XMLAPIHelper(object):
             self.elt_maker.CifsShareQueryParams(name=name)
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         if constants.STATUS_OK != status:
             return status, msg
@@ -530,7 +482,7 @@ class XMLAPIHelper(object):
                 dest[key] = source[key]
         return dest
 
-    def send_request(self, req):
+    def _send_request(self, req):
         req_xml = constants.XML_HEADER + ET.tostring(req)
         rsp_xml = self._conn.request(req_xml)
 
@@ -542,30 +494,18 @@ class XMLAPIHelper(object):
         return status, msg_info, result
 
     def _is_not_internal_device(self, device):
-        internal_types = ['mge', 'fxg', 'tks', 'fsn']
-        for device_type in internal_types:
+        for device_type in ('mge', 'fxg', 'tks', 'fsn'):
             if device.find(device_type) == 0:
                 return False
         return True
 
-    def _is_mount_point_nonexistent(self, out):
-        if 'info' in out.keys():
-            for problem in out['info']:
-                if ((problem['messageCode'] == constants.MSG_GENERAL_ERROR
-                        and problem['message'].find("No such path or invalid "
-                                                    "operation") != -1)
-                        or (problem['messageCode'] ==
-                            constants.MSG_INVALID_VDM_ID)):
-                    return True
-
-        return False
-
-    def _is_filesystem_unexist_error(self, out):
-        if 'info' in out.keys():
-            for problem in out['info']:
-                if (problem['messageCode'] ==
-                        constants.MSG_FILESYSTEM_NOT_FOUND):
-                    return True
+    def is_mount_point_nonexistent(self, out):
+        for problem in out.get('info', []):
+            if ((problem['messageCode'] == constants.MSG_GENERAL_ERROR and
+                    problem['message'].find("No such path or invalid "
+                                            "operation") != -1) or
+                    (problem['messageCode'] == constants.MSG_INVALID_VDM_ID)):
+                return True
 
         return False
 
@@ -589,7 +529,7 @@ class XMLAPIHelper(object):
 
         request = self._build_task_package(new_ckpt)
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -599,7 +539,7 @@ class XMLAPIHelper(object):
             self.elt_maker.DeleteCheckpoint(checkpoint=ckpt_id)
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -623,7 +563,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         if constants.STATUS_OK != status:
             return status, msg
@@ -657,7 +597,7 @@ class XMLAPIHelper(object):
             self.elt_maker.StoragePoolQueryParams()
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         if constants.STATUS_OK != status:
             return status, msg
@@ -715,7 +655,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
         if constants.STATUS_ERROR == status:
             return status, msg
 
@@ -759,7 +699,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
         if constants.STATUS_OK != status:
             return status, msg
 
@@ -827,19 +767,19 @@ class XMLAPIHelper(object):
 
         return status, mover
 
-    def extend_file_system(self, fs_id, pool_id, newsize):
+    def extend_file_system(self, fs_id, pool_id, new_size):
 
         request = self._build_task_package(
             self.elt_maker.ExtendFileSystem(
                 self.elt_maker.StoragePool(
                     pool=pool_id,
-                    size=six.text_type(newsize)
+                    size=six.text_type(new_size)
                 ),
                 fileSystem=fs_id,
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -849,7 +789,7 @@ class XMLAPIHelper(object):
             self.elt_maker.NewVdm(mover=host_mover_id, name=name)
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -859,7 +799,7 @@ class XMLAPIHelper(object):
             self.elt_maker.DeleteVdm(vdm=vdm_id)
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -874,7 +814,7 @@ class XMLAPIHelper(object):
 
         request = self._build_query_package(self.elt_maker.VdmQueryParams())
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
         if constants.STATUS_OK != status:
             return status, msg
 
@@ -915,7 +855,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         if constants.STATUS_OK != status:
             return status, msg
@@ -931,13 +871,13 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
     def create_cifs_server(self, args):
 
-        compName = args['compName']
+        computer_name = args['compName']
         netbios_name = args['netbios']
         mover_id = args['mover_id']
         domain_name = args['domain']
@@ -954,23 +894,23 @@ class XMLAPIHelper(object):
                 self.elt_maker.Aliases(*alias_name_list),
                 self.elt_maker.JoinDomain(userName=user_name,
                                           password=password),
-                compName=compName,
+                compName=computer_name,
                 domain=domain_name,
                 interfaces=interfaces,
                 name=netbios_name
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         if constants.STATUS_OK == status:
             if (constants.MSG_JOIN_DOMAIN_FAILED
-                    in self.get_message_codes(msg)):
+                    in self._get_message_codes(msg)):
                 # Domain Join Failed
                 return constants.STATUS_ERROR, msg
             else:
                 cifs_server = {
-                    'compName': compName,
+                    'compName': computer_name,
                     'netbios_name': netbios_name,
                     'mover_id': mover_id,
                     'domain_name': domain_name,
@@ -1005,7 +945,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -1018,7 +958,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -1034,7 +974,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         if constants.STATUS_OK != status:
             return status, msg
@@ -1085,7 +1025,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
@@ -1098,7 +1038,7 @@ class XMLAPIHelper(object):
             )
         )
 
-        status, msg, result = self.send_request(request)
+        status, msg, result = self._send_request(request)
 
         return status, msg
 
