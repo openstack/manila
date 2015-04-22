@@ -16,9 +16,9 @@
 """
 Filter support
 """
+import logging
 
 from manila.openstack.common._i18n import _LI
-from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import base_handler
 
 LOG = logging.getLogger(__name__)

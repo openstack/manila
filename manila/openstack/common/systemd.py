@@ -16,11 +16,10 @@
 Helper module for systemd service readiness notification.
 """
 
+import logging
 import os
 import socket
 import sys
-
-from manila.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)

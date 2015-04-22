@@ -27,6 +27,7 @@ stepping stone.
 import socket
 
 from oslo_config import cfg
+from oslo_log import log
 import six
 
 from manila.common import constants
@@ -34,6 +35,7 @@ from manila import exception
 from manila.i18n import _
 
 CONF = cfg.CONF
+log.register_options(CONF)
 
 
 def _get_my_ip():

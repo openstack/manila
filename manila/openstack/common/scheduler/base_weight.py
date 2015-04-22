@@ -63,7 +63,8 @@ class WeighedObject(object):
         return "<WeighedObject '%s': %s>" % (self.obj, self.weight)
 
 
-class BaseWeigher(six.with_metaclass(abc.ABCMeta, object)):
+@six.add_metaclass(abc.ABCMeta)
+class BaseWeigher(object):
     """Base class for pluggable weighers.
 
     The attributes maxval and minval can be specified to set up the maximum

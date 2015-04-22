@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+
 import six
 
-from manila.openstack.common import log as logging
 from manila.openstack.common.scheduler import filters
 from manila.openstack.common.scheduler.filters import extra_specs_ops
 

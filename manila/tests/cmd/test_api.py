@@ -29,6 +29,7 @@ class ManilaCmdApiTestCase(test.TestCase):
 
     def test_main(self):
         self.mock_object(manila_api.log, 'setup')
+        self.mock_object(manila_api.log, 'register_options')
         self.mock_object(manila_api.utils, 'monkey_patch')
         self.mock_object(manila_api.service, 'WSGIService')
         self.mock_object(manila_api.service, 'serve')
@@ -39,6 +40,7 @@ class ManilaCmdApiTestCase(test.TestCase):
         self.assertEqual(CONF.project, 'manila')
         self.assertEqual(CONF.version, version.version_string())
         manila_api.log.setup.assert_called_once_with(CONF, "manila")
+        manila_api.log.register_options.assert_called_once_with(CONF)
         manila_api.utils.monkey_patch.assert_called_once_with()
         manila_api.service.WSGIService.assert_called_once_with('osapi_share')
         manila_api.service.wait.assert_called_once_with()
