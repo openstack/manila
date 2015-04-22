@@ -83,10 +83,11 @@ class TestShareBasicOps(manager.ShareScenarioTest):
             'key_name': self.keypair['name'],
             'security_groups': security_groups,
         }
-        self.instance = self.create_server(image=self.image_ref,
-                                           create_kwargs=create_kwargs)
+        instance = self.create_server(image=self.image_ref,
+                                      create_kwargs=create_kwargs)
+        return instance
 
-    def init_ssh(self, do_ping=False):
+    def init_ssh(self, instance, do_ping=False):
         # Obtain a floating IP
         floating_ip = self.floating_ips_client.create_floating_ip()
         self.addCleanup(self.delete_wrapper,
@@ -94,22 +95,31 @@ class TestShareBasicOps(manager.ShareScenarioTest):
                         floating_ip['id'])
         # Attach a floating IP
         self.floating_ips_client.associate_floating_ip_to_server(
-            floating_ip['ip'], self.instance['id'])
+            floating_ip['ip'], instance['id'])
         # Check ssh
-        self.ssh_client = self.get_remote_client(
+        ssh_client = self.get_remote_client(
             server_or_ip=floating_ip['ip'],
             username=self.ssh_user,
             private_key=self.keypair['private_key'])
         self.share = self.shares_client.get_share(self.share['id'])
         if do_ping:
             server_ip = self.share['export_location'].split(":")[0]
-            self.ssh_client.exec_command("ping -c 1 %s" % server_ip)
+            ssh_client.exec_command("ping -c 1 %s" % server_ip)
+        return ssh_client
 
-    def mount_share(self, location):
-        self.ssh_client.exec_command("sudo mount \"%s\" /mnt" % location)
+    def mount_share(self, location, ssh_client):
+        ssh_client.exec_command("sudo mount \"%s\" /mnt" % location)
 
-    def umount_share(self):
-        self.ssh_client.exec_command("sudo umount /mnt")
+    def umount_share(self, ssh_client):
+        ssh_client.exec_command("sudo umount /mnt")
+
+    def write_data(self, data, ssh_client):
+        ssh_client.exec_command("echo \"%s\" | sudo tee /mnt/t1 && sudo sync" %
+                                data)
+
+    def read_data(self, ssh_client):
+        data = ssh_client.exec_command("sudo cat /mnt/t1")
+        return data.rstrip()
 
     def create_share_network(self):
         self.net = self._create_network(namestart="manila-share")
@@ -142,14 +152,42 @@ class TestShareBasicOps(manager.ShareScenarioTest):
         self._allow_access(share_id, access_type='ip', access_to=ip)
 
     @test.services('compute', 'network')
-    def test_server_basicops(self):
+    def test_mount_share_one_vm(self):
         self.security_group = self._create_security_group()
         self.create_share_network()
         self.create_share(self.share_net['id'])
-        self.boot_instance(self.net)
-        self.allow_access_ip(self.share['id'], instance=self.instance)
-        self.init_ssh()
+        instance = self.boot_instance(self.net)
+        self.allow_access_ip(self.share['id'], instance=instance)
+        ssh_client = self.init_ssh(instance)
         for location in self.share['export_locations']:
-            self.mount_share(location)
-            self.umount_share()
-        self.servers_client.delete_server(self.instance['id'])
+            self.mount_share(location, ssh_client)
+            self.umount_share(ssh_client)
+        self.servers_client.delete_server(instance['id'])
+
+    @test.services('compute', 'network')
+    def test_read_write_two_vms(self):
+        """Boots two vms and writes/reads data on it."""
+        test_data = "Some test data to write"
+        self.security_group = self._create_security_group()
+        self.create_share_network()
+        self.create_share(self.share_net['id'])
+
+        # boot first VM and write data
+        instance1 = self.boot_instance(self.net)
+        self.allow_access_ip(self.share['id'], instance=instance1)
+        ssh_client_inst1 = self.init_ssh(instance1)
+        first_location = self.share['export_locations'][0]
+        self.mount_share(first_location, ssh_client_inst1)
+        self.addCleanup(self.umount_share,
+                        ssh_client_inst1)
+        self.write_data(test_data, ssh_client_inst1)
+
+        # boot second VM and read
+        instance2 = self.boot_instance(self.net)
+        self.allow_access_ip(self.share['id'], instance=instance2)
+        ssh_client_inst2 = self.init_ssh(instance2)
+        self.mount_share(first_location, ssh_client_inst2)
+        self.addCleanup(self.umount_share,
+                        ssh_client_inst2)
+        data = self.read_data(ssh_client_inst2)
+        self.assertEqual(test_data, data)
