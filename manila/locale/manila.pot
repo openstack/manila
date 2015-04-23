@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev92\n"
+"Project-Id-Version: manila 2015.1.dev1.gf8cc578\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-04-12 06:11+0000\n"
+"POT-Creation-Date: 2015-04-20 12:05+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -539,24 +539,24 @@ msgid ""
 "error code %(qbcode)s"
 msgstr ""
 
-#: manila/utils.py:117
+#: manila/utils.py:113
 #, python-format
 msgid ""
 "Check whether private key or password are correctly set. Error connecting"
 " via ssh: %s"
 msgstr ""
 
-#: manila/utils.py:175
+#: manila/utils.py:171
 #, python-format
 msgid "Invalid backend: %s"
 msgstr ""
 
-#: manila/utils.py:504
+#: manila/utils.py:460
 #, python-format
 msgid "Invalid cidr supplied %s"
 msgstr ""
 
-#: manila/utils.py:514
+#: manila/utils.py:470
 #, python-format
 msgid "Provided improper IP version '%s'."
 msgstr ""
@@ -591,80 +591,63 @@ msgstr ""
 msgid "You must implement __call__"
 msgstr ""
 
-#: manila/api/common.py:88 manila/api/common.py:122
+#: manila/api/common.py:84 manila/api/common.py:118
 msgid "limit param must be an integer"
 msgstr ""
 
-#: manila/api/common.py:91 manila/api/common.py:126
+#: manila/api/common.py:87 manila/api/common.py:122
 msgid "limit param must be positive"
 msgstr ""
 
-#: manila/api/common.py:116
+#: manila/api/common.py:112
 msgid "offset param must be an integer"
 msgstr ""
 
-#: manila/api/common.py:130
+#: manila/api/common.py:126
 msgid "offset param must be positive"
 msgstr ""
 
-#: manila/api/common.py:158
+#: manila/api/common.py:154
 #, python-format
 msgid "marker [%s] not found"
 msgstr ""
 
-#: manila/api/xmlutil.py:269
-msgid "element is not a child"
-msgstr ""
-
-#: manila/api/xmlutil.py:418
-msgid "root element selecting a list"
-msgstr ""
-
-#: manila/api/xmlutil.py:743
-#, python-format
-msgid "Template tree mismatch; adding slave %(slavetag)s to master %(mastertag)s"
-msgstr ""
-
-#: manila/api/xmlutil.py:865
-msgid "subclasses must implement construct()!"
-msgstr ""
-
-#: manila/api/contrib/quotas.py:71
+#: manila/api/contrib/quotas.py:57
 msgid "Quota limit must be -1 or greater."
 msgstr ""
 
-#: manila/api/contrib/quotas.py:75
+#: manila/api/contrib/quotas.py:61
 #, python-format
 msgid "Quota limit must greater than %s."
 msgstr ""
 
-#: manila/api/contrib/quotas.py:78
+#: manila/api/contrib/quotas.py:64
 #, python-format
 msgid "Quota limit must less than %s."
 msgstr ""
 
-#: manila/api/contrib/quotas.py:151 manila/api/contrib/quotas.py:177
+#: manila/api/contrib/quotas.py:135 manila/api/contrib/quotas.py:161
 #, python-format
 msgid "Quota '%(value)s' for %(key)s should be integer."
 msgstr ""
 
-#: manila/api/contrib/quotas.py:159
+#: manila/api/contrib/quotas.py:143
 #, python-format
 msgid "Bad key(s) %s in quota_set"
 msgstr ""
 
-#: manila/api/contrib/quotas.py:192
+#: manila/api/contrib/quotas.py:176
 #, python-format
 msgid ""
 "Quota value %(value)s for %(key)s are greater than already used and "
 "reserved %(quota_used)s"
 msgstr ""
 
-#: manila/api/contrib/share_actions.py:81
+#: manila/api/contrib/share_actions.py:46
 msgid "Invalid CN (common name). Must be 1-64 chars long"
 msgstr ""
 
-#: manila/api/contrib/share_actions.py:137
+#: manila/api/contrib/share_actions.py:101
 msgid "Only 'ip','user',or'cert' access types are supported."
 msgstr ""
 
@@ -686,21 +669,21 @@ msgstr ""
 msgid "service_host parameter should contain pool."
 msgstr ""
 
-#: manila/api/contrib/share_type_access.py:94
+#: manila/api/contrib/share_type_access.py:53
 #, python-format
 msgid "Share type %s not found."
 msgstr ""
 
-#: manila/api/contrib/share_type_access.py:98
+#: manila/api/contrib/share_type_access.py:57
 msgid "Access list not available for public share types."
 msgstr ""
 
-#: manila/api/contrib/share_type_access.py:113
+#: manila/api/contrib/share_type_access.py:72
 #, python-format
 msgid "Bad project format: project is not in proper format (%s)"
 msgstr ""
 
-#: manila/api/contrib/share_type_access.py:163
+#: manila/api/contrib/share_type_access.py:116
 msgid "You cannot add project to public share_type."
 msgstr ""
 
@@ -734,12 +717,12 @@ msgid "Request body empty"
 msgstr ""
 
 #: manila/api/contrib/types_extra_specs.py:109
-#: manila/api/v1/share_metadata.py:76
+#: manila/api/v1/share_metadata.py:70
 msgid "Request body and URI mismatch"
 msgstr ""
 
 #: manila/api/contrib/types_extra_specs.py:112
-#: manila/api/v1/share_metadata.py:80
+#: manila/api/v1/share_metadata.py:74
 msgid "Request body contains too many items"
 msgstr ""
 
@@ -770,59 +753,55 @@ msgstr ""
 msgid "Must specify an ExtensionManager class"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:248 manila/api/openstack/wsgi.py:651
+#: manila/api/openstack/wsgi.py:225 manila/api/openstack/wsgi.py:435
 msgid "cannot understand JSON"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:272
-msgid "cannot understand XML"
-msgstr ""
-
-#: manila/api/openstack/wsgi.py:656
+#: manila/api/openstack/wsgi.py:440
 msgid "too many body keys"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:929
+#: manila/api/openstack/wsgi.py:701
 #, python-format
 msgid "There is no such action: %s"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:932 manila/api/openstack/wsgi.py:945
-#: manila/api/v1/share_metadata.py:54 manila/api/v1/share_metadata.py:72
-#: manila/api/v1/share_metadata.py:97 manila/api/v1/share_metadata.py:119
+#: manila/api/openstack/wsgi.py:704 manila/api/openstack/wsgi.py:717
+#: manila/api/v1/share_metadata.py:50 manila/api/v1/share_metadata.py:66
+#: manila/api/v1/share_metadata.py:89 manila/api/v1/share_metadata.py:111
 msgid "Malformed request body"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:942
+#: manila/api/openstack/wsgi.py:714
 msgid "Unsupported Content-Type"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:954
+#: manila/api/openstack/wsgi.py:726
 msgid "Malformed request url"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:999
+#: manila/api/openstack/wsgi.py:771
 #, python-format
 msgid "%(url)s returned with HTTP %(status)d"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:1002
+#: manila/api/openstack/wsgi.py:774
 #, python-format
 msgid "%(url)s returned a fault: %(e)s"
 msgstr ""
 
-#: manila/api/v1/limits.py:138
+#: manila/api/v1/limits.py:108
 #, python-format
 msgid ""
 "Only %(value)s %(verb)s request(s) can be made to %(uri)s every "
 "%(unit_string)s."
 msgstr ""
 
-#: manila/api/v1/limits.py:264
+#: manila/api/v1/limits.py:234
 msgid "This request was rate-limited."
 msgstr ""
 
-#: manila/api/v1/security_service.py:210
+#: manila/api/v1/security_service.py:181
 #, python-format
 msgid ""
 "Cannot update security service %s. It is attached to share network with "
@@ -830,68 +809,68 @@ msgid ""
 "available for update."
 msgstr ""
 
-#: manila/api/v1/security_service.py:238
+#: manila/api/v1/security_service.py:208
 #, python-format
 msgid ""
 "Invalid type %(type)s specified for security service. Valid types are "
 "%(types)s"
 msgstr ""
 
-#: manila/api/v1/share_metadata.py:38 manila/api/v1/share_metadata.py:115
-#: manila/api/v1/share_metadata.py:154
+#: manila/api/v1/share_metadata.py:37 manila/api/v1/share_metadata.py:107
+#: manila/api/v1/share_metadata.py:145
 msgid "share does not exist"
 msgstr ""
 
-#: manila/api/v1/share_metadata.py:137 manila/api/v1/share_metadata.py:147
+#: manila/api/v1/share_metadata.py:128 manila/api/v1/share_metadata.py:138
 msgid "Metadata item was not found"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:115
+#: manila/api/v1/share_networks.py:76
 #, python-format
 msgid "Can not delete share network %(id)s, it has %(len)s share(s)."
 msgstr ""
 
-#: manila/api/v1/share_networks.py:230
+#: manila/api/v1/share_networks.py:188
 msgid ""
 "Neutron net data and Nova net data are mutually exclusive. Only one of "
 "these are allowed at a time."
 msgstr ""
 
-#: manila/api/v1/share_networks.py:254
+#: manila/api/v1/share_networks.py:211
 #, python-format
 msgid ""
 "Cannot update share network %s. It is used by share servers. Only 'name' "
 "and 'description' fields are available for update"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:322
+#: manila/api/v1/share_networks.py:277
 #, python-format
 msgid "Share networks does not have %s action"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:331
+#: manila/api/v1/share_networks.py:286
 msgid "Cannot add security services. Share network is used."
 msgstr ""
 
-#: manila/api/v1/share_networks.py:337
+#: manila/api/v1/share_networks.py:292
 #, python-format
 msgid ""
 "Cannot add security service to share network. Security service with "
 "'%(ss_type)s' type already added to '%(sn_id)s' share network"
 msgstr ""
 
-#: manila/api/v1/share_networks.py:364
+#: manila/api/v1/share_networks.py:319
 msgid "Cannot remove security services. Share network is used."
 msgstr ""
 
-#: manila/api/v1/share_servers.py:142
+#: manila/api/v1/share_servers.py:108
 #, python-format
 msgid ""
 "Share server's actual status is %(status)s, allowed statuses for deletion"
 " are %(allowed_statuses)s."
 msgstr ""
 
-#: manila/api/v1/share_types.py:46 manila/api/v1/shares.py:281
+#: manila/api/v1/share_types.py:46 manila/api/v1/shares.py:249
 msgid "Share type not found."
 msgstr ""
 
@@ -1249,7 +1228,24 @@ msgstr ""
 msgid "Unmanage share is not supported for shares with share servers."
 msgstr ""
 
-#: manila/share/manager.py:725
+#: manila/share/manager.py:705
+#, python-format
+msgid "Invalid detail_data '%s'"
+msgstr ""
+
+#: manila/share/manager.py:712
+#, python-format
+msgid "Invalid server_details '%s'"
+msgstr ""
+
+#: manila/share/manager.py:729
+#, python-format
+msgid ""
+"Following server details are not valid:\n"
+"%s"
+msgstr ""
+
+#: manila/share/manager.py:747
 #, python-format
 msgid ""
 "A segmentation ID %(vlan_id)s was specified but can not be used with a "
@@ -1257,7 +1253,7 @@ msgid ""
 "or set to 0"
 msgstr ""
 
-#: manila/share/manager.py:735
+#: manila/share/manager.py:757
 #, python-format
 msgid ""
 "A segmentation ID %s was specified but is not valid for a VLAN network "
@@ -1265,7 +1261,7 @@ msgid ""
 "[1,4094]"
 msgstr ""
 
-#: manila/share/manager.py:744
+#: manila/share/manager.py:766
 #, python-format
 msgid ""
 "A segmentation ID %s was specified but is not valid for a VXLAN network "
@@ -1273,7 +1269,7 @@ msgid ""
 "[1,16777215]"
 msgstr ""
 
-#: manila/share/manager.py:753
+#: manila/share/manager.py:775
 #, python-format
 msgid ""
 "A segmentation ID %s was specified but is not valid for a GRE network "

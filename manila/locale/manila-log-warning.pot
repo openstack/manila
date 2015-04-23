@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev92\n"
+"Project-Id-Version: manila 2015.1.dev1.gf8cc578\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-04-12 06:11+0000\n"
+"POT-Creation-Date: 2015-04-20 12:05+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -43,29 +43,29 @@ msgid ""
 "manila.api.middleware.auth:pipeline_factory instead."
 msgstr ""
 
-#: manila/api/extensions.py:281
+#: manila/api/extensions.py:223
 #, python-format
 msgid "osapi_share_extension is set to deprecated path: %s"
 msgstr ""
 
-#: manila/api/extensions.py:284
+#: manila/api/extensions.py:226
 #, python-format
 msgid ""
 "Please set your flag or manila.conf settings for osapi_share_extension "
 "to: %s"
 msgstr ""
 
-#: manila/api/extensions.py:293
+#: manila/api/extensions.py:235
 #, python-format
 msgid "Failed to load extension %(ext_factory)s: %(exc)s"
 msgstr ""
 
-#: manila/api/extensions.py:362
+#: manila/api/extensions.py:304
 #, python-format
 msgid "Failed to load extension %(classpath)s: %(exc)s"
 msgstr ""
 
-#: manila/api/extensions.py:387
+#: manila/api/extensions.py:329
 #, python-format
 msgid "Failed to load extension %(ext_name)s: %(exc)s"
 msgstr ""
@@ -95,7 +95,7 @@ msgid ""
 "manila.api.urlmap:urlmap_factory instead."
 msgstr ""
 
-#: manila/api/v1/share_networks.py:294
+#: manila/api/v1/share_networks.py:250
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create share-network "
@@ -181,11 +181,9 @@ msgid ""
 "contains %s and it is not a dictionary."
 msgstr ""
 
-#: manila/share/manager.py:712
+#: manila/share/manager.py:734
 #, python-format
-msgid ""
-"Server Information in exception can not be written to db because it "
-"contains %s and it is not a dictionary."
+msgid "Server Information in exception can not be written to db : %s "
 msgstr ""
 
 #: manila/share/drivers/generic.py:291
