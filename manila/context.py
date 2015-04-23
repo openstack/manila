@@ -26,7 +26,6 @@ import six
 
 from manila.i18n import _
 from manila.i18n import _LW
-from manila.openstack.common import local
 from manila import policy
 
 LOG = log.getLogger(__name__)
@@ -85,7 +84,7 @@ class RequestContext(object):
         self.request_id = request_id
         self.auth_token = auth_token
         self.quota_class = quota_class
-        if overwrite or not hasattr(local.store, 'context'):
+        if overwrite or not common_context.get_current():
             self.update_store()
 
     def _get_read_deleted(self):
@@ -104,7 +103,7 @@ class RequestContext(object):
                             _del_read_deleted)
 
     def update_store(self):
-        local.store.context = self
+        common_context._request_store.context = self
 
     def to_dict(self):
         return {'user_id': self.user_id,
