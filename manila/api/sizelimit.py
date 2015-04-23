@@ -15,8 +15,8 @@
 #    under the License.
 
 from oslo_log import log
+from oslo_middleware import sizelimit
 
-from manila.api.middleware import sizelimit
 from manila.i18n import _LW
 
 LOG = log.getLogger(__name__)
@@ -24,7 +24,8 @@ LOG = log.getLogger(__name__)
 
 class RequestBodySizeLimiter(sizelimit.RequestBodySizeLimiter):
     def __init__(self, *args, **kwargs):
-        LOG.warn(_LW('manila.api.sizelimit:RequestBodySizeLimiter is '
-                     'deprecated. Please use manila.api.middleware.sizelimit: '
-                     'RequestBodySizeLimiter instead'))
+        LOG.warn(_LW('manila.api.sizelimit:RequestBodySizeLimiter and '
+                     'manila.api.middleware.sizelimit:RequestBodySizeLimiter '
+                     'are deprecated. Please use oslo_middleware.sizelimit: '
+                     'RequestBodySizeLimiter instead.'))
         super(RequestBodySizeLimiter, self).__init__(*args, **kwargs)
