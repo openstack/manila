@@ -86,7 +86,7 @@ class TestShareBasicOps(manager.ShareScenarioTest):
         self.instance = self.create_server(image=self.image_ref,
                                            create_kwargs=create_kwargs)
 
-    def verify_ssh(self):
+    def init_ssh(self, do_ping=False):
         # Obtain a floating IP
         floating_ip = self.floating_ips_client.create_floating_ip()
         self.addCleanup(self.delete_wrapper,
@@ -101,8 +101,9 @@ class TestShareBasicOps(manager.ShareScenarioTest):
             username=self.ssh_user,
             private_key=self.keypair['private_key'])
         self.share = self.shares_client.get_share(self.share['id'])
-        server_ip = self.share['export_location'].split(":")[0]
-        self.ssh_client.exec_command("ping -c 1 %s" % server_ip)
+        if do_ping:
+            server_ip = self.share['export_location'].split(":")[0]
+            self.ssh_client.exec_command("ping -c 1 %s" % server_ip)
 
     def mount_share(self, location):
         self.ssh_client.exec_command("sudo mount \"%s\" /mnt" % location)
@@ -147,7 +148,7 @@ class TestShareBasicOps(manager.ShareScenarioTest):
         self.create_share(self.share_net['id'])
         self.boot_instance(self.net)
         self.allow_access_ip(self.share['id'], instance=self.instance)
-        self.verify_ssh()
+        self.init_ssh()
         for location in self.share['export_locations']:
             self.mount_share(location)
             self.umount_share()
