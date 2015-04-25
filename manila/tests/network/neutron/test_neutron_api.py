@@ -99,6 +99,7 @@ class NeutronApiTest(test.TestCase):
         self.assertTrue(clientv20.Client.called)
         self.assertTrue(hasattr(neutron_api_instance, 'client'))
         self.assertTrue(hasattr(neutron_api_instance, 'configuration'))
+        self.assertEqual('DEFAULT', neutron_api_instance.config_group_name)
 
     def test_create_api_object_custom_config_group(self):
         # Set up test data
