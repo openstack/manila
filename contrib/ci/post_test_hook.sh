@@ -89,7 +89,7 @@ set +o errexit
 cd $BASE/new/tempest
 
 export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-12}
-export MANILA_TESTS='tempest.api.share*'
+export MANILA_TESTS=${MANILA_TESTS:-'tempest.api.share*'}
 
 if [[ "$JOB_NAME" =~ "scenario" ]]; then
     echo "Set test set to scenario only"
