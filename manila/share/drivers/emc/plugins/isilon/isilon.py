@@ -58,7 +58,7 @@ class IsilonStorageConnection(base.StorageConnection):
         """Return path to a container."""
         return os.path.join(self._root_dir, share['name'])
 
-    def create_share(self, emc_share_driver, context, share, share_server):
+    def create_share(self, context, share, share_server):
         """Is called to create share."""
         if share['share_proto'] == 'NFS':
             location = self._create_nfs_share(share)
@@ -71,13 +71,12 @@ class IsilonStorageConnection(base.StorageConnection):
             raise exception.InvalidShare(message=message)
         return location
 
-    def create_share_from_snapshot(self, emc_share_driver, context, share,
-                                   snapshot, share_server):
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server):
         """Creates a share from the snapshot."""
 
         # Create share at new location
-        location = self.create_share(
-            emc_share_driver, context, share, share_server)
+        location = self.create_share(context, share, share_server)
 
         # Clone snapshot to new location
         fq_target_dir = self._get_container_path(share)
@@ -110,13 +109,12 @@ class IsilonStorageConnection(base.StorageConnection):
         share_path = '\\\\{0}\\{1}'.format(self._server, share['name'])
         return share_path
 
-    def create_snapshot(self, emc_share_driver, context,
-                        snapshot, share_server):
+    def create_snapshot(self, context, snapshot, share_server):
         """Is called to create snapshot."""
         snapshot_path = os.path.join(self._root_dir, snapshot['share_name'])
         self._isilon_api.create_snapshot(snapshot['name'], snapshot_path)
 
-    def delete_share(self, emc_share_driver, context, share, share_server):
+    def delete_share(self, context, share, share_server):
         """Is called to remove share."""
         if share['share_proto'] == 'NFS':
             self._delete_nfs_share(share)
@@ -159,16 +157,14 @@ class IsilonStorageConnection(base.StorageConnection):
                 LOG.error(message)
                 raise exception.ShareBackendException(message=message)
 
-    def delete_snapshot(self, emc_share_driver, context,
-                        snapshot, share_server):
+    def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
         self._isilon_api.delete_snapshot(snapshot['name'])
 
-    def ensure_share(self, emc_share_driver, context, share, share_server):
+    def ensure_share(self, context, share, share_server):
         """Invoked to ensure that share is exported."""
 
-    def allow_access(self, emc_share_driver, context, share,
-                     access, share_server):
+    def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
 
         # TODO(sedwards): Look into supporting ro/rw access to shares
@@ -225,8 +221,7 @@ class IsilonStorageConnection(base.StorageConnection):
             r = self._isilon_api.request('PUT', url, data=data)
             r.raise_for_status()
 
-    def deny_access(self, emc_share_driver, context, share,
-                    access, share_server):
+    def deny_access(self, context, share, access, share_server):
         """Deny access to the share."""
 
         if access['access_type'] != 'ip':
@@ -322,7 +317,6 @@ class IsilonStorageConnection(base.StorageConnection):
         """Set up and configures share server with given network parameters."""
         # TODO(Shaun Edwards): Look into supporting share servers
 
-    def teardown_server(self, server_details,
-                        security_services=None):
+    def teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
         # TODO(Shaun Edwards): Look into supporting share servers

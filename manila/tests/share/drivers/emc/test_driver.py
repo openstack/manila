@@ -34,39 +34,35 @@ class FakeConnection(base.StorageConnection):
     def driver_handles_share_servers(self):
         return True
 
-    def create_share(self, emc_share_driver, context, share, share_server):
+    def create_share(self, context, share, share_server):
         """Is called to create share."""
         pass
 
-    def create_snapshot(self, emc_share_driver, context,
-                        snapshot, share_server):
+    def create_snapshot(self, context, snapshot, share_server):
         """Is called to create snapshot."""
         pass
 
-    def delete_share(self, emc_share_driver, context, share, share_server):
+    def delete_share(self, context, share, share_server):
         """Is called to remove share."""
         pass
 
-    def delete_snapshot(self, emc_share_driver, context,
-                        snapshot, share_server):
+    def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
         pass
 
-    def ensure_share(self, emc_share_driver, context, share, share_server):
+    def ensure_share(self, context, share, share_server):
         """Invoked to sure that share is exported."""
         pass
 
-    def allow_access(self, emc_share_driver, context, share,
-                     access, share_server):
+    def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
         pass
 
-    def deny_access(self, emc_share_driver, context, share,
-                    access, share_server):
+    def deny_access(self, context, share, access, share_server):
         """Deny access to the share."""
         pass
 
-    def raise_connect_error(self, emc_share_driver):
+    def raise_connect_error(self):
         """Check for setup error."""
         pass
 
