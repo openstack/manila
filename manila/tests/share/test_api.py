@@ -20,10 +20,6 @@ import uuid
 
 import ddt
 import mock
-# NOTE(vponomaryov): import from oslo.utils.timeutils is workaround for
-# mocking same object but from different namespaces. Remove it when all
-# oslo libs use same namespace for same things.
-from oslo.utils import timeutils as timeutils_old  # noqa
 from oslo_config import cfg
 from oslo_utils import timeutils
 
@@ -182,8 +178,6 @@ class ShareAPITestCase(test.TestCase):
 
         dt_utc = datetime.datetime.utcnow()
         self.mock_object(timeutils, 'utcnow', mock.Mock(return_value=dt_utc))
-        self.mock_object(timeutils_old, 'utcnow',
-                         mock.Mock(return_value=dt_utc))
         self.mock_object(share_api.policy, 'check_policy')
 
     def test_get_all_admin_no_filters(self):

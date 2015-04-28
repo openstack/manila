@@ -16,8 +16,8 @@
 
 """Tests for the testing base code."""
 
-from oslo import messaging
 from oslo_config import cfg
+import oslo_messaging as messaging
 
 from manila import rpc
 from manila import test

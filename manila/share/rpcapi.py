@@ -16,8 +16,8 @@
 Client side of the share RPC API.
 """
 
-from oslo import messaging
 from oslo_config import cfg
+import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 
 from manila import rpc

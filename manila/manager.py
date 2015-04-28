@@ -140,7 +140,7 @@ class Manager(base.Base):
         https://wiki.openstack.org/wiki/Oslo/Messaging#API_Version_Negotiation
         """
         if not hasattr(self, '_target'):
-            from oslo import messaging
+            import oslo_messaging as messaging
             self._target = messaging.Target(version=self.RPC_API_VERSION)
         return self._target
 
