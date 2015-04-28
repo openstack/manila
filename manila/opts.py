@@ -21,11 +21,11 @@ import itertools
 
 import oslo_concurrency.opts
 import oslo_log._options
+import oslo_middleware.opts
 import oslo_policy.opts
 
 import manila.api.common
 import manila.api.middleware.auth
-import manila.api.middleware.sizelimit
 import manila.common.config
 import manila.compute
 import manila.compute.nova
@@ -76,7 +76,6 @@ _global_opt_lists = [
     # Keep list alphabetically sorted
     manila.api.common.api_common_opts,
     [manila.api.middleware.auth.use_forwarded_for_opt],
-    [manila.api.middleware.sizelimit.max_request_body_size_opt],
     manila.common.config.core_opts,
     manila.common.config.debug_opts,
     manila.common.config.global_opts,
@@ -141,6 +140,7 @@ _opts = [
 
 _opts.extend(oslo_concurrency.opts.list_opts())
 _opts.extend(oslo_log._options.list_opts())
+_opts.extend(oslo_middleware.opts.list_opts())
 _opts.extend(oslo_policy.opts.list_opts())
 
 
