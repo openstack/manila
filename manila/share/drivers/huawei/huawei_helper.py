@@ -378,7 +378,7 @@ class RestHelper():
         }
 
         root = self._read_xml()
-        fstype = root.findtext('FILESYSTEM/AllocType')
+        fstype = root.findtext('Filesystem/AllocType')
         if fstype:
             fstype = fstype.strip()
             if fstype == 'Thin':
