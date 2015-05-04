@@ -254,7 +254,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.tmp_dir = tempfile.mkdtemp()
         self.fake_conf_file = self.tmp_dir + '/manila_huawei_conf.xml'
         self.addCleanup(shutil.rmtree, self.tmp_dir)
-        self.create_fake_conf_file()
+        self.create_fake_conf_file(self.fake_conf_file)
         self.addCleanup(os.remove, self.fake_conf_file)
 
         def _safe_get(opt):
@@ -352,6 +352,15 @@ class HuaweiShareDriverTestCase(test.TestCase):
     def test_login_success(self):
         deviceid = self.driver.helper.login()
         self.assertEqual("210235G7J20000000000", deviceid)
+
+    def test_create_share_nfs_alloctype_thick_success(self):
+        self.recreate_fake_conf_file(alloctype_value='Thick')
+        self.driver.helper.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.helper.login()
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
 
     def test_create_share_nfs_success(self):
         self.driver.helper.login()
@@ -574,21 +583,41 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.driver.delete_snapshot, self._context,
                           self.cifs_snapshot, self.share_server)
 
-    def create_fake_conf_file(self):
+    def create_fake_conf_file(self, fake_conf_file,
+                              product_flag=True, username_flag=True,
+                              pool_node_flag=True, timeout_flag=True,
+                              wait_interval_flag=True,
+                              alloctype_value='Thick'):
         doc = xml.dom.minidom.Document()
         config = doc.createElement('Config')
         doc.appendChild(config)
 
         storage = doc.createElement('Storage')
         config.appendChild(storage)
+
         controllerip0 = doc.createElement('LogicalPortIP')
         controllerip0_text = doc.createTextNode('100.115.10.68')
         controllerip0.appendChild(controllerip0_text)
         storage.appendChild(controllerip0)
+
+        if product_flag:
+            product_text = doc.createTextNode('V3')
+        else:
+            product_text = doc.createTextNode('V3_fail')
+
+        product = doc.createElement('Product')
+        product.appendChild(product_text)
+        storage.appendChild(product)
+
+        if username_flag:
+            username_text = doc.createTextNode('admin')
+        else:
+            username_text = doc.createTextNode('')
+
         username = doc.createElement('UserName')
-        username_text = doc.createTextNode('admin')
         username.appendChild(username_text)
         storage.appendChild(username)
+
         userpassword = doc.createElement('UserPassword')
         userpassword_text = doc.createTextNode('Admin@storage')
         userpassword.appendChild(userpassword_text)
@@ -598,28 +627,59 @@ class HuaweiShareDriverTestCase(test.TestCase):
                                       'deviceManager/rest/')
         url.appendChild(url_text)
         storage.appendChild(url)
+
         lun = doc.createElement('Filesystem')
         config.appendChild(lun)
+
         storagepool = doc.createElement('StoragePool')
-        waitinterval = doc.createElement('WaitInterval')
-        waitinterval_text = doc.createTextNode('1')
-        waitinterval.appendChild(waitinterval_text)
+        if pool_node_flag:
+            pool_text = doc.createTextNode('OpenStack_Pool')
+        else:
+            pool_text = doc.createTextNode('')
+        storagepool.appendChild(pool_text)
 
         timeout = doc.createElement('Timeout')
-        timeout_text = doc.createTextNode('1')
+
+        if timeout_flag:
+            timeout_text = doc.createTextNode('1')
+        else:
+            timeout_text = doc.createTextNode('')
         timeout.appendChild(timeout_text)
 
-        pool_text = doc.createTextNode('OpenStack_Pool')
-        storagepool.appendChild(pool_text)
-        lun.appendChild(storagepool)
-        lun.appendChild(waitinterval)
+        waitinterval = doc.createElement('WaitInterval')
+        if wait_interval_flag:
+            waitinterval_text = doc.createTextNode('1')
+        else:
+            waitinterval_text = doc.createTextNode('')
+        waitinterval.appendChild(waitinterval_text)
+
+        alloctype = doc.createElement('AllocType')
+        alloctype_text = doc.createTextNode(alloctype_value)
+        alloctype.appendChild(alloctype_text)
+
         lun.appendChild(timeout)
+        lun.appendChild(alloctype)
+        lun.appendChild(waitinterval)
+        lun.appendChild(storagepool)
 
         prefetch = doc.createElement('Prefetch')
         prefetch.setAttribute('Type', '0')
         prefetch.setAttribute('Value', '0')
         lun.appendChild(prefetch)
 
-        fakefile = open(self.fake_conf_file, 'w')
+        fakefile = open(fake_conf_file, 'w')
         fakefile.write(doc.toprettyxml(indent=''))
         fakefile.close()
+
+    def recreate_fake_conf_file(self, product_flag=True, username_flag=True,
+                                pool_node_flag=True, timeout_flag=True,
+                                wait_interval_flag=True,
+                                alloctype_value='Thick'):
+        self.tmp_dir = tempfile.mkdtemp()
+        self.fake_conf_file = self.tmp_dir + '/manila_huawei_conf.xml'
+        self.addCleanup(shutil.rmtree, self.tmp_dir)
+        self.create_fake_conf_file(self.fake_conf_file, product_flag,
+                                   username_flag, pool_node_flag,
+                                   timeout_flag, wait_interval_flag,
+                                   alloctype_value)
+        self.addCleanup(os.remove, self.fake_conf_file)
