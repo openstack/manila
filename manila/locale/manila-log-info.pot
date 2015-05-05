@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: manila 2015.1.dev92\n"
+"Project-Id-Version: manila 2015.2.0.dev58\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-04-12 06:11+0000\n"
+"POT-Creation-Date: 2015-05-02 06:07+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,30 +21,30 @@ msgstr ""
 msgid "SIGTERM received"
 msgstr ""
 
-#: manila/service.py:175 manila/openstack/common/service.py:232
+#: manila/service.py:175 manila/openstack/common/service.py:235
 msgid "Parent process has died unexpectedly, exiting"
 msgstr ""
 
-#: manila/service.py:214 manila/openstack/common/service.py:302
+#: manila/service.py:214 manila/openstack/common/service.py:305
 msgid "Forking too fast, sleeping"
 msgstr ""
 
-#: manila/service.py:232 manila/openstack/common/service.py:174
+#: manila/service.py:232 manila/openstack/common/service.py:173
 #, python-format
 msgid "Caught %s, exiting"
 msgstr ""
 
-#: manila/service.py:244 manila/openstack/common/service.py:321
+#: manila/service.py:244 manila/openstack/common/service.py:324
 #, python-format
 msgid "Started child %d"
 msgstr ""
 
-#: manila/service.py:254 manila/openstack/common/service.py:331
+#: manila/service.py:254 manila/openstack/common/service.py:334
 #, python-format
 msgid "Starting %d workers"
 msgstr ""
 
-#: manila/service.py:273 manila/openstack/common/service.py:348
+#: manila/service.py:273 manila/openstack/common/service.py:351
 #, python-format
 msgid "Child %(pid)d killed by signal %(sig)d"
 msgstr ""
@@ -64,12 +64,12 @@ msgstr ""
 msgid "wait wrap.failed %s"
 msgstr ""
 
-#: manila/service.py:313 manila/openstack/common/service.py:391
+#: manila/service.py:313 manila/openstack/common/service.py:390
 #, python-format
 msgid "Caught %s, stopping children"
 msgstr ""
 
-#: manila/service.py:324 manila/openstack/common/service.py:416
+#: manila/service.py:324 manila/openstack/common/service.py:421
 #, python-format
 msgid "Waiting on %d children to exit"
 msgstr ""
@@ -92,11 +92,11 @@ msgstr ""
 msgid "WSGI server has stopped."
 msgstr ""
 
-#: manila/api/extensions.py:185
+#: manila/api/extensions.py:128
 msgid "Initializing extension manager."
 msgstr ""
 
-#: manila/api/extensions.py:201
+#: manila/api/extensions.py:144
 #, python-format
 msgid "Loaded extension: %s"
 msgstr ""
@@ -111,98 +111,98 @@ msgstr ""
 msgid "%(url)s returned with HTTP %(status)d"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:699
+#: manila/api/openstack/wsgi.py:474
 #, python-format
 msgid "Fault thrown: %s"
 msgstr ""
 
-#: manila/api/openstack/wsgi.py:702
+#: manila/api/openstack/wsgi.py:477
 #, python-format
 msgid "HTTP exception thrown: %s"
 msgstr ""
 
-#: manila/api/v1/security_service.py:85
+#: manila/api/v1/security_service.py:59
 #, python-format
 msgid "Delete security service with id: %s"
 msgstr ""
 
-#: manila/api/v1/share_snapshots.py:83
+#: manila/api/v1/share_snapshots.py:57
 #, python-format
 msgid "Delete snapshot with id: %s"
 msgstr ""
 
-#: manila/api/v1/share_snapshots.py:182
+#: manila/api/v1/share_snapshots.py:152
 #, python-format
 msgid "Create snapshot from share %s"
 msgstr ""
 
-#: manila/api/v1/shares.py:90
+#: manila/api/v1/shares.py:62
 #, python-format
 msgid "Delete share with id: %s"
 msgstr ""
 
-#: manila/api/v1/shares.py:219
+#: manila/api/v1/shares.py:187
 #, python-format
 msgid "Create %(share_proto)s share of %(size)s GB"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:40
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:39
 msgid "Renaming column name shares.volume_type_id to shares.share_type.id"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:46
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:45
 msgid "Renaming volume_types table to share_types"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:52
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:51
 msgid "Creating share_type_extra_specs table"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:67
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:66
 msgid "Migrating volume_type_extra_specs to share_type_extra_specs"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:71
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:70
 msgid "Dropping volume_type_extra_specs table"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:76
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:75
 msgid "Creating volume_type_extra_specs table"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:90
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:89
 msgid "Migrating share_type_extra_specs to volume_type_extra_specs"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:94
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:93
 msgid "Dropping share_type_extra_specs table"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:97
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:96
 msgid "Renaming share_types table to volume_types"
 msgstr ""
 
-#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:103
+#: manila/db/migrations/alembic/versions/38e632621e5a_change_volume_type_to_share_type.py:102
 msgid "Renaming column name shares.share_type_id to shares.volume_type.id"
 msgstr ""
 
-#: manila/openstack/common/eventlet_backdoor.py:140
+#: manila/openstack/common/eventlet_backdoor.py:146
 #, python-format
 msgid "Eventlet backdoor listening on %(port)s for process %(pid)d"
 msgstr ""
 
-#: manila/openstack/common/service.py:263
+#: manila/openstack/common/service.py:266
 #, python-format
 msgid "Child caught %s, exiting"
 msgstr ""
 
-#: manila/openstack/common/service.py:352
+#: manila/openstack/common/service.py:355
 #, python-format
 msgid "Child %(pid)s exited with status %(code)d"
 msgstr ""
 
-#: manila/openstack/common/service.py:400
-msgid "Wait called after thread killed.  Cleaning up."
+#: manila/openstack/common/service.py:405
+msgid "Wait called after thread killed. Cleaning up."
 msgstr ""
 
 #: manila/openstack/common/scheduler/base_filter.py:89
@@ -246,28 +246,28 @@ msgstr ""
 msgid "Updating share status"
 msgstr ""
 
-#: manila/share/manager.py:808
+#: manila/share/manager.py:830
 #, python-format
 msgid "Share server '%s' has been deleted successfully."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:211
+#: manila/share/drivers/glusterfs_native.py:210
 #, python-format
 msgid "Found %d Gluster volumes allocated for Manila."
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:238
+#: manila/share/drivers/glusterfs_native.py:371
 msgid ""
 "Number of gluster volumes in use:  %(inuse-numvols)s. Number of gluster "
 "volumes available for use as share: %(unused-numvols)s"
 msgstr ""
 
-#: manila/share/drivers/glusterfs_native.py:592
+#: manila/share/drivers/glusterfs_native.py:576
 #, python-format
 msgid "export_location sent back from create_share: %s"
 msgstr ""
 
-#: manila/share/drivers/emc/plugins/vnx/helper.py:1191
+#: manila/share/drivers/emc/plugins/vnx/helper.py:1117
 msgid "Found the header of the command /nas/bin/nas_cel -interconnect -l"
 msgstr ""
 
@@ -314,37 +314,37 @@ msgstr ""
 msgid "Restart service %(service)s on %(server)s to force a config file reload"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:768
+#: manila/share/drivers/ibm/gpfs.py:767
 #, python-format
 msgid "Add %(share)s with access from %(access)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:779
+#: manila/share/drivers/ibm/gpfs.py:778
 #, python-format
 msgid "Update %(share)s with access from %(access)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:784
+#: manila/share/drivers/ibm/gpfs.py:783
 #, python-format
 msgid "Do not update %(share)s, access from %(access)s already defined"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:798
+#: manila/share/drivers/ibm/gpfs.py:797
 #, python-format
 msgid "Update %(share)s removing access from %(access)s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:803
+#: manila/share/drivers/ibm/gpfs.py:802
 #, python-format
 msgid "Do not update %(share)s, access from %(access)s already removed"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:812
+#: manila/share/drivers/ibm/gpfs.py:811
 #, python-format
 msgid "Remove export for %s"
 msgstr ""
 
-#: manila/share/drivers/ibm/gpfs.py:814
+#: manila/share/drivers/ibm/gpfs.py:813
 #, python-format
 msgid "Export for %s is not defined in Ganesha config."
 msgstr ""
@@ -386,22 +386,22 @@ msgstr ""
 msgid "Could not run dpkg-query command: %(msg)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:135
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:134
 #, python-format
 msgid "Available licenses on %(backend)s are %(licenses)s."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:491
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:490
 #, python-format
 msgid "Share %s does not exist."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:563
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:562
 #, python-format
 msgid "Snapshot %s does not exist."
 msgstr ""
 
-#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:637
+#: manila/share/drivers/netapp/dataontap/cluster_mode/lib_base.py:636
 #, python-format
 msgid "Updating storage service catalog information for backend '%s'"
 msgstr ""
