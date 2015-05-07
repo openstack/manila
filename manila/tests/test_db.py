@@ -175,7 +175,7 @@ class ShareServerTableTestCase(test.TestCase):
 
         self.assertDictMatch(
             details,
-            db.share_server_backend_details_get(self.ctxt, server['id'])
+            db.share_server_get(self.ctxt, server['id'])['backend_details']
         )
 
     def test_share_server_backend_details_set_not_found(self):
@@ -202,6 +202,7 @@ class ShareServerTableTestCase(test.TestCase):
         self.assertEqual(server.host, values['host'])
         self.assertEqual(server.status, values['status'])
         self.assertDictMatch(details, server['backend_details'])
+        self.assertTrue('backend_details' in server.to_dict())
 
     def test_share_server_delete_with_details(self):
         server = self._create_share_server()
@@ -214,5 +215,3 @@ class ShareServerTableTestCase(test.TestCase):
         db.share_server_delete(self.ctxt, server['id'])
         self.assertEqual(len(db.share_server_get_all(self.ctxt)),
                          num_records - 1)
-        self.assertFalse(
-            db.share_server_backend_details_get(self.ctxt, server['id']))

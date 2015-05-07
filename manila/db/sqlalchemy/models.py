@@ -417,6 +417,22 @@ class ShareServer(BASE, ManilaBase):
                               'ShareServer.id == Share.share_server_id,'
                               'Share.deleted == "False")')
 
+    _backend_details = orm.relationship(
+        "ShareServerBackendDetails",
+        lazy='immediate',
+        viewonly=True,
+        primaryjoin='and_('
+                    'ShareServer.id == '
+                    'ShareServerBackendDetails.share_server_id, '
+                    'ShareServerBackendDetails.deleted == "False")')
+
+    @property
+    def backend_details(self):
+        return dict((model['key'], model['value'])
+                    for model in self._backend_details)
+
+    _extra_keys = ['backend_details']
+
 
 class ShareServerBackendDetails(BASE, ManilaBase):
     """Represents a metadata key/value pair for a share server."""

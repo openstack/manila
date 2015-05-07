@@ -85,11 +85,12 @@ class ShareServerController(wsgi.Controller):
         context = req.environ['manila.context']
         policy.check_policy(context, RESOURCE_NAME, 'details')
         try:
-            db_api.share_server_get(context, id)
+            share_server = db_api.share_server_get(context, id)
         except exception.ShareServerNotFound as e:
             raise exc.HTTPNotFound(explanation=six.text_type(e))
-        details = db_api.share_server_backend_details_get(context, id)
-        return self._view_builder.build_share_server_details(details)
+
+        return self._view_builder.build_share_server_details(
+            share_server['backend_details'])
 
     def delete(self, req, id):
         """Delete specified share server."""

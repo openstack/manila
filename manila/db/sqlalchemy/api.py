@@ -1966,7 +1966,8 @@ def share_server_create(context, values):
     session = get_session()
     with session.begin():
         server_ref.save(session=session)
-    return server_ref
+        # NOTE(u_glide): Do so to prevent errors with relationships
+        return share_server_get(context, server_ref['id'], session=session)
 
 
 @require_context
@@ -1997,8 +1998,6 @@ def share_server_get(context, server_id, session=None):
         .first()
     if result is None:
         raise exception.ShareServerNotFound(share_server_id=server_id)
-    result['backend_details'] = share_server_backend_details_get(
-        context, server_id, session=session)
     return result
 
 
@@ -2020,8 +2019,6 @@ def share_server_get_by_host_and_share_net_valid(context, host, share_net_id,
         }
         raise exception.ShareServerNotFoundByFilters(
             filters_description=filters_description)
-    result['backend_details'] = share_server_backend_details_get(
-        context, result['id'], session=session)
     return result
 
 
@@ -2073,17 +2070,6 @@ def share_server_backend_details_delete(context, share_server_id,
         .filter_by(share_server_id=share_server_id).all()
     for item in share_server_details:
         item.soft_delete(session)
-
-
-@require_context
-def share_server_backend_details_get(context, share_server_id,
-                                     session=None):
-    if not session:
-        session = get_session()
-    query = model_query(context, models.ShareServerBackendDetails,
-                        session=session)\
-        .filter_by(share_server_id=share_server_id).all()
-    return dict([(item.key, item.value) for item in query])
 
 
 ###################

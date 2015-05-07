@@ -796,11 +796,7 @@ class ShareManager(manager.SchedulerDependentManager):
             if shares:
                 raise exception.ShareServerInUse(share_server_id=server_id)
 
-            if 'backend_details' not in share_server:
-                server_details = self.db.share_server_backend_details_get(
-                    context, server_id)
-            else:
-                server_details = share_server['backend_details']
+            server_details = share_server['backend_details']
 
             self.db.share_server_update(context, server_id,
                                         {'status': constants.STATUS_DELETING})
