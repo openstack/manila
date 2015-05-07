@@ -1135,8 +1135,8 @@ def share_create(context, values):
     session = get_session()
     with session.begin():
         share_ref.save(session=session)
-
-    return share_ref
+        # NOTE(u_glide): Do so to prevent errors with relationships
+        return share_get(context, share_ref['id'], session=session)
 
 
 @require_admin_context

@@ -164,6 +164,7 @@ class Reservation(BASE, ManilaBase):
 class Share(BASE, ManilaBase):
     """Represents an NFS and CIFS shares."""
     __tablename__ = 'shares'
+    _extra_keys = ['name', 'export_location']
 
     @property
     def name(self):
