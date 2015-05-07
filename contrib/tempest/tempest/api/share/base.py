@@ -129,15 +129,6 @@ class BaseSharesTest(test.BaseTestCase):
         os = clients.Manager(credentials=creds)
         client = os.shares_client
 
-        # Get tenant and user
-        identity_client = cls._get_identity_admin_client()
-        client.creds = {}
-        client.creds["tenant"] = identity_client.get_tenant_by_name(
-            client.auth_params["tenant"])
-        client.creds["user"] = identity_client.get_user_by_username(
-            client.creds["tenant"]["id"],
-            client.auth_params["user"])
-
         # Set place where will be deleted isolated creds
         ic_res = {
             "method": ic.clear_isolated_creds,
@@ -254,10 +245,7 @@ class BaseSharesTest(test.BaseTestCase):
                 # Create suitable network
                 if (net_id is None or subnet_id is None):
                     ic = isolated_creds.IsolatedCreds(name=service_net_name)
-                    identity_client = cls._get_identity_admin_client()
-                    tenant = identity_client.\
-                        get_tenant_by_name(sc.auth_params["tenant"])
-                    net_data = ic._create_network_resources(tenant["id"])
+                    net_data = ic._create_network_resources(sc.tenant_id)
                     network, subnet, router = net_data
                     net_id = network["id"]
                     subnet_id = subnet["id"]

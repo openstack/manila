@@ -22,19 +22,6 @@ from tempest import test
 
 class SharesQuotasNegativeTest(base.BaseSharesTest):
 
-    force_tenant_isolation = True
-
-    @classmethod
-    def resource_setup(cls):
-        super(SharesQuotasNegativeTest, cls).resource_setup()
-
-        # Get tenant and user
-        cls.identity_client = cls._get_identity_admin_client()
-        cls.tenant = cls.identity_client.get_tenant_by_name(
-            cls.shares_client.auth_params["tenant"])
-        cls.user = cls.identity_client.get_user_by_username(
-            cls.tenant["id"], cls.shares_client.auth_params["user"])
-
     @test.attr(type=["gate", "smoke", "negative"])
     def test_get_quotas_with_empty_tenant_id(self):
         self.assertRaises(lib_exc.NotFound,

@@ -22,17 +22,12 @@ class SharesQuotasTest(base.BaseSharesTest):
     @classmethod
     def resource_setup(cls):
         super(SharesQuotasTest, cls).resource_setup()
-
-        # Get tenant and user
-        cls.identity_client = cls._get_identity_admin_client()
-        cls.tenant = cls.identity_client.get_tenant_by_name(
-            cls.shares_client.auth_params["tenant"])
-        cls.user = cls.identity_client.get_user_by_username(
-            cls.tenant["id"], cls.shares_client.auth_params["user"])
+        cls.user_id = cls.shares_client.user_id
+        cls.tenant_id = cls.shares_client.tenant_id
 
     @test.attr(type=["gate", "smoke", ])
     def test_default_quotas(self):
-        quotas = self.shares_client.default_quotas(self.tenant["id"])
+        quotas = self.shares_client.default_quotas(self.tenant_id)
         self.assertGreater(int(quotas["gigabytes"]), -2)
         self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)
@@ -41,7 +36,7 @@ class SharesQuotasTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", ])
     def test_show_quotas(self):
-        quotas = self.shares_client.show_quotas(self.tenant["id"])
+        quotas = self.shares_client.show_quotas(self.tenant_id)
         self.assertGreater(int(quotas["gigabytes"]), -2)
         self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)
@@ -51,7 +46,7 @@ class SharesQuotasTest(base.BaseSharesTest):
     @test.attr(type=["gate", "smoke", ])
     def test_show_quotas_for_user(self):
         quotas = self.shares_client.show_quotas(
-            self.tenant["id"], self.user["id"])
+            self.tenant_id, self.user_id)
         self.assertGreater(int(quotas["gigabytes"]), -2)
         self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)

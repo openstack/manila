@@ -36,11 +36,8 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         cls.set_network_resources()
         super(ShareScenarioTest, cls).resource_setup()
 
-        os = clients_share.Manager(
-            credentials=cls.credentials()
-        )
         # Manila clients
-        cls.shares_client = os.shares_client
+        cls.shares_client = clients_share.Manager().shares_client
         cls.shares_admin_client = clients_share.AdminManager().shares_client
 
     def _create_share(self, share_protocol=None, size=1, name=None,

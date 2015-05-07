@@ -47,7 +47,6 @@ class SharesClient(service_client.ServiceClient):
         self.share_network_id = CONF.share.share_network_id
         self.build_interval = CONF.share.build_interval
         self.build_timeout = CONF.share.build_timeout
-        self.auth_params = auth_provider._auth_params()
 
     def create_share(self, share_protocol=None, size=1,
                      name=None, snapshot_id=None, description=None,
