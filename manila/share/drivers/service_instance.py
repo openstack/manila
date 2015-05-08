@@ -401,6 +401,10 @@ class ServiceInstanceManager(object):
         }
         if server.get('router_id'):
             instance_details['router_id'] = server['router_id']
+        if server.get('service_port_id'):
+            instance_details['service_port_id'] = server['service_port_id']
+        if server.get('public_port_id'):
+            instance_details['public_port_id'] = server['public_port_id']
         for key in ('password', 'pk_path', 'subnet_id'):
             if not instance_details[key]:
                 instance_details.pop(key)
@@ -484,6 +488,12 @@ class ServiceInstanceManager(object):
         fail_safe_data = dict(
             router_id=network_data.get('router_id'),
             subnet_id=network_data.get('subnet_id'))
+        if network_data.get('service_port'):
+            fail_safe_data['service_port_id'] = (
+                network_data['service_port']['id'])
+        if network_data.get('public_port'):
+            fail_safe_data['public_port_id'] = (
+                network_data['public_port']['id'])
         try:
             service_instance = self.compute_api.server_create(
                 context,
@@ -551,6 +561,7 @@ class ServiceInstanceManager(object):
             e.detail_data = {'server_details': fail_safe_data}
             raise
 
+        service_instance.update(fail_safe_data)
         service_instance['pk_path'] = key_path
         for pair in [('router', 'router_id'), ('service_subnet', 'subnet_id')]:
             if pair[0] in network_data and 'id' in network_data[pair[0]]:
@@ -666,6 +677,19 @@ class NeutronNetworkHelper(BaseNetworkhelper):
     def teardown_network(self, server_details):
         subnet_id = server_details.get("subnet_id")
         router_id = server_details.get("router_id")
+
+        service_port_id = server_details.get("service_port_id")
+        public_port_id = server_details.get("public_port_id")
+        for port_id in (service_port_id, public_port_id):
+            if port_id:
+                try:
+                    self.neutron_api.delete_port(port_id)
+                except exception.NetworkException as e:
+                    if e.kwargs.get('code') != 404:
+                        raise
+                    LOG.debug("Failed to delete port %(port_id)s with error: "
+                              "\n %(exc)s", {"port_id": port_id, "exc": e})
+
         if router_id and subnet_id:
             ports = self.neutron_api.list_ports(
                 fields=['fixed_ips', 'device_id', 'device_owner'])
