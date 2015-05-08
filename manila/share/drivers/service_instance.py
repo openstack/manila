@@ -647,11 +647,33 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         else:
             return networks[0]['id']
 
+    @utils.synchronized(
+        "service_instance_setup_and_teardown_network_for_instance",
+        external=True)
     def teardown_network(self, server_details):
         subnet_id = server_details.get("subnet_id")
         router_id = server_details.get("router_id")
         if router_id and subnet_id:
+            ports = self.neutron_api.list_ports(
+                fields=['fixed_ips', 'device_id', 'device_owner'])
+            # NOTE(vponomaryov): iterate ports to get to know whether current
+            # subnet is used or not. We will not remove it from router if it
+            # is used.
+            for port in ports:
+                # NOTE(vponomaryov): if device_id is present, then we know that
+                # this port is used. Also, if device owner is 'compute:*', then
+                # we know that it is VM. We continue only if both are 'True'.
+                if (port['device_id'] and
+                        port['device_owner'].startswith('compute:')):
+                    for fixed_ip in port['fixed_ips']:
+                        if fixed_ip['subnet_id'] == subnet_id:
+                            # NOTE(vponomaryov): There are other share servers
+                            # exist that use this subnet. So, do not remove it
+                            # from router.
+                            return
             try:
+                # NOTE(vponomaryov): there is no other share servers or
+                # some VMs that use this subnet. So, remove it from router.
                 self.neutron_api.router_remove_interface(
                     router_id, subnet_id)
             except exception.NetworkException as e:
@@ -663,7 +685,8 @@ class NeutronNetworkHelper(BaseNetworkhelper):
             self.neutron_api.update_subnet(subnet_id, '')
 
     @utils.synchronized(
-        "service_instance_setup_network_for_instance", external=True)
+        "service_instance_setup_and_teardown_network_for_instance",
+        external=True)
     def setup_network(self, network_info):
         neutron_net_id = network_info['neutron_net_id']
         neutron_subnet_id = network_info['neutron_subnet_id']
