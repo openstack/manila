@@ -483,12 +483,20 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.compute_api.security_group_list.assert_called_once_with(
             self._manager.admin_context)
 
-    def test_set_up_service_instance(self):
+    @ddt.data(
+        dict(),
+        dict(service_port_id='fake_service_port_id'),
+        dict(public_port_id='fake_public_port_id'),
+        dict(service_port_id='fake_service_port_id',
+             public_port_id='fake_public_port_id'),
+    )
+    def test_set_up_service_instance(self, update_data):
         fake_network_info = dict(foo='bar', server_id='fake_server_id')
         fake_server = dict(
             id='fake', ip='1.2.3.4', public_address='1.2.3.4', pk_path=None,
             subnet_id='fake-subnet-id', router_id='fake-router-id',
             username=self._manager.get_config_option('service_instance_user'))
+        fake_server.update(update_data)
         expected_details = fake_server.copy()
         expected_details.pop('pk_path')
         expected_details['instance_id'] = expected_details.pop('id')
@@ -917,8 +925,10 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         if helper_type == service_instance.NEUTRON_NAME:
             network_data.update(dict(
                 router_id='fake_router_id', subnet_id='fake_subnet_id',
-                public_port=dict(fixed_ips=[dict(ip_address=ip_address)]),
-                service_port=dict(fixed_ips=[dict(ip_address=ip_address)])))
+                public_port=dict(id='fake_public_port',
+                                 fixed_ips=[dict(ip_address=ip_address)]),
+                service_port=dict(id='fake_service_port',
+                                  fixed_ips=[dict(ip_address=ip_address)])))
         self.mock_object(service_instance.time, 'time',
                          mock.Mock(return_value=5))
         self.mock_object(self._manager.network_helper, 'setup_network',
@@ -938,11 +948,19 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.mock_object(self._manager.compute_api,
                          'add_security_group_to_server')
         expected = dict(
-            id=server_get['id'], status=server_get['status'],
-            pk_path=key_data[1], public_address=ip_address,
-            ip=ip_address, networks=server_get['networks'])
+            id=server_get['id'],
+            status=server_get['status'],
+            pk_path=key_data[1],
+            public_address=ip_address,
+            router_id=network_data.get('router_id'),
+            subnet_id=network_data.get('subnet_id'),
+            instance_id=server_get['id'],
+            ip=ip_address,
+            networks=server_get['networks'])
         if helper_type == service_instance.NEUTRON_NAME:
             expected['router_id'] = network_data['router']['id']
+            expected['public_port_id'] = 'fake_public_port'
+            expected['service_port_id'] = 'fake_service_port'
 
         result = self._manager._create_service_instance(
             self._manager.admin_context, instance_name, network_info)
@@ -1324,8 +1342,88 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             service_instance.neutron.API, 'router_remove_interface')
 
         instance.teardown_network(server_details)
+
         self.assertFalse(
             service_instance.neutron.API.router_remove_interface.called)
+
+    @ddt.data(
+        *[dict(server_details=sd, fail=f) for f in (True, False)
+            for sd in (dict(service_port_id='fake_service_port_id'),
+                       dict(public_port_id='fake_public_port_id'),
+                       dict(service_port_id='fake_service_port_id',
+                            public_port_id='fake_public_port_id'))]
+    )
+    @ddt.unpack
+    def test_teardown_network_with_ports(self, server_details, fail):
+        instance = self._init_neutron_network_plugin()
+        self.mock_object(
+            service_instance.neutron.API, 'router_remove_interface')
+        if fail:
+            delete_port_mock = mock.Mock(
+                side_effect=exception.NetworkException(code=404))
+        else:
+            delete_port_mock = mock.Mock()
+        self.mock_object(instance.neutron_api, 'delete_port', delete_port_mock)
+        self.mock_object(service_instance.LOG, 'debug')
+
+        instance.teardown_network(server_details)
+
+        self.assertFalse(instance.neutron_api.router_remove_interface.called)
+        self.assertEqual(
+            len(server_details),
+            len(instance.neutron_api.delete_port.mock_calls))
+        for k, v in server_details.items():
+            self.assertIn(
+                mock.call(v), instance.neutron_api.delete_port.mock_calls)
+        if fail:
+            service_instance.LOG.debug.assert_has_calls([
+                mock.call(mock.ANY, mock.ANY) for sd in server_details
+            ])
+        else:
+            service_instance.LOG.debug.assert_has_calls([])
+
+    @ddt.data(
+        dict(service_port_id='fake_service_port_id'),
+        dict(public_port_id='fake_public_port_id'),
+        dict(service_port_id='fake_service_port_id',
+             public_port_id='fake_public_port_id'),
+    )
+    def test_teardown_network_with_ports_unhandled_exception(self,
+                                                             server_details):
+        instance = self._init_neutron_network_plugin()
+        self.mock_object(
+            service_instance.neutron.API, 'router_remove_interface')
+        delete_port_mock = mock.Mock(
+            side_effect=exception.NetworkException(code=500))
+        self.mock_object(
+            service_instance.neutron.API, 'delete_port', delete_port_mock)
+        self.mock_object(service_instance.LOG, 'debug')
+
+        self.assertRaises(
+            exception.NetworkException,
+            instance.teardown_network,
+            server_details,
+        )
+
+        self.assertFalse(
+            service_instance.neutron.API.router_remove_interface.called)
+        service_instance.neutron.API.delete_port.assert_called_once(mock.ANY)
+        service_instance.LOG.debug.assert_has_calls([])
+
+    def test_teardown_network_with_wrong_ports(self):
+        instance = self._init_neutron_network_plugin()
+        self.mock_object(
+            service_instance.neutron.API, 'router_remove_interface')
+        self.mock_object(
+            service_instance.neutron.API, 'delete_port')
+        self.mock_object(service_instance.LOG, 'debug')
+
+        instance.teardown_network(dict(foo_id='fake_service_port_id'))
+
+        service_instance.neutron.API.router_remove_interface.assert_has_calls(
+            [])
+        service_instance.neutron.API.delete_port.assert_has_calls([])
+        service_instance.LOG.debug.assert_has_calls([])
 
     def test_teardown_network_subnet_is_used(self):
         server_details = dict(subnet_id='foo', router_id='bar')
