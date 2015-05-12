@@ -20,3 +20,4 @@ Admin Reference
    intro
    quick_start
    multi_backends
+   network_plugins
