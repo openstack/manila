@@ -25,6 +25,7 @@
     "share:get_share_metadata": "rule:default",
     "share:delete_share_metadata": "rule:default",
     "share:update_share_metadata": "rule:default",
+    "share:migrate": "rule:admin_api",
 
     "share_instance:index": "rule:admin_api",
     "share_instance:show": "rule:admin_api",

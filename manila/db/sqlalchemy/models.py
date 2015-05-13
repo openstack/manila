@@ -198,8 +198,8 @@ class Share(BASE, ManilaBase):
 
     @property
     def export_location(self):
-        if len(self.export_locations) > 0:
-            return self.export_locations[0]
+        if len(self.instances) > 0:
+            return self.instance.export_location
 
     @property
     def export_locations(self):
@@ -207,8 +207,9 @@ class Share(BASE, ManilaBase):
         # replication functionality will be implemented.
         all_export_locations = []
         for instance in self.instances:
-            for export_location in instance.export_locations:
-                all_export_locations.append(export_location['path'])
+            if instance['status'] == constants.STATUS_AVAILABLE:
+                for export_location in instance.export_locations:
+                    all_export_locations.append(export_location['path'])
 
         return all_export_locations
 
@@ -233,8 +234,18 @@ class Share(BASE, ManilaBase):
 
     @property
     def instance(self):
+        # NOTE(ganso): We prefer instances with AVAILABLE status,
+        # and we also prefer to show any other status than CREATING
+        result = None
         if len(self.instances) > 0:
-            return self.instances[0]
+            for instance in self.instances:
+                if instance.status == constants.STATUS_AVAILABLE:
+                    return instance
+                elif instance.status == constants.STATUS_CREATING:
+                    result = instance
+            if result is None:
+                    result = self.instances[0]
+        return result
 
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
@@ -255,7 +266,7 @@ class Share(BASE, ManilaBase):
                                   nullable=True)
 
     source_cgsnapshot_member_id = Column(String(36), nullable=True)
-
+    task_state = Column(String(255))
     instances = orm.relationship(
         "ShareInstance",
         lazy='immediate',

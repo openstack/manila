@@ -109,11 +109,9 @@ class FilterScheduler(driver.Scheduler):
             snapshot_id=snapshot_id
         )
 
-    def _schedule_share(self, context, request_spec, filter_properties=None):
-        """Returns a list of hosts that meet the required specs.
+    def _format_filter_properties(self, context, filter_properties,
+                                  request_spec):
 
-        The list is ordered by their fitness.
-        """
         elevated = context.elevated()
 
         share_properties = request_spec['share_properties']
@@ -171,6 +169,18 @@ class FilterScheduler(driver.Scheduler):
                                   })
 
         self.populate_filter_properties_share(request_spec, filter_properties)
+
+        return filter_properties, share_properties
+
+    def _schedule_share(self, context, request_spec, filter_properties=None):
+        """Returns a list of hosts that meet the required specs.
+
+        The list is ordered by their fitness.
+        """
+        elevated = context.elevated()
+
+        filter_properties, share_properties = self._format_filter_properties(
+            context, filter_properties, request_spec)
 
         # Find our local list of acceptable hosts by filtering and
         # weighing our options. we virtually consume resources on
@@ -384,3 +394,23 @@ class FilterScheduler(driver.Scheduler):
         if not weighed_hosts:
             return None
         return weighed_hosts[0].obj.host
+
+    def host_passes_filters(self, context, host, request_spec,
+                            filter_properties):
+
+        elevated = context.elevated()
+
+        filter_properties, share_properties = self._format_filter_properties(
+            context, filter_properties, request_spec)
+
+        hosts = self.host_manager.get_all_host_states_share(elevated)
+        hosts = self.host_manager.get_filtered_hosts(hosts, filter_properties)
+        hosts = self.host_manager.get_weighed_hosts(hosts, filter_properties)
+
+        for tgt_host in hosts:
+            if tgt_host.obj.host == host:
+                return tgt_host.obj
+
+        msg = (_('Cannot place share %(id)s on %(host)s')
+               % {'id': request_spec['share_id'], 'host': host})
+        raise exception.NoValidHost(reason=msg)

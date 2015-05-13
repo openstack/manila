@@ -45,12 +45,14 @@ class ShareRpcAPITestCase(test.TestCase):
         share_server = db_utils.create_share_server()
         cg = {'id': 'fake_cg_id', 'host': 'fake_host'}
         cgsnapshot = {'id': 'fake_cg_id'}
+        host = {'host': 'fake_host', 'capabilities': 1}
         self.fake_share = jsonutils.to_primitive(share)
         self.fake_access = jsonutils.to_primitive(access)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
         self.fake_share_server = jsonutils.to_primitive(share_server)
         self.fake_cg = jsonutils.to_primitive(cg)
         self.fake_cgsnapshot = jsonutils.to_primitive(cgsnapshot)
+        self.fake_host = jsonutils.to_primitive(host)
         self.ctxt = context.RequestContext('fake_user', 'fake_project')
         self.rpcapi = share_rpcapi.ShareAPI()
 
@@ -64,7 +66,7 @@ class ShareRpcAPITestCase(test.TestCase):
             "version": kwargs.pop('version', self.rpcapi.BASE_RPC_API_VERSION)
         }
         expected_msg = copy.deepcopy(kwargs)
-        if 'share' in expected_msg:
+        if 'share' in expected_msg and method != 'get_migration_info':
             share = expected_msg['share']
             del expected_msg['share']
             expected_msg['share_id'] = share['id']
@@ -89,15 +91,18 @@ class ShareRpcAPITestCase(test.TestCase):
             snapshot = expected_msg['snapshot']
             del expected_msg['snapshot']
             expected_msg['snapshot_id'] = snapshot['id']
+        if 'dest_host' in expected_msg:
+            del expected_msg['dest_host']
+            expected_msg['host'] = self.fake_host
 
         if 'host' in kwargs:
             host = kwargs['host']
-        elif 'share_server' in kwargs:
-            host = kwargs['share_server']['host']
         elif 'cg' in kwargs:
             host = kwargs['cg']['host']
         elif 'share_instance' in kwargs:
             host = kwargs['share_instance']['host']
+        elif 'share_server' in kwargs:
+            host = kwargs['share_server']['host']
         else:
             host = kwargs['share']['host']
         target['server'] = host
@@ -218,3 +223,30 @@ class ShareRpcAPITestCase(test.TestCase):
                              rpc_method='cast',
                              cgsnapshot=self.fake_cgsnapshot,
                              host='fake_host1')
+
+    def test_migrate_share(self):
+        fake_dest_host = self.Desthost()
+        self._test_share_api('migrate_share',
+                             rpc_method='cast',
+                             version='1.6',
+                             share=self.fake_share,
+                             dest_host=fake_dest_host,
+                             force_host_copy='1')
+
+    def test_get_migration_info(self):
+        self._test_share_api('get_migration_info',
+                             rpc_method='call',
+                             version='1.6',
+                             share_instance=self.fake_share,
+                             share_server=self.fake_share_server)
+
+    def test_get_driver_migration_info(self):
+        self._test_share_api('get_driver_migration_info',
+                             rpc_method='call',
+                             version='1.6',
+                             share_instance=self.fake_share,
+                             share_server=self.fake_share_server)
+
+    class Desthost(object):
+        host = 'fake_host'
+        capabilities = 1

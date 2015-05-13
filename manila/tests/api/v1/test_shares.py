@@ -21,6 +21,7 @@ from oslo_config import cfg
 import webob
 
 from manila.api import common
+from manila.api.openstack import api_version_request as api_version
 from manila.api.v1 import shares
 from manila.common import constants
 from manila import context
@@ -31,9 +32,18 @@ from manila.share import share_types
 from manila import test
 from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
+from manila.tests import db_utils
 from manila import utils
 
 CONF = cfg.CONF
+
+
+def app():
+    # no auth, just let environ['manila.context'] pass through
+    api = fakes.router.APIRouter()
+    mapper = fakes.urlmap.URLMap()
+    mapper['/v1'] = api
+    return mapper
 
 
 class ShareApiTest(test.TestCase):
@@ -91,6 +101,7 @@ class ShareApiTest(test.TestCase):
             'snapshot_id': '2',
             'share_network_id': None,
             'status': 'fakestatus',
+            'task_state': None,
             'share_type': '1',
             'volume_type': '1',
             'is_public': False,
@@ -195,6 +206,62 @@ class ShareApiTest(test.TestCase):
         self.assertEqual(expected, res_dict)
         self.assertEqual(create_mock.call_args[1]['share_network_id'],
                          "fakenetid")
+
+    def test_migrate_share(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True)
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request = api_version.APIVersionRequest('1.6')
+        req.api_version_request.experimental = True
+        body = {'os-migrate_share': {'host': 'fake_host'}}
+        self.mock_object(share_api.API, 'migrate_share')
+        self.controller.migrate_share(req, share['id'], body)
+
+    def test_migrate_share_no_share_id(self):
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % 'fake_id',
+                                      use_admin_context=True)
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request = api_version.APIVersionRequest('1.6')
+        req.api_version_request.experimental = True
+        body = {'os-migrate_share': {'host': 'fake_host'}}
+        self.mock_object(share_api.API, 'migrate_share')
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(side_effect=[exception.NotFound]))
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.migrate_share,
+                          req, 'fake_id', body)
+
+    def test_migrate_share_no_host(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True)
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request = api_version.APIVersionRequest('1.6')
+        req.api_version_request.experimental = True
+        body = {'os-migrate_share': {}}
+        self.mock_object(share_api.API, 'migrate_share')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.migrate_share,
+                          req, share['id'], body)
+
+    def test_migrate_share_no_host_invalid_force_host_copy(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True)
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request = api_version.APIVersionRequest('1.6')
+        req.api_version_request.experimental = True
+        body = {'os-migrate_share': {'host': 'fake_host',
+                                     'force_host_copy': 'fake'}}
+        self.mock_object(share_api.API, 'migrate_share')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.migrate_share,
+                          req, share['id'], body)
 
     def test_share_create_from_snapshot_without_share_net_no_parent(self):
         shr = {
@@ -625,6 +692,7 @@ class ShareApiTest(test.TestCase):
             'shares': [
                 {
                     'status': 'fakestatus',
+                    'task_state': None,
                     'description': 'displaydesc',
                     'export_location': 'fake_location',
                     'export_locations': ['fake_location', 'fake_location2'],
@@ -670,6 +738,7 @@ class ShareApiTest(test.TestCase):
             'shares': [
                 {
                     'status': 'fakestatus',
+                    'task_state': None,
                     'description': 'displaydesc',
                     'export_location': 'fake_location',
                     'export_locations': ['fake_location', 'fake_location2'],

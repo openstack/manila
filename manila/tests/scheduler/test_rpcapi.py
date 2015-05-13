@@ -100,3 +100,13 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.3')
+
+    def test_migrate_share_to_host(self):
+        self._test_scheduler_api('migrate_share_to_host',
+                                 rpc_method='cast',
+                                 share_id='share_id',
+                                 host='host',
+                                 force_host_copy=True,
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 version='1.4')

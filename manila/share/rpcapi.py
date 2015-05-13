@@ -39,9 +39,12 @@ class ShareAPI(object):
             create_share() -> create_share_instance()
             delete_share() -> delete_share_instance()
             Add share_instance argument to allow_access() & deny_access()
-
         1.5 - Add create_consistency_group, delete_consistency_group
                 create_cgsnapshot, and delete_cgsnapshot methods
+        1.6 - Introduce Share migration:
+            migrate_share()
+            get_migration_info()
+            get_driver_migration_info()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -50,7 +53,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.5')
+        self.client = rpc.get_client(target, version_cap='1.6')
 
     def create_share_instance(self, ctxt, share_instance, host,
                               request_spec, filter_properties,
@@ -85,6 +88,28 @@ class ShareAPI(object):
         cctxt = self.client.prepare(server=host, version='1.4')
         cctxt.cast(ctxt, 'delete_share_instance',
                    share_instance_id=share_instance['id'])
+
+    def migrate_share(self, ctxt, share, dest_host, force_host_copy):
+        new_host = utils.extract_host(share['host'])
+        cctxt = self.client.prepare(server=new_host, version='1.6')
+        host_p = {'host': dest_host.host,
+                  'capabilities': dest_host.capabilities}
+        cctxt.cast(ctxt, 'migrate_share', share_id=share['id'],
+                   host=host_p, force_host_copy=force_host_copy)
+
+    def get_migration_info(self, ctxt, share_instance, share_server):
+        new_host = utils.extract_host(share_instance['host'])
+        cctxt = self.client.prepare(server=new_host, version='1.6')
+        return cctxt.call(ctxt, 'get_migration_info',
+                          share_instance_id=share_instance['id'],
+                          share_server=share_server)
+
+    def get_driver_migration_info(self, ctxt, share_instance, share_server):
+        new_host = utils.extract_host(share_instance['host'])
+        cctxt = self.client.prepare(server=new_host, version='1.6')
+        return cctxt.call(ctxt, 'get_driver_migration_info',
+                          share_instance_id=share_instance['id'],
+                          share_server=share_server)
 
     def delete_share_server(self, ctxt, share_server):
         host = utils.extract_host(share_server['host'])

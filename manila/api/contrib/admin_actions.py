@@ -25,6 +25,7 @@ from manila import db
 from manila import exception
 from manila import share
 
+
 LOG = log.getLogger(__name__)
 
 
@@ -113,6 +114,9 @@ class ShareAdminController(AdminController):
 
     def _delete(self, *args, **kwargs):
         return self.share_api.delete(*args, **kwargs)
+
+    def _migrate(self, *args, **kwargs):
+        return self.share_api.migrate_share(*args, **kwargs)
 
 
 class ShareInstancesAdminController(AdminController):

@@ -62,6 +62,7 @@ class ViewBuilder(common.ViewBuilder):
             'availability_zone': share.get('availability_zone'),
             'created_at': share.get('created_at'),
             'status': share.get('status'),
+            'task_state': share.get('task_state'),
             'name': share.get('display_name'),
             'description': share.get('display_description'),
             'project_id': share.get('project_id'),

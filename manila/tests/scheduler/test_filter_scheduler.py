@@ -347,3 +347,44 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                                   request_spec)
 
         self.assertEqual(2, len(hosts))
+
+    def _host_passes_filters_setup(self, mock_obj):
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+
+        fakes.mock_host_manager_db_calls(mock_obj)
+
+        return (sched, fake_context)
+
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test_host_passes_filters_happy_day(self, _mock_service_get_topic):
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
+        request_spec = {'share_id': 1,
+                        'share_type': {'name': 'fake_type'},
+                        'share_instance_properties': {},
+                        'share_properties': {'project_id': 1,
+                                             'size': 1}}
+
+        ret_host = sched.host_passes_filters(ctx, 'host1#_pool0',
+                                             request_spec, {})
+
+        self.assertEqual('host1#_pool0', ret_host.host)
+        self.assertTrue(_mock_service_get_topic.called)
+
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test_host_passes_filters_no_capacity(self, _mock_service_get_topic):
+        sched, ctx = self._host_passes_filters_setup(
+            _mock_service_get_topic)
+        request_spec = {'share_id': 1,
+                        'share_type': {'name': 'fake_type'},
+                        'share_instance_properties': {},
+                        'share_properties': {'project_id': 1,
+                                             'size': 1024}}
+
+        self.assertRaises(exception.NoValidHost,
+                          sched.host_passes_filters,
+                          ctx, 'host3#_pool0', request_spec, {})
+        self.assertTrue(_mock_service_get_topic.called)

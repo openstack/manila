@@ -109,3 +109,8 @@ class Scheduler(object):
     def get_pools(self, context, filters):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement get_pools"))
+
+    def host_passes_filters(self, context, host, request_spec,
+                            filter_properties):
+        """Must override schedule method for migration to work."""
+        raise NotImplementedError(_("Must implement host_passes_filters"))

@@ -50,3 +50,7 @@ user documentation.
   Consistency groups support. /consistency-groups and /cgsnapshots are
   implemented. AdminActions 'os-force_delete and' 'os-reset_status' have been
   updated for both new resources.
+
+1.6
+---
+  Share Migration admin API.

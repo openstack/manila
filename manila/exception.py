@@ -228,6 +228,10 @@ class InvalidShareServer(Invalid):
     message = _("Share server %(share_server_id)s is not valid.")
 
 
+class ShareMigrationFailed(ManilaException):
+    message = _("Share migration failed: %(reason)s")
+
+
 class ShareServerNotCreated(ManilaException):
     message = _("Share server %(share_server_id)s failed on creation.")
 

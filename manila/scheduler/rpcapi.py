@@ -26,7 +26,7 @@ CONF = cfg.CONF
 
 
 class SchedulerAPI(object):
-    '''Client side of the scheduler rpc API.
+    """Client side of the scheduler rpc API.
 
     API version history:
 
@@ -35,15 +35,16 @@ class SchedulerAPI(object):
         1.2 - Introduce Share Instances:
             Replace create_share() - > create_share_instance()
         1.3 - Add create_consistency_group method
-    '''
+        1.4 - Add migrate_share_to_host method
+    """
 
-    RPC_API_VERSION = '1.3'
+    RPC_API_VERSION = '1.4'
 
     def __init__(self):
         super(SchedulerAPI, self).__init__()
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.3')
+        self.client = rpc.get_client(target, version_cap='1.4')
 
     def create_share_instance(self, ctxt, request_spec=None,
                               filter_properties=None):
@@ -84,3 +85,16 @@ class SchedulerAPI(object):
             request_spec=request_spec_p,
             filter_properties=filter_properties,
         )
+
+    def migrate_share_to_host(self, ctxt, share_id, host,
+                              force_host_copy=False, request_spec=None,
+                              filter_properties=None):
+
+        cctxt = self.client.prepare(version='1.4')
+        request_spec_p = jsonutils.to_primitive(request_spec)
+        return cctxt.cast(ctxt, 'migrate_share_to_host',
+                          share_id=share_id,
+                          host=host,
+                          force_host_copy=force_host_copy,
+                          request_spec=request_spec_p,
+                          filter_properties=filter_properties)

@@ -18,6 +18,7 @@
 import ast
 
 from oslo_log import log
+from oslo_utils import strutils
 from oslo_utils import uuidutils
 import six
 import webob
@@ -86,6 +87,31 @@ class ShareController(wsgi.Controller):
         except exception.InvalidShare as e:
             raise exc.HTTPForbidden(explanation=six.text_type(e))
 
+        return webob.Response(status_int=202)
+
+    @wsgi.Controller.api_version("1.6", None, True)
+    @wsgi.action("os-migrate_share")
+    def migrate_share(self, req, id, body):
+        """Migrate a share to the specified host."""
+        context = req.environ['manila.context']
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound:
+            msg = _("Share %s not found.") % id
+            raise exc.HTTPNotFound(explanation=msg)
+        params = body['os-migrate_share']
+        try:
+            host = params['host']
+        except KeyError:
+            raise exc.HTTPBadRequest(explanation=_("Must specify 'host'"))
+        force_host_copy = params.get('force_host_copy', False)
+        try:
+            force_host_copy = strutils.bool_from_string(force_host_copy,
+                                                        strict=True)
+        except ValueError:
+            raise exc.HTTPBadRequest(
+                explanation=_("Bad value for 'force_host_copy'"))
+        self.share_api.migrate_share(context, share, host, force_host_copy)
         return webob.Response(status_int=202)
 
     def index(self, req):

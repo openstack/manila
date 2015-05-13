@@ -152,6 +152,31 @@ class SchedulerManagerTestCase(test.TestCase):
                               request_spec=request_spec,
                               filter_properties={})
 
+    def test_migrate_share_to_host(self):
+
+        share = db_utils.create_share()
+        host = 'fake@backend#pool'
+
+        self.mock_object(db, 'share_get', mock.Mock(return_value=share))
+        self.mock_object(share_rpcapi.ShareAPI, 'migrate_share')
+        self.mock_object(driver.Scheduler, 'host_passes_filters',
+                         mock.Mock(return_value=host))
+
+        self.manager.migrate_share_to_host(self.context, share['id'], host,
+                                           False, {}, None)
+
+    def test_migrate_share_to_host_no_valid_host(self):
+
+        share = db_utils.create_share()
+        host = 'fake@backend#pool'
+
+        self.mock_object(
+            driver.Scheduler, 'host_passes_filters',
+            mock.Mock(side_effect=[exception.NoValidHost('fake')]))
+
+        self.manager.migrate_share_to_host(self.context, share['id'], host,
+                                           False, {}, None)
+
 
 class SchedulerTestCase(test.TestCase):
     """Test case for base scheduler driver class."""
