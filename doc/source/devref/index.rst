@@ -72,6 +72,7 @@ Module Reference
    scheduler
    fakes
    manila
+   ganesha
 
 Share backends
 --------------
