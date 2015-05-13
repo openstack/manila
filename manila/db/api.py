@@ -652,11 +652,6 @@ def share_server_backend_details_set(context, share_server_id, server_details):
                                                  server_details)
 
 
-def share_server_backend_details_get(context, share_server_id):
-    """Get all backend details records for share server."""
-    return IMPL.share_server_backend_details_get(context, share_server_id)
-
-
 ##################
 
 

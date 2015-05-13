@@ -119,10 +119,6 @@ def fake_share_server_get():
     return FakeShareServer(created_at=None)
 
 
-def fake_share_server_backend_details_get():
-    return share_server_backend_details
-
-
 class FakeRequestAdmin(object):
     environ = {"manila.context": CONTEXT}
     GET = {}
@@ -236,17 +232,12 @@ class ShareServerAPITest(test.TestCase):
     def test_details(self):
         self.mock_object(db_api, 'share_server_get',
                          mock.Mock(return_value=fake_share_server_get()))
-        self.mock_object(
-            db_api, 'share_server_backend_details_get',
-            mock.Mock(return_value=fake_share_server_backend_details_get()))
         result = self.controller.details(
             FakeRequestAdmin,
             fake_share_server_get_result['share_server']['id'])
         policy.check_policy.assert_called_once_with(
             CONTEXT, share_servers.RESOURCE_NAME, 'details')
         db_api.share_server_get.assert_called_once_with(
-            CONTEXT, fake_share_server_get_result['share_server']['id'])
-        db_api.share_server_backend_details_get.assert_called_once_with(
             CONTEXT, fake_share_server_get_result['share_server']['id'])
         self.assertEqual(result,
                          fake_share_server_backend_details_get_result)
