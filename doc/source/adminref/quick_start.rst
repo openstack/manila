@@ -99,10 +99,10 @@ To send requests to Manila we need to install the Manila client.
 
 Install it using PIP::
 
-    $ sudo pip install python-manilaclient>=1.0.3
+    $ sudo pip install python-manilaclient>=1.0.4
 
 .. note::
-    The starting version of the Manila client for Kilo release is 1.0.3
+    The starting version of the Manila client for Kilo release is 1.0.4
 
 The above will install the Manila binary that will be used for issuing
 manila requests.
@@ -175,7 +175,7 @@ Result::
 
 Preparation of external files
 -----------------------------
-Copy files from %cloned_git_dir%/etc/manila
+Copy files from %git_dir%/etc/manila
 to dir ‘/etc/manila’::
 
     policy.json
@@ -266,6 +266,12 @@ Open Manila configuration file `/etc/manila/manila.conf`::
     # Following is password for user ‘nova’ for interaction with Nova service.
     # Used only by Generic driver for the moment.
     nova_admin_password = %password%
+
+    # Set the project/tenant name of the ‘service’ tenant. These should all be the
+    # same value, but may be different than the default.
+    neutron_admin_project_name = service
+    cinder_admin_tenant_name = service
+    nova_admin_tenant_name = service
 
     # Manila requires ‘share-type’ for share creation.
     # So, set here name of some share-type that will be used by default.
@@ -454,8 +460,8 @@ Then define a share network using the Neutron network and subnet IDs::
 
     $ manila share-network-create \
         --name test_share_network \
-        --neutron-network %id_of_neutron_network% \
-        --neutron-subnet %id_of_network_subnet%
+        --neutron-net-id %id_of_neutron_network% \
+        --neutron-subnet-id %id_of_network_subnet%
 
 Now we can create a share using the following command::
 
