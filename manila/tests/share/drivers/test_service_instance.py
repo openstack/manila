@@ -1344,13 +1344,51 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         self.assertFalse(
             service_instance.neutron.API.router_remove_interface.called)
 
-    def test_teardown_network_success(self):
+    def test_teardown_network_subnet_is_used(self):
         server_details = dict(subnet_id='foo', router_id='bar')
+        fake_ports = [
+            {'fixed_ips': [{'subnet_id': server_details['subnet_id']}],
+             'device_id': 'fake_device_id',
+             'device_owner': 'compute:foo'},
+        ]
         instance = self._init_neutron_network_plugin()
         self.mock_object(
             service_instance.neutron.API, 'router_remove_interface')
         self.mock_object(
             service_instance.neutron.API, 'update_subnet')
+        self.mock_object(
+            service_instance.neutron.API, 'list_ports',
+            mock.Mock(return_value=fake_ports))
+
+        instance.teardown_network(server_details)
+
+        self.assertFalse(
+            service_instance.neutron.API.router_remove_interface.called)
+        self.assertFalse(service_instance.neutron.API.update_subnet.called)
+        service_instance.neutron.API.list_ports.assert_called_once_with(
+            fields=['fixed_ips', 'device_id', 'device_owner'])
+
+    def test_teardown_network_subnet_not_used(self):
+        server_details = dict(subnet_id='foo', router_id='bar')
+        fake_ports = [
+            {'fixed_ips': [{'subnet_id': server_details['subnet_id']}],
+             'device_id': 'fake_device_id',
+             'device_owner': 'network:router_interface'},
+            {'fixed_ips': [{'subnet_id': 'bar' + server_details['subnet_id']}],
+             'device_id': 'fake_device_id',
+             'device_owner': 'compute'},
+            {'fixed_ips': [{'subnet_id': server_details['subnet_id']}],
+             'device_id': '',
+             'device_owner': 'compute'},
+        ]
+        instance = self._init_neutron_network_plugin()
+        self.mock_object(
+            service_instance.neutron.API, 'router_remove_interface')
+        self.mock_object(
+            service_instance.neutron.API, 'update_subnet')
+        self.mock_object(
+            service_instance.neutron.API, 'list_ports',
+            mock.Mock(return_value=fake_ports))
 
         instance.teardown_network(server_details)
 
@@ -1358,15 +1396,25 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             assert_called_once_with('bar', 'foo')
         service_instance.neutron.API.update_subnet.\
             assert_called_once_with('foo', '')
+        service_instance.neutron.API.list_ports.assert_called_once_with(
+            fields=['fixed_ips', 'device_id', 'device_owner'])
 
-    def test_teardown_network_error_404(self):
+    def test_teardown_network_subnet_not_used_and_get_error_404(self):
         server_details = dict(subnet_id='foo', router_id='bar')
+        fake_ports = [
+            {'fixed_ips': [{'subnet_id': server_details['subnet_id']}],
+             'device_id': 'fake_device_id',
+             'device_owner': 'fake'},
+        ]
         instance = self._init_neutron_network_plugin()
         self.mock_object(
             service_instance.neutron.API, 'router_remove_interface',
             mock.Mock(side_effect=exception.NetworkException(code=404)))
         self.mock_object(
             service_instance.neutron.API, 'update_subnet')
+        self.mock_object(
+            service_instance.neutron.API, 'list_ports',
+            mock.Mock(return_value=fake_ports))
 
         instance.teardown_network(server_details)
 
@@ -1374,15 +1422,25 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             assert_called_once_with('bar', 'foo')
         service_instance.neutron.API.update_subnet.\
             assert_called_once_with('foo', '')
+        service_instance.neutron.API.list_ports.assert_called_once_with(
+            fields=['fixed_ips', 'device_id', 'device_owner'])
 
-    def test_teardown_network_unhandled_error(self):
+    def test_teardown_network_subnet_not_used_get_unhandled_error(self):
         server_details = dict(subnet_id='foo', router_id='bar')
+        fake_ports = [
+            {'fixed_ips': [{'subnet_id': server_details['subnet_id']}],
+             'device_id': 'fake_device_id',
+             'device_owner': 'fake'},
+        ]
         instance = self._init_neutron_network_plugin()
         self.mock_object(
             service_instance.neutron.API, 'router_remove_interface',
             mock.Mock(side_effect=exception.NetworkException(code=500)))
         self.mock_object(
             service_instance.neutron.API, 'update_subnet')
+        self.mock_object(
+            service_instance.neutron.API, 'list_ports',
+            mock.Mock(return_value=fake_ports))
 
         self.assertRaises(
             exception.NetworkException,
@@ -1391,6 +1449,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         service_instance.neutron.API.router_remove_interface.\
             assert_called_once_with('bar', 'foo')
         self.assertFalse(service_instance.neutron.API.update_subnet.called)
+        service_instance.neutron.API.list_ports.assert_called_once_with(
+            fields=['fixed_ips', 'device_id', 'device_owner'])
 
     def test_setup_network_and_connect_share_server_to_tenant_net(self):
         def fake_create_port(*aargs, **kwargs):
