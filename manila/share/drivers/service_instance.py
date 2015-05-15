@@ -256,10 +256,16 @@ class ServiceInstanceManager(object):
             'username': self.get_config_option('service_instance_user'),
             'password': self.get_config_option('service_instance_password'),
             'pk_path': self.path_to_private_key,
-            'ip': data['private_address'][0],  # for handling
-            'public_address': data['public_address'][0],  # for exports
             'instance_id': data['instance']['id'],
         }
+        for key in ('private_address', 'public_address'):
+            data[key + '_v4'] = None
+            for address in data[key]:
+                if netaddr.valid_ipv4(address):
+                    data[key + '_v4'] = address
+                    break
+        share_server['ip'] = data['private_address_v4']
+        share_server['public_address'] = data['public_address_v4']
         return {'backend_details': share_server}
 
     def _get_addresses_by_network_name(self, net_name, server):

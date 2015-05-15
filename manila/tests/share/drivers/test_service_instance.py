@@ -811,39 +811,65 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             fake_server_details)
 
     @ddt.data(
-        {'s': 'fake_net_s', 't': 'fake_net_t'},
-        {'s': 'fake_net_s', 't': '12.34.56.78'},
-        {'s': '98.76.54.123', 't': 'fake_net_t'},
-        {'s': '98.76.54.123', 't': '12.34.56.78'})
+        *[{'s': s, 't': t, 'server': server}
+            for s, t in (
+                ('fake_net_s', 'fake_net_t'),
+                ('fake_net_s', '12.34.56.78'),
+                ('98.76.54.123', 'fake_net_t'),
+                ('98.76.54.123', '12.34.56.78'))
+            for server in (
+                {'networks': {
+                    'fake_net_s': ['foo', '98.76.54.123', 'bar'],
+                    'fake_net_t': ['baar', '12.34.56.78', 'quuz']}},
+                {'addresses': {
+                    'fake_net_s': [
+                        {'addr': 'fake1'},
+                        {'addr': '98.76.54.123'},
+                        {'addr': 'fake2'}],
+                    'fake_net_t': [
+                        {'addr': 'fake3'},
+                        {'addr': '12.34.56.78'},
+                        {'addr': 'fake4'}],
+                }})])
     @ddt.unpack
-    def test_get_common_server_valid_cases(self, s, t):
-        self._get_common_server(s, t, True)
+    def test_get_common_server_valid_cases(self, s, t, server):
+        self._get_common_server(s, t, server, True)
 
     @ddt.data(
-        {'s': 'fake_net_s', 't': 'fake'},
-        {'s': 'fake', 't': 'fake_net_t'},
-        {'s': 'fake', 't': 'fake'},
-        {'s': '98.76.54.123', 't': '12.12.12.1212'},
-        {'s': '12.12.12.1212', 't': '12.34.56.78'},
-        {'s': '12.12.12.1212', 't': '12.12.12.1212'})
+        *[{'s': s, 't': t, 'server': server}
+            for s, t in (
+                ('fake_net_s', 'fake'),
+                ('fake', 'fake_net_t'),
+                ('fake', 'fake'),
+                ('98.76.54.123', '12.12.12.1212'),
+                ('12.12.12.1212', '12.34.56.78'),
+                ('12.12.12.1212', '12.12.12.1212'))
+            for server in (
+                {'networks': {
+                    'fake_net_s': ['foo', '98.76.54.123', 'bar'],
+                    'fake_net_t': ['baar', '12.34.56.78', 'quuz']}},
+                {'addresses': {
+                    'fake_net_s': [
+                        {'addr': 'fake1'},
+                        {'addr': '98.76.54.123'},
+                        {'addr': 'fake2'}],
+                    'fake_net_t': [
+                        {'addr': 'fake3'},
+                        {'addr': '12.34.56.78'},
+                        {'addr': 'fake4'}],
+                }})])
     @ddt.unpack
-    def test_get_common_server_invalid_cases(self, s, t):
-        self._get_common_server(s, t, False)
+    def test_get_common_server_invalid_cases(self, s, t, server):
+        self._get_common_server(s, t, server, False)
 
-    def _get_common_server(self, s, t, is_valid=True):
+    def _get_common_server(self, s, t, server, is_valid=True):
         fake_instance_id = 'fake_instance_id'
         fake_user = 'fake_user'
         fake_pass = 'fake_pass'
-        fake_net_s = 'fake_net_s'
         fake_addr_s = '98.76.54.123'
-        fake_net_t = 'fake_net_t'
         fake_addr_t = '12.34.56.78'
-        fake_server = {
-            'id': fake_instance_id,
-            'networks': {fake_net_s: [fake_addr_s], fake_net_t: [fake_addr_t]},
-            'addresses': {fake_net_s: {'addr': fake_addr_s},
-                          fake_net_t: {'addr': fake_addr_t}},
-        }
+        fake_server = {'id': fake_instance_id}
+        fake_server.update(server)
         expected = {
             'backend_details': {
                 'username': fake_user,
