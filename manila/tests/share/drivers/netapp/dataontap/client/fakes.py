@@ -1037,6 +1037,47 @@ VOLUME_GET_VOLUME_PATH_CIFS_RESPONSE = etree.XML("""
 VOLUME_JUNCTION_PATH = '/' + SHARE_NAME
 VOLUME_JUNCTION_PATH_CIFS = '\\' + SHARE_NAME
 
+VOLUME_MODIFY_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <failure-list />
+    <num-failed>0</num-failed>
+    <num-succeeded>1</num-succeeded>
+    <success-list>
+      <volume-modify-iter-info>
+        <volume-key>
+          <volume-attributes>
+            <volume-id-attributes>
+              <name>%(volume)s</name>
+              <owning-vserver-name>%(vserver)s</owning-vserver-name>
+            </volume-id-attributes>
+          </volume-attributes>
+        </volume-key>
+      </volume-modify-iter-info>
+    </success-list>
+  </results>
+""" % {'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+
+VOLUME_MODIFY_ITER_ERROR_RESPONSE = etree.XML("""
+  <results status="passed">
+    <failure-list>
+      <volume-modify-iter-info>
+        <error-code>160</error-code>
+        <error-message>Unable to set volume attribute "size"</error-message>
+        <volume-key>
+          <volume-attributes>
+            <volume-id-attributes>
+              <name>%(volume)s</name>
+              <owning-vserver-name>%(vserver)s</owning-vserver-name>
+            </volume-id-attributes>
+          </volume-attributes>
+        </volume-key>
+      </volume-modify-iter-info>
+    </failure-list>
+    <num-failed>1</num-failed>
+    <num-succeeded>0</num-succeeded>
+  </results>
+""" % {'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+
 SNAPSHOT_GET_ITER_NOT_BUSY_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>

@@ -1718,6 +1718,47 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with('sis-set-config',
                                                          sis_set_config_args)
 
+    def test_set_volume_size(self):
+
+        api_response = netapp_api.NaElement(fake.VOLUME_MODIFY_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.client.set_volume_size(fake.SHARE_NAME, 10)
+
+        volume_modify_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake.SHARE_NAME
+                    }
+                }
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-space-attributes': {
+                        'size': 10737418240,
+                    },
+                },
+            },
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-modify-iter', volume_modify_iter_args)])
+
+    def test_set_volume_size_api_error(self):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_MODIFY_ITER_ERROR_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.set_volume_size,
+                          fake.SHARE_NAME,
+                          10)
+
     def test_volume_exists(self):
 
         api_response = netapp_api.NaElement(fake.VOLUME_GET_NAME_RESPONSE)
