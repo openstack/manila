@@ -24,6 +24,7 @@ import webob.request
 
 from manila.api.middleware import auth
 from manila.api.middleware import fault
+from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi as os_wsgi
 from manila.api import urlmap
 from manila.api.v1 import limits
@@ -106,13 +107,16 @@ class HTTPRequest(os_wsgi.Request):
 
     @classmethod
     def blank(cls, *args, **kwargs):
-        kwargs['base_url'] = 'http://localhost/v1'
+        if not kwargs.get('base_url'):
+            kwargs['base_url'] = 'http://localhost/v1'
         use_admin_context = kwargs.pop('use_admin_context', False)
+        version = kwargs.pop('version', api_version.DEFAULT_API_VERSION)
         out = os_wsgi.Request.blank(*args, **kwargs)
         out.environ['manila.context'] = FakeRequestContext(
             'fake_user',
             'fake',
             is_admin=use_admin_context)
+        out.api_version_request = api_version.APIVersionRequest(version)
         return out
 
 

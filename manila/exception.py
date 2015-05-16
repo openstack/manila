@@ -170,6 +170,20 @@ class InvalidDriverMode(Invalid):
     message = _("Invalid driver mode: %(driver_mode)s.")
 
 
+class InvalidAPIVersionString(Invalid):
+    msg_fmt = _("API Version String %(version)s is of invalid format. Must "
+                "be of format MajorNum.MinorNum.")
+
+
+class VersionNotFoundForAPIMethod(Invalid):
+    msg_fmt = _("API version %(version)s is not supported on this method.")
+
+
+class InvalidGlobalAPIVersion(Invalid):
+    msg_fmt = _("Version %(req_ver)s is not supported by the API. Minimum "
+                "is %(min_ver)s and maximum is %(max_ver)s.")
+
+
 class NotFound(ManilaException):
     message = _("Resource could not be found.")
     code = 404

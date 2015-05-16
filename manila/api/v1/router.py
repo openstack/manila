@@ -49,7 +49,7 @@ class APIRouter(manila.api.openstack.APIRouter):
         self.resources['versions'] = versions.create_resource()
         mapper.connect("versions", "/",
                        controller=self.resources['versions'],
-                       action='show')
+                       action='index')
 
         mapper.redirect("", "/")
 

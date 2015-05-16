@@ -1,4 +1,5 @@
 # Copyright 2010 OpenStack LLC.
+# Copyright 2015 Clinton Knight
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,8 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from oslo_config import cfg
 
+from manila.api import extensions
+from manila.api import openstack
+from manila.api.openstack import api_version_request
 from manila.api.openstack import wsgi
 from manila.api.views import versions as views_versions
 
@@ -22,103 +28,63 @@ CONF = cfg.CONF
 
 
 _KNOWN_VERSIONS = {
-    "v2.0": {
-        "id": "v2.0",
-        "status": "CURRENT",
-        "updated": "2012-11-21T11:33:21Z",
-        "links": [
+    'v1.0': {
+        'id': 'v1.0',
+        'status': 'CURRENT',
+        'version': api_version_request._MAX_API_VERSION,
+        'min_version': api_version_request._MIN_API_VERSION,
+        'updated': '2015-07-30T11:33:21Z',
+        'links': [
             {
-                "rel": "describedby",
-                "type": "application/pdf",
-                "href": "http://jorgew.github.com/block-storage-api/"
-                        "content/os-block-storage-1.0.pdf",
-            },
-            {
-                "rel": "describedby",
-                "type": "application/vnd.sun.wadl+xml",
-                # (anthony) FIXME
-                "href": "http://docs.rackspacecloud.com/"
-                        "servers/api/v1.1/application.wadl",
+                'rel': 'describedby',
+                'type': 'text/html',
+                'href': 'http://docs.openstack.org/',
             },
         ],
-        "media-types": [
+        'media-types': [
             {
-                "base": "application/json",
+                'base': 'application/json',
+                'type': 'application/vnd.openstack.share+json;version=1',
             }
         ],
     },
-    "v1.0": {
-        "id": "v1.0",
-        "status": "CURRENT",
-        "updated": "2012-01-04T11:33:21Z",
-        "links": [
-            {
-                "rel": "describedby",
-                "type": "application/pdf",
-                "href": "http://jorgew.github.com/block-storage-api/"
-                        "content/os-block-storage-1.0.pdf",
-            },
-            {
-                "rel": "describedby",
-                "type": "application/vnd.sun.wadl+xml",
-                # (anthony) FIXME
-                "href": "http://docs.rackspacecloud.com/"
-                        "servers/api/v1.1/application.wadl",
-            },
-        ],
-        "media-types": [
-            {
-                "base": "application/json",
-            }
-        ],
-    }
-
 }
 
 
-def get_supported_versions():
-    versions = {}
+class VersionsRouter(openstack.APIRouter):
+    """Route versions requests."""
 
-    if CONF.enable_v1_api:
-        versions['v1.0'] = _KNOWN_VERSIONS['v1.0']
-    if CONF.enable_v2_api:
-        versions['v2.0'] = _KNOWN_VERSIONS['v2.0']
+    ExtensionManager = extensions.ExtensionManager
 
-    return versions
+    def _setup_routes(self, mapper, ext_mgr):
+        self.resources['versions'] = create_resource()
+        mapper.connect('versions', '/',
+                       controller=self.resources['versions'],
+                       action='index')
+        mapper.redirect('', '/')
 
 
-class Versions(wsgi.Resource):
+class VersionsController(wsgi.Controller):
 
     def __init__(self):
-        super(Versions, self).__init__(None)
+        super(VersionsController, self).__init__(None)
 
+    @wsgi.Controller.api_version('1.0', '1.0')
     def index(self, req):
         """Return all versions."""
         builder = views_versions.get_view_builder(req)
-        return builder.build_versions(get_supported_versions())
+        known_versions = copy.deepcopy(_KNOWN_VERSIONS)
+        known_versions['v1.0'].pop('min_version')
+        known_versions['v1.0'].pop('version')
+        return builder.build_versions(known_versions)
 
-    @wsgi.response(300)
-    def multi(self, req):
-        """Return multiple choices."""
+    @wsgi.Controller.api_version('1.1')  # noqa
+    def index(self, req):  # pylint: disable=E0102
+        """Return all versions."""
         builder = views_versions.get_view_builder(req)
-        return builder.build_choices(get_supported_versions(), req)
-
-    def get_action_args(self, request_environment):
-        """Parse dictionary created by routes library."""
-        args = {}
-        if request_environment['PATH_INFO'] == '/':
-            args['action'] = 'index'
-        else:
-            args['action'] = 'multi'
-
-        return args
-
-
-class ShareVersionV1(object):
-    def show(self, req):
-        builder = views_versions.get_view_builder(req)
-        return builder.build_version(_KNOWN_VERSIONS['v1.0'])
+        known_versions = copy.deepcopy(_KNOWN_VERSIONS)
+        return builder.build_versions(known_versions)
 
 
 def create_resource():
-    return wsgi.Resource(ShareVersionV1())
+    return wsgi.Resource(VersionsController())
