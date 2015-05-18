@@ -20,6 +20,7 @@
     "share:access_get_all": "rule:default",
     "share:allow_access": "rule:default",
     "share:deny_access": "rule:default",
+    "share:extend": "rule:default",
     "share:get_share_metadata": "rule:default",
     "share:delete_share_metadata": "rule:default",
     "share:update_share_metadata": "rule:default",

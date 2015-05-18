@@ -32,6 +32,7 @@ from manila.db import base
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
+from manila.i18n import _LI
 from manila.i18n import _LW
 from manila import policy
 from manila import quota
@@ -674,3 +675,55 @@ class API(base.Base):
 
     def get_share_network(self, context, share_net_id):
         return self.db.share_network_get(context, share_net_id)
+
+    def extend(self, context, share, new_size):
+        policy.check_policy(context, 'share', 'extend')
+
+        status = six.text_type(share['status']).upper()
+
+        if status != constants.STATUS_AVAILABLE:
+            msg_params = {
+                'valid_status': constants.STATUS_AVAILABLE,
+                'share_id': share['id'],
+                'status': status,
+            }
+            msg = _("Share %(share_id)s status must be '%(valid_status)s' "
+                    "to extend, but current status is: "
+                    "%(status)s.") % msg_params
+            raise exception.InvalidShare(reason=msg)
+
+        size_increase = int(new_size) - share['size']
+        if size_increase <= 0:
+            msg = (_("New size for extend must be greater "
+                     "than current size. (current: %(size)s, "
+                     "extended: %(new_size)s).") % {'new_size': new_size,
+                                                    'size': share['size']})
+            raise exception.InvalidInput(reason=msg)
+
+        try:
+            reservations = QUOTAS.reserve(context,
+                                          project_id=share['project_id'],
+                                          gigabytes=size_increase)
+        except exception.OverQuota as exc:
+            usages = exc.kwargs['usages']
+            quotas = exc.kwargs['quotas']
+
+            def _consumed(name):
+                return usages[name]['reserved'] + usages[name]['in_use']
+
+            msg = _LE("Quota exceeded for %(s_pid)s, tried to extend share "
+                      "by %(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
+                      "already consumed).")
+            LOG.error(msg, {'s_pid': context.project_id,
+                            's_size': size_increase,
+                            'd_consumed': _consumed('gigabytes'),
+                            'd_quota': quotas['gigabytes']})
+            raise exception.ShareSizeExceedsAvailableQuota(
+                requested=size_increase,
+                consumed=_consumed('gigabytes'),
+                quota=quotas['gigabytes'])
+
+        self.update(context, share, {'status': constants.STATUS_EXTENDING})
+        self.share_rpcapi.extend_share(context, share, new_size, reservations)
+        LOG.info(_LI("Extend share request issued successfully."),
+                 resource=share)

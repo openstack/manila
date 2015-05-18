@@ -135,6 +135,30 @@ class ShareActionsController(wsgi.Controller):
         access_list = self.share_api.access_get_all(context, share)
         return {'access_list': access_list}
 
+    @wsgi.action('os-extend')
+    def _extend(self, req, id, body):
+        """Extend size of share."""
+        context = req.environ['manila.context']
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound as e:
+            raise webob.exc.HTTPNotFound(explanation=six.text_type(e))
+
+        try:
+            size = int(body['os-extend']['new_size'])
+        except (KeyError, ValueError, TypeError):
+            msg = _("New share size must be specified as an integer.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        try:
+            self.share_api.extend(context, share, size)
+        except (exception.InvalidInput, exception.InvalidShare) as e:
+            raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
+        except exception.ShareSizeExceedsAvailableQuota as e:
+            raise webob.exc.HTTPForbidden(explanation=six.text_type(e))
+
+        return webob.Response(status_int=202)
+
 
 # def create_resource():
 #     return wsgi.Resource(ShareActionsController())

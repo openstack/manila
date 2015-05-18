@@ -33,6 +33,7 @@ class ShareAPI(object):
 
         1.0 - Initial version.
         1.1 - Add manage_share() and unmanage_share() methods
+        1.2 - Add extend_share() method
     '''
 
     BASE_RPC_API_VERSION = '1.0'
@@ -41,7 +42,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.1')
+        self.client = rpc.get_client(target, version_cap='1.2')
 
     def create_share(self, ctxt, share, host,
                      request_spec, filter_properties,
@@ -109,3 +110,9 @@ class ShareAPI(object):
     def publish_service_capabilities(self, ctxt):
         cctxt = self.client.prepare(fanout=True, version='1.0')
         cctxt.cast(ctxt, 'publish_service_capabilities')
+
+    def extend_share(self, ctxt, share, new_size, reservations):
+        host = utils.extract_host(share['host'])
+        cctxt = self.client.prepare(server=host, version='1.2')
+        cctxt.cast(ctxt, 'extend_share', share_id=share['id'],
+                   new_size=new_size, reservations=reservations)

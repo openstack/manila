@@ -18,6 +18,7 @@ from oslo_config import cfg
 import webob
 
 from manila.api.contrib import share_actions
+from manila import exception
 from manila.share import api as share_api
 from manila import test
 from manila.tests.api.contrib import stubs
@@ -140,3 +141,46 @@ class ShareActionsTest(test.TestCase):
         res_dict = self.controller._access_list(req, id, body)
         expected = _fake_access_get_all()
         self.assertEqual(res_dict['access_list'], expected)
+
+    def test_extend(self):
+        id = 'fake_share_id'
+        share = stubs.stub_share_get(None, None, id)
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(share_api.API, "extend")
+
+        size = '123'
+        body = {"os-extend": {'new_size': size}}
+        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+
+        actual_response = self.controller._extend(req, id, body)
+
+        share_api.API.get.assert_called_once_with(mock.ANY, id)
+        share_api.API.extend.assert_called_once_with(
+            mock.ANY, share, int(size))
+        self.assertEqual(202, actual_response.status_int)
+
+    @ddt.data({"os-extend": ""},
+              {"os-extend": {"new_size": "foo"}},
+              {"os-extend": {"new_size": {'foo': 'bar'}}})
+    def test_extend_invalid_body(self, body):
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._extend, req, id, body)
+
+    @ddt.data({'source': exception.InvalidInput,
+               'target': webob.exc.HTTPBadRequest},
+              {'source': exception.InvalidShare,
+               'target': webob.exc.HTTPBadRequest},
+              {'source': exception.ShareSizeExceedsAvailableQuota,
+               'target': webob.exc.HTTPForbidden})
+    @ddt.unpack
+    def test_extend_exception(self, source, target):
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        body = {"os-extend": {'new_size': '123'}}
+        self.mock_object(share_api.API, "extend",
+                         mock.Mock(side_effect=source('fake')))
+
+        self.assertRaises(target, self.controller._extend, req, id, body)

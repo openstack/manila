@@ -1360,6 +1360,46 @@ class ShareAPITestCase(test.TestCase):
         self.assertEqual(should_be,
                          db_driver.share_metadata_get(self.context, share_id))
 
+    def test_extend_invalid_status(self):
+        invalid_status = 'fake'
+        share = fake_share('fake', status=invalid_status)
+        new_size = 123
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.extend, self.context, share, new_size)
+
+    def test_extend_invalid_size(self):
+        share = fake_share('fake', status=constants.STATUS_AVAILABLE, size=200)
+        new_size = 123
+
+        self.assertRaises(exception.InvalidInput,
+                          self.api.extend, self.context, share, new_size)
+
+    def test_extend_quota_error(self):
+        share = fake_share('fake', status=constants.STATUS_AVAILABLE, size=100)
+        new_size = 123
+        usages = {'gigabytes': {'reserved': 'fake', 'in_use': 'fake'}}
+        quotas = {'gigabytes': 'fake'}
+        exc = exception.OverQuota(usages=usages, quotas=quotas)
+        self.mock_object(quota.QUOTAS, 'reserve', mock.Mock(side_effect=exc))
+
+        self.assertRaises(exception.ShareSizeExceedsAvailableQuota,
+                          self.api.extend, self.context, share, new_size)
+
+    def test_extend_valid(self):
+        share = fake_share('fake', status=constants.STATUS_AVAILABLE, size=100)
+        new_size = 123
+        self.mock_object(self.api, 'update')
+        self.mock_object(self.api.share_rpcapi, 'extend_share')
+
+        self.api.extend(self.context, share, new_size)
+
+        self.api.update.assert_called_once_with(
+            self.context, share, {'status': constants.STATUS_EXTENDING})
+        self.api.share_rpcapi.extend_share.assert_called_once_with(
+            self.context, share, new_size, mock.ANY
+        )
+
 
 class OtherTenantsShareActionsTestCase(test.TestCase):
     def setUp(self):

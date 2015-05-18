@@ -15,6 +15,7 @@
     "share:delete_snapshot": "",
     "share:get_snapshot": "",
     "share:get_all_snapshots": "",
+    "share:extend": "",
 
     "share_network:create": "",
     "share_network:index": "",

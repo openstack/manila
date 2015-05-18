@@ -482,6 +482,11 @@ class ManageExistingShareTypeMismatch(ManilaException):
                 "%(reason)s")
 
 
+class ShareExtendingError(ManilaException):
+    message = _("Share %(share_id)s could not be extended due to error "
+                "in the driver: %(reason)s")
+
+
 class InstanceNotFound(NotFound):
     message = _("Instance %(instance_id)s could not be found.")
 
