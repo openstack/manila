@@ -219,7 +219,7 @@ Open Manila configuration file `/etc/manila/manila.conf`::
     [DATABASE]
     # Set up MySQL connection. In following  ‘foo’ is username,
     # ‘bar’ is password and ‘quuz’ is host name or address:
-    connection = mysql://foo:bar@quuz/manila?charset=utf8
+    connection = mysql+pymysql://foo:bar@quuz/manila?charset=utf8
 
     [oslo_concurrency]
     # Following opt defines directory to be used for lock files creation.
