@@ -19,14 +19,11 @@ from tempest_lib.common.utils import data_utils  # noqa
 from tempest import config
 from tempest import exceptions
 from tempest.scenario import manager_share as manager
-from tempest.scenario import utils as test_utils
 from tempest import test
 
 CONF = config.CONF
 
 LOG = logging.getLogger(__name__)
-
-load_tests = test_utils.load_tests_input_scenario_utils
 
 
 class TestShareBasicOps(manager.ShareScenarioTest):
@@ -59,14 +56,6 @@ class TestShareBasicOps(manager.ShareScenarioTest):
                 msg = ("Image %s not found" %
                        CONF.share.image_with_share_tools)
                 raise exceptions.InvalidConfiguration(message=msg)
-        self.image_utils = test_utils.ImageUtils()
-        if not self.image_utils.is_flavor_enough(self.flavor_ref,
-                                                 self.image_ref):
-            raise self.skipException(
-                '{image} does not fit in {flavor}'.format(
-                    image=self.image_ref, flavor=self.flavor_ref
-                )
-            )
         self.ssh_user = CONF.compute.image_ssh_user
         LOG.debug('Starting test for i:{image}, f:{flavor}. '
                   'user: {ssh_user}'.format(
