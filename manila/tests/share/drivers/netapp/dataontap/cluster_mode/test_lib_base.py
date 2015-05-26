@@ -1101,6 +1101,21 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
 
+    def test_shrink_share(self):
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        mock_set_volume_size = self.mock_object(vserver_client,
+                                                'set_volume_size')
+        new_size = fake.SHARE['size'] - 1
+
+        self.library.shrink_share(fake.SHARE, new_size)
+
+        mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
+
     def test_allow_access(self):
 
         protocol_helper = mock.Mock()
