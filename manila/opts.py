@@ -65,6 +65,7 @@ import manila.share.drivers.netapp.options
 import manila.share.drivers.quobyte.quobyte
 import manila.share.drivers.service_instance
 import manila.share.drivers.zfssa.zfssashare
+import manila.share.drivers_private_data
 import manila.share.manager
 import manila.volume
 import manila.volume.cinder
@@ -114,6 +115,7 @@ _global_opt_lists = [
     manila.share.driver.ganesha_opts,
     manila.share.driver.share_opts,
     manila.share.driver.ssh_opts,
+    manila.share.drivers_private_data.private_data_opts,
     manila.share.drivers.emc.driver.EMC_NAS_OPTS,
     manila.share.drivers.emc.plugins.isilon.isilon.ISILON_OPTS,
     manila.share.drivers.generic.share_opts,

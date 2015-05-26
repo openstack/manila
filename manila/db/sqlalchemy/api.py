@@ -18,6 +18,7 @@
 
 """Implementation of SQLAlchemy backend."""
 
+import copy
 import datetime
 import sys
 import uuid
@@ -2084,6 +2085,97 @@ def share_server_backend_details_get(context, share_server_id,
                         session=session)\
         .filter_by(share_server_id=share_server_id).all()
     return dict([(item.key, item.value) for item in query])
+
+
+###################
+
+def _driver_private_data_query(session, context, host, entity_id, key=None,
+                               read_deleted=False):
+    query = model_query(context, models.DriverPrivateData,
+                        session=session, read_deleted=read_deleted)\
+        .filter_by(host=host)\
+        .filter_by(entity_uuid=entity_id)
+
+    if isinstance(key, list):
+        return query.filter(models.DriverPrivateData.key.in_(key))
+    elif key is not None:
+        return query.filter_by(key=key)
+
+    return query
+
+
+@require_context
+def driver_private_data_get(context, host, entity_id, key=None,
+                            default=None, session=None):
+    if not session:
+        session = get_session()
+
+    query = _driver_private_data_query(session, context, host, entity_id, key)
+
+    if key is None or isinstance(key, list):
+        return dict([(item.key, item.value) for item in query.all()])
+    else:
+        result = query.first()
+        return result["value"] if result is not None else default
+
+
+@require_context
+def driver_private_data_update(context, host, entity_id, details,
+                               delete_existing=False, session=None):
+    # NOTE(u_glide): following code modifies details dict, that's why we should
+    # copy it
+    new_details = copy.deepcopy(details)
+
+    if not session:
+        session = get_session()
+
+    with session.begin():
+        # Process existing data
+        # NOTE(u_glide): read_deleted=None means here 'read all'
+        original_data = _driver_private_data_query(
+            session, context, host, entity_id, read_deleted=None).all()
+
+        for data_ref in original_data:
+            in_new_details = data_ref['key'] in new_details
+
+            if in_new_details:
+                new_value = six.text_type(new_details.pop(data_ref['key']))
+                data_ref.update({
+                    "value": new_value,
+                    "deleted": 0,
+                    "deleted_at": None
+                })
+                data_ref.save(session=session)
+            elif delete_existing and data_ref['deleted'] != 1:
+                data_ref.update({
+                    "deleted": 1, "deleted_at": timeutils.utcnow()
+                })
+                data_ref.save(session=session)
+
+        # Add new data
+        for key, value in new_details.items():
+            data_ref = models.DriverPrivateData()
+            data_ref.update({
+                "host": host,
+                "entity_uuid": entity_id,
+                "key": key,
+                "value": six.text_type(value)
+            })
+            data_ref.save(session=session)
+
+        return details
+
+
+@require_context
+def driver_private_data_delete(context, host, entity_id, key=None,
+                               session=None):
+    if not session:
+        session = get_session()
+
+    with session.begin():
+        query = _driver_private_data_query(session, context, host,
+                                           entity_id, key)
+        query.update({"deleted": 1, "deleted_at": timeutils.utcnow()})
 
 
 ###################

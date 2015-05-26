@@ -39,6 +39,7 @@ from manila.i18n import _LW
 from manila import manager
 from manila import quota
 import manila.share.configuration
+from manila.share import drivers_private_data
 from manila.share import utils as share_utils
 from manila import utils
 
@@ -112,8 +113,16 @@ class ShareManager(manager.SchedulerDependentManager):
                         msg_args)
             share_driver = MAPPING[share_driver]
 
+        ctxt = context.get_admin_context()
+        private_storage = drivers_private_data.DriverPrivateData(
+            context=ctxt, backend_host=self.host,
+            config_group=self.configuration.config_group
+        )
+
         self.driver = importutils.import_object(
-            share_driver, configuration=self.configuration)
+            share_driver, private_storage=private_storage,
+            configuration=self.configuration
+        )
 
     def _ensure_share_has_pool(self, ctxt, share):
         pool = share_utils.extract_host(share['host'], 'pool')
