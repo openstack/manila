@@ -46,7 +46,7 @@ class FakeVolumeSnapshot(object):
 
 class API(object):
     """Fake Volume API."""
-    def get(self, volume_id):
+    def get(self, *args, **kwargs):
         pass
 
     def create_snapshot_force(self, *args, **kwargs):

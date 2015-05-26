@@ -134,6 +134,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.service_instance_manager = (
             service_instance.ServiceInstanceManager(
                 driver_config=self.configuration))
+        self.private_storage = kwargs.get('private_storage')
 
     def _ssh_exec(self, server, command):
         connection = self.ssh_connections.get(server['instance_id'])
@@ -360,6 +361,16 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _get_volume(self, context, share_id):
         """Finds volume, associated to the specific share."""
+        volume_id = self.private_storage.get(share_id, 'volume_id')
+
+        if volume_id is not None:
+            return self.volume_api.get(context, volume_id)
+        else:  # Fallback to legacy method
+            return self._get_volume_legacy(context, share_id)
+
+    def _get_volume_legacy(self, context, share_id):
+        # NOTE(u_glide): this method is deprecated and will be removed in
+        # future versions
         volume_name = self._get_volume_name(share_id)
         search_opts = {'name': volume_name}
         if context.is_admin:
@@ -379,6 +390,17 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _get_volume_snapshot(self, context, snapshot_id):
         """Find volume snapshot associated to the specific share snapshot."""
+        volume_snapshot_id = self.private_storage.get(
+            snapshot_id, 'volume_snapshot_id')
+
+        if volume_snapshot_id is not None:
+            return self.volume_api.get_snapshot(context, volume_snapshot_id)
+        else:  # Fallback to legacy method
+            return self._get_volume_snapshot_legacy(context, snapshot_id)
+
+    def _get_volume_snapshot_legacy(self, context, snapshot_id):
+        # NOTE(u_glide): this method is deprecated and will be removed in
+        # future versions
         volume_snapshot_name = (
             self.configuration.volume_snapshot_name_template % snapshot_id)
         volume_snapshot_list = self.volume_api.get_all_snapshots(
@@ -439,6 +461,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self.configuration.volume_name_template % share['id'], '',
             snapshot=volume_snapshot,
             volume_type=self.configuration.cinder_volume_type)
+
+        self.private_storage.update(
+            share['id'], {'volume_id': volume['id']})
 
         t = time.time()
         while time.time() - t < self.configuration.max_time_to_create_volume:
@@ -526,6 +551,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # with any reason that caused absence of Nova instances.
         self._deallocate_container(self.admin_context, share)
 
+        self.private_storage.delete(share['id'])
+
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""
         volume = self._get_volume(self.admin_context, snapshot['share_id'])
@@ -544,6 +571,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             volume_snapshot = self.volume_api.get_snapshot(
                 self.admin_context,
                 volume_snapshot['id'])
+
+            self.private_storage.update(
+                snapshot['id'], {'volume_snapshot_id': volume_snapshot['id']})
         else:
             raise exception.ManilaException(
                 _('Volume snapshot have not been '
@@ -565,6 +595,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                                         volume_snapshot['id'])
             except exception.VolumeSnapshotNotFound:
                 LOG.debug('Volume snapshot was deleted successfully')
+                self.private_storage.delete(snapshot['id'])
                 break
             time.sleep(1)
         else:
@@ -716,6 +747,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 LOG.debug('Manage: volume_id = %s' % share_volume['id'])
                 self.volume_api.update(self.admin_context, share_volume['id'],
                                        {'name': linked_volume_name})
+
+            self.private_storage.update(
+                share['id'], {'volume_id': share_volume['id']})
 
             share_size = share_volume['size']
         else:

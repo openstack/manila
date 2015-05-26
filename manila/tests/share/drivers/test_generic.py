@@ -67,11 +67,17 @@ class GenericShareDriverTestCase(test.TestCase):
         self._helper_nfs = mock.Mock()
         CONF.set_default('driver_handles_share_servers', True)
         self.fake_conf = manila.share.configuration.Configuration(None)
+
+        self.fake_private_storage = mock.Mock()
+        self.mock_object(self.fake_private_storage, 'get',
+                         mock.Mock(return_value=None))
+
         with mock.patch.object(
                 generic.service_instance,
                 'ServiceInstanceManager',
                 fake_service_instance.FakeServiceInstanceManager):
             self._driver = generic.GenericShareDriver(
+                private_storage=self.fake_private_storage,
                 execute=self._execute, configuration=self.fake_conf)
         self._driver.service_tenant_id = 'service tenant id'
         self._driver.service_network_id = 'service network id'
@@ -459,6 +465,22 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver.volume_api.get_all.assert_called_once_with(
             self._context, {'all_tenants': True, 'name': volume['name']})
 
+    def test_get_volume_with_private_data(self):
+        volume = fake_volume.FakeVolume()
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self.fake_private_storage, 'get',
+                         mock.Mock(return_value=volume['id']))
+
+        result = self._driver._get_volume(self._context, self.share['id'])
+
+        self.assertEqual(result, volume)
+        self._driver.volume_api.get.assert_called_once_with(
+            self._context, volume['id'])
+        self.fake_private_storage.get.assert_called_once_with(
+            self.share['id'], 'volume_id'
+        )
+
     def test_get_volume_none(self):
         vol_name = (
             self._driver.configuration.volume_name_template % self.share['id'])
@@ -493,6 +515,21 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertEqual(result, volume_snapshot)
         self._driver.volume_api.get_all_snapshots.assert_called_once_with(
             self._context, {'name': volume_snapshot['name']})
+
+    def test_get_volume_snapshot_with_private_data(self):
+        volume_snapshot = fake_volume.FakeVolumeSnapshot()
+        self.mock_object(self._driver.volume_api, 'get_snapshot',
+                         mock.Mock(return_value=volume_snapshot))
+        self.mock_object(self.fake_private_storage, 'get',
+                         mock.Mock(return_value=volume_snapshot['id']))
+        result = self._driver._get_volume_snapshot(self._context,
+                                                   self.snapshot['id'])
+        self.assertEqual(result, volume_snapshot)
+        self._driver.volume_api.get_snapshot.assert_called_once_with(
+            self._context, volume_snapshot['id'])
+        self.fake_private_storage.get.assert_called_once_with(
+            self.snapshot['id'], 'volume_snapshot_id'
+        )
 
     def test_get_volume_snapshot_none(self):
         snap_name = (
@@ -1211,6 +1248,9 @@ class GenericShareDriverTestCase(test.TestCase):
         }
         self._driver.volume_api.update.assert_called_once_with(
             mock.ANY, volume['id'], expected_volume_update)
+        self.fake_private_storage.update.assert_called_once_with(
+            share['id'], {'volume_id': volume['id']}
+        )
 
     def test_get_mounted_share_size(self):
         output = ("Filesystem   blocks  Used Available Capacity Mounted on\n"
