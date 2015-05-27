@@ -1514,3 +1514,52 @@ class ShareManagerTestCase(test.TestCase):
             self.context,
             'server1')
         timeutils.utcnow.assert_called_once_with()
+
+    def test_extend_share_invalid(self):
+        share = self._create_share()
+        share_id = share['id']
+
+        self.mock_object(self.share_manager, 'driver')
+        self.mock_object(self.share_manager.db, 'share_update')
+        self.mock_object(quota.QUOTAS, 'rollback')
+        self.mock_object(self.share_manager.driver, 'extend_share',
+                         mock.Mock(side_effect=Exception('fake')))
+
+        self.assertRaises(
+            exception.ShareExtendingError,
+            self.share_manager.extend_share, self.context, share_id, 123, {})
+
+    def test_extend_share(self):
+        share = self._create_share()
+        share_id = share['id']
+        new_size = 123
+        shr_update = {
+            'size': int(new_size),
+            'status': constants.STATUS_AVAILABLE.lower()
+        }
+        reservations = {}
+        fake_share_server = 'fake'
+
+        manager = self.share_manager
+        self.mock_object(manager, 'driver')
+        self.mock_object(manager.db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(manager.db, 'share_update',
+                         mock.Mock(return_value=share))
+        self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(manager.driver, 'extend_share')
+        self.mock_object(manager, '_get_share_server',
+                         mock.Mock(return_value=fake_share_server))
+
+        self.share_manager.extend_share(self.context, share_id,
+                                        new_size, reservations)
+
+        self.assertTrue(manager._get_share_server.called)
+        manager.driver.extend_share.assert_called_once_with(
+            share, new_size, share_server=fake_share_server
+        )
+        quota.QUOTAS.commit.assert_called_once_with(
+            mock.ANY, reservations, project_id=share['project_id'])
+        manager.db.share_update.assert_called_once_with(
+            mock.ANY, share_id, shr_update
+        )

@@ -92,7 +92,7 @@ QUOTAS = quota.QUOTAS
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.1'
+    RPC_API_VERSION = '1.2'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -833,3 +833,37 @@ class ShareManager(manager.SchedulerDependentManager):
             raise exception.InvalidParameterValue(
                 "Option unused_share_server_cleanup_interval should be "
                 "between 10 minutes and 1 hour.")
+
+    def extend_share(self, context, share_id, new_size, reservations):
+        context = context.elevated()
+        share = self.db.share_get(context, share_id)
+        share_server = self._get_share_server(context, share)
+        project_id = share['project_id']
+
+        try:
+            self.driver.extend_share(
+                share, new_size, share_server=share_server)
+        except Exception as e:
+            LOG.exception(_LE("Extend share failed."), resource=share)
+
+            try:
+                self.db.share_update(
+                    context, share['id'],
+                    {'status': constants.STATUS_EXTENDING_ERROR}
+                )
+                raise exception.ShareExtendingError(
+                    reason=six.text_type(e), share_id=share_id)
+            finally:
+                QUOTAS.rollback(context, reservations, project_id=project_id)
+
+        QUOTAS.commit(context, reservations, project_id=project_id)
+
+        share_update = {
+            'size': int(new_size),
+            # NOTE(u_glide): translation to lower case should be removed in
+            # a row with usage of upper case of share statuses in all places
+            'status': constants.STATUS_AVAILABLE.lower()
+        }
+        share = self.db.share_update(context, share['id'], share_update)
+
+        LOG.info(_LI("Extend share completed successfully."), resource=share)

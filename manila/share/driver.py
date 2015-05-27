@@ -375,6 +375,15 @@ class ShareDriver(object):
         UnmanageInvalidShare exception, specifying a reason for the failure.
         """
 
+    def extend_share(self, share, new_size, share_server=None):
+        """Extends size of existing share.
+
+        :param share: Share model
+        :param new_size: New size of share (new_size > share['size'])
+        :param share_server: Optional -- Share server model
+        """
+        raise NotImplementedError()
+
     def teardown_server(self, *args, **kwargs):
         if self.driver_handles_share_servers:
             return self._teardown_server(*args, **kwargs)

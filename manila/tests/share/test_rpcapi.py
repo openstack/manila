@@ -161,3 +161,11 @@ class ShareRpcAPITestCase(test.TestCase):
         self._test_share_api('delete_share_server',
                              rpc_method='cast',
                              share_server=self.fake_share_server)
+
+    def test_extend_share(self):
+        self._test_share_api('extend_share',
+                             rpc_method='cast',
+                             version='1.2',
+                             share=self.fake_share,
+                             new_size=123,
+                             reservations={'fake': 'fake'})
