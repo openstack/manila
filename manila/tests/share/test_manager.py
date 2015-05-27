@@ -28,6 +28,7 @@ from manila import db
 from manila.db.sqlalchemy import models
 from manila import exception
 from manila import quota
+from manila.share import drivers_private_data
 from manila.share import manager
 from manila import test
 from manila.tests import utils as test_utils
@@ -140,6 +141,23 @@ class ShareManagerTestCase(test.TestCase):
                                               share_network_id,
                                               service_ref['id'])
         return service_ref
+
+    def test_share_manager_instance(self):
+        fake_service_name = "fake_service"
+        import_mock = mock.Mock()
+        self.mock_object(importutils, "import_object", import_mock)
+        private_data_mock = mock.Mock()
+        self.mock_object(drivers_private_data, "DriverPrivateData",
+                         private_data_mock)
+
+        share_manager = manager.ShareManager(service_name=fake_service_name)
+
+        private_data_mock.assert_called_once_with(
+            context=mock.ANY,
+            backend_host=share_manager.host,
+            config_group=fake_service_name
+        )
+        self.assertTrue(import_mock.called)
 
     def test_init_host_with_no_shares(self):
         self.mock_object(self.share_manager.db, 'share_get_all_by_host',

@@ -473,6 +473,15 @@ class NetworkAllocation(BASE, ManilaBase):
                     default=constants.STATUS_NEW)
 
 
+class DriverPrivateData(BASE, ManilaBase):
+    """Represents a private data as key-value pairs for a driver."""
+    __tablename__ = 'drivers_private_data'
+    host = Column(String(255), nullable=False, primary_key=True)
+    entity_uuid = Column(String(36), nullable=False, primary_key=True)
+    key = Column(String(255), nullable=False, primary_key=True)
+    value = Column(String(1023), nullable=False)
+
+
 def register_models():
     """Register Models and create metadata.
 
