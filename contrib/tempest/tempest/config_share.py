@@ -123,6 +123,11 @@ ShareGroup = [
     cfg.StrOpt("image_password",
                default="ubuntu",
                help="Image password."),
+    cfg.BoolOpt("run_extend_tests",
+                default=True,
+                help="Defines whether to run share extend tests or not."
+                     "Disable this feature if used driver doesn't "
+                     "support it."),
 ]
 
 

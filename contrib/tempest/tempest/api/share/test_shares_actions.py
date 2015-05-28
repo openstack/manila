@@ -378,6 +378,22 @@ class SharesActionsTest(base.BaseSharesTest):
         sorted_list = [snap['share_id'] for snap in snaps]
         self.assertEqual(sorted_list, sorted(sorted_list))
 
+    @test.attr(type=["gate", ])
+    @testtools.skipUnless(
+        CONF.share.run_extend_tests,
+        "Share extend tests are disabled.")
+    def test_extend_share(self):
+        share = self.create_share(size=1, cleanup_in_class=False)
+        new_size = 2
+
+        # extend share and wait for active status
+        self.shares_client.extend_share(share['id'], new_size)
+        self.shares_client.wait_for_share_status(share['id'], 'available')
+
+        # check state and new size
+        share = self.shares_client.get_share(share['id'])
+        self.assertEqual(new_size, share['size'])
+
 
 class SharesRenameTest(base.BaseSharesTest):
 
