@@ -22,6 +22,7 @@ import webob
 
 from manila.api import common
 from manila.api.v1 import shares
+from manila.common import constants
 from manila import context
 from manila import exception
 from manila.share import api as share_api
@@ -368,7 +369,7 @@ class ShareApiTest(test.TestCase):
     def _share_list_summary_with_search_opts(self, use_admin_context):
         search_opts = {
             'name': 'fake_name',
-            'status': 'available',
+            'status': constants.STATUS_AVAILABLE,
             'share_server_id': 'fake_share_server_id',
             'share_type_id': 'fake_share_type_id',
             'snapshot_id': 'fake_snapshot_id',
@@ -457,7 +458,7 @@ class ShareApiTest(test.TestCase):
     def _share_list_detail_with_search_opts(self, use_admin_context):
         search_opts = {
             'name': 'fake_name',
-            'status': 'available',
+            'status': constants.STATUS_AVAILABLE,
             'share_server_id': 'fake_share_server_id',
             'share_type_id': 'fake_share_type_id',
             'snapshot_id': 'fake_snapshot_id',
@@ -482,7 +483,7 @@ class ShareApiTest(test.TestCase):
             {
                 'id': 'id2',
                 'display_name': 'n2',
-                'status': 'available',
+                'status': constants.STATUS_AVAILABLE,
                 'snapshot_id': 'fake_snapshot_id',
                 'share_type_id': 'fake_share_type_id',
                 'host': 'fake_host',

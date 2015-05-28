@@ -125,7 +125,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
     def test_manage_retry(self):
         # Manage share with invalid parameters
         share = None
-        parameters = [(self.st_invalid['share_type']['id'], 'MANAGE_ERROR'),
+        parameters = [(self.st_invalid['share_type']['id'], 'manage_error'),
                       (self.st['share_type']['id'], 'available')]
 
         for share_type_id, status in parameters:

@@ -18,6 +18,7 @@ from webob import exc
 
 from manila.api import extensions
 from manila.api.openstack import wsgi
+from manila.common import constants
 from manila import db
 from manila import exception
 from manila import share
@@ -31,11 +32,11 @@ class AdminController(wsgi.Controller):
     collection = None
 
     valid_status = set([
-        'creating',
-        'available',
-        'deleting',
-        'error',
-        'error_deleting',
+        constants.STATUS_CREATING,
+        constants.STATUS_AVAILABLE,
+        constants.STATUS_DELETING,
+        constants.STATUS_ERROR,
+        constants.STATUS_ERROR_DELETING,
     ])
 
     def __init__(self, *args, **kwargs):
@@ -85,7 +86,7 @@ class AdminController(wsgi.Controller):
 
     @wsgi.action('os-force_delete')
     def _force_delete(self, req, id, body):
-        """Delete a resource, bypassing the check that it must be available."""
+        """Delete a resource, bypassing the check for status."""
         context = req.environ['manila.context']
         self.authorize(context, 'force_delete')
         try:

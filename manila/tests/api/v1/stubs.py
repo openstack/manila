@@ -15,6 +15,7 @@
 
 import datetime
 
+from manila.common import constants
 from manila import exception as exc
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -106,7 +107,7 @@ def stub_volume_get_all_by_project(self, context, search_opts=None):
 def stub_snapshot(id, **kwargs):
     snapshot = {'id': id,
                 'volume_id': 12,
-                'status': 'available',
+                'status': constants.STATUS_AVAILABLE,
                 'volume_size': 100,
                 'created_at': None,
                 'display_name': 'Default name',

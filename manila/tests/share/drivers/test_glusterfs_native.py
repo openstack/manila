@@ -26,6 +26,7 @@ import ddt
 import mock
 from oslo_config import cfg
 
+from manila.common import constants
 from manila import context
 from manila import exception
 from manila.share import configuration as config
@@ -83,10 +84,10 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.glusterfs_server2_volumes = 'manila-share-2-2G\nshare2'
         self.share1 = new_share(
             export_location=self.glusterfs_target1,
-            status="available")
+            status=constants.STATUS_AVAILABLE)
         self.share2 = new_share(
             export_location=self.glusterfs_target2,
-            status="available")
+            status=constants.STATUS_AVAILABLE)
         gmgr = glusterfs.GlusterManager
         self.gmgr1 = gmgr(self.glusterfs_server1, self._execute, None, None,
                           has_volume=False)

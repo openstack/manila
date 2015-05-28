@@ -73,8 +73,8 @@ class API(base.Base):
         self._check_metadata_properties(context, metadata)
 
         if snapshot is not None:
-            if snapshot['status'] != 'available':
-                msg = _("status must be 'available'")
+            if snapshot['status'] != constants.STATUS_AVAILABLE:
+                msg = _("status must be '%s'") % constants.STATUS_AVAILABLE
                 raise exception.InvalidShareSnapshot(reason=msg)
             if not size:
                 size = snapshot['size']
@@ -175,7 +175,7 @@ class API(base.Base):
                    'share_network_id': share_network_id,
                    'availability_zone': availability_zone,
                    'metadata': metadata,
-                   'status': "creating",
+                   'status': constants.STATUS_CREATING,
                    'scheduled_at': timeutils.utcnow(),
                    'display_name': name,
                    'display_description': description,
@@ -306,8 +306,10 @@ class API(base.Base):
                 QUOTAS.commit(context, reservations, project_id=project_id)
             return
 
-        if not (force or share['status'] in ["available", "error"]):
-            msg = _("Share status must be available or error")
+        statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR)
+        if not (force or share['status'] in statuses):
+            msg = _("Share status must be one of %(statuses)s") % {
+                "statuses": statuses}
             raise exception.InvalidShare(reason=msg)
 
         snapshots = self.db.share_snapshot_get_all_for_share(context, share_id)
@@ -316,8 +318,9 @@ class API(base.Base):
             raise exception.InvalidShare(reason=msg)
 
         now = timeutils.utcnow()
-        share = self.db.share_update(context, share_id, {'status': 'deleting',
-                                                         'terminated_at': now})
+        share = self.db.share_update(
+            context, share_id, {'status': constants.STATUS_DELETING,
+                                'terminated_at': now})
 
         self.share_rpcapi.delete_share(context, share)
 
@@ -350,8 +353,9 @@ class API(base.Base):
                         force=False):
         policy.check_policy(context, 'share', 'create_snapshot', share)
 
-        if ((not force) and (share['status'] != "available")):
-            msg = _("must be available")
+        if ((not force) and (share['status'] != constants.STATUS_AVAILABLE)):
+            msg = _("Source share status must be "
+                    "%s") % constants.STATUS_AVAILABLE
             raise exception.InvalidShare(reason=msg)
 
         size = share['size']
@@ -388,7 +392,7 @@ class API(base.Base):
                    'size': share['size'],
                    'user_id': context.user_id,
                    'project_id': context.project_id,
-                   'status': "creating",
+                   'status': constants.STATUS_CREATING,
                    'progress': '0%',
                    'share_size': share['size'],
                    'display_name': name,
@@ -410,12 +414,14 @@ class API(base.Base):
 
     @policy.wrap_check_policy('share')
     def delete_snapshot(self, context, snapshot, force=False):
-        if not (force or snapshot['status'] in ["available", "error"]):
-            msg = _("Share Snapshot status must be 'available' or 'error'.")
+        statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR)
+        if not (force or snapshot['status'] in statuses):
+            msg = _("Share Snapshot status must be one of %(statuses)s.") % {
+                "statuses": statuses}
             raise exception.InvalidShareSnapshot(reason=msg)
 
         self.db.share_snapshot_update(context, snapshot['id'],
-                                      {'status': 'deleting'})
+                                      {'status': constants.STATUS_DELETING})
         share = self.db.share_get(context, snapshot['share_id'])
         self.share_rpcapi.delete_snapshot(context, snapshot, share['host'])
 
@@ -557,8 +563,8 @@ class API(base.Base):
         if not share['host']:
             msg = _("Share host is None")
             raise exception.InvalidShare(reason=msg)
-        if share['status'] not in ["available"]:
-            msg = _("Share status must be available")
+        if share['status'] != constants.STATUS_AVAILABLE:
+            msg = _("Share status must be %s") % constants.STATUS_AVAILABLE
             raise exception.InvalidShare(reason=msg)
         policy.check_policy(ctx, 'share', 'allow_access')
         values = {
@@ -567,11 +573,11 @@ class API(base.Base):
             'access_to': access_to,
             'access_level': access_level,
         }
-        access = [a for a in self.db.share_access_get_all_by_type_and_access(
-            ctx, share['id'], access_type, access_to) if a['state'] != 'error']
-        if access:
-            raise exception.ShareAccessExists(access_type=access_type,
-                                              access=access_to)
+        for access in self.db.share_access_get_all_by_type_and_access(
+                ctx, share['id'], access_type, access_to):
+            if access['state'] != constants.STATUS_ERROR:
+                raise exception.ShareAccessExists(access_type=access_type,
+                                                  access=access_to)
         if access_level not in constants.ACCESS_LEVELS + (None, ):
             msg = _("Invalid share access level: %s.") % access_level
             raise exception.InvalidShareAccess(reason=msg)
@@ -586,8 +592,8 @@ class API(base.Base):
         if not share['host']:
             msg = _("Share host is None")
             raise exception.InvalidShare(reason=msg)
-        if share['status'] not in ["available"]:
-            msg = _("Share status must be available")
+        if share['status'] != constants.STATUS_AVAILABLE:
+            msg = _("Share status must be %s") % constants.STATUS_AVAILABLE
             raise exception.InvalidShare(reason=msg)
 
         # Then check state of the access rule
@@ -598,7 +604,9 @@ class API(base.Base):
                                         {'state': access.STATE_DELETING})
             self.share_rpcapi.deny_access(ctx, share, access)
         else:
-            msg = _("Access policy should be active or in error state")
+            msg = _("Access policy should be %(active)s or in %(error)s "
+                    "state") % {"active": constants.STATUS_ACTIVE,
+                                "error": constants.STATUS_ERROR}
             raise exception.InvalidShareAccess(reason=msg)
             # update share state and send message to manager
 
@@ -679,13 +687,11 @@ class API(base.Base):
     def extend(self, context, share, new_size):
         policy.check_policy(context, 'share', 'extend')
 
-        status = six.text_type(share['status']).upper()
-
-        if status != constants.STATUS_AVAILABLE:
+        if share['status'] != constants.STATUS_AVAILABLE:
             msg_params = {
                 'valid_status': constants.STATUS_AVAILABLE,
                 'share_id': share['id'],
-                'status': status,
+                'status': share['status'],
             }
             msg = _("Share %(share_id)s status must be '%(valid_status)s' "
                     "to extend, but current status is: "
