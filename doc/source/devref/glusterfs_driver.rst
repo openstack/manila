@@ -32,12 +32,17 @@ Supported Operations
 - Create NFS Share
 - Delete NFS Share
 - Allow NFS Share access
+
+  * only 'rw' access
+
 - Deny NFS Share access
 
 Requirements
 ------------
 
 - Install glusterfs-server package, version >= 3.5.x, on the storage backend.
+- Install NFS-Ganesha, version >=2.1, if using NFS-Ganesha as the NFS server
+  for the GlusterFS backend.
 - Install glusterfs and glusterfs-fuse package, version >=3.5.x, on the Manila
   host.
 - Establish network connection between the Manila host and the storage backend.
@@ -51,12 +56,17 @@ set:
 
 - `share_driver` = manila.share.drivers.glusterfs.GlusterfsShareDriver
 - If the backend GlusterFS server runs on the Manila host machine,
-   - `glusterfs_target` = <glustervolserver>:/<glustervolid>
+
+  * `glusterfs_target` = <glustervolserver>:/<glustervolid>
+
   And if the backend GlusterFS server runs remotely,
-   -  `glusterfs_target` = <username>@<glustervolserver>:/<glustervolid>
+
+  * `glusterfs_target` = <username>@<glustervolserver>:/<glustervolid>
 
 The following configuration parameters are optional:
 
+- `glusterfs_nfs_server_type` = <NFS server type used by the GlusterFS
+     backend, `Gluster` or `Ganesha`. `Gluster` is the default type>
 - `glusterfs_mount_point_base` =  <base path of GlusterFS volume mounted on
      Manila host>
 - `glusterfs_path_to_private_key` = <path to Manila host's private key file>
@@ -66,14 +76,16 @@ The following configuration parameters are optional:
 Known Restrictions
 ------------------
 
-- The driver does not support network segmented multi-tenancy model instead
-  works over a flat network, where the tenants share a network.
-- NFSv3 is the only protocol that can be used to access the shares. This is
-  because the shares are mediated in the backend GlusterFS by the Gluster-NFS
-  server that supports only NFSv3 protocol.
+- The driver does not support network segmented multi-tenancy model, but
+  instead works over a flat network, where the tenants share a network.
+- If NFS Ganesha is the NFS server used by the GlusterFS backend, then the
+  shares can be accessed by NFSv3 and v4 protocols. However, if Gluster NFS is
+  used by the GlusterFS backend, then the shares can only be accessed by NFSv3
+  protocol.
 - All Manila shares, which map to subdirectories within a GlusterFS volume, are
   currently created within a single GlusterFS volume of a GlusterFS storage
   pool.
+- The driver does not provide read-only access level for shares.
 
 The :mod:`manila.share.drivers.glusterfs` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

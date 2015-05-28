@@ -15,10 +15,11 @@
 
 """Flat network GlusterFS Driver.
 
-Manila shares are subdirectories within a GlusterFS volume. The access to the
-shares is currently mediated by the Gluster-NFS server running in the GlusterFS
-backend storage pool. The Gluster-NFS server supports only NFSv3 protocol so
-it's the only protocol that can be used to access the shares.
+Manila shares are subdirectories within a GlusterFS volume. The backend,
+a GlusterFS cluster, uses one of the two NFS servers, Gluster-NFS or
+NFS-Ganesha, based on a configuration option, to mediate access to the shares.
+NFS-Ganesha server supports NFSv3 and v4 protocols, while Gluster-NFS
+server supports only NFSv3 protocol.
 
 TODO(rraja): support SMB protocol.
 """
