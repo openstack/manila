@@ -349,9 +349,6 @@ class SecurityService(BASE, ManilaBase):
     password = Column(String(255), nullable=True)
     name = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)
-    status = Column(Enum(constants.STATUS_NEW, constants.STATUS_ACTIVE,
-                         constants.STATUS_ERROR),
-                    default=constants.STATUS_NEW)
 
 
 class ShareNetwork(BASE, ManilaBase):
@@ -468,9 +465,6 @@ class NetworkAllocation(BASE, ManilaBase):
     mac_address = Column(String(32), nullable=True)
     share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                              nullable=False)
-    status = Column(Enum(constants.STATUS_NEW, constants.STATUS_ACTIVE,
-                         constants.STATUS_ERROR),
-                    default=constants.STATUS_NEW)
 
 
 class DriverPrivateData(BASE, ManilaBase):

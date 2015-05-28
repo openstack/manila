@@ -43,7 +43,7 @@ class ShareApiTest(test.TestCase):
             "domain": "fake-domain",
             "user": "fake-user",
             "password": "fake-password",
-            "status": "new",
+            "status": constants.STATUS_NEW,
             "project_id": "fake",
         }
         self.ss_ldap = {
@@ -66,7 +66,6 @@ class ShareApiTest(test.TestCase):
             'server': 'fake-server',
             'dns_ip': '1.1.1.1',
             'domain': 'fake-domain',
-            'status': 'new',
             'type': constants.SECURITY_SERVICES_ALLOWED_TYPES[0],
         }
         self.check_policy_patcher = mock.patch(

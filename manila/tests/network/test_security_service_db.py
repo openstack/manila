@@ -15,7 +15,6 @@
 
 from oslo_db import exception as db_exception
 
-from manila.common import constants
 from manila import context
 from manila.db import api as db_api
 from manila import exception
@@ -33,7 +32,6 @@ security_service_dict = {
     'password': 'fake password',
     'name': 'whatever',
     'description': 'nevermind',
-    'status': constants.STATUS_NEW,
 }
 
 
@@ -101,7 +99,6 @@ class SecurityServiceDBTest(test.TestCase):
             'password': 'new password',
             'name': 'new whatever',
             'description': 'new nevermind',
-            'status': constants.STATUS_ERROR,
         }
 
         db_api.security_service_create(self.fake_context,

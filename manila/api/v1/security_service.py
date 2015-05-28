@@ -98,6 +98,9 @@ class SecurityServiceController(wsgi.Controller):
         search_opts = {}
         search_opts.update(req.GET)
 
+        # NOTE(vponomaryov): remove 'status' from search opts
+        # since it was removed from security service model.
+        search_opts.pop('status', None)
         if 'share_network_id' in search_opts:
             share_nw = db.share_network_get(context,
                                             search_opts['share_network_id'])
@@ -141,7 +144,7 @@ class SecurityServiceController(wsgi.Controller):
         return security_services
 
     def _get_security_services_search_options(self):
-        return ('status', 'name', 'id', 'type', 'user',
+        return ('name', 'id', 'type', 'user',
                 'server', 'dns_ip', 'domain', )
 
     def _share_servers_dependent_on_sn_exist(self, context,
@@ -173,23 +176,18 @@ class SecurityServiceController(wsgi.Controller):
         except exception.NotFound:
             raise exc.HTTPNotFound()
 
-        if security_service['status'].lower() in ['new', 'inactive']:
-            update_dict = security_service_data
-            if self._share_servers_dependent_on_sn_exist(context, id):
-                for item in update_dict:
-                    if item not in valid_update_keys:
-                        msg = _("Cannot update security service %s. It is "
-                                "attached to share network with share server "
-                                "associated. Only 'name' and 'description' "
-                                "fields are available for update.") % id
-                        raise exc.HTTPForbidden(explanation=msg)
-        else:
-            update_dict = dict([(key, security_service_data[key])
-                                for key in valid_update_keys
-                                if key in security_service_data])
+        if self._share_servers_dependent_on_sn_exist(context, id):
+            for item in security_service_data:
+                if item not in valid_update_keys:
+                    msg = _("Cannot update security service %s. It is "
+                            "attached to share network with share server "
+                            "associated. Only 'name' and 'description' "
+                            "fields are available for update.") % id
+                    raise exc.HTTPForbidden(explanation=msg)
 
         policy.check_policy(context, RESOURCE_NAME, 'update', security_service)
-        security_service = db.security_service_update(context, id, update_dict)
+        security_service = db.security_service_update(
+            context, id, security_service_data)
         return self._view_builder.detail(req, security_service)
 
     def create(self, req, body):

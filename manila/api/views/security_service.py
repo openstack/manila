@@ -14,6 +14,7 @@
 #    under the License.
 
 from manila.api import common
+from manila.common import constants
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -36,29 +37,23 @@ class ViewBuilder(common.ViewBuilder):
                 'id': security_service.get('id'),
                 'name': security_service.get('name'),
                 'type': security_service.get('type'),
-                'status': security_service.get('status')
+                # NOTE(vponomaryov): attr "status" was removed from model and
+                # is left in view for compatibility purposes since it affects
+                # user-facing API. This should be removed right after no one
+                # uses it anymore.
+                'status': constants.STATUS_NEW,
             }
         }
 
     def detail(self, request, security_service):
         """Detailed view of a single security service."""
-        return {
-            'security_service': {
-                'id': security_service.get('id'),
-                'name': security_service.get('name'),
-                'created_at': security_service.get('created_at'),
-                'updated_at': security_service.get('updated_at'),
-                'status': security_service.get('status'),
-                'description': security_service.get('description'),
-                'dns_ip': security_service.get('dns_ip'),
-                'server': security_service.get('server'),
-                'domain': security_service.get('domain'),
-                'user': security_service.get('user'),
-                'password': security_service.get('password'),
-                'type': security_service.get('type'),
-                'project_id': security_service.get('project_id'),
-            }
-        }
+        view = self.summary(request, security_service)
+        keys = (
+            'created_at', 'updated_at', 'description', 'dns_ip', 'server',
+            'domain', 'user', 'password', 'project_id')
+        for key in keys:
+            view['security_service'][key] = security_service.get(key)
+        return view
 
     def _list_view(self, func, request, security_services):
         """Provide a view for a list of security services."""
