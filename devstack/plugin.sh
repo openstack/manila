@@ -34,11 +34,16 @@ MANILA_REPO_ROOT=${MANILA_REPO_ROOT:-openstack}
 MANILACLIENT_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/python-manilaclient.git
 MANILACLIENT_BRANCH=${MANILACLIENT_BRANCH:-master}
 
+MANILA_UI_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/manila-ui.git
+MANILA_UI_BRANCH=${MANILA_UI_BRANCH:-$MANILACLIENT_BRANCH}
+MANILA_UI_ENABLED=$(trueorfalse True MANILA_UI_ENABLED)
+
 # set up default directories
 MANILA_DIR=${MANILA_DIR:=$DEST/manila}
 MANILA_LOCK_PATH=${MANILA_LOCK_PATH:=$OSLO_LOCK_PATH}
 MANILA_LOCK_PATH=${MANILA_LOCK_PATH:=$MANILA_DIR/manila_locks}
 MANILACLIENT_DIR=${MANILACLIENT_DIR:=$DEST/python-manilaclient}
+MANILA_UI_DIR=${MANILA_UI_DIR:=$DEST/manila-ui}
 MANILA_STATE_PATH=${MANILA_STATE_PATH:=$DATA_DIR/manila}
 MANILA_AUTH_CACHE_DIR=${MANILA_AUTH_CACHE_DIR:-/var/cache/manila}
 
@@ -294,7 +299,21 @@ function configure_manila {
     MANILA_CONFIGURE_GROUPS=${MANILA_CONFIGURE_GROUPS:-"$MANILA_ENABLED_BACKENDS"}
     set_config_opts $MANILA_CONFIGURE_GROUPS
     set_config_opts DEFAULT
+
+    if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
+        configure_manila_ui
+    fi
 }
+
+
+function configure_manila_ui {
+    setup_develop $MANILA_UI_DIR
+    local local_settings=$HORIZON_DIR/openstack_dashboard/local/local_settings.py
+
+    _horizon_config_set $local_settings "HORIZON_CONFIG" customization_module "'manila_ui.overrides'"
+    cp $MANILA_UI_DIR/manila_ui/enabled/_90_manila_*.py $HORIZON_DIR/openstack_dashboard/local/enabled
+}
+
 
 # create_service_share_servers - creates service Nova VMs, one per generic
 # driver, and only if it is configured to mode without handling of share servers.
@@ -452,10 +471,21 @@ function init_manila {
 # install_manila - Collect source and prepare
 function install_manila {
     git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
+
+    # install manila-ui if horizon is enabled
+    if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
+        git_clone $MANILA_UI_REPO $MANILA_UI_DIR $MANILA_UI_BRANCH
+    fi
 }
 
 # start_manila - Start running processes, including screen
 function start_manila {
+    # restart apache to reload running horizon if manila-ui is enabled
+    if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
+        restart_apache_server
+        sleep 3 # Wait for 3 sec to ensure that apache is running
+    fi
+
     screen_it m-api "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-api --config-file $MANILA_CONF"
     screen_it m-shr "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-share --config-file $MANILA_CONF"
     screen_it m-sch "cd $MANILA_DIR && $MANILA_BIN_DIR/manila-scheduler --config-file $MANILA_CONF"
