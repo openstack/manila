@@ -18,10 +18,10 @@ import time
 import urllib
 
 import six  # noqa
+from tempest_lib.common import rest_client  # noqa
 from tempest_lib.common.utils import data_utils  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
 
-from tempest.common import service_client
 from tempest import config_share as config
 from tempest import exceptions
 from tempest import share_exceptions
@@ -29,7 +29,7 @@ from tempest import share_exceptions
 CONF = config.CONF
 
 
-class SharesClient(service_client.ServiceClient):
+class SharesClient(rest_client.RestClient):
     """Tempest REST client for Manila.
 
     It handles shares and access to it in OpenStack.
