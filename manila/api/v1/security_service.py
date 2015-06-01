@@ -171,7 +171,7 @@ class SecurityServiceController(wsgi.Controller):
 
         try:
             security_service = db.security_service_get(context, id)
-            policy.check_policy(context, RESOURCE_NAME, 'show',
+            policy.check_policy(context, RESOURCE_NAME, 'update',
                                 security_service)
         except exception.NotFound:
             raise exc.HTTPNotFound()
