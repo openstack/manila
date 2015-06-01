@@ -1687,3 +1687,73 @@ class ShareManagerTestCase(test.TestCase):
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update
         )
+
+    def test_report_driver_status_driver_handles_ss_false(self):
+        fake_stats = {'field': 'val'}
+        fake_pool = {'name': 'pool1'}
+        self.share_manager.last_capabilities = {'field': 'old_val'}
+
+        self.mock_object(self.share_manager, 'driver', mock.Mock())
+        driver = self.share_manager.driver
+
+        driver.get_share_stats = mock.Mock(return_value=fake_stats)
+        self.mock_object(db, 'share_server_get_all_by_host', mock.Mock())
+        driver.driver_handles_share_servers = False
+        driver.get_share_server_pools = mock.Mock(return_value=fake_pool)
+
+        self.share_manager._report_driver_status(self.context)
+
+        driver.get_share_stats.assert_called_once_with(
+            refresh=True)
+        self.assertFalse(db.share_server_get_all_by_host.called)
+        self.assertFalse(driver.get_share_server_pools.called)
+        self.assertEqual(fake_stats, self.share_manager.last_capabilities)
+
+    def test_report_driver_status_driver_handles_ss(self):
+        fake_stats = {'field': 'val'}
+        fake_ss = {'id': '1234'}
+        fake_pool = {'name': 'pool1'}
+
+        self.mock_object(self.share_manager, 'driver', mock.Mock())
+        driver = self.share_manager.driver
+
+        driver.get_share_stats = mock.Mock(return_value=fake_stats)
+        self.mock_object(db, 'share_server_get_all_by_host', mock.Mock(
+            return_value=[fake_ss]))
+        driver.driver_handles_share_servers = True
+        driver.get_share_server_pools = mock.Mock(return_value=fake_pool)
+
+        self.share_manager._report_driver_status(self.context)
+
+        driver.get_share_stats.assert_called_once_with(refresh=True)
+        db.share_server_get_all_by_host.assert_called_once_with(
+            self.context,
+            self.share_manager.host)
+        driver.get_share_server_pools.assert_called_once_with(fake_ss)
+        expected_stats = {
+            'field': 'val',
+            'server_pools_mapping': {
+                '1234': fake_pool},
+        }
+        self.assertEqual(expected_stats, self.share_manager.last_capabilities)
+
+    def test_report_driver_status_empty_share_stats(self):
+        old_capabilities = {'field': 'old_val'}
+        fake_pool = {'name': 'pool1'}
+        self.share_manager.last_capabilities = old_capabilities
+
+        self.mock_object(self.share_manager, 'driver', mock.Mock())
+        driver = self.share_manager.driver
+
+        driver.get_share_stats = mock.Mock(return_value={})
+        self.mock_object(db, 'share_server_get_all_by_host', mock.Mock())
+        driver.driver_handles_share_servers = True
+        driver.get_share_server_pools = mock.Mock(return_value=fake_pool)
+
+        self.share_manager._report_driver_status(self.context)
+
+        driver.get_share_stats.assert_called_once_with(refresh=True)
+        self.assertFalse(db.share_server_get_all_by_host.called)
+        self.assertFalse(driver.get_share_server_pools.called)
+        self.assertEqual(old_capabilities,
+                         self.share_manager.last_capabilities)

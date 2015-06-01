@@ -441,6 +441,7 @@ class HP3ParDriverTestCase(test.TestCase):
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': expected_capacity,
             'vendor_name': 'HP',
+            'pools': None,
         }
 
         result = self.driver.get_share_stats(refresh=True)

@@ -2029,6 +2029,11 @@ def share_server_get_all(context):
 
 
 @require_context
+def share_server_get_all_by_host(context, host):
+    return _server_get_query(context).filter_by(host=host).all()
+
+
+@require_context
 def share_server_get_all_unused_deletable(context, host, updated_before):
     valid_server_status = (
         constants.STATUS_INACTIVE,

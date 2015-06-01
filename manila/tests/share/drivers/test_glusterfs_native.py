@@ -1062,6 +1062,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'QoS_support': False,
             'total_capacity_gb': 'infinite',
             'free_capacity_gb': 'infinite',
+            'pools': None,
         }
 
         self._driver._update_share_stats()

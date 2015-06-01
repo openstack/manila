@@ -533,6 +533,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             'QoS_support': False,
             'total_capacity_gb': 2,
             'free_capacity_gb': 2,
+            'pools': None,
         }
         test_statvfs = mock.Mock(f_frsize=4096, f_blocks=524288,
                                  f_bavail=524288)

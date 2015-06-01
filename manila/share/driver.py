@@ -176,7 +176,7 @@ class ShareDriver(object):
         self.configuration = kwargs.get('configuration', None)
         self._stats = {}
 
-        self.pools = {}
+        self.pools = []
         if self.configuration:
             self.configuration.append_config_values(share_opts)
             network_config_group = (self.configuration.network_config_group or
@@ -437,7 +437,16 @@ class ShareDriver(object):
             total_capacity_gb='infinite',
             free_capacity_gb='infinite',
             reserved_percentage=0,
-            QoS_support=False)
+            QoS_support=False,
+            pools=self.pools or None,
+        )
         if isinstance(data, dict):
             common.update(data)
         self._stats = common
+
+    def get_share_server_pools(self, share_server):
+        """Return list of pools related to a particular share server.
+
+        :param share_server: ShareServer class instance.
+        """
+        return []

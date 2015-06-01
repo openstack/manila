@@ -50,7 +50,7 @@ class ShareDriverTestCase(test.TestCase):
         self.mock_object(self.utils, 'execute', fake_execute_with_raise)
         self.time = time
         self.mock_object(self.time, 'sleep', fake_sleep)
-        self.mock_object(driver.CONF, 'driver_handles_share_servers', True)
+        driver.CONF.set_default('driver_handles_share_servers', True)
 
     def test__try_execute(self):
         execute_mixin = ShareDriverWithExecuteMixin(
@@ -199,3 +199,10 @@ class ShareDriverTestCase(test.TestCase):
             self.assertTrue(callable(getattr(obj, attr)))
 
         assert_is_callable(share_driver, method)
+
+    @ddt.data(True, False)
+    def test_get_share_server_pools(self, value):
+        driver.CONF.set_default('driver_handles_share_servers', value)
+        share_driver = driver.ShareDriver(value)
+        self.assertEqual([],
+                         share_driver.get_share_server_pools('fake_server'))
