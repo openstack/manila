@@ -82,7 +82,6 @@ class SecurityServiceListMixin(object):
     @test.attr(type=["gate", "smoke"])
     def test_list_security_services_detailed_filter_by_ss_attributes(self):
         search_opts = {
-            'status': 'NEW',
             'name': 'ss_ldap',
             'type': 'ldap',
             'user': 'fake_user',
