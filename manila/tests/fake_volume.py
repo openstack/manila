@@ -61,6 +61,9 @@ class API(object):
     def create(self, *args, **kwargs):
         pass
 
+    def extend(self, *args, **kwargs):
+        pass
+
     def get_all(self, search_opts):
         pass
 
