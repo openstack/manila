@@ -18,20 +18,20 @@ from xml.etree import ElementTree as ET
 
 from oslo_log import log
 from oslo_serialization import jsonutils
-from oslo_utils import units
 import six
 from six.moves import http_cookiejar
 from six.moves.urllib import request as urlreq  # pylint: disable=E0611
 
 from manila import exception
-from manila.i18n import _, _LE, _LW
+from manila.i18n import _
+from manila.i18n import _LE
 from manila.share.drivers.huawei import constants
 from manila import utils
 
 LOG = log.getLogger(__name__)
 
 
-class RestHelper():
+class RestHelper(object):
     """Helper class for Huawei OceanStor V3 storage system."""
 
     def __init__(self, configuration):
@@ -203,31 +203,6 @@ class RestHelper():
 
         return result['data']['ID']
 
-    def _delete_share(self, share_name, share_proto):
-        """Delete share."""
-        share_type = self._get_share_type(share_proto)
-        share = self._get_share_by_name(share_name, share_type)
-
-        if not share:
-            LOG.warn(_LW('The share was not found. share_name:%s'), share_name)
-            fsid = self._get_fsid_by_name(share_name)
-            if fsid:
-                self._delete_fs(fsid)
-                return
-            LOG.warn(_LW('The filesystem was not found.'))
-            return
-
-        share_id = share['ID']
-        share_fs_id = share['FSID']
-
-        if share_id:
-            self._delete_share_by_id(share_id, share_type)
-
-        if share_fs_id:
-            self._delete_fs(share_fs_id)
-
-        return share
-
     def _delete_share_by_id(self, share_id, share_type):
         """Delete share by share id."""
         url = self.url + "/" + share_type + "/" + share_id
@@ -317,31 +292,15 @@ class RestHelper():
 
         poolinfo = {}
         pool_name = pool_name.strip()
-        if "data" in result:
-            for item in result['data']:
-                if pool_name == item['NAME']:
-                    poolinfo['ID'] = item['ID']
-                    poolinfo['CAPACITY'] = item['USERFREECAPACITY']
-                    poolinfo['TOTALCAPACITY'] = item['USERTOTALCAPACITY']
-                    break
+        for item in result.get('data', []):
+            if pool_name == item['NAME']:
+                poolinfo['name'] = pool_name
+                poolinfo['ID'] = item['ID']
+                poolinfo['CAPACITY'] = item['USERFREECAPACITY']
+                poolinfo['TOTALCAPACITY'] = item['USERTOTALCAPACITY']
+                break
 
         return poolinfo
-
-    def _get_capacity(self):
-        """Get free capacity and total capacity of the pools."""
-        poolinfo = self._find_pool_info()
-        pool_capacity = {
-            'total_capacity': 0.0,
-            'free_capacity': 0.0
-        }
-
-        if poolinfo:
-            total = int(poolinfo['TOTALCAPACITY']) / units.Mi / 2
-            free = int(poolinfo['CAPACITY']) / units.Mi / 2
-            pool_capacity['total_capacity'] = total
-            pool_capacity['free_capacity'] = free
-
-        return pool_capacity
 
     def _read_xml(self):
         """Open xml file and parse the content."""
@@ -350,77 +309,13 @@ class RestHelper():
             tree = ET.parse(filename)
             root = tree.getroot()
         except Exception as err:
-            LOG.error(_LE('Read Huawei config file(%(filename)s)'
-                      ' for Manila error: %(err)s') %
-                      {'filename': filename,
-                       'err': err})
-            raise err
+            message = (_('Read Huawei config file(%(filename)s)'
+                         ' for Manila error: %(err)s')
+                       % {'filename': filename,
+                          'err': err})
+            LOG.error(message)
+            raise exception.InvalidInput(reason=message)
         return root
-
-    def _init_filesys_para(self, name, size):
-        """Init basic filesystem parameters."""
-        poolinfo = self._find_pool_info()
-        fileparam = {
-            "NAME": name.replace("-", "_"),
-            "DESCRIPTION": "",
-            "ALLOCTYPE": 1,
-            "CAPACITY": size,
-            "PARENTID": poolinfo['ID'],
-            "INITIALALLOCCAPACITY": units.Ki * 20,
-            "PARENTTYPE": 216,
-            "SNAPSHOTRESERVEPER": 20,
-            "INITIALDISTRIBUTEPOLICY": 0,
-            "ISSHOWSNAPDIR": 'true',
-            "RECYCLESWITCH": 0,
-            "RECYCLEHOLDTIME": 15,
-            "RECYCLETHRESHOLD": 0,
-            "RECYCLEAUTOCLEANSWITCH": 0,
-        }
-
-        root = self._read_xml()
-        fstype = root.findtext('Filesystem/AllocType')
-        if fstype:
-            fstype = fstype.strip()
-            if fstype == 'Thin':
-                fileparam['ALLOCTYPE'] = 1
-            elif fstype == 'Thick':
-                fileparam['ALLOCTYPE'] = 0
-            else:
-                err_msg = (_(
-                    'Config file is wrong. Filesystem type must be "Thin"'
-                    ' or "Thick". AllocType:%(fetchtype)s') %
-                    {'fetchtype': fstype})
-                LOG.error(err_msg)
-                raise exception.InvalidShare(reason=err_msg)
-        return fileparam
-
-    def _deny_access(self, share_name, access, share_proto):
-        """Deny access to share."""
-        share_type = self._get_share_type(share_proto)
-        share_client_type = self._get_share_client_type(share_proto)
-        access_type = access['access_type']
-        if share_proto == 'NFS' and access_type != 'ip':
-            LOG.warn(_LW('Only ip access type allowed.'))
-            return
-
-        if share_proto == 'CIFS' and access_type != 'user':
-            LOG.warn(_LW('Only user access type allowed.'))
-            return
-
-        access_to = access['access_to']
-        share = self._get_share_by_name(share_name, share_type)
-        if not share:
-            LOG.warn(_LW('Can not get share. share_name: %s'), share_name)
-            return
-
-        access_id = self._get_access_from_share(share['ID'], access_to,
-                                                share_client_type)
-        if not access_id:
-            LOG.warn(_LW('Can not get access id from share. share_name: %s'),
-                     share_name)
-            return
-
-        self._remove_access_from_share(access_id, share_client_type)
 
     def _remove_access_from_share(self, access_id, access_type):
         url = self.url + "/" + access_type + "/" + access_id
@@ -467,34 +362,9 @@ class RestHelper():
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, 'Get access id by share error!')
 
-        if "data" in result:
-            for item in result['data']:
-                if access_to == item['NAME']:
-                    return item['ID']
-
-    def _allow_access(self, share_name, access, share_proto):
-        """Allow access to the share."""
-
-        share_type = self._get_share_type(share_proto)
-        access_type = access['access_type']
-        if share_proto == 'NFS' and access_type != 'ip':
-            message = _('Only IP access type is allowed for NFS shares.')
-            raise exception.InvalidShareAccess(reason=message)
-
-        if share_proto == 'CIFS' and access_type != 'user':
-            message = _('Only USER access type is allowed for CIFS shares.')
-            raise exception.InvalidShareAccess(reason=message)
-
-        access_to = access['access_to']
-
-        share = self._get_share_by_name(share_name, share_type)
-        if not share:
-            err_msg = (_('Can not get share.'))
-            LOG.error(err_msg)
-            raise exception.InvalidShareAccess(reason=err_msg)
-
-        share_id = share['ID']
-        self._allow_access_rest(share_id, access_to, share_proto)
+        for item in result.get('data', []):
+            if access_to == item['NAME']:
+                return item['ID']
 
     def _allow_access_rest(self, share_id, access_to, share_proto):
         """Allow access to the share."""
@@ -532,7 +402,7 @@ class RestHelper():
         elif share_proto == 'CIFS':
             share_client_type = "CIFS_SHARE_AUTH_CLIENT"
         else:
-            raise exception.InvalidShare(
+            raise exception.InvalidInput(
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share_proto))
 
@@ -622,12 +492,11 @@ class RestHelper():
         share_path = self._get_share_path(share_name)
 
         share = {}
-        if "data" in result:
-            for item in result['data']:
-                if share_path == item['SHAREPATH']:
-                    share['ID'] = item['ID']
-                    share['FSID'] = item['FSID']
-                    break
+        for item in result.get('data', []):
+            if share_path == item['SHAREPATH']:
+                share['ID'] = item['ID']
+                share['FSID'] = item['FSID']
+                break
 
         return share
 
@@ -638,7 +507,7 @@ class RestHelper():
         elif share_proto == 'CIFS':
             share_type = "CIFSHARE"
         else:
-            raise exception.InvalidShare(
+            raise exception.InvalidInput(
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share_proto))
 
@@ -650,10 +519,9 @@ class RestHelper():
         self._assert_rest_result(result, 'Get filesystem by name error!')
         sharename = share_name.replace("-", "_")
 
-        if "data" in result:
-            for item in result['data']:
-                if sharename == item['NAME']:
-                    return item['ID']
+        for item in result.get('data', []):
+            if sharename == item['NAME']:
+                return item['ID']
 
     def _get_fs_info_by_id(self, fsid):
         url = self.url + "/filesystem/%s" % fsid
@@ -668,63 +536,9 @@ class RestHelper():
         fs['RUNNINGSTATUS'] = result['data']['RUNNINGSTATUS']
         return fs
 
-    def allocate_container(self, share_name, size):
-        """Creates filesystem associated to share by name."""
-        fileParam = self._init_filesys_para(share_name, size)
-        fsid = self._create_filesystem(fileParam)
-        return fsid
-
-    def _check_conf_file(self):
-        """Check the config file, make sure the essential items are set."""
-        root = self._read_xml()
-        resturl = root.findtext('Storage/RestURL')
-        username = root.findtext('Storage/UserName')
-        pwd = root.findtext('Storage/UserPassword')
-        product = root.findtext('Storage/Product')
-        pool_node = root.findall('Filesystem/StoragePool')
-
-        if product != "V3":
-            err_msg = (_(
-                '_check_conf_file: Config file invalid. '
-                'Product must be set to V3.'))
-            LOG.error(err_msg)
-            raise exception.InvalidInput(err_msg)
-
-        if (not resturl) or (not username) or (not pwd):
-            err_msg = (_(
-                '_check_conf_file: Config file invalid. RestURL,'
-                ' UserName and UserPassword must be set.'))
-            LOG.error(err_msg)
-            raise exception.InvalidInput(err_msg)
-
-        if not pool_node:
-            err_msg = (_(
-                '_check_conf_file: Config file invalid. '
-                'StoragePool must be set.'))
-            LOG.error(err_msg)
-            raise exception.InvalidInput(err_msg)
-
     def _get_share_path(self, share_name):
         share_path = "/" + share_name.replace("-", "_") + "/"
         return share_path
-
-    def _get_location_path(self, share_name, share_proto):
-        root = self._read_xml()
-        target_ip = root.findtext('Storage/LogicalPortIP').strip()
-
-        location = None
-        if share_proto == 'NFS':
-            location = '%s:/%s' % (target_ip,
-                                   share_name.replace("-", "_"))
-        elif share_proto == 'CIFS':
-            location = '\\\\%s\\%s' % (target_ip,
-                                       share_name.replace("-", "_"))
-        else:
-            raise exception.InvalidShare(
-                reason=(_('Invalid NAS protocol supplied: %s.')
-                        % share_proto))
-
-        return location
 
     def _get_share_name_by_id(self, share_id):
         share_name = "share_" + share_id
@@ -734,14 +548,3 @@ class RestHelper():
         snapshot_id = (fs_id + "@" + "share_snapshot_"
                        + snap_name.replace("-", "_"))
         return snapshot_id
-
-    def _check_service(self):
-        running_status = self._get_cifs_service_status()
-        if running_status != constants.STATUS_SERVICE_RUNNING:
-            self._start_cifs_service_status()
-
-        service = self._get_nfs_service_status()
-        if ((service['RUNNINGSTATUS'] != constants.STATUS_SERVICE_RUNNING) or
-           (service['SUPPORTV3'] == 'false') or
-           (service['SUPPORTV4'] == 'false')):
-            self._start_nfs_service_status()
