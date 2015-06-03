@@ -22,6 +22,7 @@ from oslo_config import cfg
 from oslo_serialization import jsonutils
 import six
 
+from manila.common import constants
 from manila import context
 from manila import db
 from manila.share import rpcapi as share_rpcapi
@@ -38,7 +39,7 @@ class ShareRpcAPITestCase(test.TestCase):
         shr = {}
         shr['host'] = 'fake_host'
         shr['availability_zone'] = CONF.storage_availability_zone
-        shr['status'] = "available"
+        shr['status'] = constants.STATUS_AVAILABLE
         share = db.share_create(self.context, shr)
         acs = {}
         acs['access_type'] = "ip"

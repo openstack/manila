@@ -50,9 +50,7 @@ class ShareUnmanageController(wsgi.Controller):
                         "that are created on top of share servers "
                         "(created with share-networks).")
                 raise exc.HTTPForbidden(explanation=msg)
-            # NOTE(vponomaryov): use 'upper' translation because share
-            # statuses not always used from common place yet.
-            elif share['status'].upper() in constants.TRANSITIONAL_STATUSES:
+            elif share['status'] in constants.TRANSITIONAL_STATUSES:
                 msg = _("Share with transitional state can not be unmanaged. "
                         "Share '%(s_id)s' is in '%(state)s' state.") % dict(
                             state=share['status'], s_id=share['id'])

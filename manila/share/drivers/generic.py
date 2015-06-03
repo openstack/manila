@@ -439,7 +439,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 t = time.time()
                 while time.time() - t < self.configuration.max_time_to_attach:
                     volume = self.volume_api.get(context, volume['id'])
-                    if volume['status'] in ('available', 'error'):
+                    if volume['status'] in (const.STATUS_AVAILABLE,
+                                            const.STATUS_ERROR):
                         break
                     time.sleep(1)
                 else:
@@ -467,9 +468,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         t = time.time()
         while time.time() - t < self.configuration.max_time_to_create_volume:
-            if volume['status'] == 'available':
+            if volume['status'] == const.STATUS_AVAILABLE:
                 break
-            if volume['status'] == 'error':
+            if volume['status'] == const.STATUS_ERROR:
                 raise exception.ManilaException(_('Failed to create volume'))
             time.sleep(1)
             volume = self.volume_api.get(context, volume['id'])
@@ -562,9 +563,9 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             self.admin_context, volume['id'], volume_snapshot_name, '')
         t = time.time()
         while time.time() - t < self.configuration.max_time_to_create_volume:
-            if volume_snapshot['status'] == 'available':
+            if volume_snapshot['status'] == const.STATUS_AVAILABLE:
                 break
-            if volume_snapshot['status'] == 'error':
+            if volume_snapshot['status'] == const.STATUS_ERROR:
                 raise exception.ManilaException(_('Failed to create volume '
                                                   'snapshot'))
             time.sleep(1)

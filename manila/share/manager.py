@@ -155,7 +155,7 @@ class ShareManager(manager.SchedulerDependentManager):
         shares = self.db.share_get_all_by_host(ctxt, self.host)
         LOG.debug("Re-exporting %s shares", len(shares))
         for share in shares:
-            if share['status'] != 'available':
+            if share['status'] != constants.STATUS_AVAILABLE:
                 LOG.info(
                     _LI("Share %(name)s: skipping export, because it has "
                         "'%(status)s' status."),
@@ -279,7 +279,8 @@ class ShareManager(manager.SchedulerDependentManager):
         share_network_id = share_ref.get('share_network_id', None)
 
         if share_network_id and not self.driver.driver_handles_share_servers:
-            self.db.share_update(context, share_id, {'status': 'error'})
+            self.db.share_update(
+                context, share_id, {'status': constants.STATUS_ERROR})
             raise exception.ManilaException(
                 "Driver does not expect share-network to be provided "
                 "with current configuration.")
@@ -304,7 +305,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     LOG.error(_LE("Share server %s does not exist."),
                               parent_share_server_id)
                     self.db.share_update(context, share_id,
-                                         {'status': 'error'})
+                                         {'status': constants.STATUS_ERROR})
         elif share_network_id:
             try:
                 share_server, share_ref = self._provide_share_server_for_share(
@@ -314,7 +315,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     LOG.error(_LE("Failed to get share server"
                                   " for share creation."))
                     self.db.share_update(context, share_id,
-                                         {'status': 'error'})
+                                         {'status': constants.STATUS_ERROR})
         else:
             share_server = None
 
@@ -351,11 +352,12 @@ class ShareManager(manager.SchedulerDependentManager):
                                     'can not be written to db because it '
                                     'contains %s and it is not a dictionary.'),
                                 detail_data)
-                self.db.share_update(context, share_id, {'status': 'error'})
+                self.db.share_update(
+                    context, share_id, {'status': constants.STATUS_ERROR})
         else:
             LOG.info(_LI("Share created successfully."))
             self.db.share_update(context, share_id,
-                                 {'status': 'available',
+                                 {'status': constants.STATUS_AVAILABLE,
                                   'launched_at': timeutils.utcnow()})
 
     def manage_share(self, context, share_id, driver_options):
@@ -382,7 +384,7 @@ class ShareManager(manager.SchedulerDependentManager):
             })
 
             share_update.update({
-                'status': 'available',
+                'status': constants.STATUS_AVAILABLE,
                 'launched_at': timeutils.utcnow(),
             })
 
@@ -490,8 +492,10 @@ class ShareManager(manager.SchedulerDependentManager):
                                      share_server=share_server)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_update(context, share_id,
-                                     {'status': 'error_deleting'})
+                self.db.share_update(
+                    context,
+                    share_id,
+                    {'status': constants.STATUS_ERROR_DELETING})
         try:
             reservations = QUOTAS.reserve(context,
                                           project_id=project_id,
@@ -552,13 +556,14 @@ class ShareManager(manager.SchedulerDependentManager):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_snapshot_update(context,
-                                              snapshot_ref['id'],
-                                              {'status': 'error'})
+                self.db.share_snapshot_update(
+                    context,
+                    snapshot_ref['id'],
+                    {'status': constants.STATUS_ERROR})
 
         self.db.share_snapshot_update(context,
                                       snapshot_ref['id'],
-                                      {'status': 'available',
+                                      {'status': constants.STATUS_AVAILABLE,
                                        'progress': '100%'})
         return snapshot_id
 
@@ -579,12 +584,16 @@ class ShareManager(manager.SchedulerDependentManager):
             self.driver.delete_snapshot(context, snapshot_ref,
                                         share_server=share_server)
         except exception.ShareSnapshotIsBusy:
-            self.db.share_snapshot_update(context, snapshot_ref['id'],
-                                          {'status': 'available'})
+            self.db.share_snapshot_update(
+                context,
+                snapshot_ref['id'],
+                {'status': constants.STATUS_AVAILABLE})
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_snapshot_update(context, snapshot_ref['id'],
-                                              {'status': 'error_deleting'})
+                self.db.share_snapshot_update(
+                    context,
+                    snapshot_ref['id'],
+                    {'status': constants.STATUS_ERROR_DELETING})
         else:
             self.db.share_snapshot_destroy(context, snapshot_id)
             try:

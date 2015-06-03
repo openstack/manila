@@ -17,6 +17,7 @@
 
 from oslo_utils import uuidutils
 
+from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
@@ -36,7 +37,7 @@ class ShareServerTableTestCase(test.TestCase):
             values = {
                 'share_network_id': uuidutils.generate_uuid(),
                 'host': 'host1',
-                'status': 'ACTIVE'
+                'status': constants.STATUS_ACTIVE,
             }
         return db.share_server_create(self.ctxt, values)
 
@@ -44,7 +45,7 @@ class ShareServerTableTestCase(test.TestCase):
         values = {
             'share_network_id': 'fake-share-net-id',
             'host': 'hostname',
-            'status': 'ACTIVE'
+            'status': constants.STATUS_ACTIVE
         }
         expected = self._create_share_server(values)
         server = db.share_server_get(self.ctxt, expected['id'])
@@ -62,7 +63,7 @@ class ShareServerTableTestCase(test.TestCase):
         values = {
             'share_network_id': 'fake-share-net-id',
             'host': 'hostname',
-            'status': 'ACTIVE'
+            'status': constants.STATUS_ACTIVE,
         }
         server = self._create_share_server(values)
         self.assertTrue(server['id'])
@@ -87,7 +88,7 @@ class ShareServerTableTestCase(test.TestCase):
         update = {
             'share_network_id': 'update_net',
             'host': 'update_host',
-            'status': 'ACTIVE'
+            'status': constants.STATUS_ACTIVE,
         }
         server = self._create_share_server()
         updated_server = db.share_server_update(self.ctxt, server['id'],
@@ -108,17 +109,17 @@ class ShareServerTableTestCase(test.TestCase):
         valid = {
             'share_network_id': '1',
             'host': 'host1',
-            'status': 'ACTIVE'
+            'status': constants.STATUS_ACTIVE,
         }
         invalid = {
             'share_network_id': '1',
             'host': 'host1',
-            'status': 'ERROR'
+            'status': constants.STATUS_ERROR,
         }
         other = {
             'share_network_id': '2',
             'host': 'host2',
-            'status': 'ACTIVE'
+            'status': constants.STATUS_ACTIVE,
         }
         valid = self._create_share_server(valid)
         self._create_share_server(invalid)
@@ -139,17 +140,17 @@ class ShareServerTableTestCase(test.TestCase):
         srv1 = {
             'share_network_id': '1',
             'host': 'host1',
-            'status': 'ACTIVE'
+            'status': constants.STATUS_ACTIVE,
         }
         srv2 = {
             'share_network_id': '1',
             'host': 'host1',
-            'status': 'ERROR'
+            'status': constants.STATUS_ERROR,
         }
         srv3 = {
             'share_network_id': '2',
             'host': 'host2',
-            'status': 'ACTIVE'
+            'status': constants.STATUS_ACTIVE,
         }
         servers = db.share_server_get_all(self.ctxt)
         self.assertEqual(len(servers), 0)
@@ -188,7 +189,7 @@ class ShareServerTableTestCase(test.TestCase):
         values = {
             'share_network_id': 'fake-share-net-id',
             'host': 'hostname',
-            'status': 'ACTIVE'
+            'status': constants.STATUS_ACTIVE,
         }
         details = {
             'value1': '1',

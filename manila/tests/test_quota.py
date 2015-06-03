@@ -21,6 +21,7 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 import testtools
 
+from manila.common import constants
 from manila import context
 from manila import db
 from manila.db.sqlalchemy import api as sqa_api
@@ -51,7 +52,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         share['user_id'] = self.user_id
         share['project_id'] = self.project_id
         share['size'] = size
-        share['status'] = 'available'
+        share['status'] = constants.STATUS_AVAILABLE
         share['host'] = 'fake_host'
         return db.share_create(self.context, share)
 
@@ -62,7 +63,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         snapshot['share_id'] = share['id']
         snapshot['share_size'] = share['size']
         snapshot['host'] = share['host']
-        snapshot['status'] = 'available'
+        snapshot['status'] = constants.STATUS_AVAILABLE
         return db.share_snapshot_create(self.context, snapshot)
 
     @testtools.skip("SQLAlchemy sqlite insert bug")

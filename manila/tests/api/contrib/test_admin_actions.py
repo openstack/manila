@@ -17,6 +17,7 @@ from oslo_config import cfg
 from oslo_serialization import jsonutils
 import webob
 
+from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
@@ -47,12 +48,14 @@ class AdminActionsTest(test.TestCase):
 
     def test_reset_status_as_admin(self):
         # current status is available
-        share = db.share_create(self.admin_context, {'status': 'available'})
+        share = db.share_create(
+            self.admin_context, {'status': constants.STATUS_AVAILABLE})
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
-        req.body = jsonutils.dumps({'os-reset_status': {'status': 'error'}})
+        req.body = jsonutils.dumps(
+            {'os-reset_status': {'status': constants.STATUS_ERROR}})
         # attach admin context to request
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
@@ -60,18 +63,18 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(resp.status_int, 202)
         share = db.share_get(self.admin_context, share['id'])
         # status changed to 'error'
-        self.assertEqual(share['status'], 'error')
+        self.assertEqual(share['status'], constants.STATUS_ERROR)
 
     def test_reset_status_as_non_admin(self):
         # current status is 'error'
         share = db.share_create(context.get_admin_context(),
-                                {'status': 'error'})
+                                {'status': constants.STATUS_ERROR})
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request changing status to available
-        req.body = jsonutils.dumps({'os-reset_status': {'status':
-                                                        'available'}})
+        req.body = jsonutils.dumps(
+            {'os-reset_status': {'status': constants.STATUS_AVAILABLE}})
         # non-admin context
         req.environ['manila.context'] = self.member_context
         resp = req.get_response(app())
@@ -79,11 +82,12 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(resp.status_int, 403)
         share = db.share_get(context.get_admin_context(), share['id'])
         # status is still 'error'
-        self.assertEqual(share['status'], 'error')
+        self.assertEqual(share['status'], constants.STATUS_ERROR)
 
     def test_malformed_reset_status_body(self):
         # current status is available
-        share = db.share_create(self.admin_context, {'status': 'available'})
+        share = db.share_create(
+            self.admin_context, {'status': constants.STATUS_AVAILABLE})
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -96,11 +100,12 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(resp.status_int, 400)
         share = db.share_get(self.admin_context, share['id'])
         # status is still 'available'
-        self.assertEqual(share['status'], 'available')
+        self.assertEqual(share['status'], constants.STATUS_AVAILABLE)
 
     def test_invalid_status_for_share(self):
         # current status is available
-        share = db.share_create(self.admin_context, {'status': 'available'})
+        share = db.share_create(
+            self.admin_context, {'status': constants.STATUS_AVAILABLE})
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -113,7 +118,7 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(resp.status_int, 400)
         share = db.share_get(self.admin_context, share['id'])
         # status is still 'available'
-        self.assertEqual(share['status'], 'available')
+        self.assertEqual(share['status'], constants.STATUS_AVAILABLE)
 
     def test_reset_status_for_missing_share(self):
         # missing-share-id
@@ -122,8 +127,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # malformed request body
-        req.body = jsonutils.dumps({'os-reset_status': {'status':
-                                                        'available'}})
+        req.body = jsonutils.dumps(
+            {'os-reset_status': {'status': constants.STATUS_AVAILABLE}})
         # attach admin context to request
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
@@ -137,17 +142,17 @@ class AdminActionsTest(test.TestCase):
     def test_snapshot_reset_status(self):
         # snapshot in 'error_deleting'
         share = db.share_create(self.admin_context, {})
-        snapshot = db.share_snapshot_create(self.admin_context,
-                                            {
-                                                'status': 'error_deleting',
-                                                'share_id': share['id']
-                                            })
+        snapshot = db.share_snapshot_create(
+            self.admin_context,
+            {'status': constants.STATUS_ERROR_DELETING,
+             'share_id': share['id']})
         req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
                                   snapshot['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
-        req.body = jsonutils.dumps({'os-reset_status': {'status': 'error'}})
+        req.body = jsonutils.dumps(
+            {'os-reset_status': {'status': constants.STATUS_ERROR}})
         # attach admin context to request
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
@@ -155,16 +160,14 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(resp.status_int, 202)
         snapshot = db.share_snapshot_get(self.admin_context, snapshot['id'])
         # status changed to 'error'
-        self.assertEqual(snapshot['status'], 'error')
+        self.assertEqual(snapshot['status'], constants.STATUS_ERROR)
 
     def test_invalid_status_for_snapshot(self):
         # snapshot in 'available'
         share = db.share_create(self.admin_context, {})
-        snapshot = db.share_snapshot_create(self.admin_context,
-                                            {
-                                                'status': 'available',
-                                                'share_id': share['id']
-                                            })
+        snapshot = db.share_snapshot_create(
+            self.admin_context,
+            {'status': constants.STATUS_AVAILABLE, 'share_id': share['id']})
         req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
                                   snapshot['id'])
         req.method = 'POST'
@@ -179,7 +182,7 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(resp.status_int, 400)
         snapshot = db.share_snapshot_get(self.admin_context, snapshot['id'])
         # status is still 'available'
-        self.assertEqual(snapshot['status'], 'available')
+        self.assertEqual(snapshot['status'], constants.STATUS_AVAILABLE)
 
     def test_admin_force_delete_share(self):
         share = db.share_create(self.admin_context, {'size': 1})

@@ -284,11 +284,11 @@ class ShareMetadata(BASE, ManilaBase):
 
 class ShareAccessMapping(BASE, ManilaBase):
     """Represents access to NFS."""
-    STATE_NEW = 'new'
-    STATE_ACTIVE = 'active'
-    STATE_DELETING = 'deleting'
-    STATE_DELETED = 'deleted'
-    STATE_ERROR = 'error'
+    STATE_NEW = constants.STATUS_NEW
+    STATE_ACTIVE = constants.STATUS_ACTIVE
+    STATE_DELETING = constants.STATUS_DELETING
+    STATE_DELETED = constants.STATUS_DELETED
+    STATE_ERROR = constants.STATUS_ERROR
 
     __tablename__ = 'share_access_map'
     id = Column(String(36), primary_key=True)
