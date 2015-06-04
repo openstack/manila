@@ -170,3 +170,10 @@ class ShareRpcAPITestCase(test.TestCase):
                              share=self.fake_share,
                              new_size=123,
                              reservations={'fake': 'fake'})
+
+    def test_shrink_share(self):
+        self._test_share_api('shrink_share',
+                             rpc_method='cast',
+                             version='1.3',
+                             share=self.fake_share,
+                             new_size=123)

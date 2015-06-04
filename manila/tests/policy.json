@@ -16,6 +16,7 @@
     "share:get_snapshot": "",
     "share:get_all_snapshots": "",
     "share:extend": "",
+    "share:shrink": "",
 
     "share_network:create": "",
     "share_network:index": "",

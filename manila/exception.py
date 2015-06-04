@@ -487,6 +487,16 @@ class ShareExtendingError(ManilaException):
                 "in the driver: %(reason)s")
 
 
+class ShareShrinkingError(ManilaException):
+    message = _("Share %(share_id)s could not be shrunk due to error "
+                "in the driver: %(reason)s")
+
+
+class ShareShrinkingPossibleDataLoss(ManilaException):
+    message = _("Share %(share_id)s could not be shrunk due to "
+                "possible data loss")
+
+
 class InstanceNotFound(NotFound):
     message = _("Instance %(instance_id)s could not be found.")
 
