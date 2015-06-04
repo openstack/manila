@@ -73,6 +73,51 @@ def filesystem(method, data, fs_status_flag):
     return (data, extend_share_flag)
 
 
+def allow_access(type, method, data):
+    allow_ro_flag = False
+    allow_rw_flag = False
+    access_nfs = {
+        "TYPE": "16409",
+        "NAME": "1.2.3.4",
+        "PARENTID": "1",
+        "ACCESSVAL": "0",
+        "SYNC": "0",
+        "ALLSQUASH": "1",
+        "ROOTSQUASH": "0",
+    }
+    access_nfs_ro_data = jsonutils.dumps(access_nfs)
+    access_nfs["NAME"] = "100.112.0.1"
+    access_nfs["ACCESSVAL"] = "1"
+    access_nfs_rw_data = jsonutils.dumps(access_nfs)
+
+    access_cifs = {
+        "NAME": "user_name",
+        "PARENTID": "2",
+        "PERMISSION": "0",
+        "DOMAINTYPE": "2",
+    }
+    access_cifs_ro_data = jsonutils.dumps(access_cifs)
+
+    access_cifs["PERMISSION"] = "5"
+    access_cifs_rw_data = jsonutils.dumps(access_cifs)
+
+    if method != "POST":
+        data = """{"error":{"code":31755596}}"""
+        return data
+
+    if ((data == access_nfs_ro_data and type == "NFS")
+       or (data == access_cifs_ro_data and type == "CIFS")):
+        allow_ro_flag = True
+        data = """{"error":{"code":0}}"""
+    elif ((data == access_nfs_rw_data and type == 'NFS')
+          or (data == access_cifs_rw_data and type == 'CIFS')):
+        allow_rw_flag = True
+        data = """{"error":{"code":0}}"""
+    else:
+        data = """{"error":{"code":31755596}}"""
+    return (data, allow_ro_flag, allow_rw_flag)
+
+
 class FakeHuaweiNasHelper(helper.RestHelper):
 
     def __init__(self, *args, **kwargs):
@@ -91,6 +136,8 @@ class FakeHuaweiNasHelper(helper.RestHelper):
         self.share_exist = True
         self.service_nfs_status_flag = True
         self.create_share_data_flag = False
+        self.allow_ro_flag = False
+        self.allow_rw_flag = False
         self.extend_share_flag = False
 
     def _change_file_mode(self, filepath):
@@ -179,9 +226,14 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                 data = """{"error":{"code":0}}"""
                 self.delete_flag = True
 
-            if url == "NFS_SHARE_AUTH_CLIENT"\
-                      or url == "CIFS_SHARE_AUTH_CLIENT":
-                data = """{"error":{"code":0}}"""
+            if url == "NFS_SHARE_AUTH_CLIENT":
+                data, self.allow_ro_flag, self.allow_rw_flag = \
+                    allow_access('NFS', method, data)
+                self.allow_flag = True
+
+            if url == "CIFS_SHARE_AUTH_CLIENT":
+                data, self.allow_ro_flag, self.allow_rw_flag = \
+                    allow_access('CIFS', method, data)
                 self.allow_flag = True
 
             if url == "FSSNAPSHOT?TYPE=48&PARENTID=4"\
@@ -327,6 +379,17 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'share_server_id': 'fake-share-srv-id',
         }
 
+        self.share_proto_fail = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-uuid',
+            'size': 1,
+            'share_proto': 'proto_fail',
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+        }
+
         self.share_cifs = {
             'id': 'fake_uuid',
             'project_id': 'fake_tenant_id',
@@ -371,11 +434,13 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.access_ip = {
             'access_type': 'ip',
             'access_to': '100.112.0.1',
+            'access_level': 'rw',
         }
 
         self.access_user = {
             'access_type': 'user',
             'access_to': 'user_name',
+            'access_level': 'rw',
         }
 
         self.share_server = None
@@ -677,21 +742,79 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertEqual(2, capacity['TOTALCAPACITY'])
         self.assertEqual(1, capacity['CAPACITY'])
 
-    def test_allow_access_ip_success(self):
+    def test_allow_access_proto_fail(self):
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.allow_access,
+                          self._context,
+                          self.share_proto_fail,
+                          self.access_ip,
+                          self.share_server)
+
+    def test_allow_access_ip_rw_success(self):
         self.driver.plugin.helper.login()
         self.allow_flag = False
+        self.allow_rw_flag = False
         self.driver.allow_access(self._context,
                                  self.share_nfs,
                                  self.access_ip,
                                  self.share_server)
         self.assertTrue(self.driver.plugin.helper.allow_flag)
+        self.assertTrue(self.driver.plugin.helper.allow_rw_flag)
 
-    def test_allow_access_user_success(self):
+    def test_allow_access_ip_ro_success(self):
+        access_ro = {
+            'access_type': 'ip',
+            'access_to': '1.2.3.4',
+            'access_level': 'ro',
+        }
+
         self.driver.plugin.helper.login()
         self.allow_flag = False
+        self.allow_ro_flag = False
+        self.driver.allow_access(self._context,
+                                 self.share_nfs,
+                                 access_ro,
+                                 self.share_server)
+        self.assertTrue(self.driver.plugin.helper.allow_flag)
+        self.assertTrue(self.driver.plugin.helper.allow_ro_flag)
+
+    def test_allow_access_user_rw_success(self):
+        self.driver.plugin.helper.login()
+        self.allow_flag = False
+        self.allow_rw_flag = False
         self.driver.allow_access(self._context, self.share_cifs,
                                  self.access_user, self.share_server)
         self.assertTrue(self.driver.plugin.helper.allow_flag)
+        self.assertTrue(self.driver.plugin.helper.allow_rw_flag)
+
+    def test_allow_access_user_ro_success(self):
+        access_ro = {
+            'access_type': 'user',
+            'access_to': 'user_name',
+            'access_level': 'ro',
+        }
+
+        self.driver.plugin.helper.login()
+        self.allow_flag = False
+        self.allow_ro_flag = False
+        self.driver.allow_access(self._context, self.share_cifs,
+                                 access_ro, self.share_server)
+        self.assertTrue(self.driver.plugin.helper.allow_flag)
+        self.assertTrue(self.driver.plugin.helper.allow_ro_flag)
+
+    def test_allow_access_level_fail(self):
+        access_fail = {
+            'access_type': 'user',
+            'access_to': 'user_name',
+            'access_level': 'fail',
+        }
+
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidShareAccess,
+                          self.driver.allow_access,
+                          self._context, self.share_cifs,
+                          access_fail, self.share_server)
 
     def test_get_share_client_type_fail(self):
         share_proto = 'fake_proto'
