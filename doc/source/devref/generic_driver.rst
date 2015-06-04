@@ -83,6 +83,9 @@ Known restrictions
 - Juno version does not use security services data provided with share-network.
   These data will be just ignored.
 
+- Liberty version adds a share extend capability. Share access will be briefly
+  interrupted during an extend operation.
+
 The :mod:`manila.share.drivers.generic` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

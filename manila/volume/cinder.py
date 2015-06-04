@@ -313,6 +313,10 @@ class API(base.Base):
             raise exception.ManilaException(e.message)
 
     @translate_volume_exception
+    def extend(self, context, volume_id, new_size):
+        cinderclient(context).volumes.extend(volume_id, new_size)
+
+    @translate_volume_exception
     def delete(self, context, volume_id):
         cinderclient(context).volumes.delete(volume_id)
 

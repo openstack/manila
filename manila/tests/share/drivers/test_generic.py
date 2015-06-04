@@ -642,6 +642,31 @@ class GenericShareDriverTestCase(test.TestCase):
                           self._context,
                           self.share)
 
+    def test_wait_for_available_volume(self):
+        fake_volume = {'status': 'creating', 'id': 'fake'}
+        fake_available_volume = {'status': 'available', 'id': 'fake'}
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(return_value=fake_available_volume))
+
+        actual_result = self._driver._wait_for_available_volume(
+            fake_volume, 5, "error", "timeout")
+
+        self.assertEqual(fake_available_volume, actual_result)
+        self._driver.volume_api.get.assert_called_once_with(
+            mock.ANY, fake_volume['id'])
+
+    @ddt.data(mock.Mock(return_value={'status': 'creating', 'id': 'fake'}),
+              mock.Mock(return_value={'status': 'error', 'id': 'fake'}))
+    def test_wait_for_available_volume_invalid(self, volume_get_mock):
+        fake_volume = {'status': 'creating', 'id': 'fake'}
+        self.mock_object(self._driver.volume_api, 'get', volume_get_mock)
+
+        self.assertRaises(
+            exception.ManilaException,
+            self._driver._wait_for_available_volume,
+            fake_volume, 1, "error", "timeout"
+        )
+
     def test_deallocate_container(self):
         fake_vol = fake_volume.FakeVolume()
         self.mock_object(self._driver, '_get_volume',
@@ -1268,6 +1293,72 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.ManageInvalidShare,
                           self._driver._get_mounted_share_size,
                           '/fake/path', {})
+
+    def test_extend_share(self):
+        fake_volume = "fake"
+        fake_share = {'id': 'fake'}
+        new_size = 123
+        srv_details = self.server['backend_details']
+        self.mock_object(
+            self._driver.service_instance_manager,
+            'get_common_server',
+            mock.Mock(return_value=self.server)
+        )
+        self.mock_object(self._driver, '_unmount_device')
+        self.mock_object(self._driver, '_detach_volume')
+        self.mock_object(self._driver, '_extend_volume')
+        self.mock_object(self._driver, '_attach_volume')
+        self.mock_object(self._driver, '_mount_device')
+        self.mock_object(self._driver, '_resize_filesystem')
+        self.mock_object(
+            self._driver, '_get_volume',
+            mock.Mock(return_value=fake_volume)
+        )
+        CONF.set_default('driver_handles_share_servers', False)
+
+        self._driver.extend_share(fake_share, new_size)
+
+        self.assertTrue(
+            self._driver.service_instance_manager.get_common_server.called)
+        self._driver._unmount_device.assert_called_once_with(
+            fake_share, srv_details)
+        self._driver._detach_volume.assert_called_once_with(
+            mock.ANY, fake_share, srv_details)
+        self._driver._get_volume.assert_called_once_with(
+            mock.ANY, fake_share['id'])
+        self._driver._extend_volume.assert_called_once_with(
+            mock.ANY, fake_volume, new_size)
+        self._driver._attach_volume.assert_called_once_with(
+            mock.ANY, fake_share, srv_details['instance_id'], mock.ANY)
+        self.assertTrue(self._driver._resize_filesystem.called)
+
+    def test_extend_volume(self):
+        fake_volume = {'id': 'fake'}
+        new_size = 123
+        self.mock_object(self._driver.volume_api, 'extend')
+        self.mock_object(self._driver, '_wait_for_available_volume')
+
+        self._driver._extend_volume(self._context, fake_volume, new_size)
+
+        self._driver.volume_api.extend.assert_called_once_with(
+            self._context, fake_volume['id'], new_size
+        )
+        self._driver._wait_for_available_volume.assert_called_once_with(
+            fake_volume, mock.ANY, msg_timeout=mock.ANY, msg_error=mock.ANY
+        )
+
+    def test_resize_filesystem(self):
+        fake_server_details = {'fake': 'fake'}
+        fake_volume = {'mountpoint': '/dev/fake'}
+        self.mock_object(self._driver, '_ssh_exec')
+
+        self._driver._resize_filesystem(fake_server_details, fake_volume)
+
+        self._driver._ssh_exec.assert_any_call(
+            fake_server_details, ['sudo', 'fsck', '-pf', '/dev/fake'])
+        self._driver._ssh_exec.assert_any_call(
+            fake_server_details, ['sudo', 'resize2fs', '/dev/fake'])
+        self.assertEqual(2, self._driver._ssh_exec.call_count)
 
 
 @generic.ensure_server

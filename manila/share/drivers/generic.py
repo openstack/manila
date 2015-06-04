@@ -59,6 +59,9 @@ share_opts = [
     cfg.IntOpt('max_time_to_create_volume',
                default=180,
                help="Maximum time to wait for creating cinder volume."),
+    cfg.IntOpt('max_time_to_extend_volume',
+               default=180,
+               help="Maximum time to wait for extending cinder volume."),
     cfg.IntOpt('max_time_to_attach',
                default=120,
                help="Maximum time to wait for attaching cinder volume."),
@@ -466,19 +469,29 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.private_storage.update(
             share['id'], {'volume_id': volume['id']})
 
+        msg_error = _('Failed to create volume')
+        msg_timeout = (
+            _('Volume has not been created in %ss. Giving up') %
+            self.configuration.max_time_to_create_volume
+        )
+
+        return self._wait_for_available_volume(
+            volume, self.configuration.max_time_to_create_volume,
+            msg_error=msg_error, msg_timeout=msg_timeout
+        )
+
+    def _wait_for_available_volume(self, volume, timeout,
+                                   msg_error, msg_timeout):
         t = time.time()
-        while time.time() - t < self.configuration.max_time_to_create_volume:
+        while time.time() - t < timeout:
             if volume['status'] == const.STATUS_AVAILABLE:
                 break
             if volume['status'] == const.STATUS_ERROR:
-                raise exception.ManilaException(_('Failed to create volume'))
+                raise exception.ManilaException(msg_error)
             time.sleep(1)
-            volume = self.volume_api.get(context, volume['id'])
+            volume = self.volume_api.get(self.admin_context, volume['id'])
         else:
-            raise exception.ManilaException(
-                _('Volume have not been created '
-                  'in %ss. Giving up') %
-                self.configuration.max_time_to_create_volume)
+            raise exception.ManilaException(msg_timeout)
 
         return volume
 
@@ -527,6 +540,44 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         location = helper.create_export(share_server['backend_details'],
                                         share['name'])
         return location
+
+    @ensure_server
+    def extend_share(self, share, new_size, share_server=None):
+        server_details = share_server['backend_details']
+
+        self._unmount_device(share, server_details)
+        self._detach_volume(self.admin_context, share, server_details)
+
+        volume = self._get_volume(self.admin_context, share['id'])
+        volume = self._extend_volume(self.admin_context, volume, new_size)
+
+        volume = self._attach_volume(
+            self.admin_context,
+            share,
+            server_details['instance_id'],
+            volume)
+        self._resize_filesystem(server_details, volume)
+        self._mount_device(share, server_details, volume)
+
+    def _extend_volume(self, context, volume, new_size):
+        self.volume_api.extend(context, volume['id'], new_size)
+
+        msg_error = _('Failed to extend volume %s') % volume['id']
+        msg_timeout = (
+            _('Volume has not been extended in %ss. Giving up') %
+            self.configuration.max_time_to_extend_volume
+        )
+        return self._wait_for_available_volume(
+            volume, self.configuration.max_time_to_extend_volume,
+            msg_error=msg_error, msg_timeout=msg_timeout
+        )
+
+    def _resize_filesystem(self, server_details, volume):
+        """Resize filesystem of provided volume."""
+        check_command = ['sudo', 'fsck', '-pf', volume['mountpoint']]
+        self._ssh_exec(server_details, check_command)
+        command = ['sudo', 'resize2fs', volume['mountpoint']]
+        self._ssh_exec(server_details, command)
 
     def _is_share_server_active(self, context, share_server):
         """Check if the share server is active."""
