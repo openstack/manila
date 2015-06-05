@@ -1412,6 +1412,36 @@ class ShareAPITestCase(test.TestCase):
             self.context, share, new_size, mock.ANY
         )
 
+    def test_shrink_invalid_status(self):
+        invalid_status = 'fake'
+        share = fake_share('fake', status=invalid_status)
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.shrink, self.context, share, 123)
+
+    @ddt.data(300, 0, -1)
+    def test_shrink_invalid_size(self, new_size):
+        share = fake_share('fake', status=constants.STATUS_AVAILABLE, size=200)
+
+        self.assertRaises(exception.InvalidInput,
+                          self.api.shrink, self.context, share, new_size)
+
+    @ddt.data(constants.STATUS_AVAILABLE,
+              constants.STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR)
+    def test_shrink_valid(self, share_status):
+        share = fake_share('fake', status=share_status, size=100)
+        new_size = 50
+        self.mock_object(self.api, 'update')
+        self.mock_object(self.api.share_rpcapi, 'shrink_share')
+
+        self.api.shrink(self.context, share, new_size)
+
+        self.api.update.assert_called_once_with(
+            self.context, share, {'status': constants.STATUS_SHRINKING})
+        self.api.share_rpcapi.shrink_share.assert_called_once_with(
+            self.context, share, new_size
+        )
+
 
 class OtherTenantsShareActionsTestCase(test.TestCase):
     def setUp(self):

@@ -21,6 +21,7 @@ import mock
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
+import six
 
 from manila.common import constants
 from manila import context
@@ -1597,6 +1598,92 @@ class ShareManagerTestCase(test.TestCase):
         )
         quota.QUOTAS.commit.assert_called_once_with(
             mock.ANY, reservations, project_id=share['project_id'])
+        manager.db.share_update.assert_called_once_with(
+            mock.ANY, share_id, shr_update
+        )
+
+    def test_shrink_share_quota_error(self):
+        size = 5
+        new_size = 1
+        share = self._create_share(size=size)
+        share_id = share['id']
+
+        self.mock_object(self.share_manager.db, 'share_update')
+        self.mock_object(quota.QUOTAS, 'reserve',
+                         mock.Mock(side_effect=Exception('fake')))
+
+        self.assertRaises(
+            exception.ShareShrinkingError,
+            self.share_manager.shrink_share, self.context, share_id, new_size)
+
+        quota.QUOTAS.reserve.assert_called_with(
+            mock.ANY,
+            project_id=six.text_type(share['project_id']),
+            gigabytes=new_size - size
+        )
+        self.assertTrue(self.share_manager.db.share_update.called)
+
+    @ddt.data({'exc': exception.InvalidShare('fake'),
+               'status': constants.STATUS_SHRINKING_ERROR},
+              {'exc': exception.ShareShrinkingPossibleDataLoss("fake"),
+               'status': constants.STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR})
+    @ddt.unpack
+    def test_shrink_share_invalid(self, exc, status):
+        share = self._create_share()
+        new_size = 1
+        share_id = share['id']
+
+        self.mock_object(self.share_manager, 'driver')
+        self.mock_object(self.share_manager.db, 'share_update')
+        self.mock_object(self.share_manager.db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(quota.QUOTAS, 'reserve')
+        self.mock_object(quota.QUOTAS, 'rollback')
+        self.mock_object(self.share_manager.driver, 'shrink_share',
+                         mock.Mock(side_effect=exc))
+
+        self.assertRaises(
+            exception.ShareShrinkingError,
+            self.share_manager.shrink_share, self.context, share_id, new_size)
+
+        self.share_manager.driver.shrink_share.assert_called_once_with(
+            share, new_size, share_server=None)
+        self.share_manager.db.share_update.assert_called_once_with(
+            mock.ANY, share_id, {'status': status}
+        )
+        self.assertTrue(quota.QUOTAS.reserve.called)
+        self.assertTrue(quota.QUOTAS.rollback.called)
+        self.assertTrue(self.share_manager.db.share_get.called)
+
+    def test_shrink_share(self):
+        share = self._create_share()
+        share_id = share['id']
+        new_size = 123
+        shr_update = {
+            'size': int(new_size),
+            'status': constants.STATUS_AVAILABLE
+        }
+        fake_share_server = 'fake'
+
+        manager = self.share_manager
+        self.mock_object(manager, 'driver')
+        self.mock_object(manager.db, 'share_get',
+                         mock.Mock(return_value=share))
+        self.mock_object(manager.db, 'share_update',
+                         mock.Mock(return_value=share))
+        self.mock_object(quota.QUOTAS, 'commit')
+        self.mock_object(manager.driver, 'shrink_share')
+        self.mock_object(manager, '_get_share_server',
+                         mock.Mock(return_value=fake_share_server))
+
+        self.share_manager.shrink_share(self.context, share_id, new_size)
+
+        self.assertTrue(manager._get_share_server.called)
+        manager.driver.shrink_share.assert_called_once_with(
+            share, new_size, share_server=fake_share_server
+        )
+        quota.QUOTAS.commit.assert_called_once_with(
+            mock.ANY, mock.ANY, project_id=share['project_id'])
         manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, shr_update
         )

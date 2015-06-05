@@ -733,3 +733,35 @@ class API(base.Base):
         self.share_rpcapi.extend_share(context, share, new_size, reservations)
         LOG.info(_LI("Extend share request issued successfully."),
                  resource=share)
+
+    def shrink(self, context, share, new_size):
+        policy.check_policy(context, 'share', 'shrink')
+
+        status = six.text_type(share['status']).lower()
+        valid_statuses = (constants.STATUS_AVAILABLE,
+                          constants.STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR)
+
+        if status not in valid_statuses:
+            msg_params = {
+                'valid_status': ", ".join(valid_statuses),
+                'share_id': share['id'],
+                'status': status,
+            }
+            msg = _("Share %(share_id)s status must in (%(valid_status)s) "
+                    "to shrink, but current status is: "
+                    "%(status)s.") % msg_params
+            raise exception.InvalidShare(reason=msg)
+
+        size_decrease = int(share['size']) - int(new_size)
+        if size_decrease <= 0 or new_size <= 0:
+            msg = (_("New size for shrink must be less "
+                     "than current size and greater than 0 (current: %(size)s,"
+                     " new: %(new_size)s)") % {'new_size': new_size,
+                                               'size': share['size']})
+            raise exception.InvalidInput(reason=msg)
+
+        self.update(context, share, {'status': constants.STATUS_SHRINKING})
+        self.share_rpcapi.shrink_share(context, share, new_size)
+        LOG.info(_LI("Shrink share (id=%(id)s) request issued successfully."
+                     " New size: %(size)s") % {'id': share['id'],
+                                               'size': new_size})

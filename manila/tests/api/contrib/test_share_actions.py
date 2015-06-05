@@ -184,3 +184,44 @@ class ShareActionsTest(test.TestCase):
                          mock.Mock(side_effect=source('fake')))
 
         self.assertRaises(target, self.controller._extend, req, id, body)
+
+    def test_shrink(self):
+        id = 'fake_share_id'
+        share = stubs.stub_share_get(None, None, id)
+        self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
+        self.mock_object(share_api.API, "shrink")
+
+        size = '123'
+        body = {"os-shrink": {'new_size': size}}
+        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+
+        actual_response = self.controller._shrink(req, id, body)
+
+        share_api.API.get.assert_called_once_with(mock.ANY, id)
+        share_api.API.shrink.assert_called_once_with(
+            mock.ANY, share, int(size))
+        self.assertEqual(202, actual_response.status_int)
+
+    @ddt.data({"os-shrink": ""},
+              {"os-shrink": {"new_size": "foo"}},
+              {"os-shrink": {"new_size": {'foo': 'bar'}}})
+    def test_shrink_invalid_body(self, body):
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._shrink, req, id, body)
+
+    @ddt.data({'source': exception.InvalidInput,
+               'target': webob.exc.HTTPBadRequest},
+              {'source': exception.InvalidShare,
+               'target': webob.exc.HTTPBadRequest})
+    @ddt.unpack
+    def test_shrink_exception(self, source, target):
+        id = 'fake_share_id'
+        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
+        body = {"os-shrink": {'new_size': '123'}}
+        self.mock_object(share_api.API, "shrink",
+                         mock.Mock(side_effect=source('fake')))
+
+        self.assertRaises(target, self.controller._shrink, req, id, body)

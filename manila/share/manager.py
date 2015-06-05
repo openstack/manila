@@ -93,7 +93,7 @@ QUOTAS = quota.QUOTAS
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.2'
+    RPC_API_VERSION = '1.3'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -885,3 +885,57 @@ class ShareManager(manager.SchedulerDependentManager):
         share = self.db.share_update(context, share['id'], share_update)
 
         LOG.info(_LI("Extend share completed successfully."), resource=share)
+
+    def shrink_share(self, context, share_id, new_size):
+        context = context.elevated()
+        share = self.db.share_get(context, share_id)
+        share_server = self._get_share_server(context, share)
+        project_id = share['project_id']
+        new_size = int(new_size)
+
+        def error_occurred(exc, msg, status=constants.STATUS_SHRINKING_ERROR):
+            LOG.exception(msg, resource=share)
+            self.db.share_update(context, share['id'], {'status': status})
+
+            raise exception.ShareShrinkingError(
+                reason=six.text_type(exc), share_id=share_id)
+
+        reservations = None
+
+        try:
+            size_decrease = int(share['size']) - new_size
+            reservations = QUOTAS.reserve(context,
+                                          project_id=share['project_id'],
+                                          gigabytes=-size_decrease)
+        except Exception as e:
+            error_occurred(
+                e, _LE("Failed to update quota on share shrinking."))
+
+        try:
+            self.driver.shrink_share(
+                share, new_size, share_server=share_server)
+        # NOTE(u_glide): Replace following except block by error notification
+        # when Manila has such mechanism. It's possible because drivers
+        # shouldn't shrink share when this validation error occurs.
+        except Exception as e:
+            if isinstance(e, exception.ShareShrinkingPossibleDataLoss):
+                msg = _LE("Shrink share failed due to possible data loss.")
+                status = constants.STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR
+                error_params = {'msg': msg, 'status': status}
+            else:
+                error_params = {'msg': _LE("Shrink share failed.")}
+
+            try:
+                error_occurred(e, **error_params)
+            finally:
+                QUOTAS.rollback(context, reservations, project_id=project_id)
+
+        QUOTAS.commit(context, reservations, project_id=project_id)
+
+        share_update = {
+            'size': new_size,
+            'status': constants.STATUS_AVAILABLE
+        }
+        share = self.db.share_update(context, share['id'], share_update)
+
+        LOG.info(_LI("Shrink share completed successfully."), resource=share)

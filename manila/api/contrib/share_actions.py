@@ -139,16 +139,8 @@ class ShareActionsController(wsgi.Controller):
     def _extend(self, req, id, body):
         """Extend size of share."""
         context = req.environ['manila.context']
-        try:
-            share = self.share_api.get(context, id)
-        except exception.NotFound as e:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(e))
-
-        try:
-            size = int(body['os-extend']['new_size'])
-        except (KeyError, ValueError, TypeError):
-            msg = _("New share size must be specified as an integer.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        share, size = self._get_valid_resize_parameters(
+            context, id, body, 'os-extend')
 
         try:
             self.share_api.extend(context, share, size)
@@ -158,6 +150,34 @@ class ShareActionsController(wsgi.Controller):
             raise webob.exc.HTTPForbidden(explanation=six.text_type(e))
 
         return webob.Response(status_int=202)
+
+    @wsgi.action('os-shrink')
+    def _shrink(self, req, id, body):
+        """Shrink size of share."""
+        context = req.environ['manila.context']
+        share, size = self._get_valid_resize_parameters(
+            context, id, body, 'os-shrink')
+
+        try:
+            self.share_api.shrink(context, share, size)
+        except (exception.InvalidInput, exception.InvalidShare) as e:
+            raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
+
+        return webob.Response(status_int=202)
+
+    def _get_valid_resize_parameters(self, context, id, body, action):
+        try:
+            share = self.share_api.get(context, id)
+        except exception.NotFound as e:
+            raise webob.exc.HTTPNotFound(explanation=six.text_type(e))
+
+        try:
+            size = int(body[action]['new_size'])
+        except (KeyError, ValueError, TypeError):
+            msg = _("New share size must be specified as an integer.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        return share, size
 
 
 # def create_resource():

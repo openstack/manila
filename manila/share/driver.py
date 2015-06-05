@@ -384,6 +384,21 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
+    def shrink_share(self, share, new_size, share_server=None):
+        """Shrinks size of existing share.
+
+        If consumed space on share larger than new_size driver should raise
+        ShareShrinkingPossibleDataLoss exception:
+        raise ShareShrinkingPossibleDataLoss(share_id=share['id'])
+
+        :param share: Share model
+        :param new_size: New size of share (new_size < share['size'])
+        :param share_server: Optional -- Share server model
+
+        :raises ShareShrinkingPossibleDataLoss, NotImplementedError
+        """
+        raise NotImplementedError()
+
     def teardown_server(self, *args, **kwargs):
         if self.driver_handles_share_servers:
             return self._teardown_server(*args, **kwargs)
