@@ -211,7 +211,7 @@ class SharesClient(rest_client.RestClient):
         return body
 
     def wait_for_share_status(self, share_id, status):
-        """Waits for a Share to reach a given status."""
+        """Waits for a share to reach a given status."""
         body = self.get_share(share_id)
         share_name = body['name']
         share_status = body['status']
@@ -234,7 +234,7 @@ class SharesClient(rest_client.RestClient):
                 raise exceptions.TimeoutException(message)
 
     def wait_for_snapshot_status(self, snapshot_id, status):
-        """Waits for a Share to reach a given status."""
+        """Waits for a snapshot to reach a given status."""
         body = self.get_snapshot(snapshot_id)
         snapshot_name = body['name']
         snapshot_status = body['status']
@@ -255,7 +255,7 @@ class SharesClient(rest_client.RestClient):
                 raise exceptions.TimeoutException(message)
 
     def wait_for_access_rule_status(self, share_id, rule_id, status):
-        """Waits for a Share to reach a given status."""
+        """Waits for an access rule to reach a given status."""
         rule_status = "new"
         start = int(time.time())
         while rule_status != status:
