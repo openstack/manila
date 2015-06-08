@@ -90,8 +90,7 @@ CONF.register_opts(share_opts)
 
 def ensure_server(f):
 
-    def wrap(self, *args, **kwargs):
-        context = args[0]
+    def wrap(self, context, *args, **kwargs):
         server = kwargs.get('share_server')
 
         if not self.driver_handles_share_servers:
@@ -116,7 +115,7 @@ def ensure_server(f):
                 context, server['backend_details']):
             raise exception.ServiceInstanceUnavailable()
 
-        return f(self, *args, **kwargs)
+        return f(self, context, *args, **kwargs)
 
     return wrap
 
