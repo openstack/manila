@@ -98,6 +98,10 @@ class HuaweiNasDriver(driver.ShareDriver):
         location = self.plugin.create_share(share, share_server)
         return location
 
+    def extend_share(self, share, new_size, share_server=None):
+        LOG.debug("Extend a share.")
+        self.plugin.extend_share(share, new_size, share_server)
+
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Is called to create share from snapshot."""

@@ -92,6 +92,24 @@ class V3StorageConnection(driver.HuaweiBase):
         location = self._get_location_path(share_name, share_proto)
         return location
 
+    def extend_share(self, share, new_size, share_server):
+        share_proto = share['share_proto']
+        share_name = share['name']
+
+        # The unit is the sectors.
+        size = new_size * units.Mi * 2
+        share_type = self.helper._get_share_type(share_proto)
+
+        share = self.helper._get_share_by_name(share_name, share_type)
+        if not share:
+            err_msg = (_("Can not get share ID by share %s.")
+                       % share_name)
+            LOG.error(err_msg)
+            raise exception.InvalidShareAccess(reason=err_msg)
+
+        fsid = share['FSID']
+        self.helper._extend_share(fsid, size)
+
     def check_fs_status(self, health_status, running_status):
         if (health_status == constants.STATUS_FS_HEALTH
                 and running_status == constants.STATUS_FS_RUNNING):

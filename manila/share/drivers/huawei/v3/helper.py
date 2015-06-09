@@ -548,3 +548,17 @@ class RestHelper(object):
         snapshot_id = (fs_id + "@" + "share_snapshot_"
                        + snap_name.replace("-", "_"))
         return snapshot_id
+
+    def _extend_share(self, fsid, new_size):
+        url = self.url + "/filesystem/%s" % fsid
+
+        capacityinfo = {
+            "CAPACITY": new_size,
+        }
+
+        data = jsonutils.dumps(capacityinfo)
+        result = self.call(url, data, "PUT")
+
+        msg = "Extend a share error!"
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
