@@ -31,7 +31,6 @@ import eventlet.wsgi
 import greenlet
 from oslo_config import cfg
 from oslo_log import log
-from oslo_log import loggers
 from oslo_utils import netutils
 from paste import deploy
 import routes.middleware
@@ -119,7 +118,6 @@ class Server(object):
         self._protocol = protocol
         self._pool = eventlet.GreenPool(pool_size or self.default_pool_size)
         self._logger = log.getLogger("eventlet.wsgi.server")
-        self._wsgi_logger = loggers.WritableLogger(self._logger)
 
     def _get_socket(self, host, port, backlog):
         bind_addr = (host, port)
@@ -208,7 +206,7 @@ class Server(object):
                              self.app,
                              protocol=self._protocol,
                              custom_pool=self._pool,
-                             log=self._wsgi_logger)
+                             log=self._logger)
 
     def start(self, backlog=128):
         """Start serving a WSGI application.
