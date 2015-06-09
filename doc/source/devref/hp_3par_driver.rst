@@ -58,11 +58,11 @@ Requirements
 
 On the system running the Manila share service:
 
-- hp3parclient version 3.2.0 or newer from PyPI
+- hp3parclient version 3.2.1 or newer from PyPI
 
 On the HP 3PAR array:
 
-- HP 3PAR Operating System software version 3.2.1 MU2 or higher
+- HP 3PAR Operating System software version 3.2.1 MU3 or higher
 - A license that enables the File Persona feature
 - The array class and hardware configuration must support File Persona
 

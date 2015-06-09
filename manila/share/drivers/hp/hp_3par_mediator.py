@@ -24,7 +24,7 @@ from oslo_utils import units
 import six
 
 from manila import exception
-from manila.i18n import _
+from manila.i18n import _, _LI
 
 hp3parclient = importutils.try_import("hp3parclient")
 if hp3parclient:
@@ -32,12 +32,15 @@ if hp3parclient:
 
 
 LOG = log.getLogger(__name__)
+MIN_CLIENT_VERSION = (3, 2, 1)
 DENY = '-'
 ALLOW = '+'
 OPEN_STACK_MANILA_FSHARE = 'OpenStack Manila fshare'
 
 
 class HP3ParMediator(object):
+
+    VERSION = "1.0.00"
 
     def __init__(self, **kwargs):
 
@@ -55,11 +58,25 @@ class HP3ParMediator(object):
         self.ssh_conn_timeout = kwargs.get('ssh_conn_timeout')
         self._client = None
 
+    @staticmethod
+    def no_client():
+        return hp3parclient is None
+
     def do_setup(self):
 
-        if hp3parclient is None:
+        if self.no_client():
             msg = _('You must install hp3parclient before using the 3PAR '
                     'driver.')
+            LOG.exception(msg)
+            raise exception.HP3ParInvalidClient(message=msg)
+
+        client_version = hp3parclient.version_tuple
+        if client_version < MIN_CLIENT_VERSION:
+            msg = (_('Invalid hp3parclient version found (%(found)s). '
+                     'Version %(minimum)s or greater required.') %
+                   {'found': '.'.join(map(six.text_type, client_version)),
+                    'minimum': '.'.join(map(six.text_type,
+                                            MIN_CLIENT_VERSION))})
             LOG.exception(msg)
             raise exception.HP3ParInvalidClient(message=msg)
 
@@ -94,8 +111,22 @@ class HP3ParMediator(object):
             LOG.exception(msg)
             raise exception.ShareBackendException(message=msg)
 
+        LOG.info(_LI("HP3ParMediator %(version)s, "
+                     "hp3parclient %(client_version)s"),
+                 {"version": self.VERSION,
+                  "client_version": hp3parclient.get_version_string()})
+
+        try:
+            wsapi_version = self._client.getWsApiVersion()['build']
+            LOG.info(_LI("3PAR WSAPI %s"), wsapi_version)
+        except Exception as e:
+            msg = (_('Failed to get 3PAR WSAPI version: %s') %
+                   six.text_type(e))
+            LOG.exception(msg)
+            raise exception.ShareBackendException(message=msg)
+
         if self.hp3par_debug:
-            self._client.ssh.set_debug_flag(True)
+            self._client.debug_rest(True)  # Includes SSH debug (setSSH above)
 
     def get_capacity(self, fpg):
         try:
