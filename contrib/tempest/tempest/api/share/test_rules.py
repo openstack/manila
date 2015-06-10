@@ -112,7 +112,7 @@ class ShareUserRulesForNFSTest(base.BaseSharesTest):
                 CONF.share.enable_user_rules_for_protocols):
             msg = "USER rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
-        __, cls.share = cls.create_share(cls.protocol)
+        cls.share = cls.create_share(cls.protocol)
         cls.access_type = "user"
         cls.access_to = CONF.share.username_for_user_rules
 
