@@ -28,6 +28,7 @@ import socket
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import netutils
 import six
 
 from manila.common import constants
@@ -36,24 +37,6 @@ from manila.i18n import _
 
 CONF = cfg.CONF
 log.register_options(CONF)
-
-
-def _get_my_ip():
-    """Returns the actual ip of the local machine.
-
-    This code figures out what source address would be used if some traffic
-    were to be sent out to some well known address on the Internet. In this
-    case, a Google DNS server is used, but the specific address does not
-    matter much.  No traffic is actually sent.
-    """
-    try:
-        csock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        csock.connect(('8.8.8.8', 80))
-        (addr, port) = csock.getsockname()
-        csock.close()
-        return addr
-    except socket.error:
-        return "127.0.0.1"
 
 
 core_opts = [
@@ -72,7 +55,7 @@ CONF.register_cli_opts(debug_opts)
 
 global_opts = [
     cfg.StrOpt('my_ip',
-               default=_get_my_ip(),
+               default=netutils.get_my_ipv4(),
                help='IP address of this host.'),
     cfg.StrOpt('scheduler_topic',
                default='manila-scheduler',
