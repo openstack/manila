@@ -218,8 +218,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             self._get_project_name(context, share['project_id']))
         self.rpc.call('exportVolume', dict(
             volume_uuid=volume_uuid,
-            read_only='access_level' == (manila.common.constants.
-                                         ACCESS_LEVEL_RO),
+            read_only=access['access_level'] == (manila.common.constants.
+                                                 ACCESS_LEVEL_RO),
             add_allow_ip=access['access_to']))
 
     def deny_access(self, context, share, access, share_server=None):

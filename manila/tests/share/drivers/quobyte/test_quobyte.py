@@ -170,6 +170,24 @@ class QuobyteShareDriverTestCase(test.TestCase):
                              'read_only': False,
                              'add_allow_ip': '10.0.0.1'})
 
+    def test_allow_ro_access(self):
+        def rpc_handler(name, *args):
+            if name == 'resolveVolumeName':
+                return {'volume_uuid': 'voluuid'}
+            elif name == 'exportVolume':
+                return {'nfs_server_ip': '10.10.1.1',
+                        'nfs_export_path': '/voluuid'}
+
+        self._driver.rpc.call = mock.Mock(wraps=rpc_handler)
+        ro_access = fake_share.fake_access(access_level='ro')
+
+        self._driver.allow_access(self._context, self.share, ro_access)
+
+        self._driver.rpc.call.assert_called_with(
+            'exportVolume', {'volume_uuid': 'voluuid',
+                             'read_only': True,
+                             'add_allow_ip': '10.0.0.1'})
+
     def test_allow_access_nonip(self):
         self._driver.rpc.call = mock.Mock(wraps=fake_rpc_handler)
 
