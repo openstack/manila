@@ -1143,8 +1143,8 @@ class EMCMock(mock.Mock):
 
         while True:
             try:
-                expect = self._get_req_from_call(iter_expect.next())
-                actual = self._get_req_from_call(iter_actual.next())
+                expect = self._get_req_from_call(next(iter_expect))
+                actual = self._get_req_from_call(next(iter_actual))
             except StopIteration:
                 return True
 
