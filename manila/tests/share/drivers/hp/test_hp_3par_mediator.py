@@ -26,6 +26,9 @@ from manila.tests.share.drivers.hp import test_hp_3par_constants as constants
 
 from oslo_utils import units
 
+CLIENT_VERSION_MIN_OK = hp3parmediator.MIN_CLIENT_VERSION
+TEST_WSAPI_VERSION_STR = '30201292'
+
 
 @ddt.ddt
 class HP3ParMediatorTestCase(test.TestCase):
@@ -38,6 +41,7 @@ class HP3ParMediatorTestCase(test.TestCase):
 
         # Take over the hp3parclient module and stub the constructor.
         hp3parclient = sys.modules['hp3parclient']
+        hp3parclient.version_tuple = CLIENT_VERSION_MIN_OK
 
         # Need a fake constructor to return the fake client.
         # This is also be used for constructor error tests.
@@ -58,6 +62,14 @@ class HP3ParMediatorTestCase(test.TestCase):
             hp3par_san_password=constants.SAN_PASSWORD,
             hp3par_san_ssh_port=constants.PORT,
             ssh_conn_timeout=constants.TIMEOUT)
+
+    def test_mediator_no_client(self):
+        """Test missing hp3parclient error."""
+
+        self.mock_object(hp3parmediator.HP3ParMediator, 'no_client', None)
+
+        self.assertRaises(exception.HP3ParInvalidClient,
+                          self.mediator.do_setup)
 
     def test_mediator_setup_client_init_error(self):
         """Any client init exceptions should result in a ManilaException."""
@@ -85,7 +97,7 @@ class HP3ParMediatorTestCase(test.TestCase):
     def test_mediator_vfs_exception(self):
         """Backend exception during get_vfs_name."""
 
-        self.mediator.do_setup()
+        self.init_mediator()
         self.mock_client.getvfs.side_effect = Exception('non-manila-except')
         self.assertRaises(exception.ManilaException,
                           self.mediator.get_vfs_name,
@@ -97,7 +109,7 @@ class HP3ParMediatorTestCase(test.TestCase):
 
     def test_mediator_vfs_not_found(self):
         """VFS not found."""
-        self.mediator.do_setup()
+        self.init_mediator()
         self.mock_client.getvfs.return_value = {'total': 0}
         self.assertRaises(exception.ManilaException,
                           self.mediator.get_vfs_name,
@@ -109,6 +121,10 @@ class HP3ParMediatorTestCase(test.TestCase):
 
     def init_mediator(self):
         """Basic mediator setup for re-use with tests that need one."""
+
+        self.mock_client.getWsApiVersion.return_value = {
+            'build': TEST_WSAPI_VERSION_STR,
+        }
 
         self.mock_client.getvfs.return_value = {
             'total': 1,
@@ -136,9 +152,58 @@ class HP3ParMediatorTestCase(test.TestCase):
                                     constants.SAN_PASSWORD,
                                     port=constants.PORT,
                                     conn_timeout=constants.TIMEOUT),
-            mock.call.ssh.set_debug_flag(constants.EXPECTED_HP_DEBUG)
+            mock.call.getWsApiVersion(),
+            mock.call.debug_rest(constants.EXPECTED_HP_DEBUG)
         ]
         self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_client_version_unsupported(self):
+        """Try a client with version less than minimum."""
+
+        self.hp3parclient = sys.modules['hp3parclient']
+        self.hp3parclient.version_tuple = (CLIENT_VERSION_MIN_OK[0],
+                                           CLIENT_VERSION_MIN_OK[1],
+                                           CLIENT_VERSION_MIN_OK[2] - 1)
+        self.assertRaises(exception.HP3ParInvalidClient,
+                          self.init_mediator)
+
+    def test_mediator_client_version_supported(self):
+        """Try a client with a version greater than the minimum."""
+
+        # The setup success already tests the min version.  Try version > min.
+        self.hp3parclient = sys.modules['hp3parclient']
+        self.hp3parclient.version_tuple = (CLIENT_VERSION_MIN_OK[0],
+                                           CLIENT_VERSION_MIN_OK[1],
+                                           CLIENT_VERSION_MIN_OK[2] + 1)
+        self.init_mediator()
+        expected_calls = [
+            mock.call.setSSHOptions(constants.EXPECTED_IP_1234,
+                                    constants.SAN_LOGIN,
+                                    constants.SAN_PASSWORD,
+                                    port=constants.PORT,
+                                    conn_timeout=constants.TIMEOUT),
+            mock.call.getWsApiVersion(),
+            mock.call.debug_rest(constants.EXPECTED_HP_DEBUG)
+        ]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_client_version_exception(self):
+        """Test the getWsApiVersion exception handling."""
+
+        class FakeException(Exception):
+            pass
+
+        self.mock_client.getWsApiVersion.side_effect = FakeException()
+        self.assertRaises(exception.ShareBackendException,
+                          self.init_mediator)
+
+    def test_mediator_client_version_bad_return_value(self):
+        """Test the getWsApiVersion exception handling with bad value."""
+
+        # Expecting a dict with 'build' in it.  This would fail badly.
+        self.mock_client.getWsApiVersion.return_value = 'bogus'
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.do_setup)
 
     def get_expected_calls_for_create_share(self,
                                             expected_fpg,

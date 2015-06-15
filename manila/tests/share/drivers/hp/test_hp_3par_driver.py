@@ -425,6 +425,7 @@ class HP3ParDriverTestCase(test.TestCase):
         self.init_driver()
         expected_free = constants.EXPECTED_SIZE_1
         expected_capacity = constants.EXPECTED_SIZE_2
+        expected_version = self.driver.VERSION
 
         self.mock_mediator.get_capacity.return_value = {
             'free_capacity_gb': expected_free,
@@ -434,7 +435,7 @@ class HP3ParDriverTestCase(test.TestCase):
         expected_result = {
             'driver_handles_share_servers': False,
             'QoS_support': False,
-            'driver_version': '1.0',
+            'driver_version': expected_version,
             'free_capacity_gb': expected_free,
             'reserved_percentage': 0,
             'share_backend_name': 'HP_3PAR',

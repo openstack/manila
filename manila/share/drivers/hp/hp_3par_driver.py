@@ -80,6 +80,8 @@ class HP3ParShareDriver(driver.ShareDriver):
      Supports NFS and CIFS protocols on arrays with File Persona.
      """
 
+    VERSION = "1.0.00"
+
     def __init__(self, *args, **kwargs):
         super(HP3ParShareDriver, self).__init__(False, *args, **kwargs)
 
@@ -93,6 +95,10 @@ class HP3ParShareDriver(driver.ShareDriver):
 
     def do_setup(self, context):
         """Any initialization the share driver does while starting."""
+
+        LOG.info(_LI("Starting share driver %(driver_name)s (%(version)s)"),
+                 {'driver_name': self.__class__.__name__,
+                  'version': self.VERSION})
 
         self.share_ip_address = self.configuration.hp3par_share_ip_address
         if not self.share_ip_address:
@@ -281,7 +287,7 @@ class HP3ParShareDriver(driver.ShareDriver):
             'share_backend_name': backend_name,
             'driver_handles_share_servers': self.driver_handles_share_servers,
             'vendor_name': 'HP',
-            'driver_version': '1.0',
+            'driver_version': self.VERSION,
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
