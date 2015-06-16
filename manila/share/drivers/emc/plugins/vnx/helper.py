@@ -1259,7 +1259,7 @@ class NASCommandHelper(object):
         share_path = '/' + share_name
         create_nfs_share_cmd = [
             'env', 'NAS_DB=/nas', '/nas/bin/server_export', mover_name,
-            '-option', 'rw=-*.*.*.*,root=-*.*.*.*,access=-*.*.*.*',
+            '-option', 'rw=-0.0.0.0,root=-0.0.0.0,access=-0.0.0.0',
             share_path,
         ]
 
