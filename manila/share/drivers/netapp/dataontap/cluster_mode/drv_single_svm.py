@@ -75,6 +75,9 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
         super(NetAppCmodeSingleSvmShareDriver, self)._update_share_stats(
             data=data)
 
+    def get_share_server_pools(self, share_server):
+        return self.library.get_share_server_pools(share_server)
+
     def get_network_allocations_number(self):
         return self.library.get_network_allocations_number()
 
