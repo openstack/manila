@@ -1,6 +1,7 @@
 # Copyright (c) 2011 OpenStack, LLC.
 # Copyright (c) 2015 Rushil Chugh
 # Copyright (c) 2015 Clinton Knight
+# Copyright (c) 2015 EMC Corporation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -53,6 +54,7 @@ host_manager_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(host_manager_opts)
+CONF.import_opt('max_over_subscription_ratio', 'manila.share.driver')
 
 LOG = log.getLogger(__name__)
 
@@ -108,6 +110,15 @@ class HostState(object):
         self.total_capacity_gb = 0
         self.free_capacity_gb = None
         self.reserved_percentage = 0
+        self.allocated_capacity_gb = 0
+        # NOTE(xyang): The apparent allocated space indicating how much
+        # capacity has been provisioned. This could be the sum of sizes
+        # of all shares on a backend, which could be greater than or
+        # equal to the allocated_capacity_gb.
+        self.provisioned_capacity_gb = 0
+        self.max_over_subscription_ratio = 1.0
+        self.thin_provisioning_support = False
+        self.thick_provisioning_support = False
         self.driver_handles_share_servers = False
 
         # PoolState for all pools
@@ -313,6 +324,21 @@ class PoolState(HostState):
                 'allocated_capacity_gb', 0)
             self.QoS_support = capability.get('QoS_support', False)
             self.reserved_percentage = capability['reserved_percentage']
+            # NOTE(xyang): provisioned_capacity_gb is the apparent total
+            # capacity of all the shares created on a backend, which is
+            # greater than or equal to allocated_capacity_gb, which is the
+            # apparent total capacity of all the shares created on a backend
+            # in Manila. Using allocated_capacity_gb as the default of
+            # provisioned_capacity_gb if it is not set.
+            self.provisioned_capacity_gb = capability.get(
+                'provisioned_capacity_gb', self.allocated_capacity_gb)
+            self.max_over_subscription_ratio = capability.get(
+                'max_over_subscription_ratio',
+                CONF.max_over_subscription_ratio)
+            self.thin_provisioning_support = capability.get(
+                'thin_provisioning_support', False)
+            self.thick_provisioning_support = capability.get(
+                'thick_provisioning_support', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
