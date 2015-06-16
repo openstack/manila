@@ -180,7 +180,7 @@ disks     = d7
 
     @staticmethod
     def create_nfs_export(vdm_name, path):
-        default_access = "rw=-*.*.*.*,root=-*.*.*.*,access=-*.*.*.*"
+        default_access = "rw=-0.0.0.0,root=-0.0.0.0,access=-0.0.0.0"
         return [
             'env', 'NAS_DB=/nas', '/nas/bin/server_export', vdm_name,
             '-option', default_access,
