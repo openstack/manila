@@ -647,8 +647,22 @@ class ShareManager(manager.SchedulerDependentManager):
     def _report_driver_status(self, context):
         LOG.info(_LI('Updating share status'))
         share_stats = self.driver.get_share_stats(refresh=True)
-        if share_stats:
-            self.update_service_capabilities(share_stats)
+        if not share_stats:
+            return
+
+        if self.driver.driver_handles_share_servers:
+            share_stats['server_pools_mapping'] = (
+                self._get_servers_pool_mapping(context)
+            )
+
+        self.update_service_capabilities(share_stats)
+
+    def _get_servers_pool_mapping(self, context):
+        """Get info about relationships between pools and share_servers."""
+        share_servers = self.db.share_server_get_all_by_host(context,
+                                                             self.host)
+        return dict((server['id'], self.driver.get_share_server_pools(server))
+                    for server in share_servers)
 
     def publish_service_capabilities(self, context):
         """Collect driver status and then publish it."""

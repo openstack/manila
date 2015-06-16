@@ -467,6 +467,7 @@ class SopShareDriverTestCase(test.TestCase):
             'QoS_support': False,
             'total_capacity_gb': 1234,
             'free_capacity_gb': 2345,
+            'pools': None,
         }
         self.mock_object(self._driver, '_get_sop_filesystem_stats',
                          mock.Mock(return_value=(1234, 2345)))

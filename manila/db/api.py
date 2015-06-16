@@ -640,6 +640,11 @@ def share_server_get_all(context):
     return IMPL.share_server_get_all(context)
 
 
+def share_server_get_all_by_host(context, host):
+    """Get all share servers related to particular host."""
+    return IMPL.share_server_get_all_by_host(context, host)
+
+
 def share_server_get_all_unused_deletable(context, host, updated_before):
     """Get all free share servers DB records."""
     return IMPL.share_server_get_all_unused_deletable(context, host,
