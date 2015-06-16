@@ -25,6 +25,7 @@ from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import strutils
+import retrying
 import six
 
 from manila.common import constants as const
@@ -339,10 +340,16 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     raise exception.ManilaException(
                         _('Volume %s is already attached to another instance')
                         % volume['id'])
-            self.compute_api.instance_volume_attach(self.admin_context,
-                                                    instance_id,
-                                                    volume['id'],
-                                                    )
+
+            @retrying.retry(stop_max_attempt_number=3,
+                            wait_fixed=2000,
+                            retry_on_exception=lambda exc: True)
+            def attach_volume():
+                self.compute_api.instance_volume_attach(
+                    self.admin_context, instance_id, volume['id'])
+
+            attach_volume()
+
             t = time.time()
             while time.time() - t < self.configuration.max_time_to_attach:
                 volume = self.volume_api.get(context, volume['id'])

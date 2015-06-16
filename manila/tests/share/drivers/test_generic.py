@@ -433,15 +433,39 @@ class GenericShareDriverTestCase(test.TestCase):
                           self._driver._attach_volume, self._context,
                           self.share, fake_server, attached_volume)
 
-    def test_attach_volume_failed_attach(self):
+    @ddt.data(exception.ManilaException, exception.Invalid)
+    def test_attach_volume_failed_attach(self, side_effect):
         fake_server = fake_compute.FakeServer()
         available_volume = fake_volume.FakeVolume()
         self.mock_object(self._driver.compute_api, 'instance_volume_attach',
-                         mock.Mock(side_effect=exception.ManilaException))
+                         mock.Mock(side_effect=side_effect))
         self.assertRaises(exception.ManilaException,
                           self._driver._attach_volume,
                           self._context, self.share, fake_server,
                           available_volume)
+        self.assertEqual(
+            3, self._driver.compute_api.instance_volume_attach.call_count)
+
+    def test_attach_volume_attached_retry_correct(self):
+        fake_server = fake_compute.FakeServer()
+        attached_volume = fake_volume.FakeVolume(status='available')
+        in_use_volume = fake_volume.FakeVolume(status='in-use')
+
+        side_effect = [exception.Invalid("Fake"), attached_volume]
+        attach_mock = mock.Mock(side_effect=side_effect)
+        self.mock_object(self._driver.compute_api, 'instance_volume_attach',
+                         attach_mock)
+        self.mock_object(self._driver.compute_api, 'instance_volumes_list',
+                         mock.Mock(return_value=[attached_volume]))
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(return_value=in_use_volume))
+
+        result = self._driver._attach_volume(self._context, self.share,
+                                             fake_server, attached_volume)
+
+        self.assertEqual(result, in_use_volume)
+        self.assertEqual(
+            2, self._driver.compute_api.instance_volume_attach.call_count)
 
     def test_attach_volume_error(self):
         fake_server = fake_compute.FakeServer()
