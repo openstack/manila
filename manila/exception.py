@@ -21,6 +21,7 @@ Includes decorator for re-raising Manila-type exceptions.
 SHOULD include dedicated exception logging.
 
 """
+import re
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -103,6 +104,8 @@ class ManilaException(Exception):
         elif isinstance(message, Exception):
             message = six.text_type(message)
 
+        if re.match('.*[^\.]\.\.$', message):
+            message = message[:-1]
         self.msg = message
         super(ManilaException, self).__init__(message)
 
