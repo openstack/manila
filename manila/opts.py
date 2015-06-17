@@ -38,7 +38,6 @@ import manila.network.neutron.api
 import manila.network.neutron.neutron_network_plugin
 import manila.network.nova_network_plugin
 import manila.network.standalone_network_plugin
-import manila.openstack.common.eventlet_backdoor
 import manila.quota
 import manila.scheduler.driver
 import manila.scheduler.host_manager
@@ -92,7 +91,6 @@ _global_opt_lists = [
     neutron_single_network_plugin_opts,
     manila.network.nova_network_plugin.nova_single_network_plugin_opts,
     manila.network.standalone_network_plugin.standalone_network_plugin_opts,
-    manila.openstack.common.eventlet_backdoor.eventlet_backdoor_opts,
     manila.quota.quota_opts,
     manila.scheduler.driver.scheduler_driver_opts,
     manila.scheduler.host_manager.host_manager_opts,
