@@ -52,6 +52,10 @@ class HuaweiBase(object):
         """Deny access to the share."""
 
     @abc.abstractmethod
+    def extend_share(self, share, new_size, share_server):
+        """Extends size of existing share."""
+
+    @abc.abstractmethod
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
 

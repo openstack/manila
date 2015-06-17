@@ -49,20 +49,28 @@ def data_session(url):
     return data
 
 
-def filesystem(method, fs_status_flag):
-    if method == "DELETE":
+def filesystem(method, data, fs_status_flag):
+    extend_share_flag = False
+    if method == "PUT":
+        if data == """{"CAPACITY": 8388608}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"4",
+                "CAPACITY":"8388608"}}"""
+            extend_share_flag = True
+    elif method == "DELETE":
         data = """{"error":{"code":0}}"""
-
-    if method == "GET":
+    elif method == "GET":
         if fs_status_flag:
             data = """{"error":{"code":0},
-                    "data":{"HEALTHSTATUS":"1",
-                    "RUNNINGSTATUS":"27"}}"""
+                "data":{"HEALTHSTATUS":"1",
+                "RUNNINGSTATUS":"27"}}"""
         else:
             data = """{"error":{"code":0},
                     "data":{"HEALTHSTATUS":"0",
                     "RUNNINGSTATUS":"27"}}"""
-    return data
+    else:
+        data = '{"error":{"code":31755596}}'
+    return (data, extend_share_flag)
 
 
 class FakeHuaweiNasHelper(helper.RestHelper):
@@ -83,6 +91,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
         self.share_exist = True
         self.service_nfs_status_flag = True
         self.create_share_data_flag = False
+        self.extend_share_flag = False
 
     def _change_file_mode(self, filepath):
         pass
@@ -90,7 +99,6 @@ class FakeHuaweiNasHelper(helper.RestHelper):
     def call(self, url, data=None, method=None):
         url = url.replace('http://100.115.10.69:8082/deviceManager/rest', '')
         url = url.replace('/210235G7J20000000000/', '')
-        data = None
 
         if self.test_normal:
             if url == "/xx/sessions" or url == "sessions":
@@ -167,7 +175,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     data = '{"error":{"code":1073754118}}'
                 self.delete_flag = True
 
-            if url == "FSSNAPSHOT/3" or url == "filesystem/4":
+            if url == "FSSNAPSHOT/3":
                 data = """{"error":{"code":0}}"""
                 self.delete_flag = True
 
@@ -249,7 +257,8 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                 "NAME":"share_fake_uuid"}]}"""
 
             if url == "filesystem/4":
-                data = filesystem(method, self.fs_status_flag)
+                data, self.extend_share_flag = filesystem(method, data,
+                                                          self.fs_status_flag)
                 self.delete_flag = True
 
         else:
@@ -507,6 +516,31 @@ class HuaweiShareDriverTestCase(test.TestCase):
         location = self.driver.create_share(self._context, self.share_nfs,
                                             self.share_server)
         self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+
+    def test_extend_share_success(self):
+        self.driver.plugin.helper.extend_share_flag = False
+        self.driver.plugin.helper.login()
+        self.driver.extend_share(self.share_nfs, 4,
+                                 self.share_server)
+        self.assertTrue(self.driver.plugin.helper.extend_share_flag)
+
+    def test_extend_share_fail(self):
+        self.driver.plugin.helper.login()
+        self.driver.plugin.helper.test_normal = False
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.extend_share,
+                          self.share_nfs,
+                          4,
+                          self.share_server)
+
+    def test_extend_share_not_exist(self):
+        self.driver.plugin.helper.login()
+        self.driver.plugin.helper.share_exist = False
+        self.assertRaises(exception.InvalidShareAccess,
+                          self.driver.extend_share,
+                          self.share_nfs,
+                          4,
+                          self.share_server)
 
     def test_create_share_nfs_success(self):
         self.driver.plugin.helper.login()
