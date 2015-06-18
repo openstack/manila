@@ -36,5 +36,14 @@ else
     echo "MANILA_MULTI_BACKEND=False" >> $localrc_path
 fi
 
-# Install manila tempest integration
+# Go to Tempest dir and checkout stable commit to avoid possible
+# incompatibilities for plugin stored in Manila repo.
+TEMPEST_COMMIT="b053376e"  # 27 Sep, 2014
+cd $BASE/new/tempest
+git checkout $TEMPEST_COMMIT
+
+# Print current Tempest status
+git status
+
+# Install Manila Tempest integration
 cp -r $BASE/new/manila/contrib/tempest/tempest/* $BASE/new/tempest/tempest
