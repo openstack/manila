@@ -199,7 +199,25 @@ class NetAppCmodeFileStorageLibrary(object):
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': 0.0,
             'free_capacity_gb': 0.0,
+            'pools': self._get_pools(),
         }
+        return data
+
+    @na_utils.trace
+    def get_share_server_pools(self, share_server):
+        """Return list of pools related to a particular share server.
+
+        Note that the multi-SVM cDOT driver assigns all available pools to
+        each Vserver, so there is no need to filter the pools any further
+        by share_server.
+
+        :param share_server: ShareServer class instance.
+        """
+        return self._get_pools()
+
+    @na_utils.trace
+    def _get_pools(self):
+        """Retrieve list of pools available to this backend."""
 
         pools = []
         aggr_space = self._get_aggregate_space()
@@ -229,8 +247,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
             pools.append(pool)
 
-        data['pools'] = pools
-        return data
+        return pools
 
     @na_utils.trace
     def _handle_ems_logging(self):

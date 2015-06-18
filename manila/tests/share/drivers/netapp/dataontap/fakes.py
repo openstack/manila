@@ -270,6 +270,27 @@ SSC_INFO = {
     }
 }
 
+POOLS = [
+    {'pool_name': AGGREGATES[0],
+     'total_capacity_gb': 3.3,
+     'free_capacity_gb': 1.1,
+     'allocated_capacity_gb': 2.2,
+     'QoS_support': 'False',
+     'reserved_percentage': 0,
+     'netapp_raid_type': 'raid4',
+     'netapp_disk_type': 'FCAL'
+     },
+    {'pool_name': AGGREGATES[1],
+     'total_capacity_gb': 6.0,
+     'free_capacity_gb': 2.0,
+     'allocated_capacity_gb': 4.0,
+     'QoS_support': 'False',
+     'reserved_percentage': 0,
+     'netapp_raid_type': 'raid_dp',
+     'netapp_disk_type': 'SSD'
+     },
+]
+
 SSC_RAID_TYPES = {
     AGGREGATES[0]: 'raid4',
     AGGREGATES[1]: 'raid_dp'

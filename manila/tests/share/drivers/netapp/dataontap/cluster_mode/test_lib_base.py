@@ -284,9 +284,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_get_share_stats(self):
 
         self.mock_object(self.library,
-                         '_get_aggregate_space',
-                         mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
-        self.library._ssc_stats = fake.SSC_INFO
+                         '_get_pools',
+                         mock.Mock(return_value=fake.POOLS))
 
         result = self.library.get_share_stats()
 
@@ -299,29 +298,30 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': 0.0,
             'free_capacity_gb': 0.0,
-            'pools': [
-                {'pool_name': fake.AGGREGATES[0],
-                 'total_capacity_gb': 3.3,
-                 'free_capacity_gb': 1.1,
-                 'allocated_capacity_gb': 2.2,
-                 'QoS_support': 'False',
-                 'reserved_percentage': 0,
-                 'netapp_raid_type': 'raid4',
-                 'netapp_disk_type': 'FCAL'
-                 },
-                {'pool_name': fake.AGGREGATES[1],
-                 'total_capacity_gb': 6.0,
-                 'free_capacity_gb': 2.0,
-                 'allocated_capacity_gb': 4.0,
-                 'QoS_support': 'False',
-                 'reserved_percentage': 0,
-                 'netapp_raid_type': 'raid_dp',
-                 'netapp_disk_type': 'SSD'
-                 },
-            ]
+            'pools': fake.POOLS,
         }
-
         self.assertDictEqual(expected, result)
+
+    def test_get_share_server_pools(self):
+
+        self.mock_object(self.library,
+                         '_get_pools',
+                         mock.Mock(return_value=fake.POOLS))
+
+        result = self.library.get_share_server_pools(fake.SHARE_SERVER)
+
+        self.assertListEqual(fake.POOLS, result)
+
+    def test_get_pools(self):
+
+        self.mock_object(self.library,
+                         '_get_aggregate_space',
+                         mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
+        self.library._ssc_stats = fake.SSC_INFO
+
+        result = self.library._get_pools()
+
+        self.assertListEqual(fake.POOLS, result)
 
     def test_handle_ems_logging(self):
 
