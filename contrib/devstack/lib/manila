@@ -27,10 +27,10 @@ set +o xtrace
 MANILA_REPO_ROOT=openstack
 MANILA_GIT_BASE=${MANILA_GIT_BASE:-https://github.com}
 MANILA_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/manila.git
-MANILA_BRANCH=master
+MANILA_BRANCH="stable/juno"
 
 MANILACLIENT_REPO=${MANILA_GIT_BASE}/${MANILA_REPO_ROOT}/python-manilaclient.git
-MANILACLIENT_BRANCH=master
+MANILACLIENT_BRANCH="refs/tags/1.0.1"
 
 # set up default directories
 MANILA_DIR=${MANILA_DIR:=$DEST/manila}
