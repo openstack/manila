@@ -88,8 +88,6 @@ file for the HP 3PAR driver:
 - `hp3par_share_ip_address` = <IP address to use for share export location>
 - `hp3par_san_ip` = <IP address for SSH access to the SAN controller>
 - `hp3par_api_url` = <3PAR WS API Server URL>
-- `hp3par_username` = <3PAR superuser username>
-- `hp3par_password` = <3PAR superuser password>
 - `hp3par_san_login` = <Username for SSH access to the SAN controller>
 - `hp3par_san_password` = <Password for SSH access to the SAN controller>
 - `hp3par_debug` = <False or True for extra debug logging>

@@ -34,13 +34,6 @@ HP3PAR_OPTS = [
                default='',
                help="3PAR WSAPI Server Url like "
                     "https://<3par ip>:8080/api/v1"),
-    cfg.StrOpt('hp3par_username',
-               default='',
-               help="3PAR Super user username"),
-    cfg.StrOpt('hp3par_password',
-               default='',
-               help="3PAR Super user password",
-               secret=True),
     cfg.StrOpt('hp3par_san_ip',
                default='',
                help="IP address of SAN controller"),
@@ -107,8 +100,6 @@ class HP3ParShareDriver(driver.ShareDriver):
                   "hp3par_share_ip_address is not set."))
 
         mediator = hp_3par_mediator.HP3ParMediator(
-            hp3par_username=self.configuration.hp3par_username,
-            hp3par_password=self.configuration.hp3par_password,
             hp3par_api_url=self.configuration.hp3par_api_url,
             hp3par_debug=self.configuration.hp3par_debug,
             hp3par_san_ip=self.configuration.hp3par_san_ip,

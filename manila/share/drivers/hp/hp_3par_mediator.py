@@ -44,8 +44,6 @@ class HP3ParMediator(object):
 
     def __init__(self, **kwargs):
 
-        self.hp3par_username = kwargs.get('hp3par_username')
-        self.hp3par_password = kwargs.get('hp3par_password')
         self.hp3par_api_url = kwargs.get('hp3par_api_url')
         self.hp3par_debug = kwargs.get('hp3par_debug')
         self.hp3par_san_ip = kwargs.get('hp3par_san_ip')

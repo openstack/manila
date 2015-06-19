@@ -53,8 +53,6 @@ class HP3ParMediatorTestCase(test.TestCase):
 
         # Set the mediator to use in tests.
         self.mediator = hp3parmediator.HP3ParMediator(
-            hp3par_username=constants.USERNAME,
-            hp3par_password=constants.PASSWORD,
             hp3par_api_url=constants.API_URL,
             hp3par_debug=constants.EXPECTED_HP_DEBUG,
             hp3par_san_ip=constants.EXPECTED_IP_1234,

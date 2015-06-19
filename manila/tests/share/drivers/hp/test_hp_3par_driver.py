@@ -34,8 +34,6 @@ class HP3ParDriverTestCase(test.TestCase):
         self.conf = mock.Mock()
         self.conf.driver_handles_share_servers = False
         self.conf.hp3par_debug = constants.EXPECTED_HP_DEBUG
-        self.conf.hp3par_username = constants.USERNAME
-        self.conf.hp3par_password = constants.PASSWORD
         self.conf.hp3par_api_url = constants.API_URL
         self.conf.hp3par_san_login = constants.SAN_LOGIN
         self.conf.hp3par_san_password = constants.SAN_PASSWORD
@@ -72,11 +70,9 @@ class HP3ParDriverTestCase(test.TestCase):
         self.mock_mediator_constructor.assert_has_calls([
             mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
                       hp3par_san_password=conf.hp3par_san_password,
-                      hp3par_username=conf.hp3par_username,
                       hp3par_san_login=conf.hp3par_san_login,
                       hp3par_debug=conf.hp3par_debug,
                       hp3par_api_url=conf.hp3par_api_url,
-                      hp3par_password=conf.hp3par_password,
                       hp3par_san_ip=conf.hp3par_san_ip,
                       hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
@@ -100,11 +96,9 @@ class HP3ParDriverTestCase(test.TestCase):
         self.mock_mediator_constructor.assert_has_calls([
             mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
                       hp3par_san_password=conf.hp3par_san_password,
-                      hp3par_username=conf.hp3par_username,
                       hp3par_san_login=conf.hp3par_san_login,
                       hp3par_debug=conf.hp3par_debug,
                       hp3par_api_url=conf.hp3par_api_url,
-                      hp3par_password=conf.hp3par_password,
                       hp3par_san_ip=conf.hp3par_san_ip,
                       hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
@@ -124,11 +118,9 @@ class HP3ParDriverTestCase(test.TestCase):
         self.mock_mediator_constructor.assert_has_calls([
             mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
                       hp3par_san_password=conf.hp3par_san_password,
-                      hp3par_username=conf.hp3par_username,
                       hp3par_san_login=conf.hp3par_san_login,
                       hp3par_debug=conf.hp3par_debug,
                       hp3par_api_url=conf.hp3par_api_url,
-                      hp3par_password=conf.hp3par_password,
                       hp3par_san_ip=conf.hp3par_san_ip,
                       hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
