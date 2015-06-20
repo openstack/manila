@@ -18,6 +18,7 @@ import time
 from oslo_log import log
 from oslo_utils import units
 
+from manila.common import constants as common_constants
 from manila import exception
 from manila.i18n import _, _LI, _LW
 from manila.share.drivers.huawei import base as driver
@@ -295,14 +296,32 @@ class V3StorageConnection(driver.HuaweiBase):
         share_name = share['name']
         share_type = self.helper._get_share_type(share_proto)
         access_type = access['access_type']
-        if share_proto == 'NFS' and access_type != 'ip':
-            message = _('Only IP access type is allowed for NFS shares.')
-            raise exception.InvalidShareAccess(reason=message)
-        elif share_proto == 'CIFS' and access_type != 'user':
-            message = _('Only USER access type is allowed for CIFS shares.')
-            raise exception.InvalidShareAccess(reason=message)
+        access_level = access['access_level']
 
-        access_to = access['access_to']
+        if access_level not in common_constants.ACCESS_LEVELS:
+            raise exception.InvalidShareAccess(
+                reason=(_('Unsupported level of access was provided - %s') %
+                        access_level))
+
+        if share_proto == 'NFS':
+            if access_type == 'ip':
+                if access_level == common_constants.ACCESS_LEVEL_RW:
+                    access_level = constants.ACCESS_NFS_RW
+                else:
+                    access_level = constants.ACCESS_NFS_RO
+            else:
+                message = _('Only IP access type is allowed for NFS shares.')
+                raise exception.InvalidShareAccess(reason=message)
+        elif share_proto == 'CIFS':
+            if access_type == 'user':
+                if access_level == common_constants.ACCESS_LEVEL_RW:
+                    access_level = constants.ACCESS_CIFS_RW
+                else:
+                    access_level = constants.ACCESS_CIFS_RO
+            else:
+                message = _('Only USER access type is allowed'
+                            ' for CIFS shares.')
+                raise exception.InvalidShareAccess(reason=message)
 
         share = self.helper._get_share_by_name(share_name, share_type)
         if not share:
@@ -312,7 +331,9 @@ class V3StorageConnection(driver.HuaweiBase):
             raise exception.InvalidShareAccess(reason=err_msg)
 
         share_id = share['ID']
-        self.helper._allow_access_rest(share_id, access_to, share_proto)
+        access_to = access['access_to']
+        self.helper._allow_access_rest(share_id, access_to,
+                                       share_proto, access_level)
 
     def allocate_container(self, share):
         """Creates filesystem associated to share by name."""

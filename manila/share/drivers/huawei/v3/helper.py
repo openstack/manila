@@ -366,7 +366,8 @@ class RestHelper(object):
             if access_to == item['NAME']:
                 return item['ID']
 
-    def _allow_access_rest(self, share_id, access_to, share_proto):
+    def _allow_access_rest(self, share_id, access_to,
+                           share_proto, access_level):
         """Allow access to the share."""
         access_type = self._get_share_client_type(share_proto)
         url = self.url + "/" + access_type
@@ -377,7 +378,7 @@ class RestHelper(object):
                 "TYPE": "16409",
                 "NAME": access_to,
                 "PARENTID": share_id,
-                "ACCESSVAL": "1",
+                "ACCESSVAL": access_level,
                 "SYNC": "0",
                 "ALLSQUASH": "1",
                 "ROOTSQUASH": "0",
@@ -386,7 +387,7 @@ class RestHelper(object):
             access = {
                 "NAME": access_to,
                 "PARENTID": share_id,
-                "PERMISSION": "5",
+                "PERMISSION": access_level,
                 "DOMAINTYPE": "2",
             }
         data = jsonutils.dumps(access)
