@@ -625,14 +625,12 @@ def share_server_get_by_host_and_share_net(context, host, share_net_id,
                                                        session=session)
 
 
-def share_server_get_by_host_and_share_net_valid(context, host,
-                                                 share_net_id,
-                                                 session=None):
+def share_server_get_all_by_host_and_share_net_valid(context, host,
+                                                     share_net_id,
+                                                     session=None):
     """Get share server DB records by host and share net not error."""
-    return IMPL.share_server_get_by_host_and_share_net_valid(context,
-                                                             host,
-                                                             share_net_id,
-                                                             session=session)
+    return IMPL.share_server_get_all_by_host_and_share_net_valid(
+        context, host, share_net_id, session=session)
 
 
 def share_server_get_all(context):

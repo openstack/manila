@@ -570,7 +570,10 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_create_share_with_share_network_server_creation_failed(self):
         fake_share = {'id': 'fake_share_id', 'share_network_id': 'fake_sn_id'}
-        fake_server = {'id': 'fake_srv_id'}
+        fake_server = {
+            'id': 'fake_srv_id',
+            'status': constants.STATUS_CREATING,
+        }
         self.mock_object(db, 'share_server_create',
                          mock.Mock(return_value=fake_server))
         self.mock_object(db, 'share_update',
@@ -585,7 +588,8 @@ class ShareManagerTestCase(test.TestCase):
         def raise_manila_exception(*args, **kwargs):
             raise exception.ManilaException()
 
-        self.mock_object(db, 'share_server_get_by_host_and_share_net_valid',
+        self.mock_object(db,
+                         'share_server_get_all_by_host_and_share_net_valid',
                          mock.Mock(side_effect=raise_share_server_not_found))
         self.mock_object(self.share_manager, '_setup_server',
                          mock.Mock(side_effect=raise_manila_exception))
@@ -596,7 +600,7 @@ class ShareManagerTestCase(test.TestCase):
             self.context,
             fake_share['id'],
         )
-        db.share_server_get_by_host_and_share_net_valid.\
+        db.share_server_get_all_by_host_and_share_net_valid.\
             assert_called_once_with(
                 utils.IsAMatcher(context.RequestContext),
                 self.share_manager.host,
@@ -642,8 +646,12 @@ class ShareManagerTestCase(test.TestCase):
 
         share_id = share['id']
 
-        self.share_manager.driver = mock.Mock()
-        self.share_manager.driver.create_share.return_value = "fake_location"
+        driver_mock = mock.Mock()
+        driver_mock.create_share.return_value = "fake_location"
+        driver_mock.choose_share_server_compatible_with_share.return_value = (
+            share_srv
+        )
+        self.share_manager.driver = driver_mock
         self.share_manager.create_share(self.context, share_id)
         self.assertFalse(self.share_manager.driver.setup_network.called)
         self.assertEqual(share_id, db.share_get(context.get_admin_context(),
@@ -682,7 +690,10 @@ class ShareManagerTestCase(test.TestCase):
             share_network_id=share_net['id'], host=self.share_manager.host,
             state=constants.STATUS_ERROR)
         share_id = share['id']
-        fake_server = {'id': 'fake_srv_id'}
+        fake_server = {
+            'id': 'fake_srv_id',
+            'status': constants.STATUS_CREATING,
+        }
         self.mock_object(db, 'share_server_create',
                          mock.Mock(return_value=fake_server))
         self.mock_object(self.share_manager, '_setup_server',
@@ -735,6 +746,67 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext),
             utils.IsAMatcher(models.Share),
             share_server=None)
+
+    def test_provide_share_server_for_share_incompatible_servers(self):
+        fake_exception = exception.ManilaException("fake")
+        fake_share_server = {'id': 'fake'}
+        share = self._create_share()
+
+        self.mock_object(db,
+                         'share_server_get_all_by_host_and_share_net_valid',
+                         mock.Mock(return_value=[fake_share_server]))
+        self.mock_object(
+            self.share_manager.driver,
+            "choose_share_server_compatible_with_share",
+            mock.Mock(side_effect=fake_exception)
+        )
+
+        self.assertRaises(exception.ManilaException,
+                          self.share_manager._provide_share_server_for_share,
+                          self.context, "fake_id", share)
+        driver_mock = self.share_manager.driver
+        driver_method_mock = (
+            driver_mock.choose_share_server_compatible_with_share
+        )
+        driver_method_mock.assert_called_once_with(
+            self.context, [fake_share_server], share, snapshot=None)
+
+    def test_provide_share_server_for_share_invalid_arguments(self):
+        self.assertRaises(ValueError,
+                          self.share_manager._provide_share_server_for_share,
+                          self.context, None, None)
+
+    def test_provide_share_server_for_share_parent_ss_not_found(self):
+        fake_parent_id = "fake_server_id"
+        fake_exception = exception.ShareServerNotFound("fake")
+        share = self._create_share()
+        fake_snapshot = {'share': {'share_server_id': fake_parent_id}}
+        self.mock_object(db, 'share_server_get',
+                         mock.Mock(side_effect=fake_exception))
+
+        self.assertRaises(exception.ShareServerNotFound,
+                          self.share_manager._provide_share_server_for_share,
+                          self.context, "fake_id", share,
+                          snapshot=fake_snapshot)
+
+        db.share_server_get.assert_called_once_with(
+            self.context, fake_parent_id)
+
+    def test_provide_share_server_for_share_parent_ss_invalid(self):
+        fake_parent_id = "fake_server_id"
+        share = self._create_share()
+        fake_snapshot = {'share': {'share_server_id': fake_parent_id}}
+        fake_parent_share_server = {'status': 'fake'}
+        self.mock_object(db, 'share_server_get',
+                         mock.Mock(return_value=fake_parent_share_server))
+
+        self.assertRaises(exception.InvalidShareServer,
+                          self.share_manager._provide_share_server_for_share,
+                          self.context, "fake_id", share,
+                          snapshot=fake_snapshot)
+
+        db.share_server_get.assert_called_once_with(
+            self.context, fake_parent_id)
 
     def test_manage_share_invalid_driver(self):
         self.mock_object(self.share_manager, 'driver', mock.Mock())

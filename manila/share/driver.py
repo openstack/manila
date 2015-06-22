@@ -327,6 +327,20 @@ class ShareDriver(object):
         if self.get_network_allocations_number():
             self.network_api.deallocate_network(context, share_server_id)
 
+    def choose_share_server_compatible_with_share(self, context, share_servers,
+                                                  share, snapshot=None):
+        """Method that allows driver to choose share server for provided share.
+
+        If compatible share-server is not found, method should return None.
+
+        :param context: Current context
+        :param share_servers: list with share-server models
+        :param share:  share model
+        :param snapshot: snapshot model
+        :returns: share-server or None
+        """
+        return share_servers[0] if share_servers else None
+
     def setup_server(self, *args, **kwargs):
         if self.driver_handles_share_servers:
             return self._setup_server(*args, **kwargs)
