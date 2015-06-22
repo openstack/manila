@@ -323,29 +323,32 @@ class RestHelper(object):
 
         self._assert_rest_result(result, 'Start CIFS service error.')
 
-    def _find_pool_info(self):
-        root = self._read_xml()
-        pool_name = root.findtext('Filesystem/StoragePool')
-        if not pool_name:
-            err_msg = (_("Invalid resource pool: %s.") % pool_name)
-            LOG.error(err_msg)
-            raise exception.InvalidInput(err_msg)
-
-        url = self.url + "/storagepool"
-        result = self.call(url, None)
-        self._assert_rest_result(result, 'Query resource pool error.')
+    def _find_pool_info(self, pool_name, result):
+        if pool_name is None:
+            return
 
         poolinfo = {}
         pool_name = pool_name.strip()
         for item in result.get('data', []):
-            if pool_name == item['NAME']:
+            if pool_name == item['NAME'] and '2' == item['USAGETYPE']:
                 poolinfo['name'] = pool_name
                 poolinfo['ID'] = item['ID']
                 poolinfo['CAPACITY'] = item['USERFREECAPACITY']
                 poolinfo['TOTALCAPACITY'] = item['USERTOTALCAPACITY']
+                poolinfo['CONSUMEDCAPACITY'] = item['USERCONSUMEDCAPACITY']
                 break
 
         return poolinfo
+
+    def _find_all_pool_info(self):
+        url = self.url + "/storagepool"
+        result = self.call(url, None)
+
+        msg = "Query resource pool error."
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+
+        return result
 
     def _read_xml(self):
         """Open xml file and parse the content."""
@@ -580,6 +583,7 @@ class RestHelper(object):
         fs = {}
         fs['HEALTHSTATUS'] = result['data']['HEALTHSTATUS']
         fs['RUNNINGSTATUS'] = result['data']['RUNNINGSTATUS']
+        fs['POOLNAME'] = result['data']['PARENTNAME']
         return fs
 
     def _get_share_path(self, share_name):

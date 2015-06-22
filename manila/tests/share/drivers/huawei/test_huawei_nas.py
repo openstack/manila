@@ -64,11 +64,13 @@ def filesystem(method, data, fs_status_flag):
         if fs_status_flag:
             data = """{"error":{"code":0},
                 "data":{"HEALTHSTATUS":"1",
-                "RUNNINGSTATUS":"27"}}"""
+                "RUNNINGSTATUS":"27",
+                "PARENTNAME":"OpenStack_Pool"}}"""
         else:
             data = """{"error":{"code":0},
                     "data":{"HEALTHSTATUS":"0",
-                    "RUNNINGSTATUS":"27"}}"""
+                    "RUNNINGSTATUS":"27",
+                    "PARENTNAME":"OpenStack_Pool"}}"""
     else:
         data = '{"error":{"code":31755596}}'
     return (data, extend_share_flag)
@@ -171,7 +173,9 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "data":[{"USERFREECAPACITY":"2097152",
                     "ID":"1",
                     "NAME":"OpenStack_Pool",
-                    "USERTOTALCAPACITY":"4194304"}]}"""
+                    "USERTOTALCAPACITY":"4194304",
+                    "USAGETYPE":"2",
+                    "USERCONSUMEDCAPACITY":"2097152"}]}"""
 
             if url == "filesystem":
                 data = """{"error":{"code":0},"data":{
@@ -196,7 +200,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                 else:
                     data = """{"error":{"code":0},
                         "data":[{"ID":"1",
-                        "FSID":"4",
+                        "FSID":"",
                         "NAME":"test",
                         "SHAREPATH":"/share_fake_uuid_fail/"}]}"""
 
@@ -393,6 +397,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'share_proto': 'NFS',
             'share_network_id': 'fake_net_id',
             'share_server_id': 'fake-share-srv-id',
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
         }
 
         self.share_proto_fail = {
@@ -404,6 +409,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'share_proto': 'proto_fail',
             'share_network_id': 'fake_net_id',
             'share_server_id': 'fake-share-srv-id',
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
         }
 
         self.share_cifs = {
@@ -415,6 +421,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'share_proto': 'CIFS',
             'share_network_id': 'fake_net_id',
             'share_server_id': 'fake-share-srv-id',
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
         }
 
         self.nfs_snapshot = {
@@ -471,6 +478,30 @@ class HuaweiShareDriverTestCase(test.TestCase):
                 {'id': 'fake_na_id_1', 'ip_address': 'fake_ip_1', },
                 {'id': 'fake_na_id_2', 'ip_address': 'fake_ip_2', },
             ],
+        }
+
+        self.share_nfs_host_not_exist = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-uuid',
+            'size': 1,
+            'share_proto': 'NFS',
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+            'host': 'fake_host@fake_backend#',
+        }
+
+        self.share_nfs_storagepool_fail = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-uuid',
+            'size': 1,
+            'share_proto': 'NFS',
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+            'host': 'fake_host@fake_backend#OpenStack_Pool2',
         }
 
     def test_conf_product_fail(self):
@@ -533,15 +564,20 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.share_nfs,
                           self.share_server)
 
-    def test_create_share_nfs_storagepool_fail(self):
-        self.recreate_fake_conf_file(pool_node_flag=False)
-        self.driver.plugin.configuration.manila_huawei_conf_file = (
-            self.fake_conf_file)
+    def test_create_share_storagepool_not_exist(self):
         self.driver.plugin.helper.login()
-        self.assertRaises(exception.InvalidShare,
+        self.assertRaises(exception.InvalidHost,
                           self.driver.create_share,
                           self._context,
-                          self.share_nfs,
+                          self.share_nfs_host_not_exist,
+                          self.share_server)
+
+    def test_create_share_nfs_storagepool_fail(self):
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidHost,
+                          self.driver.create_share,
+                          self._context,
+                          self.share_nfs_storagepool_fail,
                           self.share_server)
 
     def test_create_share_nfs_no_data_fail(self):
@@ -725,6 +761,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self._context, self.share_nfs, self.nfs_snapshot,
                           self.share_server)
 
+    def test_get_share_stats_refresh_pool_not_exist(self):
+        self.driver.plugin.helper.login()
+        self.recreate_fake_conf_file(pool_node_flag=False)
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver._update_share_stats)
+
     def test_get_share_stats_refresh(self):
         self.driver.plugin.helper.login()
         self.driver._update_share_stats()
@@ -736,8 +780,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
         expected["driver_version"] = '1.0'
         expected["storage_protocol"] = 'NFS_CIFS'
         expected['reserved_percentage'] = 0
-        expected['total_capacity_gb'] = 'infinite'
-        expected['free_capacity_gb'] = 'infinite'
+        expected['total_capacity_gb'] = 0.0
+        expected['free_capacity_gb'] = 0.0
         expected['QoS_support'] = False
         expected["pools"] = []
         pool = {}
@@ -745,18 +789,13 @@ class HuaweiShareDriverTestCase(test.TestCase):
             pool_name='OpenStack_Pool',
             total_capacity_gb=2,
             free_capacity_gb=1,
+            allocated_capacity_gb=1,
             QoS_support=False,
             reserved_percentage=0,
         ))
+
         expected["pools"].append(pool)
         self.assertEqual(expected, self.driver._stats)
-
-    def test_get_capacity_success(self):
-        self.driver.plugin.helper.login()
-        capacity = {}
-        capacity = self.driver.plugin._get_capacity()
-        self.assertEqual(2, capacity['TOTALCAPACITY'])
-        self.assertEqual(1, capacity['CAPACITY'])
 
     def test_allow_access_proto_fail(self):
         self.driver.plugin.helper.login()
@@ -995,6 +1034,17 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.driver.delete_snapshot, self._context,
                           self.cifs_snapshot, self.share_server)
 
+    def test_get_pool_success(self):
+        self.driver.plugin.helper.login()
+        pool_name = self.driver.get_pool(self.share_nfs_host_not_exist)
+        self.assertEqual('OpenStack_Pool', pool_name)
+
+    def test_get_pool_fail(self):
+        self.driver.plugin.helper.login()
+        self.driver.plugin.helper.share_exist = False
+        pool_name = self.driver.get_pool(self.share_nfs_host_not_exist)
+        self.assertEqual(None, pool_name)
+
     def test_multi_resturls_success(self):
         self.recreate_fake_conf_file(multi_url=True)
         self.driver.plugin.configuration.manila_huawei_conf_file = (
@@ -1074,7 +1124,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
 
         storagepool = doc.createElement('StoragePool')
         if pool_node_flag:
-            pool_text = doc.createTextNode('OpenStack_Pool')
+            pool_text = doc.createTextNode('OpenStack_Pool;OpenStack_Pool2; ;')
         else:
             pool_text = doc.createTextNode('')
         storagepool.appendChild(pool_text)

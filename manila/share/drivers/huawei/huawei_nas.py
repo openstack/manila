@@ -139,6 +139,11 @@ class HuaweiNasDriver(driver.ShareDriver):
 
         self.plugin.deny_access(share, access, share_server)
 
+    def get_pool(self, share):
+        """Return pool name where the share resides on."""
+        LOG.debug("Get pool.")
+        return self.plugin.get_pool(share)
+
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
         LOG.debug("Get network allocations number.")
@@ -151,7 +156,9 @@ class HuaweiNasDriver(driver.ShareDriver):
         data = dict(
             share_backend_name=backend_name or 'HUAWEI_NAS_Driver',
             vendor_name='Huawei',
-            storage_protocol='NFS_CIFS')
+            storage_protocol='NFS_CIFS',
+            total_capacity_gb=0.0,
+            free_capacity_gb=0.0)
 
         self.plugin.update_share_stats(data)
         super(HuaweiNasDriver, self)._update_share_stats(data)

@@ -24,6 +24,7 @@ from manila.i18n import _, _LI, _LW
 from manila.share.drivers.huawei import base as driver
 from manila.share.drivers.huawei import constants
 from manila.share.drivers.huawei.v3 import helper
+from manila.share import utils as share_utils
 
 LOG = log.getLogger(__name__)
 
@@ -47,13 +48,25 @@ class V3StorageConnection(driver.HuaweiBase):
         share_name = share['name']
         share_proto = share['share_proto']
 
+        pool_name = share_utils.extract_host(share['host'], level='pool')
+
+        if not pool_name:
+            msg = _("Pool is not available in the share host field.")
+            raise exception.InvalidHost(reason=msg)
+
+        result = self.helper._find_all_pool_info()
+        poolinfo = self.helper._find_pool_info(pool_name, result)
+        if not poolinfo:
+            msg = (_("Can not find pool info by pool name: %s") % pool_name)
+            raise exception.InvalidHost(reason=msg)
+
         fs_id = None
         # We sleep here to ensure the newly created filesystem can be read.
         wait_interval = self._get_wait_interval()
         timeout = self._get_timeout()
 
         try:
-            fs_id = self.allocate_container(share)
+            fs_id = self.allocate_container(share, poolinfo)
             fs = self.helper._get_fs_info_by_id(fs_id)
             end_time = time.time() + timeout
 
@@ -162,18 +175,30 @@ class V3StorageConnection(driver.HuaweiBase):
 
     def update_share_stats(self, stats_dict):
         """Retrieve status info from share group."""
-        capacity = self._get_capacity()
+        root = self.helper._read_xml()
+        pool_name_list = root.findtext('Filesystem/StoragePool')
+        if not pool_name_list:
+            err_msg = _("The StoragePool is None.")
+            LOG.error(err_msg)
+            raise exception.InvalidInput(err_msg)
 
+        pool_name_list = pool_name_list.split(";")
+
+        result = self.helper._find_all_pool_info()
         stats_dict["pools"] = []
-        pool = {}
-        pool.update(dict(
-            pool_name=capacity['name'],
-            total_capacity_gb=capacity['TOTALCAPACITY'],
-            free_capacity_gb=capacity['CAPACITY'],
-            QoS_support=False,
-            reserved_percentage=0,
-        ))
-        stats_dict["pools"].append(pool)
+        for pool_name in pool_name_list:
+            pool_name = pool_name.strip().strip('\n')
+            capacity = self._get_capacity(pool_name, result)
+            if capacity:
+                pool = dict(
+                    pool_name=pool_name,
+                    total_capacity_gb=capacity['TOTALCAPACITY'],
+                    free_capacity_gb=capacity['CAPACITY'],
+                    allocated_capacity_gb=capacity['CONSUMEDCAPACITY'],
+                    QoS_support=False,
+                    reserved_percentage=0,
+                )
+                stats_dict["pools"].append(pool)
 
     def delete_share(self, share, share_server=None):
         """Delete share."""
@@ -206,23 +231,24 @@ class V3StorageConnection(driver.HuaweiBase):
         """Get number of network interfaces to be created."""
         return constants.IP_ALLOCATIONS
 
-    def _get_capacity(self):
+    def _get_capacity(self, pool_name, result):
         """Get free capacity and total capacity of the pools."""
-        poolinfo = self.helper._find_pool_info()
+        poolinfo = self.helper._find_pool_info(pool_name, result)
 
         if poolinfo:
             total = int(poolinfo['TOTALCAPACITY']) / units.Mi / 2
             free = int(poolinfo['CAPACITY']) / units.Mi / 2
+            consumed = int(poolinfo['CONSUMEDCAPACITY']) / units.Mi / 2
             poolinfo['TOTALCAPACITY'] = total
             poolinfo['CAPACITY'] = free
+            poolinfo['CONSUMEDCAPACITY'] = consumed
 
         return poolinfo
 
-    def _init_filesys_para(self, share):
+    def _init_filesys_para(self, share, poolinfo):
         """Init basic filesystem parameters."""
         name = share['name']
         size = share['size'] * units.Mi * 2
-        poolinfo = self.helper._find_pool_info()
         fileparam = {
             "NAME": name.replace("-", "_"),
             "DESCRIPTION": "",
@@ -335,9 +361,24 @@ class V3StorageConnection(driver.HuaweiBase):
         self.helper._allow_access_rest(share_id, access_to,
                                        share_proto, access_level)
 
-    def allocate_container(self, share):
+    def get_pool(self, share):
+        pool_name = share_utils.extract_host(share['host'], level='pool')
+        if pool_name:
+            return pool_name
+        share_name = share['name']
+        share_url_type = self.helper._get_share_url_type(share['share_proto'])
+        share = self.helper._get_share_by_name(share_name, share_url_type)
+
+        pool_name = None
+        if share:
+            pool = self.helper._get_fs_info_by_id(share['FSID'])
+            pool_name = pool['POOLNAME']
+
+        return pool_name
+
+    def allocate_container(self, share, poolinfo):
         """Creates filesystem associated to share by name."""
-        fileParam = self._init_filesys_para(share)
+        fileParam = self._init_filesys_para(share, poolinfo)
         fsid = self.helper._create_filesystem(fileParam)
         return fsid
 
