@@ -114,15 +114,17 @@ ShareGroup = [
                      "These test may leave orphaned resources, so be careful "
                      "enabling this opt."),
     cfg.StrOpt("image_with_share_tools",
-               default="ubuntu_1204_nfs_cifs",
+               default="manila-service-image",
                help="Image name for vm booting with nfs/smb clients tool."),
     cfg.StrOpt("image_username",
-               default="ubuntu",
+               default="manila",
                help="Image username."),
-    # HINT(mkoderer): workaround for bug #1421104
     cfg.StrOpt("image_password",
-               default="ubuntu",
-               help="Image password."),
+               help="Image password. Should be used for "
+                    "'image_with_share_tools' without Nova Metadata support."),
+    cfg.StrOpt("client_vm_flavor_ref",
+               default="100",
+               help="Flavor used for client vm in scenario tests."),
     cfg.BoolOpt("run_extend_tests",
                 default=True,
                 help="Defines whether to run share extend tests or not."
