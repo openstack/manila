@@ -2003,13 +2003,14 @@ def share_server_get(context, server_id, session=None):
 
 
 @require_context
-def share_server_get_by_host_and_share_net_valid(context, host, share_net_id,
-                                                 session=None):
+def share_server_get_all_by_host_and_share_net_valid(context, host,
+                                                     share_net_id,
+                                                     session=None):
     result = _server_get_query(context, session).filter_by(host=host)\
         .filter_by(share_network_id=share_net_id)\
         .filter(models.ShareServer.status.in_(
-            (constants.STATUS_CREATING, constants.STATUS_ACTIVE))).first()
-    if result is None:
+            (constants.STATUS_CREATING, constants.STATUS_ACTIVE))).all()
+    if not result:
         filters_description = ('share_network_id is "%(share_net_id)s",'
                                ' host is "%(host)s" and status in'
                                ' "%(status_cr)s" or "%(status_act)s"') % {

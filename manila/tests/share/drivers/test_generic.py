@@ -1384,6 +1384,21 @@ class GenericShareDriverTestCase(test.TestCase):
             fake_server_details, ['sudo', 'resize2fs', '/dev/fake'])
         self.assertEqual(2, self._driver._ssh_exec.call_count)
 
+    @ddt.data({'share_servers': [], 'result': None},
+              {'share_servers': None, 'result': None},
+              {'share_servers': ['fake'], 'result': 'fake'},
+              {'share_servers': ['fake', 'test'], 'result': 'fake'})
+    @ddt.unpack
+    def tests_choose_share_server_compatible_with_share(self, share_servers,
+                                                        result):
+        fake_share = "fake"
+
+        actual_result = self._driver.choose_share_server_compatible_with_share(
+            self._context, share_servers, fake_share
+        )
+
+        self.assertEqual(result, actual_result)
+
 
 @generic.ensure_server
 def fake(driver_instance, context, share_server=None):

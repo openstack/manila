@@ -105,7 +105,7 @@ class ShareServerTableTestCase(test.TestCase):
                           db.share_server_update,
                           self.ctxt, fake_id, {})
 
-    def test_share_server_get_by_host_and_share_net_valid(self):
+    def test_share_server_get_all_by_host_and_share_net_valid(self):
         valid = {
             'share_network_id': '1',
             'host': 'host1',
@@ -125,15 +125,15 @@ class ShareServerTableTestCase(test.TestCase):
         self._create_share_server(invalid)
         self._create_share_server(other)
 
-        servers = db.share_server_get_by_host_and_share_net_valid(
+        servers = db.share_server_get_all_by_host_and_share_net_valid(
             self.ctxt,
             host='host1',
             share_net_id='1')
-        self.assertEqual(servers['id'], valid['id'])
+        self.assertEqual(servers[0]['id'], valid['id'])
 
-    def test_share_server_get_by_host_and_share_net_not_found(self):
+    def test_share_server_get_all_by_host_and_share_net_not_found(self):
         self.assertRaises(exception.ShareServerNotFound,
-                          db.share_server_get_by_host_and_share_net_valid,
+                          db.share_server_get_all_by_host_and_share_net_valid,
                           self.ctxt, host='fake', share_net_id='fake')
 
     def test_share_server_get_all(self):

@@ -206,7 +206,7 @@ class ShareManager(manager.SchedulerDependentManager):
         self.publish_service_capabilities(ctxt)
 
     def _provide_share_server_for_share(self, context, share_network_id,
-                                        share_id):
+                                        share, snapshot=None):
         """Gets or creates share_server and updates share with its id.
 
         Active share_server can be deleted if there are no dependent shares
@@ -218,21 +218,87 @@ class ShareManager(manager.SchedulerDependentManager):
         For this purpose used shared lock between this method and the one
         with deletion of share_server.
 
+        :param context: Current context
+        :param share_network_id: Share network where existing share server
+                                 should be found or created. If
+                                 share_network_id is None method use
+                                 share_network_id from provided snapshot.
+        :param share: Share model
+        :param snapshot: Optional -- Snapshot model
+
         :returns: dict, dict -- first value is share_server, that
                   has been chosen for share schedule. Second value is
                   share updated with share_server_id.
         """
+        if not (share_network_id or snapshot):
+            msg = _("'share_network_id' parameter or 'snapshot'"
+                    " should be provided. ")
+            raise ValueError(msg)
+
+        parent_share_server = None
+
+        def error(msg, *args):
+            LOG.error(msg, *args)
+            self.db.share_update(context, share['id'],
+                                 {'status': constants.STATUS_ERROR})
+
+        if snapshot:
+            parent_share_server_id = snapshot['share']['share_server_id']
+            try:
+                parent_share_server = self.db.share_server_get(
+                    context, parent_share_server_id)
+            except exception.ShareServerNotFound:
+                with excutils.save_and_reraise_exception():
+                    error(_LE("Parent share server %s does not exist."),
+                          parent_share_server_id)
+
+            if parent_share_server['status'] != constants.STATUS_ACTIVE:
+                error_params = {
+                    'id': parent_share_server_id,
+                    'status': parent_share_server['status'],
+                }
+                error(_LE("Parent share server %(id)s has invalid status "
+                          "'%(status)s'."), error_params)
+                raise exception.InvalidShareServer(
+                    share_server_id=parent_share_server
+                )
+
+        if parent_share_server and not share_network_id:
+            share_network_id = parent_share_server['share_network_id']
+
+        def get_available_share_servers():
+            if parent_share_server:
+                return [parent_share_server]
+            else:
+                return (
+                    self.db.share_server_get_all_by_host_and_share_net_valid(
+                        context, self.host, share_network_id)
+                )
 
         @utils.synchronized("share_manager_%s" % share_network_id)
         def _provide_share_server_for_share():
-            exist = False
             try:
-                share_server = \
-                    self.db.share_server_get_by_host_and_share_net_valid(
-                        context, self.host, share_network_id)
-                exist = True
+                available_share_servers = get_available_share_servers()
             except exception.ShareServerNotFound:
-                share_server = self.db.share_server_create(
+                available_share_servers = None
+
+            compatible_share_server = None
+
+            if available_share_servers:
+                try:
+                    compatible_share_server = (
+                        self.driver.choose_share_server_compatible_with_share(
+                            context, available_share_servers, share,
+                            snapshot=snapshot
+                        )
+                    )
+                except Exception as e:
+                    with excutils.save_and_reraise_exception():
+                        error(_LE("Cannot choose compatible share-server: %s"),
+                              e)
+
+            if not compatible_share_server:
+                compatible_share_server = self.db.share_server_create(
                     context,
                     {
                         'host': self.host,
@@ -241,23 +307,28 @@ class ShareManager(manager.SchedulerDependentManager):
                     }
                 )
 
-            LOG.debug("Using share_server %s for share %s" % (
-                share_server['id'], share_id))
+            msg = "Using share_server %(share_server)s for share %(share_id)s"
+            LOG.debug(msg, {
+                'share_server': compatible_share_server['id'],
+                'share_id': share['id']
+            })
+
             share_ref = self.db.share_update(
                 context,
-                share_id,
-                {'share_server_id': share_server['id']},
+                share['id'],
+                {'share_server_id': compatible_share_server['id']},
             )
 
-            if not exist:
-                # Create share server on backend with data from db
-                share_server = self._setup_server(context, share_server)
+            if compatible_share_server['status'] == constants.STATUS_CREATING:
+                # Create share server on backend with data from db.
+                compatible_share_server = self._setup_server(
+                    context, compatible_share_server)
                 LOG.info(_LI("Share server created successfully."))
             else:
-                LOG.info(_LI("Used already existed share server "
+                LOG.info(_LI("Used preexisting share server "
                              "'%(share_server_id)s'"),
-                         {'share_server_id': share_server['id']})
-            return share_server, share_ref
+                         {'share_server_id': compatible_share_server['id']})
+            return compatible_share_server, share_ref
 
         return _provide_share_server_for_share()
 
@@ -292,24 +363,12 @@ class ShareManager(manager.SchedulerDependentManager):
             snapshot_ref = None
             parent_share_server_id = None
 
-        if parent_share_server_id:
-            try:
-                share_server = self.db.share_server_get(context,
-                                                        parent_share_server_id)
-                LOG.debug("Using share_server "
-                          "%s for share %s" % (share_server['id'], share_id))
-                share_ref = self.db.share_update(
-                    context, share_id, {'share_server_id': share_server['id']})
-            except exception.ShareServerNotFound:
-                with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Share server %s does not exist."),
-                              parent_share_server_id)
-                    self.db.share_update(context, share_id,
-                                         {'status': constants.STATUS_ERROR})
-        elif share_network_id:
+        if share_network_id or parent_share_server_id:
             try:
                 share_server, share_ref = self._provide_share_server_for_share(
-                    context, share_network_id, share_id)
+                    context, share_network_id, share_ref,
+                    snapshot=snapshot_ref
+                )
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE("Failed to get share server"
