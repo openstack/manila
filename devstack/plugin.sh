@@ -85,15 +85,15 @@ SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.generic.GenericShareDriver}
 eval USER_HOME=~
 MANILA_PATH_TO_PUBLIC_KEY=${MANILA_PATH_TO_PUBLIC_KEY:-"$USER_HOME/.ssh/id_rsa.pub"}
 MANILA_PATH_TO_PRIVATE_KEY=${MANILA_PATH_TO_PRIVATE_KEY:-"$USER_HOME/.ssh/id_rsa"}
+MANILA_SERVICE_KEYPAIR_NAME=${MANILA_SERVICE_KEYPAIR_NAME:-"manila-service"}
 
-MANILA_SERVICE_INSTANCE_USER=${MANILA_SERVICE_INSTANCE_USER:-"ubuntu"}
-MANILA_SERVICE_INSTANCE_PASSWORD=${MANILA_SERVICE_INSTANCE_PASSWORD:-"ubuntu"}
-MANILA_SERVICE_IMAGE_URL=${MANILA_SERVICE_IMAGE_URL:-"https://www.dropbox.com/s/vi5oeh10q1qkckh/ubuntu_1204_nfs_cifs.qcow2"}
-MANILA_SERVICE_IMAGE_NAME=${MANILA_SERVICE_IMAGE_NAME:-"ubuntu_1204_nfs_cifs"}
+MANILA_SERVICE_INSTANCE_USER=${MANILA_SERVICE_INSTANCE_USER:-"manila"}
+MANILA_SERVICE_IMAGE_URL=${MANILA_SERVICE_IMAGE_URL:-"https://github.com/uglide/manila-image-elements/releases/download/0.1.0/manila-service-image.qcow2"}
+MANILA_SERVICE_IMAGE_NAME=${MANILA_SERVICE_IMAGE_NAME:-"manila-service-image"}
 
 MANILA_SERVICE_VM_FLAVOR_REF=${MANILA_SERVICE_VM_FLAVOR_REF:-100}
 MANILA_SERVICE_VM_FLAVOR_NAME=${MANILA_SERVICE_VM_FLAVOR_NAME:-"manila-service-flavor"}
-MANILA_SERVICE_VM_FLAVOR_RAM=${MANILA_SERVICE_VM_FLAVOR_RAM:-64}
+MANILA_SERVICE_VM_FLAVOR_RAM=${MANILA_SERVICE_VM_FLAVOR_RAM:-128}
 MANILA_SERVICE_VM_FLAVOR_DISK=${MANILA_SERVICE_VM_FLAVOR_DISK:-0}
 MANILA_SERVICE_VM_FLAVOR_VCPUS=${MANILA_SERVICE_VM_FLAVOR_VCPUS:-1}
 
@@ -141,7 +141,6 @@ function configure_default_backends {
         iniset $MANILA_CONF $group_name path_to_private_key $MANILA_PATH_TO_PRIVATE_KEY
         iniset $MANILA_CONF $group_name service_image_name $MANILA_SERVICE_IMAGE_NAME
         iniset $MANILA_CONF $group_name service_instance_user $MANILA_SERVICE_INSTANCE_USER
-        iniset $MANILA_CONF $group_name service_instance_password $MANILA_SERVICE_INSTANCE_PASSWORD
         iniset $MANILA_CONF $group_name driver_handles_share_servers True
     done
 }
@@ -273,6 +272,8 @@ function configure_manila {
         ssh-keygen -N "" -t rsa -f $MANILA_PATH_TO_PRIVATE_KEY;
     fi
 
+    iniset $MANILA_CONF DEFAULT manila_service_keypair_name $MANILA_SERVICE_KEYPAIR_NAME
+
     if is_service_enabled tls-proxy; then
         # Set the service port for a proxy to take the original
         iniset $MANILA_CONF DEFAULT osapi_share_listen_port $MANILA_SERVICE_PORT_INT
@@ -315,6 +316,11 @@ function configure_manila_ui {
 }
 
 
+function create_manila_service_keypair {
+    openstack keypair create $MANILA_SERVICE_KEYPAIR_NAME --public-key $MANILA_PATH_TO_PUBLIC_KEY
+}
+
+
 # create_service_share_servers - creates service Nova VMs, one per generic
 # driver, and only if it is configured to mode without handling of share servers.
 function create_service_share_servers {
@@ -329,7 +335,8 @@ function create_service_share_servers {
                 --flavor $MANILA_SERVICE_VM_FLAVOR_NAME \
                 --image $MANILA_SERVICE_IMAGE_NAME \
                 --nic net-id=$private_net_id \
-                --security-groups $MANILA_SERVICE_SECGROUP
+                --security-groups $MANILA_SERVICE_SECGROUP \
+                --key-name $MANILA_SERVICE_KEYPAIR_NAME
 
             vm_id=$(nova show $vm_name | grep ' id ' | get_field 2)
 
@@ -526,6 +533,9 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
 
     echo_summary "Creating Manila service image"
     create_manila_service_image
+
+    echo_summary "Creating Manila service keypair"
+    create_manila_service_keypair
 
     echo_summary "Creating Manila service VMs for generic driver \
         backends for which handlng of share servers is disabled."

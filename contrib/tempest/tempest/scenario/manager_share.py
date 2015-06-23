@@ -155,8 +155,9 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         if not CONF.share.image_with_share_tools:
             return super(ShareScenarioTest,
                          self).get_remote_client(*args, **kwargs)
-        # HINT(mkoderer): as workaround for bug #1421104 we have to ignore the
-        # keypair and use the configured username and password
+        # NOTE(u_glide): We need custom implementation of this method until
+        # original implementation depends on CONF.compute.ssh_auth_method
+        # option.
         server_or_ip = kwargs['server_or_ip']
         if isinstance(server_or_ip, six.string_types):
             ip = server_or_ip
@@ -164,11 +165,15 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
             addr = server_or_ip['addresses'][CONF.compute.network_for_ssh][0]
             ip = addr['addr']
 
-        username = CONF.share.image_username
-        password = CONF.share.image_password
+        # NOTE(u_glide): Both options (pkey and password) are required here to
+        # support service images without Nova metadata support
+        client_params = {
+            'username': kwargs['username'],
+            'password': CONF.share.image_password,
+            'pkey': kwargs.get('private_key'),
+        }
 
-        linux_client = remote_client.RemoteClient(ip, username=username,
-                                                  password=password, pkey=None)
+        linux_client = remote_client.RemoteClient(ip, **client_params)
         try:
             linux_client.validate_authentication()
         except Exception:

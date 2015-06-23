@@ -26,7 +26,7 @@ CONF = config.CONF
 LOG = logging.getLogger(__name__)
 
 
-class TestShareBasicOps(manager.ShareScenarioTest):
+class ShareBasicOpsBase(manager.ShareScenarioTest):
 
     """This smoke test case follows this basic set of operations:
 
@@ -38,14 +38,14 @@ class TestShareBasicOps(manager.ShareScenarioTest):
      * Mount share
      * Terminate the instance
     """
-    protocol = "NFS"
+    protocol = None
 
     def setUp(self):
-        super(TestShareBasicOps, self).setUp()
+        super(ShareBasicOpsBase, self).setUp()
         # Setup image and flavor the test instance
         # Support both configured and injected values
         if not hasattr(self, 'flavor_ref'):
-            self.flavor_ref = CONF.compute.flavor_ref
+            self.flavor_ref = CONF.share.client_vm_flavor_ref
         if CONF.share.image_with_share_tools:
             images = self.images_client.list_images()
             for img in images:
@@ -56,7 +56,7 @@ class TestShareBasicOps(manager.ShareScenarioTest):
                 msg = ("Image %s not found" %
                        CONF.share.image_with_share_tools)
                 raise exceptions.InvalidConfiguration(message=msg)
-        self.ssh_user = CONF.compute.image_ssh_user
+        self.ssh_user = CONF.share.image_username
         LOG.debug('Starting test for i:{image}, f:{flavor}. '
                   'user: {ssh_user}'.format(
                       image=self.image_ref, flavor=self.flavor_ref,
@@ -73,7 +73,8 @@ class TestShareBasicOps(manager.ShareScenarioTest):
             'security_groups': security_groups,
         }
         instance = self.create_server(image=self.image_ref,
-                                      create_kwargs=create_kwargs)
+                                      create_kwargs=create_kwargs,
+                                      flavor=self.flavor_ref)
         return instance
 
     def init_ssh(self, instance, do_ping=False):
@@ -90,6 +91,10 @@ class TestShareBasicOps(manager.ShareScenarioTest):
             server_or_ip=floating_ip['ip'],
             username=self.ssh_user,
             private_key=self.keypair['private_key'])
+
+        # NOTE(u_glide): Workaround for bug #1465682
+        ssh_client = ssh_client.ssh_client
+
         self.share = self.shares_client.get_share(self.share['id'])
         if do_ping:
             server_ip = self.share['export_location'].split(":")[0]
@@ -97,7 +102,7 @@ class TestShareBasicOps(manager.ShareScenarioTest):
         return ssh_client
 
     def mount_share(self, location, ssh_client):
-        ssh_client.exec_command("sudo mount \"%s\" /mnt" % location)
+        raise NotImplementedError
 
     def umount_share(self, ssh_client):
         ssh_client.exec_command("sudo umount /mnt")
@@ -180,3 +185,33 @@ class TestShareBasicOps(manager.ShareScenarioTest):
                         ssh_client_inst2)
         data = self.read_data(ssh_client_inst2)
         self.assertEqual(test_data, data)
+
+
+class TestShareBasicOpsNFS(ShareBasicOpsBase):
+    protocol = "NFS"
+
+    def mount_share(self, location, ssh_client):
+        ssh_client.exec_command("sudo mount \"%s\" /mnt" % location)
+
+
+class TestShareBasicOpsCIFS(ShareBasicOpsBase):
+    protocol = "CIFS"
+
+    def mount_share(self, location, ssh_client):
+        location = location.replace("\\", "/")
+        ssh_client.exec_command(
+            "sudo mount.cifs \"%s\" /mnt -o guest" % location
+        )
+
+
+# NOTE(u_glide): this function is required to exclude ShareBasicOpsBase from
+# executed test cases.
+# See: https://docs.python.org/2/library/unittest.html#load-tests-protocol
+# for details.
+def load_tests(loader, tests, _):
+    result = []
+    for test_case in tests:
+        if type(test_case._tests[0]) is ShareBasicOpsBase:
+            continue
+        result.append(test_case)
+    return loader.suiteClass(result)
