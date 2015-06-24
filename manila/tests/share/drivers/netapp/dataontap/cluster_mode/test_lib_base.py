@@ -23,9 +23,9 @@ import time
 import ddt
 import mock
 from oslo_log import log
+from oslo_service import loopingcall
 
 from manila import exception
-from manila.openstack.common import loopingcall
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode

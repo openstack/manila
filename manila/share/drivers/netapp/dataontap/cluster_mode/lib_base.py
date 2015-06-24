@@ -24,12 +24,12 @@ import socket
 import time
 
 from oslo_log import log
+from oslo_service import loopingcall
 from oslo_utils import units
 import six
 
 from manila import exception
 from manila.i18n import _, _LE, _LI, _LW
-from manila.openstack.common import loopingcall
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode

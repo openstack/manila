@@ -30,6 +30,7 @@ import greenlet
 from oslo_config import cfg
 from oslo_log import log
 import oslo_messaging as messaging
+from oslo_service import loopingcall
 from oslo_utils import importutils
 
 from manila import context
@@ -38,7 +39,6 @@ from manila import exception
 from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
-from manila.openstack.common import loopingcall
 from manila import rpc
 from manila import version
 from manila import wsgi
