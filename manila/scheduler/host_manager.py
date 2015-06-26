@@ -403,6 +403,10 @@ class HostManager(object):
                           weigher_class_names=None):
         """Weigh the hosts."""
         weigher_classes = self._choose_host_weighers(weigher_class_names)
+        weight_properties['server_pools_mapping'] = {}
+        for backend, info in self.service_states.items():
+            weight_properties['server_pools_mapping'].update(
+                info.get('server_pools_mapping', {}))
         return self.weight_handler.get_weighed_objects(weigher_classes,
                                                        hosts,
                                                        weight_properties)
