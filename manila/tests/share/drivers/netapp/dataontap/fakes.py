@@ -80,6 +80,8 @@ EXTRA_SPEC = {
     'netapp:thin_provisioned': 'true',
     'netapp:snapshot_policy': 'default',
     'netapp:language': 'en-US',
+    'netapp:dedup': 'True',
+    'netapp:compression': 'false',
     'netapp:max_files': 5000,
 }
 
@@ -87,17 +89,23 @@ PROVISIONING_OPTIONS = {
     'thin_provisioned': True,
     'snapshot_policy': 'default',
     'language': 'en-US',
+    'dedup_enabled': True,
+    'compression_enabled': False,
     'max_files': 5000,
 }
 
 PROVISIONING_OPTIONS_BOOLEAN = {
     'thin_provisioned': True,
+    'dedup_enabled': False,
+    'compression_enabled': False,
 }
 
 PROVISIONING_OPTIONS_BOOLEAN_THIN_PROVISIONED_TRUE = {
     'thin_provisioned': True,
     'snapshot_policy': None,
     'language': None,
+    'dedup_enabled': False,
+    'compression_enabled': False,
     'max_files': None,
 }
 
@@ -140,18 +148,14 @@ INVALID_EXTRA_SPEC = {
     'netapp:language': 'abc',
 }
 
+INVALID_EXTRA_SPEC_COMBO = {
+    'netapp:dedup': 'false',
+    'netapp:compression': 'true'
+}
+
 INVALID_MAX_FILE_EXTRA_SPEC = {
     'netapp:max_files': -1,
 }
-
-BOOLEAN_EXTRA_SPEC = {
-    'netapp:thin_provisioned': 'true',
-}
-
-BOOLEAN_SHORT_EXTRA_SPEC = {
-    'netapp:thin_provisioned': 'true',
-}
-
 
 EMPTY_EXTRA_SPEC = {}
 

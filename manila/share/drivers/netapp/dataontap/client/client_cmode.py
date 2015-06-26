@@ -760,7 +760,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def create_volume(self, aggregate_name, volume_name, size_gb,
                       thin_provisioned=False, snapshot_policy=None,
-                      language=None, max_files=None):
+                      language=None, dedup_enabled=False,
+                      compression_enabled=False, max_files=None):
+
         """Creates a volume."""
         api_args = {
             'containing-aggr-name': aggregate_name,
@@ -776,8 +778,28 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             api_args['language-code'] = language
         self.send_request('volume-create', api_args)
 
+        # cDOT compression requires that deduplication be enabled.
+        if dedup_enabled or compression_enabled:
+            self.enable_dedup(volume_name)
+        if compression_enabled:
+            self.enable_compression(volume_name)
         if max_files is not None:
             self.set_volume_max_files(volume_name, max_files)
+
+    @na_utils.trace
+    def enable_dedup(self, volume_name):
+        """Enable deduplication on volume."""
+        api_args = {'path': '/vol/%s' % volume_name}
+        self.send_request('sis-enable', api_args)
+
+    @na_utils.trace
+    def enable_compression(self, volume_name):
+        """Enable compression on volume."""
+        api_args = {
+            'path': '/vol/%s' % volume_name,
+            'enable-compression': 'true'
+        }
+        self.send_request('sis-set-config', api_args)
 
     @na_utils.trace
     def set_volume_max_files(self, volume_name, max_files):
