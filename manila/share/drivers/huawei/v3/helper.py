@@ -166,7 +166,7 @@ class RestHelper(object):
 
     def _create_share(self, share_name, fs_id, share_proto):
         """Create a share."""
-        share_type = self._get_share_type(share_proto)
+        share_url_type = self._get_share_url_type(share_proto)
         share_path = self._get_share_path(share_name)
 
         filepath = {}
@@ -192,7 +192,7 @@ class RestHelper(object):
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share_proto))
 
-        url = self.url + "/" + share_type
+        url = self.url + "/" + share_url_type
         data = jsonutils.dumps(filepath)
 
         result = self.call(url, data, "POST")
@@ -203,9 +203,9 @@ class RestHelper(object):
 
         return result['data']['ID']
 
-    def _delete_share_by_id(self, share_id, share_type):
+    def _delete_share_by_id(self, share_id, share_url_type):
         """Delete share by share id."""
-        url = self.url + "/" + share_type + "/" + share_id
+        url = self.url + "/" + share_url_type + "/" + share_id
 
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result, 'Delete share error.')
@@ -455,9 +455,9 @@ class RestHelper(object):
 
         return result['data']['ID']
 
-    def _get_share_by_name(self, share_name, share_type):
+    def _get_share_by_name(self, share_name, share_url_type):
         """Segments to find share for a period of 100."""
-        count = self._get_share_count(share_type)
+        count = self._get_share_count(share_url_type)
 
         share = {}
         range_begin = 0
@@ -466,25 +466,25 @@ class RestHelper(object):
                 break
             share = self._get_share_by_name_range(share_name,
                                                   range_begin,
-                                                  share_type)
+                                                  share_url_type)
             range_begin += 100
             count -= 100
 
         return share
 
-    def _get_share_count(self, share_type):
+    def _get_share_count(self, share_url_type):
         """Get share count."""
-        url = self.url + "/" + share_type + "/count"
+        url = self.url + "/" + share_url_type + "/count"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, 'Get share count error!')
 
         return int(result['data']['COUNT'])
 
     def _get_share_by_name_range(self, share_name,
-                                 range_begin, share_type):
+                                 range_begin, share_url_type):
         """Get share by share name."""
         range_end = range_begin + 100
-        url = (self.url + "/" + share_type + "?range=["
+        url = (self.url + "/" + share_url_type + "?range=["
                + six.text_type(range_begin) + "-"
                + six.text_type(range_end) + "]")
         result = self.call(url, None, "GET")
@@ -501,18 +501,18 @@ class RestHelper(object):
 
         return share
 
-    def _get_share_type(self, share_proto):
-        share_type = None
+    def _get_share_url_type(self, share_proto):
+        share_url_type = None
         if share_proto == 'NFS':
-            share_type = "NFSHARE"
+            share_url_type = "NFSHARE"
         elif share_proto == 'CIFS':
-            share_type = "CIFSHARE"
+            share_url_type = "CIFSHARE"
         else:
             raise exception.InvalidInput(
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share_proto))
 
-        return share_type
+        return share_url_type
 
     def _get_fsid_by_name(self, share_name):
         url = self.url + "/FILESYSTEM?range=[0-8191]"
