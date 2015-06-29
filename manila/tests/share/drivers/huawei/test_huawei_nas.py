@@ -27,6 +27,7 @@ import mock
 from oslo_serialization import jsonutils
 
 from manila import context
+from manila import db
 from manila import exception
 from manila.share import configuration as conf
 from manila.share.drivers.huawei import huawei_nas
@@ -65,6 +66,10 @@ def filesystem(method, data, fs_status_flag):
                 "data":{"ID":"4",
                 "CAPACITY":"2097152"}}"""
             shrink_share_flag = True
+        elif data == """{"NAME": "share_fake_manage_uuid"}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"4",
+                "CAPACITY":"8388608"}}"""
     elif method == "DELETE":
         data = """{"error":{"code":0}}"""
     elif method == "GET":
@@ -410,6 +415,43 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'share_network_id': 'fake_net_id',
             'share_server_id': 'fake-share-srv-id',
             'host': 'fake_host@fake_backend#OpenStack_Pool',
+            'export_locations': [
+                {'path': '100.115.10.68:/share_fake_uuid'},
+            ],
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
+            'share_type_id': 'fake_id',
+        }
+
+        self.share_manage_nfs = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-manage-uuid',
+            'size': 1,
+            'share_proto': 'NFS',
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+            'export_locations': [
+                {'path': '100.115.10.68:/share_fake_uuid'},
+            ],
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
+            'share_type_id': 'fake_id',
+        }
+
+        self.share_pool_name_not_match = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-manage-uuid',
+            'size': 1,
+            'share_proto': 'NFS',
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+            'export_locations': [
+                {'path': '100.115.10.68:/share_fake_uuid'},
+            ],
+            'host': 'fake_host@fake_backend#OpenStack_Pool_not_match',
+            'share_type_id': 'fake_id',
         }
 
         self.share_proto_fail = {
@@ -433,7 +475,27 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'share_proto': 'CIFS',
             'share_network_id': 'fake_net_id',
             'share_server_id': 'fake-share-srv-id',
+            'export_locations': [
+                {'path': 'share_fake_uuid'},
+            ],
             'host': 'fake_host@fake_backend#OpenStack_Pool',
+            'share_type_id': 'fake_id',
+        }
+
+        self.share_manage_cifs = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-manage-uuid',
+            'size': 1,
+            'share_proto': 'CIFS',
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+            'export_locations': [
+                {'path': '\\\\100.115.10.68\\share_fake_uuid'},
+            ],
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
+            'share_type_id': 'fake_id',
         }
 
         self.nfs_snapshot = {
@@ -478,6 +540,9 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'access_level': 'rw',
         }
 
+        self.driver_options = {
+            'volume_id': 'fake',
+        }
         self.share_server = None
         self.driver._licenses = ['fake']
 
@@ -514,6 +579,23 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'share_network_id': 'fake_net_id',
             'share_server_id': 'fake-share-srv-id',
             'host': 'fake_host@fake_backend#OpenStack_Pool2',
+        }
+
+        fake_extra_specs = {
+            u'driver_handles_share_servers': u'False',
+        }
+        fake_share_type_id = u'fake_id'
+        self.fake_type_extra = {
+            'test_with_extra': {
+                'created_at': 'fake_time',
+                'deleted': '0',
+                'deleted_at': None,
+                'extra_specs': fake_extra_specs,
+                'required_extra_specs': {},
+                'id': fake_share_type_id,
+                'name': u'test_with_extra',
+                'updated_at': None
+            }
         }
 
     def test_conf_product_fail(self):
@@ -1088,6 +1170,132 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.driver.delete_snapshot, self._context,
                           self.cifs_snapshot, self.share_server)
 
+    @ddt.data({"share_proto": "NFS",
+               "path": ["100.115.10.68:/share_fake_manage_uuid"]},
+              {"share_proto": "CIFS",
+               "path": ["\\\\100.115.10.68\\share_fake_manage_uuid"]})
+    @ddt.unpack
+    def test_manage_share_nfs_success(self, share_proto, path):
+        if share_proto == "NFS":
+            share = self.share_manage_nfs
+        elif share_proto == "CIFS":
+            share = self.share_manage_cifs
+
+        share_type = self.fake_type_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        share_info = self.driver.manage_existing(share,
+                                                 self.driver_options)
+        self.assertEqual(4, share_info["size"])
+        self.assertEqual(path,
+                         share_info["export_locations"])
+
+    @ddt.data({"flag": "share_not_exist", "exc": exception.InvalidShare},
+              {"flag": "fs_status_error", "exc": exception.InvalidShare},
+              {"flag": "poolname_not_match", "exc": exception.InvalidHost})
+    @ddt.unpack
+    def test_manage_share_fail(self, flag, exc):
+        share = None
+        if flag == "share_not_exist":
+            self.driver.plugin.helper.share_exist = False
+            share = self.share_nfs
+        elif flag == "fs_status_error":
+            self.driver.plugin.helper.fs_status_flag = False
+            share = self.share_nfs
+        elif flag == "poolname_not_match":
+            share = self.share_pool_name_not_match
+
+        self.driver.plugin.helper.login()
+        share_type = self.fake_type_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.assertRaises(exc,
+                          self.driver.manage_existing,
+                          share,
+                          self.driver_options)
+
+    @ddt.data({"share_proto": "NFS",
+               "export_path": "fake_ip:/share_fake_uuid"},
+              {"share_proto": "NFS", "export_path": "fake_ip:/"},
+              {"share_proto": "NFS",
+               "export_path": "100.112.0.1://share_fake_uuid"},
+              {"share_proto": "NFS", "export_path": None},
+              {"share_proto": "NFS", "export_path": "\\share_fake_uuid"},
+              {"share_proto": "CIFS",
+               "export_path": "\\\\fake_ip\\share_fake_uuid"},
+              {"share_proto": "CIFS",
+               "export_path": "\\dd\\100.115.10.68\\share_fake_uuid"})
+    @ddt.unpack
+    def test_manage_export_path_fail(self, share_proto, export_path):
+        share_manage_nfs_export_path_fail = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-manage-uuid',
+            'size': 1,
+            'share_proto': share_proto,
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+            'export_locations': [
+                {'path': export_path},
+            ],
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
+            'share_type_id': 'fake_id'
+        }
+        share_type = self.fake_type_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.manage_existing,
+                          share_manage_nfs_export_path_fail,
+                          self.driver_options)
+
+    def test_manage_logical_port_ip_fail(self):
+        self.recreate_fake_conf_file(logical_port_ip="")
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        share_type = self.fake_type_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.manage_existing,
+                          self.share_nfs,
+                          self.driver_options)
+
+    def test_manage_existing_share_type_mismatch(self):
+        fake_extra_specs = {
+            u'driver_handles_share_servers': u'True',
+        }
+        fake_share_type_id = u'fake_id'
+        fake_type_mismatch_extra = {
+            'test_with_extra': {
+                'created_at': 'fake_time',
+                'deleted': '0',
+                'deleted_at': None,
+                'extra_specs': fake_extra_specs,
+                'required_extra_specs': {},
+                'id': fake_share_type_id,
+                'name': u'test_with_extra',
+                'updated_at': None
+            }
+        }
+        share_type = fake_type_mismatch_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.ManageExistingShareTypeMismatch,
+                          self.driver.manage_existing,
+                          self.share_nfs,
+                          self.driver_options)
+
     def test_get_pool_success(self):
         self.driver.plugin.helper.login()
         pool_name = self.driver.get_pool(self.share_nfs_host_not_exist)
@@ -1126,7 +1334,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
                               pool_node_flag=True, timeout_flag=True,
                               wait_interval_flag=True,
                               alloctype_value='Thick',
-                              multi_url=False):
+                              multi_url=False,
+                              logical_port_ip='100.115.10.68'):
         doc = xml.dom.minidom.Document()
         config = doc.createElement('Config')
         doc.appendChild(config)
@@ -1135,7 +1344,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         config.appendChild(storage)
 
         controllerip0 = doc.createElement('LogicalPortIP')
-        controllerip0_text = doc.createTextNode('100.115.10.68')
+        controllerip0_text = doc.createTextNode(logical_port_ip)
         controllerip0.appendChild(controllerip0_text)
         storage.appendChild(controllerip0)
 
@@ -1220,12 +1429,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
                                 pool_node_flag=True, timeout_flag=True,
                                 wait_interval_flag=True,
                                 alloctype_value='Thick',
-                                multi_url=False):
+                                multi_url=False,
+                                logical_port_ip='100.115.10.68'):
         self.tmp_dir = tempfile.mkdtemp()
         self.fake_conf_file = self.tmp_dir + '/manila_huawei_conf.xml'
         self.addCleanup(shutil.rmtree, self.tmp_dir)
         self.create_fake_conf_file(self.fake_conf_file, product_flag,
                                    username_flag, pool_node_flag,
                                    timeout_flag, wait_interval_flag,
-                                   alloctype_value, multi_url)
+                                   alloctype_value, multi_url,
+                                   logical_port_ip)
         self.addCleanup(os.remove, self.fake_conf_file)
