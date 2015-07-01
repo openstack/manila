@@ -33,6 +33,7 @@ from manila.share import configuration as conf
 from manila.share.drivers.huawei import huawei_nas
 from manila.share.drivers.huawei.v3 import connection
 from manila.share.drivers.huawei.v3 import helper
+from manila.share.drivers.huawei.v3 import smartx
 from manila import test
 
 
@@ -159,7 +160,11 @@ class FakeHuaweiNasHelper(helper.RestHelper):
         self.allow_rw_flag = False
         self.extend_share_flag = False
         self.shrink_share_flag = False
+        self.add_fs_to_partition_flag = False
+        self.add_fs_to_cache_flag = False
         self.test_multi_url_flag = 0
+        self.cache_exist = True
+        self.partition_exist = True
 
     def _change_file_mode(self, filepath):
         pass
@@ -349,6 +354,33 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     filesystem(method, data, self.fs_status_flag))
                 self.delete_flag = True
 
+            if url == "cachepartition":
+                if self.partition_exist:
+                    data = """{"error":{"code":0},
+                    "data":[{"ID":"7",
+                    "NAME":"test_partition_name"}]}"""
+                else:
+                    data = """{"error":{"code":0},
+                    "data":[{"ID":"7",
+                    "NAME":"test_partition_name_fail"}]}"""
+
+            if url == "SMARTCACHEPARTITION":
+                if self.cache_exist:
+                    data = """{"error":{"code":0},
+                    "data":[{"ID":"8",
+                    "NAME":"test_cache_name"}]}"""
+                else:
+                    data = """{"error":{"code":0},
+                    "data":[{"ID":"8",
+                    "NAME":"test_cache_name_fail"}]}"""
+
+            if url == "filesystem/associate/cachepartition":
+                data = """{"error":{"code":0}}"""
+                self.add_fs_to_partition_flag = True
+
+            if url == "SMARTCACHEPARTITION/CREATE_ASSOCIATE":
+                data = """{"error":{"code":0}}"""
+                self.add_fs_to_cache_flag = True
         else:
             data = '{"error":{"code":31755596}}'
 
@@ -575,6 +607,10 @@ class HuaweiShareDriverTestCase(test.TestCase):
         fake_extra_specs = {
             'capabilities:dedupe': '<is> True',
             'capabilities:compression': '<is> True',
+            'capabilities:huawei_smartcache': '<is> True',
+            'huawei_smartcache:cachename': 'test_cache_name',
+            'capabilities:huawei_smartpartition': '<is> True',
+            'huawei_smartpartition:partitionname': 'test_partition_name',
             'capabilities:thin_provisioning': '<is> True',
             'test:test:test': 'test'
         }
@@ -857,6 +893,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertEqual("\\\\100.115.10.68\\share_fake_uuid", location)
 
     def test_create_share_with_extra(self):
+        self.driver.plugin.helper.add_fs_to_partition_flag = False
+        self.driver.plugin.helper.add_fs_to_cache_flag = False
         share_type = self.fake_type_w_extra['test_with_extra']
         self.mock_object(db,
                          'share_type_get',
@@ -868,13 +906,21 @@ class HuaweiShareDriverTestCase(test.TestCase):
         location = self.driver.create_share(self._context, self.share_nfs,
                                             self.share_server)
         self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+        self.assertTrue(self.driver.plugin.helper.add_fs_to_partition_flag)
+        self.assertTrue(self.driver.plugin.helper.add_fs_to_cache_flag)
 
     @ddt.data({'capabilities:dedupe': '<is> True',
                'capabilities:thin_provisioning': '<is> False'},
               {'capabilities:dedupe': '<is> True',
                'capabilities:compression': '<is> True',
-               'capabilities:thin_provisioning': '<is> False'})
-    def test_create_share_with_extra_thick_error(self, fake_extra_specs):
+               'capabilities:thin_provisioning': '<is> False'},
+              {'capabilities:huawei_smartcache': '<is> True',
+               'huawei_smartcache:cachename': None},
+              {'capabilities:huawei_smartpartition': '<is> True',
+               'huawei_smartpartition:partitionname': None},
+              {'capabilities:huawei_smartcache': '<is> True'},
+              {'capabilities:huawei_smartpartition': '<is> True'})
+    def test_create_share_with_extra_error(self, fake_extra_specs):
         fake_share_type_id = 'fooid-2'
         fake_type_error_extra = {
             'test_with_extra': {
@@ -898,6 +944,52 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self._context,
                           self.share_nfs,
                           self.share_server)
+
+    def test_create_share_cache_not_exist(self):
+        self.driver.plugin.helper.cache_exist = False
+        share_type = self.fake_type_w_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share,
+                          self._context,
+                          self.share_nfs,
+                          self.share_server)
+
+    def test_add_share_to_cache_fail(self):
+        opts = dict(
+            huawei_smartcache='true',
+            cachename=None,
+        )
+        fsid = 4
+        smartcache = smartx.SmartCache(self.driver.plugin.helper)
+        self.assertRaises(exception.InvalidInput, smartcache.add,
+                          opts, fsid)
+
+    def test_create_share_partition_not_exist(self):
+        self.driver.plugin.helper.partition_exist = False
+        share_type = self.fake_type_w_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share,
+                          self._context,
+                          self.share_nfs,
+                          self.share_server)
+
+    def test_add_share_to_partition_fail(self):
+        opts = dict(
+            huawei_smartpartition='true',
+            partitionname=None,
+        )
+        fsid = 4
+        smartpartition = smartx.SmartPartition(self.driver.plugin.helper)
+        self.assertRaises(exception.InvalidInput, smartpartition.add,
+                          opts, fsid)
 
     def test_login_fail(self):
         self.driver.plugin.helper.test_normal = False
@@ -1024,6 +1116,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
             max_over_subscription_ratio=1,
             provisioned_capacity_gb=1.0,
             thin_provisioning=True,
+            huawei_smartcache=True,
+            huawei_smartpartition=True,
         )
         pool_thick = dict(
             pool_name='OpenStack_Pool',
@@ -1037,6 +1131,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
             max_over_subscription_ratio=1,
             provisioned_capacity_gb=1.0,
             thin_provisioning=False,
+            huawei_smartcache=True,
+            huawei_smartpartition=True,
         )
         expected["pools"].append(pool_thin)
         expected["pools"].append(pool_thick)

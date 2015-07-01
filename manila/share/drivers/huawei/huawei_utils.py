@@ -37,6 +37,7 @@ def get_share_extra_specs_params(type_id):
 
 def _get_opts_from_specs(specs):
     opts = constants.OPTS_CAPABILITIES.copy()
+    opts.update(constants.OPTS_VALUE)
 
     for key, value in specs.items():
 
@@ -68,4 +69,9 @@ def _get_opts_from_specs(specs):
             else:
                 opts[key] = words[1].lower()
 
+        if ((scope in constants.OPTS_CAPABILITIES) and
+                (key in constants.OPTS_VALUE)):
+            if ((scope in constants.OPTS_ASSOCIATE) and
+                    (constants.OPTS_ASSOCIATE[scope] == key)):
+                opts[key] = value
     return opts
