@@ -583,6 +583,8 @@ class RestHelper(object):
         fs = {}
         fs['HEALTHSTATUS'] = result['data']['HEALTHSTATUS']
         fs['RUNNINGSTATUS'] = result['data']['RUNNINGSTATUS']
+        fs['CAPACITY'] = result['data']['CAPACITY']
+        fs['ALLOCTYPE'] = result['data']['ALLOCTYPE']
         fs['POOLNAME'] = result['data']['PARENTNAME']
         return fs
 
@@ -599,7 +601,7 @@ class RestHelper(object):
                        + snap_name.replace("-", "_"))
         return snapshot_id
 
-    def _extend_share(self, fsid, new_size):
+    def _change_share_size(self, fsid, new_size):
         url = self.url + "/filesystem/%s" % fsid
 
         capacityinfo = {
@@ -609,6 +611,6 @@ class RestHelper(object):
         data = jsonutils.dumps(capacityinfo)
         result = self.call(url, data, "PUT")
 
-        msg = "Extend a share error!"
+        msg = "Change a share size error!"
         self._assert_rest_result(result, msg)
         self._assert_data_in_result(result, msg)

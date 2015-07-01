@@ -110,7 +110,7 @@ class V3StorageConnection(driver.HuaweiBase):
         share_proto = share['share_proto']
         share_name = share['name']
 
-        # The unit is the sectors.
+        # The unit is in sectors.
         size = new_size * units.Mi * 2
         share_url_type = self.helper._get_share_url_type(share_proto)
 
@@ -122,7 +122,49 @@ class V3StorageConnection(driver.HuaweiBase):
             raise exception.InvalidShareAccess(reason=err_msg)
 
         fsid = share['FSID']
-        self.helper._extend_share(fsid, size)
+        self.helper._change_share_size(fsid, size)
+
+    def shrink_share(self, share, new_size, share_server):
+        """Shrinks size of existing share."""
+        share_proto = share['share_proto']
+        share_name = share['name']
+
+        # The unit is in sectors.
+        size = new_size * units.Mi * 2
+        share_url_type = self.helper._get_share_url_type(share_proto)
+
+        share = self.helper._get_share_by_name(share_name, share_url_type)
+        if not share:
+            err_msg = (_("Can not get share ID by share %s.")
+                       % share_name)
+            LOG.error(err_msg)
+            raise exception.InvalidShare(reason=err_msg)
+
+        fsid = share['FSID']
+        fs_info = self.helper._get_fs_info_by_id(fsid)
+        if not fs_info:
+            err_msg = (_("Can not get filesystem info by filesystem ID: %s.")
+                       % fsid)
+            LOG.error(err_msg)
+            raise exception.InvalidShare(reason=err_msg)
+
+        current_size = int(fs_info['CAPACITY']) / units.Mi / 2
+        if current_size < new_size:
+            err_msg = (_("New size for shrink must be less than current "
+                         "size on array. (current: %(size)s, "
+                         "new: %(new_size)s).")
+                       % {'size': current_size, 'new_size': new_size})
+            LOG.error(err_msg)
+            raise exception.InvalidShare(reason=err_msg)
+
+        if fs_info['ALLOCTYPE'] != '1':
+            err_msg = (_("Share (%s) can not be shrunk. only 'Thin' shares "
+                         "support shrink.")
+                       % share_name)
+            LOG.error(err_msg)
+            raise exception.InvalidShare(reason=err_msg)
+
+        self.helper._change_share_size(fsid, size)
 
     def check_fs_status(self, health_status, running_status):
         if (health_status == constants.STATUS_FS_HEALTH
@@ -171,7 +213,7 @@ class V3StorageConnection(driver.HuaweiBase):
         if snapshot_flag:
             self.helper._delete_snapshot(snapshot_id)
         else:
-            LOG.warning(_LW("Can not find snapshot %s in array."), snap_name)
+            LOG.warning(_LW("Can not find snapshot %s on array."), snap_name)
 
     def update_share_stats(self, stats_dict):
         """Retrieve status info from share group."""

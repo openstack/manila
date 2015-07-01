@@ -56,6 +56,10 @@ class HuaweiBase(object):
         """Extends size of existing share."""
 
     @abc.abstractmethod
+    def shrink_share(self, share, new_size, share_server):
+        """Shrinks size of existing share."""
+
+    @abc.abstractmethod
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
 

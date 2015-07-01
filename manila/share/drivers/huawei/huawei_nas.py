@@ -46,6 +46,7 @@ class HuaweiNasDriver(driver.ShareDriver):
     API version history:
 
         1.0 - Initial version.
+        1.1 - Add shrink share
     """
 
     def __init__(self, *args, **kwargs):
@@ -102,6 +103,11 @@ class HuaweiNasDriver(driver.ShareDriver):
         LOG.debug("Extend a share.")
         self.plugin.extend_share(share, new_size, share_server)
 
+    def shrink_share(self, share, new_size, share_server=None):
+        """Shrinks size of existing share."""
+        LOG.debug("Shrink a share.")
+        self.plugin.shrink_share(share, new_size, share_server)
+
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
         """Is called to create share from snapshot."""
@@ -156,6 +162,7 @@ class HuaweiNasDriver(driver.ShareDriver):
         data = dict(
             share_backend_name=backend_name or 'HUAWEI_NAS_Driver',
             vendor_name='Huawei',
+            driver_version='1.1',
             storage_protocol='NFS_CIFS',
             total_capacity_gb=0.0,
             free_capacity_gb=0.0)

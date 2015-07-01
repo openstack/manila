@@ -52,12 +52,19 @@ def data_session(url):
 
 def filesystem(method, data, fs_status_flag):
     extend_share_flag = False
+    shrink_share_flag = False
+
     if method == "PUT":
         if data == """{"CAPACITY": 8388608}""":
             data = """{"error":{"code":0},
                 "data":{"ID":"4",
                 "CAPACITY":"8388608"}}"""
             extend_share_flag = True
+        elif data == """{"CAPACITY": 2097152}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"4",
+                "CAPACITY":"2097152"}}"""
+            shrink_share_flag = True
     elif method == "DELETE":
         data = """{"error":{"code":0}}"""
     elif method == "GET":
@@ -65,15 +72,19 @@ def filesystem(method, data, fs_status_flag):
             data = """{"error":{"code":0},
                 "data":{"HEALTHSTATUS":"1",
                 "RUNNINGSTATUS":"27",
+                "ALLOCTYPE":"1",
+                "CAPACITY":"8388608",
                 "PARENTNAME":"OpenStack_Pool"}}"""
         else:
             data = """{"error":{"code":0},
                     "data":{"HEALTHSTATUS":"0",
                     "RUNNINGSTATUS":"27",
+                    "ALLOCTYPE":"0",
+                    "CAPACITY":"8388608",
                     "PARENTNAME":"OpenStack_Pool"}}"""
     else:
         data = '{"error":{"code":31755596}}'
-    return (data, extend_share_flag)
+    return (data, extend_share_flag, shrink_share_flag)
 
 
 def allow_access(type, method, data):
@@ -142,6 +153,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
         self.allow_ro_flag = False
         self.allow_rw_flag = False
         self.extend_share_flag = False
+        self.shrink_share_flag = False
         self.test_multi_url_flag = 0
 
     def _change_file_mode(self, filepath):
@@ -328,8 +340,8 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                 "NAME":"share_fake_uuid"}]}"""
 
             if url == "filesystem/4":
-                data, self.extend_share_flag = filesystem(method, data,
-                                                          self.fs_status_flag)
+                data, self.extend_share_flag, self.shrink_share_flag = (
+                    filesystem(method, data, self.fs_status_flag))
                 self.delete_flag = True
 
         else:
@@ -634,6 +646,48 @@ class HuaweiShareDriverTestCase(test.TestCase):
                                             self.share_server)
         self.assertEqual("100.115.10.68:/share_fake_uuid", location)
 
+    def test_shrink_share_success(self):
+        self.driver.plugin.helper.shrink_share_flag = False
+        self.driver.plugin.helper.login()
+        self.driver.shrink_share(self.share_nfs, 1,
+                                 self.share_server)
+        self.assertTrue(self.driver.plugin.helper.shrink_share_flag)
+
+    def test_shrink_share_fail(self):
+        self.driver.plugin.helper.login()
+        self.driver.plugin.helper.test_normal = False
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.shrink_share,
+                          self.share_nfs,
+                          1,
+                          self.share_server)
+
+    def test_shrink_share_size_fail(self):
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.shrink_share,
+                          self.share_nfs,
+                          5,
+                          self.share_server)
+
+    def test_shrink_share_alloctype_fail(self):
+        self.driver.plugin.helper.login()
+        self.driver.plugin.helper.fs_status_flag = False
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.shrink_share,
+                          self.share_nfs,
+                          1,
+                          self.share_server)
+
+    def test_shrink_share_not_exist(self):
+        self.driver.plugin.helper.login()
+        self.driver.plugin.helper.share_exist = False
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.shrink_share,
+                          self.share_nfs,
+                          1,
+                          self.share_server)
+
     def test_extend_share_success(self):
         self.driver.plugin.helper.extend_share_flag = False
         self.driver.plugin.helper.login()
@@ -777,7 +831,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         expected["share_backend_name"] = "fake_share_backend_name"
         expected["driver_handles_share_servers"] = False
         expected["vendor_name"] = 'Huawei'
-        expected["driver_version"] = '1.0'
+        expected["driver_version"] = '1.1'
         expected["storage_protocol"] = 'NFS_CIFS'
         expected['reserved_percentage'] = 0
         expected['total_capacity_gb'] = 0.0
