@@ -25,11 +25,16 @@ API_URL = 'https://1.2.3.4:8080/api/v1'
 TIMEOUT = 60
 PORT = 22
 SHARE_TYPE_ID = 123456789
+CIDR_PREFIX = '24'
 
 # Constants to use with Mock and expect in results
 EXPECTED_IP_10203040 = '10.20.30.40'
 EXPECTED_IP_1234 = '1.2.3.4'
 EXPECTED_IP_127 = '127.0.0.1'
+EXPECTED_SUBNET = '255.255.255.0'  # based on CIDR_PREFIX above
+EXPECTED_VLAN_TYPE = 'vlan'
+EXPECTED_VLAN_TAG = '101'
+EXPECTED_SERVER_ID = '1a1a1a1a-2b2b-3c3c-4d4d-5e5e5e5e5e5e'
 EXPECTED_PROJECT_ID = 'osf-nfs-project-id'
 EXPECTED_SHARE_ID = 'osf-share-id'
 EXPECTED_SHARE_NAME = 'share-name'
@@ -49,6 +54,22 @@ EXPECTED_EXTRA_SPECS = {}
 GET_FSQUOTA = {'message': None,
                'total': 1,
                'members': [{'hardBlock': '1024', 'softBlock': '1024'}]}
+
+EXPECTED_FSIP = {
+    'fspool': EXPECTED_FPG,
+    'vfs': EXPECTED_VFS,
+    'address': EXPECTED_IP_1234,
+    'prefixLen': EXPECTED_SUBNET,
+    'vlanTag': EXPECTED_VLAN_TAG,
+}
+
+OTHER_FSIP = {
+    'fspool': EXPECTED_FPG,
+    'vfs': EXPECTED_VFS,
+    'address': '9.9.9.9',
+    'prefixLen': EXPECTED_SUBNET,
+    'vlanTag': EXPECTED_VLAN_TAG,
+}
 
 NFS_SHARE_INFO = {
     'project_id': EXPECTED_PROJECT_ID,
