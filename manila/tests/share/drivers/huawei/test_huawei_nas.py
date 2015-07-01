@@ -217,7 +217,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                 else:
                     data = """{"error":{"code":0},
                         "data":[{"ID":"1",
-                        "FSID":"",
+                        "FSID":"4",
                         "NAME":"test",
                         "SHAREPATH":"/share_fake_uuid_fail/"}]}"""
 
@@ -394,6 +394,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.configuration.network_config_group = 'fake_network_config_group'
         self.configuration.share_backend_name = 'fake_share_backend_name'
         self.configuration.huawei_share_backend = 'V3'
+        self.configuration.max_over_subscription_ratio = 1
 
         self.configuration.manila_huawei_conf_file = self.fake_conf_file
         self.configuration.driver_handles_share_servers = False
@@ -557,6 +558,41 @@ class HuaweiShareDriverTestCase(test.TestCase):
             ],
         }
 
+        fake_share_type_id_not_extra = 'fake_id'
+        self.fake_type_not_extra = {
+            'test_with_extra': {
+                'created_at': 'fake_time',
+                'deleted': '0',
+                'deleted_at': None,
+                'extra_specs': {},
+                'required_extra_specs': {},
+                'id': fake_share_type_id_not_extra,
+                'name': 'test_with_extra',
+                'updated_at': None
+            }
+        }
+
+        fake_extra_specs = {
+            'capabilities:dedupe': '<is> True',
+            'capabilities:compression': '<is> True',
+            'capabilities:thin_provisioning': '<is> True',
+            'test:test:test': 'test'
+        }
+
+        fake_share_type_id = 'fooid-2'
+        self.fake_type_w_extra = {
+            'test_with_extra': {
+                'created_at': 'fake_time',
+                'deleted': '0',
+                'deleted_at': None,
+                'extra_specs': fake_extra_specs,
+                'required_extra_specs': {},
+                'id': fake_share_type_id,
+                'name': 'test_with_extra',
+                'updated_at': None
+            }
+        }
+
         self.share_nfs_host_not_exist = {
             'id': 'fake_uuid',
             'project_id': 'fake_tenant_id',
@@ -582,9 +618,9 @@ class HuaweiShareDriverTestCase(test.TestCase):
         }
 
         fake_extra_specs = {
-            u'driver_handles_share_servers': u'False',
+            'driver_handles_share_servers': 'False',
         }
-        fake_share_type_id = u'fake_id'
+        fake_share_type_id = 'fake_id'
         self.fake_type_extra = {
             'test_with_extra': {
                 'created_at': 'fake_time',
@@ -593,7 +629,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
                 'extra_specs': fake_extra_specs,
                 'required_extra_specs': {},
                 'id': fake_share_type_id,
-                'name': u'test_with_extra',
+                'name': 'test_with_extra',
                 'updated_at': None
             }
         }
@@ -720,6 +756,11 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.driver.check_for_setup_error)
 
     def test_create_share_nfs_alloctype_thin_success(self):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
         self.recreate_fake_conf_file(alloctype_value='Thin')
         self.driver.plugin.configuration.manila_huawei_conf_file = (
             self.fake_conf_file)
@@ -796,16 +837,67 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.share_server)
 
     def test_create_share_nfs_success(self):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
         self.driver.plugin.helper.login()
         location = self.driver.create_share(self._context, self.share_nfs,
                                             self.share_server)
         self.assertEqual("100.115.10.68:/share_fake_uuid", location)
 
     def test_create_share_cifs_success(self):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
         self.driver.plugin.helper.login()
         location = self.driver.create_share(self._context, self.share_cifs,
                                             self.share_server)
         self.assertEqual("\\\\100.115.10.68\\share_fake_uuid", location)
+
+    def test_create_share_with_extra(self):
+        share_type = self.fake_type_w_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.recreate_fake_conf_file(alloctype_value='Thin')
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+
+    @ddt.data({'capabilities:dedupe': '<is> True',
+               'capabilities:thin_provisioning': '<is> False'},
+              {'capabilities:dedupe': '<is> True',
+               'capabilities:compression': '<is> True',
+               'capabilities:thin_provisioning': '<is> False'})
+    def test_create_share_with_extra_thick_error(self, fake_extra_specs):
+        fake_share_type_id = 'fooid-2'
+        fake_type_error_extra = {
+            'test_with_extra': {
+                'created_at': 'fake_time',
+                'deleted': '0',
+                'deleted_at': None,
+                'extra_specs': fake_extra_specs,
+                'required_extra_specs': {},
+                'id': fake_share_type_id,
+                'name': 'test_with_extra',
+                'updated_at': None
+            }
+        }
+        share_type = fake_type_error_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share,
+                          self._context,
+                          self.share_nfs,
+                          self.share_server)
 
     def test_login_fail(self):
         self.driver.plugin.helper.test_normal = False
@@ -920,17 +1012,34 @@ class HuaweiShareDriverTestCase(test.TestCase):
         expected['free_capacity_gb'] = 0.0
         expected['QoS_support'] = False
         expected["pools"] = []
-        pool = {}
-        pool.update(dict(
+        pool_thin = dict(
             pool_name='OpenStack_Pool',
-            total_capacity_gb=2,
-            free_capacity_gb=1,
-            allocated_capacity_gb=1,
+            total_capacity_gb=2.0,
+            free_capacity_gb=1.0,
+            allocated_capacity_gb=1.0,
             QoS_support=False,
             reserved_percentage=0,
-        ))
-
-        expected["pools"].append(pool)
+            compression=True,
+            dedupe=True,
+            max_over_subscription_ratio=1,
+            provisioned_capacity_gb=1.0,
+            thin_provisioning=True,
+        )
+        pool_thick = dict(
+            pool_name='OpenStack_Pool',
+            total_capacity_gb=2.0,
+            free_capacity_gb=1.0,
+            allocated_capacity_gb=1.0,
+            QoS_support=False,
+            reserved_percentage=0,
+            compression=False,
+            dedupe=False,
+            max_over_subscription_ratio=1,
+            provisioned_capacity_gb=1.0,
+            thin_provisioning=False,
+        )
+        expected["pools"].append(pool_thin)
+        expected["pools"].append(pool_thick)
         self.assertEqual(expected, self.driver._stats)
 
     def test_allow_access_proto_fail(self):
@@ -1271,9 +1380,9 @@ class HuaweiShareDriverTestCase(test.TestCase):
 
     def test_manage_existing_share_type_mismatch(self):
         fake_extra_specs = {
-            u'driver_handles_share_servers': u'True',
+            'driver_handles_share_servers': 'True',
         }
-        fake_share_type_id = u'fake_id'
+        fake_share_type_id = 'fake_id'
         fake_type_mismatch_extra = {
             'test_with_extra': {
                 'created_at': 'fake_time',
@@ -1282,7 +1391,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
                 'extra_specs': fake_extra_specs,
                 'required_extra_specs': {},
                 'id': fake_share_type_id,
-                'name': u'test_with_extra',
+                'name': 'test_with_extra',
                 'updated_at': None
             }
         }
@@ -1308,6 +1417,10 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertEqual(None, pool_name)
 
     def test_multi_resturls_success(self):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
         self.recreate_fake_conf_file(multi_url=True)
         self.driver.plugin.configuration.manila_huawei_conf_file = (
             self.fake_conf_file)
