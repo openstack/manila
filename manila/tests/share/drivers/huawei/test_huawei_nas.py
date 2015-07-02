@@ -139,15 +139,29 @@ class FakeHuaweiNasHelper(helper.RestHelper):
         self.allow_ro_flag = False
         self.allow_rw_flag = False
         self.extend_share_flag = False
+        self.test_multi_url_flag = 0
 
     def _change_file_mode(self, filepath):
         pass
 
-    def call(self, url, data=None, method=None):
+    def do_call(self, url, data=None, method=None):
         url = url.replace('http://100.115.10.69:8082/deviceManager/rest', '')
         url = url.replace('/210235G7J20000000000/', '')
 
         if self.test_normal:
+            if self.test_multi_url_flag == 1:
+                data = '{"error":{"code":-403}}'
+                res_json = jsonutils.loads(data)
+                return res_json
+            elif self.test_multi_url_flag == 2:
+                if 'http://100.115.10.70:8082/deviceManager/rest' in url:
+                    url = url.replace('http://100.115.10.70:8082/'
+                                      'deviceManager/rest', '')
+                else:
+                    data = '{"error":{"code":-403}}'
+                    res_json = jsonutils.loads(data)
+                    return res_json
+
             if url == "/xx/sessions" or url == "sessions":
                 data = data_session(url)
 
@@ -979,11 +993,34 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.driver.delete_snapshot, self._context,
                           self.cifs_snapshot, self.share_server)
 
+    def test_multi_resturls_success(self):
+        self.recreate_fake_conf_file(multi_url=True)
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        self.driver.plugin.helper.test_multi_url_flag = 2
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+
+    def test_multi_resturls_fail(self):
+        self.recreate_fake_conf_file(multi_url=True)
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        self.driver.plugin.helper.test_multi_url_flag = 1
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share,
+                          self._context,
+                          self.share_nfs,
+                          self.share_server)
+
     def create_fake_conf_file(self, fake_conf_file,
                               product_flag=True, username_flag=True,
                               pool_node_flag=True, timeout_flag=True,
                               wait_interval_flag=True,
-                              alloctype_value='Thick'):
+                              alloctype_value='Thick',
+                              multi_url=False):
         doc = xml.dom.minidom.Document()
         config = doc.createElement('Config')
         doc.appendChild(config)
@@ -1019,8 +1056,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
         userpassword.appendChild(userpassword_text)
         storage.appendChild(userpassword)
         url = doc.createElement('RestURL')
-        url_text = doc.createTextNode('http://100.115.10.69:8082/'
-                                      'deviceManager/rest/')
+        if multi_url:
+            url_text = doc.createTextNode('http://100.115.10.69:8082/'
+                                          'deviceManager/rest/;'
+                                          'http://100.115.10.70:8082/'
+                                          'deviceManager/rest/')
+        else:
+            url_text = doc.createTextNode('http://100.115.10.69:8082/'
+                                          'deviceManager/rest/')
         url.appendChild(url_text)
         storage.appendChild(url)
 
@@ -1070,12 +1113,13 @@ class HuaweiShareDriverTestCase(test.TestCase):
     def recreate_fake_conf_file(self, product_flag=True, username_flag=True,
                                 pool_node_flag=True, timeout_flag=True,
                                 wait_interval_flag=True,
-                                alloctype_value='Thick'):
+                                alloctype_value='Thick',
+                                multi_url=False):
         self.tmp_dir = tempfile.mkdtemp()
         self.fake_conf_file = self.tmp_dir + '/manila_huawei_conf.xml'
         self.addCleanup(shutil.rmtree, self.tmp_dir)
         self.create_fake_conf_file(self.fake_conf_file, product_flag,
                                    username_flag, pool_node_flag,
                                    timeout_flag, wait_interval_flag,
-                                   alloctype_value)
+                                   alloctype_value, multi_url)
         self.addCleanup(os.remove, self.fake_conf_file)
