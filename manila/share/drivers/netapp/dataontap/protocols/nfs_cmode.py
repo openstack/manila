@@ -84,11 +84,18 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
         """Returns ID of target OnTap device based on export location."""
         return self._get_export_location(share)[0]
 
+    @na_utils.trace
+    def get_share_name_for_share(self, share):
+        """Returns the flexvol name that hosts a share."""
+        _, volume_junction_path = self._get_export_location(share)
+        volume = self._client.get_volume_at_junction_path(volume_junction_path)
+        return volume.get('name') if volume else None
+
     @staticmethod
     def _get_export_location(share):
         """Returns IP address and export location of an NFS share."""
         export_location = share['export_location'] or ':'
-        return export_location.split(':')
+        return export_location.rsplit(':', 1)
 
     @staticmethod
     def _get_export_policy_name(share):

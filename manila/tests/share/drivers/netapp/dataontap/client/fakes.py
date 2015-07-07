@@ -35,10 +35,13 @@ SHARE_AGGREGATE_NAMES = ('fake_aggr1', 'fake_aggr2')
 SHARE_AGGREGATE_RAID_TYPES = ('raid4', 'raid_dp')
 SHARE_AGGREGATE_DISK_TYPE = 'FCAL'
 SHARE_NAME = 'fake_share'
+SHARE_SIZE = '1000000000'
 SNAPSHOT_NAME = 'fake_snapshot'
 PARENT_SHARE_NAME = 'fake_parent_share'
 PARENT_SNAPSHOT_NAME = 'fake_parent_snapshot'
 MAX_FILES = 5000
+LANGUAGE = 'fake_language'
+SNAPSHOT_POLICY_NAME = 'fake_snapshot_policy'
 EXPORT_POLICY_NAME = 'fake_export_policy'
 DELETED_EXPORT_POLICIES = {
     VSERVER_NAME: [
@@ -1365,4 +1368,77 @@ DELETED_EXPORT_POLICY_GET_ITER_RESPONSE = etree.XML("""
     'policy1': DELETED_EXPORT_POLICIES[VSERVER_NAME][0],
     'policy2': DELETED_EXPORT_POLICIES[VSERVER_NAME][1],
     'policy3': DELETED_EXPORT_POLICIES[VSERVER_NAME_2][0],
+})
+
+LUN_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <lun-info>
+        <path>/vol/%(volume)s/fakelun</path>
+        <qtree />
+        <volume>%(volume)s</volume>
+        <vserver>%(vserver)s</vserver>
+      </lun-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'vserver': VSERVER_NAME,
+    'volume': SHARE_NAME,
+})
+
+VOLUME_GET_ITER_JUNCTIONED_VOLUMES_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>fake_volume</name>
+          <owning-vserver-name>test</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
+VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <containing-aggregate-name>%(aggr)s</containing-aggregate-name>
+          <junction-path>/%(volume)s</junction-path>
+          <name>%(volume)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+          <style>flex</style>
+          <type>rw</type>
+        </volume-id-attributes>
+        <volume-space-attributes>
+          <size>%(size)s</size>
+        </volume-space-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': SHARE_AGGREGATE_NAME,
+    'vserver': VSERVER_NAME,
+    'volume': SHARE_NAME,
+    'size': SHARE_SIZE,
+})
+
+SIS_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <sis-status-info>
+        <is-compression-enabled>true</is-compression-enabled>
+        <path>/vol/%(volume)s</path>
+        <state>enabled</state>
+        <vserver>%(vserver)s</vserver>
+      </sis-status-info>
+    </attributes-list>
+  </results>
+""" % {
+    'vserver': VSERVER_NAME,
+    'volume': SHARE_NAME,
 })

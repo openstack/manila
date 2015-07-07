@@ -50,6 +50,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         kwargs = {
             'configuration': fake.get_config_cmode(),
+            'private_storage': mock.Mock(),
             'app_version': fake.APP_VERSION
         }
 

@@ -17,6 +17,7 @@ Unit tests for the NetApp Data ONTAP cDOT base storage driver library.
 """
 
 import copy
+import math
 import socket
 import time
 
@@ -24,6 +25,7 @@ import ddt
 import mock
 from oslo_log import log
 from oslo_service import loopingcall
+from oslo_utils import units
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import client_cmode
@@ -63,6 +65,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         kwargs = {
             'configuration': fake.get_config_cmode(),
+            'private_storage': mock.Mock(),
             'app_version': fake.APP_VERSION
         }
         self.library = lib_base.NetAppCmodeFileStorageLibrary(fake.DRIVER_NAME,
@@ -730,6 +733,26 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake_share,
                           vserver_client)
 
+    def test_check_aggregate_extra_specs_validity(self):
+
+        self.library._have_cluster_creds = True
+        self.library._ssc_stats = fake.SSC_INFO
+
+        result = self.library._check_aggregate_extra_specs_validity(
+            fake.AGGREGATES[0], fake.EXTRA_SPEC)
+
+        self.assertIsNone(result)
+
+    def test_check_aggregate_extra_specs_validity_no_match(self):
+
+        self.library._have_cluster_creds = True
+        self.library._ssc_stats = fake.SSC_INFO
+
+        self.assertRaises(exception.NetAppException,
+                          self.library._check_aggregate_extra_specs_validity,
+                          fake.AGGREGATES[1],
+                          fake.EXTRA_SPEC)
+
     def test_allocate_container_from_snapshot(self):
 
         vserver_client = mock.Mock()
@@ -1085,6 +1108,231 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(21, vserver_client.get_snapshot.call_count)
         mock_sleep.assert_has_calls([mock.call(3)] * 20)
         self.assertEqual(20, lib_base.LOG.debug.call_count)
+
+    def test_manage_existing(self):
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        mock_manage_container = self.mock_object(
+            self.library,
+            '_manage_container',
+            mock.Mock(return_value=fake.SHARE_SIZE))
+        mock_create_export = self.mock_object(
+            self.library,
+            '_create_export',
+            mock.Mock(return_value=fake.NFS_EXPORTS))
+
+        result = self.library.manage_existing(fake.SHARE, {})
+
+        expected = {
+            'size': fake.SHARE_SIZE,
+            'export_locations': fake.NFS_EXPORTS
+        }
+        mock_manage_container.assert_called_once_with(fake.SHARE,
+                                                      vserver_client)
+        mock_create_export.assert_called_once_with(fake.SHARE,
+                                                   fake.VSERVER1,
+                                                   vserver_client)
+        self.assertDictEqual(expected, result)
+
+    def test_unmanage(self):
+
+        result = self.library.unmanage(fake.SHARE)
+
+        self.assertIsNone(result)
+
+    def test_manage_container(self):
+
+        vserver_client = mock.Mock()
+
+        share_to_manage = copy.deepcopy(fake.SHARE)
+        share_to_manage['export_location'] = fake.EXPORT_LOCATION
+
+        mock_helper = mock.Mock()
+        mock_helper.get_share_name_for_share.return_value = fake.FLEXVOL_NAME
+        self.mock_object(self.library,
+                         '_get_helper',
+                         mock.Mock(return_value=mock_helper))
+
+        mock_get_volume_to_manage = self.mock_object(
+            vserver_client,
+            'get_volume_to_manage',
+            mock.Mock(return_value=fake.FLEXVOL_TO_MANAGE))
+        mock_validate_volume_for_manage = self.mock_object(
+            self.library,
+            '_validate_volume_for_manage')
+        self.mock_object(share_types,
+                         'get_extra_specs_from_share',
+                         mock.Mock(return_value=fake.EXTRA_SPEC))
+        mock_check_extra_specs_validity = self.mock_object(
+            self.library,
+            '_check_extra_specs_validity')
+        mock_check_aggregate_extra_specs_validity = self.mock_object(
+            self.library,
+            '_check_aggregate_extra_specs_validity')
+
+        result = self.library._manage_container(share_to_manage,
+                                                vserver_client)
+
+        mock_get_volume_to_manage.assert_called_once_with(
+            fake.POOL_NAME, fake.FLEXVOL_NAME)
+        mock_validate_volume_for_manage.assert_called_once_with(
+            fake.FLEXVOL_TO_MANAGE, vserver_client)
+        mock_check_extra_specs_validity.assert_called_once_with(
+            share_to_manage, fake.EXTRA_SPEC)
+        mock_check_aggregate_extra_specs_validity.assert_called_once_with(
+            fake.POOL_NAME, fake.EXTRA_SPEC)
+        vserver_client.unmount_volume.assert_called_once_with(
+            fake.FLEXVOL_NAME)
+        vserver_client.set_volume_name.assert_called_once_with(
+            fake.FLEXVOL_NAME, fake.SHARE_NAME)
+        vserver_client.mount_volume.assert_called_once_with(
+            fake.SHARE_NAME)
+        vserver_client.manage_volume.assert_called_once_with(
+            fake.POOL_NAME, fake.SHARE_NAME,
+            **self.library._get_provisioning_options(fake.EXTRA_SPEC))
+
+        original_data = {
+            'original_name': fake.FLEXVOL_TO_MANAGE['name'],
+            'original_junction_path': fake.FLEXVOL_TO_MANAGE['junction-path'],
+        }
+        self.library.private_storage.update.assert_called_once_with(
+            fake.SHARE['id'], original_data)
+
+        expected_size = int(
+            math.ceil(float(fake.FLEXVOL_TO_MANAGE['size']) / units.Gi))
+        self.assertEqual(expected_size, result)
+
+    def test_manage_container_invalid_export_location(self):
+
+        vserver_client = mock.Mock()
+
+        share_to_manage = copy.deepcopy(fake.SHARE)
+        share_to_manage['export_location'] = fake.EXPORT_LOCATION
+
+        mock_helper = mock.Mock()
+        mock_helper.get_share_name_for_share.return_value = None
+        self.mock_object(self.library,
+                         '_get_helper',
+                         mock.Mock(return_value=mock_helper))
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self.library._manage_container,
+                          share_to_manage,
+                          vserver_client)
+
+    def test_manage_container_not_found(self):
+
+        vserver_client = mock.Mock()
+
+        share_to_manage = copy.deepcopy(fake.SHARE)
+        share_to_manage['export_location'] = fake.EXPORT_LOCATION
+
+        mock_helper = mock.Mock()
+        mock_helper.get_share_name_for_share.return_value = fake.FLEXVOL_NAME
+        self.mock_object(self.library,
+                         '_get_helper',
+                         mock.Mock(return_value=mock_helper))
+
+        self.mock_object(vserver_client,
+                         'get_volume_to_manage',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self.library._manage_container,
+                          share_to_manage,
+                          vserver_client)
+
+    def test_manage_container_invalid_extra_specs(self):
+
+        vserver_client = mock.Mock()
+
+        share_to_manage = copy.deepcopy(fake.SHARE)
+        share_to_manage['export_location'] = fake.EXPORT_LOCATION
+
+        mock_helper = mock.Mock()
+        mock_helper.get_share_name_for_share.return_value = fake.FLEXVOL_NAME
+        self.mock_object(self.library,
+                         '_get_helper',
+                         mock.Mock(return_value=mock_helper))
+
+        self.mock_object(vserver_client,
+                         'get_volume_to_manage',
+                         mock.Mock(return_value=fake.FLEXVOL_TO_MANAGE))
+        self.mock_object(self.library, '_validate_volume_for_manage')
+        self.mock_object(share_types,
+                         'get_extra_specs_from_share',
+                         mock.Mock(return_value=fake.EXTRA_SPEC))
+        self.mock_object(self.library,
+                         '_check_extra_specs_validity',
+                         mock.Mock(side_effect=exception.NetAppException))
+
+        self.assertRaises(exception.ManageExistingShareTypeMismatch,
+                          self.library._manage_container,
+                          share_to_manage,
+                          vserver_client)
+
+    def test_validate_volume_for_manage(self):
+
+        vserver_client = mock.Mock()
+        vserver_client.volume_has_luns = mock.Mock(return_value=False)
+        vserver_client.volume_has_junctioned_volumes = mock.Mock(
+            return_value=False)
+
+        result = self.library._validate_volume_for_manage(
+            fake.FLEXVOL_TO_MANAGE, vserver_client)
+
+        self.assertIsNone(result)
+
+    @ddt.data({
+        'attribute': 'type',
+        'value': 'dp',
+    }, {
+        'attribute': 'style',
+        'value': 'infinitevol',
+    })
+    @ddt.unpack
+    def test_validate_volume_for_manage_invalid_volume(self, attribute, value):
+
+        flexvol_to_manage = copy.deepcopy(fake.FLEXVOL_TO_MANAGE)
+        flexvol_to_manage[attribute] = value
+
+        vserver_client = mock.Mock()
+        vserver_client.volume_has_luns = mock.Mock(return_value=False)
+        vserver_client.volume_has_junctioned_volumes = mock.Mock(
+            return_value=False)
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self.library._validate_volume_for_manage,
+                          flexvol_to_manage,
+                          vserver_client)
+
+    def test_validate_volume_for_manage_luns_present(self):
+
+        vserver_client = mock.Mock()
+        vserver_client.volume_has_luns = mock.Mock(return_value=True)
+        vserver_client.volume_has_junctioned_volumes = mock.Mock(
+            return_value=False)
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self.library._validate_volume_for_manage,
+                          fake.FLEXVOL_TO_MANAGE,
+                          vserver_client)
+
+    def test_validate_volume_for_manage_junctioned_volumes_present(self):
+
+        vserver_client = mock.Mock()
+        vserver_client.volume_has_luns = mock.Mock(return_value=False)
+        vserver_client.volume_has_junctioned_volumes = mock.Mock(
+            return_value=True)
+
+        self.assertRaises(exception.ManageInvalidShare,
+                          self.library._validate_volume_for_manage,
+                          fake.FLEXVOL_TO_MANAGE,
+                          vserver_client)
 
     def test_extend_share(self):
 

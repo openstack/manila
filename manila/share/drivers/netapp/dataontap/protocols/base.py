@@ -47,3 +47,7 @@ class NetAppBaseHelper(object):
     @abc.abstractmethod
     def get_target(self, share):
         """Returns host where the share located."""
+
+    @abc.abstractmethod
+    def get_share_name_for_share(self, share):
+        """Returns the flexvol name that hosts a share."""

@@ -1667,6 +1667,96 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.enable_dedup.assert_called_once_with(fake.SHARE_NAME)
         self.client.enable_compression.assert_called_once_with(fake.SHARE_NAME)
 
+    def test_enable_dedup(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.enable_dedup(fake.SHARE_NAME)
+
+        sis_enable_args = {'path': '/vol/%s' % fake.SHARE_NAME}
+
+        self.client.send_request.assert_called_once_with('sis-enable',
+                                                         sis_enable_args)
+
+    def test_disable_dedup(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.disable_dedup(fake.SHARE_NAME)
+
+        sis_disable_args = {'path': '/vol/%s' % fake.SHARE_NAME}
+
+        self.client.send_request.assert_called_once_with('sis-disable',
+                                                         sis_disable_args)
+
+    def test_enable_compression(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.enable_compression(fake.SHARE_NAME)
+
+        sis_set_config_args = {
+            'path': '/vol/%s' % fake.SHARE_NAME,
+            'enable-compression': 'true'
+        }
+
+        self.client.send_request.assert_called_once_with('sis-set-config',
+                                                         sis_set_config_args)
+
+    def test_disable_compression(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.disable_compression(fake.SHARE_NAME)
+
+        sis_set_config_args = {
+            'path': '/vol/%s' % fake.SHARE_NAME,
+            'enable-compression': 'false'
+        }
+
+        self.client.send_request.assert_called_once_with('sis-set-config',
+                                                         sis_set_config_args)
+
+    def test_get_volume_efficiency_status(self):
+
+        api_response = netapp_api.NaElement(fake.SIS_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_efficiency_status(fake.SHARE_NAME)
+
+        sis_get_iter_args = {
+            'query': {
+                'sis-status-info': {
+                    'path': '/vol/%s' % fake.SHARE_NAME,
+                },
+            },
+            'desired-attributes': {
+                'sis-status-info': {
+                    'state': None,
+                    'is-compression-enabled': None,
+                },
+            },
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('sis-get-iter', sis_get_iter_args)])
+
+        expected = {'dedupe': True, 'compression': True}
+        self.assertDictEqual(expected, result)
+
+    def test_get_volume_efficiency_status_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_efficiency_status(fake.SHARE_NAME)
+
+        expected = {'dedupe': False, 'compression': False}
+        self.assertDictEqual(expected, result)
+
     def test_set_volume_max_files(self):
 
         self.mock_object(self.client, 'send_request')
@@ -1693,30 +1783,154 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_called_once_with(
             'volume-modify-iter', volume_modify_iter_api_args)
 
-    def test_enable_dedup(self):
+    def test_set_volume_name(self):
 
         self.mock_object(self.client, 'send_request')
 
-        self.client.enable_dedup(fake.SHARE_NAME)
+        self.client.set_volume_name(fake.SHARE_NAME, 'new_name')
 
-        sis_enable_args = {'path': '/vol/%s' % fake.SHARE_NAME}
-
-        self.client.send_request.assert_called_once_with('sis-enable',
-                                                         sis_enable_args)
-
-    def test_enable_compression(self):
-
-        self.mock_object(self.client, 'send_request')
-
-        self.client.enable_compression(fake.SHARE_NAME)
-
-        sis_set_config_args = {
-            'path': '/vol/%s' % fake.SHARE_NAME,
-            'enable-compression': 'true'
+        volume_rename_api_args = {
+            'volume': fake.SHARE_NAME,
+            'new-volume-name': 'new_name',
         }
 
-        self.client.send_request.assert_called_once_with('sis-set-config',
-                                                         sis_set_config_args)
+        self.client.send_request.assert_called_once_with(
+            'volume-rename', volume_rename_api_args)
+
+    def test_manage_volume_no_optional_args(self):
+
+        self.mock_object(self.client, 'send_request')
+        mock_update_volume_efficiency_attributes = self.mock_object(
+            self.client, 'update_volume_efficiency_attributes')
+
+        self.client.manage_volume(fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME)
+
+        volume_modify_iter_api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'containing-aggregate-name': fake.SHARE_AGGREGATE_NAME,
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-inode-attributes': {},
+                    'volume-language-attributes': {},
+                    'volume-snapshot-attributes': {},
+                    'volume-space-attributes': {
+                        'space-guarantee': 'volume',
+                    },
+                },
+            },
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'volume-modify-iter', volume_modify_iter_api_args)
+        mock_update_volume_efficiency_attributes.assert_called_once_with(
+            fake.SHARE_NAME, False, False)
+
+    def test_manage_volume_all_optional_args(self):
+
+        self.mock_object(self.client, 'send_request')
+        mock_update_volume_efficiency_attributes = self.mock_object(
+            self.client, 'update_volume_efficiency_attributes')
+
+        self.client.manage_volume(fake.SHARE_AGGREGATE_NAME,
+                                  fake.SHARE_NAME,
+                                  thin_provisioned=True,
+                                  snapshot_policy=fake.SNAPSHOT_POLICY_NAME,
+                                  language=fake.LANGUAGE,
+                                  dedup_enabled=True,
+                                  compression_enabled=False,
+                                  max_files=fake.MAX_FILES)
+
+        volume_modify_iter_api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'containing-aggregate-name': fake.SHARE_AGGREGATE_NAME,
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-inode-attributes': {
+                        'files-total': fake.MAX_FILES,
+                    },
+                    'volume-language-attributes': {
+                        'language': fake.LANGUAGE,
+                    },
+                    'volume-snapshot-attributes': {
+                        'snapshot-policy': fake.SNAPSHOT_POLICY_NAME,
+                    },
+                    'volume-space-attributes': {
+                        'space-guarantee': 'none',
+                    },
+                },
+            },
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'volume-modify-iter', volume_modify_iter_api_args)
+        mock_update_volume_efficiency_attributes.assert_called_once_with(
+            fake.SHARE_NAME, True, False)
+
+    @ddt.data(
+        {'existing': (True, True), 'desired': (True, True)},
+        {'existing': (True, True), 'desired': (False, False)},
+        {'existing': (True, True), 'desired': (True, False)},
+        {'existing': (True, False), 'desired': (True, False)},
+        {'existing': (True, False), 'desired': (False, False)},
+        {'existing': (True, False), 'desired': (True, True)},
+        {'existing': (False, False), 'desired': (False, False)},
+        {'existing': (False, False), 'desired': (True, False)},
+        {'existing': (False, False), 'desired': (True, True)},
+    )
+    @ddt.unpack
+    def test_update_volume_efficiency_attributes(self, existing, desired):
+
+        existing_dedupe = existing[0]
+        existing_compression = existing[1]
+        desired_dedupe = desired[0]
+        desired_compression = desired[1]
+
+        self.mock_object(
+            self.client,
+            'get_volume_efficiency_status',
+            mock.Mock(return_value={'dedupe': existing_dedupe,
+                                    'compression': existing_compression}))
+        mock_enable_compression = self.mock_object(self.client,
+                                                   'enable_compression')
+        mock_disable_compression = self.mock_object(self.client,
+                                                    'disable_compression')
+        mock_enable_dedup = self.mock_object(self.client, 'enable_dedup')
+        mock_disable_dedup = self.mock_object(self.client, 'disable_dedup')
+
+        self.client.update_volume_efficiency_attributes(
+            fake.SHARE_NAME, desired_dedupe, desired_compression)
+
+        if existing_dedupe == desired_dedupe:
+            self.assertFalse(mock_enable_dedup.called)
+            self.assertFalse(mock_disable_dedup.called)
+        elif existing_dedupe and not desired_dedupe:
+            self.assertFalse(mock_enable_dedup.called)
+            self.assertTrue(mock_disable_dedup.called)
+        elif not existing_dedupe and desired_dedupe:
+            self.assertTrue(mock_enable_dedup.called)
+            self.assertFalse(mock_disable_dedup.called)
+
+        if existing_compression == desired_compression:
+            self.assertFalse(mock_enable_compression.called)
+            self.assertFalse(mock_disable_compression.called)
+        elif existing_compression and not desired_compression:
+            self.assertFalse(mock_enable_compression.called)
+            self.assertTrue(mock_disable_compression.called)
+        elif not existing_compression and desired_compression:
+            self.assertTrue(mock_enable_compression.called)
+            self.assertFalse(mock_disable_compression.called)
 
     def test_set_volume_size(self):
 
@@ -1841,6 +2055,227 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           self.client.get_aggregate_for_volume,
                           fake.SHARE_NAME)
 
+    def test_volume_has_luns(self):
+
+        api_response = netapp_api.NaElement(fake.LUN_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.volume_has_luns(fake.SHARE_NAME)
+
+        lun_get_iter_args = {
+            'query': {
+                'lun-info': {
+                    'volume': fake.SHARE_NAME,
+                },
+            },
+            'desired-attributes': {
+                'lun-info': {
+                    'path': None,
+                },
+            },
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('lun-get-iter', lun_get_iter_args)])
+        self.assertTrue(result)
+
+    def test_volume_has_luns_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.volume_has_luns(fake.SHARE_NAME)
+
+        self.assertFalse(result)
+
+    def test_volume_has_junctioned_volumes(self):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_ITER_JUNCTIONED_VOLUMES_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        fake_junction_path = '/%s' % fake.SHARE_NAME
+        self.mock_object(self.client,
+                         'get_volume_junction_path',
+                         mock.Mock(return_value=fake_junction_path))
+
+        result = self.client.volume_has_junctioned_volumes(fake.SHARE_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'junction-path': fake_junction_path + '/*',
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None,
+                    },
+                },
+            },
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-get-iter', volume_get_iter_args)])
+        self.assertTrue(result)
+
+    def test_volume_has_junctioned_volumes_no_junction_path(self):
+
+        self.mock_object(self.client,
+                         'get_volume_junction_path',
+                         mock.Mock(return_value=''))
+
+        result = self.client.volume_has_junctioned_volumes(fake.SHARE_NAME)
+
+        self.assertFalse(result)
+
+    def test_volume_has_junctioned_volumes_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        fake_junction_path = '/%s' % fake.SHARE_NAME
+        self.mock_object(self.client,
+                         'get_volume_junction_path',
+                         mock.Mock(return_value=fake_junction_path))
+
+        result = self.client.volume_has_junctioned_volumes(fake.SHARE_NAME)
+
+        self.assertFalse(result)
+
+    def test_get_volume_at_junction_path(self):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+        fake_junction_path = '/%s' % fake.SHARE_NAME
+
+        result = self.client.get_volume_at_junction_path(fake_junction_path)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'junction-path': fake_junction_path,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'containing-aggregate-name': None,
+                        'junction-path': None,
+                        'name': None,
+                        'type': None,
+                        'style': None,
+                    },
+                    'volume-space-attributes': {
+                        'size': None,
+                    }
+                },
+            },
+        }
+        expected = {
+            'aggregate': fake.SHARE_AGGREGATE_NAME,
+            'junction-path': fake_junction_path,
+            'name': fake.SHARE_NAME,
+            'type': 'rw',
+            'style': 'flex',
+            'size': fake.SHARE_SIZE,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-get-iter', volume_get_iter_args)])
+        self.assertDictEqual(expected, result)
+
+    def test_get_volume_at_junction_path_not_specified(self):
+
+        result = self.client.get_volume_at_junction_path(None)
+
+        self.assertIsNone(result)
+
+    def test_get_volume_at_junction_path_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+        fake_junction_path = '/%s' % fake.SHARE_NAME
+
+        result = self.client.get_volume_at_junction_path(fake_junction_path)
+
+        self.assertIsNone(result)
+
+    def test_get_volume_to_manage(self):
+
+        api_response = netapp_api.NaElement(
+            fake.VOLUME_GET_ITER_VOLUME_TO_MANAGE_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_to_manage(fake.SHARE_AGGREGATE_NAME,
+                                                  fake.SHARE_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'containing-aggregate-name': fake.SHARE_AGGREGATE_NAME,
+                        'name': fake.SHARE_NAME,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'containing-aggregate-name': None,
+                        'junction-path': None,
+                        'name': None,
+                        'type': None,
+                        'style': None,
+                    },
+                    'volume-space-attributes': {
+                        'size': None,
+                    }
+                },
+            },
+        }
+        expected = {
+            'aggregate': fake.SHARE_AGGREGATE_NAME,
+            'junction-path': '/%s' % fake.SHARE_NAME,
+            'name': fake.SHARE_NAME,
+            'type': 'rw',
+            'style': 'flex',
+            'size': fake.SHARE_SIZE,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-get-iter', volume_get_iter_args)])
+        self.assertDictEqual(expected, result)
+
+    def test_get_volume_to_manage_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_volume_to_manage(fake.SHARE_AGGREGATE_NAME,
+                                                  fake.SHARE_NAME)
+
+        self.assertIsNone(result)
+
     def test_create_volume_clone(self):
 
         self.mock_object(self.client, 'send_request')
@@ -1908,6 +2343,35 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('volume-get-volume-path', volume_get_volume_path_args)])
         self.assertEqual(fake.VOLUME_JUNCTION_PATH_CIFS, result)
+
+    def test_mount_volume_default_junction_path(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.mount_volume(fake.SHARE_NAME)
+
+        volume_mount_args = {
+            'volume-name': fake.SHARE_NAME,
+            'junction-path': '/%s' % fake.SHARE_NAME,
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-mount', volume_mount_args)])
+
+    def test_mount_volume(self):
+
+        self.mock_object(self.client, 'send_request')
+        fake_path = '/fake_path'
+
+        self.client.mount_volume(fake.SHARE_NAME, junction_path=fake_path)
+
+        volume_mount_args = {
+            'volume-name': fake.SHARE_NAME,
+            'junction-path': fake_path,
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-mount', volume_mount_args)])
 
     def test_offline_volume(self):
 

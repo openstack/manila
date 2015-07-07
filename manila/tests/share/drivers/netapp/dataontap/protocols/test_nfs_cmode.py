@@ -172,6 +172,27 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         target = self.helper.get_target(fake.NFS_SHARE)
         self.assertEqual(fake.SHARE_ADDRESS_1, target)
 
+    def test_get_share_name_for_share(self):
+
+        self.mock_client.get_volume_at_junction_path.return_value = (
+            fake.VOLUME)
+
+        share_name = self.helper.get_share_name_for_share(fake.NFS_SHARE)
+
+        self.assertEqual(fake.SHARE_NAME, share_name)
+        self.mock_client.get_volume_at_junction_path.assert_called_once_with(
+            fake.NFS_SHARE_PATH)
+
+    def test_get_share_name_for_share_not_found(self):
+
+        self.mock_client.get_volume_at_junction_path.return_value = None
+
+        share_name = self.helper.get_share_name_for_share(fake.NFS_SHARE)
+
+        self.assertIsNone(share_name)
+        self.mock_client.get_volume_at_junction_path.assert_called_once_with(
+            fake.NFS_SHARE_PATH)
+
     def test_get_target_missing_location(self):
 
         target = self.helper.get_target({'export_location': ''})

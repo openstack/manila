@@ -67,6 +67,12 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
     def ensure_share(self, context, share, **kwargs):
         pass
 
+    def manage_existing(self, share, driver_options):
+        return self.library.manage_existing(share, driver_options)
+
+    def unmanage(self, share):
+        self.library.unmanage(share)
+
     def allow_access(self, context, share, access, **kwargs):
         self.library.allow_access(context, share, access, **kwargs)
 
