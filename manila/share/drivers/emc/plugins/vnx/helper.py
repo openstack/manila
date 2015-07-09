@@ -24,6 +24,7 @@ import six
 from six.moves.urllib import error as url_error  # pylint: disable=E0611
 from six.moves.urllib import request as url_request  # pylint: disable=E0611
 
+from manila.common import constants as const
 import manila.exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -1259,7 +1260,7 @@ class NASCommandHelper(object):
         share_path = '/' + share_name
         create_nfs_share_cmd = [
             'env', 'NAS_DB=/nas', '/nas/bin/server_export', mover_name,
-            '-option', 'rw=-0.0.0.0,root=-0.0.0.0,access=-0.0.0.0',
+            '-option', 'access=-0.0.0.0/0.0.0.0',
             share_path,
         ]
 
@@ -1331,11 +1332,12 @@ class NASCommandHelper(object):
                                                           'err': err}
         return status, data
 
-    def allow_nfs_share_access(self, path, host_ip, mover_name):
+    def allow_nfs_share_access(self, path, host_ip, mover_name,
+                               access_level=const.ACCESS_LEVEL_RW):
         sharename = path.strip('/')
 
         @utils.synchronized('emc-shareaccess-' + sharename)
-        def do_allow_access(path, host_ip, mover_name):
+        def do_allow_access(path, host_ip, mover_name, access_level):
             ok = (constants.STATUS_OK, '')
             status, share = self.get_nfs_share_by_path(path, mover_name)
             if constants.STATUS_OK != status:
@@ -1346,9 +1348,22 @@ class NASCommandHelper(object):
             mover_name = share['mover_name']
             changed = False
             rwhosts = share['RwHosts']
-            if host_ip not in rwhosts:
-                rwhosts.append(host_ip)
-                changed = True
+            rohosts = share['RoHosts']
+            if access_level == const.ACCESS_LEVEL_RW:
+                if host_ip not in rwhosts:
+                    rwhosts.append(host_ip)
+                    changed = True
+                if host_ip in rohosts:
+                    rohosts.remove(host_ip)
+                    changed = True
+            if access_level == const.ACCESS_LEVEL_RO:
+                if host_ip not in rohosts:
+                    rohosts.append(host_ip)
+                    changed = True
+                if host_ip in rwhosts:
+                    rwhosts.remove(host_ip)
+                    changed = True
+
             roothosts = share['RootHosts']
             if host_ip not in roothosts:
                 roothosts.append(host_ip)
@@ -1366,10 +1381,11 @@ class NASCommandHelper(object):
                 return self.set_nfs_share_access(path,
                                                  mover_name,
                                                  rwhosts,
+                                                 rohosts,
                                                  roothosts,
                                                  accesshosts)
 
-        return do_allow_access(path, host_ip, mover_name)
+        return do_allow_access(path, host_ip, mover_name, access_level)
 
     def deny_nfs_share_access(self, path, host_ip, mover_name):
         sharename = path.strip('/')
@@ -1397,14 +1413,19 @@ class NASCommandHelper(object):
             if host_ip in accesshosts:
                 accesshosts.remove(host_ip)
                 changed = True
-
+            rohosts = set(share['RoHosts'])
+            if host_ip in rohosts:
+                rohosts.remove(host_ip)
+                changed = True
             if not changed:
                 LOG.debug("%(host)s already in access list of share %(path)s",
                           {'host': host_ip, 'path': path})
                 return ok
             else:
-                return self.set_nfs_share_access(path, mover_name,
+                return self.set_nfs_share_access(path,
+                                                 mover_name,
                                                  rwhosts,
+                                                 rohosts,
                                                  roothosts,
                                                  accesshosts)
 
@@ -1412,14 +1433,19 @@ class NASCommandHelper(object):
 
     def set_nfs_share_access(self, path, mover_name,
                              rw_hosts,
+                             ro_hosts,
                              root_hosts,
                              access_hosts):
         ok = (constants.STATUS_OK, '')
-        access_str = ('rw=%(rw)s,root=%(root)s,access=%(access)s'
-                      % {'rw': ':'.join(rw_hosts),
-                         'root': ':'.join(root_hosts),
-                         'access': ':'.join(access_hosts)})
 
+        access_str = ('access=%(access)s'
+                      % {'access': ':'.join(access_hosts)})
+        if root_hosts:
+            access_str += (',root=%(root)s' % {'root': ':'.join(root_hosts)})
+        if rw_hosts:
+            access_str += ',rw=%(rw)s' % {'rw': ':'.join(rw_hosts)}
+        if ro_hosts:
+            access_str += ',ro=%(ro)s' % {'ro': ':'.join(ro_hosts)}
         create_nfs_share_cmd = [
             'env', 'NAS_DB=/nas', '/nas/bin/server_export', mover_name,
             '-ignore',
@@ -1448,7 +1474,7 @@ class NASCommandHelper(object):
             return constants.STATUS_ERROR, out
 
     def allow_cifs_access(self, mover_name, share_name, user_name, domain,
-                          access='fullcontrol'):
+                          access=constants.CIFS_ACL_FULLCONTROL):
         account = user_name + "@" + domain
         allow_str = ('sharesd %(share_name)s grant %(account)s=%(access)s'
                      % {'share_name': share_name,
@@ -1471,7 +1497,7 @@ class NASCommandHelper(object):
             return constants.STATUS_ERROR, out
 
     def deny_cifs_access(self, mover_name, share_name, user_name, domain,
-                         access='fullcontrol'):
+                         access=constants.CIFS_ACL_FULLCONTROL):
         account = user_name + "@" + domain
         allow_str = ('sharesd %(share_name)s revoke %(account)s=%(access)s'
                      % {'share_name': share_name,
