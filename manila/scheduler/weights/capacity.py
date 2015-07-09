@@ -15,7 +15,7 @@
 """
 Capacity Weigher.  Weigh hosts by their available capacity.
 
-The default is to spread volumes across all hosts evenly.  If you prefer
+The default is to spread shares across all hosts evenly.  If you prefer
 stacking, you can set the 'capacity_weight_multiplier' option to a negative
 number and the weighing has the opposite effect of the default.
 """
@@ -30,7 +30,7 @@ from manila.openstack.common.scheduler import weights
 capacity_weight_opts = [
     cfg.FloatOpt('capacity_weight_multiplier',
                  default=1.0,
-                 help='Multiplier used for weighing volume capacity. '
+                 help='Multiplier used for weighing share capacity. '
                  'Negative numbers mean to stack vs spread.'),
 ]
 
