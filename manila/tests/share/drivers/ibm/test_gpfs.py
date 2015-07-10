@@ -118,7 +118,7 @@ class GPFSShareDriverTestCase(test.TestCase):
     def test_do_setup(self):
         self.mock_object(self._driver, '_setup_helpers')
         self._driver.do_setup(self._context)
-        self._driver._setup_helpers.assert_called_any()
+        self._driver._setup_helpers.assert_called_once_with()
 
     def test_setup_helpers(self):
         self._driver._helpers = {}
@@ -480,7 +480,7 @@ class GPFSShareDriverTestCase(test.TestCase):
                                        access_type, access)
         self._knfs_helper._execute.assert_called_once_with('exportfs',
                                                            run_as_root=True)
-        re.search.assert_called_any()
+        self.assertTrue(re.search.called)
         self._knfs_helper._get_export_options.assert_any_call(self.share)
         cmd = ['exportfs', '-o', export_opts, ':'.join([access, local_path])]
         self._knfs_helper._publish_access.assert_called_once_with(*cmd)

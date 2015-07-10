@@ -264,7 +264,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
             fake_context, fake_share_server, fake_share_network, count=0)
 
         self.assertEqual([], allocations)
-        instance.db.share_network_update.assert_called_once_wth(
+        instance.db.share_network_update.assert_called_once_with(
             fake_context, fake_share_network['id'],
             dict(segmentation_id=None, cidr=instance.net.cidr, ip_version=4))
 

@@ -740,7 +740,8 @@ class HP3ParMediatorTestCase(test.TestCase):
                                       reclaimStrategy='maxspeed'),
         ]
         self.mock_client.assert_has_calls(expected_calls)
-        mock_log.assert_has_calls(mock.call.exception(mock.ANY))
+        self.assertTrue(mock_log.debug.called)
+        self.assertTrue(mock_log.exception.called)
 
     def test_mediator_get_capacity(self):
         """Mediator converts client stats to capacity result."""

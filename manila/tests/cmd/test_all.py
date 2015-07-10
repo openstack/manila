@@ -82,5 +82,5 @@ class ManilaCmdAllTestCase(test.TestCase):
         manila_all.main()
 
         self._common_checks()
-        self.fake_log.exception.assert_has_calls(mock.ANY)
+        self.fake_log.exception.assert_has_calls([mock.ANY])
         service.serve.assert_has_calls([mock.call(self.wsgi_service)])

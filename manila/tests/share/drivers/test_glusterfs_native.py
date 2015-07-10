@@ -188,7 +188,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         self._driver._fetch_gluster_volumes.assert_called_once_with()
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-        self.gmgr1.get_gluster_version.assert_once_called_with()
+        self.gmgr1.get_gluster_version.assert_called_once_with()
 
     def test_do_setup_unsupported_glusterfs_version(self):
         self._driver.glusterfs_servers = {self.glusterfs_server1: self.gmgr1}
@@ -197,7 +197,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver.do_setup, self._context)
-        self.gmgr1.get_gluster_version.assert_once_called_with()
+        self.gmgr1.get_gluster_version.assert_called_once_with()
 
     @ddt.data(exception.GlusterfsException, RuntimeError)
     def test_do_setup_get_gluster_version_fails(self, exc):
@@ -208,7 +208,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.mock_object(self.gmgr1, 'get_gluster_version',
                          mock.Mock(side_effect=raise_exception))
         self.assertRaises(exc, self._driver.do_setup, self._context)
-        self.gmgr1.get_gluster_version.assert_once_called_with()
+        self.gmgr1.get_gluster_version.assert_called_once_with()
 
     def test_do_setup_glusterfs_no_volumes_provided_by_backend(self):
         self._driver.glusterfs_servers = {self.glusterfs_server1: self.gmgr1}

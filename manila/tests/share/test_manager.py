@@ -1411,8 +1411,8 @@ class ShareManagerTestCase(test.TestCase):
             mock.call(self.context, share_server['share_network_id'])])
         self.share_manager.driver.allocate_network.assert_has_calls([
             mock.call(self.context, share_server, share_network)])
-        self.share_manager.driver.deallocate_network.assert_has_calls(
-            mock.call(self.context, share_server['id']))
+        self.share_manager.driver.deallocate_network.assert_has_calls([
+            mock.call(self.context, share_server['id'])])
 
     def test_setup_server_incorrect_detail_data(self):
         self.setup_server_raise_exception(detail_data_proper=False)

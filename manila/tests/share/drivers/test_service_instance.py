@@ -1450,7 +1450,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
         self.assertFalse(
             service_instance.neutron.API.router_remove_interface.called)
-        service_instance.neutron.API.delete_port.assert_called_once(mock.ANY)
+        service_instance.neutron.API.delete_port.assert_called_once_with(
+            mock.ANY)
         service_instance.LOG.debug.assert_has_calls([])
 
     def test_teardown_network_with_wrong_ports(self):
