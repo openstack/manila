@@ -17,6 +17,7 @@
 """Unit tests for the Generic driver module."""
 
 import os
+import time
 
 import ddt
 import mock
@@ -277,6 +278,41 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._ssh_exec.assert_called_once_with(
             self.server,
             ['sudo umount', mount_path, '&& sudo rmdir', mount_path],
+        )
+
+    def test_unmount_device_retry_once(self):
+        self.counter = 0
+
+        def _side_effect(*args):
+            self.counter += 1
+            if self.counter < 2:
+                raise exception.ProcessExecutionError
+
+        mount_path = '/fake/mount/path'
+        self.mock_object(self._driver, '_is_device_mounted',
+                         mock.Mock(return_value=True))
+        self.mock_object(self._driver, '_sync_mount_temp_and_perm_files')
+        self.mock_object(self._driver, '_get_mount_path',
+                         mock.Mock(return_value=mount_path))
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(side_effect=_side_effect))
+        self.mock_object(time, 'sleep')
+
+        self._driver._unmount_device(self.share, self.server)
+
+        self.assertEqual(1, time.sleep.call_count)
+        self.assertEqual(self._driver._get_mount_path.mock_calls,
+                         [mock.call(self.share) for i in xrange(2)])
+        self.assertEqual(self._driver._is_device_mounted.mock_calls,
+                         [mock.call(mount_path,
+                                    self.server) for i in xrange(2)])
+        self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
+            self.server)
+        self.assertEqual(
+            self._driver._ssh_exec.mock_calls,
+            [mock.call(self.server, ['sudo umount', mount_path,
+                                     '&& sudo rmdir', mount_path])
+             for i in xrange(2)]
         )
 
     def test_unmount_device_not_present(self):

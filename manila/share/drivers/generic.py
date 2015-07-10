@@ -297,6 +297,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 raise exception.ShareBackendException(msg=six.text_type(e))
         return _mount_device_with_lock()
 
+    @utils.retry(exception.ProcessExecutionError)
     def _unmount_device(self, share, server_details):
         """Unmounts block device from directory on service vm."""
 
