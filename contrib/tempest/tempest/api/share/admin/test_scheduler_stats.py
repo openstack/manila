@@ -60,7 +60,10 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
 
         # Ensure we got exactly one pool matching the first one from above
         self.assertEqual(1, len(filtered_pool_list))
-        self.assertDictEqual(pool, filtered_pool_list[0])
+
+        # Match the key values, not the timestamp.
+        for k, v in search_opts.items():
+            self.assertEqual(v, filtered_pool_list[0][k])
 
     @test.attr(type=["gate", "smoke", ])
     def test_pool_list_with_filters_negative(self):
@@ -115,7 +118,10 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
 
         # Ensure we got exactly one pool matching the first one from above
         self.assertEqual(1, len(filtered_pool_list))
-        self.assertDictEqual(pool, filtered_pool_list[0])
+
+        # Match the key values, not the timestamp.
+        for k, v in search_opts.items():
+            self.assertEqual(v, filtered_pool_list[0][k])
 
     @test.attr(type=["gate", "smoke", ])
     def test_pool_list_detail_with_filters_negative(self):
