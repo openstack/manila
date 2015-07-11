@@ -467,6 +467,9 @@ function init_manila {
         # (re)create manila database
         recreate_database manila utf8
         $MANILA_BIN_DIR/manila-manage db sync
+
+        # Display version as debug-action (see bug/1473400)
+        $MANILA_BIN_DIR/manila-manage db version
     fi
 
     # Create cache dir
