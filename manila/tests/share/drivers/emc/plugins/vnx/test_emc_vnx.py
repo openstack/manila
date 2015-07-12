@@ -21,6 +21,7 @@ import mock
 from oslo_log import log
 from oslo_utils import units
 
+from manila.common import constants as const
 import manila.db
 from manila import exception
 from manila.share import configuration as conf
@@ -184,7 +185,7 @@ disks     = d7
 
     @staticmethod
     def create_nfs_export(vdm_name, path):
-        default_access = "rw=-0.0.0.0,root=-0.0.0.0,access=-0.0.0.0"
+        default_access = 'access=-0.0.0.0/0.0.0.0'
         return [
             'env', 'NAS_DB=/nas', '/nas/bin/server_export', vdm_name,
             '-option', default_access,
@@ -828,15 +829,22 @@ disks     = d7
 
     @staticmethod
     def resp_get_nfs_share_by_path(mover_name, path, hosts=[]):
-        hosts = ["-*.*.*.*"] + hosts
-        return (
-            '%(mover_name)s :\nexport "%(path)s" '
-            'rw=%(host)s root=%(host)s '
-            'access=%(host)s\n'
-            % {'mover_name': mover_name,
-               'path': path,
-               'host': ":".join(hosts)}
-        )
+        if hosts:
+            return (
+                '%(mover_name)s :\nexport "%(path)s" '
+                'access=-0.0.0.0/0.0.0.0:%(host)s root=%(host)s '
+                'rw=%(host)s ro=%(host)s\n'
+                % {'mover_name': mover_name,
+                   'path': path,
+                   'host': ":".join(hosts)}
+            )
+        else:
+            return (
+                '%(mover_name)s :\nexport "%(path)s" '
+                'access=-0.0.0.0/0.0.0.0\n'
+                % {'mover_name': mover_name,
+                   'path': path}
+            )
 
     @staticmethod
     def resp_get_nfs_share_by_path_path_unexist(mover_name):
@@ -868,10 +876,18 @@ disks     = d7
         return "%s : done" % mover_name
 
     @staticmethod
-    def req_set_nfs_share_access(path, mover_name, hosts=[]):
-        hosts = ["-*.*.*.*"] + hosts
-        access_str = ("rw=%(host)s,root=%(host)s,access=%(host)s"
-                      % {'host': ":".join(hosts)})
+    def req_set_nfs_share_access(path, mover_name, hosts=[],
+                                 access_level=const.ACCESS_LEVEL_RW):
+        if access_level == const.ACCESS_LEVEL_RW and hosts:
+            access_str = ("access=-0.0.0.0/0.0.0.0:%(host)s,"
+                          "root=%(host)s,rw=%(host)s"
+                          % {'host': ":".join(hosts)})
+        elif access_level == const.ACCESS_LEVEL_RO and hosts:
+            access_str = ("access=-0.0.0.0/0.0.0.0:%(host)s,"
+                          "root=%(host)s,ro=%(host)s"
+                          % {'host': ":".join(hosts)})
+        else:
+            access_str = "access=-0.0.0.0/0.0.0.0"
         return [
             'env', 'NAS_DB=/nas', '/nas/bin/server_export', mover_name,
             '-ignore',
@@ -897,7 +913,8 @@ disks     = d7
         )
 
     @staticmethod
-    def req_allow_deny_cifs_access(access, action='grant'):
+    def req_allow_deny_cifs_access(access, action='grant',
+                                   access_level=const.ACCESS_LEVEL_RW):
         cifs_share = TD.fake_share(share_proto='CIFS')
         domain = TD.fake_security_services()[0]['domain']
         user = access['access_to']
@@ -907,7 +924,8 @@ disks     = d7
             % {'share_name': cifs_share['name'],
                'action': action,
                'account': account,
-               'access': 'fullcontrol'}
+               'access': 'fullcontrol' if access_level ==
+                const.ACCESS_LEVEL_RW else 'read'}
         )
         return [
             'env', 'NAS_DB=/nas',
@@ -1535,9 +1553,10 @@ class EMCShareDriverVNXTestCase(test.TestCase):
                           self.driver.allow_access,
                           None, share, access, share_server)
 
-    def test_nfs_allow_access(self):
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
+    def test_nfs_allow_access(self, access_level):
         share = TD.fake_share(share_proto='NFS')
-        access = TD.fake_access()
+        access = TD.fake_access(access_level=access_level)
         share_server = TD.fake_share_server()
         mover_name = share_server['backend_details']['share_server_name']
         path = '/' + share['name']
@@ -1552,7 +1571,38 @@ class EMCShareDriverVNXTestCase(test.TestCase):
             mock.call(TD.req_set_nfs_share_access(
                 path,
                 mover_name,
-                [access['access_to']])),
+                [access['access_to']],
+                access_level)),
+        ]
+        helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
+
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
+    def test_nfs_allow_access_ip_rw_ro(self, access_level):
+        share = TD.fake_share(share_proto='NFS')
+        access = TD.fake_access(access_level=access_level)
+        share_server = TD.fake_share_server()
+        mover_name = share_server['backend_details']['share_server_name']
+        path = '/' + share['name']
+        resp_get_nfs_ip_in_rw_ro = (
+            '%(mover_name)s :\nexport "%(path)s" '
+            'access=-0.0.0.0/0.0.0.0 root=%(host)s '
+            'rw=%(host)s ro=%(host)s\n'
+            % {'mover_name': mover_name,
+               'path': path,
+               'host': access['access_to']}
+        )
+        sshHook = SSHSideEffect()
+        sshHook.append(resp_get_nfs_ip_in_rw_ro)
+        sshHook.append(TD.resp_change_nfs_share_success(mover_name))
+        helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
+        self.driver.allow_access(None, share, access, share_server)
+        expected_calls = [
+            mock.call(TD.req_get_nfs_share_by_path(mover_name, path)),
+            mock.call(TD.req_set_nfs_share_access(
+                path,
+                mover_name,
+                [access['access_to']],
+                access_level)),
         ]
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
 
@@ -1573,7 +1623,8 @@ class EMCShareDriverVNXTestCase(test.TestCase):
             mock.call(TD.req_set_nfs_share_access(
                 path,
                 mover_name,
-                [access['access_to']])),
+                [access['access_to']],
+                const.ACCESS_LEVEL_RW)),
         ]
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
 
@@ -1594,7 +1645,9 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         self.driver.deny_access(None, share, access, share_server)
         expected_calls = [
             mock.call(TD.req_get_nfs_share_by_path(mover_name, path)),
-            mock.call(TD.req_set_nfs_share_access(path, mover_name, [])),
+            mock.call(TD.req_set_nfs_share_access(path, mover_name,
+                                                  [],
+                                                  const.ACCESS_LEVEL_RW)),
         ]
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
 
@@ -1616,59 +1669,89 @@ class EMCShareDriverVNXTestCase(test.TestCase):
                           self.driver.deny_access,
                           None, share, access, share_server)
 
-    def test_nfs_deny_access(self):
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
+    def test_nfs_deny_access(self, access_level):
         share = TD.fake_share(share_proto='NFS')
-        access = TD.fake_access()
+        access = TD.fake_access(access_level=access_level)
         share_server = TD.fake_share_server()
         mover_name = share_server['backend_details']['share_server_name']
         path = '/' + share['name']
         sshHook = SSHSideEffect()
         sshHook.append(TD.resp_get_nfs_share_by_path(mover_name,
                                                      path,
-                                                     [access['access_to']]))
+                                                     ['10.0.0.2']))
         sshHook.append(TD.resp_change_nfs_share_success(mover_name))
         helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
         self.driver.deny_access(None, share, access, share_server)
         expected_calls = [
             mock.call(TD.req_get_nfs_share_by_path(mover_name, path)),
-            mock.call(TD.req_set_nfs_share_access(path, mover_name, [])),
+            mock.call(TD.req_set_nfs_share_access(path, mover_name,
+                                                  [],
+                                                  access_level)),
         ]
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
 
+    def test_nfs_deny_access_ro_other_ips(self):
+        share = TD.fake_share(share_proto='NFS')
+        access = TD.fake_access(access_level=const.ACCESS_LEVEL_RO)
+        share_server = TD.fake_share_server()
+        other_ips = [access['access_to'], '10.0.0.3', '10.0.0.4']
+        mover_name = share_server['backend_details']['share_server_name']
+        path = '/' + share['name']
+        sshHook = SSHSideEffect()
+        sshHook.append(
+            TD.resp_get_nfs_share_by_path(mover_name, path,
+                                          other_ips))
+        sshHook.append(TD.resp_change_nfs_share_success(mover_name))
+        helper.SSHConnector.run_ssh = mock.Mock(side_effect=sshHook)
+        self.driver.deny_access(None, share, access, share_server)
+        expected_calls = [
+            mock.call(TD.req_get_nfs_share_by_path(mover_name, path)),
+        ]
+        helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
+
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
     @mock.patch('manila.db.share_network_get',
                 mock.Mock(return_value=TD.fake_share_network()))
-    def test_cifs_allow_access(self):
+    def test_cifs_allow_access(self, access_level):
         context = 'fake_context'
         share = TD.fake_share(share_proto='CIFS')
-        access = TD.fake_access(**{'access_type': 'user',
-                                   'access_to': 'administrator'})
+        access_update = {'access_type': 'user',
+                         'access_to': 'administrator',
+                         'access_level': access_level}
+        access = TD.fake_access(**access_update)
         share_server = TD.fake_share_server()
         ssh_hook = SSHSideEffect()
         ssh_hook.append(TD.resp_allow_cifs_access(access))
         helper.SSHConnector.run_ssh = mock.Mock(side_effect=ssh_hook)
         self.driver.allow_access(context, share, access, share_server)
-        expected_calls = [mock.call(TD.req_allow_deny_cifs_access(access))]
+        expected_calls = [mock.call(TD.req_allow_deny_cifs_access(access,
+                                    access_level=access_level))]
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
-        manila.db.share_network_get.assert_called_once_with(
+        manila.db.share_network_get.assert_called_with(
             context, share['share_network_id'])
 
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
     @mock.patch('manila.db.share_network_get',
                 mock.Mock(return_value=TD.fake_share_network()))
-    def test_cifs_deny_access(self):
+    def test_cifs_deny_access(self, access_level):
         context = 'fake_context'
         share = TD.fake_share(share_proto='CIFS')
-        access = TD.fake_access(**{'access_type': 'user',
-                                   'access_to': 'administrator'})
+        access_update = {'access_type': 'user',
+                         'access_to': 'administrator',
+                         'access_level': access_level}
+        access = TD.fake_access(**access_update)
         share_server = TD.fake_share_server()
         ssh_hook = SSHSideEffect()
         ssh_hook.append('Command succeeded')
         helper.SSHConnector.run_ssh = mock.Mock(side_effect=ssh_hook)
         self.driver.deny_access(context, share, access, share_server)
         expected_calls = [
-            mock.call(TD.req_allow_deny_cifs_access(access, 'revoke')),
+            mock.call(TD.req_allow_deny_cifs_access(
+                access, 'revoke', access_level)),
         ]
         helper.SSHConnector.run_ssh.assert_has_calls(expected_calls)
-        manila.db.share_network_get.assert_called_once_with(
+        manila.db.share_network_get.assert_called_with(
             context, share['share_network_id'])
 
     @ddt.data(fake_share.fake_share(),

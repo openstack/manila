@@ -18,6 +18,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 import six
 
+from manila.common import constants as const
 from manila import db as manila_db
 from manila import exception
 from manila.i18n import _
@@ -345,6 +346,9 @@ class VNXStorageConnection(driver.StorageConnection):
     def allow_access(self, emc_share_driver, context, share, access,
                      share_server=None):
         """Allow access to the share."""
+        access_level = access['access_level']
+        if access_level not in const.ACCESS_LEVELS:
+            raise exception.InvalidShareAccessLevel(level=access_level)
         if share['share_proto'] == 'NFS':
             self._nfs_allow_access(context, share, access, share_server)
         elif share['share_proto'] == 'CIFS':
@@ -367,12 +371,17 @@ class VNXStorageConnection(driver.StorageConnection):
         share_name = share['name']
         mover_name = self._get_vdm_name(share_server)
         user_name = access['access_to']
-
+        access_level = access['access_level']
+        if access_level == const.ACCESS_LEVEL_RW:
+            cifs_access = constants.CIFS_ACL_FULLCONTROL
+        else:
+            cifs_access = constants.CIFS_ACL_READ
         status, out = self._NASCmd_helper.allow_cifs_access(
             mover_name,
             share_name,
             user_name,
-            security_services[0]['domain'])
+            security_services[0]['domain'],
+            access=cifs_access)
         if constants.STATUS_OK != status:
             message = _("Could not allow CIFS access. Reason: %s.") % out
             LOG.error(message)
@@ -388,9 +397,10 @@ class VNXStorageConnection(driver.StorageConnection):
             raise exception.InvalidShareAccess(reason)
 
         host_ip = access['access_to']
+        access_level = access['access_level']
         mover_name = self._get_vdm_name(share_server)
         status, reason = self._NASCmd_helper.allow_nfs_share_access(
-            share_path, host_ip, mover_name)
+            share_path, host_ip, mover_name, access_level)
         if constants.STATUS_OK != status:
             message = (_("Could not allow access to NFS share. Reason: %s.")
                        % reason)
@@ -421,12 +431,17 @@ class VNXStorageConnection(driver.StorageConnection):
         share_name = share['name']
         mover_name = self._get_vdm_name(share_server)
         user_name = access['access_to']
-
+        access_level = access['access_level']
+        if access_level == const.ACCESS_LEVEL_RW:
+            cifs_access = constants.CIFS_ACL_FULLCONTROL
+        else:
+            cifs_access = constants.CIFS_ACL_READ
         status, out = self._NASCmd_helper.deny_cifs_access(
             mover_name,
             share_name,
             user_name,
-            security_services[0]['domain'])
+            security_services[0]['domain'],
+            access=cifs_access)
         if constants.STATUS_OK != status:
             message = (_("Could not deny access to CIFS share. Reason: %s.")
                        % out)

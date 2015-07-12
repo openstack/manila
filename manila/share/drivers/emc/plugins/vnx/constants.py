@@ -30,3 +30,6 @@ CONTENT_TYPE_URLENCODE = {'Content-Type': 'application/x-www-form-urlencoded'}
 
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 XML_NAMESPACE = 'http://www.emc.com/schemas/celerra/xml_api'
+
+CIFS_ACL_FULLCONTROL = 'fullcontrol'
+CIFS_ACL_READ = 'read'
