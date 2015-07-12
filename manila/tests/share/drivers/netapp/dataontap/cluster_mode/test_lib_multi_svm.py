@@ -65,14 +65,11 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_find_matching_aggregates',
                          mock.Mock(return_value=fake.AGGREGATES))
-        mock_check_data_ontap_version = self.mock_object(
-            self.library, '_check_data_ontap_version')
         mock_super = self.mock_object(lib_base.NetAppCmodeFileStorageLibrary,
                                       'check_for_setup_error')
 
         self.library.check_for_setup_error()
 
-        self.assertTrue(mock_check_data_ontap_version.called)
         self.assertTrue(self.library._find_matching_aggregates.called)
         mock_super.assert_called_once_with()
 
@@ -106,17 +103,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.library.check_for_setup_error)
         self.assertTrue(self.library._find_matching_aggregates.called)
-
-    @ddt.data((1, 20), (1, 21))
-    def test_check_data_ontap_version(self, version):
-        self.library._client.get_ontapi_version.return_value = version
-        self.assertIsNone(self.library._check_data_ontap_version())
-
-    @ddt.data((1, 30), (1, 31), (1, 40), (2, 0))
-    def test_check_data_ontap_version_too_new(self, version):
-        self.library._client.get_ontapi_version.return_value = version
-        self.assertRaises(exception.NetAppException,
-                          self.library._check_data_ontap_version)
 
     def test_get_vserver_no_share_server(self):
 
