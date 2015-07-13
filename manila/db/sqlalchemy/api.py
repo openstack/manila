@@ -23,6 +23,9 @@ import datetime
 import sys
 import warnings
 
+# NOTE(uglide): Required to override default oslo_db Query class
+import manila.db.sqlalchemy.query  # noqa
+
 from oslo_config import cfg
 from oslo_db import exception as db_exception
 from oslo_db import options as db_options
@@ -34,7 +37,6 @@ from oslo_utils import uuidutils
 import six
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
 
@@ -995,10 +997,7 @@ def reservation_commit(context, reservations, project_id=None, user_id=None):
             if reservation.delta >= 0:
                 usage.reserved -= reservation.delta
             usage.in_use += reservation.delta
-        reservation_query.update({'deleted': 1,
-                                  'deleted_at': timeutils.utcnow(),
-                                  'updated_at': literal_column('updated_at')},
-                                 synchronize_session=False)
+        reservation_query.soft_delete(synchronize_session=False)
 
 
 @require_context
@@ -1012,10 +1011,7 @@ def reservation_rollback(context, reservations, project_id=None, user_id=None):
             usage = usages[reservation.resource]
             if reservation.delta >= 0:
                 usage.reserved -= reservation.delta
-        reservation_query.update({'deleted': 1,
-                                  'deleted_at': timeutils.utcnow(),
-                                  'updated_at': literal_column('updated_at')},
-                                 synchronize_session=False)
+        reservation_query.soft_delete(synchronize_session=False)
 
 
 @require_admin_context
@@ -1025,29 +1021,17 @@ def quota_destroy_all_by_project_and_user(context, project_id, user_id):
         model_query(context, models.ProjectUserQuota, session=session,
                     read_deleted="no").\
             filter_by(project_id=project_id).\
-            filter_by(user_id=user_id).\
-            update({'deleted': 1,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')},
-                   synchronize_session=False)
+            filter_by(user_id=user_id).soft_delete(synchronize_session=False)
 
         model_query(context, models.QuotaUsage,
                     session=session, read_deleted="no").\
             filter_by(project_id=project_id).\
-            filter_by(user_id=user_id).\
-            update({'deleted': 1,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')},
-                   synchronize_session=False)
+            filter_by(user_id=user_id).soft_delete(synchronize_session=False)
 
         model_query(context, models.Reservation,
                     session=session, read_deleted="no").\
             filter_by(project_id=project_id).\
-            filter_by(user_id=user_id).\
-            update({'deleted': 1,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')},
-                   synchronize_session=False)
+            filter_by(user_id=user_id).soft_delete(synchronize_session=False)
 
 
 @require_admin_context
@@ -1057,34 +1041,22 @@ def quota_destroy_all_by_project(context, project_id):
         model_query(context, models.Quota, session=session,
                     read_deleted="no").\
             filter_by(project_id=project_id).\
-            update({'deleted': 1,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')},
-                   synchronize_session=False)
+            soft_delete(synchronize_session=False)
 
         model_query(context, models.ProjectUserQuota, session=session,
                     read_deleted="no").\
             filter_by(project_id=project_id).\
-            update({'deleted': 1,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')},
-                   synchronize_session=False)
+            soft_delete(synchronize_session=False)
 
         model_query(context, models.QuotaUsage,
                     session=session, read_deleted="no").\
             filter_by(project_id=project_id).\
-            update({'deleted': 1,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')},
-                   synchronize_session=False)
+            soft_delete(synchronize_session=False)
 
         model_query(context, models.Reservation,
                     session=session, read_deleted="no").\
             filter_by(project_id=project_id).\
-            update({'deleted': 1,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')},
-                   synchronize_session=False)
+            soft_delete(synchronize_session=False)
 
 
 @require_admin_context
@@ -1101,10 +1073,7 @@ def reservation_expire(context):
                 reservation.usage.reserved -= reservation.delta
                 session.add(reservation.usage)
 
-        reservation_query.update({'deleted': 1,
-                                  'deleted_at': timeutils.utcnow(),
-                                  'updated_at': literal_column('updated_at')},
-                                 synchronize_session=False)
+        reservation_query.soft_delete(synchronize_session=False)
 
 
 ################
@@ -1313,15 +1282,9 @@ def share_get_all_by_share_server(context, share_server_id, filters=None,
 def share_delete(context, share_id):
     session = get_session()
     share_ref = share_get(context, share_id, session)
-    share_ref.update({'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': literal_column('updated_at'),
-                      'status': 'deleted'})
+    share_ref.soft_delete(session=session, update_status=True)
     session.query(models.ShareMetadata).\
-        filter_by(share_id=share_id).\
-        update({'deleted': 1,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
+        filter_by(share_id=share_id).soft_delete()
     session.query(models.ShareExportLocations).\
         filter_by(share_id=share_id).soft_delete()
 
@@ -1382,11 +1345,8 @@ def share_access_delete(context, access_id):
     session = get_session()
     with session.begin():
         session.query(models.ShareAccessMapping).\
-            filter_by(id=access_id).\
-            update({'deleted': access_id,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at'),
-                    'state': models.ShareAccessMapping.STATE_DELETED})
+            filter_by(id=access_id).soft_delete(update_status=True,
+                                                status_field_name='state')
 
 
 @require_context
@@ -1438,11 +1398,7 @@ def share_snapshot_destroy(context, snapshot_id):
     session = get_session()
     with session.begin():
         session.query(models.ShareSnapshot).\
-            filter_by(id=snapshot_id).\
-            update({'status': 'deleted',
-                    'deleted': snapshot_id,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
+            filter_by(id=snapshot_id).soft_delete(update_status=True)
 
 
 @require_context
@@ -1578,10 +1534,7 @@ def share_metadata_get(context, share_id):
 @require_share_exists
 def share_metadata_delete(context, share_id, key):
     _share_metadata_get_query(context, share_id).\
-        filter_by(key=key).\
-        update({'deleted': 1,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
+        filter_by(key=key).soft_delete()
 
 
 @require_context
@@ -1625,8 +1578,7 @@ def _share_metadata_update(context, share_id, metadata, delete, session=None):
                     meta_ref = _share_metadata_get_item(context, share_id,
                                                         meta_key,
                                                         session=session)
-                    meta_ref.update({'deleted': 1})
-                    meta_ref.save(session=session)
+                    meta_ref.soft_delete(session=session)
 
         meta_ref = None
 
@@ -1978,10 +1930,7 @@ def share_server_delete(context, id):
     with session.begin():
         server_ref = share_server_get(context, id, session=session)
         share_server_backend_details_delete(context, id, session=session)
-        server_ref.update({'deleted': server_ref.id,
-                           'deleted_at': timeutils.utcnow(),
-                           'updated_at': literal_column('updated_at'),
-                           'status': constants.STATUS_DELETED})
+        server_ref.soft_delete(session=session, update_status=True)
 
 
 @require_context
@@ -2419,15 +2368,9 @@ def share_type_destroy(context, id):
                       id)
             raise exception.ShareTypeInUse(share_type_id=id)
         model_query(context, models.ShareTypeExtraSpecs, session=session).\
-            filter_by(share_type_id=id).update(
-                {'deleted': 1,
-                 'deleted_at': timeutils.utcnow(),
-                 'updated_at': literal_column('updated_at')})
+            filter_by(share_type_id=id).soft_delete()
         model_query(context, models.ShareTypes, session=session).\
-            filter_by(id=id).update(
-                {'deleted': id,
-                 'deleted_at': timeutils.utcnow(),
-                 'updated_at': literal_column('updated_at')})
+            filter_by(id=id).soft_delete()
 
 
 def _share_type_access_query(context, session=None):
@@ -2519,10 +2462,7 @@ def share_type_extra_specs_delete(context, share_type_id, key):
     with session.begin():
         _share_type_extra_specs_get_item(context, share_type_id, key, session)
         _share_type_extra_specs_query(context, share_type_id, session).\
-            filter_by(key=key).\
-            update({'deleted': 1,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
+            filter_by(key=key).soft_delete()
 
 
 @require_context

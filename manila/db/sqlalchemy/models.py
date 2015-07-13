@@ -47,6 +47,14 @@ class ManilaBase(models.ModelBase,
                 model_dict[k] = v
         return model_dict
 
+    def soft_delete(self, session, update_status=False,
+                    status_field_name='status'):
+        """Mark this object as deleted."""
+        if update_status:
+            setattr(self, status_field_name, constants.STATUS_DELETED)
+
+        return super(ManilaBase, self).soft_delete(session)
+
 
 class Service(BASE, ManilaBase):
     """Represents a running service on a host."""

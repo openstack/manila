@@ -21,6 +21,7 @@ import six
 
 from manila import context
 from manila.db.sqlalchemy import api
+from manila import exception
 from manila import test
 
 
@@ -187,3 +188,16 @@ class SQLAlchemyAPIShareTestCase(test.TestCase):
             self.ctxt, test_host, test_id)
 
         self.assertEqual({}, actual_result)
+
+    def test_custom_query(self):
+        share = api.share_create(self.ctxt, {'host': 'foobar'})
+        test_access_values = {
+            'share_id': share['id'],
+            'access_type': 'ip',
+            'access_to': 'fake',
+        }
+        share_access = api.share_access_create(self.ctxt, test_access_values)
+
+        api.share_access_delete(self.ctxt, share_access.id)
+        self.assertRaises(exception.NotFound, api.share_access_get,
+                          self.ctxt, share_access.id)
