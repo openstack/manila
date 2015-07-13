@@ -32,6 +32,21 @@ class SQLAlchemyAPIShareTestCase(test.TestCase):
         super(SQLAlchemyAPIShareTestCase, self).setUp()
         self.ctxt = context.get_admin_context()
 
+    @ddt.unpack
+    @ddt.data(
+        {'values': {'test': 'fake'}, 'call_count': 1},
+        {'values': {'test': 'fake', 'id': 'fake'}, 'call_count': 0},
+        {'values': {'test': 'fake', 'fooid': 'fake'}, 'call_count': 1},
+        {'values': {'test': 'fake', 'idfoo': 'fake'}, 'call_count': 1},
+    )
+    def test_ensure_model_values_has_id(self, values, call_count):
+        self.mock_object(uuidutils, 'generate_uuid')
+
+        api.ensure_model_dict_has_id(values)
+
+        self.assertEqual(call_count, uuidutils.generate_uuid.call_count)
+        self.assertIn('id', values)
+
     def test_share_filter_by_host_with_pools(self):
         shares = [[api.share_create(self.ctxt, {'host': value})
                    for value in ('foo', 'foo#pool0')]]
