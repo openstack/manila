@@ -33,9 +33,13 @@ if hp3parclient:
 
 LOG = log.getLogger(__name__)
 MIN_CLIENT_VERSION = (3, 2, 1)
+MIN_SMB_CA_VERSION = (3, 2, 2)
 DENY = '-'
 ALLOW = '+'
 OPEN_STACK_MANILA_FSHARE = 'OpenStack Manila fshare'
+CACHE = 'cache'
+CONTINUOUS_AVAIL = 'continuous_avail'
+ACCESS_BASED_ENUM = 'access_based_enum'
 
 
 class HP3ParMediator(object):
@@ -55,6 +59,7 @@ class HP3ParMediator(object):
 
         self.ssh_conn_timeout = kwargs.get('ssh_conn_timeout')
         self._client = None
+        self.client_version = None
 
     @staticmethod
     def no_client():
@@ -68,11 +73,11 @@ class HP3ParMediator(object):
             LOG.exception(msg)
             raise exception.HP3ParInvalidClient(message=msg)
 
-        client_version = hp3parclient.version_tuple
-        if client_version < MIN_CLIENT_VERSION:
+        self.client_version = hp3parclient.version_tuple
+        if self.client_version < MIN_CLIENT_VERSION:
             msg = (_('Invalid hp3parclient version found (%(found)s). '
                      'Version %(minimum)s or greater required.') %
-                   {'found': '.'.join(map(six.text_type, client_version)),
+                   {'found': '.'.join(map(six.text_type, self.client_version)),
                     'minimum': '.'.join(map(six.text_type,
                                             MIN_CLIENT_VERSION))})
             LOG.exception(msg)
@@ -176,7 +181,68 @@ class HP3ParMediator(object):
         else:
             return 'osf-%s' % uid
 
-    def create_share(self, project_id, share_id, share_proto, fpg, vfs,
+    @staticmethod
+    def _get_nfs_options(extra_specs, readonly):
+        """Validate the NFS extra_specs and return the options to use."""
+
+        nfs_options = extra_specs.get('hp_3par:nfs_options')
+        if nfs_options:
+            options = nfs_options.split(',')
+        else:
+            options = []
+
+        # rw, ro, and (no)root_squash (in)secure options are not allowed in
+        # extra_specs because they will be forcibly set below.
+        # no_subtree_check and fsid are not allowed per 3PAR support.
+        # Other strings will be allowed to be sent to the 3PAR which will do
+        # further validation.
+        options_not_allowed = ['ro', 'rw',
+                               'no_root_squash', 'root_squash',
+                               'secure', 'insecure',
+                               'no_subtree_check', 'fsid']
+
+        invalid_options = [
+            option for option in options if option in options_not_allowed
+        ]
+
+        if invalid_options:
+            raise exception.InvalidInput(_('Invalid hp3_par:nfs_options in '
+                                           'extra-specs. The following '
+                                           'options are not allowed: %s') %
+                                         invalid_options)
+
+        options.append('ro' if readonly else 'rw')
+        options.append('no_root_squash')
+        options.append('insecure')
+
+        return ','.join(options)
+
+    def _build_createfshare_kwargs(self, protocol, fpg, fstore, readonly,
+                                   sharedir, extra_specs):
+        createfshare_kwargs = dict(fpg=fpg,
+                                   fstore=fstore,
+                                   sharedir=sharedir,
+                                   comment=OPEN_STACK_MANILA_FSHARE)
+        if protocol == 'nfs':
+            createfshare_kwargs['clientip'] = '127.0.0.1'
+            options = self._get_nfs_options(extra_specs, readonly)
+            createfshare_kwargs['options'] = options
+        else:
+            createfshare_kwargs['allowip'] = '127.0.0.1'
+
+            if self.client_version < MIN_SMB_CA_VERSION:
+                smb_opts = (ACCESS_BASED_ENUM, CACHE)
+            else:
+                smb_opts = (ACCESS_BASED_ENUM, CONTINUOUS_AVAIL, CACHE)
+
+            for smb_opt in smb_opts:
+                opt_value = extra_specs.get('hp_3par:smb_%s' % smb_opt)
+                if opt_value:
+                    createfshare_kwargs[smb_opt] = opt_value
+        return createfshare_kwargs
+
+    def create_share(self, project_id, share_id, share_proto, extra_specs,
+                     fpg, vfs,
                      fstore=None, sharedir=None, readonly=False, size=None):
         """Create the share and return its path.
 
@@ -187,6 +253,7 @@ class HP3ParMediator(object):
         :param project_id: The tenant ID.
         :param share_id: The share-id with or without osf- prefix.
         :param share_proto: The protocol (to map to smb or nfs)
+        :param extra_specs: The share type extra-specs
         :param fpg: The file provisioning group
         :param vfs:  The virtual file system
         :param fstore:  (optional) The file store.  When provided, an existing
@@ -200,11 +267,26 @@ class HP3ParMediator(object):
         protocol = self.ensure_supported_protocol(share_proto)
         share_name = self.ensure_prefix(share_id)
 
-        if not fstore:
+        if not (sharedir or self.hp3par_fstore_per_share):
+            sharedir = share_name
+
+        if fstore:
+            use_existing_fstore = True
+        else:
+            use_existing_fstore = False
             if self.hp3par_fstore_per_share:
                 fstore = share_name
             else:
                 fstore = self.ensure_prefix(project_id, protocol)
+
+        createfshare_kwargs = self._build_createfshare_kwargs(protocol,
+                                                              fpg,
+                                                              fstore,
+                                                              readonly,
+                                                              sharedir,
+                                                              extra_specs)
+
+        if not use_existing_fstore:
 
             try:
                 result = self._client.createfstore(
@@ -245,28 +327,13 @@ class HP3ParMediator(object):
                     LOG.exception(msg)
                     raise exception.ShareBackendException(msg)
 
-        if not (sharedir or self.hp3par_fstore_per_share):
-            sharedir = share_name
-
         try:
-            if protocol == 'nfs':
-                if readonly:
-                    options = 'ro,no_root_squash,insecure'
-                else:
-                    options = 'rw,no_root_squash,insecure'
 
-                result = self._client.createfshare(
-                    protocol, vfs, share_name,
-                    fpg=fpg, fstore=fstore, sharedir=sharedir,
-                    clientip='127.0.0.1',
-                    options=options,
-                    comment=OPEN_STACK_MANILA_FSHARE)
-            else:
-                result = self._client.createfshare(
-                    protocol, vfs, share_name,
-                    fpg=fpg, fstore=fstore, sharedir=sharedir,
-                    allowip='127.0.0.1',
-                    comment=OPEN_STACK_MANILA_FSHARE)
+            result = self._client.createfshare(protocol,
+                                               vfs,
+                                               share_name,
+                                               **createfshare_kwargs)
+
             LOG.debug("createfshare result=%s", result)
 
         except Exception as e:
@@ -300,7 +367,7 @@ class HP3ParMediator(object):
         else:
             return result['members'][0]['shareName']
 
-    def create_share_from_snapshot(self, share_id, share_proto,
+    def create_share_from_snapshot(self, share_id, share_proto, extra_specs,
                                    orig_project_id, orig_share_id, orig_proto,
                                    snapshot_id, fpg, vfs):
 
@@ -339,6 +406,7 @@ class HP3ParMediator(object):
             orig_project_id,
             share_name,
             protocol,
+            extra_specs,
             fpg,
             vfs,
             fstore=fstore,

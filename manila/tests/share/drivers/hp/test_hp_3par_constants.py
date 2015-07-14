@@ -24,6 +24,7 @@ SAN_PASSWORD = 'testpassword4san'
 API_URL = 'https://1.2.3.4:8080/api/v1'
 TIMEOUT = 60
 PORT = 22
+SHARE_TYPE_ID = 123456789
 
 # Constants to use with Mock and expect in results
 EXPECTED_IP_10203040 = '10.20.30.40'
@@ -42,6 +43,11 @@ EXPECTED_FPG = 'FPG_1'
 EXPECTED_FSTORE = EXPECTED_PROJECT_ID
 EXPECTED_VFS = 'test_vfs'
 EXPECTED_HP_DEBUG = True
+EXPECTED_EXTRA_SPECS = {}
+
+GET_FSQUOTA = {'message': None,
+               'total': 1,
+               'members': [{'hardBlock': '1024', 'softBlock': '1024'}]}
 
 NFS_SHARE_INFO = {
     'project_id': EXPECTED_PROJECT_ID,
@@ -63,3 +69,9 @@ SNAPSHOT_INFO = {
         'share_proto': NFS,
     },
 }
+
+
+class FakeException(Exception):
+    pass
+
+FAKE_EXCEPTION = FakeException("Fake exception for testing.")

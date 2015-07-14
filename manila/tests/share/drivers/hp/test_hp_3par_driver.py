@@ -136,9 +136,12 @@ class HP3ParDriverTestCase(test.TestCase):
         self.driver.vfs = constants.EXPECTED_VFS
         self.driver.fpg = constants.EXPECTED_FPG
         self.driver.share_ip_address = self.conf.hp3par_share_ip_address
+        self.mock_object(hp3pardriver, 'share_types')
+        get_extra_specs = hp3pardriver.share_types.get_extra_specs_from_share
+        get_extra_specs.return_value = constants.EXPECTED_EXTRA_SPECS
 
-    def do_create_share(self, protocol, expected_project_id, expected_share_id,
-                        expected_size):
+    def do_create_share(self, protocol, share_type_id, expected_project_id,
+                        expected_share_id, expected_size):
         """Re-usable code for create share."""
         context = None
         share_server = None
@@ -146,6 +149,7 @@ class HP3ParDriverTestCase(test.TestCase):
             'project_id': expected_project_id,
             'id': expected_share_id,
             'share_proto': protocol,
+            'share_type_id': share_type_id,
             'size': expected_size,
         }
         location = self.driver.create_share(context, share, share_server)
@@ -153,6 +157,7 @@ class HP3ParDriverTestCase(test.TestCase):
 
     def do_create_share_from_snapshot(self,
                                       protocol,
+                                      share_type_id,
                                       snapshot_id,
                                       expected_share_id,
                                       expected_size):
@@ -162,6 +167,7 @@ class HP3ParDriverTestCase(test.TestCase):
         share = {
             'id': expected_share_id,
             'share_proto': protocol,
+            'share_type_id': share_type_id,
             'size': expected_size,
         }
         location = self.driver.create_share_from_snapshot(context,
@@ -208,6 +214,7 @@ class HP3ParDriverTestCase(test.TestCase):
             constants.EXPECTED_SHARE_NAME)
 
         location = self.do_create_share(constants.CIFS,
+                                        constants.SHARE_TYPE_ID,
                                         constants.EXPECTED_PROJECT_ID,
                                         constants.EXPECTED_SHARE_ID,
                                         constants.EXPECTED_SIZE_2)
@@ -217,6 +224,7 @@ class HP3ParDriverTestCase(test.TestCase):
             constants.EXPECTED_PROJECT_ID,
             constants.EXPECTED_SHARE_ID,
             constants.CIFS,
+            constants.EXPECTED_EXTRA_SPECS,
             constants.EXPECTED_FPG,
             constants.EXPECTED_VFS,
             size=constants.EXPECTED_SIZE_2)]
@@ -232,6 +240,7 @@ class HP3ParDriverTestCase(test.TestCase):
             constants.EXPECTED_SHARE_PATH)
 
         location = self.do_create_share(constants.NFS,
+                                        constants.SHARE_TYPE_ID,
                                         constants.EXPECTED_PROJECT_ID,
                                         constants.EXPECTED_SHARE_ID,
                                         constants.EXPECTED_SIZE_1)
@@ -241,6 +250,7 @@ class HP3ParDriverTestCase(test.TestCase):
             mock.call.create_share(constants.EXPECTED_PROJECT_ID,
                                    constants.EXPECTED_SHARE_ID,
                                    constants.NFS,
+                                   constants.EXPECTED_EXTRA_SPECS,
                                    constants.EXPECTED_FPG,
                                    constants.EXPECTED_VFS,
                                    size=constants.EXPECTED_SIZE_1)]
@@ -258,20 +268,24 @@ class HP3ParDriverTestCase(test.TestCase):
 
         location = self.do_create_share_from_snapshot(
             constants.CIFS,
+            constants.SHARE_TYPE_ID,
             constants.SNAPSHOT_INFO,
             constants.EXPECTED_SHARE_ID,
             constants.EXPECTED_SIZE_2)
 
         self.assertEqual(expected_location, location)
         expected_calls = [
-            mock.call.create_share_from_snapshot(constants.EXPECTED_SHARE_ID,
-                                                 constants.CIFS,
-                                                 constants.EXPECTED_FSTORE,
-                                                 constants.EXPECTED_SHARE_ID,
-                                                 constants.NFS,
-                                                 constants.EXPECTED_SNAP_ID,
-                                                 constants.EXPECTED_FPG,
-                                                 constants.EXPECTED_VFS)]
+            mock.call.create_share_from_snapshot(
+                constants.EXPECTED_SHARE_ID,
+                constants.CIFS,
+                constants.EXPECTED_EXTRA_SPECS,
+                constants.EXPECTED_FSTORE,
+                constants.EXPECTED_SHARE_ID,
+                constants.NFS,
+                constants.EXPECTED_SNAP_ID,
+                constants.EXPECTED_FPG,
+                constants.EXPECTED_VFS),
+        ]
         self.mock_mediator.assert_has_calls(expected_calls)
 
     def test_driver_create_nfs_share_from_snapshot(self):
@@ -285,20 +299,24 @@ class HP3ParDriverTestCase(test.TestCase):
 
         location = self.do_create_share_from_snapshot(
             constants.NFS,
+            constants.SHARE_TYPE_ID,
             constants.SNAPSHOT_INFO,
             constants.EXPECTED_SHARE_ID,
             constants.EXPECTED_SIZE_1)
 
         self.assertEqual(expected_location, location)
         expected_calls = [
-            mock.call.create_share_from_snapshot(constants.EXPECTED_SHARE_ID,
-                                                 constants.NFS,
-                                                 constants.EXPECTED_PROJECT_ID,
-                                                 constants.EXPECTED_SHARE_ID,
-                                                 constants.NFS,
-                                                 constants.EXPECTED_SNAP_ID,
-                                                 constants.EXPECTED_FPG,
-                                                 constants.EXPECTED_VFS)]
+            mock.call.create_share_from_snapshot(
+                constants.EXPECTED_SHARE_ID,
+                constants.NFS,
+                constants.EXPECTED_EXTRA_SPECS,
+                constants.EXPECTED_PROJECT_ID,
+                constants.EXPECTED_SHARE_ID,
+                constants.NFS,
+                constants.EXPECTED_SNAP_ID,
+                constants.EXPECTED_FPG,
+                constants.EXPECTED_VFS)
+        ]
 
         self.mock_mediator.assert_has_calls(expected_calls)
 
