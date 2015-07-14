@@ -70,6 +70,7 @@ def upgrade():
         })
 
     op.bulk_insert(es_table, extra_specs)
+    session.close_all()
 
 
 def downgrade():

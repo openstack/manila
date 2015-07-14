@@ -55,7 +55,8 @@ def upgrade():
         sa.Column('updated_at', sa.DateTime))
 
     export_locations = []
-    for share in op.get_bind().execute(shares_table.select()):
+    session = sa.orm.Session(bind=op.get_bind().connect())
+    for share in session.query(shares_table).all():
         deleted = share.deleted if isinstance(share.deleted, int) else 0
         export_locations.append({
             'created_at': share.created_at,
@@ -68,6 +69,7 @@ def upgrade():
     op.bulk_insert(export_locations_table, export_locations)
 
     op.drop_column('shares', 'export_location')
+    session.close_all()
 
 
 def downgrade():
@@ -106,3 +108,4 @@ def downgrade():
         connection.execute(update)
 
     op.drop_table('share_export_locations')
+    session.close_all()
