@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import six
 
 from manila import exception
@@ -38,6 +39,7 @@ class FakeNotifier(object):
         self.provided_payload = payload
 
 
+@ddt.ddt
 class ManilaExceptionTestCase(test.TestCase):
     def test_default_error_msg(self):
         class FakeManilaException(exception.ManilaException):
@@ -103,6 +105,18 @@ class ManilaExceptionTestCase(test.TestCase):
         self.assertNotIn('fake_msg', exc.kwargs)
         self.assertNotIn('foo_msg', exc.kwargs)
         self.assertNotIn('bar_msg', exc.kwargs)
+
+    @ddt.data("test message.", "test message....", ".")
+    def test_exception_not_redundant_period(self, msg):
+        exc1 = Exception(msg)
+        exc2 = exception.ManilaException(exc1)
+        self.assertEqual(msg, exc2.msg)
+
+    def test_exception_redundant_period(self):
+        msg = "test message.."
+        exc1 = Exception(msg)
+        exc2 = exception.ManilaException(exc1)
+        self.assertEqual("test message.", exc2.msg)
 
 
 class ManilaExceptionResponseCode400(test.TestCase):
