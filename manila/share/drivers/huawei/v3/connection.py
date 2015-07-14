@@ -99,9 +99,9 @@ class V3StorageConnection(driver.HuaweiBase):
 
         # The unit is the sectors.
         size = new_size * units.Mi * 2
-        share_type = self.helper._get_share_type(share_proto)
+        share_url_type = self.helper._get_share_url_type(share_proto)
 
-        share = self.helper._get_share_by_name(share_name, share_type)
+        share = self.helper._get_share_by_name(share_name, share_url_type)
         if not share:
             err_msg = (_("Can not get share ID by share %s.")
                        % share_name)
@@ -124,8 +124,8 @@ class V3StorageConnection(driver.HuaweiBase):
         share_proto = snapshot['share_proto']
 
         share_name = self.helper._get_share_name_by_id(snapshot['share_id'])
-        share_type = self.helper._get_share_type(share_proto)
-        share = self.helper._get_share_by_name(share_name, share_type)
+        share_url_type = self.helper._get_share_url_type(share_proto)
+        share = self.helper._get_share_by_name(share_name, share_url_type)
 
         if not share:
             err_msg = _('Can not create snapshot,'
@@ -178,8 +178,8 @@ class V3StorageConnection(driver.HuaweiBase):
     def delete_share(self, share, share_server=None):
         """Delete share."""
         share_name = share['name']
-        share_proto = self.helper._get_share_type(share['share_proto'])
-        share = self.helper._get_share_by_name(share_name, share_proto)
+        share_url_type = self.helper._get_share_url_type(share['share_proto'])
+        share = self.helper._get_share_by_name(share_name, share_url_type)
 
         if not share:
             LOG.warning(_LW('The share was not found. Share name:%s'),
@@ -195,7 +195,7 @@ class V3StorageConnection(driver.HuaweiBase):
         share_fs_id = share['FSID']
 
         if share_id:
-            self.helper._delete_share_by_id(share_id, share_proto)
+            self.helper._delete_share_by_id(share_id, share_url_type)
 
         if share_fs_id:
             self.helper._delete_fs(share_fs_id)
@@ -264,7 +264,7 @@ class V3StorageConnection(driver.HuaweiBase):
         """Deny access to share."""
         share_proto = share['share_proto']
         share_name = share['name']
-        share_type = self.helper._get_share_type(share_proto)
+        share_url_type = self.helper._get_share_url_type(share_proto)
         share_client_type = self.helper._get_share_client_type(share_proto)
         access_type = access['access_type']
         if share_proto == 'NFS' and access_type != 'ip':
@@ -276,7 +276,7 @@ class V3StorageConnection(driver.HuaweiBase):
             return
 
         access_to = access['access_to']
-        share = self.helper._get_share_by_name(share_name, share_type)
+        share = self.helper._get_share_by_name(share_name, share_url_type)
         if not share:
             LOG.warning(_LW('Can not get share. share_name: %s'), share_name)
             return
@@ -294,7 +294,7 @@ class V3StorageConnection(driver.HuaweiBase):
         """Allow access to the share."""
         share_proto = share['share_proto']
         share_name = share['name']
-        share_type = self.helper._get_share_type(share_proto)
+        share_url_type = self.helper._get_share_url_type(share_proto)
         access_type = access['access_type']
         access_level = access['access_level']
 
@@ -323,7 +323,7 @@ class V3StorageConnection(driver.HuaweiBase):
                             ' for CIFS shares.')
                 raise exception.InvalidShareAccess(reason=message)
 
-        share = self.helper._get_share_by_name(share_name, share_type)
+        share = self.helper._get_share_by_name(share_name, share_url_type)
         if not share:
             err_msg = (_("Can not get share ID by share %s.")
                        % share_name)

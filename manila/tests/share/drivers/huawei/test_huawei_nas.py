@@ -22,6 +22,7 @@ import tempfile
 import time
 import xml.dom.minidom
 
+import ddt
 import mock
 from oslo_serialization import jsonutils
 
@@ -337,6 +338,7 @@ class FakeV3StorageConnection(connection.V3StorageConnection):
         self.helper = FakeHuaweiNasHelper(self.configuration)
 
 
+@ddt.ddt
 class HuaweiShareDriverTestCase(test.TestCase):
     """Tests GenericShareDriver."""
 
@@ -822,11 +824,11 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.driver.plugin.helper._get_share_client_type,
                           share_proto)
 
-    def test_get_share_type_fail(self):
-        share_proto = 'fake_proto'
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.plugin.helper._get_share_type,
-                          share_proto)
+    @ddt.data("NFS", "CIFS")
+    def test_get_share_url_type(self, share_proto):
+        share_url_type = self.driver.plugin.helper._get_share_url_type(
+            share_proto)
+        self.assertEqual(share_proto + 'HARE', share_url_type)
 
     def test_get_location_path_fail(self):
         share_name = 'share-fake-uuid'
