@@ -614,7 +614,6 @@ class XMLAPIHelper(object):
                     'movers_id': [],
                     'virtualProvisioning': '',
                     'dataServicePolicies': '',
-                    'autoSize': '',
                     'greedy': '',
                     'isBackendPool': '',
                 }
@@ -624,7 +623,6 @@ class XMLAPIHelper(object):
                     'diskType',
                     'virtualProvisioning',
                     'dataServicePolicies',
-                    'autoSize',
                     'greedy',
                     'isBackendPool',
                 ]
@@ -632,7 +630,7 @@ class XMLAPIHelper(object):
 
                 pool['id'] = item[1].get('pool', '')
                 pool['used_size'] = item[1].get('usedSize', '')
-                pool['total_size'] = item[1].get('size', '')
+                pool['total_size'] = item[1].get('autoSize', '')
                 if 'movers' in item[1].keys():
                     pool['movers_id'] = item[1]['movers'].split()
 

@@ -78,6 +78,7 @@ class EMCVNXDriverTestData(object):
     emc_nas_server_default = '192.1.1.1'
 
     storage_pool_id_default = '48'
+    storage_pool_size_default = '1024'
 
     FAKE_ERROR = ""
     FAKE_OUTPUT = ""
@@ -314,7 +315,7 @@ disks     = d7
             description="Mapped Pool POOL_SAS1 on FNM00124500890"
             mayContainSlicesDefault="true" diskType="Performance"
             size="0" usedSize="0"
-            autoSize="0" virtualProvisioning="true" isHomogeneous="true"
+            autoSize="1024" virtualProvisioning="true" isHomogeneous="true"
             dataServicePolicies="Thin=Yes,Compressed=No,Mirrored=No,Tiering
             policy=Auto-Tier/Optimize Pool" templatePool="48" stripeCount="5"
             stripeSize="256" pool="48">
@@ -1208,6 +1209,9 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         pool_id = self.driver.plugin._pool['id']
         self.assertEqual(pool_id, TD.storage_pool_id_default,
                          "Storage pool id parse error")
+        self.assertEqual(TD.storage_pool_size_default,
+                         self.driver.plugin._pool['total_size'],
+                         "Storage pool size parse error")
 
     def test_setup_server(self):
         hook = RequestSideEffect()
