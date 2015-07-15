@@ -26,7 +26,7 @@ Supports working with multiple glusterfs volumes.
 """
 
 import errno
-import pipes
+import os
 import random
 import re
 import shutil
@@ -508,8 +508,28 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             shutil.rmtree(tmpdir, ignore_errors=True)
             raise
 
-        # Delete only the contents, not the directory.
-        cmd = ['find', pipes.quote(tmpdir), '-mindepth', '1', '-delete']
+        # extracting Gluster server address, i.e.,'[remote_user]@host' from the
+        # GlusterManager object.
+        srvaddr = re.sub(':/' + gluster_mgr.volume + '$', '',
+                         gluster_mgr.qualified)
+
+        # Delete the contents of a GlusterFS volume that is temporarily
+        # mounted.
+        # From GlusterFS version 3.7, two directories, '.trashcan' at the root
+        # of the GlusterFS volume and 'internal_op' within the '.trashcan'
+        # directory, are internally created when a GlusterFS volume is started.
+        # GlusterFS does not allow unlink(2) of the two directories. So do not
+        # delete the paths of the two directories, but delete their contents
+        # along with the rest of the contents of the volume.
+        if glusterfs.GlusterManager.numreduct(self.glusterfs_versions[srvaddr]
+                                              ) < (3, 7):
+            cmd = ['find', tmpdir, '-mindepth', '1', '-delete']
+        else:
+            ignored_dirs = map(lambda x: os.path.join(tmpdir, *x),
+                               [('.trashcan', ), ('.trashcan', 'internal_op')])
+            cmd = ['find', tmpdir, '-mindepth', '1', '!', '-path',
+                   ignored_dirs[0], '!', '-path', ignored_dirs[1], '-delete']
+
         try:
             self._execute(*cmd, run_as_root=True)
         except exception.ProcessExecutionError as exc:

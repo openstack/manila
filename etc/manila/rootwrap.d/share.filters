@@ -28,8 +28,9 @@ ip: CommandFilter, ip, root
 # manila/network/linux/interface.py: 'ovs-vsctl', 'add-port', '%s', '%s'
 ovs-vsctl: CommandFilter, ovs-vsctl, root
 
+# manila/share/drivers/glusterfs_native.py: 'find', '%s', '-mindepth', '1', '!', '-path', '%s', '!', '-path', '%s', '-delete'
 # manila/share/drivers/glusterfs_native.py: 'find', '%s', '-mindepth', '1', '-delete'
-find_del: RegExpFilter, find, root, find, .*, -mindepth, 1, -delete
+find: CommandFilter, find, root
 
 # manila/share/drivers/glusterfs_native.py: 'umount', '%s'
 umount: CommandFilter, umount, root
