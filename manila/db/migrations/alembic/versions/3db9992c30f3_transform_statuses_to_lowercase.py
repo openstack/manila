@@ -28,26 +28,30 @@ down_revision = '533646c7af38'
 from alembic import op
 import sqlalchemy as sa
 
-from manila.db.sqlalchemy import models
+from manila.db.migrations import utils
 
 
 def upgrade():
     # NOTE(vponomaryov): shares has some statuses as uppercase, so
     # transform them in addition to statuses of share servers.
-    for model in (models.Share, models.ShareServer):
-        _transform_case(model, make_upper=False)
+    for table in ('shares', 'share_servers'):
+        _transform_case(table, make_upper=False)
 
 
 def downgrade():
     # NOTE(vponomaryov): transform share server statuses to uppercase and
     # leave share statuses as is.
-    _transform_case(models.ShareServer, make_upper=True)
+    _transform_case('share_servers', make_upper=True)
 
 
-def _transform_case(model, make_upper):
+def _transform_case(table_name, make_upper):
     connection = op.get_bind()
-    session = sa.orm.Session(bind=connection.connect())
+    table = utils.load_table(table_name, connection)
     case = sa.func.upper if make_upper else sa.func.lower
-    session.query(model).update(
-        {model.status: case(model.status)}, synchronize_session='fetch')
-    session.commit()
+
+    for row in connection.execute(table.select()):
+        op.execute(
+            table.update().where(
+                table.c.id == row.id
+            ).values({'status': case(row.status)})
+        )
