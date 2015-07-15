@@ -120,7 +120,7 @@ def no_translate_debug_logs(logical_line, filename):
 def validate_log_translations(logical_line, physical_line, filename):
     # Translations are not required in the test and tempest
     # directories.
-    if ("manila/tests" in filename or
+    if ("manila/tests" in filename or "manila_tempest_tests" in filename or
             "contrib/tempest" in filename):
         return
     if pep8.noqa(physical_line):

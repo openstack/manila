@@ -89,11 +89,11 @@ set +o errexit
 cd $BASE/new/tempest
 
 export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-12}
-export MANILA_TESTS=${MANILA_TESTS:-'tempest.api.share*'}
+export MANILA_TESTS=${MANILA_TESTS:-'manila_tempest_tests.tests.api'}
 
 if [[ "$JOB_NAME" =~ "scenario" ]]; then
     echo "Set test set to scenario only"
-    MANILA_TESTS='tempest.scenario.*share*'
+    MANILA_TESTS='manila_tempest_tests.tests.scenario'
 elif [[ "$JOB_NAME" =~ "no-share-servers"  ]]; then
     # Using approach without handling of share servers we have bigger load for
     # volume creation in Cinder using Generic driver. So, reduce amount of
@@ -102,5 +102,8 @@ elif [[ "$JOB_NAME" =~ "no-share-servers"  ]]; then
     MANILA_TEMPEST_CONCURRENCY=8
 fi
 
+# check if tempest plugin was installed corretly
+echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.test_plugins"))' | python
+
 echo "Running tempest manila test suites"
-sudo -H -u jenkins tox -eall $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY
+sudo -H -u jenkins tox -eall-plugin $MANILA_TESTS -- --concurrency=$MANILA_TEMPEST_CONCURRENCY

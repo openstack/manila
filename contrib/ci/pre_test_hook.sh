@@ -55,14 +55,13 @@ fi
 # created vm's in scenario tests.
 echo 'ENABLE_ISOLATED_METADATA=True' >> $localrc_path
 
+
 # Go to Tempest dir and checkout stable commit to avoid possible
 # incompatibilities for plugin stored in Manila repo.
-TEMPEST_COMMIT="489f5e62"  # 15 June, 2015
+TEMPEST_COMMIT="3b1bb9be3265f"  # 28 Aug, 2015
 cd $BASE/new/tempest
 git checkout $TEMPEST_COMMIT
 
 # Print current Tempest status
 git status
 
-# Install Manila Tempest integration
-cp -r $BASE/new/manila/contrib/tempest/tempest/* $BASE/new/tempest/tempest
