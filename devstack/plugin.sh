@@ -79,6 +79,12 @@ MANILA_ENABLED_SHARE_PROTOCOLS=${ENABLED_SHARE_PROTOCOLS:-"NFS,CIFS"}
 MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.filter_scheduler.FilterScheduler}
 MANILA_SERVICE_SECGROUP="manila-service"
 
+# Following env var defines whether to apply downgrade migrations setting up DB or not.
+# If it is set to False, then only 'upgrade' migrations will be applied.
+# If it is set to True, then will be applied 'upgrade', 'downgrade' and 'upgrade'
+# migrations again.
+MANILA_USE_DOWNGRADE_MIGRATIONS=${MANILA_USE_DOWNGRADE_MIGRATIONS:-"False"}
+
 # Common info for Generic driver(s)
 SHARE_DRIVER=${SHARE_DRIVER:-manila.share.drivers.generic.GenericShareDriver}
 
@@ -466,7 +472,15 @@ function init_manila {
     if is_service_enabled $DATABASE_BACKENDS; then
         # (re)create manila database
         recreate_database manila utf8
+
         $MANILA_BIN_DIR/manila-manage db sync
+
+        if [[ $(trueorfalse False MANILA_USE_DOWNGRADE_MIGRATIONS) == True ]]; then
+            # Use both - upgrade and downgrade migrations to verify that
+            # downgrade migrations do not break structure of Manila database.
+            $MANILA_BIN_DIR/manila-manage db downgrade
+            $MANILA_BIN_DIR/manila-manage db sync
+        fi
 
         # Display version as debug-action (see bug/1473400)
         $MANILA_BIN_DIR/manila-manage db version

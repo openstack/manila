@@ -37,6 +37,8 @@ driver_handles_share_servers=$(trueorfalse True driver_handles_share_servers)
 echo "MANILA_OPTGROUP_london_driver_handles_share_servers=$driver_handles_share_servers" >> $localrc_path
 echo "MANILA_OPTGROUP_paris_driver_handles_share_servers=$driver_handles_share_servers" >> $localrc_path
 
+echo "MANILA_USE_DOWNGRADE_MIGRATIONS=True" >> $localrc_path
+
 # JOB_NAME is defined in openstack-infra/config project
 # used by CI/CD, where this script is intended to be used.
 if [[ "$JOB_NAME" =~ "multibackend" ]]; then
