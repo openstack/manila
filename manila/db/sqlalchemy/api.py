@@ -21,7 +21,6 @@
 import copy
 import datetime
 import sys
-import uuid
 import warnings
 
 from oslo_config import cfg
@@ -31,6 +30,7 @@ from oslo_db.sqlalchemy import session
 from oslo_db.sqlalchemy import utils as db_utils
 from oslo_log import log
 from oslo_utils import timeutils
+from oslo_utils import uuidutils
 import six
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -242,6 +242,12 @@ def exact_filter(query, model, filters, legal_keys):
         query = query.filter_by(**filter_dict)
 
     return query
+
+
+def ensure_model_dict_has_id(model_dict):
+    if not model_dict.get('id'):
+        model_dict['id'] = uuidutils.generate_uuid()
+    return model_dict
 
 
 def _sync_shares(context, project_id, user_id, session):
@@ -923,7 +929,7 @@ def quota_reserve(context, resources, project_quotas, user_quotas, deltas,
             reservations = []
             for res, delta in deltas.items():
                 reservation = _reservation_create(elevated,
-                                                  str(uuid.uuid4()),
+                                                  uuidutils.generate_uuid(),
                                                   user_usages[res],
                                                   project_id,
                                                   user_id,
@@ -1127,11 +1133,10 @@ def _metadata_refs(metadata_dict, meta_class):
 
 @require_context
 def share_create(context, values):
+    values = ensure_model_dict_has_id(values)
     values['share_metadata'] = _metadata_refs(values.get('metadata'),
                                               models.ShareMetadata)
     share_ref = models.Share()
-    if not values.get('id'):
-        values['id'] = str(uuid.uuid4())
     share_ref.update(values)
     session = get_session()
     with session.begin():
@@ -1334,11 +1339,10 @@ def _share_access_get_query(context, session, values):
 
 @require_context
 def share_access_create(context, values):
+    values = ensure_model_dict_has_id(values)
     session = get_session()
     with session.begin():
         access_ref = models.ShareAccessMapping()
-        if not values.get('id'):
-            values['id'] = str(uuid.uuid4())
         access_ref.update(values)
         access_ref.save(session=session)
         return access_ref
@@ -1401,11 +1405,10 @@ def share_access_update(context, access_id, values):
 
 @require_context
 def share_snapshot_create(context, values):
-    snapshot_ref = models.ShareSnapshot()
-    if not values.get('id'):
-        values['id'] = str(uuid.uuid4())
-    snapshot_ref.update(values)
+    values = ensure_model_dict_has_id(values)
 
+    snapshot_ref = models.ShareSnapshot()
+    snapshot_ref.update(values)
     session = get_session()
     with session.begin():
         snapshot_ref.save(session=session)
@@ -1752,8 +1755,7 @@ def share_export_locations_update(context, share_id, export_locations, delete):
 
 @require_context
 def security_service_create(context, values):
-    if not values.get('id'):
-        values['id'] = str(uuid.uuid4())
+    values = ensure_model_dict_has_id(values)
 
     security_service_ref = models.SecurityService()
     security_service_ref.update(values)
@@ -1828,8 +1830,7 @@ def _network_get_query(context, session=None):
 
 @require_context
 def share_network_create(context, values):
-    if not values.get('id'):
-        values['id'] = str(uuid.uuid4())
+    values = ensure_model_dict_has_id(values)
 
     network_ref = models.ShareNetwork()
     network_ref.update(values)
@@ -1960,8 +1961,8 @@ def _server_get_query(context, session=None):
 
 @require_context
 def share_server_create(context, values):
-    if not values.get('id'):
-        values['id'] = str(uuid.uuid4())
+    values = ensure_model_dict_has_id(values)
+
     server_ref = models.ShareServer()
     server_ref.update(values)
     session = get_session()
@@ -2175,7 +2176,7 @@ def driver_private_data_delete(context, host, entity_id, key=None,
 
 @require_context
 def network_allocation_create(context, values):
-    values['id'] = values.get('id', six.text_type(uuid.uuid4()))
+    values = ensure_model_dict_has_id(values)
     alloc_ref = models.NetworkAllocation()
     alloc_ref.update(values)
     session = get_session()
@@ -2260,8 +2261,7 @@ def share_type_create(context, values, projects=None):
     'extra_specs' key/value pair:
     {'extra_specs' : {'k1': 'v1', 'k2': 'v2', ...}}
     """
-    if not values.get('id'):
-        values['id'] = str(uuid.uuid4())
+    values = ensure_model_dict_has_id(values)
 
     projects = projects or []
 
