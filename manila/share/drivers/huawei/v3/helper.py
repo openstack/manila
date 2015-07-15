@@ -43,7 +43,7 @@ class RestHelper(object):
             "Content-Type": "application/json",
         }
 
-    def call(self, url, data=None, method=None):
+    def do_call(self, url, data=None, method=None):
         """Send requests to server.
 
         Send HTTPS call, get response in JSON.
@@ -58,6 +58,7 @@ class RestHelper(object):
                        'data': data})
         opener = urlreq.build_opener(urlreq.HTTPCookieProcessor(self.cookie))
         urlreq.install_opener(opener)
+        result = None
 
         try:
             req = urlreq.Request(url, data, self.headers)
@@ -69,35 +70,79 @@ class RestHelper(object):
             LOG.debug('Response Data: %(res)s.', {'res': res})
 
         except Exception as err:
-            LOG.error(_LE('Bad response from server: %s.') % err)
-            raise err
+            LOG.error(_LE('\nBad response from server: %(url)s.'
+                          ' Error: %(err)s'), {'url': url, 'err': err})
+            res = '{"error":{"code":%s,' \
+                  '"description":"Connect server error"}}' \
+                  % constants.ERROR_CONNECT_TO_SERVER
 
         try:
-            res_json = jsonutils.loads(res)
+            result = jsonutils.loads(res)
         except Exception as err:
             err_msg = (_('JSON transfer error: %s.') % err)
             LOG.error(err_msg)
-            raise exception.InvalidShare(reason=err_msg)
+            raise exception.InvalidInput(reason=err_msg)
 
-        return res_json
+        return result
 
     def login(self):
-        """Log in huawei array."""
+        """Login huawei array."""
         login_info = self._get_login_info()
-        url = login_info['RestURL'] + "xx/sessions"
-        data = jsonutils.dumps({"username": login_info['UserName'],
-                                "password": login_info['UserPassword'],
-                                "scope": "0"})
-        result = self.call(url, data)
-        if (result['error']['code'] != 0) or ("data" not in result):
-            err_msg = (_("Login error, reason is %s.") % result)
+        urlstr = login_info['RestURL']
+        url_list = urlstr.split(";")
+        deviceid = None
+        for item_url in url_list:
+            url = item_url.strip('').strip('\n') + "xx/sessions"
+            data = jsonutils.dumps({"username": login_info['UserName'],
+                                    "password": login_info['UserPassword'],
+                                    "scope": "0"})
+            result = self.do_call(url, data)
+
+            if((result['error']['code'] != 0)
+               or ("data" not in result)
+               or (result['data']['deviceid'] is None)):
+                err_msg = (_("Login to %s failed, try another") % item_url)
+                LOG.error(err_msg)
+                continue
+
+            LOG.debug('Login success: %(url)s\n',
+                      {'url': item_url})
+            deviceid = result['data']['deviceid']
+            self.url = item_url + deviceid
+            self.headers['iBaseToken'] = result['data']['iBaseToken']
+            break
+
+        if deviceid is None:
+            err_msg = (_("All url Login fail"))
             LOG.error(err_msg)
             raise exception.InvalidShare(reason=err_msg)
 
-        deviceid = result['data']['deviceid']
-        self.url = login_info['RestURL'] + deviceid
-        self.headers['iBaseToken'] = result['data']['iBaseToken']
         return deviceid
+
+    def call(self, url, data=None, method=None):
+        """Send requests to server.
+
+        if fail, try another RestURL
+        """
+        deviceid = None
+        old_url = self.url
+        result = self.do_call(url, data, method)
+        error_code = result['error']['code']
+        if(error_code == constants.ERROR_CONNECT_TO_SERVER
+           or error_code == constants.ERROR_UNAUTHORIZED_TO_SERVER):
+            err_msg = (_("Can't open the recent url, re-login."))
+            LOG.error(err_msg)
+            deviceid = self.login()
+
+        if deviceid is not None:
+            LOG.debug('Replace URL: \n'
+                      'Old URL: %(old_url)s\n'
+                      'New URL: %(new_url)s\n',
+                      {'old_url': old_url,
+                       'new_url': self.url})
+            url = url.replace(old_url, self.url)
+            result = self.do_call(url, data, method)
+        return result
 
     def _create_filesystem(self, fs_param):
         """Create file system."""
