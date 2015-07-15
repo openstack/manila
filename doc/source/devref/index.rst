@@ -71,6 +71,7 @@ Module Reference
    services
    database
    share
+   share_hooks
    auth
    api
    scheduler
