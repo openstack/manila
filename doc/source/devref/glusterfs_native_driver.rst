@@ -112,6 +112,8 @@ Known Restrictions
 - Certificate setup (aka trust setup) between instance and storage backend is
   out of band of Manila.
 - Support for 'create_share_from_snapshot' is planned for Liberty release.
+- For Manila to use GlusterFS volumes, the name of the trashcan directory in
+  GlusterFS volumes must not be changed from the default.
 
 The :mod:`manila.share.drivers.glusterfs_native.GlusterfsNativeShareDriver` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
