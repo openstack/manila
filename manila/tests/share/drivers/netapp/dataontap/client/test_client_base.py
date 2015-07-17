@@ -17,9 +17,10 @@ import ddt
 import mock
 from oslo_log import log
 
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_base
 from manila import test
+from manila.tests.share.drivers.netapp.dataontap.client import fake_api \
+    as netapp_api
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
 
 
@@ -33,6 +34,9 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.mock_object(client_base.LOG,
                          'error',
                          mock.Mock(side_effect=mock_logger.error))
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([client_base])
 
         self.client = client_base.NetAppBaseClient(**fake.CONNECTION_INFO)
         self.client.connection = mock.MagicMock()
@@ -62,13 +66,6 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.client._init_features()
 
         self.assertSetEqual(set(), self.client.features.defined_features)
-
-    def test_check_is_naelement(self):
-
-        element = netapp_api.NaElement('name')
-
-        self.assertIsNone(self.client.check_is_naelement(element))
-        self.assertRaises(ValueError, self.client.check_is_naelement, None)
 
     def test_send_request(self):
 

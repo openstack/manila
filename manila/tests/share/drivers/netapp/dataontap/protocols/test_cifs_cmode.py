@@ -20,9 +20,10 @@ import mock
 from oslo_log import log
 
 from manila import exception
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila import test
+from manila.tests.share.drivers.netapp.dataontap.client \
+    import fake_api as netapp_api
 from manila.tests.share.drivers.netapp.dataontap.protocols \
     import fakes as fake
 
@@ -40,6 +41,9 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
                          mock.Mock(side_effect=mock_logger.error))
 
         self.mock_context = mock.Mock()
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([cifs_cmode])
 
         self.mock_client = mock.Mock()
         self.helper = cifs_cmode.NetAppCmodeCIFSHelper()
