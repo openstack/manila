@@ -228,3 +228,22 @@ class SharesNegativeTest(base.BaseSharesTest):
                           isolated_client.delete_metadata,
                           self.share['id'],
                           'key')
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_list_by_share_server_by_user(self):
+        self.assertRaises(lib_exc.Forbidden,
+                          self.shares_client.list_shares,
+                          params={'share_server_id': 12345})
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_manage_share_by_user(self):
+        self.assertRaises(lib_exc.Forbidden,
+                          self.shares_client.manage_share,
+                          'fake-host', 'nfs', '/export/path',
+                          'fake-type')
+
+    @test.attr(type=["gate", "smoke", "negative", ])
+    def test_unmanage_share_by_user(self):
+        self.assertRaises(lib_exc.Forbidden,
+                          self.shares_client.unmanage_share,
+                          'fake-id')

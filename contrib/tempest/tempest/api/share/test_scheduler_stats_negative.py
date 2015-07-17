@@ -1,4 +1,4 @@
-# Copyright 2014 Mirantis Inc.
+# Copyright 2015 Mirantis Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,28 +14,20 @@
 #    under the License.
 
 from tempest_lib import exceptions as lib_exc  # noqa
-import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import test
 
 
-class SharesQuotasNegativeTest(base.BaseSharesTest):
-
-    @test.attr(type=["gate", "smoke", "negative"])
-    def test_get_quotas_with_empty_tenant_id(self):
-        self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.show_quotas, "")
+class SchedulerStatsNegativeTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", "smoke", "negative", ])
-    def test_try_reset_quotas_with_user(self):
+    def test_try_list_pools_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
-                          self.shares_client.reset_quotas,
-                          self.shares_client.tenant_id)
+                          self.shares_client.list_pools)
 
     @test.attr(type=["gate", "smoke", "negative", ])
-    def test_try_update_quotas_with_user(self):
+    def test_try_list_pools_detailed_with_user(self):
         self.assertRaises(lib_exc.Forbidden,
-                          self.shares_client.update_quotas,
-                          self.shares_client.tenant_id,
-                          shares=9)
+                          self.shares_client.list_pools,
+                          detail=True)
