@@ -69,9 +69,6 @@ class FakeShareDriver(driver.ShareDriver):
     def deny_access(self, context, share, access, share_server=None):
         pass
 
-    def check_for_setup_error(self):
-        pass
-
     def get_share_stats(self, refresh=False):
         return None
 

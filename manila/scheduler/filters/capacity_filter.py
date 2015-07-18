@@ -1,5 +1,6 @@
 # Copyright (c) 2012 Intel
 # Copyright (c) 2012 OpenStack, LLC.
+# Copyright (c) 2015 EMC Corporation
 #
 # All Rights Reserved.
 #
@@ -41,19 +42,79 @@ class CapacityFilter(filters.BaseHostFilter):
             return False
 
         free_space = host_state.free_capacity_gb
-        if free_space == 'infinite' or free_space == 'unknown':
+        total_space = host_state.total_capacity_gb
+        reserved = float(host_state.reserved_percentage) / 100
+        if free_space in ('infinite', 'unknown'):
             # NOTE(zhiteng) for those back-ends cannot report actual
             # available capacity, we assume it is able to serve the
             # request.  Even if it was not, the retry mechanism is
             # able to handle the failure by rescheduling
             return True
-        reserved = float(host_state.reserved_percentage) / 100
-        free = math.floor(free_space * (1 - reserved))
+        elif total_space in ('infinite', 'unknown'):
+            # NOTE(xyang): If total_space is 'infinite' or 'unknown' and
+            # reserved is 0, we assume the back-ends can serve the request.
+            # If total_space is 'infinite' or 'unknown' and reserved
+            # is not 0, we cannot calculate the reserved space.
+            # float(total_space) will throw an exception. total*reserved
+            # also won't work. So the back-ends cannot serve the request.
+            return reserved == 0
+        total = float(total_space)
+        if total <= 0:
+            LOG.warning(_LW("Insufficient free space for share creation. "
+                            "Total capacity is %(total).2f on host %(host)s."),
+                        {"total": total,
+                         "host": host_state.host})
+            return False
+        # NOTE(xyang): Calculate how much free space is left after taking
+        # into account the reserved space.
+        free = math.floor(free_space - total * reserved)
+
+        msg_args = {"host": host_state.host,
+                    "requested": share_size,
+                    "available": free}
+
+        LOG.debug("Space information for share creation "
+                  "on host %(host)s (requested / avail): "
+                  "%(requested)s/%(available)s", msg_args)
+
+        # NOTE(xyang): Only evaluate using max_over_subscription_ratio
+        # if thin_provisioning_support is True. Check if the ratio of
+        # provisioned capacity over total capacity would exceed
+        # subscription ratio.
+        # If max_over_subscription_ratio = 1, the provisioned_ratio
+        # should still be limited by the max_over_subscription_ratio;
+        # otherwise, it could result in infinite provisioning.
+        if (host_state.thin_provisioning_support and
+                host_state.max_over_subscription_ratio >= 1):
+            provisioned_ratio = ((host_state.provisioned_capacity_gb +
+                                  share_size) / total)
+            if provisioned_ratio > host_state.max_over_subscription_ratio:
+                LOG.warning(_LW(
+                    "Insufficient free space for thin provisioning. "
+                    "The ratio of provisioned capacity over total capacity "
+                    "%(provisioned_ratio).2f would exceed the maximum over "
+                    "subscription ratio %(oversub_ratio).2f on host "
+                    "%(host)s."),
+                    {"provisioned_ratio": provisioned_ratio,
+                     "oversub_ratio": host_state.max_over_subscription_ratio,
+                     "host": host_state.host})
+                return False
+            else:
+                # NOTE(xyang): Adjust free_virtual calculation based on
+                # free and max_over_subscription_ratio.
+                adjusted_free_virtual = (
+                    free * host_state.max_over_subscription_ratio)
+                return adjusted_free_virtual >= share_size
+        elif host_state.thin_provisioning_support:
+            LOG.error(_LE("Invalid max_over_subscription_ratio: %(ratio)s. "
+                          "Valid value should be >= 1."),
+                      {"ratio": host_state.max_over_subscription_ratio})
+            return False
+
         if free < share_size:
             LOG.warning(_LW("Insufficient free space for share creation "
-                            "(requested / avail): "
-                            "%(requested)s/%(available)s"),
-                        {'requested': share_size,
-                         'available': free})
+                            "on host %(host)s (requested / avail): "
+                            "%(requested)s/%(available)s"), msg_args)
+            return False
 
-        return free >= share_size
+        return True
