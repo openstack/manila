@@ -394,6 +394,22 @@ class SharesActionsTest(base.BaseSharesTest):
         share = self.shares_client.get_share(share['id'])
         self.assertEqual(new_size, share['size'])
 
+    @test.attr(type=["gate", ])
+    @testtools.skipUnless(
+        CONF.share.run_shrink_tests,
+        "Share shrink tests are disabled.")
+    def test_shrink_share(self):
+        share = self.create_share(size=2, cleanup_in_class=False)
+        new_size = 1
+
+        # shrink share and wait for active status
+        self.shares_client.shrink_share(share['id'], new_size)
+        self.shares_client.wait_for_share_status(share['id'], 'available')
+
+        # check state and new size
+        share = self.shares_client.get_share(share['id'])
+        self.assertEqual(new_size, share['size'])
+
 
 class SharesRenameTest(base.BaseSharesTest):
 

@@ -25,6 +25,7 @@ from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import strutils
+from oslo_utils import units
 import retrying
 import six
 
@@ -87,6 +88,10 @@ share_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(share_opts)
+
+# NOTE(u_glide): These constants refer to the column number in the "df" output
+BLOCK_DEVICE_SIZE_INDEX = 1
+USED_SPACE_INDEX = 2
 
 
 def ensure_server(f):
@@ -578,12 +583,60 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             msg_error=msg_error, msg_timeout=msg_timeout
         )
 
-    def _resize_filesystem(self, server_details, volume):
+    @ensure_server
+    def shrink_share(self, share, new_size, share_server=None):
+        server_details = share_server['backend_details']
+
+        helper = self._get_helper(share)
+        export_location = share['export_locations'][0]['path']
+        mount_path = helper.get_share_path_by_export_location(
+            server_details, export_location)
+
+        consumed_space = self._get_consumed_space(mount_path, server_details)
+
+        LOG.debug("Consumed space on share: %s", consumed_space)
+
+        if consumed_space >= new_size:
+            raise exception.ShareShrinkingPossibleDataLoss(
+                share_id=share['id'])
+
+        volume = self._get_volume(self.admin_context, share['id'])
+
+        helper.disable_access_for_maintenance(server_details, share['name'])
+        self._unmount_device(share, server_details)
+
+        try:
+            self._resize_filesystem(server_details, volume, new_size=new_size)
+        except exception.Invalid:
+            raise exception.ShareShrinkingPossibleDataLoss(
+                share_id=share['id'])
+        except Exception as e:
+            msg = _("Cannot shrink share: %s") % six.text_type(e)
+            raise exception.Invalid(msg)
+        finally:
+            self._mount_device(share, server_details, volume)
+            helper.restore_access_after_maintenance(server_details,
+                                                    share['name'])
+
+    def _resize_filesystem(self, server_details, volume, new_size=None):
         """Resize filesystem of provided volume."""
         check_command = ['sudo', 'fsck', '-pf', volume['mountpoint']]
         self._ssh_exec(server_details, check_command)
         command = ['sudo', 'resize2fs', volume['mountpoint']]
-        self._ssh_exec(server_details, command)
+
+        if new_size:
+            command.append("%sG" % six.text_type(new_size))
+
+        try:
+            self._ssh_exec(server_details, command)
+        except processutils.ProcessExecutionError as e:
+            if e.stderr.find('New size smaller than minimum') != -1:
+                msg = (_("Invalid 'new_size' provided: %s")
+                       % six.text_type(new_size))
+                raise exception.Invalid(msg)
+            else:
+                msg = _("Cannot resize file-system: %s") % six.text_type(e)
+                raise exception.ManilaException(msg)
 
     def _is_share_server_active(self, context, share_server):
         """Check if the share server is active."""
@@ -818,19 +871,48 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             server_details, old_export_location)
         return {'size': share_size, 'export_locations': export_locations}
 
-    def _get_mounted_share_size(self, mount_path, server_details):
-        share_size_cmd = ['df', '-PBG', mount_path]
+    def _get_mount_stats_by_index(self, mount_path, server_details, index,
+                                  block_size='G'):
+        """Get mount stats using df shell command.
+
+        :param mount_path: Share path on share server
+        :param server_details: Share server connection details
+        :param index: Data index in df command output:
+            BLOCK_DEVICE_SIZE_INDEX - Size of block device
+            USED_SPACE_INDEX - Used space
+        :param block_size: size of block (example: G, M, Mib, etc)
+        :returns: value of provided index
+        """
+        share_size_cmd = ['df', '-PB%s' % block_size, mount_path]
         output, __ = self._ssh_exec(server_details, share_size_cmd)
         lines = output.split('\n')
+        return int(lines[1].split()[index][:-1])
 
+    def _get_mounted_share_size(self, mount_path, server_details):
         try:
-            size = int(lines[1].split()[1][:-1])
+            size = self._get_mount_stats_by_index(
+                mount_path, server_details, BLOCK_DEVICE_SIZE_INDEX)
         except Exception as e:
             msg = _("Cannot calculate size of share %(path)s : %(error)s") % {
                 'path': mount_path,
                 'error': six.text_type(e)
             }
             raise exception.ManageInvalidShare(reason=msg)
+
+        return size
+
+    def _get_consumed_space(self, mount_path, server_details):
+        try:
+            size = self._get_mount_stats_by_index(
+                mount_path, server_details, USED_SPACE_INDEX, block_size='M')
+            size /= float(units.Ki)
+        except Exception as e:
+            msg = _("Cannot calculate consumed space on share "
+                    "%(path)s : %(error)s") % {
+                'path': mount_path,
+                'error': six.text_type(e)
+            }
+            raise exception.InvalidShare(reason=msg)
 
         return size
 
@@ -876,6 +958,16 @@ class NASHelperBase(object):
     def get_share_path_by_export_location(self, server, export_location):
         """Returns share path by its export location."""
         raise NotImplementedError()
+
+    def disable_access_for_maintenance(self, server, share_name):
+        """Disables access to share to perform maintenance operations."""
+
+    def restore_access_after_maintenance(self, server, share_name):
+        """Enables access to share after maintenance operations were done."""
+
+    def _get_maintenance_file_path(self, share_name):
+        return os.path.join(self.configuration.share_mount_path,
+                            "%s.maintenance" % share_name)
 
 
 def nfs_synchronized(f):
@@ -967,6 +1059,32 @@ class NFSHelper(NASHelperBase):
 
     def get_share_path_by_export_location(self, server, export_location):
         return export_location.split(':')[-1]
+
+    @nfs_synchronized
+    def disable_access_for_maintenance(self, server, share_name):
+        maintenance_file = self._get_maintenance_file_path(share_name)
+        backup_exports = [
+            'cat', const.NFS_EXPORTS_FILE,
+            '| grep', share_name,
+            '| sudo tee', maintenance_file
+        ]
+        self._ssh_exec(server, backup_exports)
+
+        local_path = os.path.join(self.configuration.share_mount_path,
+                                  share_name)
+        self._ssh_exec(server, ['sudo', 'exportfs', '-u', local_path])
+        self._sync_nfs_temp_and_perm_files(server)
+
+    @nfs_synchronized
+    def restore_access_after_maintenance(self, server, share_name):
+        maintenance_file = self._get_maintenance_file_path(share_name)
+        restore_exports = [
+            'cat', maintenance_file,
+            '| sudo tee -a', const.NFS_EXPORTS_FILE,
+            '&& sudo exportfs -r',
+            '&& sudo rm -f', maintenance_file
+        ]
+        self._ssh_exec(server, restore_exports)
 
 
 class CIFSHelper(NASHelperBase):
@@ -1109,3 +1227,19 @@ class CIFSHelper(NASHelperBase):
 
         # Remove special symbols from response and return path
         return out.strip()
+
+    def disable_access_for_maintenance(self, server, share_name):
+        maintenance_file = self._get_maintenance_file_path(share_name)
+        allowed_hosts = " ".join(self._get_allow_hosts(server, share_name))
+
+        backup_exports = [
+            'echo', "'%s'" % allowed_hosts, '| sudo tee', maintenance_file
+        ]
+        self._ssh_exec(server, backup_exports)
+        self._set_allow_hosts(server, [], share_name)
+
+    def restore_access_after_maintenance(self, server, share_name):
+        maintenance_file = self._get_maintenance_file_path(share_name)
+        (exports, __) = self._ssh_exec(server, ['cat', maintenance_file])
+        self._set_allow_hosts(server, exports.split(), share_name)
+        self._ssh_exec(server, ['sudo rm -f', maintenance_file])

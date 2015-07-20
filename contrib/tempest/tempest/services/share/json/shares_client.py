@@ -168,6 +168,17 @@ class SharesClient(rest_client.RestClient):
         self.expected_success(202, resp.status)
         return body
 
+    def shrink_share(self, share_id, new_size):
+        post_body = {
+            "os-shrink": {
+                "new_size": new_size,
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post("shares/%s/action" % share_id, body)
+        self.expected_success(202, resp.status)
+        return body
+
     def create_snapshot(self, share_id, name=None, description=None,
                         force=False):
         if name is None:
