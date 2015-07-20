@@ -24,6 +24,7 @@ import datetime
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -578,7 +579,7 @@ class ShareManager(manager.SchedulerDependentManager):
                           "deletion of last share.", share_server['id'])
                 self.delete_share_server(context, share_server)
 
-    @manager.periodic_task(ticks_between_runs=600 / CONF.periodic_interval)
+    @periodic_task.periodic_task(spacing=600)
     def delete_free_share_servers(self, ctxt):
         if not (self.driver.driver_handles_share_servers and
                 self.configuration.automatic_share_server_cleanup):
@@ -702,7 +703,7 @@ class ShareManager(manager.SchedulerDependentManager):
                     context, access_id, {'state': access_ref.STATE_ERROR})
         self.db.share_access_delete(context, access_id)
 
-    @manager.periodic_task
+    @periodic_task.periodic_task(spacing=CONF.periodic_interval)
     def _report_driver_status(self, context):
         LOG.info(_LI('Updating share status'))
         share_stats = self.driver.get_share_stats(refresh=True)

@@ -30,7 +30,6 @@ class ManagerTestCase(test.TestCase):
         db_driver = 'fake_driver'
         fake_manager = manager.Manager(host, db_driver)
         self.assertTrue(hasattr(fake_manager, '_periodic_tasks'))
-        self.assertTrue(hasattr(fake_manager, '_ticks_to_skip'))
         self.assertTrue(hasattr(fake_manager, 'additional_endpoints'))
         self.assertTrue(hasattr(fake_manager, 'host'))
         self.assertTrue(hasattr(fake_manager, 'periodic_tasks'))
@@ -51,7 +50,6 @@ class SchedulerDependentManagerTestCase(test.TestCase):
         fake_sched_manager = manager.SchedulerDependentManager(
             host, db_driver, service_name)
         self.assertTrue(hasattr(fake_sched_manager, '_periodic_tasks'))
-        self.assertTrue(hasattr(fake_sched_manager, '_ticks_to_skip'))
         self.assertTrue(hasattr(fake_sched_manager, 'additional_endpoints'))
         self.assertTrue(hasattr(fake_sched_manager, 'host'))
         self.assertTrue(hasattr(fake_sched_manager, 'periodic_tasks'))
