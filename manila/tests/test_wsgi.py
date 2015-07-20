@@ -21,6 +21,8 @@ import ssl
 import tempfile
 import urllib2
 
+import eventlet
+import mock
 from oslo_config import cfg
 import six
 import testtools
@@ -87,12 +89,11 @@ class TestWSGIServer(test.TestCase):
     """WSGI server tests."""
 
     def test_no_app(self):
-        server = manila.wsgi.Server("test_app", None)
+        server = manila.wsgi.Server("test_app", None, host="127.0.0.1", port=0)
         self.assertEqual("test_app", server.name)
 
     def test_start_random_port(self):
         server = manila.wsgi.Server("test_random_port", None, host="127.0.0.1")
-        self.assertEqual(0, server.port)
         server.start()
         self.assertNotEqual(0, server.port)
         server.stop()
@@ -113,6 +114,8 @@ class TestWSGIServer(test.TestCase):
         server.wait()
 
     def test_app(self):
+        self.mock_object(
+            eventlet, 'spawn', mock.Mock(side_effect=eventlet.spawn))
         greetings = 'Hello, World!!!'
 
         def hello_world(env, start_response):
@@ -123,11 +126,22 @@ class TestWSGIServer(test.TestCase):
             start_response('200 OK', [('Content-Type', 'text/plain')])
             return [greetings]
 
-        server = manila.wsgi.Server("test_app", hello_world)
+        server = manila.wsgi.Server(
+            "test_app", hello_world, host="127.0.0.1", port=0)
         server.start()
 
         response = urllib2.urlopen('http://127.0.0.1:%d/' % server.port)
         self.assertEqual(greetings, response.read())
+
+        # Verify provided parameters to eventlet.spawn func
+        eventlet.spawn.assert_called_once_with(
+            func=eventlet.wsgi.server,
+            sock=mock.ANY,
+            site=server.app,
+            protocol=server._protocol,
+            custom_pool=server._pool,
+            log=server._logger,
+        )
 
         server.stop()
 
@@ -143,7 +157,8 @@ class TestWSGIServer(test.TestCase):
         def hello_world(req):
             return greetings
 
-        server = manila.wsgi.Server("test_app", hello_world)
+        server = manila.wsgi.Server(
+            "test_app", hello_world, host="127.0.0.1", port=0)
         server.start()
 
         if hasattr(ssl, '_create_unverified_context'):
@@ -189,6 +204,19 @@ class TestWSGIServer(test.TestCase):
         self.assertEqual(greetings, response.read())
 
         server.stop()
+
+    def test_reset_pool_size_to_default(self):
+        server = manila.wsgi.Server("test_resize", None, host="127.0.0.1")
+        server.start()
+
+        # Stopping the server, which in turn sets pool size to 0
+        server.stop()
+        self.assertEqual(0, server._pool.size)
+
+        # Resetting pool size to default
+        server.reset()
+        server.start()
+        self.assertEqual(1000, server._pool.size)
 
 
 class ExceptionTest(test.TestCase):

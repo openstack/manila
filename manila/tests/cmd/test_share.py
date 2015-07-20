@@ -32,10 +32,10 @@ class ManilaCmdShareTestCase(test.TestCase):
         self.mock_object(manila_share.log, 'setup')
         self.mock_object(manila_share.log, 'register_options')
         self.mock_object(manila_share.utils, 'monkey_patch')
-        self.mock_object(manila_share.service, 'ProcessLauncher')
+        self.mock_object(manila_share.service, 'process_launcher')
         self.mock_object(manila_share.service.Service, 'create')
-        self.launcher = manila_share.service.ProcessLauncher.return_value
-        self.mock_object(self.launcher, 'launch_server')
+        self.launcher = manila_share.service.process_launcher.return_value
+        self.mock_object(self.launcher, 'launch_service')
         self.mock_object(self.launcher, 'wait')
         self.server = manila_share.service.Service.create.return_value
         fake_host = 'fake_host'
@@ -48,7 +48,7 @@ class ManilaCmdShareTestCase(test.TestCase):
         manila_share.log.setup.assert_called_once_with(CONF, "manila")
         manila_share.log.register_options.assert_called_once_with(CONF)
         manila_share.utils.monkey_patch.assert_called_once_with()
-        manila_share.service.ProcessLauncher.assert_called_once_with()
+        manila_share.service.process_launcher.assert_called_once_with()
         self.launcher.wait.assert_called_once_with()
 
         if backends:
@@ -58,9 +58,9 @@ class ManilaCmdShareTestCase(test.TestCase):
                     service_name=backend,
                     binary='manila-share') for backend in backends
             ])
-            self.launcher.launch_server.assert_has_calls([
+            self.launcher.launch_service.assert_has_calls([
                 mock.call(self.server) for backend in backends])
         else:
             manila_share.service.Service.create.assert_called_once_with(
                 binary='manila-share')
-            self.launcher.launch_server.assert_called_once_with(self.server)
+            self.launcher.launch_service.assert_called_once_with(self.server)
