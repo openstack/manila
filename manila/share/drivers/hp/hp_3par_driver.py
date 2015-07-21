@@ -28,6 +28,7 @@ from manila.i18n import _
 from manila.i18n import _LI
 from manila.share import driver
 from manila.share.drivers.hp import hp_3par_mediator
+from manila.share import share_types
 
 HP3PAR_OPTS = [
     cfg.StrOpt('hp3par_api_url',
@@ -169,10 +170,13 @@ class HP3ParShareDriver(driver.ShareDriver):
         ip = self.share_ip_address
 
         protocol = share['share_proto']
+        extra_specs = share_types.get_extra_specs_from_share(share)
+
         path = self._hp3par.create_share(
             share['project_id'],
             share['id'],
             protocol,
+            extra_specs,
             self.fpg, self.vfs,
             size=share['size']
         )
@@ -186,9 +190,12 @@ class HP3ParShareDriver(driver.ShareDriver):
         ip = self.share_ip_address
 
         protocol = share['share_proto']
+        extra_specs = share_types.get_extra_specs_from_share(share)
+
         path = self._hp3par.create_share_from_snapshot(
             share['id'],
             protocol,
+            extra_specs,
             snapshot['share']['project_id'],
             snapshot['share']['id'],
             snapshot['share']['share_proto'],
