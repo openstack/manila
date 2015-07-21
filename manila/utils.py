@@ -36,6 +36,7 @@ from oslo_log import log
 from oslo_utils import importutils
 from oslo_utils import timeutils
 import paramiko
+import retrying
 import six
 
 from manila.db import api as db_api
@@ -466,3 +467,56 @@ class IsAMatcher(object):
 
     def __eq__(self, actual_value):
         return isinstance(actual_value, self.expected_value)
+
+
+def retry(exception, interval=1, retries=10, backoff_rate=2):
+    """A wrapper around retrying library.
+
+        This decorator allows to log and to check 'retries' input param.
+        Time interval between retries is calculated in the following way:
+        interval * backoff_rate ^ previous_attempt_number
+
+        :param exception: expected exception type. When wrapped function
+                          raises an exception of this type,the function
+                          execution is retried.
+        :param interval: param 'interval' is used to calculate time interval
+                         between retries:
+                         interval * backoff_rate ^ previous_attempt_number
+        :param retries: number of retries
+        :param backoff_rate: param 'backoff_rate' is used to calculate time
+                             interval between retries:
+                             interval * backoff_rate ^ previous_attempt_number
+
+    """
+    def _retry_on_exception(e):
+        return isinstance(e, exception)
+
+    def _backoff_sleep(previous_attempt_number, delay_since_first_attempt_ms):
+        exp = backoff_rate ** previous_attempt_number
+        wait_for = max(0, interval * exp)
+        LOG.debug("Sleeping for %s seconds", wait_for)
+        return wait_for * 1000.0
+
+    def _print_stop(previous_attempt_number, delay_since_first_attempt_ms):
+        delay_since_first_attempt = delay_since_first_attempt_ms / 1000.0
+        LOG.debug("Failed attempt %s", previous_attempt_number)
+        LOG.debug("Have been at this for %s seconds",
+                  delay_since_first_attempt)
+        return previous_attempt_number == retries
+
+    if retries < 1:
+        raise ValueError(_('Retries must be greater than or '
+                           'equal to 1 (received: %s).') % retries)
+
+    def _decorator(f):
+
+        @six.wraps(f)
+        def _wrapper(*args, **kwargs):
+            r = retrying.Retrying(retry_on_exception=_retry_on_exception,
+                                  wait_func=_backoff_sleep,
+                                  stop_func=_print_stop)
+            return r.call(f, *args, **kwargs)
+
+        return _wrapper
+
+    return _decorator

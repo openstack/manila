@@ -21,6 +21,7 @@ import os
 import os.path
 import socket
 import tempfile
+import time
 import uuid
 
 import ddt
@@ -597,3 +598,87 @@ class IsValidIPVersion(test.TestCase):
     def test_provided_invalid_v4_address(self, addr):
         for vers in (4, '4'):
             self.assertFalse(utils.is_valid_ip_address(addr, vers))
+
+
+class TestRetryDecorator(test.TestCase):
+    def setUp(self):
+        super(TestRetryDecorator, self).setUp()
+
+    def test_no_retry_required(self):
+        self.counter = 0
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.ManilaException,
+                         interval=2,
+                         retries=3,
+                         backoff_rate=2)
+            def succeeds():
+                self.counter += 1
+                return 'success'
+
+            ret = succeeds()
+            self.assertFalse(mock_sleep.called)
+            self.assertEqual('success', ret)
+            self.assertEqual(1, self.counter)
+
+    def test_retries_once(self):
+        self.counter = 0
+        interval = 2
+        backoff_rate = 2
+        retries = 3
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.ManilaException,
+                         interval,
+                         retries,
+                         backoff_rate)
+            def fails_once():
+                self.counter += 1
+                if self.counter < 2:
+                    raise exception.ManilaException(data='fake')
+                else:
+                    return 'success'
+
+            ret = fails_once()
+            self.assertEqual('success', ret)
+            self.assertEqual(2, self.counter)
+            self.assertEqual(1, mock_sleep.call_count)
+            mock_sleep.assert_called_with(interval * backoff_rate)
+
+    def test_limit_is_reached(self):
+        self.counter = 0
+        retries = 3
+        interval = 2
+        backoff_rate = 4
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.ManilaException,
+                         interval,
+                         retries,
+                         backoff_rate)
+            def always_fails():
+                self.counter += 1
+                raise exception.ManilaException(data='fake')
+
+            self.assertRaises(exception.ManilaException,
+                              always_fails)
+            self.assertEqual(retries, self.counter)
+
+            expected_sleep_arg = []
+
+            for i in range(retries):
+                if i > 0:
+                    interval *= backoff_rate
+                    expected_sleep_arg.append(float(interval))
+
+            mock_sleep.assert_has_calls(map(mock.call, expected_sleep_arg))
+
+    def test_wrong_exception_no_retry(self):
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.ManilaException)
+            def raise_unexpected_error():
+                raise ValueError("value error")
+
+            self.assertRaises(ValueError, raise_unexpected_error)
+            self.assertFalse(mock_sleep.called)
