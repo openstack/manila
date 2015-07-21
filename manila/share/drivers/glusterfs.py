@@ -120,6 +120,8 @@ class GlusterManager(object):
                 _('Invalid gluster address %s.') % address)
         self.remote_user = m.group('user')
         self.host = m.group('host')
+        self.management_address = '@'.join(
+            filter(None, (self.remote_user, self.host)))
         self.qualified = address
         if self.volume:
             self.export = ':/'.join([self.host, self.volume])
