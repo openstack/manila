@@ -59,5 +59,9 @@ class HuaweiBase(object):
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
 
+    @abc.abstractmethod
+    def get_pool(self, share):
+        """Return pool name where the share resides on."""
+
     def update_share_stats(self, stats_dict):
         """Retrieve stats info from share group."""
