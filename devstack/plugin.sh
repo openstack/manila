@@ -261,6 +261,8 @@ function configure_manila {
 
     iniset $MANILA_CONF oslo_concurrency lock_path $MANILA_LOCK_PATH
 
+    iniset $MANILA_CONF DEFAULT wsgi_keep_alive False
+
     # Note: set up config group does not mean that this backend will be enabled.
     # To enable it, specify its name explicitly using "enabled_share_backends" opt.
     configure_default_backends

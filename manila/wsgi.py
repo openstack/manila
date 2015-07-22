@@ -90,6 +90,11 @@ eventlet_opts = [
                     "If an incoming connection is idle for this number of "
                     "seconds it will be closed. A value of '0' means "
                     "wait forever."),
+    cfg.BoolOpt('wsgi_keep_alive',
+                default=True,
+                help='If False, closes the client socket connection '
+                     'explicitly. Setting it to True to maintain backward '
+                     'compatibility. Recommended setting is set it to False.'),
 ]
 
 CONF = cfg.CONF
@@ -238,6 +243,7 @@ class Server(service.ServiceBase):
             'custom_pool': self._pool,
             'log': self._logger,
             'socket_timeout': self.client_socket_timeout,
+            'keepalive': CONF.wsgi_keep_alive,
         }
 
         self._server = eventlet.spawn(**wsgi_kwargs)

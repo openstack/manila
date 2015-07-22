@@ -144,6 +144,7 @@ class TestWSGIServer(test.TestCase):
             custom_pool=server._pool,
             log=server._logger,
             socket_timeout=server.client_socket_timeout,
+            keepalive=manila.wsgi.CONF.wsgi_keep_alive,
         )
 
         server.stop()
