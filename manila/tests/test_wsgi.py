@@ -21,6 +21,7 @@ import ssl
 import tempfile
 import urllib2
 
+import ddt
 import eventlet
 import mock
 from oslo_config import cfg
@@ -85,6 +86,7 @@ document_root = /tmp
         self.assertEqual("/tmp", url_parser.directory)
 
 
+@ddt.ddt
 class TestWSGIServer(test.TestCase):
     """WSGI server tests."""
 
@@ -141,9 +143,17 @@ class TestWSGIServer(test.TestCase):
             protocol=server._protocol,
             custom_pool=server._pool,
             log=server._logger,
+            socket_timeout=server.client_socket_timeout,
         )
 
         server.stop()
+
+    @ddt.data(0, 0.1, 1, None)
+    def test_init_server_with_socket_timeout(self, client_socket_timeout):
+        CONF.set_default("client_socket_timeout", client_socket_timeout)
+        server = manila.wsgi.Server(
+            "test_app", lambda *args, **kwargs: None, host="127.0.0.1", port=0)
+        self.assertEqual(client_socket_timeout, server.client_socket_timeout)
 
     def test_app_using_ssl(self):
         CONF.set_default("ssl_cert_file",
