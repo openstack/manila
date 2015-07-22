@@ -613,7 +613,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             operrstr = self.gluster_nosnap_vols_dict[vol]
         else:
             gluster_mgr = self.gluster_used_vols_dict[vol]
-            args = ('--xml', 'snapshot', 'create', snapshot['id'],
+            args = ('--xml', 'snapshot', 'create', 'manila-' + snapshot['id'],
                     gluster_mgr.volume)
             try:
                 out, err = gluster_mgr.gluster_call(*args)

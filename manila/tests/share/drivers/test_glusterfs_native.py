@@ -779,7 +779,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'share': self.share1
         }
 
-        args = ('--xml', 'snapshot', 'create', 'fake_snap_id',
+        args = ('--xml', 'snapshot', 'create', 'manila-fake_snap_id',
                 gmgr1.volume)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=GlusterXMLOut(ret=0, errno=0)))
@@ -801,7 +801,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'share': self.share1
         }
 
-        args = ('--xml', 'snapshot', 'create', 'fake_snap_id',
+        args = ('--xml', 'snapshot', 'create', 'manila-fake_snap_id',
                 gmgr1.volume)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=GlusterXMLOut(ret=-1, errno=2)))
@@ -829,7 +829,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'share': self.share1
         }
 
-        args = ('--xml', 'snapshot', 'create', 'fake_snap_id',
+        args = ('--xml', 'snapshot', 'create', 'manila-fake_snap_id',
                 gmgr1.volume)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=GlusterXMLOut(ret=-1, errno=0)))
