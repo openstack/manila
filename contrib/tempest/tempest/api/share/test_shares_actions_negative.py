@@ -90,3 +90,47 @@ class SharesActionsNegativeTest(base.BaseSharesTest):
                           self.shares_client.extend_share,
                           share['id'],
                           new_size)
+
+    @test.attr(type=["negative", ])
+    @testtools.skipUnless(
+        CONF.share.run_shrink_tests,
+        "Share shrink tests are disabled.")
+    def test_share_shrink_with_greater_size(self):
+        new_size = int(self.share['size']) + 1
+
+        # shrink share with invalid size and check result
+        self.assertRaises(lib_exc.BadRequest,
+                          self.shares_client.shrink_share,
+                          self.share['id'],
+                          new_size)
+
+    @test.attr(type=["negative", ])
+    @testtools.skipUnless(
+        CONF.share.run_shrink_tests,
+        "Share shrink tests are disabled.")
+    def test_share_shrink_with_same_size(self):
+        new_size = int(self.share['size'])
+
+        # shrink share with invalid size and check result
+        self.assertRaises(lib_exc.BadRequest,
+                          self.shares_client.shrink_share,
+                          self.share['id'],
+                          new_size)
+
+    @test.attr(type=["negative", ])
+    @testtools.skipUnless(
+        CONF.share.run_shrink_tests,
+        "Share shrink tests are disabled.")
+    def test_share_shrink_with_invalid_share_state(self):
+        share = self.create_share(size=2, cleanup_in_class=False)
+        new_size = int(share['size']) - 1
+
+        # set "error" state
+        admin_client = clients.AdminManager().shares_client
+        admin_client.reset_state(share['id'])
+
+        # run shrink operation on same share and check result
+        self.assertRaises(lib_exc.BadRequest,
+                          self.shares_client.shrink_share,
+                          share['id'],
+                          new_size)

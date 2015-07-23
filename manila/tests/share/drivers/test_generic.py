@@ -1354,6 +1354,35 @@ class GenericShareDriverTestCase(test.TestCase):
                           self._driver._get_mounted_share_size,
                           '/fake/path', {})
 
+    def test_get_consumed_space(self):
+        mount_path = "fake_path"
+        server_details = {}
+        index = 2
+        valid_result = 1
+        self.mock_object(self._driver, '_get_mount_stats_by_index',
+                         mock.Mock(return_value=valid_result * 1024))
+
+        actual_result = self._driver._get_consumed_space(
+            mount_path, server_details)
+
+        self.assertEqual(valid_result, actual_result)
+        self._driver._get_mount_stats_by_index.assert_called_once_with(
+            mount_path, server_details, index, block_size='M'
+        )
+
+    def test_get_consumed_space_invalid(self):
+        self.mock_object(
+            self._driver,
+            '_get_mount_stats_by_index',
+            mock.Mock(side_effect=exception.ManilaException("fake"))
+        )
+
+        self.assertRaises(
+            exception.InvalidShare,
+            self._driver._get_consumed_space,
+            "fake", "fake"
+        )
+
     def test_extend_share(self):
         fake_volume = "fake"
         fake_share = {'id': 'fake'}
@@ -1412,13 +1441,121 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_volume = {'mountpoint': '/dev/fake'}
         self.mock_object(self._driver, '_ssh_exec')
 
-        self._driver._resize_filesystem(fake_server_details, fake_volume)
+        self._driver._resize_filesystem(
+            fake_server_details, fake_volume, new_size=123)
 
         self._driver._ssh_exec.assert_any_call(
             fake_server_details, ['sudo', 'fsck', '-pf', '/dev/fake'])
         self._driver._ssh_exec.assert_any_call(
-            fake_server_details, ['sudo', 'resize2fs', '/dev/fake'])
+            fake_server_details,
+            ['sudo', 'resize2fs', '/dev/fake', "%sG" % 123]
+        )
         self.assertEqual(2, self._driver._ssh_exec.call_count)
+
+    @ddt.data(
+        {
+            'source': processutils.ProcessExecutionError(
+                stderr="resize2fs: New size smaller than minimum (123456)"),
+            'target': exception.Invalid
+        },
+        {
+            'source': processutils.ProcessExecutionError(stderr="fake_error"),
+            'target': exception.ManilaException
+        }
+    )
+    @ddt.unpack
+    def test_resize_filesystem_invalid_new_size(self, source, target):
+        fake_server_details = {'fake': 'fake'}
+        fake_volume = {'mountpoint': '/dev/fake'}
+        ssh_mock = mock.Mock(side_effect=["fake", source])
+        self.mock_object(self._driver, '_ssh_exec', ssh_mock)
+
+        self.assertRaises(
+            target,
+            self._driver._resize_filesystem,
+            fake_server_details, fake_volume, new_size=123
+        )
+
+    def test_shrink_share_invalid_size(self):
+        fake_share = {'id': 'fake', 'export_locations': [{'path': 'test'}]}
+        new_size = 123
+        self.mock_object(
+            self._driver.service_instance_manager,
+            'get_common_server',
+            mock.Mock(return_value=self.server)
+        )
+        self.mock_object(self._driver, '_get_helper')
+        self.mock_object(self._driver, '_get_consumed_space',
+                         mock.Mock(return_value=200))
+        CONF.set_default('driver_handles_share_servers', False)
+
+        self.assertRaises(
+            exception.ShareShrinkingPossibleDataLoss,
+            self._driver.shrink_share,
+            fake_share,
+            new_size
+        )
+
+        self._driver._get_helper.assert_called_once_with(fake_share)
+        self._driver._get_consumed_space.assert_called_once_with(
+            mock.ANY, self.server['backend_details'])
+
+    def _setup_shrink_mocks(self):
+        share = {'id': 'fake', 'export_locations': [{'path': 'test'}],
+                 'name': 'fake'}
+        volume = {'id': 'fake'}
+        new_size = 123
+        server_details = self.server['backend_details']
+        self.mock_object(
+            self._driver.service_instance_manager,
+            'get_common_server',
+            mock.Mock(return_value=self.server)
+        )
+        helper = mock.Mock()
+        self.mock_object(self._driver, '_get_helper',
+                         mock.Mock(return_value=helper))
+        self.mock_object(self._driver, '_get_consumed_space',
+                         mock.Mock(return_value=100))
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(return_value=volume))
+        self.mock_object(self._driver, '_unmount_device')
+        self.mock_object(self._driver, '_mount_device')
+        CONF.set_default('driver_handles_share_servers', False)
+
+        return share, volume, new_size, server_details, helper
+
+    @ddt.data({'source': exception.Invalid("fake"),
+               'target': exception.ShareShrinkingPossibleDataLoss},
+              {'source': exception.ManilaException("fake"),
+               'target': exception.Invalid})
+    @ddt.unpack
+    def test_shrink_share_error_on_resize_fs(self, source, target):
+        share, vol, size, server_details, _ = self._setup_shrink_mocks()
+        resize_mock = mock.Mock(side_effect=source)
+        self.mock_object(self._driver, '_resize_filesystem', resize_mock)
+
+        self.assertRaises(target, self._driver.shrink_share, share, size)
+
+        resize_mock.assert_called_once_with(server_details, vol,
+                                            new_size=size)
+
+    def test_shrink_share(self):
+        share, vol, size, server_details, helper = self._setup_shrink_mocks()
+        self.mock_object(self._driver, '_resize_filesystem')
+
+        self._driver.shrink_share(share, size)
+
+        self._driver._get_helper.assert_called_once_with(share)
+        self._driver._get_consumed_space.assert_called_once_with(
+            mock.ANY, server_details)
+        self._driver._get_volume.assert_called_once_with(mock.ANY, share['id'])
+        self._driver._unmount_device.assert_called_once_with(share,
+                                                             server_details)
+        self._driver._resize_filesystem(
+            server_details, vol, new_size=size)
+        self._driver._mount_device(share, server_details, vol)
+        self.assertTrue(helper.disable_access_for_maintenance.called)
+        self.assertTrue(helper.restore_access_after_maintenance.called)
 
     @ddt.data({'share_servers': [], 'result': None},
               {'share_servers': None, 'result': None},
@@ -1589,6 +1726,49 @@ class NFSHelperTestCase(test.TestCase):
             dict(), export_location)
 
         self.assertEqual('/foo/bar', result)
+
+    def test_disable_access_for_maintenance(self):
+        fake_maintenance_path = "fake.path"
+        share_mount_path = os.path.join(
+            self._helper.configuration.share_mount_path, self.share_name)
+        self.mock_object(self._helper, '_ssh_exec')
+        self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
+        self.mock_object(self._helper, '_get_maintenance_file_path',
+                         mock.Mock(return_value=fake_maintenance_path))
+
+        self._helper.disable_access_for_maintenance(
+            self.server, self.share_name)
+
+        self._helper._ssh_exec.assert_any_call(
+            self.server,
+            ['cat', const.NFS_EXPORTS_FILE,
+             '| grep', self.share_name,
+             '| sudo tee', fake_maintenance_path]
+        )
+        self._helper._ssh_exec.assert_any_call(
+            self.server,
+            ['sudo', 'exportfs', '-u', share_mount_path]
+        )
+        self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
+            self.server
+        )
+
+    def test_restore_access_after_maintenance(self):
+        fake_maintenance_path = "fake.path"
+        self.mock_object(self._helper, '_get_maintenance_file_path',
+                         mock.Mock(return_value=fake_maintenance_path))
+        self.mock_object(self._helper, '_ssh_exec')
+
+        self._helper.restore_access_after_maintenance(
+            self.server, self.share_name)
+
+        self._helper._ssh_exec.assert_called_once_with(
+            self.server,
+            ['cat', fake_maintenance_path,
+             '| sudo tee -a', const.NFS_EXPORTS_FILE,
+             '&& sudo exportfs -r', '&& sudo rm -f',
+             fake_maintenance_path]
+        )
 
 
 @ddt.ddt
@@ -1898,3 +2078,41 @@ class CIFSHelperTestCase(test.TestCase):
             fake_server, ['sudo', 'net', 'conf', 'getparm', 'foo', 'path'])
         self._helper._get_share_group_name_from_export_location.\
             assert_called_once_with(export_location)
+
+    def test_disable_access_for_maintenance(self):
+        allowed_hosts = ['test', 'test2']
+        maintenance_path = os.path.join(
+            self._helper.configuration.share_mount_path,
+            "%s.maintenance" % self.share_name)
+        self.mock_object(self._helper, '_set_allow_hosts')
+        self.mock_object(self._helper, '_get_allow_hosts',
+                         mock.Mock(return_value=allowed_hosts))
+
+        self._helper.disable_access_for_maintenance(
+            self.server_details, self.share_name)
+
+        self._helper._get_allow_hosts.assert_called_once_with(
+            self.server_details, self.share_name)
+        self._helper._set_allow_hosts.assert_called_once_with(
+            self.server_details, [], self.share_name)
+        valid_cmd = ['echo', "'test test2'", '| sudo tee', maintenance_path]
+        self._helper._ssh_exec.assert_called_once_with(
+            self.server_details, valid_cmd)
+
+    def test_restore_access_after_maintenance(self):
+        fake_maintenance_path = "test.path"
+        self.mock_object(self._helper, '_set_allow_hosts')
+        self.mock_object(self._helper, '_get_maintenance_file_path',
+                         mock.Mock(return_value=fake_maintenance_path))
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(side_effect=[("fake fake2", 0), "fake"]))
+
+        self._helper.restore_access_after_maintenance(
+            self.server_details, self.share_name)
+
+        self._helper._set_allow_hosts.assert_called_once_with(
+            self.server_details, ['fake', 'fake2'], self.share_name)
+        self._helper._ssh_exec.assert_any_call(
+            self.server_details, ['cat', fake_maintenance_path])
+        self._helper._ssh_exec.assert_any_call(
+            self.server_details, ['sudo rm -f', fake_maintenance_path])
