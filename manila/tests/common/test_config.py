@@ -21,7 +21,8 @@ from manila import exception
 from manila import test
 from manila.tests import utils as test_utils
 
-VALID_CASES = [proto for proto in constants.SUPPORTED_SHARE_PROTOCOLS]
+VALID_CASES = [proto.lower() for proto in constants.SUPPORTED_SHARE_PROTOCOLS]
+VALID_CASES.extend([proto.upper() for proto in VALID_CASES])
 VALID_CASES.append(','.join(case for case in VALID_CASES))
 
 

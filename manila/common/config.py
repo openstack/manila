@@ -163,20 +163,22 @@ def verify_share_protocols():
     """Perfom verification of 'enabled_share_protocols'."""
     msg = None
     supported_protocols = constants.SUPPORTED_SHARE_PROTOCOLS
-    data = dict(supported=six.text_type(supported_protocols))
+    data = dict(supported=', '.join(supported_protocols))
     if CONF.enabled_share_protocols:
         for share_proto in CONF.enabled_share_protocols:
-            if share_proto not in supported_protocols:
+            if share_proto.upper() not in supported_protocols:
                 data.update({'share_proto': share_proto})
-                msg = _("Unsupported share protocol '%(share_proto)s' "
-                        "is set as enabled. Available values are "
-                        "%(supported)s. ")
+                msg = ("Unsupported share protocol '%(share_proto)s' "
+                       "is set as enabled. Available values are "
+                       "%(supported)s. ")
                 break
     else:
-        msg = _("No share protocols were specified as enabled. "
-                "Available values are %(supported)s. ")
+        msg = ("No share protocols were specified as enabled. "
+               "Available values are %(supported)s. ")
     if msg:
-        msg += _("Please specify one or more protocols using "
-                 "configuration option 'enabled_share_protocols.")
-        msg = msg % data
+        msg += ("Please specify one or more protocols using "
+                "configuration option 'enabled_share_protocols'.")
+        # NOTE(vponomaryov): use translation to unicode explicitly,
+        # because of 'lazy' translations.
+        msg = six.text_type(_(msg) % data)  # noqa H701
         raise exception.ManilaException(message=msg)
