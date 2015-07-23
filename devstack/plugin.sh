@@ -96,6 +96,8 @@ MANILA_SERVICE_KEYPAIR_NAME=${MANILA_SERVICE_KEYPAIR_NAME:-"manila-service"}
 MANILA_SERVICE_INSTANCE_USER=${MANILA_SERVICE_INSTANCE_USER:-"manila"}
 MANILA_SERVICE_IMAGE_URL=${MANILA_SERVICE_IMAGE_URL:-"https://github.com/uglide/manila-image-elements/releases/download/0.1.0/manila-service-image.qcow2"}
 MANILA_SERVICE_IMAGE_NAME=${MANILA_SERVICE_IMAGE_NAME:-"manila-service-image"}
+# Third party CI Vendors should set this to false to skip the service image download
+MANILA_SERVICE_IMAGE_ENABLED=$(trueorfalse True MANILA_SERVICE_IMAGE_ENABLED)
 
 MANILA_USE_SERVICE_INSTANCE_PASSWORD=${MANILA_USE_SERVICE_INSTANCE_PASSWORD:-"False"}
 MANILA_SERVICE_INSTANCE_PASSWORD=${MANILA_SERVICE_INSTANCE_PASSWORD:-"manila"}
@@ -574,8 +576,15 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     echo_summary "Creating Manila service security group"
     create_manila_service_secgroup
 
-    echo_summary "Creating Manila service image"
-    create_manila_service_image
+    # Skip image downloads when disabled.
+    # This way vendor Manila driver CI tests can skip
+    # this potentially long and unnecessary download.
+    if [ "$MANILA_SERVICE_IMAGE_ENABLED" = "True" ]; then
+        echo_summary "Creating Manila service image"
+        create_manila_service_image
+    else
+        echo_summary "Skipping download of Manila service image"
+    fi
 
     echo_summary "Creating Manila service keypair"
     create_manila_service_keypair
