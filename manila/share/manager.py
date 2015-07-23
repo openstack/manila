@@ -518,7 +518,7 @@ class ShareManager(manager.SchedulerDependentManager):
             # Quota reservation errors here are not fatal, because
             # unmanage is administrator API and he/she could update user
             # quota usages later if it's required.
-            LOG.warning(_LE("Failed to update quota usages: %s."),
+            LOG.warning(_LW("Failed to update quota usages: %s."),
                         six.text_type(e))
 
         if self.configuration.safe_get('unmanage_remove_access_rules'):
