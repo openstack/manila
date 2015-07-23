@@ -117,6 +117,7 @@ class JsonRpc(object):
                      'params': parameters,
                      'id': six.text_type(self._id)}
         self.call_counter = 0
+        self._connection.connect()  # prevents httplib timing issue
 
         while self.call_counter < CONNECTION_RETRIES:
             self.call_counter += 1

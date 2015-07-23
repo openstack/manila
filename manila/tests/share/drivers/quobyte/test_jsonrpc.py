@@ -164,22 +164,27 @@ class QuobyteJsonRpcTestCase(test.TestCase):
 
     def test_successful_call(self):
         self.rpc._connection.request = mock.Mock()
+        self.rpc._connection.connect = mock.Mock()
         self.rpc._connection.getresponse = mock.Mock(
             return_value=FakeResponse(
                 200, '{"result":"Sweet gorilla of Manila"}'))
 
         result = self.rpc.call('method', {'param': 'value'})
 
+        self.rpc._connection.connect.assert_called_once_with()
         self.assertEqual("Sweet gorilla of Manila", result)
 
     def test_jsonrpc_call_ssl_disable(self):
         self.rpc._connection.request = mock.Mock(
             side_effect=ssl.SSLError)
         jsonrpc.LOG.warning = mock.Mock()
+        httplib.HTTPSConnection = mock.Mock()
 
         self.assertRaises(exception.QBException,
                           self.rpc.call,
                           'method', {'param': 'value'})
+        httplib.HTTPSConnection.assert_called_once_with(self.rpc._netloc)
+        self.assertTrue(self.rpc._disabled_cert_verification)
         jsonrpc.LOG.warning.assert_called_once_with(
             "Could not verify server certificate of "
             "API service against CA.")
@@ -192,11 +197,13 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         """
         self.rpc._connection.request = mock.Mock(
             side_effect=ssl.SSLError)
+        self.rpc._connection.connect = mock.Mock()
         self.rpc._disabled_cert_verification = True
 
         try:
             self.rpc.call('method', {'param': 'value'})
         except exception.QBException as me:
+            self.rpc._connection.connect.assert_called_once_with()
             (self.assertTrue(six.text_type(me).startswith
                              ('Client SSL subsystem returned error:')))
 
@@ -216,6 +223,7 @@ class QuobyteJsonRpcTestCase(test.TestCase):
 
     def test_jsonrpc_call_http_exception(self):
         self.rpc._connection.request = mock.Mock()
+        self.rpc._connection.connect = mock.Mock()
         self.rpc._connection.getresponse = mock.Mock(
             side_effect=httplib.HTTPException)
         jsonrpc.LOG.warning = mock.Mock()
@@ -223,10 +231,12 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         self.assertRaises(exception.QBException,
                           self.rpc.call,
                           'method', {'param': 'value'})
+        self.rpc._connection.connect.assert_called_once_with()
         jsonrpc.LOG.warning.assert_has_calls([])
 
     def test_jsonrpc_call_http_exception_retry(self):
         self.rpc._connection.request = mock.Mock()
+        self.rpc._connection.connect = mock.Mock()
         self.rpc._connection.getresponse = mock.Mock(
             side_effect=httplib.HTTPException)
         jsonrpc.LOG.warning = mock.Mock()
@@ -235,16 +245,19 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         self.assertRaises(exception.QBException,
                           self.rpc.call,
                           'method', {'param': 'value'})
+        self.rpc._connection.connect.assert_called_once_with()
         jsonrpc.LOG.warning.assert_called_with(
             "Encountered error, retrying: %s", "")
 
     def test_jsonrpc_call_no_connect(self):
         orig_retries = jsonrpc.CONNECTION_RETRIES
+        self.rpc._connection.connect = mock.Mock()
         jsonrpc.CONNECTION_RETRIES = 0
 
         try:
             self.rpc.call('method', {'param': 'value'})
         except exception.QBException as me:
+            self.rpc._connection.connect.assert_called_once_with()
             self.assertEqual("Unable to connect to backend after 0 retries",
                              six.text_type(me))
         else:
@@ -254,37 +267,45 @@ class QuobyteJsonRpcTestCase(test.TestCase):
 
     def test_http_error_401(self):
         self.rpc._connection.request = mock.Mock()
+        self.rpc._connection.connect = mock.Mock()
         self.rpc._connection.getresponse = mock.Mock(
             return_value=FakeResponse(401, ''))
 
         self.assertRaises(exception.QBException,
                           self.rpc.call, 'method', {'param': 'value'})
+        self.rpc._connection.connect.assert_called_once_with()
 
     def test_http_error_other(self):
         self.rpc._connection.request = mock.Mock()
+        self.rpc._connection.connect = mock.Mock()
         self.rpc._connection.getresponse = mock.Mock(
             return_value=FakeResponse(300, ''))
 
         self.assertRaises(exception.QBException,
                           self.rpc.call, 'method', {'param': 'value'})
+        self.rpc._connection.connect.assert_called_once_with()
 
     def test_application_error(self):
         self.rpc._connection.request = mock.Mock()
+        self.rpc._connection.connect = mock.Mock()
         self.rpc._connection.getresponse = mock.Mock(
             return_value=FakeResponse(
                 200, '{"error":{"code":28,"message":"text"}}'))
 
         self.assertRaises(exception.QBRpcException,
                           self.rpc.call, 'method', {'param': 'value'})
+        self.rpc._connection.connect.assert_called_once_with()
 
     def test_broken_application_error(self):
         self.rpc._connection.request = mock.Mock()
+        self.rpc._connection.connect = mock.Mock()
         self.rpc._connection.getresponse = mock.Mock(
             return_value=FakeResponse(
                 200, '{"error":{"code":28,"messge":"text"}}'))
 
         self.assertRaises(exception.QBException,
                           self.rpc.call, 'method', {'param': 'value'})
+        self.rpc._connection.connect.assert_called_once_with()
 
     def test_checked_for_application_error(self):
         resultdict = {"result": "Sweet gorilla of Manila"}
