@@ -118,7 +118,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             self._driver = glusterfs_native.GlusterfsNativeShareDriver(
                 execute=self._execute,
                 configuration=self.fake_conf)
-
+        self._driver.glusterfs_versions = {self.glusterfs_server1: ('3', '6'),
+                                           self.glusterfs_server2: ('3', '7')}
         self.addCleanup(fake_utils.fake_execute_set_repliers, [])
         self.addCleanup(fake_utils.fake_execute_clear_log)
 
@@ -470,7 +471,14 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.GlusterfsException,
                           self._driver._do_umount, tmpdir)
 
-    def test_wipe_gluster_vol(self):
+    @ddt.data({'vers_minor': '6',
+               'cmd': 'find /tmp/tmpKGHKJ -mindepth 1 -delete'},
+              {'vers_minor': '7',
+               'cmd': 'find /tmp/tmpKGHKJ -mindepth 1 ! -path '
+                      '/tmp/tmpKGHKJ/.trashcan ! -path '
+                      '/tmp/tmpKGHKJ/.trashcan/internal_op -delete'})
+    @ddt.unpack
+    def test_wipe_gluster_vol(self, vers_minor, cmd):
         self._driver._restart_gluster_vol = mock.Mock()
         self._driver._do_mount = mock.Mock()
         self._driver._do_umount = mock.Mock()
@@ -483,8 +491,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
-
-        expected_exec = ['find /tmp/tmpKGHKJ -mindepth 1 -delete']
+        self._driver.glusterfs_versions = {
+            self.glusterfs_server1: ('3', vers_minor)}
+        expected_exec = [cmd]
 
         self._driver._wipe_gluster_vol(gmgr1)
 
