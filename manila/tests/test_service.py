@@ -21,6 +21,7 @@
 Unit Tests for remote procedure calls using queue
 """
 
+import ddt
 import mock
 from oslo_config import cfg
 
@@ -30,6 +31,7 @@ from manila import exception
 from manila import manager
 from manila import service
 from manila import test
+from manila import utils
 from manila import wsgi
 
 test_service_opts = [
@@ -131,6 +133,7 @@ service_ref = {
 }
 
 
+@ddt.ddt
 class ServiceTestCase(test.TestCase):
     """Test cases for Services."""
 
@@ -139,6 +142,22 @@ class ServiceTestCase(test.TestCase):
                                      binary='manila-fake',
                                      topic='fake')
         self.assertTrue(app)
+
+    @ddt.data(True, False)
+    def test_periodic_tasks(self, raise_on_error):
+        serv = service.Service(host, binary, topic, CONF.fake_manager)
+        self.mock_object(
+            context,
+            'get_admin_context',
+            mock.Mock(side_effect=context.get_admin_context))
+        self.mock_object(serv.manager, 'periodic_tasks')
+
+        serv.periodic_tasks(raise_on_error=raise_on_error)
+
+        context.get_admin_context.assert_called_once_with()
+        serv.manager.periodic_tasks.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext),
+            raise_on_error=raise_on_error)
 
     @mock.patch.object(service.db, 'service_get_by_args',
                        mock.Mock(side_effect=fake_service_get_by_args))
