@@ -557,6 +557,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def extend_share(self, share, new_size, share_server=None):
         server_details = share_server['backend_details']
 
+        helper = self._get_helper(share)
+        helper.disable_access_for_maintenance(server_details, share['name'])
         self._unmount_device(share, server_details)
         self._detach_volume(self.admin_context, share, server_details)
 
@@ -570,6 +572,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             volume)
         self._resize_filesystem(server_details, volume)
         self._mount_device(share, server_details, volume)
+        helper.restore_access_after_maintenance(server_details,
+                                                share['name'])
 
     def _extend_volume(self, context, volume, new_size):
         self.volume_api.extend(context, volume['id'], new_size)

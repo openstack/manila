@@ -1385,7 +1385,11 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_extend_share(self):
         fake_volume = "fake"
-        fake_share = {'id': 'fake'}
+        fake_share = {
+            'id': 'fake',
+            'share_proto': 'NFS',
+            'name': 'test_share',
+        }
         new_size = 123
         srv_details = self.server['backend_details']
         self.mock_object(
@@ -1419,6 +1423,10 @@ class GenericShareDriverTestCase(test.TestCase):
             mock.ANY, fake_volume, new_size)
         self._driver._attach_volume.assert_called_once_with(
             mock.ANY, fake_share, srv_details['instance_id'], mock.ANY)
+        self._helper_nfs.disable_access_for_maintenance.\
+            assert_called_once_with(srv_details, 'test_share')
+        self._helper_nfs.restore_access_after_maintenance.\
+            assert_called_once_with(srv_details, 'test_share')
         self.assertTrue(self._driver._resize_filesystem.called)
 
     def test_extend_volume(self):
