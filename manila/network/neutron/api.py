@@ -20,7 +20,6 @@ from oslo_config import cfg
 from oslo_log import log
 
 from manila import context
-from manila.db import base
 from manila import exception
 from manila.i18n import _LE
 from manila.network.neutron import constants as neutron_constants
@@ -78,14 +77,13 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
-class API(base.Base):
+class API(object):
     """API for interacting with the neutron 2.x API.
 
     :param configuration: instance of config or config group.
     """
 
     def __init__(self, config_group_name=None):
-        super(API, self).__init__()
         self.config_group_name = config_group_name or 'DEFAULT'
         CONF.register_opts(neutron_opts, group=self.config_group_name)
         self.configuration = getattr(CONF, self.config_group_name, CONF)
