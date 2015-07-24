@@ -38,7 +38,7 @@ Background Concepts for Manila
 
    architecture
    threading
-   il8n
+   i18n
    rpc
    pool-aware-manila-scheduler
 
