@@ -38,10 +38,9 @@ class ManilaCmdAllTestCase(test.TestCase):
         self.mock_object(log, 'register_options')
         self.mock_object(log, 'getLogger')
         self.mock_object(utils, 'monkey_patch')
+        self.mock_object(service, 'process_launcher')
         self.mock_object(service, 'WSGIService')
         self.mock_object(service.Service, 'create')
-        self.mock_object(service, 'serve')
-        self.mock_object(service, 'wait')
         self.wsgi_service = service.WSGIService.return_value
         self.service = service.Service.create.return_value
         self.fake_log = log.getLogger.return_value
@@ -53,34 +52,31 @@ class ManilaCmdAllTestCase(test.TestCase):
         log.register_options.assert_called_once_with(CONF)
         log.getLogger.assert_called_once_with('manila.all')
         utils.monkey_patch.assert_called_once_with()
+        service.process_launcher.assert_called_once_with()
         service.WSGIService.assert_called_once_with('osapi_share')
-        service.wait.assert_called_once_with()
 
     def test_main(self):
         manila_all.main()
 
         self._common_checks()
         self.assertFalse(self.fake_log.exception.called)
-        service.serve.assert_has_calls([
-            mock.call(self.wsgi_service, *[self.service] * 3)
-        ])
+        self.assertTrue(
+            service.process_launcher.return_value.launch_service.called)
+        self.assertTrue(service.process_launcher.return_value.wait.called)
 
-    @ddt.data(Exception(), SystemExit())
-    def test_main_wsgi_service_osapi_share_exception(self, exc):
-        service.WSGIService.side_effect = exc
-
-        manila_all.main()
-
-        self._common_checks()
-        self.fake_log.exception.assert_called_once_with(mock.ANY)
-        service.serve.assert_has_calls([mock.call(*[self.service] * 3)])
-
-    @ddt.data(Exception(), SystemExit())
-    def test_main_service_create_exception(self, exc):
-        service.Service.create.side_effect = exc
+    @ddt.data(
+        *[(exc, exc_in_wsgi)
+          for exc in (Exception(), SystemExit())
+          for exc_in_wsgi in (True, False)]
+    )
+    @ddt.unpack
+    def test_main_raise_exception(self, exc, exc_in_wsgi):
+        if exc_in_wsgi:
+            service.WSGIService.side_effect = exc
+        else:
+            service.Service.create.side_effect = exc
 
         manila_all.main()
 
         self._common_checks()
         self.fake_log.exception.assert_has_calls([mock.ANY])
-        service.serve.assert_has_calls([mock.call(self.wsgi_service)])

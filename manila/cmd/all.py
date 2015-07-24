@@ -54,20 +54,20 @@ def main():
     LOG = log.getLogger('manila.all')
 
     utils.monkey_patch()
-    servers = []
+    launcher = service.process_launcher()
     # manila-api
     try:
-        servers.append(service.WSGIService('osapi_share'))
+        server = service.WSGIService('osapi_share')
+        launcher.launch_service(server, workers=server.workers or 1)
     except (Exception, SystemExit):
         LOG.exception(_LE('Failed to load osapi_share'))
 
     for binary in ['manila-share', 'manila-scheduler', 'manila-api']:
         try:
-            servers.append(service.Service.create(binary=binary))
+            launcher.launch_service(service.Service.create(binary=binary))
         except (Exception, SystemExit):
             LOG.exception(_LE('Failed to load %s'), binary)
-    service.serve(*servers)
-    service.wait()
+    launcher.wait()
 
 
 if __name__ == '__main__':

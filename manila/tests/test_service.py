@@ -184,24 +184,27 @@ class ServiceTestCase(test.TestCase):
 
 class TestWSGIService(test.TestCase):
 
-    @mock.patch.object(wsgi.Loader, 'load_app', mock.Mock())
+    def setUp(self):
+        super(self.__class__, self).setUp()
+        self.mock_object(wsgi.Loader, 'load_app')
+        self.test_service = service.WSGIService("test_service")
+
     def test_service_random_port(self):
-        test_service = service.WSGIService("test_service")
-        self.assertEqual(0, test_service.port)
-        test_service.start()
-        self.assertNotEqual(0, test_service.port)
-        test_service.stop()
+        self.assertEqual(0, self.test_service.port)
+        self.test_service.start()
+        self.assertNotEqual(0, self.test_service.port)
+        self.test_service.stop()
         wsgi.Loader.load_app.assert_called_once_with("test_service")
 
+    def test_reset_pool_size_to_default(self):
+        self.test_service.start()
 
-class TestLauncher(test.TestCase):
+        # Stopping the service, which in turn sets pool size to 0
+        self.test_service.stop()
+        self.assertEqual(0, self.test_service.server._pool.size)
 
-    @mock.patch.object(wsgi.Loader, 'load_app', mock.Mock())
-    def test_launch_app(self):
-        self.service = service.WSGIService("test_service")
-        self.assertEqual(0, self.service.port)
-        launcher = service.Launcher()
-        launcher.launch_server(self.service)
-        self.assertEqual(0, self.service.port)
-        launcher.stop()
+        # Resetting pool size to default
+        self.test_service.reset()
+        self.test_service.start()
+        self.assertEqual(1000, self.test_service.server._pool.size)
         wsgi.Loader.load_app.assert_called_once_with("test_service")

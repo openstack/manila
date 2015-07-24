@@ -18,10 +18,6 @@
 
 """Starter script for manila OS API."""
 
-# NOTE(jdg): If we port over multi worker code from Nova
-# we'll need to set monkey_patch(os=False), unless
-# eventlet is updated/released to fix the root issue
-
 import eventlet
 eventlet.monkey_patch()
 
@@ -48,9 +44,11 @@ def main():
     config.verify_share_protocols()
     log.setup(CONF, "manila")
     utils.monkey_patch()
+
+    launcher = service.process_launcher()
     server = service.WSGIService('osapi_share')
-    service.serve(server)
-    service.wait()
+    launcher.launch_service(server, workers=server.workers or 1)
+    launcher.wait()
 
 
 if __name__ == '__main__':

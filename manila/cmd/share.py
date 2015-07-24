@@ -42,17 +42,17 @@ def main():
          version=version.version_string())
     log.setup(CONF, "manila")
     utils.monkey_patch()
-    launcher = service.ProcessLauncher()
+    launcher = service.process_launcher()
     if CONF.enabled_share_backends:
         for backend in CONF.enabled_share_backends:
             host = "%s@%s" % (CONF.host, backend)
             server = service.Service.create(host=host,
                                             service_name=backend,
                                             binary='manila-share')
-            launcher.launch_server(server)
+            launcher.launch_service(server)
     else:
         server = service.Service.create(binary='manila-share')
-        launcher.launch_server(server)
+        launcher.launch_service(server)
     launcher.wait()
 
 
