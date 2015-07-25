@@ -878,15 +878,18 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'share': self.share1
         }
 
-        args = ('--xml', 'snapshot', 'delete', 'fake_snap_id',
-                '--mode=script')
+        args = (('snapshot', 'list', gmgr1.volume, '--mode=script'),
+                ('--xml', 'snapshot', 'delete', 'fake_snap_id_xyz',
+                '--mode=script'))
         self.mock_object(gmgr1, 'gluster_call',
-                         mock.Mock(side_effect=GlusterXMLOut(ret=0, errno=0)))
+                         mock.Mock(side_effect=(('fake_snap_id_xyz', ''),
+                                   GlusterXMLOut(ret=0, errno=0)())))
         ret = self._driver.delete_snapshot(self._context, snapshot)
         self.assertEqual(None, ret)
-        gmgr1.gluster_call.assert_called_once_with(*args)
+        gmgr1.gluster_call.assert_has_calls([mock.call(*a) for a in args])
 
-    def test_delete_snapshot_error(self):
+    @ddt.data(GlusterXMLOut(ret=-1, errno=2)(), ('', ''))
+    def test_delete_snapshot_error(self, badxmlout):
         self._driver.gluster_nosnap_vols_dict = {}
 
         gmgr = glusterfs.GlusterManager
@@ -899,9 +902,34 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'share': self.share1
         }
 
-        args = ('--xml', 'snapshot', 'delete', 'fake_snap_id', '--mode=script')
+        args = (('snapshot', 'list', gmgr1.volume, '--mode=script'),
+                ('--xml', 'snapshot', 'delete', 'fake_snap_id_xyz',
+                '--mode=script'))
         self.mock_object(gmgr1, 'gluster_call',
-                         mock.Mock(side_effect=GlusterXMLOut(ret=-1, errno=2)))
+                         mock.Mock(side_effect=(('fake_snap_id_xyz', ''),
+                                   badxmlout)))
+        self.assertRaises(exception.GlusterfsException,
+                          self._driver.delete_snapshot, self._context,
+                          snapshot)
+        gmgr1.gluster_call.assert_has_calls([mock.call(*a) for a in args])
+
+    @ddt.data('this is too bad', 'fake_snap_id_xyx\nfake_snap_id_pqr')
+    def test_delete_snapshot_bad_snap_list(self, snaplist):
+        self._driver.gluster_nosnap_vols_dict = {}
+
+        gmgr = glusterfs.GlusterManager
+        gmgr1 = gmgr(self.share1['export_location'], self._execute, None, None)
+
+        self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
+        snapshot = {
+            'id': 'fake_snap_id',
+            'share_id': self.share1['id'],
+            'share': self.share1
+        }
+
+        args = ('snapshot', 'list', gmgr1.volume, '--mode=script')
+        self.mock_object(gmgr1, 'gluster_call',
+                         mock.Mock(side_effect=((snaplist, ''),)))
         self.assertRaises(exception.GlusterfsException,
                           self._driver.delete_snapshot, self._context,
                           snapshot)

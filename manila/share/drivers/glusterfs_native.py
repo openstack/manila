@@ -677,17 +677,33 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         vol = snapshot['share']['export_location']
         gluster_mgr = self.gluster_used_vols_dict[vol]
-        args = ('--xml', 'snapshot', 'delete', snapshot['id'], '--mode=script')
+        args = ('snapshot', 'list', gluster_mgr.volume, '--mode=script')
         try:
             out, err = gluster_mgr.gluster_call(*args)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error retrieving volume info: %s"), exc.stderr)
-            raise exception.GlusterfsException("gluster %s failed" %
+            LOG.error(_LE("Error retrieving snapshot list: %s"), exc.stderr)
+            raise exception.GlusterfsException(_("gluster %s failed") %
+                                               ' '.join(args))
+        snapgrep = filter(lambda x: snapshot['id'] in x, out.split("\n"))
+        if len(snapgrep) != 1:
+            msg = (_("Failed to identify backing GlusterFS object "
+                     "for snapshot %(snap_id)s of share %(share_id)s: "
+                     "a single candidate was expected, %(found)d was found.") %
+                   {'snap_id': snapshot['id'],
+                    'share_id': snapshot['share_id'],
+                    'found': len(snapgrep)})
+            raise exception.GlusterfsException(msg)
+        args = ('--xml', 'snapshot', 'delete', snapgrep[0], '--mode=script')
+        try:
+            out, err = gluster_mgr.gluster_call(*args)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_LE("Error deleting snapshot: %s"), exc.stderr)
+            raise exception.GlusterfsException(_("gluster %s failed") %
                                                ' '.join(args))
 
         if not out:
             raise exception.GlusterfsException(
-                'gluster volume info %s: no data received' %
+                _('gluster snapshot delete %s: no data received') %
                 gluster_mgr.volume
             )
 
