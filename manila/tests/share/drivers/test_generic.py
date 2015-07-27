@@ -124,6 +124,7 @@ class GenericShareDriverTestCase(test.TestCase):
         }
         self.access = fake_share.fake_access()
         self.snapshot = fake_share.fake_snapshot()
+        self.mock_object(time, 'sleep')
 
     def test_do_setup(self):
         self.mock_object(volume, 'API')
@@ -296,7 +297,6 @@ class GenericShareDriverTestCase(test.TestCase):
                          mock.Mock(return_value=mount_path))
         self.mock_object(self._driver, '_ssh_exec',
                          mock.Mock(side_effect=_side_effect))
-        self.mock_object(time, 'sleep')
 
         self._driver._unmount_device(self.share, self.server)
 
@@ -720,6 +720,8 @@ class GenericShareDriverTestCase(test.TestCase):
     def test_wait_for_available_volume_invalid(self, volume_get_mock):
         fake_volume = {'status': 'creating', 'id': 'fake'}
         self.mock_object(self._driver.volume_api, 'get', volume_get_mock)
+        self.mock_object(time, 'time',
+                         mock.Mock(side_effect=[1.0, 1.33, 1.67, 2.0]))
 
         self.assertRaises(
             exception.ManilaException,

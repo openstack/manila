@@ -17,6 +17,7 @@
 """Unit tests for the instance module."""
 
 import os
+import time
 
 import ddt
 import mock
@@ -130,6 +131,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                          mock.Mock(side_effect=FakeNetworkHelper))
         self._manager = service_instance.ServiceInstanceManager(self.config)
         self._manager._execute = mock.Mock(return_value=('', ''))
+        self.mock_object(time, 'sleep')
 
     def test_get_config_option_from_driver_config(self):
         username1 = 'fake_username_1_%s' % self.id()
@@ -1183,7 +1185,6 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             key_name=key_data[0], nics=network_data['nics'])
         self._manager.compute_api.server_get.assert_called_once_with(
             self._manager.admin_context, server_create['id'])
-        self.assertTrue(service_instance.time.sleep.called)
         self.assertTrue(service_instance.time.sleep.called)
 
     @ddt.data(

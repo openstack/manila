@@ -17,6 +17,7 @@ import httplib
 import socket
 import ssl
 import tempfile
+import time
 
 import mock
 from oslo_serialization import jsonutils
@@ -112,6 +113,7 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         self.rpc = jsonrpc.JsonRpc(url="http://test",
                                    user_credentials=("me", "team"))
         self.mock_object(self.rpc, '_connection')
+        self.mock_object(time, 'sleep')
 
     def test_request_generation_and_basic_auth(self):
         self.mock_object(
