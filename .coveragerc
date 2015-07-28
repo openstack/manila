@@ -1,0 +1,8 @@
+[run]
+branch = True
+source = manila
+omit = manila/test*,manila/openstack/*
+
+[report]
+ignore-errors = True
+precision = 2
