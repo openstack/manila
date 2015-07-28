@@ -508,11 +508,6 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             shutil.rmtree(tmpdir, ignore_errors=True)
             raise
 
-        # extracting Gluster server address, i.e.,'[remote_user]@host' from the
-        # GlusterManager object.
-        srvaddr = re.sub(':/' + gluster_mgr.volume + '$', '',
-                         gluster_mgr.qualified)
-
         # Delete the contents of a GlusterFS volume that is temporarily
         # mounted.
         # From GlusterFS version 3.7, two directories, '.trashcan' at the root
@@ -521,6 +516,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # GlusterFS does not allow unlink(2) of the two directories. So do not
         # delete the paths of the two directories, but delete their contents
         # along with the rest of the contents of the volume.
+        srvaddr = gluster_mgr.management_address
         if glusterfs.GlusterManager.numreduct(self.glusterfs_versions[srvaddr]
                                               ) < (3, 7):
             cmd = ['find', tmpdir, '-mindepth', '1', '-delete']
@@ -628,11 +624,11 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """Creates a snapshot."""
 
         vol = snapshot['share']['export_location']
+        gluster_mgr = self.gluster_used_vols_dict[vol]
         if vol in self.gluster_nosnap_vols_dict:
             opret, operrno = -1, 0
             operrstr = self.gluster_nosnap_vols_dict[vol]
         else:
-            gluster_mgr = self.gluster_used_vols_dict[vol]
             args = ('--xml', 'snapshot', 'create', 'manila-' + snapshot['id'],
                     gluster_mgr.volume)
             try:
@@ -654,7 +650,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             operrstr = outxml.find('opErrstr').text
 
         if opret == -1:
-            vers = self.glusterfs_versions[vol]
+            vers = self.glusterfs_versions[gluster_mgr.management_address]
             if glusterfs.GlusterManager.numreduct(vers) > (3, 6):
                 # This logic has not yet been implemented in GlusterFS 3.6
                 if operrno == 0:

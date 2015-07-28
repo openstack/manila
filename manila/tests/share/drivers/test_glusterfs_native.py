@@ -776,7 +776,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
     def test_create_snapshot(self):
         self._driver.gluster_nosnap_vols_dict = {}
-        self._driver.glusterfs_versions = {self.glusterfs_target1: ('3', '6')}
+        self._driver.glusterfs_versions = {self.glusterfs_server1: ('3', '6')}
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
@@ -798,7 +798,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
     def test_create_snapshot_error(self):
         self._driver.gluster_nosnap_vols_dict = {}
-        self._driver.glusterfs_versions = {self.glusterfs_target1: ('3', '6')}
+        self._driver.glusterfs_versions = {self.glusterfs_server1: ('3', '6')}
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
@@ -826,7 +826,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     def test_create_snapshot_no_snap(self, vers_minor, exctype):
         self._driver.gluster_nosnap_vols_dict = {}
         self._driver.glusterfs_versions = {
-            self.glusterfs_target1: ('3', vers_minor)}
+            self.glusterfs_server1: ('3', vers_minor)}
 
         gmgr = glusterfs.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
@@ -854,8 +854,12 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.gluster_nosnap_vols_dict = {
             self.share1['export_location']: 'fake error'}
         self._driver.glusterfs_versions = {
-            self.glusterfs_target1: ('3', vers_minor)}
+            self.glusterfs_server1: ('3', vers_minor)}
 
+        gmgr = glusterfs.GlusterManager
+        gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
+
+        self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
         snapshot = {
             'id': 'fake_snap_id',
             'share_id': self.share1['id'],
