@@ -715,6 +715,33 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver.volume_api.get.assert_called_once_with(
             mock.ANY, fake_volume['id'])
 
+    @mock.patch('time.sleep')
+    def test_wait_for_extending_volume(self, mock_sleep):
+        initial_size = 1
+        expected_size = 2
+        mock_volume = fake_volume.FakeVolume(status='available',
+                                             size=initial_size)
+        mock_extending_vol = fake_volume.FakeVolume(status='extending',
+                                                    size=initial_size)
+        mock_extended_vol = fake_volume.FakeVolume(status='available',
+                                                   size=expected_size)
+
+        self.mock_object(self._driver.volume_api, 'get',
+                         mock.Mock(side_effect=[mock_extending_vol,
+                                                mock_extended_vol]))
+
+        result = self._driver._wait_for_available_volume(
+            mock_volume, 5, "error", "timeout",
+            expected_size=expected_size)
+
+        expected_get_count = 2
+
+        self.assertEqual(mock_extended_vol, result)
+        self._driver.volume_api.get.assert_has_calls(
+            [mock.call(self._driver.admin_context, mock_volume['id'])] *
+            expected_get_count)
+        mock_sleep.assert_has_calls([mock.call(1)] * expected_get_count)
+
     @ddt.data(mock.Mock(return_value={'status': 'creating', 'id': 'fake'}),
               mock.Mock(return_value={'status': 'error', 'id': 'fake'}))
     def test_wait_for_available_volume_invalid(self, volume_get_mock):
@@ -1443,7 +1470,8 @@ class GenericShareDriverTestCase(test.TestCase):
             self._context, fake_volume['id'], new_size
         )
         self._driver._wait_for_available_volume.assert_called_once_with(
-            fake_volume, mock.ANY, msg_timeout=mock.ANY, msg_error=mock.ANY
+            fake_volume, mock.ANY, msg_timeout=mock.ANY, msg_error=mock.ANY,
+            expected_size=new_size
         )
 
     def test_resize_filesystem(self):
