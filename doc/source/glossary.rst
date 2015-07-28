@@ -22,3 +22,8 @@ Glossary
 
   manila-share
    Responsible for managing Shared File Service devices, specifically the back-end devices.
+
+  DHSS
+   Acronym for 'driver handles share servers'. It defines two different share driver modes
+   when they either do handle share servers or not. Each driver is allowed to work only in
+   one mode at once. Requirement is to support, at least, one mode.
