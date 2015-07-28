@@ -24,9 +24,9 @@ import six
 
 from manila.common import constants
 from manila import context
-from manila import db
 from manila.share import rpcapi as share_rpcapi
 from manila import test
+from manila.tests import db_utils
 
 CONF = cfg.CONF
 
@@ -36,21 +36,14 @@ class ShareRpcAPITestCase(test.TestCase):
     def setUp(self):
         super(ShareRpcAPITestCase, self).setUp()
         self.context = context.get_admin_context()
-        shr = {}
-        shr['host'] = 'fake_host'
-        shr['availability_zone'] = CONF.storage_availability_zone
-        shr['status'] = constants.STATUS_AVAILABLE
-        share = db.share_create(self.context, shr)
-        acs = {}
-        acs['access_type'] = "ip"
-        acs['access_to'] = "123.123.123.123"
-        acs['share_id'] = share['id']
-        access = db.share_access_create(self.context, acs)
-        snap = {}
-        snap['share_id'] = share['id']
-        snapshot = db.share_snapshot_create(self.context, snap)
-        server = {'id': 'fake_share_server_id', 'host': 'fake_host'}
-        share_server = db.share_server_create(self.context, server)
+
+        share = db_utils.create_share(
+            availability_zone=CONF.storage_availability_zone,
+            status=constants.STATUS_AVAILABLE
+        )
+        access = db_utils.create_access(share_id=share['id'])
+        snapshot = db_utils.create_snapshot(share_id=share['id'])
+        share_server = db_utils.create_share_server()
         self.fake_share = jsonutils.to_primitive(share)
         self.fake_access = jsonutils.to_primitive(access)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)

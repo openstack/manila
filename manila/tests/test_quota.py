@@ -30,6 +30,7 @@ from manila import exception
 from manila import quota
 from manila import share
 from manila import test
+from manila.tests import db_utils
 
 CONF = cfg.CONF
 
@@ -42,35 +43,21 @@ class QuotaIntegrationTestCase(test.TestCase):
 
         self.user_id = 'admin'
         self.project_id = 'admin'
+        self.create_share = lambda size=10: (
+            db_utils.create_share(user_id=self.user_id,
+                                  project_id=self.project_id,
+                                  size=size,
+                                  status=constants.STATUS_AVAILABLE)
+        )
         self.context = context.RequestContext(self.user_id,
                                               self.project_id,
                                               is_admin=True)
-
-    def _create_share(self, size=10):
-        """Create a test share."""
-        share = {}
-        share['user_id'] = self.user_id
-        share['project_id'] = self.project_id
-        share['size'] = size
-        share['status'] = constants.STATUS_AVAILABLE
-        share['host'] = 'fake_host'
-        return db.share_create(self.context, share)
-
-    def _create_snapshot(self, share):
-        snapshot = {}
-        snapshot['user_id'] = self.user_id
-        snapshot['project_id'] = self.project_id
-        snapshot['share_id'] = share['id']
-        snapshot['share_size'] = share['size']
-        snapshot['host'] = share['host']
-        snapshot['status'] = constants.STATUS_AVAILABLE
-        return db.share_snapshot_create(self.context, snapshot)
 
     @testtools.skip("SQLAlchemy sqlite insert bug")
     def test_too_many_shares(self):
         share_ids = []
         for i in range(CONF.quota_shares):
-            share_ref = self._create_share()
+            share_ref = self.create_share()
             share_ids.append(share_ref['id'])
         self.assertRaises(exception.QuotaError,
                           share.API().create,
@@ -81,7 +68,7 @@ class QuotaIntegrationTestCase(test.TestCase):
     @testtools.skip("SQLAlchemy sqlite insert bug")
     def test_too_many_gigabytes(self):
         share_ids = []
-        share_ref = self._create_share(size=20)
+        share_ref = self.create_share(size=20)
         share_ids.append(share_ref['id'])
         self.assertRaises(exception.QuotaError,
                           share.API().create,

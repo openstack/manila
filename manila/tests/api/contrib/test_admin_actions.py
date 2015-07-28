@@ -25,6 +25,7 @@ from manila.share import api as share_api
 from manila import test
 from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
+from manila.tests import db_utils
 
 CONF = cfg.CONF
 
@@ -48,8 +49,7 @@ class AdminActionsTest(test.TestCase):
 
     def test_reset_status_as_admin(self):
         # current status is available
-        share = db.share_create(
-            self.admin_context, {'status': constants.STATUS_AVAILABLE})
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -67,8 +67,7 @@ class AdminActionsTest(test.TestCase):
 
     def test_reset_status_as_non_admin(self):
         # current status is 'error'
-        share = db.share_create(context.get_admin_context(),
-                                {'status': constants.STATUS_ERROR})
+        share = db_utils.create_share(status=constants.STATUS_ERROR)
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -86,8 +85,7 @@ class AdminActionsTest(test.TestCase):
 
     def test_malformed_reset_status_body(self):
         # current status is available
-        share = db.share_create(
-            self.admin_context, {'status': constants.STATUS_AVAILABLE})
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -104,8 +102,7 @@ class AdminActionsTest(test.TestCase):
 
     def test_invalid_status_for_share(self):
         # current status is available
-        share = db.share_create(
-            self.admin_context, {'status': constants.STATUS_AVAILABLE})
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -141,11 +138,11 @@ class AdminActionsTest(test.TestCase):
 
     def test_snapshot_reset_status(self):
         # snapshot in 'error_deleting'
-        share = db.share_create(self.admin_context, {})
-        snapshot = db.share_snapshot_create(
-            self.admin_context,
-            {'status': constants.STATUS_ERROR_DELETING,
-             'share_id': share['id']})
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(
+            status=constants.STATUS_ERROR_DELETING,
+            share_id=share['id']
+        )
         req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
                                   snapshot['id'])
         req.method = 'POST'
@@ -164,10 +161,11 @@ class AdminActionsTest(test.TestCase):
 
     def test_invalid_status_for_snapshot(self):
         # snapshot in 'available'
-        share = db.share_create(self.admin_context, {})
-        snapshot = db.share_snapshot_create(
-            self.admin_context,
-            {'status': constants.STATUS_AVAILABLE, 'share_id': share['id']})
+        share = db_utils.create_share()
+        snapshot = db_utils.create_snapshot(
+            status=constants.STATUS_AVAILABLE,
+            share_id=share['id']
+        )
         req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
                                   snapshot['id'])
         req.method = 'POST'
@@ -185,7 +183,7 @@ class AdminActionsTest(test.TestCase):
         self.assertEqual(snapshot['status'], constants.STATUS_AVAILABLE)
 
     def test_admin_force_delete_share(self):
-        share = db.share_create(self.admin_context, {'size': 1})
+        share = db_utils.create_share(size=1, override_defaults=True)
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -199,7 +197,7 @@ class AdminActionsTest(test.TestCase):
                           share['id'])
 
     def test_member_force_delete_share(self):
-        share = db.share_create(self.admin_context, {'size': 1})
+        share = db_utils.create_share(size=1)
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
