@@ -53,7 +53,7 @@ service_opts = [
                     'periodic task scheduler to reduce stampeding. '
                     '(Disable by setting to 0)'),
     cfg.StrOpt('osapi_share_listen',
-               default="0.0.0.0",
+               default="::",
                help='IP address for OpenStack Share API to listen on.'),
     cfg.IntOpt('osapi_share_listen_port',
                default=8786,
