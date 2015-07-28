@@ -375,11 +375,11 @@ class SharesClient(rest_client.RestClient):
             res = func(res_id)
         except lib_exc.NotFound:
             return True
-        if (func.__name__ == 'get_share' and
-                res['status'] == 'error_deleting'):
-            # Share has "error_deleting" status and can not be deleted.
+        if res.get('status') == 'error_deleting':
+            # Resource has "error_deleting" status and can not be deleted.
+            resource_type = func.__name__.split('_', 1)[-1]
             raise share_exceptions.ResourceReleaseFailed(
-                res_type='share', res_id=res_id)
+                res_type=resource_type, res_id=res_id)
         return False
 
     def wait_for_resource_deletion(self, *args, **kwargs):
