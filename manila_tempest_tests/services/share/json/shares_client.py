@@ -26,6 +26,13 @@ from tempest_lib import exceptions
 from manila_tempest_tests import share_exceptions
 
 CONF = config.CONF
+LATEST_MICRO_API = {
+    'X-OpenStack-Manila-API-Version': CONF.share.max_api_microversion,
+}
+EXPERIMENTAL = {
+    'X-OpenStack-Manila-API-Experimental': 'True',
+    'X-OpenStack-Manila-API-Version': CONF.share.max_api_microversion,
+}
 
 
 class SharesClient(rest_client.RestClient):
@@ -86,7 +93,8 @@ class SharesClient(rest_client.RestClient):
     def create_share(self, share_protocol=None, size=1,
                      name=None, snapshot_id=None, description=None,
                      metadata=None, share_network_id=None,
-                     share_type_id=None, is_public=False):
+                     share_type_id=None, is_public=False,
+                     consistency_group_id=None):
         metadata = metadata or {}
         if name is None:
             name = data_utils.rand_name("tempest-created-share")
@@ -111,13 +119,18 @@ class SharesClient(rest_client.RestClient):
             post_body["share"]["share_network_id"] = share_network_id
         if share_type_id:
             post_body["share"]["share_type"] = share_type_id
+        if consistency_group_id:
+            post_body["share"]["consistency_group_id"] = consistency_group_id
         body = json.dumps(post_body)
-        resp, body = self.post("shares", body)
+        resp, body = self.post("shares", body, headers=LATEST_MICRO_API,
+                               extra_headers=True)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def delete_share(self, share_id):
-        resp, body = self.delete("shares/%s" % share_id)
+    def delete_share(self, share_id, params=None):
+        uri = "shares/%s" % share_id
+        uri += '?%s' % (urllib.urlencode(params) if params else '')
+        resp, body = self.delete(uri)
         self.expected_success(202, resp.status)
         return body
 
@@ -148,7 +161,8 @@ class SharesClient(rest_client.RestClient):
         """Get list of shares w/o filters."""
         uri = 'shares/detail' if detailed else 'shares'
         uri += '?%s' % urllib.urlencode(params) if params else ''
-        resp, body = self.get(uri)
+        resp, body = self.get(uri, headers=LATEST_MICRO_API,
+                              extra_headers=True)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
@@ -157,7 +171,8 @@ class SharesClient(rest_client.RestClient):
         return self.list_shares(detailed=True, params=params)
 
     def get_share(self, share_id):
-        resp, body = self.get("shares/%s" % share_id)
+        resp, body = self.get("shares/%s" % share_id, headers=LATEST_MICRO_API,
+                              extra_headers=True)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
@@ -367,6 +382,49 @@ class SharesClient(rest_client.RestClient):
                            (snapshot_name, status, self.build_timeout))
                 raise exceptions.TimeoutException(message)
 
+    def wait_for_consistency_group_status(self, consistency_group_id, status):
+        """Waits for a consistency group to reach a given status."""
+        body = self.get_consistency_group(consistency_group_id)
+        consistency_group_name = body['name']
+        consistency_group_status = body['status']
+        start = int(time.time())
+
+        while consistency_group_status != status:
+            time.sleep(self.build_interval)
+            body = self.get_consistency_group(consistency_group_id)
+            consistency_group_status = body['status']
+            if 'error' in consistency_group_status and status != 'error':
+                raise share_exceptions.ConsistencyGroupBuildErrorException(
+                    consistency_group_id=consistency_group_id)
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('Consistency Group %s failed to reach %s status '
+                           'within the required time (%s s).' %
+                           (consistency_group_name, status,
+                            self.build_timeout))
+                raise exceptions.TimeoutException(message)
+
+    def wait_for_cgsnapshot_status(self, cgsnapshot_id, status):
+        """Waits for a cgsnapshot to reach a given status."""
+        body = self.get_cgsnapshot(cgsnapshot_id)
+        cgsnapshot_name = body['name']
+        cgsnapshot_status = body['status']
+        start = int(time.time())
+
+        while cgsnapshot_status != status:
+            time.sleep(self.build_interval)
+            body = self.get_cgsnapshot(cgsnapshot_id)
+            cgsnapshot_status = body['status']
+            if 'error' in cgsnapshot_status and status != 'error':
+                raise share_exceptions.CGSnapshotBuildErrorException(
+                    cgsnapshot_id=cgsnapshot_id)
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('CGSnapshot %s failed to reach %s status '
+                           'within the required time (%s s).' %
+                           (cgsnapshot_name, status, self.build_timeout))
+                raise exceptions.TimeoutException(message)
+
     def wait_for_access_rule_status(self, share_id, rule_id, status):
         """Waits for an access rule to reach a given status."""
         rule_status = "new"
@@ -444,7 +502,8 @@ class SharesClient(rest_client.RestClient):
         """Verifies whether provided resource deleted or not.
 
         :param kwargs: dict with expected keys 'share_id', 'snapshot_id',
-        :param kwargs: 'sn_id', 'ss_id', 'vt_id' and 'server_id'
+        :param kwargs: 'sn_id', 'ss_id', 'vt_id', 'server_id', 'cg_id',
+        :param kwargs: and 'cgsnapshot_id'
         :raises share_exceptions.InvalidResource
         """
         if "share_id" in kwargs:
@@ -480,6 +539,12 @@ class SharesClient(rest_client.RestClient):
         elif "server_id" in kwargs:
             return self._is_resource_deleted(
                 self.show_share_server, kwargs.get("server_id"))
+        elif "cg_id" in kwargs:
+            return self._is_resource_deleted(
+                self.get_consistency_group, kwargs.get("cg_id"))
+        elif "cgsnapshot_id" in kwargs:
+            return self._is_resource_deleted(
+                self.get_cgsnapshot, kwargs.get("cgsnapshot_id"))
         else:
             raise share_exceptions.InvalidResource(
                 message=six.text_type(kwargs))
@@ -489,7 +554,7 @@ class SharesClient(rest_client.RestClient):
             res = func(res_id)
         except exceptions.NotFound:
             return True
-        if res.get('status') == 'error_deleting':
+        if res.get('status') in ['error_deleting', 'error']:
             # Resource has "error_deleting" status and can not be deleted.
             resource_type = func.__name__.split('_', 1)[-1]
             raise share_exceptions.ResourceReleaseFailed(
@@ -533,26 +598,29 @@ class SharesClient(rest_client.RestClient):
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
-    def reset_state(self, s_id, status="error", s_type="shares"):
-        """Resets the state of a share or a snapshot.
+    def reset_state(self, s_id, status="error", s_type="shares",
+                    headers=None):
+        """Resets the state of a share, snapshot, cg, or a cgsnapshot.
 
         status: available, error, creating, deleting, error_deleting
-        s_type: shares, snapshots
+        s_type: shares, snapshots, consistency-groups, cgsnapshots
         """
         body = {"os-reset_status": {"status": status}}
         body = json.dumps(body)
-        resp, body = self.post("%s/%s/action" % (s_type, s_id), body)
+        resp, body = self.post("%s/%s/action" % (s_type, s_id), body,
+                               headers=headers, extra_headers=True)
         self.expected_success(202, resp.status)
         return body
 
-    def force_delete(self, s_id, s_type="shares"):
+    def force_delete(self, s_id, s_type="shares", headers=None):
         """Force delete share or snapshot.
 
         s_type: shares, snapshots
         """
         body = {"os-force_delete": None}
         body = json.dumps(body)
-        resp, body = self.post("%s/%s/action" % (s_type, s_id), body)
+        resp, body = self.post("%s/%s/action" % (s_type, s_id), body,
+                               headers=headers, extra_headers=True)
         self.expected_success(202, resp.status)
         return body
 
@@ -857,3 +925,143 @@ class SharesClient(rest_client.RestClient):
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return json.loads(body)
+
+###############
+
+    def create_consistency_group(self, name=None, description=None,
+                                 share_type_ids=(), share_network_id=None,
+                                 source_cgsnapshot_id=None):
+        """Create a new consistency group."""
+        uri = 'consistency-groups'
+        post_body = {}
+        if name:
+            post_body['name'] = name
+        if description:
+            post_body['description'] = description
+        if share_type_ids:
+            post_body['share_types'] = share_type_ids
+        if source_cgsnapshot_id:
+            post_body['source_cgsnapshot_id'] = source_cgsnapshot_id
+        if share_network_id:
+            post_body['share_network_id'] = share_network_id
+        body = json.dumps({'consistency_group': post_body})
+        resp, body = self.post(uri, body, headers=EXPERIMENTAL,
+                               extra_headers=True)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def delete_consistency_group(self, consistency_group_id):
+        """Delete a consistency group."""
+        uri = 'consistency-groups/%s' % consistency_group_id
+        resp, body = self.delete(uri, headers=EXPERIMENTAL,
+                                 extra_headers=True)
+        self.expected_success(202, resp.status)
+        return body
+
+    def list_consistency_groups(self, detailed=False, params=None):
+        """Get list of consistency groups w/o filters."""
+        uri = 'consistency-groups%s' % ('/detail' if detailed else '')
+        uri += '?%s' % (urllib.urlencode(params) if params else '')
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_consistency_group(self, consistency_group_id):
+        """Get consistency group info."""
+        uri = 'consistency-groups/%s' % consistency_group_id
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def update_consistency_group(self, consistency_group_id, name=None,
+                                 description=None, **kwargs):
+        """Update an existing consistency group."""
+        uri = 'consistency-groups/%s' % consistency_group_id
+        post_body = {}
+        if name:
+            post_body['name'] = name
+        if description:
+            post_body['description'] = description
+        if kwargs:
+            post_body.update(kwargs)
+        body = json.dumps({'consistency_group': post_body})
+        resp, body = self.put(uri, body, headers=EXPERIMENTAL,
+                              extra_headers=True)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def consistency_group_reset_state(self, id, status):
+        self.reset_state(id, status=status,
+                         s_type='consistency-groups', headers=EXPERIMENTAL)
+
+    def consistency_group_force_delete(self, id, status):
+        self.force_delete(id, status=status,
+                          s_type='consistency-groups', headers=EXPERIMENTAL)
+
+###############
+
+    def create_cgsnapshot(self, consistency_group_id,
+                          name=None, description=None):
+        """Create a new cgsnapshot of an existing consistency group."""
+        uri = 'cgsnapshots'
+        post_body = {'consistency_group_id': consistency_group_id}
+        if name:
+            post_body['name'] = name
+        if description:
+            post_body['description'] = description
+        body = json.dumps({'cgsnapshot': post_body})
+        resp, body = self.post(uri, body, headers=EXPERIMENTAL,
+                               extra_headers=True)
+        self.expected_success(202, resp.status)
+        return self._parse_resp(body)
+
+    def delete_cgsnapshot(self, cgsnapshot_id):
+        """Delete an existing cgsnapshot."""
+        uri = 'cgsnapshots/%s' % cgsnapshot_id
+        resp, body = self.delete(uri, headers=EXPERIMENTAL, extra_headers=True)
+        self.expected_success(202, resp.status)
+        return body
+
+    def list_cgsnapshots(self, detailed=False, params=None):
+        """Get list of cgsnapshots w/o filters."""
+        uri = 'cgsnapshots/detail' if detailed else 'cgsnapshots'
+        uri += '?%s' % (urllib.urlencode(params) if params else '')
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_cgsnapshot_members(self, cgsnapshot_id):
+        """Get list of members of a cgsnapshots."""
+        uri = 'cgsnapshots/%s/members' % cgsnapshot_id
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_cgsnapshot(self, cgsnapshot_id):
+        """Get cgsnapshot info."""
+        uri = 'cgsnapshots/%s' % cgsnapshot_id
+        resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def update_cgsnapshot(self, cgsnapshot_id, name=None, description=None):
+        """Update an existing cgsnapshot."""
+        uri = 'cgsnapshots/%s' % cgsnapshot_id
+        post_body = {}
+        if name:
+            post_body['name'] = name
+        if description:
+            post_body['description'] = description
+        body = json.dumps({'cgsnapshot': post_body})
+        resp, body = self.put(uri, body, headers=EXPERIMENTAL,
+                              extra_headers=True)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def cgsnapshot_reset_state(self, id, status):
+        self.reset_state(id, status=status,
+                         s_type='cgsnapshots', headers=EXPERIMENTAL)
+
+    def cgsnapshot_force_delete(self, id, status):
+        self.force_delete(id, status=status,
+                          s_type='cgsnapshots', headers=EXPERIMENTAL)

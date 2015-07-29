@@ -41,6 +41,10 @@ iniset $BASE/new/tempest/etc/tempest.conf share share_creation_retry_number 2
 SUPPRESS_ERRORS=${SUPPRESS_ERRORS_IN_CLEANUP:-True}
 iniset $BASE/new/tempest/etc/tempest.conf share suppress_errors_in_cleanup $SUPPRESS_ERRORS
 
+# Enable consistency group tests
+RUN_MANILA_CG_TESTS=${RUN_MANILA_CG_TESTS:-True}
+iniset $BASE/new/tempest/etc/tempest.conf share run_consistency_group_tests $RUN_MANILA_CG_TESTS
+
 # Enable manage/unmanage tests
 RUN_MANILA_MANAGE_TESTS=${RUN_MANILA_MANAGE_TESTS:-True}
 iniset $BASE/new/tempest/etc/tempest.conf share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS

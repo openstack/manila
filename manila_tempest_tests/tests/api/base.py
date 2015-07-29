@@ -280,7 +280,8 @@ class BaseSharesTest(test.BaseTestCase):
     def _create_share(cls, share_protocol=None, size=1, name=None,
                       snapshot_id=None, description=None, metadata=None,
                       share_network_id=None, share_type_id=None,
-                      client=None, cleanup_in_class=True, is_public=False):
+                      consistency_group_id=None, client=None,
+                      cleanup_in_class=True, is_public=False):
         client = client or cls.shares_client
         description = description or "Tempest's share"
         share_network_id = share_network_id or client.share_network_id or None
@@ -296,8 +297,12 @@ class BaseSharesTest(test.BaseTestCase):
             'share_type_id': share_type_id,
             'is_public': is_public,
         }
+        if consistency_group_id:
+            kwargs['consistency_group_id'] = consistency_group_id
+
         share = client.create_share(**kwargs)
-        resource = {"type": "share", "id": share["id"], "client": client}
+        resource = {"type": "share", "id": share["id"], "client": client,
+                    "consistency_group_id": consistency_group_id}
         cleanup_list = (cls.class_resources if cleanup_in_class else
                         cls.method_resources)
         cleanup_list.insert(0, resource)
@@ -376,6 +381,42 @@ class BaseSharesTest(test.BaseTestCase):
         return [d["share"] for d in data]
 
     @classmethod
+    def create_consistency_group(cls, client=None, cleanup_in_class=True,
+                                 share_network_id=None, **kwargs):
+        client = client or cls.shares_client
+        kwargs['share_network_id'] = (share_network_id or
+                                      client.share_network_id or None)
+        consistency_group = client.create_consistency_group(**kwargs)
+        resource = {
+            "type": "consistency_group",
+            "id": consistency_group["id"],
+            "client": client}
+        if cleanup_in_class:
+            cls.class_resources.insert(0, resource)
+        else:
+            cls.method_resources.insert(0, resource)
+
+        if kwargs.get('source_cgsnapshot_id'):
+            new_cg_shares = client.list_shares(
+                detailed=True,
+                params={'consistency_group_id': consistency_group['id']})
+
+            for share in new_cg_shares:
+                resource = {"type": "share",
+                            "id": share["id"],
+                            "client": client,
+                            "consistency_group_id": share.get(
+                                'consistency_group_id')}
+                if cleanup_in_class:
+                    cls.class_resources.insert(0, resource)
+                else:
+                    cls.method_resources.insert(0, resource)
+
+        client.wait_for_consistency_group_status(consistency_group['id'],
+                                                 'available')
+        return consistency_group
+
+    @classmethod
     def create_snapshot_wait_for_active(cls, share_id, name=None,
                                         description=None, force=False,
                                         client=None, cleanup_in_class=True):
@@ -395,6 +436,27 @@ class BaseSharesTest(test.BaseTestCase):
             cls.method_resources.insert(0, resource)
         client.wait_for_snapshot_status(snapshot["id"], "available")
         return snapshot
+
+    @classmethod
+    def create_cgsnapshot_wait_for_active(cls, consistency_group_id,
+                                          name=None, description=None,
+                                          client=None, cleanup_in_class=True):
+        client = client or cls.shares_client
+        if description is None:
+            description = "Tempest's cgsnapshot"
+        cgsnapshot = client.create_cgsnapshot(consistency_group_id, name=name,
+                                              description=description)
+        resource = {
+            "type": "cgsnapshot",
+            "id": cgsnapshot["id"],
+            "client": client,
+        }
+        if cleanup_in_class:
+            cls.class_resources.insert(0, resource)
+        else:
+            cls.method_resources.insert(0, resource)
+        client.wait_for_cgsnapshot_status(cgsnapshot["id"], "available")
+        return cgsnapshot
 
     @classmethod
     def create_share_network(cls, client=None,
@@ -494,7 +556,11 @@ class BaseSharesTest(test.BaseTestCase):
                 client = res["client"]
                 with handle_cleanup_exceptions():
                     if res["type"] is "share":
-                        client.delete_share(res_id)
+                        params = None
+                        cg_id = res.get('consistency_group_id')
+                        if cg_id:
+                            params = {'consistency_group_id': cg_id}
+                        client.delete_share(res_id, params=params)
                         client.wait_for_resource_deletion(share_id=res_id)
                     elif res["type"] is "snapshot":
                         client.delete_snapshot(res_id)
@@ -508,6 +574,12 @@ class BaseSharesTest(test.BaseTestCase):
                     elif res["type"] is "share_type":
                         client.delete_share_type(res_id)
                         client.wait_for_resource_deletion(st_id=res_id)
+                    elif res["type"] is "consistency_group":
+                        client.delete_consistency_group(res_id)
+                        client.wait_for_resource_deletion(cg_id=res_id)
+                    elif res["type"] is "cgsnapshot":
+                        client.delete_cgsnapshot(res_id)
+                        client.wait_for_resource_deletion(cgsnapshot_id=res_id)
                     else:
                         LOG.warn("Provided unsupported resource type for "
                                  "cleanup '%s'. Skipping." % res["type"])
