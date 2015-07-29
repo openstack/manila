@@ -80,7 +80,7 @@ class ZFSSAShareDriver(driver.ShareDriver):
     VERSION = '1.0.0'
     PROTOCOL = 'NFS_CIFS'
 
-    def __init__(self, False, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(ZFSSAShareDriver, self).__init__(False, *args, **kwargs)
         self.configuration.append_config_values(ZFSSA_OPTS)
         self.zfssa = None
