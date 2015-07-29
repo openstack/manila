@@ -19,13 +19,13 @@
 import os.path
 import ssl
 import tempfile
-import urllib2
 
 import ddt
 import eventlet
 import mock
 from oslo_config import cfg
 import six
+from six.moves import urllib
 import testtools
 import webob
 import webob.dec
@@ -132,7 +132,7 @@ class TestWSGIServer(test.TestCase):
             "test_app", hello_world, host="127.0.0.1", port=0)
         server.start()
 
-        response = urllib2.urlopen('http://127.0.0.1:%d/' % server.port)
+        response = urllib.request.urlopen('http://127.0.0.1:%d/' % server.port)
         self.assertEqual(greetings, response.read())
 
         # Verify provided parameters to eventlet.spawn func
@@ -173,11 +173,12 @@ class TestWSGIServer(test.TestCase):
         server.start()
 
         if hasattr(ssl, '_create_unverified_context'):
-            response = urllib2.urlopen(
+            response = urllib.request.urlopen(
                 'https://127.0.0.1:%d/' % server.port,
                 context=ssl._create_unverified_context())
         else:
-            response = urllib2.urlopen('https://127.0.0.1:%d/' % server.port)
+            response = urllib.request.urlopen(
+                'https://127.0.0.1:%d/' % server.port)
 
         self.assertEqual(greetings, response.read())
 
@@ -206,11 +207,12 @@ class TestWSGIServer(test.TestCase):
         server.start()
 
         if hasattr(ssl, '_create_unverified_context'):
-            response = urllib2.urlopen(
+            response = urllib.request.urlopen(
                 'https://[::1]:%d/' % server.port,
                 context=ssl._create_unverified_context())
         else:
-            response = urllib2.urlopen('https://[::1]:%d/' % server.port)
+            response = urllib.request.urlopen(
+                'https://[::1]:%d/' % server.port)
 
         self.assertEqual(greetings, response.read())
 

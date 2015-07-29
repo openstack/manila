@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import httplib
 import socket
 import ssl
 import tempfile
@@ -22,6 +21,7 @@ import time
 import mock
 from oslo_serialization import jsonutils
 import six
+from six.moves import http_client
 
 from manila import exception
 from manila.share.drivers.quobyte import jsonrpc
@@ -74,7 +74,7 @@ class QuobyteHttpsConnectionWithCaVerificationTestCase(test.TestCase):
                                          ca_certs=ca_file,
                                          cert_reqs=mock.ANY)
 
-    @mock.patch.object(httplib.HTTPConnection, "_tunnel")
+    @mock.patch.object(http_client.HTTPConnection, "_tunnel")
     @mock.patch.object(socket, "create_connection",
                        return_value="fake_socket")
     @mock.patch.object(ssl, "wrap_socket")
@@ -155,7 +155,7 @@ class QuobyteJsonRpcTestCase(test.TestCase):
             "Will not verify the server certificate of the API service"
             " because the CA certificate is not available.")
 
-    @mock.patch.object(httplib.HTTPConnection,
+    @mock.patch.object(http_client.HTTPConnection,
                        '__init__',
                        return_value=None)
     def test_jsonrpc_init_no_ssl(self, mock_init):
@@ -181,12 +181,12 @@ class QuobyteJsonRpcTestCase(test.TestCase):
             'request',
             mock.Mock(side_effect=ssl.SSLError))
         self.mock_object(jsonrpc.LOG, 'warning')
-        self.mock_object(httplib, 'HTTPSConnection')
+        self.mock_object(http_client, 'HTTPSConnection')
 
         self.assertRaises(exception.QBException,
                           self.rpc.call,
                           'method', {'param': 'value'})
-        httplib.HTTPSConnection.assert_called_once_with(self.rpc._netloc)
+        http_client.HTTPSConnection.assert_called_once_with(self.rpc._netloc)
         self.assertTrue(self.rpc._disabled_cert_verification)
         jsonrpc.LOG.warning.assert_called_once_with(
             "Could not verify server certificate of "
@@ -220,7 +220,7 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         self.mock_object(
             self.rpc._connection,
             'getresponse',
-            mock.Mock(side_effect=httplib.BadStatusLine("fake_line")))
+            mock.Mock(side_effect=http_client.BadStatusLine("fake_line")))
 
         self.assertRaises(exception.QBException,
                           self.rpc.call,
@@ -230,7 +230,7 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         self.mock_object(
             self.rpc._connection,
             'getresponse',
-            mock.Mock(side_effect=httplib.HTTPException))
+            mock.Mock(side_effect=http_client.HTTPException))
         self.mock_object(jsonrpc.LOG, 'warning')
 
         self.assertRaises(exception.QBException,
@@ -243,7 +243,7 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         self.mock_object(
             self.rpc._connection,
             'getresponse',
-            mock.Mock(side_effect=httplib.HTTPException))
+            mock.Mock(side_effect=http_client.HTTPException))
         self.mock_object(jsonrpc.LOG, 'warning')
         self.rpc._fail_fast = False
 

@@ -12,10 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import httplib
-
 from oslo_log import log
 from oslo_serialization import jsonutils
+from six.moves import http_client
 from six.moves.urllib import parse
 
 LOG = log.getLogger(__name__)
@@ -91,11 +90,11 @@ class TestOpenStackClient(object):
         scheme = parsed_url.scheme
 
         if scheme == 'http':
-            conn = httplib.HTTPConnection(hostname,
-                                          port=port)
+            conn = http_client.HTTPConnection(hostname,
+                                              port=port)
         elif scheme == 'https':
-            conn = httplib.HTTPSConnection(hostname,
-                                           port=port)
+            conn = http_client.HTTPSConnection(hostname,
+                                               port=port)
         else:
             raise OpenStackApiException("Unknown scheme: %s" % url)
 
@@ -139,7 +138,9 @@ class TestOpenStackClient(object):
     def api_request(self, relative_uri, check_response_status=None, **kwargs):
         auth_result = self._authenticate()
 
-        # NOTE(justinsb): httplib 'helpfully' converts headers to lower case
+        # NOTE(justinsb): http_client 'helpfully' converts headers
+        # to lower case
+
         base_uri = auth_result['x-server-management-url']
 
         full_uri = '%s/%s' % (base_uri, relative_uri)

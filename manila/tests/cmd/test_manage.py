@@ -15,12 +15,12 @@
 
 import code
 import readline
-import StringIO
 import sys
 
 import ddt
 import mock
 from oslo_config import cfg
+import six
 
 from manila.cmd import manage as manila_manage
 from manila import context
@@ -162,7 +162,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         readline.parse_and_bind.assert_called_once_with("tab:complete")
         code.interact.assert_called_once_with()
 
-    @mock.patch('__builtin__.print')
+    @mock.patch('six.moves.builtins.print')
     def test_list(self, print_mock):
         serv_1 = {
             'host': 'fake_host1',
@@ -184,7 +184,7 @@ class ManilaCmdManageTestCase(test.TestCase):
             mock.call(u'host                     \tzone           '),
             mock.call('fake_host1               \tavail_zone1    ')])
 
-    @mock.patch('__builtin__.print')
+    @mock.patch('six.moves.builtins.print')
     def test_list_zone_is_none(self, print_mock):
         serv_1 = {
             'host': 'fake_host1',
@@ -235,7 +235,7 @@ class ManilaCmdManageTestCase(test.TestCase):
     def test_version_commands_list(self):
         self.mock_object(version, 'version_string',
                          mock.Mock(return_value='123'))
-        with mock.patch('sys.stdout', new=StringIO.StringIO()) as fake_out:
+        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             self.version_commands.list()
         version.version_string.assert_called_once_with()
         self.assertEqual('123\n', fake_out.getvalue())
@@ -243,13 +243,13 @@ class ManilaCmdManageTestCase(test.TestCase):
     def test_version_commands_call(self):
         self.mock_object(version, 'version_string',
                          mock.Mock(return_value='123'))
-        with mock.patch('sys.stdout', new=StringIO.StringIO()) as fake_out:
+        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             self.version_commands()
         version.version_string.assert_called_once_with()
         self.assertEqual('123\n', fake_out.getvalue())
 
     def test_get_log_commands_no_errors(self):
-        with mock.patch('sys.stdout', new=StringIO.StringIO()) as fake_out:
+        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             CONF.set_override('log_dir', None)
             expected_out = 'No errors in logfiles!\n'
 
@@ -257,14 +257,14 @@ class ManilaCmdManageTestCase(test.TestCase):
 
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.listdir')
     def test_get_log_commands_errors(self, listdir, open):
         CONF.set_override('log_dir', 'fake-dir')
         listdir.return_value = ['fake-error.log']
 
-        with mock.patch('sys.stdout', new=StringIO.StringIO()) as fake_out:
-            open.return_value = StringIO.StringIO(
+        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
+            open.return_value = six.StringIO(
                 '[ ERROR ] fake-error-message')
             expected_out = ('fake-dir/fake-error.log:-\n'
                             'Line 1 : [ ERROR ] fake-error-message\n')
@@ -274,7 +274,7 @@ class ManilaCmdManageTestCase(test.TestCase):
             open.assert_called_once_with('fake-dir/fake-error.log', 'r')
             listdir.assert_called_once_with(CONF.log_dir)
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.path.exists')
     def test_get_log_commands_syslog_no_log_file(self, path_exists, open):
         path_exists.return_value = False
@@ -297,7 +297,7 @@ class ManilaCmdManageTestCase(test.TestCase):
                    'disabled': False}
         service_get_all.return_value = [service]
         service_is_up.return_value = True
-        with mock.patch('sys.stdout', new=StringIO.StringIO()) as fake_out:
+        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             format = "%-16s %-36s %-16s %-10s %-5s %-10s"
             print_format = format % ('Binary',
                                      'Host',

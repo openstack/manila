@@ -14,7 +14,10 @@
 #    under the License.
 
 import re
-import urllib2
+try:
+    from urllib.request import parse_http_list   # noqa
+except ImportError:
+    from urllib2 import parse_http_list   # noqa
 
 from oslo_log import log
 import paste.urlmap
@@ -65,7 +68,7 @@ def parse_list_header(value):
     :return: :class:`list`
     """
     result = []
-    for item in urllib2.parse_http_list(value):
+    for item in parse_http_list(value):
         if item[:1] == item[-1:] == '"':
             item = unquote_header_value(item[1:-1])
         result.append(item)
