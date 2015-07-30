@@ -473,7 +473,9 @@ class NaElement(object):
                     child = NaElement(key)
                     child.add_child_elem(value)
                     self.add_child_elem(child)
-                elif isinstance(value, (str, int, float, long)):
+                elif isinstance(
+                        value,
+                        six.string_types + six.integer_types + (float, )):
                     self.add_new_child(key, six.text_type(value))
                 elif isinstance(value, (list, tuple, dict)):
                     child = NaElement(key)
