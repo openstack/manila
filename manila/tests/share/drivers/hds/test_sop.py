@@ -62,6 +62,7 @@ class SopShareDriverTestCase(test.TestCase):
         self._driver = sop.SopShareDriver(configuration=self.fake_conf)
         self.share = fake_share.fake_share(share_proto='NFS')
         self._driver.share_backend_name = 'HDS_SOP'
+        self.mock_object(time, 'sleep')
 
     def test_add_file_system_sopapi(self):
         httpclient = httplib2.Http(disable_ssl_certificate_validation=True,
