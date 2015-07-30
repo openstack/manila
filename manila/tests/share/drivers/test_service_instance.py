@@ -799,12 +799,12 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.compute_api.server_delete.assert_called_once_with(
             self._manager.admin_context, self.instance_id)
         service_instance.time.sleep.assert_has_calls(
-            [mock.call(mock.ANY) for i in 1, 2])
+            [mock.call(mock.ANY) for i in range(2)])
         service_instance.time.time.assert_has_calls(
-            [mock.call() for i in 1, 2, 3, 4])
+            [mock.call() for i in range(4)])
         self._manager.compute_api.server_get.assert_has_calls(
             [mock.call(self._manager.admin_context,
-                       self.instance_id) for i in 1, 2, 3])
+                       self.instance_id) for i in range(3)])
 
     def test_delete_service_instance(self):
         fake_server_details = dict(
