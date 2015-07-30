@@ -79,7 +79,7 @@ class ShareTypesController(wsgi.Controller):
             filters['is_public'] = True
         limited_types = share_types.get_all_types(
             context, search_opts=filters).values()
-        return limited_types
+        return list(limited_types)
 
     @staticmethod
     def _parse_is_public(is_public):

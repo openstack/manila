@@ -523,6 +523,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         else:
             ignored_dirs = map(lambda x: os.path.join(tmpdir, *x),
                                [('.trashcan', ), ('.trashcan', 'internal_op')])
+            ignored_dirs = list(ignored_dirs)
             cmd = ['find', tmpdir, '-mindepth', '1', '!', '-path',
                    ignored_dirs[0], '!', '-path', ignored_dirs[1], '-delete']
 
@@ -679,7 +680,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(_LE("Error retrieving snapshot list: %s"), exc.stderr)
             raise exception.GlusterfsException(_("gluster %s failed") %
                                                ' '.join(args))
-        snapgrep = filter(lambda x: snapshot['id'] in x, out.split("\n"))
+        snapgrep = list(filter(lambda x: snapshot['id'] in x, out.split("\n")))
         if len(snapgrep) != 1:
             msg = (_("Failed to identify backing GlusterFS object "
                      "for snapshot %(snap_id)s of share %(share_id)s: "

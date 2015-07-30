@@ -69,7 +69,7 @@ class GaneshaNASHelper(NASHelperBase):
                 raise
             dirlist = []
         LOG.info(_LI('Loading Ganesha config from %s.'), dirpath)
-        conf_files = filter(self.confrx.search, dirlist)
+        conf_files = list(filter(self.confrx.search, dirlist))
         conf_files.sort()
         export_template = {}
         for conf_file in conf_files:

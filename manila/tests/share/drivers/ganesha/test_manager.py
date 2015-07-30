@@ -89,6 +89,7 @@ class GaneshaConfigTests(test.TestCase):
             # ";"-s that might have crept in due to "sandwiching")
             conf = map(lambda x: x, conf)
             # handle the non-deterministic order of confs
+            conf = list(conf)
             conf.sort()
             return conf
 

@@ -379,7 +379,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver._fetch_gluster_volumes = mock.Mock(return_value=voldict)
         self._driver.gluster_used_vols_dict = used_vols
         self._driver._setup_gluster_vol = mock.Mock(return_value=gmgr1)
-        self._driver.volume_pattern_keys = voldict.values()[0].keys()
+        self._driver.volume_pattern_keys = list(voldict.values())[0].keys()
 
         result = self._driver._pop_gluster_vol(size=size)
 
@@ -395,7 +395,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     def test_pop_gluster_vol_excp(self, voldict, used_vols, size):
         self._driver._fetch_gluster_volumes = mock.Mock(return_value=voldict)
         self._driver.gluster_used_vols_dict = used_vols
-        self._driver.volume_pattern_keys = voldict.values()[0].keys()
+        self._driver.volume_pattern_keys = list(voldict.values())[0].keys()
         self._driver._setup_gluster_vol = mock.Mock()
 
         self.assertRaises(exception.GlusterfsException,

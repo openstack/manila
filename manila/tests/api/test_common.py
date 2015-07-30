@@ -39,10 +39,10 @@ class LimiterTest(test.TestCase):
     def setUp(self):
         """Run before each test."""
         super(LimiterTest, self).setUp()
-        self.tiny = range(1)
-        self.small = range(10)
-        self.medium = range(1000)
-        self.large = range(10000)
+        self.tiny = list(range(1))
+        self.small = list(range(10))
+        self.medium = list(range(1000))
+        self.large = list(range(10000))
 
     def test_limiter_offset_zero(self):
         """Test offset key works with 0."""
@@ -115,7 +115,7 @@ class LimiterTest(test.TestCase):
 
     def test_limiter_limit_and_offset(self):
         """Test request with both limit and offset."""
-        items = range(2000)
+        items = list(range(2000))
         req = webob.Request.blank('/?offset=1&limit=3')
         self.assertEqual(common.limited(items, req), items[1:4])
         req = webob.Request.blank('/?offset=3&limit=0')
@@ -127,7 +127,7 @@ class LimiterTest(test.TestCase):
 
     def test_limiter_custom_max_limit(self):
         """Test a max_limit other than 1000."""
-        items = range(2000)
+        items = list(range(2000))
         req = webob.Request.blank('/?offset=1&limit=3')
         self.assertEqual(
             common.limited(items, req, max_limit=2000), items[1:4])
