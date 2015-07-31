@@ -632,3 +632,11 @@ class QBRpcException(ManilaException):
     message = _("Quobyte JsonRpc call to backend raised "
                 "an exception: %(result)s, Quobyte error"
                 " code %(qbcode)s")
+
+
+class SSHInjectionThreat(ManilaException):
+    message = _("SSH command injection detected: %(command)s")
+
+
+class HNASBackendException(ManilaException):
+    message = _("HNAS Backend Exception: %(msg)s")
