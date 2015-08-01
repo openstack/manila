@@ -51,12 +51,17 @@ def enforce(context, action, target, do_raise=True):
            i.e. ``compute:create_instance``,
            ``compute:attach_volume``,
            ``volume:attach_volume``
-
-       :param object: dictionary representing the object of the action
+       :param target: dictionary representing the object of the action
            for object creation this should be a dictionary representing the
            location of the object e.g. ``{'project_id': context.project_id}``
+       :param do_raise: Whether to raise an exception if check fils.
 
-       :raises manila.exception.PolicyNotAuthorized: if verification fails.
+       :returns: When ``do_raise`` is ``False``, returns a value that
+                 evaluates as ``True`` or ``False`` depending on whether
+                 the policy allows action on the target.
+
+       :raises: manila.exception.PolicyNotAuthorized if verification fails
+                and ``do_raise`` is ``True``.
 
     """
     init()
