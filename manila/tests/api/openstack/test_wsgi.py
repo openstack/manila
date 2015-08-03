@@ -1,5 +1,6 @@
 import ddt
 import inspect
+import six
 import webob
 
 from manila.api.openstack import wsgi
@@ -12,13 +13,13 @@ from manila.tests.api import fakes
 class RequestTest(test.TestCase):
     def test_content_type_missing(self):
         request = wsgi.Request.blank('/tests/123', method='POST')
-        request.body = "<body />"
+        request.body = six.b("<body />")
         self.assertEqual(None, request.get_content_type())
 
     def test_content_type_unsupported(self):
         request = wsgi.Request.blank('/tests/123', method='POST')
         request.headers["Content-Type"] = "text/html"
-        request.body = "asdf<br />"
+        request.body = six.b("asdf<br />")
         self.assertRaises(exception.InvalidContentType,
                           request.get_content_type)
 
@@ -154,10 +155,10 @@ class DictSerializerTest(test.TestCase):
 class JSONDictSerializerTest(test.TestCase):
     def test_json(self):
         input_dict = dict(servers=dict(a=(2, 3)))
-        expected_json = '{"servers":{"a":[2,3]}}'
+        expected_json = six.b('{"servers":{"a":[2,3]}}')
         serializer = wsgi.JSONDictSerializer()
         result = serializer.serialize(input_dict)
-        result = result.replace('\n', '').replace(' ', '')
+        result = result.replace(six.b('\n'),six.b('')).replace(six.b(' '),six.b(''))
         self.assertEqual(result, expected_json)
 
 
@@ -199,7 +200,7 @@ class ResourceTest(test.TestCase):
         req = webob.Request.blank('/tests')
         app = fakes.TestRouter(Controller())
         response = req.get_response(app)
-        self.assertEqual(response.body, 'off')
+        self.assertEqual(response.body, six.b('off'))
         self.assertEqual(response.status_int, 200)
 
     def test_resource_not_authorized(self):
@@ -313,7 +314,7 @@ class ResourceTest(test.TestCase):
 
         request = wsgi.Request.blank('/', method='POST')
         request.headers['Content-Type'] = 'application/none'
-        request.body = 'foo'
+        request.body = six.b('foo')
 
         content_type, body = resource.get_body(request)
         self.assertEqual(content_type, None)
@@ -328,7 +329,7 @@ class ResourceTest(test.TestCase):
         resource = wsgi.Resource(controller)
 
         request = wsgi.Request.blank('/', method='POST')
-        request.body = 'foo'
+        request.body = six.b('foo')
 
         content_type, body = resource.get_body(request)
         self.assertEqual(content_type, None)
@@ -344,7 +345,7 @@ class ResourceTest(test.TestCase):
 
         request = wsgi.Request.blank('/', method='POST')
         request.headers['Content-Type'] = 'application/json'
-        request.body = ''
+        request.body = six.b('')
 
         content_type, body = resource.get_body(request)
         self.assertEqual(content_type, None)
@@ -360,11 +361,11 @@ class ResourceTest(test.TestCase):
 
         request = wsgi.Request.blank('/', method='POST')
         request.headers['Content-Type'] = 'application/json'
-        request.body = 'foo'
+        request.body = six.b('foo')
 
         content_type, body = resource.get_body(request)
         self.assertEqual(content_type, 'application/json')
-        self.assertEqual(body, 'foo')
+        self.assertEqual(body, six.b('foo'))
 
     def test_deserialize_badtype(self):
         class Controller(object):
@@ -429,7 +430,6 @@ class ResourceTest(test.TestCase):
         controller = Controller()
         resource = wsgi.Resource(controller)
         self.assertEqual({}, resource.wsgi_actions)
-
         extended = ControllerExtended()
         resource.register_actions(extended)
         self.assertEqual({'fooAction': extended._action_foo,
@@ -792,15 +792,15 @@ class ResponseObjectTest(test.TestCase):
     def test_serialize(self):
         class JSONSerializer(object):
             def serialize(self, obj):
-                return 'json'
+                return six.b('json')
 
         class XMLSerializer(object):
             def serialize(self, obj):
-                return 'xml'
+                return six.b('xml')
 
         class AtomSerializer(object):
             def serialize(self, obj):
-                return 'atom'
+                return six.b('atom')
 
         robj = wsgi.ResponseObject({}, code=202,
                                    json=JSONSerializer,
@@ -817,7 +817,7 @@ class ResponseObjectTest(test.TestCase):
             self.assertEqual(response.headers['X-header1'], 'header1')
             self.assertEqual(response.headers['X-header2'], 'header2')
             self.assertEqual(response.status_int, 202)
-            self.assertEqual(response.body, mtype)
+            self.assertEqual(response.body, six.b(mtype))
 
 
 class ValidBodyTest(test.TestCase):

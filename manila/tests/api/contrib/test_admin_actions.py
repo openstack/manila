@@ -15,6 +15,7 @@
 
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+import six
 import webob
 
 from manila.common import constants
@@ -54,8 +55,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
-        req.body = jsonutils.dumps(
-            {'os-reset_status': {'status': constants.STATUS_ERROR}})
+        req.body = six.b(jsonutils.dumps(
+            {'os-reset_status': {'status': constants.STATUS_ERROR}}))
         # attach admin context to request
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
@@ -72,8 +73,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request changing status to available
-        req.body = jsonutils.dumps(
-            {'os-reset_status': {'status': constants.STATUS_AVAILABLE}})
+        req.body = six.b(jsonutils.dumps(
+            {'os-reset_status': {'status': constants.STATUS_AVAILABLE}}))
         # non-admin context
         req.environ['manila.context'] = self.member_context
         resp = req.get_response(app())
@@ -90,7 +91,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # malformed request body
-        req.body = jsonutils.dumps({'os-reset_status': {'x-status': 'bad'}})
+        req.body = six.b(jsonutils.dumps(
+            {'os-reset_status': {'x-status': 'bad'}}))
         # attach admin context to request
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
@@ -107,7 +109,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # 'invalid' is not a valid status
-        req.body = jsonutils.dumps({'os-reset_status': {'status': 'invalid'}})
+        req.body = six.b(jsonutils.dumps(
+            {'os-reset_status': {'status': 'invalid'}}))
         # attach admin context to request
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
@@ -124,8 +127,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # malformed request body
-        req.body = jsonutils.dumps(
-            {'os-reset_status': {'status': constants.STATUS_AVAILABLE}})
+        req.body = six.b(jsonutils.dumps(
+            {'os-reset_status': {'status': constants.STATUS_AVAILABLE}}))
         # attach admin context to request
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
@@ -148,8 +151,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
-        req.body = jsonutils.dumps(
-            {'os-reset_status': {'status': constants.STATUS_ERROR}})
+        req.body = six.b(jsonutils.dumps(
+            {'os-reset_status': {'status': constants.STATUS_ERROR}}))
         # attach admin context to request
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
@@ -171,8 +174,8 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # 'attaching' is not a valid status for snapshots
-        req.body = jsonutils.dumps({'os-reset_status': {'status':
-                                                        'attaching'}})
+        req.body = six.b(jsonutils.dumps(
+            {'os-reset_status': {'status': 'attaching'}}))
         # attach admin context to request
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
@@ -187,7 +190,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
         self.assertEqual(resp.status_int, 202)
@@ -201,7 +204,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
         req.environ['manila.context'] = self.member_context
         resp = req.get_response(app())
         self.assertEqual(resp.status_int, 403)
@@ -216,7 +219,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank(path)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
         req.environ['manila.context'] = self.admin_context
         resp = req.get_response(app())
         self.assertEqual(resp.status_int, 202)
@@ -231,7 +234,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank(path)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
         req.environ['manila.context'] = self.member_context
         resp = req.get_response(app())
         self.assertEqual(resp.status_int, 403)

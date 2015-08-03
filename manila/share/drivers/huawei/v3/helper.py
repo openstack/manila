@@ -183,12 +183,12 @@ class RestHelper(object):
         need_encode = False
         for key in ['UserName', 'UserPassword']:
             node = root.find('Storage/%s' % key)
-            node_text = node.text
-            if node_text.find(prefix_name) > -1:
-                logininfo[key] = base64.b64decode(node_text[4:])
+            if node.text.find(prefix_name) > -1:
+                logininfo[key] = base64.b64decode(six.b(node.text[4:]))
             else:
-                logininfo[key] = node_text
-                node.text = prefix_name + base64.b64encode(node_text)
+                logininfo[key] = node.text
+                node.text = prefix_name + six.text_type(
+                    base64.b64encode(six.b(node.text)))
                 need_encode = True
         if need_encode:
             self._change_file_mode(filename)

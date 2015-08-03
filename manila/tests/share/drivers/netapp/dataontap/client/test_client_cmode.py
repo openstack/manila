@@ -21,6 +21,7 @@ import time
 import ddt
 import mock
 from oslo_log import log
+import six
 
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -1387,7 +1388,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.configure_ldap(fake.LDAP_SECURITY_SERVICE)
 
         config_name = hashlib.md5(
-            fake.LDAP_SECURITY_SERVICE['id']).hexdigest()
+            six.b(fake.LDAP_SECURITY_SERVICE['id'])).hexdigest()
 
         ldap_client_create_args = {
             'ldap-client-config': config_name,

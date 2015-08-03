@@ -484,7 +484,7 @@ class XMLAPIHelper(object):
         return dest
 
     def _send_request(self, req):
-        req_xml = constants.XML_HEADER + ET.tostring(req)
+        req_xml = six.b(constants.XML_HEADER) + ET.tostring(req)
         rsp_xml = self._conn.request(req_xml)
 
         result = parser.parse_xml_api(

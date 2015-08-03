@@ -133,7 +133,7 @@ class TestWSGIServer(test.TestCase):
         server.start()
 
         response = urllib.request.urlopen('http://127.0.0.1:%d/' % server.port)
-        self.assertEqual(greetings, response.read())
+        self.assertEqual(six.b(greetings), response.read())
 
         # Verify provided parameters to eventlet.spawn func
         eventlet.spawn.assert_called_once_with(
@@ -247,11 +247,11 @@ class ExceptionTest(test.TestCase):
 
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
-        self.assertTrue('{"computeFault' in resp.body, resp.body)
+        self.assertIn('{"computeFault', six.text_type(resp.body), resp.body)
         expected = ('ExceptionWithSafety: some explanation' if expose else
                     'The server has either erred or is incapable '
                     'of performing the requested operation.')
-        self.assertTrue(expected in resp.body, resp.body)
+        self.assertIn(expected, six.text_type(resp.body), resp.body)
         self.assertEqual(resp.status_int, 500, resp.body)
 
     def test_safe_exceptions_are_described_in_faults(self):
@@ -267,7 +267,7 @@ class ExceptionTest(test.TestCase):
 
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
-        self.assertTrue(msg in resp.body, resp.body)
+        self.assertIn(msg, six.text_type(resp.body), resp.body)
         self.assertEqual(resp.status_int, exception_type.code, resp.body)
 
         if hasattr(exception_type, 'headers'):

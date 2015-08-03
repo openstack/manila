@@ -36,7 +36,7 @@ class FakeSchedulerOptions(scheduler_options.SchedulerOptions):
         # For overrides ...
         self._time_now = now
         self._file_now = file_now
-        self._file_data = filedata
+        self._file_data = six.b(filedata)
 
         self.file_was_loaded = False
 
@@ -45,7 +45,12 @@ class FakeSchedulerOptions(scheduler_options.SchedulerOptions):
 
     def _get_file_handle(self, filename):
         self.file_was_loaded = True
-        return six.StringIO(self._file_data)
+        if six.PY2:
+            import StringIO
+            return StringIO.StringIO(self._file_data)
+        else:
+            import io
+            return io.BytesIO(self._file_data)
 
     def _get_time_now(self):
         return self._time_now

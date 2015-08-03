@@ -62,9 +62,8 @@ class SopShareDriver(driver.ShareDriver):
         self.soppassword = self.configuration.safe_get('hdssop_adminpassword')
 
     def get_sop_auth_header(self):
-        return 'Basic ' + base64.b64encode(
-            self.sopuser + ':' +
-            self.soppassword).encode('utf-8').decode('ascii')
+        return (six.b('Basic ') + base64.b64encode(
+            six.b(self.sopuser + ':' + self.soppassword))).decode('ascii')
 
     def _wait_for_job_completion(self, httpclient, job_uri):
         """Wait for job identified by job_uri to complete."""
