@@ -23,6 +23,7 @@ import ddt
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from six import moves
 
 from manila.common import constants as const
 from manila import compute
@@ -302,17 +303,17 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self.assertEqual(1, time.sleep.call_count)
         self.assertEqual(self._driver._get_mount_path.mock_calls,
-                         [mock.call(self.share) for i in xrange(2)])
+                         [mock.call(self.share) for i in moves.range(2)])
         self.assertEqual(self._driver._is_device_mounted.mock_calls,
                          [mock.call(mount_path,
-                                    self.server) for i in xrange(2)])
+                                    self.server) for i in moves.range(2)])
         self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
             self.server)
         self.assertEqual(
             self._driver._ssh_exec.mock_calls,
             [mock.call(self.server, ['sudo umount', mount_path,
                                      '&& sudo rmdir', mount_path])
-             for i in xrange(2)]
+             for i in moves.range(2)]
         )
 
     def test_unmount_device_not_present(self):
