@@ -21,6 +21,7 @@ import sys
 import ddt
 import mock
 from oslo_config import cfg
+import six
 
 from manila.cmd import manage as manila_manage
 from manila import context
@@ -82,7 +83,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         try:
             import bpython
         except ImportError as e:
-            self.skipTest(e.message)
+            self.skipTest(six.text_type(e))
         self.mock_object(bpython, 'embed')
         self.shell_commands.run(**kwargs)
         bpython.embed.assert_called_once_with()
@@ -92,7 +93,7 @@ class ManilaCmdManageTestCase(test.TestCase):
             import bpython
             import IPython
         except ImportError as e:
-            self.skipTest(e.message)
+            self.skipTest(six.text_type(e))
         self.mock_object(bpython, 'embed',
                          mock.Mock(side_effect=ImportError()))
         self.mock_object(IPython, 'embed')
@@ -105,7 +106,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         try:
             import bpython
         except ImportError as e:
-            self.skipTest(e.message)
+            self.skipTest(six.text_type(e))
         self.mock_object(bpython, 'embed')
 
         self.shell_commands.run()
@@ -116,7 +117,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         try:
             import IPython
         except ImportError as e:
-            self.skipTest(e.message)
+            self.skipTest(six.text_type(e))
         self.mock_object(IPython, 'embed')
 
         self.shell_commands.run(shell='ipython')
@@ -131,7 +132,7 @@ class ManilaCmdManageTestCase(test.TestCase):
                 setattr(IPython.Shell, 'IPShell',
                         mock.Mock(side_effect=ImportError()))
         except ImportError as e:
-            self.skipTest(e.message)
+            self.skipTest(six.text_type(e))
         self.mock_object(IPython, 'embed',
                          mock.Mock(side_effect=ImportError()))
         self.mock_object(readline, 'parse_and_bind')

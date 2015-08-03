@@ -13,6 +13,7 @@
 #    under the License.
 
 from cinderclient import exceptions as cinder_exception
+import ddt
 import mock
 
 from manila import context
@@ -40,6 +41,7 @@ class FakeCinderClient(object):
         self.volume_snapshots = self.volumes
 
 
+@ddt.ddt
 class CinderApiTestCase(test.TestCase):
     def setUp(self):
         super(CinderApiTestCase, self).setUp()
@@ -59,11 +61,17 @@ class CinderApiTestCase(test.TestCase):
         result = self.api.get(self.ctx, volume_id)
         self.assertEqual(result['id'], volume_id)
 
-    def test_get_failed(self):
-        cinder.cinderclient.side_effect = cinder_exception.NotFound(404)
+    @ddt.data(
+        {'cinder_e': cinder_exception.NotFound(404),
+         'manila_e': exception.VolumeNotFound},
+        {'cinder_e': cinder_exception.BadRequest(400),
+         'manila_e': exception.InvalidInput},
+    )
+    @ddt.unpack
+    def test_get_failed(self, cinder_e, manila_e):
+        cinder.cinderclient.side_effect = cinder_e
         volume_id = 'volume_id'
-        self.assertRaises(exception.VolumeNotFound,
-                          self.api.get, self.ctx, volume_id)
+        self.assertRaises(manila_e, self.api.get, self.ctx, volume_id)
 
     def test_create(self):
         result = self.api.create(self.ctx, 1, '', '')

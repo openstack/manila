@@ -18,13 +18,13 @@ Handles all requests relating to volumes + cinder.
 """
 
 import copy
-import sys
 
 from cinderclient import exceptions as cinder_exception
 from cinderclient import service_catalog
 from cinderclient.v2 import client as cinder_client
 from oslo_config import cfg
 from oslo_log import log
+import six
 
 import manila.context as ctxt
 from manila.db import base
@@ -176,13 +176,11 @@ def translate_volume_exception(method):
     def wrapper(self, ctx, volume_id, *args, **kwargs):
         try:
             res = method(self, ctx, volume_id, *args, **kwargs)
-        except cinder_exception.ClientException:
-            exc_type, exc_value, exc_trace = sys.exc_info()
-            if isinstance(exc_value, cinder_exception.NotFound):
-                exc_value = exception.VolumeNotFound(volume_id=volume_id)
-            elif isinstance(exc_value, cinder_exception.BadRequest):
-                exc_value = exception.InvalidInput(reason=exc_value.message)
-            raise exc_value, None, exc_trace
+        except cinder_exception.ClientException as e:
+            if isinstance(e, cinder_exception.NotFound):
+                raise exception.VolumeNotFound(volume_id=volume_id)
+            elif isinstance(e, cinder_exception.BadRequest):
+                raise exception.InvalidInput(reason=six.text_type(e))
         return res
     return wrapper
 
@@ -195,12 +193,9 @@ def translate_snapshot_exception(method):
     def wrapper(self, ctx, snapshot_id, *args, **kwargs):
         try:
             res = method(self, ctx, snapshot_id, *args, **kwargs)
-        except cinder_exception.ClientException:
-            exc_type, exc_value, exc_trace = sys.exc_info()
-            if isinstance(exc_value, cinder_exception.NotFound):
-                exc_value = (
-                    exception.VolumeSnapshotNotFound(snapshot_id=snapshot_id))
-            raise exc_value, None, exc_trace
+        except cinder_exception.ClientException as e:
+            if isinstance(e, cinder_exception.NotFound):
+                raise exception.VolumeSnapshotNotFound(snapshot_id=snapshot_id)
         return res
     return wrapper
 
@@ -303,14 +298,14 @@ class API(base.Base):
             item = cinderclient(context).volumes.create(size, **kwargs)
             return _untranslate_volume_summary_view(context, item)
         except cinder_exception.BadRequest as e:
-            raise exception.InvalidInput(reason=e.message)
+            raise exception.InvalidInput(reason=six.text_type(e))
         except cinder_exception.NotFound:
             raise exception.NotFound(
                 _("Error in creating cinder "
                   "volume. Cinder volume type %s not exist. Check parameter "
                   "cinder_volume_type in configuration file.") % volume_type)
         except Exception as e:
-            raise exception.ManilaException(e.message)
+            raise exception.ManilaException(e)
 
     @translate_volume_exception
     def extend(self, context, volume_id, new_size):

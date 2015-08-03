@@ -178,7 +178,7 @@ class GlusterManager(object):
             raise exception.GlusterfsException(
                 _("'gluster version' failed on server "
                   "%(server)s: %(message)s") %
-                {'server': self.host, 'message': exc.message})
+                {'server': self.host, 'message': six.text_type(exc)})
         try:
             owords = out.split()
             if owords[0] != 'glusterfs':
