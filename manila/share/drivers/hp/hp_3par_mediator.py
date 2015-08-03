@@ -40,6 +40,11 @@ OPEN_STACK_MANILA_FSHARE = 'OpenStack Manila fshare'
 CACHE = 'cache'
 CONTINUOUS_AVAIL = 'continuous_avail'
 ACCESS_BASED_ENUM = 'access_based_enum'
+SMB_EXTRA_SPECS_MAP = {
+    CACHE: CACHE,
+    CONTINUOUS_AVAIL: 'ca',
+    ACCESS_BASED_ENUM: 'abe',
+}
 
 
 class HP3ParMediator(object):
@@ -238,7 +243,8 @@ class HP3ParMediator(object):
             for smb_opt in smb_opts:
                 opt_value = extra_specs.get('hp_3par:smb_%s' % smb_opt)
                 if opt_value:
-                    createfshare_kwargs[smb_opt] = opt_value
+                    opt_key = SMB_EXTRA_SPECS_MAP[smb_opt]
+                    createfshare_kwargs[opt_key] = opt_value
         return createfshare_kwargs
 
     def create_share(self, project_id, share_id, share_proto, extra_specs,

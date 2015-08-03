@@ -262,7 +262,8 @@ class HP3ParMediatorTestCase(test.TestCase):
             for smb_opt in smb_opts:
                 opt_value = extra_specs.get('hp_3par:smb_%s' % smb_opt)
                 if opt_value:
-                    createfshare_kwargs[smb_opt] = opt_value
+                    opt_key = hp3parmediator.SMB_EXTRA_SPECS_MAP[smb_opt]
+                    createfshare_kwargs[opt_key] = opt_value
 
             expected_calls = [
                 mock.call.createfstore(expected_vfsname, expected_project_id,
