@@ -207,14 +207,14 @@ class ShareDriverTestCase(test.TestCase):
         self.assertEqual([],
                          share_driver.get_share_server_pools('fake_server'))
 
-    @ddt.data(0.8, 1.0, 10.5, 20.0, None)
+    @ddt.data(0.8, 1.0, 10.5, 20.0, None, '1', '1.1')
     def test_check_for_setup_error(self, value):
         driver.CONF.set_default('driver_handles_share_servers', False)
         share_driver = driver.ShareDriver(False)
         share_driver.configuration = configuration.Configuration(None)
         self.mock_object(share_driver.configuration, 'safe_get',
                          mock.Mock(return_value=value))
-        if value >= 1.0:
+        if value and float(value) >= 1.0:
             share_driver.check_for_setup_error()
         else:
             self.assertRaises(exception.InvalidParameterValue,

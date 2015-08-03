@@ -1072,7 +1072,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         # Do the unmount, handling split-related errors with retries.
         retry_interval = 3  # seconds
-        for retry in range(wait_seconds / retry_interval):
+        for retry in range(int(wait_seconds / retry_interval)):
             try:
                 self._unmount_volume(volume_name, force=force)
                 LOG.debug('Volume %s unmounted.', volume_name)

@@ -277,7 +277,7 @@ class WSGIService(service.ServiceBase):
         self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")
         self.port = getattr(CONF, '%s_listen_port' % name, 0)
         self.workers = getattr(CONF, '%s_workers' % name, None)
-        if self.workers < 1:
+        if self.workers is not None and self.workers < 1:
             LOG.warn(
                 _LW("Value of config option %(name)s_workers must be integer "
                     "greater than 1.  Input value ignored.") % {'name': name})
