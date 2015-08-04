@@ -13,13 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging  # noqa
-from tempest_lib.common.utils import data_utils  # noqa
+from oslo_log import log as logging
+from tempest_lib.common.utils import data_utils
+from tempest_lib import exceptions
 
-from tempest import config
-from tempest import exceptions
-from tempest.scenario import manager_share as manager
-from tempest import test
+from tempest import config  # noqa
+from tempest.scenario import manager_share as manager  # noqa
+from tempest import test  # noqa
 
 CONF = config.CONF
 
