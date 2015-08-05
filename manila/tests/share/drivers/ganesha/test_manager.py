@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
 import re
 
 import mock
@@ -129,18 +128,24 @@ class GaneshaConfigTests(test.TestCase):
 class GaneshaManagerTestCase(test.TestCase):
     """Tests GaneshaManager."""
 
+    def instantiate_ganesha_manager(self, *args, **kwargs):
+        with mock.patch.object(
+                manager.GaneshaManager,
+                'get_export_id',
+                return_value=100) as self.mock_get_export_id:
+            with mock.patch.object(
+                    manager.GaneshaManager,
+                    'reset_exports') as self.mock_reset_exports:
+                with mock.patch.object(
+                        manager.GaneshaManager,
+                        'restart_service') as self.mock_restart_service:
+                    return manager.GaneshaManager(*args, **kwargs)
+
     def setUp(self):
         super(GaneshaManagerTestCase, self).setUp()
         self._execute = mock.Mock(return_value=('', ''))
-        with contextlib.nested(
-            mock.patch.object(manager.GaneshaManager, 'get_export_id',
-                              return_value=100),
-            mock.patch.object(manager.GaneshaManager, 'reset_exports'),
-            mock.patch.object(manager.GaneshaManager, 'restart_service')
-        ) as (self.mock_get_export_id, self.mock_reset_exports,
-              self.mock_restart_service):
-            self._manager = manager.GaneshaManager(
-                self._execute, 'faketag', **manager_fake_kwargs)
+        self._manager = self.instantiate_ganesha_manager(
+            self._execute, 'faketag', **manager_fake_kwargs)
         self.mock_object(utils, 'synchronized',
                          mock.Mock(return_value=lambda f: f))
 
@@ -175,15 +180,8 @@ class GaneshaManagerTestCase(test.TestCase):
 
         test_execute = mock.Mock(side_effect=raise_exception)
         self.mock_object(manager.LOG, 'error')
-        with contextlib.nested(
-            mock.patch.object(manager.GaneshaManager, 'get_export_id',
-                              return_value=100),
-            mock.patch.object(manager.GaneshaManager, 'reset_exports'),
-            mock.patch.object(manager.GaneshaManager, 'restart_service')
-        ) as (self.mock_get_export_id, self.mock_reset_exports,
-              self.mock_restart_service):
-            test_manager = manager.GaneshaManager(
-                test_execute, 'faketag', **manager_fake_kwargs)
+        test_manager = self.instantiate_ganesha_manager(
+            test_execute, 'faketag', **manager_fake_kwargs)
         self.assertRaises(
             exception.GaneshaCommandFailure,
             test_manager.execute,
@@ -200,15 +198,8 @@ class GaneshaManagerTestCase(test.TestCase):
 
         test_execute = mock.Mock(side_effect=raise_exception)
         self.mock_object(manager.LOG, 'error')
-        with contextlib.nested(
-            mock.patch.object(manager.GaneshaManager, 'get_export_id',
-                              return_value=100),
-            mock.patch.object(manager.GaneshaManager, 'reset_exports'),
-            mock.patch.object(manager.GaneshaManager, 'restart_service')
-        ) as (self.mock_get_export_id, self.mock_reset_exports,
-              self.mock_restart_service):
-            test_manager = manager.GaneshaManager(
-                test_execute, 'faketag', **manager_fake_kwargs)
+        test_manager = self.instantiate_ganesha_manager(
+            test_execute, 'faketag', **manager_fake_kwargs)
         self.assertRaises(
             exception.GaneshaCommandFailure,
             test_manager.execute,
