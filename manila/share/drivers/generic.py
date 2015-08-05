@@ -493,12 +493,23 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         )
 
     def _wait_for_available_volume(self, volume, timeout,
-                                   msg_error, msg_timeout):
+                                   msg_error, msg_timeout,
+                                   expected_size=None):
         t = time.time()
         while time.time() - t < timeout:
             if volume['status'] == const.STATUS_AVAILABLE:
-                break
-            if volume['status'] == const.STATUS_ERROR:
+                if expected_size and volume['size'] != expected_size:
+                    LOG.debug("The volume %(vol_id)s is available but the "
+                              "volume size does not match the expected size. "
+                              "A volume resize operation may be pending. "
+                              "Expected size: %(expected_size)s, "
+                              "Actual size: %(volume_size)s.",
+                              dict(vol_id=volume['id'],
+                                   expected_size=expected_size,
+                                   volume_size=volume['size']))
+                else:
+                    break
+            elif volume['status'] == const.STATUS_ERROR:
                 raise exception.ManilaException(msg_error)
             time.sleep(1)
             volume = self.volume_api.get(self.admin_context, volume['id'])
@@ -585,7 +596,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         )
         return self._wait_for_available_volume(
             volume, self.configuration.max_time_to_extend_volume,
-            msg_error=msg_error, msg_timeout=msg_timeout
+            msg_error=msg_error, msg_timeout=msg_timeout,
+            expected_size=new_size
         )
 
     @ensure_server
