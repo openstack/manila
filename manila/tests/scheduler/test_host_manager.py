@@ -156,7 +156,7 @@ class HostManagerTestCase(test.TestCase):
 
             self.assertEqual(4, len(host_state_map))
             # Check that service is up
-            for i in xrange(4):
+            for i in moves.range(4):
                 share_node = fakes.SHARE_SERVICES_WITH_POOLS[i]
                 host = share_node['host']
                 self.assertEqual(share_node, host_state_map[host].service)

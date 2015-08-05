@@ -22,6 +22,7 @@ import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils as json
 from oslo_utils import units
+from six import moves
 
 from manila import context
 from manila import exception
@@ -217,10 +218,9 @@ class SopShareDriverTestCase(test.TestCase):
             },
         }
         self.assertEqual(expectedresult, fsadd)
-        httpcalls = [mock.call('fakeuri',
-                               'GET',
-                               body='',
-                               headers=fake_authorization) for x in xrange(2)]
+        httpcalls = [
+            mock.call('fakeuri', 'GET', body='', headers=fake_authorization)
+            for x in moves.range(2)]
         self.assertEqual(httpcalls, httpclient.request.call_args_list)
 
     def test_wait_for_job_completion_notimeout(self):
@@ -244,7 +244,7 @@ class SopShareDriverTestCase(test.TestCase):
                        'esource-action":"ADD","percent-complete":75,"resource'
                        '-id":"fakeuuid","target-node-name":"Node005","target-'
                        'node-id":"fakeuuid","spawned-jobs":false,"spawned-job'
-                       's-list-uri":""}}') for x in xrange(200)
+                       's-list-uri":""}}') for x in moves.range(200)
                       ]
 
         httpreturn.append(({'status': '200',
@@ -297,9 +297,9 @@ class SopShareDriverTestCase(test.TestCase):
                                'GET',
                                body='',
                                headers=fake_authorization)
-                     for x in xrange(201)]
+                     for x in moves.range(201)]
         self.assertEqual(httpcalls, httpclient.request.call_args_list)
-        timecalls = [mock.call(1) for x in xrange(200)]
+        timecalls = [mock.call(1) for x in moves.range(200)]
         self.assertEqual(timecalls, time.sleep.call_args_list)
 
     def test_wait_for_job_completion_timeout(self):
@@ -324,7 +324,7 @@ class SopShareDriverTestCase(test.TestCase):
                     ':75,"resource-id":"fakeuuid"'
                     ',"target-node-name":"Node005","target-node-id":"fakeuuid'
                     '","spawned-jobs":false,"spawned-jobs-list-uri":""}}')
-                   for x in xrange(301)]
+                   for x in moves.range(301)]
 
         httpret.append(({'status': '200',
                          'content-location':
@@ -356,9 +356,9 @@ class SopShareDriverTestCase(test.TestCase):
                                'GET',
                                body='',
                                headers=fake_authorization)
-                     for x in xrange(301)]
+                     for x in moves.range(301)]
         self.assertEqual(httpcalls, httpclient.request.call_args_list)
-        timecalls = [mock.call(1) for x in xrange(301)]
+        timecalls = [mock.call(1) for x in moves.range(301)]
         self.assertEqual(timecalls, time.sleep.call_args_list)
 
     def test_add_share_sopapi(self):
