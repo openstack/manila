@@ -74,6 +74,13 @@ Module Reference
    manila
    ganesha
 
+Share backends feature support mapping
+--------------------------------------
+.. toctree::
+   :maxdepth: 3
+
+   share_back_ends_feature_support_mapping
+
 Share backends
 --------------
 .. toctree::
