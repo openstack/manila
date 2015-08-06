@@ -61,9 +61,9 @@ class HTTPSConnectionWithCaVerification(http_client.HTTPConnection):
     default_port = http_client.HTTPS_PORT
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 ca_file=None, strict=None,
+                 ca_file=None,
                  timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
-        http_client.HTTPConnection.__init__(self, host, port, strict, timeout)
+        http_client.HTTPConnection.__init__(self, host, port, timeout=timeout)
         self.key_file = key_file
         self.cert_file = cert_file
         self.ca_file = ca_file

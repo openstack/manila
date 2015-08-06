@@ -61,7 +61,6 @@ class QuobyteHttpsConnectionWithCaVerificationTestCase(test.TestCase):
                                                    key_file=key_file,
                                                    cert_file=cert_file,
                                                    ca_file=ca_file,
-                                                   strict="anything",
                                                    port=1234,
                                                    timeout=999))
 
@@ -90,7 +89,6 @@ class QuobyteHttpsConnectionWithCaVerificationTestCase(test.TestCase):
                                                    key_file=key_file,
                                                    cert_file=cert_file,
                                                    ca_file=ca_file,
-                                                   strict="anything",
                                                    port=1234,
                                                    timeout=999))
         mycon._tunnel_host = "fake_tunnel_host"
@@ -180,13 +178,17 @@ class QuobyteJsonRpcTestCase(test.TestCase):
             self.rpc._connection,
             'request',
             mock.Mock(side_effect=ssl.SSLError))
+        self.mock_object(
+            self.rpc._connection,
+            'getresponse',
+            mock.Mock(return_value=FakeResponse(
+                403, '{"error":{"code":28,"message":"text"}}')))
         self.mock_object(jsonrpc.LOG, 'warning')
-        self.mock_object(http_client, 'HTTPSConnection')
 
         self.assertRaises(exception.QBException,
                           self.rpc.call,
                           'method', {'param': 'value'})
-        http_client.HTTPSConnection.assert_called_once_with(self.rpc._netloc)
+
         self.assertTrue(self.rpc._disabled_cert_verification)
         jsonrpc.LOG.warning.assert_called_once_with(
             "Could not verify server certificate of "
