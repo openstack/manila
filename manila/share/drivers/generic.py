@@ -479,7 +479,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             share['size'],
             self.configuration.volume_name_template % share['id'], '',
             snapshot=volume_snapshot,
-            volume_type=self.configuration.cinder_volume_type)
+            volume_type=self.configuration.cinder_volume_type,
+            availability_zone=share['availability_zone'])
 
         self.private_storage.update(
             share['id'], {'volume_id': volume['id']})

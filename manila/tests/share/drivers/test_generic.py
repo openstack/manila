@@ -121,7 +121,8 @@ class GenericShareDriverTestCase(test.TestCase):
             'backend_details': {
                 'ip': '1.2.3.4',
                 'instance_id': 'fake'
-            }
+            },
+            'availability_zone': 'fake_az',
         }
         self.access = fake_share.fake_access()
         self.snapshot = fake_share.fake_snapshot()
@@ -671,7 +672,8 @@ class GenericShareDriverTestCase(test.TestCase):
             CONF.volume_name_template % self.share['id'],
             '',
             snapshot=None,
-            volume_type='fake_volume_type')
+            volume_type='fake_volume_type',
+            availability_zone=self.share['availability_zone'])
 
     def test_allocate_container_with_snaphot(self):
         fake_vol = fake_volume.FakeVolume()
@@ -691,7 +693,8 @@ class GenericShareDriverTestCase(test.TestCase):
             CONF.volume_name_template % self.share['id'],
             '',
             snapshot=fake_vol_snap,
-            volume_type=None)
+            volume_type=None,
+            availability_zone=self.share['availability_zone'])
 
     def test_allocate_container_error(self):
         fake_vol = fake_volume.FakeVolume(status='error')
