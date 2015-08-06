@@ -479,7 +479,9 @@ class NetAppCmodeFileStorageLibrary(object):
 
         string_args = self._get_string_provisioning_options(
             specs, self.STRING_QUALIFIED_EXTRA_SPECS_MAP)
-        return dict(boolean_args.items() + string_args.items())
+        result = boolean_args.copy()
+        result.update(string_args)
+        return result
 
     @na_utils.trace
     def _allocate_container_from_snapshot(self, share, snapshot,
@@ -617,7 +619,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
         # Wait for clone dependency to clear.
         retry_interval = 3  # seconds
-        for retry in range(wait_seconds / retry_interval):
+        for retry in range(int(wait_seconds / retry_interval)):
             LOG.debug('Snapshot %(snap)s for share %(share)s is busy, waiting '
                       'for volume clone dependency to clear.',
                       {'snap': snapshot_name, 'share': share_name})

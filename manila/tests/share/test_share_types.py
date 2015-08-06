@@ -86,8 +86,9 @@ class ShareTypesTestCase(test.TestCase):
         }
     }
 
-    fake_types = dict(fake_type.items() + fake_type_w_extra.items()
-                      + fake_type_w_valid_extra.items())
+    fake_types = fake_type.copy()
+    fake_types.update(fake_type_w_extra)
+    fake_types.update(fake_type_w_valid_extra)
 
     fake_share = {'id': u'fooid-1', 'share_type_id': fake_share_type_id}
 
