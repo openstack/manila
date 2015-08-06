@@ -596,6 +596,43 @@ class RestHelper(object):
         share_name = "share_" + share_id
         return share_name
 
+    def _get_share_name_by_export_location(self, export_location, share_proto):
+        export_location_split = None
+        share_name = None
+        share_ip = None
+        if export_location:
+            if share_proto == 'NFS':
+                export_location_split = export_location.split(':/')
+                if len(export_location_split) == 2:
+                    share_name = export_location_split[1]
+                    share_ip = export_location_split[0]
+            elif share_proto == 'CIFS':
+                export_location_split = export_location.split('\\')
+                if (len(export_location_split) == 4 and
+                        export_location_split[0] == "" and
+                        export_location_split[1] == ""):
+                    share_ip = export_location_split[2]
+                    share_name = export_location_split[3]
+
+        if share_name is None:
+            raise exception.InvalidInput(
+                reason=(_('No share with export location %s could be found.')
+                        % export_location))
+
+        root = self._read_xml()
+        target_ip = root.findtext('Storage/LogicalPortIP')
+
+        if target_ip:
+            if share_ip != target_ip.strip():
+                raise exception.InvalidInput(
+                    reason=(_('The share IP %s is not configured.')
+                            % share_ip))
+        else:
+            raise exception.InvalidInput(
+                reason=(_('The config parameter LogicalPortIP is not set.')))
+
+        return share_name
+
     def _get_snapshot_id(self, fs_id, snap_name):
         snapshot_id = (fs_id + "@" + "share_snapshot_"
                        + snap_name.replace("-", "_"))
@@ -614,3 +651,14 @@ class RestHelper(object):
         msg = "Change a share size error!"
         self._assert_rest_result(result, msg)
         self._assert_data_in_result(result, msg)
+
+    def _change_fs_name(self, fsid, name):
+        url = self.url + "/filesystem/%s" % fsid
+        fs_param = {
+            "NAME": name.replace("-", "_"),
+        }
+        data = jsonutils.dumps(fs_param)
+        result = self.call(url, data, "PUT")
+
+        msg = _("Change filesystem name error.")
+        self._assert_rest_result(result, msg)

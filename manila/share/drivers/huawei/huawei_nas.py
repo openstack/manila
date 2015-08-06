@@ -46,7 +46,8 @@ class HuaweiNasDriver(driver.ShareDriver):
     API version history:
 
         1.0 - Initial version.
-        1.1 - Add shrink share
+        1.1 - Add shrink share.
+        1.2 - Add manage share.
     """
 
     def __init__(self, *args, **kwargs):
@@ -154,6 +155,13 @@ class HuaweiNasDriver(driver.ShareDriver):
         """Get number of network interfaces to be created."""
         LOG.debug("Get network allocations number.")
         return self.plugin.get_network_allocations_number()
+
+    def manage_existing(self, share, driver_options):
+        """Manage existing share."""
+        LOG.debug("Manage existing share to manila.")
+        share_size, location = self.plugin.manage_existing(share,
+                                                           driver_options)
+        return {'size': share_size, 'export_locations': location}
 
     def _update_share_stats(self):
         """Retrieve status info from share group."""

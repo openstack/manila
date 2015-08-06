@@ -16,6 +16,7 @@
 import time
 
 from oslo_log import log
+from oslo_utils import strutils
 from oslo_utils import units
 
 from manila.common import constants as common_constants
@@ -24,7 +25,9 @@ from manila.i18n import _, _LI, _LW
 from manila.share.drivers.huawei import base as driver
 from manila.share.drivers.huawei import constants
 from manila.share.drivers.huawei.v3 import helper
+from manila.share import share_types
 from manila.share import utils as share_utils
+
 
 LOG = log.getLogger(__name__)
 
@@ -423,6 +426,59 @@ class V3StorageConnection(driver.HuaweiBase):
         fileParam = self._init_filesys_para(share, poolinfo)
         fsid = self.helper._create_filesystem(fileParam)
         return fsid
+
+    def manage_existing(self, share, driver_options):
+        """Manage existing share."""
+        driver_mode = share_types.get_share_type_extra_specs(
+            share['share_type_id'],
+            common_constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS)
+
+        if strutils.bool_from_string(driver_mode):
+            msg = _("%(mode)s != False") % {
+                'mode':
+                common_constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+            }
+            raise exception.ManageExistingShareTypeMismatch(reason=msg)
+
+        share_proto = share['share_proto']
+        share_name = share['name']
+        old_export_location = share['export_locations'][0]['path']
+        pool_name = share_utils.extract_host(share['host'], level='pool')
+        share_url_type = self.helper._get_share_url_type(share_proto)
+
+        old_share_name = self.helper._get_share_name_by_export_location(
+            old_export_location, share_proto)
+
+        share = self.helper._get_share_by_name(old_share_name,
+                                               share_url_type)
+        if not share:
+            err_msg = (_("Can not get share ID by share %s.")
+                       % old_export_location)
+            LOG.error(err_msg)
+            raise exception.InvalidShare(reason=err_msg)
+
+        fs_id = share['FSID']
+        fs = self.helper._get_fs_info_by_id(fs_id)
+        if not self.check_fs_status(fs['HEALTHSTATUS'],
+                                    fs['RUNNINGSTATUS']):
+            raise exception.InvalidShare(
+                reason=(_('Invalid status of filesystem: %(health)s '
+                          '%(running)s.')
+                        % {'health': fs['HEALTHSTATUS'],
+                           'running': fs['RUNNINGSTATUS']}))
+
+        if pool_name and pool_name != fs['POOLNAME']:
+            raise exception.InvalidHost(
+                reason=(_('The current pool(%(fs_pool)s) of filesystem '
+                          'does not match the input pool(%(host_pool)s).')
+                        % {'fs_pool': fs['POOLNAME'],
+                           'host_pool': pool_name}))
+
+        self.helper._change_fs_name(fs_id, share_name)
+        share_size = int(fs['CAPACITY']) / units.Mi / 2
+
+        location = self._get_location_path(share_name, share_proto)
+        return (share_size, [location])
 
     def _get_location_path(self, share_name, share_proto):
         root = self.helper._read_xml()

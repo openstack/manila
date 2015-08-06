@@ -60,6 +60,10 @@ class HuaweiBase(object):
         """Shrinks size of existing share."""
 
     @abc.abstractmethod
+    def manage_existing(self, share, driver_options):
+        """Manage existing share."""
+
+    @abc.abstractmethod
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
 
