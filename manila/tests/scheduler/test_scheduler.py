@@ -89,6 +89,7 @@ class SchedulerManagerTestCase(test.TestCase):
         with mock.patch.object(self.manager.driver,
                                'schedule_create_share',
                                mock.Mock(side_effect=raise_no_valid_host)):
+            self.mock_object(manager.LOG, 'error')
             self.manager.create_share(self.context, topic, share_id,
                                       request_spec=request_spec,
                                       filter_properties={})
@@ -96,6 +97,7 @@ class SchedulerManagerTestCase(test.TestCase):
                 self.context, fake_share_id, {'status': 'error'})
             self.manager.driver.schedule_create_share.assert_called_once_with(
                 self.context, request_spec, {})
+            manager.LOG.error.assert_called_once_with(mock.ANY, mock.ANY)
 
     def test_get_pools(self):
         """Ensure get_pools exists and calls driver.get_pools."""

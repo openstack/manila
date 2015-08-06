@@ -27,7 +27,7 @@ from oslo_utils import importutils
 from manila import context
 from manila import db
 from manila import exception
-from manila.i18n import _LW
+from manila.i18n import _LE
 from manila import manager
 from manila import rpc
 from manila.share import rpcapi as share_rpcapi
@@ -96,8 +96,8 @@ class SchedulerManager(manager.Manager):
 
     def _set_share_error_state_and_notify(self, method, context, ex,
                                           request_spec):
-        LOG.warning(_LW("Failed to schedule_%(method)s: %(ex)s"),
-                    {"method": method, "ex": ex})
+        LOG.error(_LE("Failed to schedule_%(method)s: %(ex)s"),
+                  {"method": method, "ex": ex})
 
         share_state = {'status': 'error'}
         properties = request_spec.get('share_properties', {})
