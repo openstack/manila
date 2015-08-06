@@ -34,6 +34,8 @@ class HP3ParDriverTestCase(test.TestCase):
         self.conf = mock.Mock()
         self.conf.driver_handles_share_servers = False
         self.conf.hp3par_debug = constants.EXPECTED_HP_DEBUG
+        self.conf.hp3par_username = constants.USERNAME
+        self.conf.hp3par_password = constants.PASSWORD
         self.conf.hp3par_api_url = constants.API_URL
         self.conf.hp3par_san_login = constants.SAN_LOGIN
         self.conf.hp3par_san_password = constants.SAN_PASSWORD
@@ -70,9 +72,11 @@ class HP3ParDriverTestCase(test.TestCase):
         self.mock_mediator_constructor.assert_has_calls([
             mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
                       hp3par_san_password=conf.hp3par_san_password,
+                      hp3par_username=conf.hp3par_username,
                       hp3par_san_login=conf.hp3par_san_login,
                       hp3par_debug=conf.hp3par_debug,
                       hp3par_api_url=conf.hp3par_api_url,
+                      hp3par_password=conf.hp3par_password,
                       hp3par_san_ip=conf.hp3par_san_ip,
                       hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
@@ -96,9 +100,11 @@ class HP3ParDriverTestCase(test.TestCase):
         self.mock_mediator_constructor.assert_has_calls([
             mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
                       hp3par_san_password=conf.hp3par_san_password,
+                      hp3par_username=conf.hp3par_username,
                       hp3par_san_login=conf.hp3par_san_login,
                       hp3par_debug=conf.hp3par_debug,
                       hp3par_api_url=conf.hp3par_api_url,
+                      hp3par_password=conf.hp3par_password,
                       hp3par_san_ip=conf.hp3par_san_ip,
                       hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
@@ -118,9 +124,11 @@ class HP3ParDriverTestCase(test.TestCase):
         self.mock_mediator_constructor.assert_has_calls([
             mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
                       hp3par_san_password=conf.hp3par_san_password,
+                      hp3par_username=conf.hp3par_username,
                       hp3par_san_login=conf.hp3par_san_login,
                       hp3par_debug=conf.hp3par_debug,
                       hp3par_api_url=conf.hp3par_api_url,
+                      hp3par_password=conf.hp3par_password,
                       hp3par_san_ip=conf.hp3par_san_ip,
                       hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
@@ -437,28 +445,64 @@ class HP3ParDriverTestCase(test.TestCase):
         expected_capacity = constants.EXPECTED_SIZE_2
         expected_version = self.driver.VERSION
 
-        self.mock_mediator.get_capacity.return_value = {
+        self.mock_mediator.get_fpg_status.return_value = {
             'free_capacity_gb': expected_free,
-            'total_capacity_gb': expected_capacity
+            'total_capacity_gb': expected_capacity,
+            'thin_provisioning': True,
+            'dedupe': False,
+            'hpe3par_flash_cache': False,
         }
 
         expected_result = {
-            'driver_handles_share_servers': False,
             'QoS_support': False,
+            'driver_handles_share_servers': False,
             'driver_version': expected_version,
             'free_capacity_gb': expected_free,
+            'max_over_subscription_ratio': None,
+            'pools': None,
+            'provisioned_capacity_gb': 0,
             'reserved_percentage': 0,
             'share_backend_name': 'HP_3PAR',
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': expected_capacity,
             'vendor_name': 'HP',
-            'pools': None,
+            'thin_provisioning': True,
+            'dedupe': False,
+            'hpe3par_flash_cache': False,
         }
 
         result = self.driver.get_share_stats(refresh=True)
         self.assertEqual(expected_result, result)
 
         expected_calls = [
-            mock.call.get_capacity(constants.EXPECTED_FPG)
+            mock.call.get_fpg_status(constants.EXPECTED_FPG)
         ]
         self.mock_mediator.assert_has_calls(expected_calls)
+        self.assertTrue(self.mock_mediator.get_fpg_status.called)
+
+    def test_driver_get_share_stats_premature(self):
+        """Driver init stats before init_driver completed."""
+
+        expected_version = self.driver.VERSION
+
+        self.mock_mediator.get_fpg_status.return_value = {'not_called': 1}
+
+        expected_result = {
+            'QoS_support': False,
+            'driver_handles_share_servers': False,
+            'driver_version': expected_version,
+            'free_capacity_gb': 0,
+            'max_over_subscription_ratio': None,
+            'pools': None,
+            'provisioned_capacity_gb': 0,
+            'reserved_percentage': 0,
+            'share_backend_name': 'HP_3PAR',
+            'storage_protocol': 'NFS_CIFS',
+            'thin_provisioning': True,
+            'total_capacity_gb': 0,
+            'vendor_name': 'HP',
+        }
+
+        result = self.driver.get_share_stats(refresh=True)
+        self.assertEqual(expected_result, result)
+        self.assertFalse(self.mock_mediator.get_fpg_status.called)

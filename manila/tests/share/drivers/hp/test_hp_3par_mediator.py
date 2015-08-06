@@ -25,6 +25,7 @@ from manila import test
 from manila.tests.share.drivers.hp import test_hp_3par_constants as constants
 
 from oslo_utils import units
+import six
 
 CLIENT_VERSION_MIN_OK = hp3parmediator.MIN_CLIENT_VERSION
 TEST_WSAPI_VERSION_STR = '30201292'
@@ -53,6 +54,8 @@ class HP3ParMediatorTestCase(test.TestCase):
 
         # Set the mediator to use in tests.
         self.mediator = hp3parmediator.HP3ParMediator(
+            hp3par_username=constants.USERNAME,
+            hp3par_password=constants.PASSWORD,
             hp3par_api_url=constants.API_URL,
             hp3par_debug=constants.EXPECTED_HP_DEBUG,
             hp3par_san_ip=constants.EXPECTED_IP_1234,
@@ -153,6 +156,34 @@ class HP3ParMediatorTestCase(test.TestCase):
             mock.call.getWsApiVersion(),
             mock.call.debug_rest(constants.EXPECTED_HP_DEBUG)
         ]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_client_login_error(self):
+        """Test exception during login."""
+        self.init_mediator()
+
+        self.mock_client.login.side_effect = constants.FAKE_EXCEPTION
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator._wsapi_login)
+
+        expected_calls = [mock.call.login(constants.USERNAME,
+                                          constants.PASSWORD)]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_client_logout_error(self):
+        """Test exception during logout."""
+        self.init_mediator()
+
+        mock_log = self.mock_object(hp3parmediator, 'LOG')
+        fake_exception = constants.FAKE_EXCEPTION
+        self.mock_client.http.unauthenticate.side_effect = fake_exception
+
+        self.mediator._wsapi_logout()
+
+        # Warning is logged (no exception thrown).
+        self.assertTrue(mock_log.warning.called)
+        expected_calls = [mock.call.http.unauthenticate()]
         self.mock_client.assert_has_calls(expected_calls)
 
     def test_mediator_client_version_unsupported(self):
@@ -856,7 +887,8 @@ class HP3ParMediatorTestCase(test.TestCase):
         self.assertTrue(mock_log.debug.called)
         self.assertTrue(mock_log.exception.called)
 
-    def test_mediator_get_capacity(self):
+    @ddt.data(six.text_type('volname.1'), ['volname.2', 'volname.3'])
+    def test_mediator_get_fpg_status(self, volume_name_or_list):
         """Mediator converts client stats to capacity result."""
         expected_capacity = constants.EXPECTED_SIZE_2
         expected_free = constants.EXPECTED_SIZE_1
@@ -867,22 +899,118 @@ class HP3ParMediatorTestCase(test.TestCase):
             'members': [
                 {
                     'capacityKiB': str(expected_capacity * units.Mi),
-                    'availCapacityKiB': str(expected_free * units.Mi)
+                    'availCapacityKiB': str(expected_free * units.Mi),
+                    'vvs': volume_name_or_list,
                 }
             ],
             'message': None,
         }
 
-        expected_result = {
-            'free_capacity_gb': expected_free,
-            'total_capacity_gb': expected_capacity,
+        self.mock_client.getfsquota.return_value = {
+            'total': 3,
+            'members': [
+                {'hardBlock': 1 * units.Ki},
+                {'hardBlock': 2 * units.Ki},
+                {'hardBlock': 3 * units.Ki},
+            ],
+            'message': None,
         }
 
-        result = self.mediator.get_capacity(constants.EXPECTED_FPG)
+        self.mock_client.getVolume.return_value = {
+            'provisioningType': hp3parmediator.DEDUPE}
+
+        expected_result = {
+            'free_capacity_gb': expected_free,
+            'hp3par_flash_cache': False,
+            'dedupe': True,
+            'thin_provisioning': True,
+            'total_capacity_gb': expected_capacity,
+            'provisioned_capacity_gb': 6,
+        }
+
+        result = self.mediator.get_fpg_status(constants.EXPECTED_FPG)
         self.assertEqual(expected_result, result)
         expected_calls = [
             mock.call.getfpg(constants.EXPECTED_FPG)
         ]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_get_fpg_status_exception(self):
+        """Exception during get_fpg_status call to getfpg."""
+        self.init_mediator()
+
+        self.mock_client.getfpg.side_effect = constants.FAKE_EXCEPTION
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.get_fpg_status,
+                          constants.EXPECTED_FPG)
+
+        expected_calls = [mock.call.getfpg(constants.EXPECTED_FPG)]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_get_fpg_status_error(self):
+        """Unexpected result from getfpg during get_fpg_status."""
+        self.init_mediator()
+
+        self.mock_client.getfpg.return_value = {'total': 0}
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.get_fpg_status,
+                          constants.EXPECTED_FPG)
+
+        expected_calls = [mock.call.getfpg(constants.EXPECTED_FPG)]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_get_fpg_status_bad_prov_type(self):
+        """Test get_fpg_status handling of unexpected provisioning type."""
+        self.init_mediator()
+
+        self.mock_client.getfpg.return_value = {
+            'total': 1,
+            'members': [
+                {
+                    'capacityKiB': '1',
+                    'availCapacityKiB': '1',
+                    'vvs': 'foo',
+                }
+            ],
+            'message': None,
+        }
+        self.mock_client.getVolume.return_value = {
+            'provisioningType': 'BOGUS'}
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.get_fpg_status,
+                          constants.EXPECTED_FPG)
+
+        expected_calls = [mock.call.getfpg(constants.EXPECTED_FPG)]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_get_provisioned_error(self):
+        """Test error during get provisioned GB."""
+        self.init_mediator()
+
+        error_return = {'message': 'Some error happened.'}
+        self.mock_client.getfsquota.return_value = error_return
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.get_provisioned_gb,
+                          constants.EXPECTED_FPG)
+
+        expected_calls = [mock.call.getfsquota(fpg=constants.EXPECTED_FPG)]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_get_provisioned_exception(self):
+        """Test exception during get provisioned GB."""
+        self.init_mediator()
+
+        self.mock_client.getfsquota.side_effect = constants.FAKE_EXCEPTION
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.get_provisioned_gb,
+                          constants.EXPECTED_FPG)
+
+        expected_calls = [mock.call.getfsquota(fpg=constants.EXPECTED_FPG)]
         self.mock_client.assert_has_calls(expected_calls)
 
     def test_mediator_allow_user_access_cifs(self):

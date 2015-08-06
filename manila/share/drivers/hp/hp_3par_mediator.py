@@ -24,7 +24,7 @@ from oslo_utils import units
 import six
 
 from manila import exception
-from manila.i18n import _, _LI
+from manila.i18n import _, _LI, _LW
 
 hp3parclient = importutils.try_import("hp3parclient")
 if hp3parclient:
@@ -37,6 +37,11 @@ MIN_SMB_CA_VERSION = (3, 2, 2)
 DENY = '-'
 ALLOW = '+'
 OPEN_STACK_MANILA_FSHARE = 'OpenStack Manila fshare'
+FULL = 1
+THIN = 2
+DEDUPE = 6
+ENABLED = 1
+DISABLED = 2
 CACHE = 'cache'
 CONTINUOUS_AVAIL = 'continuous_avail'
 ACCESS_BASED_ENUM = 'access_based_enum'
@@ -53,6 +58,8 @@ class HP3ParMediator(object):
 
     def __init__(self, **kwargs):
 
+        self.hp3par_username = kwargs.get('hp3par_username')
+        self.hp3par_password = kwargs.get('hp3par_password')
         self.hp3par_api_url = kwargs.get('hp3par_api_url')
         self.hp3par_debug = kwargs.get('hp3par_debug')
         self.hp3par_san_ip = kwargs.get('hp3par_san_ip')
@@ -136,27 +143,104 @@ class HP3ParMediator(object):
         if self.hp3par_debug:
             self._client.debug_rest(True)  # Includes SSH debug (setSSH above)
 
-    def get_capacity(self, fpg):
+    def _wsapi_login(self):
+        try:
+            self._client.login(self.hp3par_username, self.hp3par_password)
+        except Exception as e:
+            msg = (_("Failed to Login to 3PAR (%(url)s) as %(user)s "
+                     "because: %(err)s") %
+                   {'url': self.hp3par_api_url,
+                    'user': self.hp3par_username,
+                    'err': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+
+    def _wsapi_logout(self):
+        try:
+            self._client.http.unauthenticate()
+        except Exception as e:
+            msg = _LW("Failed to Logout from 3PAR (%(url)s) because %(err)s")
+            LOG.warning(msg, {'url': self.hp3par_api_url,
+                              'err': six.text_type(e)})
+            # don't raise exception on logout()
+
+    def get_provisioned_gb(self, fpg):
+        total_mb = 0
+        try:
+            result = self._client.getfsquota(fpg=fpg)
+        except Exception as e:
+            result = {'message': six.text_type(e)}
+
+        error_msg = result.get('message')
+        if error_msg:
+            message = (_('Error while getting fsquotas for FPG '
+                         '%(fpg)s: %(msg)s') %
+                       {'fpg': fpg, 'msg': error_msg})
+            LOG.error(message)
+            raise exception.ShareBackendException(msg=message)
+
+        for fsquota in result['members']:
+            total_mb += float(fsquota['hardBlock'])
+        return total_mb / units.Ki
+
+    def get_fpg_status(self, fpg):
+        """Get capacity and capabilities for FPG."""
+
         try:
             result = self._client.getfpg(fpg)
         except Exception as e:
             msg = (_('Failed to get capacity for fpg %(fpg)s: %(e)s') %
                    {'fpg': fpg, 'e': six.text_type(e)})
             LOG.exception(msg)
-            raise exception.ShareBackendException(message=msg)
+            raise exception.ShareBackendException(msg=msg)
 
         if result['total'] != 1:
             msg = (_('Failed to get capacity for fpg %s.') % fpg)
             LOG.exception(msg)
-            raise exception.ShareBackendException(message=msg)
+            raise exception.ShareBackendException(msg=msg)
+
+        member = result['members'][0]
+        total_capacity_gb = float(member['capacityKiB']) / units.Mi
+        free_capacity_gb = float(member['availCapacityKiB']) / units.Mi
+
+        volumes = member['vvs']
+        if isinstance(volumes, list):
+            volume = volumes[0]  # Use first name from list
         else:
-            member = result['members'][0]
-            total_capacity_gb = int(member['capacityKiB']) / units.Mi
-            free_capacity_gb = int(member['availCapacityKiB']) / units.Mi
-            return {
-                'total_capacity_gb': total_capacity_gb,
-                'free_capacity_gb': free_capacity_gb
-            }
+            volume = volumes  # There is just a name
+
+        self._wsapi_login()
+        try:
+            volume_info = self._client.getVolume(volume)
+            volume_set = self._client.getVolumeSet(fpg)
+        finally:
+            self._wsapi_logout()
+
+        provisioning_type = volume_info['provisioningType']
+        if provisioning_type not in (THIN, FULL, DEDUPE):
+            msg = (_('Unexpected provisioning type for FPG %(fpg)s: '
+                     '%(ptype)s.') % {'fpg': fpg, 'ptype': provisioning_type})
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg=msg)
+
+        dedupe = provisioning_type == DEDUPE
+        thin_provisioning = provisioning_type in (THIN, DEDUPE)
+
+        flash_cache_policy = volume_set.get('flashCachePolicy', DISABLED)
+        hp3par_flash_cache = flash_cache_policy == ENABLED
+
+        status = {
+            'total_capacity_gb': total_capacity_gb,
+            'free_capacity_gb': free_capacity_gb,
+            'thin_provisioning': thin_provisioning,
+            'dedupe': dedupe,
+            'hp3par_flash_cache': hp3par_flash_cache,
+        }
+
+        if thin_provisioning:
+            status['provisioned_capacity_gb'] = self.get_provisioned_gb(fpg)
+
+        return status
 
     @staticmethod
     def ensure_supported_protocol(share_proto):

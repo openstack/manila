@@ -35,6 +35,13 @@ HP3PAR_OPTS = [
                default='',
                help="3PAR WSAPI Server Url like "
                     "https://<3par ip>:8080/api/v1"),
+    cfg.StrOpt('hp3par_username',
+               default='',
+               help="3PAR username with the 'edit' role"),
+    cfg.StrOpt('hp3par_password',
+               default='',
+               help="3PAR password for the user specified in hp3par_username",
+               secret=True),
     cfg.StrOpt('hp3par_san_ip',
                default='',
                help="IP address of SAN controller"),
@@ -101,6 +108,8 @@ class HP3ParShareDriver(driver.ShareDriver):
                   "hp3par_share_ip_address is not set."))
 
         mediator = hp_3par_mediator.HP3ParMediator(
+            hp3par_username=self.configuration.hp3par_username,
+            hp3par_password=self.configuration.hp3par_password,
             hp3par_api_url=self.configuration.hp3par_api_url,
             hp3par_debug=self.configuration.hp3par_debug,
             hp3par_san_ip=self.configuration.hp3par_san_ip,
@@ -261,20 +270,11 @@ class HP3ParShareDriver(driver.ShareDriver):
     def _update_share_stats(self):
         """Retrieve stats info from share group."""
 
-        if not self._hp3par:
-            LOG.info(
-                _LI("Skipping share statistics update. Setup has not "
-                    "completed."))
-            total_capacity_gb = 0
-            free_capacity_gb = 0
-        else:
-            capacity_stats = self._hp3par.get_capacity(self.fpg)
-            LOG.debug("Share capacity = %s.", capacity_stats)
-            total_capacity_gb = capacity_stats['total_capacity_gb']
-            free_capacity_gb = capacity_stats['free_capacity_gb']
-
         backend_name = self.configuration.safe_get(
             'share_backend_name') or "HP_3PAR"
+
+        max_over_subscription_ratio = self.configuration.safe_get(
+            'max_over_subscription_ratio')
 
         reserved_share_percentage = self.configuration.safe_get(
             'reserved_share_percentage')
@@ -287,10 +287,22 @@ class HP3ParShareDriver(driver.ShareDriver):
             'vendor_name': 'HP',
             'driver_version': self.VERSION,
             'storage_protocol': 'NFS_CIFS',
-            'total_capacity_gb': total_capacity_gb,
-            'free_capacity_gb': free_capacity_gb,
+            'total_capacity_gb': 0,
+            'free_capacity_gb': 0,
+            'provisioned_capacity_gb': 0,
             'reserved_percentage': reserved_share_percentage,
+            'max_over_subscription_ratio': max_over_subscription_ratio,
             'QoS_support': False,
+            'thin_provisioning': True,  # 3PAR default is thin
         }
+
+        if not self._hp3par:
+            LOG.info(
+                _LI("Skipping capacity and capabilities update. Setup has not "
+                    "completed."))
+        else:
+            fpg_status = self._hp3par.get_fpg_status(self.fpg)
+            LOG.debug("FPG status = %s.", fpg_status)
+            stats.update(fpg_status)
 
         super(HP3ParShareDriver, self)._update_share_stats(stats)
