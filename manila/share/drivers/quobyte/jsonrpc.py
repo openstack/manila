@@ -19,7 +19,6 @@ Control Quobyte over its JSON RPC API.
 """
 
 import base64
-import httplib
 import socket
 import ssl
 import time
@@ -27,6 +26,7 @@ import time
 from oslo_log import log
 from oslo_serialization import jsonutils
 import six
+from six.moves import http_client
 import six.moves.urllib.parse as urlparse
 
 from manila import exception
@@ -55,15 +55,15 @@ class BasicAuthCredentials(object):
         return 'BASIC %s' % auth
 
 
-class HTTPSConnectionWithCaVerification(httplib.HTTPConnection):
+class HTTPSConnectionWithCaVerification(http_client.HTTPConnection):
     """Verify server cert against a given CA certificate."""
 
-    default_port = httplib.HTTPS_PORT
+    default_port = http_client.HTTPS_PORT
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  ca_file=None, strict=None,
                  timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
-        httplib.HTTPConnection.__init__(self, host, port, strict, timeout)
+        http_client.HTTPConnection.__init__(self, host, port, strict, timeout)
         self.key_file = key_file
         self.cert_file = cert_file
         self.ca_file = ca_file
@@ -79,7 +79,7 @@ class HTTPSConnectionWithCaVerification(httplib.HTTPConnection):
                                     ca_certs=self.ca_file,
                                     cert_reqs=ssl.CERT_REQUIRED)
 
-    httplib.__all__.append("HTTPSConnectionWithCaVerification")
+    http_client.__all__.append("HTTPSConnectionWithCaVerification")
 
 
 class JsonRpc(object):
@@ -94,12 +94,12 @@ class JsonRpc(object):
                     self._netloc,
                     ca_file=self._ca_file.name)
             else:
-                self._connection = httplib.HTTPSConnection(self._netloc)
+                self._connection = http_client.HTTPSConnection(self._netloc)
                 LOG.warning(_LW(
                     "Will not verify the server certificate of the API service"
                     " because the CA certificate is not available."))
         else:
-            self._connection = httplib.HTTPConnection(self._netloc)
+            self._connection = http_client.HTTPConnection(self._netloc)
         self._id = 0
         self._fail_fast = True
         self._credentials = BasicAuthCredentials(
@@ -117,7 +117,7 @@ class JsonRpc(object):
                      'params': parameters,
                      'id': six.text_type(self._id)}
         self.call_counter = 0
-        self._connection.connect()  # prevents httplib timing issue
+        self._connection.connect()  # prevents http_client timing issue
 
         while self.call_counter < CONNECTION_RETRIES:
             self.call_counter += 1
@@ -146,18 +146,19 @@ class JsonRpc(object):
                         "API service against CA."))
                     self._connection.close()
                     # Core HTTPSConnection does no certificate verification.
-                    self._connection = httplib.HTTPSConnection(self._netloc)
+                    self._connection = http_client.HTTPSConnection(
+                        self._netloc)
                     self._disabled_cert_verification = True
                 else:
                     raise exception.QBException(_(
                         "Client SSL subsystem returned error: %s") % e)
-            except httplib.BadStatusLine as e:
+            except http_client.BadStatusLine as e:
                 raise exception.QBException(_(
                     "If SSL is enabled for the API service, the URL must"
                     " start with 'https://' for the URL. Failed to parse"
                     " status code from server response. Error was %s")
                     % e)
-            except (httplib.HTTPException, socket.error) as e:
+            except (http_client.HTTPException, socket.error) as e:
                 if self._fail_fast:
                     raise exception.QBException(msg=six.text_type(e))
                 else:

@@ -18,11 +18,11 @@ TODO(diemtran): this module needs to be placed in a library common to OpenStack
     base and imported from the relevant library.
 """
 
-import httplib
 import time
 
 from oslo_serialization import jsonutils
 import six
+from six.moves import http_client
 # pylint: disable=E0611,F0401
 from six.moves.urllib import error as urlerror
 from six.moves.urllib import request as urlrequest
@@ -37,40 +37,40 @@ class Status(object):
     """Result HTTP Status."""
 
     #: Request return OK
-    OK = httplib.OK  # pylint: disable=invalid-name
+    OK = http_client.OK  # pylint: disable=invalid-name
 
     #: New resource created successfully
-    CREATED = httplib.CREATED
+    CREATED = http_client.CREATED
 
     #: Command accepted
-    ACCEPTED = httplib.ACCEPTED
+    ACCEPTED = http_client.ACCEPTED
 
     #: Command returned OK but no data will be returned
-    NO_CONTENT = httplib.NO_CONTENT
+    NO_CONTENT = http_client.NO_CONTENT
 
     #: Bad Request
-    BAD_REQUEST = httplib.BAD_REQUEST
+    BAD_REQUEST = http_client.BAD_REQUEST
 
     #: User is not authorized
-    UNAUTHORIZED = httplib.UNAUTHORIZED
+    UNAUTHORIZED = http_client.UNAUTHORIZED
 
     #: The request is not allowed
-    FORBIDDEN = httplib.FORBIDDEN
+    FORBIDDEN = http_client.FORBIDDEN
 
     #: The requested resource was not found
-    NOT_FOUND = httplib.NOT_FOUND
+    NOT_FOUND = http_client.NOT_FOUND
 
     #: The request is not allowed
-    NOT_ALLOWED = httplib.METHOD_NOT_ALLOWED
+    NOT_ALLOWED = http_client.METHOD_NOT_ALLOWED
 
     #: Request timed out
-    TIMEOUT = httplib.REQUEST_TIMEOUT
+    TIMEOUT = http_client.REQUEST_TIMEOUT
 
     #: Invalid request
-    CONFLICT = httplib.CONFLICT
+    CONFLICT = http_client.CONFLICT
 
     #: Service Unavailable
-    BUSY = httplib.SERVICE_UNAVAILABLE
+    BUSY = http_client.SERVICE_UNAVAILABLE
 
 
 class RestResult(object):
@@ -96,7 +96,7 @@ class RestResult(object):
 
         if self.error:
             self.status = self.error.code
-            self.data = httplib.responses[self.status]
+            self.data = http_client.responses[self.status]
 
         log_debug_msg(self, 'Response code: %s' % self.status)
         log_debug_msg(self, 'Response data: %s' % self.data)
@@ -127,8 +127,8 @@ class RestClientError(Exception):
         self.code = status
         self.name = name
         self.msg = message
-        if status in httplib.responses:
-            self.msg = httplib.responses[status]
+        if status in http_client.responses:
+            self.msg = http_client.responses[status]
 
     def __str__(self):
         return "%d %s %s" % (self.code, self.name, self.msg)
@@ -180,14 +180,14 @@ class RestClientURL(object):  # pylint: disable=R0902
         try:
             result = self.post("/access/v1")
             del self.headers['authorization']
-            if result.status == httplib.CREATED:
+            if result.status == http_client.CREATED:
                 self.headers['x-auth-session'] = \
                     result.get_header('x-auth-session')
                 self.do_logout = True
                 log_debug_msg(self, ('ZFSSA version: %s')
                               % result.get_header('x-zfssa-version'))
 
-            elif result.status == httplib.NOT_FOUND:
+            elif result.status == http_client.NOT_FOUND:
                 raise RestClientError(result.status, name="ERR_RESTError",
                                       message=("REST Not Available:"
                                                "Please Upgrade"))
@@ -285,20 +285,20 @@ class RestClientURL(object):  # pylint: disable=R0902
             try:
                 response = urlrequest.urlopen(req, timeout=self.timeout)
             except urlerror.HTTPError as err:
-                if err.code == httplib.NOT_FOUND:
+                if err.code == http_client.NOT_FOUND:
                     log_debug_msg(self, 'REST Not Found: %s' % err.code)
                 else:
                     log_debug_msg(self, ('REST Not Available: %s') % err.code)
 
-                if (err.code == httplib.SERVICE_UNAVAILABLE and
+                if (err.code == http_client.SERVICE_UNAVAILABLE and
                         retry < maxreqretries):
                     retry += 1
                     time.sleep(1)
                     log_debug_msg(self, ('Server Busy retry request: %s')
                                   % retry)
                     continue
-                if ((err.code == httplib.UNAUTHORIZED or
-                     err.code == httplib.INTERNAL_SERVER_ERROR) and
+                if ((err.code == http_client.UNAUTHORIZED or
+                     err.code == http_client.INTERNAL_SERVER_ERROR) and
                         '/access/v1' not in zfssaurl):
                     try:
                         log_debug_msg(self, ('Authorizing request: '
@@ -324,7 +324,7 @@ class RestClientURL(object):  # pylint: disable=R0902
             break
 
         if ((response and
-             response.getcode() == httplib.SERVICE_UNAVAILABLE) and
+             response.getcode() == http_client.SERVICE_UNAVAILABLE) and
                 retry >= maxreqretries):
             raise RestClientError(response.getcode(), name="ERR_HTTPError",
                                   message="REST Not Available: Disabled")

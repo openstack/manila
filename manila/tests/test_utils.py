@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import __builtin__
 import datetime
 import errno
 import os
@@ -29,6 +28,7 @@ import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
 import paramiko
+from six.moves import builtins
 
 import manila
 from manila import exception
@@ -210,7 +210,7 @@ class GenericUtilsTestCase(test.TestCase):
             fake_context_manager.__enter__ = mock.Mock(return_value=fake_file)
             fake_context_manager.__exit__ = mock.Mock()
             with mock.patch.object(
-                    __builtin__, 'open',
+                    builtins, 'open',
                     mock.Mock(return_value=fake_context_manager)):
                 cache_data = {"data": 1123, "mtime": 1}
                 self.reload_called = False
@@ -226,7 +226,7 @@ class GenericUtilsTestCase(test.TestCase):
                 self.assertTrue(self.reload_called)
                 fake_file.read.assert_called_once_with()
                 fake_context_manager.__enter__.assert_any_call()
-                __builtin__.open.assert_called_once_with("/this/is/a/fake")
+                builtins.open.assert_called_once_with("/this/is/a/fake")
                 os.path.getmtime.assert_called_once_with("/this/is/a/fake")
 
     def test_read_file_as_root(self):
@@ -288,8 +288,8 @@ class GenericUtilsTestCase(test.TestCase):
     def test_is_ipv6_configured0(self):
         fake_fd = mock.Mock()
         fake_fd.read.return_value = 'test'
-        with mock.patch(
-                '__builtin__.open', mock.Mock(return_value=fake_fd)) as open:
+        with mock.patch('six.moves.builtins.open',
+                        mock.Mock(return_value=fake_fd)) as open:
             self.assertTrue(utils.is_ipv6_configured())
 
             open.assert_called_once_with('/proc/net/if_inet6')
@@ -299,17 +299,19 @@ class GenericUtilsTestCase(test.TestCase):
         fake_fd = mock.Mock()
         fake_fd.read.return_value = ''
         with mock.patch(
-                '__builtin__.open', mock.Mock(return_value=fake_fd)):
+                'six.moves.builtins.open', mock.Mock(return_value=fake_fd)):
             self.assertFalse(utils.is_ipv6_configured())
 
     def test_is_ipv6_configured2(self):
-        with mock.patch('__builtin__.open', mock.Mock(side_effect=IOError(
-                errno.ENOENT, 'Fake no such file error.'))):
+        with mock.patch('six.moves.builtins.open',
+                        mock.Mock(side_effect=IOError(
+                            errno.ENOENT, 'Fake no such file error.'))):
             self.assertFalse(utils.is_ipv6_configured())
 
     def test_is_ipv6_configured3(self):
-        with mock.patch('__builtin__.open', mock.Mock(side_effect=IOError(
-                errno.EPERM, 'Fake no such file error.'))):
+        with mock.patch('six.moves.builtins.open',
+                        mock.Mock(side_effect=IOError(
+                            errno.EPERM, 'Fake no such file error.'))):
             self.assertRaises(IOError, utils.is_ipv6_configured)
 
     def test_is_eventlet_bug105(self):

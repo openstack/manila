@@ -12,7 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import cookielib
 import random
 import re
 
@@ -21,6 +20,7 @@ from lxml import builder
 from lxml import etree as ET
 from oslo_log import log
 import six
+from six.moves import http_cookiejar
 from six.moves.urllib import error as url_error  # pylint: disable=E0611
 from six.moves.urllib import request as url_request  # pylint: disable=E0611
 
@@ -49,7 +49,7 @@ class XMLAPIConnector(object):
         self._url = ('https://' + self.storage_ip
                      + '/servlets/CelerraManagementServices')
         https_handler = url_request.HTTPSHandler()
-        cookie_jar = cookielib.CookieJar()
+        cookie_jar = http_cookiejar.CookieJar()
         cookie_handler = url_request.HTTPCookieProcessor(cookie_jar)
         self.url_opener = url_request.build_opener(https_handler,
                                                    cookie_handler)
