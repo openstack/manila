@@ -1009,7 +1009,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.compute_api.server_create.assert_called_once_with(
             self._manager.admin_context, name=instance_name,
             image=service_image_id, flavor=100,
-            key_name=key_data[0], nics=network_data['nics'])
+            key_name=key_data[0], nics=network_data['nics'],
+            availability_zone=service_instance.CONF.storage_availability_zone)
         self._manager.compute_api.server_get.assert_called_once_with(
             self._manager.admin_context, server_create['id'])
         if helper_type == service_instance.NEUTRON_NAME:
@@ -1075,7 +1076,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.compute_api.server_create.assert_called_once_with(
             self._manager.admin_context, name=instance_name,
             image=service_image_id, flavor=100,
-            key_name=key_data[0], nics=network_data['nics'])
+            key_name=key_data[0], nics=network_data['nics'],
+            availability_zone=service_instance.CONF.storage_availability_zone)
 
     def test___create_service_instance_failed_to_build(self):
         server_create = dict(id='fakeid', status='CREATING', networks=dict())
@@ -1119,7 +1121,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self._manager.compute_api.server_create.assert_called_once_with(
             self._manager.admin_context, name=instance_name,
             image=service_image_id, flavor=100,
-            key_name=key_data[0], nics=network_data['nics'])
+            key_name=key_data[0], nics=network_data['nics'],
+            availability_zone=service_instance.CONF.storage_availability_zone)
 
     @ddt.data(
         dict(name=None, path=None),
