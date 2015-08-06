@@ -16,8 +16,6 @@
 Handles all requests to Nova.
 """
 
-import sys
-
 from novaclient import exceptions as nova_exception
 from novaclient import service_catalog
 from novaclient import utils
@@ -26,6 +24,7 @@ from novaclient.v2.contrib import assisted_volume_snapshots
 from novaclient.v2 import servers as nova_servers
 from oslo_config import cfg
 from oslo_log import log
+import six
 
 from manila.db import base
 from manila import exception
@@ -152,13 +151,11 @@ def translate_server_exception(method):
     def wrapper(self, ctx, instance_id, *args, **kwargs):
         try:
             res = method(self, ctx, instance_id, *args, **kwargs)
-        except nova_exception.ClientException:
-            exc_type, exc_value, exc_trace = sys.exc_info()
-            if isinstance(exc_value, nova_exception.NotFound):
-                exc_value = exception.InstanceNotFound(instance_id=instance_id)
-            elif isinstance(exc_value, nova_exception.BadRequest):
-                exc_value = exception.InvalidInput(reason=exc_value.message)
-            raise exc_value, None, exc_trace
+        except nova_exception.ClientException as e:
+            if isinstance(e, nova_exception.NotFound):
+                raise exception.InstanceNotFound(instance_id=instance_id)
+            elif isinstance(e, nova_exception.BadRequest):
+                raise exception.InvalidInput(reason=six.text_type(e))
         return res
     return wrapper
 

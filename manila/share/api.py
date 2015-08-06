@@ -166,7 +166,7 @@ class API(base.Base):
         try:
             is_public = strutils.bool_from_string(is_public, strict=True)
         except ValueError as e:
-            raise exception.InvalidParameterValue(e.message)
+            raise exception.InvalidParameterValue(six.text_type(e))
 
         options = {'size': size,
                    'user_id': context.user_id,
@@ -432,7 +432,7 @@ class API(base.Base):
                 fields['is_public'] = strutils.bool_from_string(
                     fields['is_public'], strict=True)
             except ValueError as e:
-                raise exception.InvalidParameterValue(e.message)
+                raise exception.InvalidParameterValue(six.text_type(e))
         return self.db.share_update(context, share['id'], fields)
 
     @policy.wrap_check_policy('share')

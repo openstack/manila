@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 from novaclient import exceptions as nova_exception
 from novaclient import utils
@@ -85,6 +86,7 @@ class FakeNovaClient(object):
         self.fixed_ips = self.FixedIPs()
 
 
+@ddt.ddt
 class NovaApiTestCase(test.TestCase):
     def setUp(self):
         super(NovaApiTestCase, self).setUp()
@@ -123,11 +125,17 @@ class NovaApiTestCase(test.TestCase):
         self.assertEqual(instance_id, result['id'])
         utils.find_resource.assert_called_once_with(mock.ANY, instance_id)
 
-    def test_server_get_failed(self):
-        nova.novaclient.side_effect = nova_exception.NotFound(404)
+    @ddt.data(
+        {'nova_e': nova_exception.NotFound(404),
+         'manila_e': exception.InstanceNotFound},
+        {'nova_e': nova_exception.BadRequest(400),
+         'manila_e': exception.InvalidInput},
+    )
+    @ddt.unpack
+    def test_server_get_failed(self, nova_e, manila_e):
+        nova.novaclient.side_effect = nova_e
         instance_id = 'instance_id'
-        self.assertRaises(exception.InstanceNotFound,
-                          self.api.server_get, self.ctx, instance_id)
+        self.assertRaises(manila_e, self.api.server_get, self.ctx, instance_id)
 
     def test_server_list(self):
         self.assertEqual([{'id': 'id1'}, {'id': 'id2'}],

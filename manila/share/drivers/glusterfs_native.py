@@ -166,7 +166,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             try:
                 glusterfs_versions[srvaddr] = gluster_mgr.get_gluster_version()
             except exception.GlusterfsException as exc:
-                exceptions[srvaddr] = exc.message
+                exceptions[srvaddr] = six.text_type(exc)
         if exceptions:
             for srvaddr, excmsg in six.iteritems(exceptions):
                 LOG.error(_LE("'gluster version' failed on server "
