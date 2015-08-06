@@ -845,7 +845,7 @@ class ShareManager(manager.SchedulerDependentManager):
         elif (network_info['network_type'] == 'vlan'
               and (network_info['segmentation_id'] is None
                    or int(network_info['segmentation_id']) > 4094
-                   or int(network_info['segmentation_id'] < 1))):
+                   or int(network_info['segmentation_id']) < 1)):
             msg = _('A segmentation ID %s was specified but is not valid for '
                     'a VLAN network type; the segmentation ID must be an '
                     'integer value in the range of [1,4094]')
@@ -854,7 +854,7 @@ class ShareManager(manager.SchedulerDependentManager):
         elif (network_info['network_type'] == 'vxlan'
               and (network_info['segmentation_id'] is None
                    or int(network_info['segmentation_id']) > 16777215
-                   or int(network_info['segmentation_id'] < 1))):
+                   or int(network_info['segmentation_id']) < 1)):
             msg = _('A segmentation ID %s was specified but is not valid for '
                     'a VXLAN network type; the segmentation ID must be an '
                     'integer value in the range of [1,16777215]')
@@ -863,7 +863,7 @@ class ShareManager(manager.SchedulerDependentManager):
         elif (network_info['network_type'] == 'gre'
               and (network_info['segmentation_id'] is None
                    or int(network_info['segmentation_id']) > 4294967295
-                   or int(network_info['segmentation_id'] < 1))):
+                   or int(network_info['segmentation_id']) < 1)):
             msg = _('A segmentation ID %s was specified but is not valid for '
                     'a GRE network type; the segmentation ID must be an '
                     'integer value in the range of [1, 4294967295]')

@@ -299,7 +299,7 @@ class ShareDriver(object):
     def check_for_setup_error(self):
         """Check for setup error."""
         max_ratio = self.configuration.safe_get('max_over_subscription_ratio')
-        if max_ratio < 1.0:
+        if not max_ratio or float(max_ratio) < 1.0:
             msg = (_("Invalid max_over_subscription_ratio '%s'. "
                      "Valid value should be >= 1.0.") % max_ratio)
             raise exception.InvalidParameterValue(err=msg)
