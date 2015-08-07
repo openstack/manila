@@ -35,11 +35,20 @@ FLEXVOL_NAME = 'fake_volume'
 JUNCTION_PATH = '/%s' % FLEXVOL_NAME
 EXPORT_LOCATION = '%s:%s' % (HOST_NAME, JUNCTION_PATH)
 SNAPSHOT_NAME = 'fake_snapshot'
+CONSISTENCY_GROUP_NAME = 'fake_consistency_group'
 SHARE_SIZE = 10
 TENANT_ID = '24cb2448-13d8-4f41-afd9-eff5c4fd2a57'
 SHARE_ID = '7cf7c200-d3af-4e05-b87e-9167c95dfcad'
+SHARE_ID2 = 'b51c5a31-aa5b-4254-9ee8-7d39fa4c8c38'
+SHARE_ID3 = '1379991d-037b-4897-bf3a-81b4aac72eff'
+SHARE_ID4 = '1cb41aad-fd9b-4964-8059-646f69de925e'
 PARENT_SHARE_ID = '585c3935-2aa9-437c-8bad-5abae1076555'
 SNAPSHOT_ID = 'de4c9050-e2f9-4ce1-ade4-5ed0c9f26451'
+CONSISTENCY_GROUP_ID = '65bfa2c9-dc6c-4513-951a-b8d15b453ad8'
+CONSISTENCY_GROUP_ID2 = '35f5c1ea-45fb-40c4-98ae-2a2a17554159'
+CG_SNAPSHOT_ID = '6ddd8a6b-5df7-417b-a2ae-3f6e449f4eea'
+CG_SNAPSHOT_MEMBER_ID1 = '629f79ef-b27e-4596-9737-30f084e5ba29'
+CG_SNAPSHOT_MEMBER_ID2 = 'e876aa9c-a322-4391-bd88-9266178262be'
 FREE_CAPACITY = 10000000000
 TOTAL_CAPACITY = 20000000000
 AGGREGATES = ('manila_aggr_1', 'manila_aggr_2')
@@ -223,6 +232,113 @@ CDOT_SNAPSHOT_BUSY_VOLUME_CLONE = {
     'busy': True,
     'owners': {'volume clone'},
 }
+
+SHARE_FOR_CG1 = {
+    'id': SHARE_ID,
+    'host': '%(host)s@%(backend)s#%(pool)s' % {
+        'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
+    'name': 'share1',
+    'share_proto': 'NFS',
+    'source_cgsnapshot_member_id': None,
+}
+
+SHARE_FOR_CG2 = {
+    'id': SHARE_ID2,
+    'host': '%(host)s@%(backend)s#%(pool)s' % {
+        'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
+    'name': 'share2',
+    'share_proto': 'NFS',
+    'source_cgsnapshot_member_id': None,
+}
+
+# Clone dest of SHARE_FOR_CG1
+SHARE_FOR_CG3 = {
+    'id': SHARE_ID3,
+    'host': '%(host)s@%(backend)s#%(pool)s' % {
+        'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
+    'name': 'share3',
+    'share_proto': 'NFS',
+    'source_cgsnapshot_member_id': CG_SNAPSHOT_MEMBER_ID1,
+}
+
+# Clone dest of SHARE_FOR_CG2
+SHARE_FOR_CG4 = {
+    'id': SHARE_ID4,
+    'host': '%(host)s@%(backend)s#%(pool)s' % {
+        'host': HOST_NAME, 'backend': BACKEND_NAME, 'pool': POOL_NAME},
+    'name': 'share4',
+    'share_proto': 'NFS',
+    'source_cgsnapshot_member_id': CG_SNAPSHOT_MEMBER_ID2,
+}
+
+EMPTY_CONSISTENCY_GROUP = {
+    'cgsnapshots': [],
+    'description': 'fake description',
+    'host': '%(host)s@%(backend)s' % {
+        'host': HOST_NAME, 'backend': BACKEND_NAME},
+    'id': CONSISTENCY_GROUP_ID,
+    'name': CONSISTENCY_GROUP_NAME,
+    'shares': [],
+}
+
+CONSISTENCY_GROUP = {
+    'cgsnapshots': [],
+    'description': 'fake description',
+    'host': '%(host)s@%(backend)s' % {
+        'host': HOST_NAME, 'backend': BACKEND_NAME},
+    'id': CONSISTENCY_GROUP_ID,
+    'name': CONSISTENCY_GROUP_NAME,
+    'shares': [SHARE_FOR_CG1, SHARE_FOR_CG2],
+}
+
+CONSISTENCY_GROUP_DEST = {
+    'cgsnapshots': [],
+    'description': 'fake description',
+    'host': '%(host)s@%(backend)s' % {
+        'host': HOST_NAME, 'backend': BACKEND_NAME},
+    'id': CONSISTENCY_GROUP_ID,
+    'name': CONSISTENCY_GROUP_NAME,
+    'shares': [SHARE_FOR_CG3, SHARE_FOR_CG4],
+}
+
+CG_SNAPSHOT_MEMBER_1 = {
+    'cgsnapshot_id': CG_SNAPSHOT_ID,
+    'id': CG_SNAPSHOT_MEMBER_ID1,
+    'share_id': SHARE_ID,
+    'share_proto': 'NFS',
+}
+
+CG_SNAPSHOT_MEMBER_2 = {
+    'cgsnapshot_id': CG_SNAPSHOT_ID,
+    'id': CG_SNAPSHOT_MEMBER_ID2,
+    'share_id': SHARE_ID2,
+    'share_proto': 'NFS',
+}
+
+CG_SNAPSHOT = {
+    'cgsnapshot_members': [CG_SNAPSHOT_MEMBER_1, CG_SNAPSHOT_MEMBER_2],
+    'consistency_group': CONSISTENCY_GROUP,
+    'consistency_group_id': CONSISTENCY_GROUP_ID,
+    'id': CG_SNAPSHOT_ID,
+    'project_id': TENANT_ID,
+}
+
+COLLATED_CGSNAPSHOT_INFO = [
+    {
+        'share': SHARE_FOR_CG3,
+        'snapshot': {
+            'share_id': SHARE_ID,
+            'id': CG_SNAPSHOT_ID
+        }
+    },
+    {
+        'share': SHARE_FOR_CG4,
+        'snapshot': {
+            'share_id': SHARE_ID2,
+            'id': CG_SNAPSHOT_ID
+        }
+    },
+]
 
 LIF_NAMES = []
 LIF_ADDRESSES = ['10.10.10.10', '10.10.10.20']

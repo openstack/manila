@@ -1499,6 +1499,32 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('snapshot-delete', api_args)
 
     @na_utils.trace
+    def create_cg_snapshot(self, volume_names, snapshot_name):
+        """Creates a consistency group snapshot of one or more flexvols."""
+        cg_id = self._start_cg_snapshot(volume_names, snapshot_name)
+        if not cg_id:
+            msg = _('Could not start consistency group snapshot %s.')
+            raise exception.NetAppException(msg % snapshot_name)
+        self._commit_cg_snapshot(cg_id)
+
+    @na_utils.trace
+    def _start_cg_snapshot(self, volume_names, snapshot_name):
+        api_args = {
+            'snapshot': snapshot_name,
+            'timeout': 'relaxed',
+            'volumes': [
+                {'volume-name': volume_name} for volume_name in volume_names
+            ],
+        }
+        result = self.send_request('cg-start', api_args)
+        return result.get_child_content('cg-id')
+
+    @na_utils.trace
+    def _commit_cg_snapshot(self, cg_id):
+        api_args = {'cg-id': cg_id}
+        self.send_request('cg-commit', api_args)
+
+    @na_utils.trace
     def create_cifs_share(self, share_name):
         share_path = '/%s' % share_name
         api_args = {'path': share_path, 'share-name': share_name}

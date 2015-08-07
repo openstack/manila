@@ -67,6 +67,25 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def shrink_share(self, share, new_size, **kwargs):
         self.library.shrink_share(share, new_size, **kwargs)
 
+    def create_consistency_group(self, context, cg_dict, **kwargs):
+        return self.library.create_consistency_group(context, cg_dict,
+                                                     **kwargs)
+
+    def create_consistency_group_from_cgsnapshot(self, context, cg_dict,
+                                                 cgsnapshot_dict, **kwargs):
+        return self.library.create_consistency_group_from_cgsnapshot(
+            context, cg_dict, cgsnapshot_dict, **kwargs)
+
+    def delete_consistency_group(self, context, cg_dict, **kwargs):
+        return self.library.delete_consistency_group(context, cg_dict,
+                                                     **kwargs)
+
+    def create_cgsnapshot(self, context, snap_dict, **kwargs):
+        return self.library.create_cgsnapshot(context, snap_dict, **kwargs)
+
+    def delete_cgsnapshot(self, context, snap_dict, **kwargs):
+        return self.library.delete_cgsnapshot(context, snap_dict, **kwargs)
+
     def ensure_share(self, context, share, **kwargs):
         pass
 
