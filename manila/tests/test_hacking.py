@@ -16,6 +16,8 @@ import textwrap
 
 import mock
 import pep8
+import six
+import testtools
 
 from manila.hacking import checks
 from manila import test
@@ -113,6 +115,7 @@ class HackingTestCase(test.TestCase):
                          self._run_check(code, checker, filename)]
         self.assertEqual(expected_errors or [], actual_errors)
 
+    @testtools.skipIf(six.PY3, "It is PY2-specific. Skip it for PY3.")
     def test_str_exception(self):
 
         checker = checks.CheckForStrExc
@@ -177,8 +180,12 @@ class HackingTestCase(test.TestCase):
                    msg = 'add to me' + _('test')
                    return msg
                """
-        errors = [(13, 10, 'M326'), (14, 10, 'M326'), (15, 10, 'M326'),
-                  (16, 10, 'M326'), (17, 10, 'M326'), (18, 24, 'M326')]
+        if six.PY2:
+            errors = [(13, 10, 'M326'), (14, 10, 'M326'), (15, 10, 'M326'),
+                      (16, 10, 'M326'), (17, 10, 'M326'), (18, 24, 'M326')]
+        else:
+            errors = [(13, 11, 'M326'), (14, 13, 'M326'), (15, 13, 'M326'),
+                      (16, 13, 'M326'), (17, 13, 'M326'), (18, 25, 'M326')]
         self._assert_has_errors(code, checker, expected_errors=errors)
 
         code = """
