@@ -238,8 +238,10 @@ class HostManagerTestCase(test.TestCase):
                     },
                 },
             ]
+            self.assertTrue(isinstance(res, list))
             self.assertEqual(len(expected), len(res))
-            self.assertEqual(sorted(expected), sorted(res))
+            for pool in expected:
+                self.assertIn(pool, res)
 
     def test_get_pools(self):
         context = 'fake_context'
@@ -362,9 +364,11 @@ class HostManagerTestCase(test.TestCase):
                     },
                 },
             ]
-
+            self.assertTrue(isinstance(res, list))
+            self.assertTrue(isinstance(self.host_manager.host_state_map, dict))
             self.assertEqual(len(expected), len(res))
-            self.assertEqual(sorted(expected), sorted(res))
+            for pool in expected:
+                self.assertIn(pool, res)
 
     def test_get_pools_host_down(self):
         context = 'fake_context'
@@ -434,10 +438,13 @@ class HostManagerTestCase(test.TestCase):
                     },
                 },
             ]
+            self.assertTrue(isinstance(res, list))
+            self.assertTrue(isinstance(self.host_manager.host_state_map, dict))
+            self.assertEqual(len(expected), len(res))
             self.assertEqual(len(expected),
                              len(self.host_manager.host_state_map))
-            self.assertEqual(len(expected), len(res))
-            self.assertEqual(sorted(expected), sorted(res))
+            for pool in expected:
+                self.assertIn(pool, res)
 
     def test_get_pools_with_filters(self):
         context = 'fake_context'
