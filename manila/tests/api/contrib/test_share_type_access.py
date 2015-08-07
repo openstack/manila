@@ -14,6 +14,7 @@
 import datetime
 
 import mock
+import six
 import webob
 
 from manila.api.contrib import share_type_access as type_access
@@ -74,7 +75,7 @@ def fake_share_type_get_all(context, inactive=False, filters=None):
     if filters is None or filters.get('is_public', None) is None:
         return SHARE_TYPES
     res = {}
-    for k, v in SHARE_TYPES.iteritems():
+    for k, v in six.iteritems(SHARE_TYPES):
         if filters['is_public'] and _has_type_access(k, context.project_id):
             res.update({k: v})
             continue
