@@ -12,10 +12,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import types
 import xml.dom.minidom
 
 from oslo_log import log
+import six
 
 from manila.i18n import _LW
 
@@ -914,7 +914,7 @@ def check_node(tt, nodename, required_attrs=None, optional_attrs=None,
 
     if not allow_pcdata:
         for c in tt[2]:
-            if isinstance(c, types.StringTypes):
+            if isinstance(c, six.string_types):
                 if c.lstrip(' \t\n') != '':
                     LOG.warn(_LW('Unexpected non-blank pcdata node %(node)s'
                                  ' under %(parent)s.'),
@@ -982,7 +982,7 @@ def dom_to_tupletree(node):
             contents.append(dom_to_tupletree(child))
         elif child.nodeType == child.TEXT_NODE:
             msg = "text node %s is not a string" % repr(child)
-            assert isinstance(child.nodeValue, types.StringTypes), msg
+            assert isinstance(child.nodeValue, six.string_types), msg
             contents.append(child.nodeValue)
         else:
             raise RuntimeError("can't handle %s" % child)
