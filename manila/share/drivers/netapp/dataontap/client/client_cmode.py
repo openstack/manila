@@ -352,7 +352,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
         This must be called against a Vserver LIF.
         """
-        return self.get_vserver_aggregate_capacities().keys()
+        return list(self.get_vserver_aggregate_capacities().keys())
 
     @na_utils.trace
     def create_network_interface(self, ip, netmask, vlan, node, port,

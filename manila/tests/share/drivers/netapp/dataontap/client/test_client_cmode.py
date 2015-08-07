@@ -572,7 +572,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         result = self.vserver_client.list_vserver_aggregates()
 
-        self.assertListEqual(fake.VSERVER_AGGREGATES.keys(), result)
+        self.assertListEqual(list(fake.VSERVER_AGGREGATES.keys()), result)
 
     def test_list_vserver_aggregates_none_found(self):
 
