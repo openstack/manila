@@ -21,6 +21,7 @@ SQLAlchemy models for Manila data.
 
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
+from oslo_log import log
 import six
 from sqlalchemy import Column, Integer, String, schema
 from sqlalchemy.ext.declarative import declarative_base
@@ -31,6 +32,8 @@ from manila.common import constants
 
 CONF = cfg.CONF
 BASE = declarative_base()
+
+LOG = log.getLogger(__name__)
 
 
 class ManilaBase(models.ModelBase,
@@ -172,7 +175,9 @@ class Reservation(BASE, ManilaBase):
 class Share(BASE, ManilaBase):
     """Represents an NFS and CIFS shares."""
     __tablename__ = 'shares'
-    _extra_keys = ['name', 'export_location']
+    _extra_keys = ['name', 'export_location', 'export_locations', 'status',
+                   'host', 'share_server_id', 'share_network_id',
+                   'availability_zone']
 
     @property
     def name(self):
@@ -181,44 +186,120 @@ class Share(BASE, ManilaBase):
     @property
     def export_location(self):
         if len(self.export_locations) > 0:
-            return self.export_locations[0]['path']
+            return self.export_locations[0]
+
+    @property
+    def export_locations(self):
+        # TODO(u_glide): Return a map with lists of locations per AZ when
+        # replication functionality will be implemented.
+        all_export_locations = []
+        for instance in self.instances:
+            for export_location in instance.export_locations:
+                all_export_locations.append(export_location['path'])
+
+        return all_export_locations
+
+    def __getattr__(self, item):
+        deprecated_properties = ('host', 'share_server_id', 'share_network_id',
+                                 'availability_zone')
+        proxified_properties = ('status',) + deprecated_properties
+
+        if item in deprecated_properties:
+            msg = ("Property '%s' is deprecated. Please use appropriate "
+                   "property from share instance." % item)
+            LOG.warning(msg)
+
+        if item in proxified_properties:
+            return getattr(self.instance, item, None)
+
+        raise AttributeError
+
+    @property
+    def share_server_id(self):
+        return self.__getattr__('share_server_id')
+
+    @property
+    def instance(self):
+        if len(self.instances) > 0:
+            return self.instances[0]
 
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
     user_id = Column(String(255))
     project_id = Column(String(255))
-    host = Column(String(255))
     size = Column(Integer)
-    availability_zone = Column(String(255))
-    status = Column(String(255))
-    scheduled_at = Column(DateTime)
-    launched_at = Column(DateTime)
-    terminated_at = Column(DateTime)
+
     display_name = Column(String(255))
     display_description = Column(String(255))
     snapshot_id = Column(String(36))
     share_proto = Column(String(255))
-    export_locations = orm.relationship(
-        "ShareExportLocations",
-        lazy='immediate',
-        primaryjoin='and_('
-                    'Share.id == ShareExportLocations.share_id, '
-                    'ShareExportLocations.deleted == 0)')
-    share_network_id = Column(String(36), ForeignKey('share_networks.id'),
-                              nullable=True)
     share_type_id = Column(String(36), ForeignKey('share_types.id'),
                            nullable=True)
-    share_server_id = Column(String(36), ForeignKey('share_servers.id'),
-                             nullable=True)
     is_public = Column(Boolean, default=False)
 
+    instances = orm.relationship(
+        "ShareInstance",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'Share.id == ShareInstance.share_id, '
+            'ShareInstance.deleted == "False")'
+        ),
+        viewonly=True,
+        join_depth=2,
+    )
 
-class ShareExportLocations(BASE, ManilaBase):
+
+class ShareInstance(BASE, ManilaBase):
+    __tablename__ = 'share_instances'
+
+    _proxified_properties = ('name', 'user_id', 'project_id', 'size',
+                             'display_name', 'display_description',
+                             'snapshot_id', 'share_proto', 'share_type_id',
+                             'is_public')
+
+    def set_share_data(self, share):
+        for share_property in self._proxified_properties:
+            setattr(self, share_property, share[share_property])
+
+    @property
+    def export_location(self):
+        if len(self.export_locations) > 0:
+            return self.export_locations[0]['path']
+
+    id = Column(String(36), primary_key=True)
+    share_id = Column(String(36), ForeignKey('shares.id'))
+    deleted = Column(String(36), default='False')
+    host = Column(String(255))
+    status = Column(String(255))
+    scheduled_at = Column(DateTime)
+    launched_at = Column(DateTime)
+    terminated_at = Column(DateTime)
+    availability_zone = Column(String(255))
+
+    export_locations = orm.relationship(
+        "ShareInstanceExportLocations",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'ShareInstance.id == '
+            'ShareInstanceExportLocations.share_instance_id, '
+            'ShareInstanceExportLocations.deleted == 0)'
+        )
+    )
+    share_network_id = Column(String(36), ForeignKey('share_networks.id'),
+                              nullable=True)
+    share_server_id = Column(String(36), ForeignKey('share_servers.id'),
+                             nullable=True)
+
+
+class ShareInstanceExportLocations(BASE, ManilaBase):
     """Represents export locations of shares."""
-    __tablename__ = 'share_export_locations'
+    __tablename__ = 'share_instance_export_locations'
 
     id = Column(Integer, primary_key=True)
-    share_id = Column(String(36), ForeignKey('shares.id'), nullable=False)
+    share_instance_id = Column(
+        String(36), ForeignKey('share_instances.id'), nullable=False)
     path = Column(String(2000))
 
 
@@ -315,6 +396,7 @@ class ShareAccessMapping(BASE, ManilaBase):
 class ShareSnapshot(BASE, ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshots'
+    _extra_keys = ['name', 'share_name', 'status', 'progress']
 
     @property
     def name(self):
@@ -324,14 +406,27 @@ class ShareSnapshot(BASE, ManilaBase):
     def share_name(self):
         return CONF.share_name_template % self.share_id
 
+    @property
+    def status(self):
+        if self.instance:
+            return self.instance.status
+
+    @property
+    def progress(self):
+        if self.instance:
+            return self.instance.progress
+
+    @property
+    def instance(self):
+        if len(self.instances) > 0:
+            return self.instances[0]
+
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
     user_id = Column(String(255))
     project_id = Column(String(255))
     share_id = Column(String(36))
     size = Column(Integer)
-    status = Column(String(255))
-    progress = Column(String(255))
     display_name = Column(String(255))
     display_description = Column(String(255))
     share_size = Column(Integer)
@@ -341,6 +436,46 @@ class ShareSnapshot(BASE, ManilaBase):
                              primaryjoin='and_('
                              'ShareSnapshot.share_id == Share.id,'
                              'ShareSnapshot.deleted == "False")')
+
+    instances = orm.relationship(
+        "ShareSnapshotInstance",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'ShareSnapshot.id == ShareSnapshotInstance.snapshot_id, '
+            'ShareSnapshotInstance.deleted == "False")'
+        ),
+        viewonly=True,
+        join_depth=2,
+    )
+
+
+class ShareSnapshotInstance(BASE, ManilaBase):
+    """Represents a snapshot of a share."""
+    __tablename__ = 'share_snapshot_instances'
+
+    @property
+    def share_id(self):
+        # NOTE(u_glide): This property required for compatibility
+        # with share drivers
+        return self.share_instance_id
+
+    id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
+    snapshot_id = Column(
+        String(36), ForeignKey('share_snapshots.id'), nullable=False)
+    share_instance_id = Column(
+        String(36), ForeignKey('share_instances.id'), nullable=False)
+    status = Column(String(255))
+    progress = Column(String(255))
+    share_instance = orm.relationship(
+        ShareInstance, backref="snapshot_instances",
+        foreign_keys=share_instance_id,
+        primaryjoin=(
+            'and_('
+            'ShareSnapshotInstance.share_instance_id == ShareInstance.id,'
+            'ShareSnapshotInstance.deleted == "False")')
+    )
 
 
 class SecurityService(BASE, ManilaBase):
@@ -389,11 +524,12 @@ class ShareNetwork(BASE, ManilaBase):
         'SecurityService.id == '
         'ShareNetworkSecurityServiceAssociation.security_service_id,'
         'SecurityService.deleted == "False")')
-    shares = orm.relationship("Share",
-                              backref='share_network',
-                              primaryjoin='and_('
-                              'ShareNetwork.id == Share.share_network_id,'
-                              'Share.deleted == "False")')
+    share_instances = orm.relationship(
+        "ShareInstance",
+        backref='share_network',
+        primaryjoin='and_('
+                    'ShareNetwork.id == ShareInstance.share_network_id,'
+                    'ShareInstance.deleted == "False")')
     share_servers = orm.relationship(
         "ShareServer", backref='share_network',
         primaryjoin='and_(ShareNetwork.id == ShareServer.share_network_id,'
@@ -417,11 +553,12 @@ class ShareServer(BASE, ManilaBase):
         primaryjoin='and_('
                     'ShareServer.id == NetworkAllocation.share_server_id,'
                     'NetworkAllocation.deleted == "False")')
-    shares = orm.relationship("Share",
-                              backref='share_server',
-                              primaryjoin='and_('
-                              'ShareServer.id == Share.share_server_id,'
-                              'Share.deleted == "False")')
+    share_instances = orm.relationship(
+        "ShareInstance",
+        backref='share_server',
+        primaryjoin='and_('
+                    'ShareServer.id == ShareInstance.share_server_id,'
+                    'ShareInstance.deleted == "False")')
 
     _backend_details = orm.relationship(
         "ShareServerBackendDetails",

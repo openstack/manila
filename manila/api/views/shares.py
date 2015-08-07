@@ -50,9 +50,6 @@ class ViewBuilder(common.ViewBuilder):
 
         export_locations = share.get('export_locations', [])
 
-        if export_locations:
-            export_locations = [item['path'] for item in export_locations]
-
         if share['share_type_id'] and share.get('share_type'):
             share_type = share['share_type']['name']
         else:

@@ -84,13 +84,15 @@ class ShareManagerTestCase(test.TestCase):
         self.assertTrue(import_mock.called)
 
     def test_init_host_with_no_shares(self):
-        self.mock_object(self.share_manager.db, 'share_get_all_by_host',
+        self.mock_object(self.share_manager.db,
+                         'share_instances_get_all_by_host',
                          mock.Mock(return_value=[]))
 
         self.share_manager.init_host()
 
-        self.share_manager.db.share_get_all_by_host.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), self.share_manager.host)
+        self.share_manager.db.share_instances_get_all_by_host.\
+            assert_called_once_with(utils.IsAMatcher(context.RequestContext),
+                                    self.share_manager.host)
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
         self.share_manager.driver.check_for_setup_error.\
@@ -117,13 +119,15 @@ class ShareManagerTestCase(test.TestCase):
         fake_export_locations = ['fake/path/1', 'fake/path']
         share_server = 'fake_share_server_type_does_not_matter'
         self.mock_object(self.share_manager.db,
-                         'share_get_all_by_host',
+                         'share_instances_get_all_by_host',
                          mock.Mock(return_value=shares))
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(side_effect=shares))
         self.mock_object(self.share_manager.db,
                          'share_export_locations_update')
         self.mock_object(self.share_manager.driver, 'ensure_share',
                          mock.Mock(return_value=fake_export_locations))
-        self.mock_object(self.share_manager, '_ensure_share_has_pool')
+        self.mock_object(self.share_manager, '_ensure_share_instance_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities',
@@ -138,8 +142,9 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.init_host()
 
         # verification of call
-        self.share_manager.db.share_get_all_by_host.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), self.share_manager.host)
+        self.share_manager.db.share_instances_get_all_by_host.\
+            assert_called_once_with(utils.IsAMatcher(context.RequestContext),
+                                    self.share_manager.host)
         exports_update = self.share_manager.db.share_export_locations_update
         exports_update.assert_called_once_with(
             mock.ANY, 'fake_id_1', fake_export_locations)
@@ -147,7 +152,7 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext))
         self.share_manager.driver.check_for_setup_error.\
             assert_called_once_with()
-        self.share_manager._ensure_share_has_pool.\
+        self.share_manager._ensure_share_instance_has_pool.\
             assert_called_once_with(utils.IsAMatcher(context.RequestContext),
                                     shares[0])
         self.share_manager._get_share_server.assert_called_once_with(
@@ -182,11 +187,13 @@ class ShareManagerTestCase(test.TestCase):
         ]
         share_server = 'fake_share_server_type_does_not_matter'
         self.mock_object(self.share_manager.db,
-                         'share_get_all_by_host',
+                         'share_instances_get_all_by_host',
                          mock.Mock(return_value=shares))
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(side_effect=[shares[0], shares[2]]))
         self.mock_object(self.share_manager.driver, 'ensure_share',
                          mock.Mock(side_effect=raise_exception))
-        self.mock_object(self.share_manager, '_ensure_share_has_pool')
+        self.mock_object(self.share_manager, '_ensure_share_instance_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities')
@@ -197,12 +204,13 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.init_host()
 
         # verification of call
-        self.share_manager.db.share_get_all_by_host.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), self.share_manager.host)
+        self.share_manager.db.share_instances_get_all_by_host.\
+            assert_called_once_with(utils.IsAMatcher(context.RequestContext),
+                                    self.share_manager.host)
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
         self.share_manager.driver.check_for_setup_error.assert_called_with()
-        self.share_manager._ensure_share_has_pool.assert_has_calls([
+        self.share_manager._ensure_share_instance_has_pool.assert_has_calls([
             mock.call(utils.IsAMatcher(context.RequestContext), shares[0]),
             mock.call(utils.IsAMatcher(context.RequestContext), shares[2]),
         ])
@@ -221,7 +229,7 @@ class ShareManagerTestCase(test.TestCase):
                 utils.IsAMatcher(context.RequestContext))
         manager.LOG.info.assert_called_once_with(
             mock.ANY,
-            {'name': shares[1]['name'], 'status': shares[1]['status']},
+            {'id': shares[1]['id'], 'status': shares[1]['status']},
         )
 
     def test_init_host_with_exception_on_rule_access_allow(self):
@@ -245,11 +253,13 @@ class ShareManagerTestCase(test.TestCase):
         ]
         share_server = 'fake_share_server_type_does_not_matter'
         self.mock_object(self.share_manager.db,
-                         'share_get_all_by_host',
+                         'share_instances_get_all_by_host',
                          mock.Mock(return_value=shares))
+        self.mock_object(self.share_manager.db, 'share_instance_get',
+                         mock.Mock(side_effect=[shares[0], shares[2]]))
         self.mock_object(self.share_manager.driver, 'ensure_share',
                          mock.Mock(return_value=None))
-        self.mock_object(self.share_manager, '_ensure_share_has_pool')
+        self.mock_object(self.share_manager, '_ensure_share_instance_has_pool')
         self.mock_object(self.share_manager, '_get_share_server',
                          mock.Mock(return_value=share_server))
         self.mock_object(self.share_manager, 'publish_service_capabilities')
@@ -265,12 +275,13 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.init_host()
 
         # verification of call
-        self.share_manager.db.share_get_all_by_host.assert_called_once_with(
-            utils.IsAMatcher(context.RequestContext), self.share_manager.host)
+        self.share_manager.db.share_instances_get_all_by_host.\
+            assert_called_once_with(utils.IsAMatcher(context.RequestContext),
+                                    self.share_manager.host)
         self.share_manager.driver.do_setup.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext))
         self.share_manager.driver.check_for_setup_error.assert_called_with()
-        self.share_manager._ensure_share_has_pool.assert_has_calls([
+        self.share_manager._ensure_share_instance_has_pool.assert_has_calls([
             mock.call(utils.IsAMatcher(context.RequestContext), shares[0]),
             mock.call(utils.IsAMatcher(context.RequestContext), shares[2]),
         ])
@@ -289,7 +300,7 @@ class ShareManagerTestCase(test.TestCase):
                 utils.IsAMatcher(context.RequestContext))
         manager.LOG.info.assert_called_once_with(
             mock.ANY,
-            {'name': shares[1]['name'], 'status': shares[1]['status']},
+            {'id': shares[1]['id'], 'status': shares[1]['status']},
         )
         self.share_manager.driver.allow_access.assert_has_calls([
             mock.call(utils.IsAMatcher(context.RequestContext), shares[0],
@@ -363,7 +374,7 @@ class ShareManagerTestCase(test.TestCase):
     def test_create_delete_share_snapshot(self):
         """Test share's snapshot can be created and deleted."""
 
-        def _fake_create_snapshot(self, *args, **kwargs):
+        def _fake_create_snapshot(self, snapshot, **kwargs):
             snapshot['progress'] = '99%'
             return snapshot
 
@@ -421,11 +432,11 @@ class ShareManagerTestCase(test.TestCase):
             constants.STATUS_ERROR_DELETING,
             db.share_snapshot_get(self.context, snapshot_id).status)
         self.share_manager.driver.create_snapshot.assert_called_once_with(
-            self.context, utils.IsAMatcher(models.ShareSnapshot),
+            self.context, utils.IsAMatcher(models.ShareSnapshotInstance),
             share_server=None)
         self.share_manager.driver.delete_snapshot.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            utils.IsAMatcher(models.ShareSnapshot),
+            utils.IsAMatcher(models.ShareSnapshotInstance),
             share_server=None)
 
     def test_delete_share_if_busy(self):
@@ -446,7 +457,7 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(snap['status'], constants.STATUS_AVAILABLE)
         self.share_manager.driver.delete_snapshot.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            utils.IsAMatcher(models.ShareSnapshot),
+            utils.IsAMatcher(models.ShareSnapshotInstance),
             share_server=None)
 
     def test_create_share_with_share_network_driver_not_handles_servers(self):
@@ -493,7 +504,8 @@ class ShareManagerTestCase(test.TestCase):
                          share_id).id)
 
     def test_create_share_with_share_network_server_creation_failed(self):
-        fake_share = {'id': 'fake_share_id', 'share_network_id': 'fake_sn_id'}
+        fake_share = db_utils.create_share(share_network_id='fake_sn_id',
+                                           size=1)
         fake_server = {
             'id': 'fake_srv_id',
             'status': constants.STATUS_CREATING,
@@ -533,11 +545,6 @@ class ShareManagerTestCase(test.TestCase):
         db.share_server_create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), mock.ANY)
         db.share_update.assert_has_calls([
-            mock.call(
-                utils.IsAMatcher(context.RequestContext),
-                fake_share['id'],
-                {'share_server_id': fake_server['id']},
-            ),
             mock.call(
                 utils.IsAMatcher(context.RequestContext),
                 fake_share['id'],
@@ -664,11 +671,11 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(shr['status'], constants.STATUS_ERROR_DELETING)
         self.share_manager.driver.create_share.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            utils.IsAMatcher(models.Share),
+            utils.IsAMatcher(models.ShareInstance),
             share_server=None)
         self.share_manager.driver.delete_share.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
-            utils.IsAMatcher(models.Share),
+            utils.IsAMatcher(models.ShareInstance),
             share_server=None)
 
     def test_provide_share_server_for_share_incompatible_servers(self):
@@ -687,13 +694,13 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertRaises(exception.ManilaException,
                           self.share_manager._provide_share_server_for_share,
-                          self.context, "fake_id", share)
+                          self.context, "fake_id", share.instance)
         driver_mock = self.share_manager.driver
         driver_method_mock = (
             driver_mock.choose_share_server_compatible_with_share
         )
         driver_method_mock.assert_called_once_with(
-            self.context, [fake_share_server], share, snapshot=None)
+            self.context, [fake_share_server], share.instance, snapshot=None)
 
     def test_provide_share_server_for_share_invalid_arguments(self):
         self.assertRaises(ValueError,
@@ -710,7 +717,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertRaises(exception.ShareServerNotFound,
                           self.share_manager._provide_share_server_for_share,
-                          self.context, "fake_id", share,
+                          self.context, "fake_id", share.instance,
                           snapshot=fake_snapshot)
 
         db.share_server_get.assert_called_once_with(
@@ -726,7 +733,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidShareServer,
                           self.share_manager._provide_share_server_for_share,
-                          self.context, "fake_id", share,
+                          self.context, "fake_id", share.instance,
                           snapshot=fake_snapshot)
 
         db.share_server_get.assert_called_once_with(
@@ -851,7 +858,7 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.db.share_export_locations_update.\
                 assert_called_once_with(
                     utils.IsAMatcher(context.RequestContext),
-                    share_id, export_locations, delete=True)
+                    share.instance['id'], export_locations, delete=True)
         else:
             self.assertFalse(
                 self.share_manager.db.share_export_locations_update.called)
@@ -1396,18 +1403,16 @@ class ShareManagerTestCase(test.TestCase):
     def test_ensure_share_has_pool_with_only_host(self):
         fake_share = {
             'status': constants.STATUS_AVAILABLE, 'host': 'host1', 'id': 1}
-        host = self.share_manager._ensure_share_has_pool(context.
-                                                         get_admin_context(),
-                                                         fake_share)
+        host = self.share_manager._ensure_share_instance_has_pool(
+            context.get_admin_context(), fake_share)
         self.assertIsNone(host)
 
     def test_ensure_share_has_pool_with_full_pool_name(self):
         fake_share = {'host': 'host1#pool0', 'id': 1,
                       'status': constants.STATUS_AVAILABLE}
         fake_share_expected_value = 'pool0'
-        host = self.share_manager._ensure_share_has_pool(context.
-                                                         get_admin_context(),
-                                                         fake_share)
+        host = self.share_manager._ensure_share_instance_has_pool(
+            context.get_admin_context(), fake_share)
         self.assertEqual(fake_share_expected_value, host)
 
     def test_ensure_share_has_pool_unable_to_fetch_share(self):
@@ -1416,9 +1421,8 @@ class ShareManagerTestCase(test.TestCase):
         with mock.patch.object(self.share_manager.driver, 'get_pool',
                                side_effect=Exception):
             with mock.patch.object(manager, 'LOG') as mock_LOG:
-                self.share_manager._ensure_share_has_pool(context.
-                                                          get_admin_context(),
-                                                          fake_share)
+                self.share_manager._ensure_share_instance_has_pool(
+                    context.get_admin_context(), fake_share)
                 self.assertEqual(1, mock_LOG.error.call_count)
 
     def test__form_server_setup_info(self):
@@ -1590,7 +1594,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertTrue(manager._get_share_server.called)
         manager.driver.extend_share.assert_called_once_with(
-            share, new_size, share_server=fake_share_server
+            utils.IsAMatcher(models.ShareInstance),
+            new_size, share_server=fake_share_server
         )
         quota.QUOTAS.commit.assert_called_once_with(
             mock.ANY, reservations, project_id=share['project_id'])
@@ -1643,7 +1648,9 @@ class ShareManagerTestCase(test.TestCase):
             self.share_manager.shrink_share, self.context, share_id, new_size)
 
         self.share_manager.driver.shrink_share.assert_called_once_with(
-            share, new_size, share_server=None)
+            utils.IsAMatcher(models.ShareInstance),
+            new_size, share_server=None
+        )
         self.share_manager.db.share_update.assert_called_once_with(
             mock.ANY, share_id, {'status': status}
         )
@@ -1676,7 +1683,8 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertTrue(manager._get_share_server.called)
         manager.driver.shrink_share.assert_called_once_with(
-            share, new_size, share_server=fake_share_server
+            utils.IsAMatcher(models.ShareInstance),
+            new_size, share_server=fake_share_server
         )
         quota.QUOTAS.commit.assert_called_once_with(
             mock.ANY, mock.ANY, project_id=share['project_id'])

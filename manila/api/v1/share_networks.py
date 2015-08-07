@@ -71,10 +71,13 @@ class ShareNetworkController(wsgi.Controller):
         except exception.ShareNetworkNotFound as e:
             raise exc.HTTPNotFound(explanation=six.text_type(e))
 
-        shares = db_api.share_get_all_by_share_network(context, id)
-        if shares:
+        share_instances = (
+            db_api.share_instances_get_all_by_share_network(context, id)
+        )
+        if share_instances:
             msg = _("Can not delete share network %(id)s, it has "
-                    "%(len)s share(s).") % {'id': id, 'len': len(shares)}
+                    "%(len)s share(s).") % {'id': id,
+                                            'len': len(share_instances)}
             LOG.error(msg)
             raise exc.HTTPConflict(explanation=msg)
         for share_server in share_network['share_servers']:
