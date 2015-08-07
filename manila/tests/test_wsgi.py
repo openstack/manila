@@ -156,6 +156,7 @@ class TestWSGIServer(test.TestCase):
             "test_app", lambda *args, **kwargs: None, host="127.0.0.1", port=0)
         self.assertEqual(client_socket_timeout, server.client_socket_timeout)
 
+    @testtools.skipIf(six.PY3, "bug/1482633")
     def test_app_using_ssl(self):
         CONF.set_default("ssl_cert_file",
                          os.path.join(TEST_VAR_DIR, 'certificate.crt'))
@@ -188,6 +189,7 @@ class TestWSGIServer(test.TestCase):
                       "Test requires an IPV6 configured interface")
     @testtools.skipIf(utils.is_eventlet_bug105(),
                       'Eventlet bug #105 affect test results.')
+    @testtools.skipIf(six.PY3, "bug/1482633")
     def test_app_using_ipv6_and_ssl(self):
         CONF.set_default("ssl_cert_file",
                          os.path.join(TEST_VAR_DIR, 'certificate.crt'))
