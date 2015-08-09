@@ -125,6 +125,17 @@ class V3StorageConnection(driver.HuaweiBase):
             raise exception.InvalidShareAccess(reason=err_msg)
 
         fsid = share['FSID']
+        fs_info = self.helper._get_fs_info_by_id(fsid)
+
+        current_size = int(fs_info['CAPACITY']) / units.Mi / 2
+        if current_size > new_size:
+            err_msg = (_("New size for extend must be equal or bigger than "
+                         "current size on array. (current: %(size)s, "
+                         "new: %(new_size)s).")
+                       % {'size': current_size, 'new_size': new_size})
+
+            LOG.error(err_msg)
+            raise exception.InvalidInput(reason=err_msg)
         self.helper._change_share_size(fsid, size)
 
     def shrink_share(self, share, new_size, share_server):
