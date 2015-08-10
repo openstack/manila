@@ -100,7 +100,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         else:
             self._hdfs_execute = self._hdfs_remote_execute
 
-        self._hdfs_bin = self._get_hdfs_bin_path()
+        self._hdfs_bin = 'hdfs'
         self._hdfs_base_path = (
             'hdfs://' + self.configuration.hdfs_namenode_ip + ':'
             + six.text_type(self.configuration.hdfs_namenode_port))
@@ -156,24 +156,6 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             msg = (_('Error running SSH command: %(cmd)s. '
                      'Error: %(excmsg)s.') %
                    {'cmd': command, 'excmsg': six.text_type(e)})
-            LOG.error(msg)
-            raise exception.HDFSException(msg)
-
-    def _get_hdfs_bin_path(self):
-        try:
-            (out, __) = self._hdfs_execute('locate', '/bin/hdfs')
-        except exception.ProcessExecutionError as e:
-            msg = (_('Can not get the execution path of hdfs. '
-                     'Error: %(excmsg)s.') %
-                   {'excmsg': six.text_type(e)})
-            LOG.error(msg)
-            raise exception.HDFSException(msg)
-
-        lines = out.splitlines()
-        if lines and lines[0].endswith('/bin/hdfs'):
-            return lines[0]
-        else:
-            msg = _('Can not get the execution path of hdfs.')
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
@@ -373,20 +355,14 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         try:
             (out, __) = self._hdfs_execute(self._hdfs_bin, 'fsck', '/')
         except exception.ProcessExecutionError as e:
-            msg = _('Failed to check the utility of hdfs.')
-            LOG.error(msg)
-            raise exception.HDFSException(msg)
-        lines = out.splitlines()
-        try:
-            hdfs_state = lines[1].split()[1]
-        except (IndexError, ValueError) as e:
             msg = (_('Failed to check hdfs state. Error: %(excmsg)s.') %
                    {'excmsg': six.text_type(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
-        if hdfs_state.upper() != 'HEALTHY':
+        if 'HEALTHY' in out:
+            return True
+        else:
             return False
-        return True
 
     def check_for_setup_error(self):
         """Return an error if the prerequisites are met."""

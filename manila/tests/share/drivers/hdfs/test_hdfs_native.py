@@ -52,6 +52,7 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
         self._driver = hdfs_native.HDFSNativeShareDriver(
             execute=self._hdfs_execute,
             configuration=self.fake_conf)
+        self.hdfs_bin = 'hdfs'
         self._driver._hdfs_bin = 'fake_hdfs_bin'
         self.share = fake_share.fake_share(share_proto='HDFS')
         self.snapshot = fake_share.fake_snapshot(share_proto='HDFS')
@@ -66,9 +67,8 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
             ['127.0.0.1', self.local_ip]))
 
     def test_do_setup(self):
-        self._driver._get_hdfs_bin_path = mock.Mock()
         self._driver.do_setup(self._context)
-        self._driver._get_hdfs_bin_path.assert_called_once_with()
+        self.assertEqual(self._driver._hdfs_bin, self.hdfs_bin)
 
     def test_create_share(self):
         self._driver._create_share = mock.Mock()
