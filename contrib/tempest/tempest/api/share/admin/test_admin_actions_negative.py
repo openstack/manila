@@ -14,6 +14,7 @@
 #    under the License.
 
 from tempest_lib import exceptions as lib_exc  # noqa
+import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import clients_share as clients
@@ -29,7 +30,8 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     def resource_setup(cls):
         super(AdminActionsNegativeTest, cls).resource_setup()
         cls.sh = cls.create_share()
-        cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
+        if CONF.share.run_snapshot_tests:
+            cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
         cls.member_shares_client = clients.Manager().shares_client
 
     @test.attr(type=["gate", "negative", ])
@@ -38,6 +40,8 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.shares_client.reset_state, "fake")
 
     @test.attr(type=["gate", "negative", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_reset_nonexistent_snapshot_state(self):
         self.assertRaises(lib_exc.NotFound, self.shares_client.reset_state,
                           "fake", s_type="snapshots")
@@ -49,6 +53,8 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.sh["id"], status="fake")
 
     @test.attr(type=["gate", "negative", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_reset_snapshot_state_to_unacceptable_state(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.reset_state,
@@ -62,6 +68,8 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.sh["id"])
 
     @test.attr(type=["gate", "negative", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_try_reset_snapshot_state_with_member(self):
         # Even if member from another tenant, it should be unauthorized
         self.assertRaises(lib_exc.Forbidden,
@@ -74,6 +82,8 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.shares_client.force_delete, "fake")
 
     @test.attr(type=["gate", "negative", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_force_delete_nonexistent_snapshot(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.force_delete,
@@ -88,6 +98,8 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.sh["id"])
 
     @test.attr(type=["gate", "negative", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_try_force_delete_snapshot_with_member(self):
         # If a non-admin tries to do force_delete, it should be unauthorized
         self.assertRaises(lib_exc.Forbidden,

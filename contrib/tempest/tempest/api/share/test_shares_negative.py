@@ -83,12 +83,16 @@ class SharesNegativeTest(base.BaseSharesTest):
                           self.shares_client.delete_share, '')
 
     @test.attr(type=["negative", "smoke", "gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_create_snapshot_with_wrong_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_snapshot,
                           "wrong_share_id")
 
     @test.attr(type=["negative", "smoke", "gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_delete_snapshot_with_wrong_id(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.delete_snapshot,
@@ -110,6 +114,8 @@ class SharesNegativeTest(base.BaseSharesTest):
                           self.shares_client.create_share, size=0)
 
     @test.attr(type=["negative", "gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_try_delete_share_with_existing_snapshot(self):
         # share can not be deleted while snapshot exists
 
@@ -124,6 +130,8 @@ class SharesNegativeTest(base.BaseSharesTest):
                           self.shares_client.delete_share, share["id"])
 
     @test.attr(type=["negative", "gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_create_share_from_snap_with_less_size(self):
         # requires minimum 5Gb available space
 
@@ -157,6 +165,8 @@ class SharesNegativeTest(base.BaseSharesTest):
     @test.attr(type=["negative", "smoke", "gate", ])
     @testtools.skipIf(not CONF.share.multitenancy_enabled,
                       "Only for multitenancy.")
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_create_share_from_snap_with_different_share_network(self):
         # create share
         share = self.create_share(cleanup_in_class=False)

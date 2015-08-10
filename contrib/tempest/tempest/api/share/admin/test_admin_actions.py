@@ -13,8 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import testtools  # noqa
+
 from tempest.api.share import base
+from tempest import config_share as config
 from tempest import test
+
+CONF = config.CONF
 
 
 class AdminActionsTest(base.BaseSharesAdminTest):
@@ -25,7 +30,8 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         cls.states = ["error", "available"]
         cls.bad_status = "error_deleting"
         cls.sh = cls.create_share()
-        cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
+        if CONF.share.run_snapshot_tests:
+            cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
 
     @test.attr(type=["gate", ])
     def test_reset_share_state(self):
@@ -34,6 +40,8 @@ class AdminActionsTest(base.BaseSharesAdminTest):
             self.shares_client.wait_for_share_status(self.sh["id"], status)
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_reset_snapshot_state_to_error(self):
         for status in self.states:
             self.shares_client.reset_state(
@@ -56,6 +64,8 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         self.shares_client.wait_for_resource_deletion(share_id=share["id"])
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_force_delete_snapshot(self):
         sn = self.create_snapshot_wait_for_active(self.sh["id"])
 

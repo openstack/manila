@@ -14,6 +14,7 @@
 #    under the License.
 
 from tempest_lib import exceptions as lib_exc  # noqa
+import testtools  # noqa
 
 from tempest.api.share import base
 from tempest import config_share as config
@@ -34,8 +35,9 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
             raise cls.skipException(msg)
         # create share
         cls.share = cls.create_share(cls.protocol)
-        # create snapshot
-        cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
+        if CONF.share.run_snapshot_tests:
+            # create snapshot
+            cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_ip_with_wrong_target_1(self):
@@ -128,8 +130,9 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
             raise cls.skipException(msg)
         # create share
         cls.share = cls.create_share(cls.protocol)
-        # create snapshot
-        cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
+        if CONF.share.run_snapshot_tests:
+            # create snapshot
+            cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
     def test_create_access_rule_user_with_wrong_input_2(self):
@@ -164,6 +167,8 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
                           "try+")
 
     @test.attr(type=["negative", "gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_create_access_rule_user_to_snapshot(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_access_rule,
@@ -207,8 +212,9 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
             raise cls.skipException(cls.message)
         # create share
         cls.share = cls.create_share()
-        # create snapshot
-        cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
+        if CONF.share.run_snapshot_tests:
+            # create snapshot
+            cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
     def test_delete_access_rule_with_wrong_id(self):
@@ -229,6 +235,8 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
                           "wrong_share_id")
 
     @test.attr(type=["negative", "gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_create_access_rule_ip_to_snapshot(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.create_access_rule,

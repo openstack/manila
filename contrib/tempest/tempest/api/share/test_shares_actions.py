@@ -30,6 +30,8 @@ class SharesActionsTest(base.BaseSharesTest):
     def resource_setup(cls):
         super(SharesActionsTest, cls).resource_setup()
 
+        cls.shares = []
+
         # create share
         cls.share_name = data_utils.rand_name("tempest-share-name")
         cls.share_desc = data_utils.rand_name("tempest-share-description")
@@ -38,40 +40,42 @@ class SharesActionsTest(base.BaseSharesTest):
             'bar_key_share_1': 'foo_value_share_1',
         }
         cls.share_size = 1
-        cls.share = cls.create_share(
+        cls.shares.append(cls.create_share(
             name=cls.share_name,
             description=cls.share_desc,
             size=cls.share_size,
             metadata=cls.metadata,
-        )
+        ))
 
-        # create snapshot
-        cls.snap_name = data_utils.rand_name("tempest-snapshot-name")
-        cls.snap_desc = data_utils.rand_name("tempest-snapshot-description")
-        cls.snap = cls.create_snapshot_wait_for_active(
-            cls.share["id"], cls.snap_name, cls.snap_desc)
+        if CONF.share.run_snapshot_tests:
+            # create snapshot
+            cls.snap_name = data_utils.rand_name("tempest-snapshot-name")
+            cls.snap_desc = data_utils.rand_name(
+                "tempest-snapshot-description")
+            cls.snap = cls.create_snapshot_wait_for_active(
+                cls.shares[0]["id"], cls.snap_name, cls.snap_desc)
 
-        # create second share from snapshot for purposes of sorting and
-        # snapshot filtering
-        cls.share_name2 = data_utils.rand_name("tempest-share-name")
-        cls.share_desc2 = data_utils.rand_name("tempest-share-description")
-        cls.metadata2 = {
-            'foo_key_share_2': 'foo_value_share_2',
-            'bar_key_share_2': 'foo_value_share_2',
-        }
-        cls.share2 = cls.create_share(
-            name=cls.share_name2,
-            description=cls.share_desc2,
-            size=cls.share_size,
-            metadata=cls.metadata2,
-            snapshot_id=cls.snap['id'],
-        )
+            # create second share from snapshot for purposes of sorting and
+            # snapshot filtering
+            cls.share_name2 = data_utils.rand_name("tempest-share-name")
+            cls.share_desc2 = data_utils.rand_name("tempest-share-description")
+            cls.metadata2 = {
+                'foo_key_share_2': 'foo_value_share_2',
+                'bar_key_share_2': 'foo_value_share_2',
+            }
+            cls.shares.append(cls.create_share(
+                name=cls.share_name2,
+                description=cls.share_desc2,
+                size=cls.share_size,
+                metadata=cls.metadata2,
+                snapshot_id=cls.snap['id'],
+            ))
 
     @test.attr(type=["gate", ])
     def test_get_share(self):
 
         # get share
-        share = self.shares_client.get_share(self.share['id'])
+        share = self.shares_client.get_share(self.shares[0]['id'])
 
         # verify keys
         expected_keys = ["status", "description", "links", "availability_zone",
@@ -105,8 +109,8 @@ class SharesActionsTest(base.BaseSharesTest):
         [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
 
         # our share id in list and have no duplicates
-        for share_id in [self.share["id"], self.share2["id"]]:
-            gen = [sid["id"] for sid in shares if sid["id"] in share_id]
+        for share in self.shares:
+            gen = [sid["id"] for sid in shares if sid["id"] in share["id"]]
             msg = "expected id lists %s times in share list" % (len(gen))
             self.assertEqual(1, len(gen), msg)
 
@@ -125,8 +129,8 @@ class SharesActionsTest(base.BaseSharesTest):
         [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
 
         # our shares in list and have no duplicates
-        for share_id in [self.share["id"], self.share2["id"]]:
-            gen = [sid["id"] for sid in shares if sid["id"] in share_id]
+        for share in self.shares:
+            gen = [sid["id"] for sid in shares if sid["id"] in share["id"]]
             msg = "expected id lists %s times in share list" % (len(gen))
             self.assertEqual(1, len(gen), msg)
 
@@ -142,11 +146,12 @@ class SharesActionsTest(base.BaseSharesTest):
         for share in shares:
             self.assertDictContainsSubset(
                 filters['metadata'], share['metadata'])
-        self.assertFalse(self.share2['id'] in [s['id'] for s in shares])
+        if CONF.share.run_snapshot_tests:
+            self.assertFalse(self.shares[1]['id'] in [s['id'] for s in shares])
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_host(self):
-        base_share = self.shares_client.get_share(self.share['id'])
+        base_share = self.shares_client.get_share(self.shares[0]['id'])
         filters = {'host': base_share['host']}
 
         # list shares
@@ -161,7 +166,7 @@ class SharesActionsTest(base.BaseSharesTest):
     @testtools.skipIf(
         not CONF.share.multitenancy_enabled, "Only for multitenancy.")
     def test_list_shares_with_detail_filter_by_share_network_id(self):
-        base_share = self.shares_client.get_share(self.share['id'])
+        base_share = self.shares_client.get_share(self.shares[0]['id'])
         filters = {'share_network_id': base_share['share_network_id']}
 
         # list shares
@@ -174,6 +179,8 @@ class SharesActionsTest(base.BaseSharesTest):
                 filters['share_network_id'], share['share_network_id'])
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_list_shares_with_detail_filter_by_snapshot_id(self):
         filters = {'snapshot_id': self.snap['id']}
 
@@ -184,7 +191,7 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertTrue(len(shares) > 0)
         for share in shares:
             self.assertEqual(filters['snapshot_id'], share['snapshot_id'])
-        self.assertFalse(self.share['id'] in [s['id'] for s in shares])
+        self.assertFalse(self.shares[0]['id'] in [s['id'] for s in shares])
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_with_asc_sorting(self):
@@ -236,7 +243,7 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertTrue(len(shares) > 0)
 
         # get share with detailed info, we need its 'project_id'
-        share = self.shares_client.get_share(self.share["id"])
+        share = self.shares_client.get_share(self.shares[0]["id"])
         project_id = share["project_id"]
         for share in shares:
             self.assertEqual(share["project_id"], project_id)
@@ -275,6 +282,8 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertFalse(any([s["id"] == private_share["id"] for s in shares]))
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_get_snapshot(self):
 
         # get snapshot
@@ -297,10 +306,12 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertEqual(self.snap_desc, get["description"], msg)
 
         msg = "Expected share_id: '%s', "\
-              "actual share_id: '%s'" % (self.share["id"], get["share_id"])
-        self.assertEqual(self.share["id"], get["share_id"], msg)
+              "actual share_id: '%s'" % (self.shares[0]["id"], get["share_id"])
+        self.assertEqual(self.shares[0]["id"], get["share_id"], msg)
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_list_snapshots(self):
 
         # list share snapshots
@@ -316,6 +327,8 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertEqual(1, len(gen), msg)
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_list_snapshots_with_detail(self):
 
         # list share snapshots
@@ -333,9 +346,15 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertEqual(len(gen), 1, msg)
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_list_snapshots_with_detail_use_limit(self):
         for l, o in [('1', '1'), ('0', '1')]:
-            filters = {'limit': l, 'offset': o, 'share_id': self.share['id']}
+            filters = {
+                'limit': l,
+                'offset': o,
+                'share_id': self.shares[0]['id'],
+            }
 
             # list snapshots
             snaps = self.shares_client.list_snapshots_with_detail(
@@ -346,12 +365,15 @@ class SharesActionsTest(base.BaseSharesTest):
 
         # Only our one snapshot should be listed
         snaps = self.shares_client.list_snapshots_with_detail(
-            params={'limit': '1', 'offset': '0', 'share_id': self.share['id']})
+            params={'limit': '1', 'offset': '0',
+                    'share_id': self.shares[0]['id']})
 
         self.assertEqual(1, len(snaps['snapshots']))
         self.assertEqual(self.snap['id'], snaps['snapshots'][0]['id'])
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_list_snapshots_with_detail_filter_by_status_and_name(self):
         filters = {'status': 'available', 'name': self.snap_name}
 
@@ -366,6 +388,8 @@ class SharesActionsTest(base.BaseSharesTest):
             self.assertEqual(filters['name'], snap['name'])
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_list_snapshots_with_detail_and_asc_sorting(self):
         filters = {'sort_key': 'share_id', 'sort_dir': 'asc'}
 
@@ -425,11 +449,13 @@ class SharesRenameTest(base.BaseSharesTest):
             name=cls.share_name, description=cls.share_desc,
             size=cls.share_size)
 
-        # create snapshot
-        cls.snap_name = data_utils.rand_name("tempest-snapshot-name")
-        cls.snap_desc = data_utils.rand_name("tempest-snapshot-description")
-        cls.snap = cls.create_snapshot_wait_for_active(
-            cls.share["id"], cls.snap_name, cls.snap_desc)
+        if CONF.share.run_snapshot_tests:
+            # create snapshot
+            cls.snap_name = data_utils.rand_name("tempest-snapshot-name")
+            cls.snap_desc = data_utils.rand_name(
+                "tempest-snapshot-description")
+            cls.snap = cls.create_snapshot_wait_for_active(
+                cls.share["id"], cls.snap_name, cls.snap_desc)
 
     @test.attr(type=["gate", ])
     def test_update_share(self):
@@ -456,6 +482,8 @@ class SharesRenameTest(base.BaseSharesTest):
         self.assertTrue(share["is_public"])
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_rename_snapshot(self):
 
         # get snapshot
