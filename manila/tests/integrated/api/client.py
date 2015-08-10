@@ -130,16 +130,13 @@ class TestOpenStackClient(object):
 
         auth_headers = {}
         for k, v in response.getheaders():
-            auth_headers[k] = v
+            auth_headers[k.lower()] = v
 
         self.auth_result = auth_headers
         return self.auth_result
 
     def api_request(self, relative_uri, check_response_status=None, **kwargs):
         auth_result = self._authenticate()
-
-        # NOTE(justinsb): http_client 'helpfully' converts headers
-        # to lower case
 
         base_uri = auth_result['x-server-management-url']
 
