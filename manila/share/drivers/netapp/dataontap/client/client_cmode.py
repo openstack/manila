@@ -762,7 +762,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def configure_ldap(self, security_service):
         """Configures LDAP on Vserver."""
-        config_name = hashlib.md5(security_service['id']).hexdigest()
+        config_name = hashlib.md5(six.b(security_service['id'])).hexdigest()
         api_args = {
             'ldap-client-config': config_name,
             'servers': {

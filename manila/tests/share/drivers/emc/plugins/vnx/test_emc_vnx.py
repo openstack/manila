@@ -20,6 +20,7 @@ from lxml import doctestcompare
 import mock
 from oslo_log import log
 from oslo_utils import units
+import six
 
 from manila.common import constants as const
 import manila.db
@@ -1167,6 +1168,10 @@ class EMCMock(mock.Mock):
             except StopIteration:
                 return True
 
+            if not isinstance(expect, six.binary_type):
+                expect = six.b(expect)
+            if not isinstance(actual, six.binary_type):
+                actual = six.b(actual)
             if not CHECKER.check_output(expect, actual, PARSE_XML):
                 raise AssertionError(
                     'Mismatch error.\nExpected: %r\n'

@@ -15,6 +15,7 @@
 
 from oslo_config import cfg
 from oslo_log import log
+import six
 
 from manila.tests.integrated import integrated_helpers
 
@@ -35,4 +36,4 @@ class ExtensionsTest(integrated_helpers._IntegratedTestBase):
         response = self.api.api_request('/foxnsocks')
         foxnsocks = response.read()
         LOG.debug("foxnsocks: %s" % foxnsocks)
-        self.assertEqual('Try to say this Mr. Knox, sir...', foxnsocks)
+        self.assertEqual(six.b('Try to say this Mr. Knox, sir...'), foxnsocks)

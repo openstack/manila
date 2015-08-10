@@ -14,6 +14,7 @@
 #    under the License.
 
 from oslo_serialization import jsonutils
+import six
 import webob
 import webob.dec
 import webob.exc
@@ -89,7 +90,7 @@ class TestFaults(test.TestCase):
         resp = req.get_response(raiser)
         self.assertEqual(resp.content_type, "application/json")
         self.assertEqual(resp.status_int, 404)
-        self.assertTrue('whut?' in resp.body)
+        self.assertTrue(six.b('whut?') in resp.body)
 
     def test_raise_403(self):
         """Ensure the ability to raise :class:`Fault` in WSGI-ified methods."""
@@ -101,8 +102,8 @@ class TestFaults(test.TestCase):
         resp = req.get_response(raiser)
         self.assertEqual(resp.content_type, "application/json")
         self.assertEqual(resp.status_int, 403)
-        self.assertTrue('resizeNotAllowed' not in resp.body)
-        self.assertTrue('forbidden' in resp.body)
+        self.assertTrue(six.b('resizeNotAllowed') not in resp.body)
+        self.assertTrue(six.b('forbidden') in resp.body)
 
     def test_fault_has_status_int(self):
         """Ensure the status_int is set correctly on faults."""

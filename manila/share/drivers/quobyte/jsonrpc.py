@@ -50,9 +50,9 @@ class BasicAuthCredentials(object):
         return self._username
 
     def get_authorization_header(self):
-        auth = base64.standard_b64encode(
-            '%s:%s' % (self._username, self._password))
-        return 'BASIC %s' % auth
+        header = '%s:%s' % (self._username, self._password)
+        auth = base64.standard_b64encode(six.b(header))
+        return 'BASIC %s' % auth.decode()
 
 
 class HTTPSConnectionWithCaVerification(http_client.HTTPConnection):

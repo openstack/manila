@@ -261,7 +261,7 @@ class GaneshaManager(object):
         for k, v in ganesha_utils.walk(confdict):
             # values in the export block template that need to be
             # filled in by Manila are pre-fixed by '@'
-            if isinstance(v, basestring) and v[0] == '@':
+            if isinstance(v, six.string_types) and v[0] == '@':
                 msg = _("Incomplete export block: value %(val)s of attribute "
                         "%(key)s is a stub.") % {'key': k, 'val': v}
                 raise exception.InvalidParameterValue(err=msg)

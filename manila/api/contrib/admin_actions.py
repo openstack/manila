@@ -13,6 +13,7 @@
 #   under the License.
 
 from oslo_log import log
+import six
 import webob
 from webob import exc
 
@@ -81,7 +82,7 @@ class AdminController(wsgi.Controller):
         try:
             self._update(context, id, update)
         except exception.NotFound as e:
-            raise exc.HTTPNotFound(e)
+            raise exc.HTTPNotFound(six.text_type(e))
         return webob.Response(status_int=202)
 
     @wsgi.action('os-force_delete')
@@ -92,7 +93,7 @@ class AdminController(wsgi.Controller):
         try:
             resource = self._get(context, id)
         except exception.NotFound as e:
-            raise exc.HTTPNotFound(e)
+            raise exc.HTTPNotFound(six.text_type(e))
         self._delete(context, resource, force=True)
         return webob.Response(status_int=202)
 

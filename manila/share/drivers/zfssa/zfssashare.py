@@ -20,6 +20,7 @@ import base64
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
+import six
 
 from manila import exception
 from manila.i18n import _
@@ -128,8 +129,8 @@ class ZFSSAShareDriver(driver.ShareDriver):
         LOG.debug("Connecting to host: %s.", lcfg.zfssa_host)
         self.zfssa = factory_zfssa()
         self.zfssa.set_host(lcfg.zfssa_host, timeout=lcfg.zfssa_rest_timeout)
-        auth_str = base64.encodestring('%s:%s' % (lcfg.zfssa_auth_user,
-                                       lcfg.zfssa_auth_password))[:-1]
+        creds = '%s:%s' % (lcfg.zfssa_auth_user, lcfg.zfssa_auth_password)
+        auth_str = base64.encodestring(six.b(creds))[:-1]
         self.zfssa.login(auth_str)
         if lcfg.zfssa_nas_mountpoint == '':
             self.mountpoint += lcfg.zfssa_project

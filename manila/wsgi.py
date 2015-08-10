@@ -456,7 +456,7 @@ class Debug(Middleware):
         """Iterator that prints the contents of a wrapper string."""
         print(('*' * 40) + ' BODY')
         for part in app_iter:
-            sys.stdout.write(part)
+            sys.stdout.write(part.decode())
             sys.stdout.flush()
             yield part
         print()

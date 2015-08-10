@@ -533,7 +533,7 @@ class WsgiLimiterTest(BaseLimitTestSuite):
 
     def _request_data(self, verb, path):
         """Get data describing a limit request verb/path."""
-        return jsonutils.dumps({"verb": verb, "path": path})
+        return six.b(jsonutils.dumps({"verb": verb, "path": path}))
 
     def _request(self, verb, url, username=None):
         """Send request.
@@ -599,9 +599,9 @@ class FakeHttplibSocket(object):
 
     def __init__(self, response_string):
         """Initialize new `FakeHttplibSocket`."""
-        self._buffer = six.StringIO(response_string)
+        self._buffer = six.BytesIO(six.b(response_string))
 
-    def makefile(self, _mode, _other):
+    def makefile(self, _mode, _other=None):
         """Returns the socket's internal buffer."""
         return self._buffer
 
@@ -628,7 +628,7 @@ class FakeHttplibConnection(object):
         req.method = method
         req.headers = headers
         req.host = self.host
-        req.body = body
+        req.body = six.b(body)
 
         resp = str(req.get_response(self.app))
         resp = "HTTP/1.0 %s" % resp
@@ -709,12 +709,11 @@ class WsgiLimiterProxyTest(BaseLimitTestSuite):
         """Forbidden request test."""
         delay = self.proxy.check_for_delay("GET", "/delayed")
         self.assertEqual(delay, (None, None))
-
         delay, error = self.proxy.check_for_delay("GET", "/delayed")
         error = error.strip()
 
-        expected = ("60.00", "403 Forbidden\n\nOnly 1 GET request(s) can be "
-                    "made to /delayed every minute.")
+        expected = ("60.00", six.b("403 Forbidden\n\nOnly 1 GET request(s) "
+                                   "can be made to /delayed every minute."))
 
         self.assertEqual((delay, error), expected)
 

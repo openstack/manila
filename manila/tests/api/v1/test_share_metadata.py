@@ -18,6 +18,7 @@ import uuid
 import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+import six
 import webob
 
 from manila.api.v1 import share_metadata
@@ -198,7 +199,7 @@ class ShareMetaDataTest(test.TestCase):
         req.method = 'POST'
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         res_dict = self.controller.create(req, self.req_id, body)
         self.assertEqual(body, res_dict)
 
@@ -218,7 +219,7 @@ class ShareMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -230,7 +231,7 @@ class ShareMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {("a" * 260): "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -249,7 +250,7 @@ class ShareMetaDataTest(test.TestCase):
         req.method = 'POST'
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.create, req, self.req_id, body)
 
@@ -265,7 +266,7 @@ class ShareMetaDataTest(test.TestCase):
                 'key99': 'value99',
             },
         }
-        req.body = jsonutils.dumps(expected)
+        req.body = six.b(jsonutils.dumps(expected))
         res_dict = self.controller.update_all(req, self.req_id, expected)
 
         self.assertEqual(expected, res_dict)
@@ -277,7 +278,7 @@ class ShareMetaDataTest(test.TestCase):
         req.method = 'PUT'
         req.content_type = "application/json"
         expected = {'metadata': {}}
-        req.body = jsonutils.dumps(expected)
+        req.body = six.b(jsonutils.dumps(expected))
         res_dict = self.controller.update_all(req, self.req_id, expected)
 
         self.assertEqual(expected, res_dict)
@@ -289,7 +290,7 @@ class ShareMetaDataTest(test.TestCase):
         req.method = 'PUT'
         req.content_type = "application/json"
         expected = {'meta': {}}
-        req.body = jsonutils.dumps(expected)
+        req.body = six.b(jsonutils.dumps(expected))
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update_all, req, self.req_id,
@@ -306,7 +307,7 @@ class ShareMetaDataTest(test.TestCase):
         req.method = 'PUT'
         req.content_type = "application/json"
         expected = {'metadata': metadata}
-        req.body = jsonutils.dumps(expected)
+        req.body = six.b(jsonutils.dumps(expected))
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update_all, req, self.req_id,
@@ -318,7 +319,7 @@ class ShareMetaDataTest(test.TestCase):
         req.method = 'PUT'
         req.content_type = "application/json"
         body = {'metadata': {'key10': 'value10'}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
 
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.update_all, req, '100', body)
@@ -329,7 +330,7 @@ class ShareMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
         res_dict = self.controller.update(req, self.req_id, 'key1', body)
         expected = {'meta': {'key1': 'value1'}}
@@ -341,7 +342,7 @@ class ShareMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1.1/fake/shares/asdf/metadata/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPNotFound,
@@ -365,7 +366,7 @@ class ShareMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -377,7 +378,7 @@ class ShareMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {("a" * 260): "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -390,7 +391,7 @@ class ShareMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": ("a" * 1025)}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -403,7 +404,7 @@ class ShareMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1", "key2": "value2"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -416,7 +417,7 @@ class ShareMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/bad')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -432,18 +433,18 @@ class ShareMetaDataTest(test.TestCase):
 
         # test for long key
         data = {"metadata": {"a" * 260: "value1"}}
-        req.body = jsonutils.dumps(data)
+        req.body = six.b(jsonutils.dumps(data))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, self.req_id, data)
 
         # test for long value
         data = {"metadata": {"key": "v" * 1025}}
-        req.body = jsonutils.dumps(data)
+        req.body = six.b(jsonutils.dumps(data))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, self.req_id, data)
 
         # test for empty key.
         data = {"metadata": {"": "value1"}}
-        req.body = jsonutils.dumps(data)
+        req.body = six.b(jsonutils.dumps(data))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, self.req_id, data)
