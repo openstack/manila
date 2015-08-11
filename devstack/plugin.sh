@@ -247,6 +247,7 @@ function configure_manila {
     iniset $MANILA_CONF DEFAULT scheduler_driver $MANILA_SCHEDULER_DRIVER
     iniset $MANILA_CONF DEFAULT share_name_template ${SHARE_NAME_PREFIX}%s
     iniset $MANILA_CONF DATABASE connection `database_connection_url manila`
+    iniset $MANILA_CONF DATABASE max_pool_size 40
     iniset $MANILA_CONF DEFAULT api_paste_config $MANILA_API_PASTE_INI
     iniset $MANILA_CONF DEFAULT rootwrap_config $MANILA_CONF_DIR/rootwrap.conf
     iniset $MANILA_CONF DEFAULT osapi_share_extension manila.api.contrib.standard_extensions
