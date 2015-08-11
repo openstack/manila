@@ -28,7 +28,7 @@ class SharesNegativeTest(base.BaseSharesTest):
     @classmethod
     def resource_setup(cls):
         super(SharesNegativeTest, cls).resource_setup()
-        cls.share = cls.shares_client.create_share(
+        cls.share = cls.create_share(
             name='public_share',
             description='public_share_desc',
             size=1,
