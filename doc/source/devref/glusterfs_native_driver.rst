@@ -83,7 +83,7 @@ The following parameters in Manila's configuration file need to be set:
 - `glusterfs_volume_pattern` = Regular expression template
     used to filter GlusterFS volumes for share creation. The regex template can
     contain the #{size} parameter which matches a number (sequence of digits)
-    and the value shall be intepreted as size of the volume in GB. Examples:
+    and the value shall be interpreted as size of the volume in GB. Examples:
     ``manila-share-volume-\d+$``, ``manila-share-volume-#{size}G-\d+$``; with
     matching volume names, respectively: *manila-share-volume-12*,
     *manila-share-volume-3G-13*". In latter example, the number that matches

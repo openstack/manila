@@ -20,7 +20,7 @@ capabilities and single capacity. In reality this assumption is not true for
 many storage providers, as their storage can be further divided or
 partitioned into pools to offer completely different sets of capabilities and
 capacities. That is, there are storage backends which are a combination of
-storage pools rather than a single homogenous entity. Usually shares/snapshots
+storage pools rather than a single homogeneous entity. Usually shares/snapshots
 can't be placed across pools on such backends.
 
 In the current implementation, an attempt is made to map a single backend

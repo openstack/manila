@@ -74,7 +74,7 @@ glusterfs_native_manila_share_opts = [
                     'The regex template can optionally (ie. with support '
                     'of the GlusterFS backend) contain the #{size} '
                     'parameter which matches an integer (sequence of '
-                    'digits) in which case the value shall be intepreted as '
+                    'digits) in which case the value shall be interpreted as '
                     'size of the volume in GB. Examples: '
                     '"manila-share-volume-\d+$", '
                     '"manila-share-volume-#{size}G-\d+$"; '
