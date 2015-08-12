@@ -44,7 +44,8 @@ host_manager_opts = [
                 default=[
                     'AvailabilityZoneFilter',
                     'CapacityFilter',
-                    'CapabilitiesFilter'
+                    'CapabilitiesFilter',
+                    'ConsistencyGroupFilter',
                 ],
                 help='Which filter class names to use for filtering hosts '
                      'when not specified in the request.'),
@@ -123,6 +124,7 @@ class HostState(object):
         self.thin_provisioning = False
         self.driver_handles_share_servers = False
         self.snapshot_support = True
+        self.consistency_group_support = False
 
         # PoolState for all pools
         self.pools = {}
@@ -278,6 +280,10 @@ class HostState(object):
         if not pool_cap.get('snapshot_support'):
             pool_cap['snapshot_support'] = True
 
+        if not pool_cap.get('consistency_group_support'):
+            pool_cap['consistency_group_support'] = \
+                self.consistency_group_support
+
     def update_backend(self, capability):
         self.share_backend_name = capability.get('share_backend_name')
         self.vendor_name = capability.get('vendor_name')
@@ -286,6 +292,8 @@ class HostState(object):
         self.driver_handles_share_servers = capability.get(
             'driver_handles_share_servers')
         self.snapshot_support = capability.get('snapshot_support')
+        self.consistency_group_support = capability.get(
+            'consistency_group_support', False)
         self.updated = capability['timestamp']
 
     def consume_from_share(self, share):

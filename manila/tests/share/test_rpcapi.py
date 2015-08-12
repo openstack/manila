@@ -1,4 +1,4 @@
-# Copyright 2013 NetApp
+# Copyright 2015 Alex Meade
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -36,7 +36,6 @@ class ShareRpcAPITestCase(test.TestCase):
     def setUp(self):
         super(ShareRpcAPITestCase, self).setUp()
         self.context = context.get_admin_context()
-
         share = db_utils.create_share(
             availability_zone=CONF.storage_availability_zone,
             status=constants.STATUS_AVAILABLE
@@ -44,10 +43,14 @@ class ShareRpcAPITestCase(test.TestCase):
         access = db_utils.create_access(share_id=share['id'])
         snapshot = db_utils.create_snapshot(share_id=share['id'])
         share_server = db_utils.create_share_server()
+        cg = {'id': 'fake_cg_id', 'host': 'fake_host'}
+        cgsnapshot = {'id': 'fake_cg_id'}
         self.fake_share = jsonutils.to_primitive(share)
         self.fake_access = jsonutils.to_primitive(access)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
         self.fake_share_server = jsonutils.to_primitive(share_server)
+        self.fake_cg = jsonutils.to_primitive(cg)
+        self.fake_cgsnapshot = jsonutils.to_primitive(cgsnapshot)
         self.ctxt = context.RequestContext('fake_user', 'fake_project')
         self.rpcapi = share_rpcapi.ShareAPI()
 
@@ -68,6 +71,14 @@ class ShareRpcAPITestCase(test.TestCase):
         if 'share_instance' in expected_msg:
             share_instance = expected_msg.pop('share_instance', None)
             expected_msg['share_instance_id'] = share_instance['id']
+        if 'cg' in expected_msg:
+            cg = expected_msg['cg']
+            del expected_msg['cg']
+            expected_msg['cg_id'] = cg['id']
+        if 'cgsnapshot' in expected_msg:
+            snap = expected_msg['cgsnapshot']
+            del expected_msg['cgsnapshot']
+            expected_msg['cgsnapshot_id'] = snap['id']
         if 'access' in expected_msg:
             access = expected_msg['access']
             del expected_msg['access']
@@ -83,6 +94,8 @@ class ShareRpcAPITestCase(test.TestCase):
             host = kwargs['host']
         elif 'share_server' in kwargs:
             host = kwargs['share_server']['host']
+        elif 'cg' in kwargs:
+            host = kwargs['cg']['host']
         elif 'share_instance' in kwargs:
             host = kwargs['share_instance']['host']
         else:
@@ -178,3 +191,30 @@ class ShareRpcAPITestCase(test.TestCase):
                              version='1.3',
                              share=self.fake_share,
                              new_size=123)
+
+    def test_create_consistency_group(self):
+        self._test_share_api('create_consistency_group',
+                             version='1.5',
+                             rpc_method='cast',
+                             cg=self.fake_cg,
+                             host='fake_host1')
+
+    def test_delete_consistency_group(self):
+        self._test_share_api('delete_consistency_group',
+                             version='1.5',
+                             rpc_method='cast',
+                             cg=self.fake_cg)
+
+    def test_create_cgsnapshot(self):
+        self._test_share_api('create_cgsnapshot',
+                             version='1.5',
+                             rpc_method='cast',
+                             cgsnapshot=self.fake_cgsnapshot,
+                             host='fake_host1')
+
+    def test_delete_cgsnapshot(self):
+        self._test_share_api('delete_cgsnapshot',
+                             version='1.5',
+                             rpc_method='cast',
+                             cgsnapshot=self.fake_cgsnapshot,
+                             host='fake_host1')

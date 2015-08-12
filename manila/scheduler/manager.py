@@ -24,10 +24,11 @@ from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
 
+from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
-from manila.i18n import _LE
+from manila.i18n import _LE, _LW
 from manila import manager
 from manila import rpc
 from manila.share import rpcapi as share_rpcapi
@@ -46,7 +47,7 @@ CONF.register_opt(scheduler_driver_opt)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
 
-    RPC_API_VERSION = '1.2'
+    RPC_API_VERSION = '1.3'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -119,3 +120,32 @@ class SchedulerManager(manager.Manager):
 
     def request_service_capabilities(self, context):
         share_rpcapi.ShareAPI().publish_service_capabilities(context)
+
+    def _set_cg_error_state(self, method, context, ex, request_spec):
+        LOG.warning(_LW("Failed to schedule_%(method)s: %(ex)s"),
+                    {"method": method, "ex": ex})
+
+        cg_state = {'status': constants.STATUS_ERROR}
+
+        consistency_group_id = request_spec.get('consistency_group_id')
+
+        if consistency_group_id:
+            db.consistency_group_update(context,
+                                        consistency_group_id,
+                                        cg_state)
+
+        # TODO(ameade): add notifications
+
+    def create_consistency_group(self, context, cg_id, request_spec=None,
+                                 filter_properties=None):
+        try:
+            self.driver.schedule_create_consistency_group(context, cg_id,
+                                                          request_spec,
+                                                          filter_properties)
+        except exception.NoValidHost as ex:
+            self._set_cg_error_state('create_consistency_group',
+                                     context, ex, request_spec)
+        except Exception as ex:
+            with excutils.save_and_reraise_exception():
+                self._set_cg_error_state('create_consistency_group',
+                                         context, ex, request_spec)

@@ -39,6 +39,9 @@ class ShareAPI(object):
             create_share() -> create_share_instance()
             delete_share() -> delete_share_instance()
             Add share_instance argument to allow_access() & deny_access()
+
+        1.5 - Add create_consistency_group, delete_consistency_group
+                create_cgsnapshot, and delete_cgsnapshot methods
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -47,7 +50,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.4')
+        self.client = rpc.get_client(target, version_cap='1.5')
 
     def create_share_instance(self, ctxt, share_instance, host,
                               request_spec, filter_properties,
@@ -132,3 +135,35 @@ class ShareAPI(object):
         cctxt = self.client.prepare(server=host, version='1.3')
         cctxt.cast(ctxt, 'shrink_share', share_id=share['id'],
                    new_size=new_size)
+
+    def create_consistency_group(self, ctxt, cg, host):
+        new_host = utils.extract_host(host)
+        cctxt = self.client.prepare(server=new_host, version='1.5')
+        cctxt.cast(
+            ctxt,
+            'create_consistency_group',
+            cg_id=cg['id'])
+
+    def delete_consistency_group(self, ctxt, cg):
+        new_host = utils.extract_host(cg['host'])
+        cctxt = self.client.prepare(server=new_host, version='1.5')
+        cctxt.cast(
+            ctxt,
+            'delete_consistency_group',
+            cg_id=cg['id'])
+
+    def create_cgsnapshot(self, ctxt, cgsnapshot, host):
+        new_host = utils.extract_host(host)
+        cctxt = self.client.prepare(server=new_host, version='1.5')
+        cctxt.cast(
+            ctxt,
+            'create_cgsnapshot',
+            cgsnapshot_id=cgsnapshot['id'])
+
+    def delete_cgsnapshot(self, ctxt, cgsnapshot, host):
+        new_host = utils.extract_host(host)
+        cctxt = self.client.prepare(server=new_host, version='1.5')
+        cctxt.cast(
+            ctxt,
+            'delete_cgsnapshot',
+            cgsnapshot_id=cgsnapshot['id'])

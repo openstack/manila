@@ -108,6 +108,50 @@ class SchedulerManagerTestCase(test.TestCase):
         mock_get_pools.assert_called_once_with(self.context, 'fake_filters')
         self.assertEqual('fake_pools', result)
 
+    @mock.patch.object(db, 'consistency_group_update', mock.Mock())
+    def test_create_cg_no_valid_host_puts_cg_in_error_state(self):
+        """Test that NoValidHost is raised for create_consistency_group.
+
+        Puts the share in 'error' state and eats the exception.
+        """
+        def raise_no_valid_host(*args, **kwargs):
+            raise exception.NoValidHost(reason="")
+
+        fake_cg_id = 1
+        cg_id = fake_cg_id
+        request_spec = {"consistency_group_id": cg_id}
+        with mock.patch.object(self.manager.driver,
+                               'schedule_create_consistency_group',
+                               mock.Mock(side_effect=raise_no_valid_host)):
+            self.manager.create_consistency_group(self.context,
+                                                  fake_cg_id,
+                                                  request_spec=request_spec,
+                                                  filter_properties={})
+            db.consistency_group_update.assert_called_once_with(
+                self.context, fake_cg_id, {'status': 'error'})
+            self.manager.driver.schedule_create_consistency_group\
+                .assert_called_once_with(self.context, cg_id,
+                                         request_spec, {})
+
+    @mock.patch.object(db, 'consistency_group_update', mock.Mock())
+    def test_create_cg_exception_puts_cg_in_error_state(self):
+        """Test that exceptions for create_consistency_group.
+
+        Puts the share in 'error' state and raises the exception.
+        """
+
+        fake_cg_id = 1
+        cg_id = fake_cg_id
+        request_spec = {"consistency_group_id": cg_id}
+        with mock.patch.object(self.manager.driver,
+                               'schedule_create_consistency_group',
+                               mock.Mock(side_effect=exception.NotFound)):
+            self.assertRaises(exception.NotFound,
+                              self.manager.create_consistency_group,
+                              self.context, fake_cg_id,
+                              request_spec=request_spec,
+                              filter_properties={})
+
 
 class SchedulerTestCase(test.TestCase):
     """Test case for base scheduler driver class."""

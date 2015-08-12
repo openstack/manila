@@ -34,15 +34,16 @@ class SchedulerAPI(object):
         1.1 - Add get_pools method
         1.2 - Introduce Share Instances:
             Replace create_share() - > create_share_instance()
+        1.3 - Add create_consistency_group method
     '''
 
-    RPC_API_VERSION = '1.2'
+    RPC_API_VERSION = '1.3'
 
     def __init__(self):
         super(SchedulerAPI, self).__init__()
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.2')
+        self.client = rpc.get_client(target, version_cap='1.3')
 
     def create_share_instance(self, ctxt, request_spec=None,
                               filter_properties=None):
@@ -71,3 +72,15 @@ class SchedulerAPI(object):
         cctxt = self.client.prepare(version='1.1')
         return cctxt.call(ctxt, 'get_pools',
                           filters=filters)
+
+    def create_consistency_group(self, ctxt, cg_id, request_spec=None,
+                                 filter_properties=None):
+        request_spec_p = jsonutils.to_primitive(request_spec)
+        cctxt = self.client.prepare(version='1.3')
+        return cctxt.cast(
+            ctxt,
+            'create_consistency_group',
+            cg_id=cg_id,
+            request_spec=request_spec_p,
+            filter_properties=filter_properties,
+        )

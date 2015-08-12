@@ -92,3 +92,11 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  rpc_method='call',
                                  filters=None,
                                  version='1.1')
+
+    def test_create_consistency_group(self):
+        self._test_scheduler_api('create_consistency_group',
+                                 rpc_method='cast',
+                                 cg_id='cg_id',
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 version='1.3')
