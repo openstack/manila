@@ -111,12 +111,14 @@ class HTTPRequest(os_wsgi.Request):
             kwargs['base_url'] = 'http://localhost/v1'
         use_admin_context = kwargs.pop('use_admin_context', False)
         version = kwargs.pop('version', api_version.DEFAULT_API_VERSION)
+        experimental = kwargs.pop('experimental', False)
         out = os_wsgi.Request.blank(*args, **kwargs)
         out.environ['manila.context'] = FakeRequestContext(
             'fake_user',
             'fake',
             is_admin=use_admin_context)
-        out.api_version_request = api_version.APIVersionRequest(version)
+        out.api_version_request = api_version.APIVersionRequest(
+            version, experimental=experimental)
         return out
 
 

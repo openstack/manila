@@ -23,6 +23,8 @@ from oslo_log import log
 
 from manila.api import extensions
 import manila.api.openstack
+from manila.api.v1 import cgsnapshots
+from manila.api.v1 import consistency_groups
 from manila.api.v1 import limits
 from manila.api.v1 import scheduler_stats
 from manila.api.v1 import security_service
@@ -134,3 +136,20 @@ class APIRouter(manila.api.openstack.APIRouter):
                        controller=self.resources['scheduler_stats'],
                        action='pools_detail',
                        conditions={'method': ['GET']})
+
+        self.resources['consistency-groups'] = (
+            consistency_groups.create_resource())
+        mapper.resource('consistency-group', 'consistency-groups',
+                        controller=self.resources['consistency-groups'],
+                        collection={'detail': 'GET'})
+        mapper.connect('consistency-groups',
+                       '/{project_id}/consistency-groups/{id}/action',
+                       controller=self.resources['consistency-groups'],
+                       action='action',
+                       conditions={"action": ['POST']})
+
+        self.resources['cgsnapshots'] = cgsnapshots.create_resource()
+        mapper.resource('cgsnapshot', 'cgsnapshots',
+                        controller=self.resources['cgsnapshots'],
+                        collection={'detail': 'GET'},
+                        member={'members': 'GET', 'action': 'POST'})

@@ -80,6 +80,16 @@ class ShareNetworkController(wsgi.Controller):
                                             'len': len(share_instances)}
             LOG.error(msg)
             raise exc.HTTPConflict(explanation=msg)
+
+        # NOTE(ameade): Do not allow deletion of share network used by CG
+        cg_count = db_api.count_consistency_groups_in_share_network(context,
+                                                                    id)
+        if cg_count:
+            msg = _("Can not delete share network %(id)s, it has %(len)s "
+                    "consistency group(s).") % {'id': id, 'len': cg_count}
+            LOG.error(msg)
+            raise exc.HTTPConflict(explanation=msg)
+
         for share_server in share_network['share_servers']:
             self.share_rpcapi.delete_share_server(context, share_server)
         db_api.share_network_delete(context, id)

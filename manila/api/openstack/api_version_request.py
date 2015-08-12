@@ -49,6 +49,7 @@ REST_API_VERSION_HISTORY = """
     * 1.2 - Share create() doesn't ignore availability_zone field of share.
     * 1.3 - Snapshots become optional feature.
     * 1.4 - Share instances admin API
+    * 1.5 - Consistency Group support
 
 """
 
@@ -56,7 +57,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "1.0"
-_MAX_API_VERSION = "1.4"
+_MAX_API_VERSION = "1.5"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
@@ -79,11 +80,11 @@ class APIVersionRequest(utils.ComparableMixin):
     API microversions.
     """
 
-    def __init__(self, version_string=None):
+    def __init__(self, version_string=None, experimental=False):
         """Create an API version request object."""
         self._ver_major = None
         self._ver_minor = None
-        self._experimental = False
+        self._experimental = experimental
 
         if version_string is not None:
             match = re.match(r"^([1-9]\d*)\.([1-9]\d*|0)$",

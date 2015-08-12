@@ -131,6 +131,11 @@ class PolicyNotAuthorized(NotAuthorized):
     message = _("Policy doesn't allow %(action)s to be performed.")
 
 
+class Conflict(ManilaException):
+    message = _("%(err)s")
+    code = 409
+
+
 class Invalid(ManilaException):
     message = _("Unacceptable parameters.")
     code = 400

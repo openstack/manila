@@ -64,6 +64,22 @@ class ShareController(wsgi.Controller):
 
         try:
             share = self.share_api.get(context, id)
+
+            # NOTE(ameade): If the share is in a consistency group, we require
+            # it's id be specified as a param.
+            if share.get('consistency_group_id'):
+                consistency_group_id = req.params.get('consistency_group_id')
+                if (share.get('consistency_group_id') and
+                        not consistency_group_id):
+                    msg = _("Must provide 'consistency_group_id' as a request "
+                            "parameter when deleting a share in a consistency "
+                            "group.")
+                    raise exc.HTTPBadRequest(explanation=msg)
+                elif consistency_group_id != share.get('consistency_group_id'):
+                    msg = _("The specified 'consistency_group_id' does not "
+                            "match the consistency group id of the share.")
+                    raise exc.HTTPBadRequest(explanation=msg)
+
             self.share_api.delete(context, share)
         except exception.NotFound:
             raise exc.HTTPNotFound()
@@ -133,6 +149,7 @@ class ShareController(wsgi.Controller):
             'display_name', 'status', 'share_server_id', 'volume_type_id',
             'share_type_id', 'snapshot_id', 'host', 'share_network_id',
             'is_public', 'metadata', 'extra_specs', 'sort_key', 'sort_dir',
+            'consistency_group_id', 'cgsnapshot_id'
         )
 
     def update(self, req, id, body):
@@ -162,14 +179,18 @@ class ShareController(wsgi.Controller):
         share.update(update_dict)
         return self._view_builder.detail(req, share)
 
-    @wsgi.Controller.api_version("1.3")
+    @wsgi.Controller.api_version("1.5")
     def create(self, req, body):
         return self._create(req, body)
 
-    @wsgi.Controller.api_version("1.0", "1.2")  # noqa
-    def create(self, req, body):
+    @wsgi.Controller.api_version("1.0", "1.4")  # noqa
+    def create(self, req, body):  # pylint: disable=E0102
+        # Remove consistency group attributes
+        share = body.get('share', {})
+        if 'consistency_group_id' in share:
+            del body['share']['consistency_group_id']
+
         share = self._create(req, body)
-        share.pop('snapshot_support', None)
         return share
 
     def _create(self, req, body):
@@ -211,6 +232,7 @@ class ShareController(wsgi.Controller):
             'availability_zone': availability_zone,
             'metadata': share.get('metadata'),
             'is_public': share.get('is_public', False),
+            'consistency_group_id': share.get('consistency_group_id')
         }
 
         snapshot_id = share.get('snapshot_id')

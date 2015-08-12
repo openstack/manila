@@ -44,3 +44,9 @@ user documentation.
 1.4
 ---
   Share instances admin API and update of Admin Actions extension.
+
+1.5
+---
+  Consistency groups support. /consistency-groups and /cgsnapshots are
+  implemented. AdminActions 'os-force_delete and' 'os-reset_status' have been
+  updated for both new resources.
