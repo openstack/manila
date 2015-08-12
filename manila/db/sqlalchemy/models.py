@@ -225,7 +225,7 @@ class Share(BASE, ManilaBase):
         if item in proxified_properties:
             return getattr(self.instance, item, None)
 
-        raise AttributeError
+        raise AttributeError(item)
 
     @property
     def share_server_id(self):
@@ -250,6 +250,11 @@ class Share(BASE, ManilaBase):
     share_type_id = Column(String(36), ForeignKey('share_types.id'),
                            nullable=True)
     is_public = Column(Boolean, default=False)
+    consistency_group_id = Column(String(36),
+                                  ForeignKey('consistency_groups.id'),
+                                  nullable=True)
+
+    source_cgsnapshot_member_id = Column(String(36), nullable=True)
 
     instances = orm.relationship(
         "ShareInstance",
@@ -271,7 +276,8 @@ class ShareInstance(BASE, ManilaBase):
     _proxified_properties = ('user_id', 'project_id', 'size',
                              'display_name', 'display_description',
                              'snapshot_id', 'share_proto', 'share_type_id',
-                             'is_public')
+                             'is_public', 'consistency_group_id',
+                             'source_cgsnapshot_member_id')
 
     def set_share_data(self, share):
         for share_property in self._proxified_properties:
@@ -658,6 +664,11 @@ class ShareServer(BASE, ManilaBase):
                     'ShareServer.id == ShareInstance.share_server_id,'
                     'ShareInstance.deleted == "False")')
 
+    consistency_groups = orm.relationship(
+        "ConsistencyGroup", backref='share_server', primaryjoin='and_('
+        'ShareServer.id == ConsistencyGroup.share_server_id,'
+        'ConsistencyGroup.deleted == "False")')
+
     _backend_details = orm.relationship(
         "ShareServerBackendDetails",
         lazy='immediate',
@@ -726,6 +737,97 @@ class AvailabilityZone(BASE, ManilaBase):
     id = Column(String(36), primary_key=True, nullable=False)
     deleted = Column(String(36), default='False')
     name = Column(String(255), nullable=False)
+
+
+class ConsistencyGroup(BASE, ManilaBase):
+    """Represents a consistency group."""
+    __tablename__ = 'consistency_groups'
+    id = Column(String(36), primary_key=True)
+
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+    deleted = Column(String(36), default='False')
+
+    host = Column(String(255))
+    name = Column(String(255))
+    description = Column(String(255))
+    status = Column(String(255))
+    source_cgsnapshot_id = Column(String(36))
+    share_network_id = Column(String(36), ForeignKey('share_networks.id'),
+                              nullable=True)
+    share_server_id = Column(String(36), ForeignKey('share_servers.id'),
+                             nullable=True)
+
+
+class CGSnapshot(BASE, ManilaBase):
+    """Represents a cgsnapshot."""
+    __tablename__ = 'cgsnapshots'
+    id = Column(String(36), primary_key=True)
+
+    consistency_group_id = Column(String(36),
+                                  ForeignKey('consistency_groups.id'))
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+    deleted = Column(String(36), default='False')
+
+    name = Column(String(255))
+    description = Column(String(255))
+    status = Column(String(255))
+
+    consistency_group = orm.relationship(
+        ConsistencyGroup,
+        backref="cgsnapshots",
+        foreign_keys=consistency_group_id,
+        primaryjoin=('and_('
+                     'CGSnapshot.consistency_group_id == ConsistencyGroup.id,'
+                     'CGSnapshot.deleted == "False")')
+    )
+
+
+class ConsistencyGroupShareTypeMapping(BASE, ManilaBase):
+    """Represents the share types in a consistency group."""
+    __tablename__ = 'consistency_group_share_type_mappings'
+    id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
+    consistency_group_id = Column(String(36),
+                                  ForeignKey('consistency_groups.id'),
+                                  nullable=False)
+    share_type_id = Column(String(36),
+                           ForeignKey('share_types.id'),
+                           nullable=False)
+
+    consistency_group = orm.relationship(
+        ConsistencyGroup,
+        backref="share_types",
+        foreign_keys=consistency_group_id,
+        primaryjoin=('and_('
+                     'ConsistencyGroupShareTypeMapping.consistency_group_id '
+                     '== ConsistencyGroup.id,'
+                     'ConsistencyGroupShareTypeMapping.deleted == "False")')
+    )
+
+
+class CGSnapshotMember(BASE, ManilaBase):
+    """Represents the share snapshots in a consistency group snapshot."""
+    __tablename__ = 'cgsnapshot_members'
+    id = Column(String(36), primary_key=True)
+    cgsnapshot_id = Column(String(36), ForeignKey('cgsnapshots.id'))
+    share_id = Column(String(36), ForeignKey('shares.id'))
+    share_instance_id = Column(String(36), ForeignKey('share_instances.id'))
+    size = Column(Integer)
+    status = Column(String(255))
+    share_proto = Column(String(255))
+    share_type_id = Column(String(36), ForeignKey('share_types.id'),
+                           nullable=True)
+    user_id = Column(String(255))
+    project_id = Column(String(255))
+    deleted = Column(String(36), default='False')
+
+    cgsnapshot = orm.relationship(
+        CGSnapshot,
+        backref="cgsnapshot_members",
+        foreign_keys=cgsnapshot_id,
+        primaryjoin='CGSnapshot.id == CGSnapshotMember.cgsnapshot_id')
 
 
 def register_models():

@@ -644,3 +644,26 @@ class SSHInjectionThreat(ManilaException):
 
 class HNASBackendException(ManilaException):
     message = _("HNAS Backend Exception: %(msg)s")
+
+
+# ConsistencyGroup
+class ConsistencyGroupNotFound(NotFound):
+    message = _("ConsistencyGroup %(consistency_group_id)s could not be "
+                "found.")
+
+
+class CGSnapshotNotFound(NotFound):
+    message = _("Consistency group snapshot %(cgsnapshot_id)s could not be "
+                "found.")
+
+
+class CGSnapshotMemberNotFound(NotFound):
+    message = _("CG snapshot %(member_id)s could not be found.")
+
+
+class InvalidConsistencyGroup(Invalid):
+    message = _("Invalid ConsistencyGroup: %(reason)s")
+
+
+class InvalidCGSnapshot(Invalid):
+    message = _("Invalid CGSnapshot: %(reason)s")

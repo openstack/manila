@@ -330,6 +330,10 @@ def share_instances_get_all_by_share(context, share_id):
     return IMPL.share_instances_get_all_by_share_network(context, share_id)
 
 
+def share_instances_get_all_by_consistency_group_id(context, cg_id):
+    """Returns list of share instances that belong to given cg."""
+    return IMPL.share_instances_get_all_by_consistency_group_id(context, cg_id)
+
 ###################
 
 
@@ -368,6 +372,23 @@ def share_get_all_by_project(context, project_id, filters=None,
         context, project_id, filters=filters, is_public=is_public,
         sort_key=sort_key, sort_dir=sort_dir,
     )
+
+
+def share_get_all_by_consistency_group_id(context, cg_id,
+                                          filters=None, sort_key=None,
+                                          sort_dir=None):
+    """Returns all shares with given project ID and CG id."""
+    return IMPL.share_get_all_by_consistency_group_id(
+        context, cg_id, filters=filters,
+        sort_key=sort_key, sort_dir=sort_dir)
+
+
+def share_get_all_by_share_network(context, share_network_id, filters=None,
+                                   sort_key=None, sort_dir=None):
+    """Returns list of shares that belong to given share network."""
+    return IMPL.share_get_all_by_share_network(
+        context, share_network_id, filters=filters, sort_key=sort_key,
+        sort_dir=sort_dir)
 
 
 def share_get_all_by_share_server(context, share_server_id, filters=None,
@@ -847,3 +868,121 @@ def availability_zone_get(context, id_or_name):
 def availability_zone_get_all(context):
     """Get all active availability zones."""
     return IMPL.availability_zone_get_all(context)
+
+
+####################
+
+def consistency_group_get(context, consistency_group_id):
+    """Get a consistency group or raise if it does not exist."""
+    return IMPL.consistency_group_get(context, consistency_group_id)
+
+
+def consistency_group_get_all(context, detailed=True):
+    """Get all consistency groups."""
+    return IMPL.consistency_group_get_all(context, detailed=detailed)
+
+
+def consistency_group_get_all_by_host(context, host, detailed=True):
+    """Get all consistency groups belonging to a host."""
+    return IMPL.consistency_group_get_all_by_host(context, host,
+                                                  detailed=detailed)
+
+
+def consistency_group_create(context, values):
+    """Create a consistency group from the values dictionary."""
+    return IMPL.consistency_group_create(context, values)
+
+
+def consistency_group_get_all_by_project(context, project_id, detailed=True):
+    """Get all consistency groups belonging to a project."""
+    return IMPL.consistency_group_get_all_by_project(context, project_id,
+                                                     detailed=detailed)
+
+
+def consistency_group_update(context, consistency_group_id, values):
+    """Set the given properties on a consistency group and update it.
+
+    Raises NotFound if consistency group does not exist.
+    """
+    return IMPL.consistency_group_update(context, consistency_group_id, values)
+
+
+def consistency_group_destroy(context, consistency_group_id):
+    """Destroy the consistency group or raise if it does not exist."""
+    return IMPL.consistency_group_destroy(context, consistency_group_id)
+
+
+def count_shares_in_consistency_group(context, consistency_group_id):
+    """Returns the number of undeleted shares with the specified cg."""
+    return IMPL.count_shares_in_consistency_group(context,
+                                                  consistency_group_id)
+
+
+def count_cgsnapshots_in_consistency_group(context, consistency_group_id):
+    """Returns the number of undeleted cgsnapshots with the specified cg."""
+    return IMPL.count_cgsnapshots_in_consistency_group(context,
+                                                       consistency_group_id)
+
+
+def count_consistency_groups_in_share_network(context, share_network_id,
+                                              session=None):
+    """Returns the number of undeleted cgs with the specified share network."""
+    return IMPL.count_consistency_groups_in_share_network(context,
+                                                          share_network_id)
+
+
+def count_cgsnapshot_members_in_share(context, share_id, session=None):
+    """Returns the number of cgsnapshot members linked to the share."""
+    return IMPL.count_cgsnapshot_members_in_share(context, share_id)
+
+
+def cgsnapshot_get(context, cgsnapshot_id):
+    """Get a cgsnapshot."""
+    return IMPL.cgsnapshot_get(context, cgsnapshot_id)
+
+
+def cgsnapshot_get_all(context, detailed=True):
+    """Get all cgsnapshots."""
+    return IMPL.cgsnapshot_get_all(context, detailed=detailed)
+
+
+def cgsnapshot_get_all_by_project(context, project_id, detailed=True):
+    """Get all cgsnapshots belonging to a project."""
+    return IMPL.cgsnapshot_get_all_by_project(context, project_id,
+                                              detailed=detailed)
+
+
+def cgsnapshot_create(context, values):
+    """Create a cgsnapshot from the values dictionary."""
+    return IMPL.cgsnapshot_create(context, values)
+
+
+def cgsnapshot_update(context, cgsnapshot_id, values):
+    """Set the given properties on a cgsnapshot and update it.
+
+    Raises NotFound if cgsnapshot does not exist.
+    """
+    return IMPL.cgsnapshot_update(context, cgsnapshot_id, values)
+
+
+def cgsnapshot_destroy(context, cgsnapshot_id):
+    """Destroy the cgsnapshot or raise if it does not exist."""
+    return IMPL.cgsnapshot_destroy(context, cgsnapshot_id)
+
+
+def cgsnapshot_members_get_all(context, cgsnapshot_id):
+    """Return the members of a cgsnapshot."""
+    return IMPL.cgsnapshot_members_get_all(context, cgsnapshot_id)
+
+
+def cgsnapshot_member_create(context, values):
+    """Create a cgsnapshot member from the values dictionary."""
+    return IMPL.cgsnapshot_member_create(context, values)
+
+
+def cgsnapshot_member_update(context, member_id, values):
+    """Set the given properties on a cgsnapshot member and update it.
+
+    Raises NotFound if cgsnapshot member does not exist.
+    """
+    return IMPL.cgsnapshot_member_update(context, member_id, values)
