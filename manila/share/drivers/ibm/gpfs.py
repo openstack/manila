@@ -120,6 +120,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     API version history:
 
         1.0 - Initial version.
+        1.1 - Added extend_share functionality
     """
 
     def __init__(self, *args, **kwargs):
@@ -447,6 +448,20 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             LOG.error(msg)
             raise exception.GPFSException(msg)
 
+    def _extend_share(self, shareobj, new_size):
+        sharename = shareobj['name']
+        sizestr = '%sG' % new_size
+        fsdev = self._get_gpfs_device()
+        try:
+            self._gpfs_execute('mmsetquota', '-j', sharename, '-h',
+                               sizestr, fsdev)
+        except exception.ProcessExecutionError as e:
+            msg = (_('Failed to set quota for the share %(sharename)s. '
+                     'Error: %(excmsg)s.') %
+                   {'sharename': sharename, 'excmsg': e})
+            LOG.error(msg)
+            raise exception.GPFSException(msg)
+
     def get_network_allocations_number(self):
         return 0
 
@@ -478,6 +493,10 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot."""
         self._delete_share_snapshot(snapshot)
+
+    def extend_share(self, share, new_size, share_server=None):
+        """Extends the quota on the share fileset."""
+        self._extend_share(share, new_size)
 
     def ensure_share(self, ctx, share, share_server=None):
         """Ensure that storage are mounted and exported."""

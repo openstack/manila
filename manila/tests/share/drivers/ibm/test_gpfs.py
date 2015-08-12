@@ -219,6 +219,34 @@ class GPFSShareDriverTestCase(test.TestCase):
             '-j', self.snapshot['share_name']
         )
 
+    def test_extend_share(self):
+        self._driver._extend_share = mock.Mock()
+        self._driver.extend_share(self.share, 10)
+        self._driver._extend_share.assert_called_once_with(self.share, 10)
+
+    def test__extend_share(self):
+        self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
+        self._driver._gpfs_execute = mock.Mock(return_value=True)
+        self._driver._extend_share(self.share, 10)
+        self._driver._gpfs_execute.assert_called_once_with('mmsetquota', '-j',
+                                                           self.share['name'],
+                                                           '-h', '10G',
+                                                           self.fakedev)
+        self._driver._get_gpfs_device.assert_called_once_with()
+
+    def test__extend_share_exception(self):
+        self._driver._get_gpfs_device = mock.Mock(return_value=self.fakedev)
+        self._driver._gpfs_execute = mock.Mock(
+            side_effect=exception.ProcessExecutionError
+        )
+        self.assertRaises(exception.GPFSException,
+                          self._driver._extend_share, self.share, 10)
+        self._driver._gpfs_execute.assert_called_once_with('mmsetquota', '-j',
+                                                           self.share['name'],
+                                                           '-h', '10G',
+                                                           self.fakedev)
+        self._driver._get_gpfs_device.assert_called_once_with()
+
     def test_allow_access(self):
         self._driver._get_share_path = mock.Mock(
             return_value=self.fakesharepath
