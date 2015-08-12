@@ -54,6 +54,8 @@ EMC_NAS_OPTS = [
     cfg.StrOpt('emc_nas_pool_name',
                default=None,
                help='EMC pool name.'),
+    cfg.StrOpt('emc_nas_root_dir', default=None,
+               help='The root directory where shares will be located.'),
 ]
 
 CONF = cfg.CONF
