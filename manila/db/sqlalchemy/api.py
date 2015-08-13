@@ -27,6 +27,7 @@ import warnings
 import manila.db.sqlalchemy.query  # noqa
 
 from oslo_config import cfg
+from oslo_db import api as oslo_db_api
 from oslo_db import exception as db_exception
 from oslo_db import options as db_options
 from oslo_db.sqlalchemy import session
@@ -420,6 +421,7 @@ def service_create(context, values):
 
 
 @require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def service_update(context, service_id, values):
     session = get_session()
     with session.begin():
@@ -520,6 +522,7 @@ def quota_create(context, project_id, resource, limit, user_id=None):
 
 
 @require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def quota_update(context, project_id, resource, limit, user_id=None):
     per_user = user_id and resource not in PER_PROJECT_QUOTAS
     model = models.ProjectUserQuota if per_user else models.Quota
@@ -595,6 +598,7 @@ def quota_class_create(context, class_name, resource, limit):
 
 
 @require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def quota_class_update(context, class_name, resource, limit):
     result = model_query(context, models.QuotaClass, read_deleted="no").\
         filter_by(class_name=class_name).\
@@ -685,6 +689,7 @@ def quota_usage_create(context, project_id, user_id, resource, in_use,
 
 
 @require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def quota_usage_update(context, project_id, user_id, resource, **kwargs):
     updates = {}
 
@@ -782,6 +787,7 @@ def _get_project_quota_usages(context, session, project_id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def quota_reserve(context, resources, project_quotas, user_quotas, deltas,
                   expire, until_refresh, max_age, project_id=None,
                   user_id=None):
@@ -986,6 +992,7 @@ def _quota_reservations_query(session, context, reservations):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def reservation_commit(context, reservations, project_id=None, user_id=None):
     session = get_session()
     with session.begin():
@@ -1001,6 +1008,7 @@ def reservation_commit(context, reservations, project_id=None, user_id=None):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def reservation_rollback(context, reservations, project_id=None, user_id=None):
     session = get_session()
     with session.begin():
@@ -1060,6 +1068,7 @@ def quota_destroy_all_by_project(context, project_id):
 
 
 @require_admin_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def reservation_expire(context):
     session = get_session()
     with session.begin():
@@ -1131,6 +1140,7 @@ def share_data_get_for_project(context, project_id, user_id, session=None):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_update(context, share_id, values):
     session = get_session()
     with session.begin():
@@ -1350,6 +1360,7 @@ def share_access_delete(context, access_id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_access_update(context, access_id, values):
     session = get_session()
     with session.begin():
@@ -1511,6 +1522,7 @@ def share_snapshot_data_get_for_project(context, project_id, session=None):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_snapshot_update(context, snapshot_id, values):
     session = get_session()
     with session.begin():
@@ -1564,6 +1576,7 @@ def _share_metadata_get(context, share_id, session=None):
 
 @require_context
 @require_share_exists
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def _share_metadata_update(context, share_id, metadata, delete, session=None):
     if not session:
         session = get_session()
@@ -1639,6 +1652,7 @@ def _share_export_locations_get(context, share_id, session=None):
 
 @require_context
 @require_share_exists
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_export_locations_update(context, share_id, export_locations, delete):
     # NOTE(u_glide):
     # Backward compatibility code for drivers,
@@ -1730,6 +1744,7 @@ def security_service_delete(context, id):
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def security_service_update(context, id, values):
     session = get_session()
     with session.begin():
@@ -2481,6 +2496,7 @@ def _share_type_extra_specs_get_item(context, share_type_id, key,
 
 
 @require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_type_extra_specs_update_or_create(context, share_type_id, specs):
     session = get_session()
     with session.begin():
