@@ -243,17 +243,19 @@ class SharesActionsTest(base.BaseSharesTest):
 
     @test.attr(type=["gate", ])
     def test_list_shares_public_with_detail(self):
-        public_share = self.shares_client.create_share(
+        public_share = self.create_share(
             name='public_share',
             description='public_share_desc',
             size=1,
-            is_public=True
+            is_public=True,
+            cleanup_in_class=False
         )
-        private_share = self.shares_client.create_share(
+        private_share = self.create_share(
             name='private_share',
             description='private_share_desc',
             size=1,
-            is_public=False
+            is_public=False,
+            cleanup_in_class=False
         )
 
         params = {"is_public": True}
