@@ -511,7 +511,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context,
             fake_network_info['server_id'], fake_network_info)
         self._manager._check_server_availability.assert_called_once_with(
-            fake_server)
+            expected_details)
         self.assertEqual(expected_details, result)
 
     def test_set_up_service_instance_not_available(self):
@@ -520,6 +520,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             id='fake', ip='1.2.3.4', public_address='1.2.3.4', pk_path=None,
             subnet_id='fake-subnet-id', router_id='fake-router-id',
             username=self._manager.get_config_option('service_instance_user'))
+        expected_details = fake_server.copy()
+        expected_details.pop('pk_path')
+        expected_details['instance_id'] = expected_details.pop('id')
         self.mock_object(self._manager, '_create_service_instance',
                          mock.Mock(return_value=fake_server))
         self.mock_object(self._manager, '_check_server_availability',
@@ -534,7 +537,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context,
             fake_network_info['server_id'], fake_network_info)
         self._manager._check_server_availability.assert_called_once_with(
-            fake_server)
+            expected_details)
 
     def test_ensure_server(self):
         server_details = {'instance_id': 'fake_inst_id', 'ip': '1.2.3.4'}
@@ -1019,62 +1022,6 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.network_helper.get_network_name.\
                 assert_called_once_with(network_info)
 
-    def test___create_service_instance_not_found_after_creation(self):
-        def fake_sleep(time):
-            self.fake_time += time
-
-        def fake_time():
-            if not self.fake_time:
-                return 0
-            return self.fake_time
-
-        self.fake_time, self._manager.max_time_to_build_instance = 0, 1
-        server_create = dict(id='fakeid', status='CREATING', networks=dict())
-        net_name = self._manager.get_config_option("service_network_name")
-        server_get = dict(
-            id='fakeid', status='ACTIVE', networks={net_name: 'bar'})
-        service_image_id = 'fake_service_image_id'
-        key_data = 'fake_key_name', None
-        instance_name = 'fake_instance_name'
-        network_info = dict()
-        network_data = dict(nics=['fake_nic1', 'fake_nic2'])
-        self.mock_object(self._manager.network_helper, 'setup_network',
-                         mock.Mock(return_value=network_data))
-        self.mock_object(self._manager, '_get_service_image',
-                         mock.Mock(return_value=service_image_id))
-        self.mock_object(self._manager, '_get_key',
-                         mock.Mock(return_value=key_data))
-        self.mock_object(self._manager.compute_api, 'server_create',
-                         mock.Mock(return_value=server_create))
-        self.mock_object(self._manager.compute_api, 'server_get',
-                         mock.Mock(side_effect=exception.InstanceNotFound(
-                             instance_id=server_get['id'])))
-        self.mock_object(service_instance.time, 'sleep',
-                         mock.Mock(side_effect=fake_sleep))
-        self.mock_object(service_instance.time, 'time',
-                         mock.Mock(side_effect=fake_time))
-
-        self.assertRaises(
-            exception.ServiceInstanceException,
-            self._manager._create_service_instance,
-            self._manager.admin_context, instance_name, network_info)
-
-        self.assertTrue(service_instance.time.time.called)
-        self._manager.network_helper.setup_network.assert_called_once_with(
-            network_info)
-        self._manager._get_service_image.assert_called_once_with(
-            self._manager.admin_context)
-        self._manager._get_key.assert_called_once_with(
-            self._manager.admin_context)
-        self._manager.compute_api.server_create.assert_called_once_with(
-            self._manager.admin_context, name=instance_name,
-            image=service_image_id, flavor=100,
-            key_name=key_data[0], nics=network_data['nics'])
-        self._manager.compute_api.server_get.assert_called_once_with(
-            self._manager.admin_context, server_create['id'])
-        self.assertTrue(service_instance.time.sleep.called)
-        self.assertTrue(service_instance.time.sleep.called)
-
     @ddt.data(
         dict(
             instance_id_included=False,
@@ -1100,6 +1047,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                          mock.Mock(return_value=key_data))
         self.mock_object(
             self._manager.compute_api, 'server_create', mockobj)
+        self.mock_object(
+            self._manager, 'wait_for_instance_to_be_active',
+            mock.Mock(side_effect=exception.ServiceInstanceException))
 
         try:
             self._manager._create_service_instance(
@@ -1125,19 +1075,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             image=service_image_id, flavor=100,
             key_name=key_data[0], nics=network_data['nics'])
 
-    @ddt.data(
-        mock.Mock(return_value=dict(id='fakeid', status='ERROR')),
-        mock.Mock(side_effect=exception.ServiceInstanceException))
-    def test___create_service_instance_failed_to_build(self, mock_for_get):
-        def fake_sleep(time):
-            self.fake_time += time
-
-        def fake_time():
-            if not self.fake_time:
-                return 0
-            return self.fake_time
-
-        self.fake_time, self._manager.max_time_to_build_instance = 0, 2
+    def test___create_service_instance_failed_to_build(self):
         server_create = dict(id='fakeid', status='CREATING', networks=dict())
         service_image_id = 'fake_service_image_id'
         key_data = 'fake_key_name', 'fake_key_path'
@@ -1155,11 +1093,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.mock_object(self._manager.compute_api, 'server_create',
                          mock.Mock(return_value=server_create))
         self.mock_object(
-            self._manager.compute_api, 'server_get', mock_for_get)
-        self.mock_object(service_instance.time, 'sleep',
-                         mock.Mock(side_effect=fake_sleep))
-        self.mock_object(service_instance.time, 'time',
-                         mock.Mock(side_effect=fake_time))
+            self._manager, 'wait_for_instance_to_be_active',
+            mock.Mock(side_effect=exception.ServiceInstanceException))
 
         try:
             self._manager._create_service_instance(
@@ -1183,9 +1118,6 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context, name=instance_name,
             image=service_image_id, flavor=100,
             key_name=key_data[0], nics=network_data['nics'])
-        self._manager.compute_api.server_get.assert_called_once_with(
-            self._manager.admin_context, server_create['id'])
-        self.assertTrue(service_instance.time.sleep.called)
 
     @ddt.data(
         dict(name=None, path=None),
@@ -1206,6 +1138,77 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager.admin_context)
         self._manager._get_key.assert_called_once_with(
             self._manager.admin_context)
+
+    @mock.patch('time.sleep')
+    @mock.patch('time.time')
+    def _test_wait_for_instance(self, mock_time, mock_sleep,
+                                server_get_side_eff=None,
+                                expected_try_count=1,
+                                expected_sleep_count=0,
+                                expected_ret_val=None,
+                                expected_exc=None):
+        mock_server_get = mock.Mock(side_effect=server_get_side_eff)
+        self.mock_object(self._manager.compute_api, 'server_get',
+                         mock_server_get)
+
+        self.fake_time = 0
+
+        def fake_time():
+            return self.fake_time
+
+        def fake_sleep(sleep_time):
+            self.fake_time += sleep_time
+
+        # Note(lpetrut): LOG methods can call time.time
+        mock_time.side_effect = fake_time
+        mock_sleep.side_effect = fake_sleep
+        timeout = 3
+
+        if expected_exc:
+            self.assertRaises(
+                expected_exc,
+                self._manager.wait_for_instance_to_be_active,
+                instance_id=mock.sentinel.instance_id,
+                timeout=timeout)
+        else:
+            instance = self._manager.wait_for_instance_to_be_active(
+                instance_id=mock.sentinel.instance_id,
+                timeout=timeout)
+            self.assertEqual(expected_ret_val, instance)
+
+        mock_server_get.assert_has_calls(
+            [mock.call(self._manager.admin_context,
+                       mock.sentinel.instance_id)] * expected_try_count)
+        mock_sleep.assert_has_calls([mock.call(1)] * expected_sleep_count)
+
+    def test_wait_for_instance_timeout(self):
+        server_get_side_eff = [
+            exception.InstanceNotFound(
+                instance_id=mock.sentinel.instance_id),
+            {'status': 'BUILDING'},
+            {'status': 'ACTIVE'}]
+        # Note that in this case, although the status is active, the
+        # 'networks' field is missing.
+        self._test_wait_for_instance(
+            server_get_side_eff=server_get_side_eff,
+            expected_exc=exception.ServiceInstanceException,
+            expected_try_count=3,
+            expected_sleep_count=3)
+
+    def test_wait_for_instance_error_state(self):
+        mock_instance = {'status': 'ERROR'}
+        self._test_wait_for_instance(
+            server_get_side_eff=[mock_instance],
+            expected_exc=exception.ServiceInstanceException,
+            expected_try_count=1)
+
+    def test_wait_for_instance_available(self):
+        mock_instance = {'status': 'ACTIVE',
+                         'networks': mock.sentinel.networks}
+        self._test_wait_for_instance(
+            server_get_side_eff=[mock_instance],
+            expected_try_count=1,
+            expected_ret_val=mock_instance)
 
 
 class BaseNetworkHelperTestCase(test.TestCase):
