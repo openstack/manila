@@ -125,8 +125,8 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             self.db.network_allocation_delete(context, port['id'])
 
     def _has_provider_network_extension(self):
-        extentions = self.neutron_api.list_extensions()
-        return neutron_constants.PROVIDER_NW_EXT in extentions
+        extensions = self.neutron_api.list_extensions()
+        return neutron_constants.PROVIDER_NW_EXT in extensions
 
     def _save_neutron_network_data(self, context, share_network):
         net_info = self.neutron_api.get_network(
