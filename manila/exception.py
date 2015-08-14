@@ -552,6 +552,10 @@ class EMCVnxXMLAPIError(Invalid):
     message = _("%(err)s")
 
 
+class EMCVnxLockRequiredException(ManilaException):
+    message = _("Unable to acquire lock(s).")
+
+
 class HP3ParInvalidClient(Invalid):
     message = _("%(err)s")
 

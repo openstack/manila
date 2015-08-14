@@ -33,3 +33,5 @@ XML_NAMESPACE = 'http://www.emc.com/schemas/celerra/xml_api'
 
 CIFS_ACL_FULLCONTROL = 'fullcontrol'
 CIFS_ACL_READ = 'read'
+
+SSH_DEFAULT_RETRY_PATTERN = r'Error 2201:.*: unable to acquire lock\(s\)'
