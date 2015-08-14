@@ -84,6 +84,16 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertIsNotNone(weighed_host.obj)
         self.assertTrue(_mock_service_get_all_by_topic.called)
 
+    def test_schedule_share_type_is_none(self):
+        sched = fakes.FakeFilterScheduler()
+        request_spec = {
+            'share_type': None,
+            'share_properties': {'project_id': 1, 'size': 1},
+        }
+        self.assertRaises(exception.InvalidParameterValue,
+                          sched._schedule_share,
+                          self.context, request_spec)
+
     def test_max_attempts(self):
         self.flags(scheduler_max_attempts=4)
         sched = fakes.FakeFilterScheduler()

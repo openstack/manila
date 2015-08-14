@@ -120,6 +120,12 @@ class FilterScheduler(driver.Scheduler):
         # 'volume_XX' to 'resource_XX' will make both filters happy.
         resource_properties = share_properties.copy()
         share_type = request_spec.get("share_type", {})
+        if not share_type:
+            msg = _("You must create a share type in advance,"
+                    " and specify in request body or"
+                    " set default_share_type in manila.conf.")
+            LOG.error(msg)
+            raise exception.InvalidParameterValue(err=msg)
 
         extra_specs = share_type.get('extra_specs', {})
 
