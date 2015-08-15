@@ -57,6 +57,8 @@ API Reference
    :maxdepth: 3
 
    api
+   api_microversion_dev
+   api_microversion_history
 
 Module Reference
 ----------------

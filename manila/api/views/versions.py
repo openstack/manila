@@ -1,4 +1,5 @@
 # Copyright 2010-2011 OpenStack LLC.
+# Copyright 2015 Clinton Knight
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,12 +15,13 @@
 #    under the License.
 
 import copy
-import os
+import re
+
+from six.moves import urllib
 
 
 def get_view_builder(req):
-    base_url = req.application_url
-    return ViewBuilder(base_url)
+    return ViewBuilder(req.application_url)
 
 
 class ViewBuilder(object):
@@ -30,52 +32,30 @@ class ViewBuilder(object):
         """
         self.base_url = base_url
 
-    def build_choices(self, VERSIONS, req):
-        version_objs = []
-        for version in VERSIONS:
-            version = VERSIONS[version]
-            version_objs.append({
-                "id": version['id'],
-                "status": version['status'],
-                "links": [{"rel": "self",
-                           "href": self.generate_href(req.path), }, ],
-                "media-types": version['media-types'], })
-
-        return dict(choices=version_objs)
-
     def build_versions(self, versions):
-        version_objs = []
-        for version in sorted(versions.keys()):
-            version = versions[version]
-            version_objs.append({
-                "id": version['id'],
-                "status": version['status'],
-                "updated": version['updated'],
-                "links": self._build_links(version), })
+        views = [self._build_version(versions[key])
+                 for key in sorted(list(versions.keys()))]
+        return dict(versions=views)
 
-        return dict(versions=version_objs)
-
-    def build_version(self, version):
-        reval = copy.deepcopy(version)
-        reval['links'].insert(0, {
-            "rel": "self",
-            "href": self.base_url.rstrip('/') + '/', })
-        return dict(version=reval)
+    def _build_version(self, version):
+        view = copy.deepcopy(version)
+        view['links'] = self._build_links(version)
+        return view
 
     def _build_links(self, version_data):
         """Generate a container of links that refer to the provided version."""
-        href = self.generate_href()
-
-        links = [{'rel': 'self',
-                  'href': href, }, ]
-
+        links = copy.deepcopy(version_data.get('links', {}))
+        links.append({'rel': 'self', 'href': self._generate_href()})
         return links
 
-    def generate_href(self, path=None):
-        """Create an url that refers to a specific version_number."""
-        version_number = 'v1'
+    def _generate_href(self, version='v1', path=None):
+        """Create a URL that refers to a specific version_number."""
+        base_url = self._get_base_url_without_version()
+        href = urllib.parse.urljoin(base_url, version).rstrip('/') + '/'
         if path:
-            path = path.strip('/')
-            return os.path.join(self.base_url, version_number, path)
-        else:
-            return os.path.join(self.base_url, version_number) + '/'
+            href += path.lstrip('/')
+        return href
+
+    def _get_base_url_without_version(self):
+        """Get the base URL with out the /v1 suffix."""
+        return re.sub('v[1-9]+/?$', '', self.base_url)
