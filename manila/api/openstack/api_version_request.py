@@ -16,7 +16,9 @@
 
 import re
 
+from manila.api.openstack import versioned_method
 from manila import exception
+from manila.i18n import _
 from manila import utils
 
 # Define the minimum and maximum version of the API across all of the
@@ -76,31 +78,55 @@ class APIVersionRequest(utils.ComparableMixin):
 
     def __init__(self, version_string=None):
         """Create an API version request object."""
-        self.ver_major = None
-        self.ver_minor = None
+        self._ver_major = None
+        self._ver_minor = None
+        self._experimental = False
 
         if version_string is not None:
             match = re.match(r"^([1-9]\d*)\.([1-9]\d*|0)$",
                              version_string)
             if match:
-                self.ver_major = int(match.group(1))
-                self.ver_minor = int(match.group(2))
+                self._ver_major = int(match.group(1))
+                self._ver_minor = int(match.group(2))
             else:
                 raise exception.InvalidAPIVersionString(version=version_string)
 
     def __str__(self):
         """Debug/Logging representation of object."""
         return ("API Version Request Major: %(major)s, Minor: %(minor)s"
-                % {'major': self.ver_major, 'minor': self.ver_minor})
+                % {'major': self._ver_major, 'minor': self._ver_minor})
 
     def is_null(self):
-        return self.ver_major is None and self.ver_minor is None
+        return self._ver_major is None and self._ver_minor is None
 
     def _cmpkey(self):
         """Return the value used by ComparableMixin for rich comparisons."""
-        return self.ver_major, self.ver_minor
+        return self._ver_major, self._ver_minor
 
-    def matches(self, min_version, max_version):
+    @property
+    def experimental(self):
+        return self._experimental
+
+    @experimental.setter
+    def experimental(self, value):
+        if type(value) != bool:
+            msg = _('The experimental property must be a bool value.')
+            raise exception.InvalidParameterValue(err=msg)
+        self._experimental = value
+
+    def matches_versioned_method(self, method):
+        """Compares this version to that of a versioned method."""
+
+        if type(method) != versioned_method.VersionedMethod:
+            msg = _('An API version request must be compared '
+                    'to a VersionedMethod object.')
+            raise exception.InvalidParameterValue(err=msg)
+
+        return self.matches(method.start_version,
+                            method.end_version,
+                            method.experimental)
+
+    def matches(self, min_version, max_version, experimental=False):
         """Compares this version to the specified min/max range.
 
         Returns whether the version object represents a version
@@ -113,11 +139,17 @@ class APIVersionRequest(utils.ComparableMixin):
 
         :param min_version: Minimum acceptable version.
         :param max_version: Maximum acceptable version.
+        :param experimental: Whether to match experimental APIs.
         :returns: boolean
         """
 
         if self.is_null():
             raise ValueError
+        # NOTE(cknight): An experimental request should still match a
+        # non-experimental API, so the experimental check isn't just
+        # looking for equality.
+        if not self.experimental and experimental:
+            return False
         if max_version.is_null() and min_version.is_null():
             return True
         elif max_version.is_null():
@@ -136,5 +168,5 @@ class APIVersionRequest(utils.ComparableMixin):
         if self.is_null():
             raise ValueError
         return ("%(major)s.%(minor)s" %
-                {'major': self.ver_major, 'minor': self.ver_minor})
+                {'major': self._ver_major, 'minor': self._ver_minor})
 

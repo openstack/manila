@@ -59,6 +59,7 @@ API Reference
    api
    api_microversion_dev
    api_microversion_history
+   experimental_apis
 
 Module Reference
 ----------------
