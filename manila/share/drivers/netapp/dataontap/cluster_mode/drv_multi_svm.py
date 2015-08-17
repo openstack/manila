@@ -61,6 +61,9 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def delete_snapshot(self, context, snapshot, **kwargs):
         self.library.delete_snapshot(context, snapshot, **kwargs)
 
+    def extend_share(self, share, new_size, **kwargs):
+        self.library.extend_share(share, new_size, **kwargs)
+
     def ensure_share(self, context, share, **kwargs):
         pass
 

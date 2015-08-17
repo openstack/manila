@@ -21,6 +21,7 @@ import time
 
 from oslo_log import log
 from oslo_utils import strutils
+from oslo_utils import units
 import six
 
 from manila import exception
@@ -939,6 +940,36 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             },
         }
         self.send_request('volume-modify-iter', api_args)
+
+    @na_utils.trace
+    def set_volume_size(self, volume_name, size_gb):
+        """Set volume size."""
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'attributes': {
+                'volume-attributes': {
+                    'volume-space-attributes': {
+                        'size': int(size_gb) * units.Gi,
+                    },
+                },
+            },
+        }
+        result = self.send_request('volume-modify-iter', api_args)
+        failures = result.get_child_content('num-failed')
+        if failures and int(failures) > 0:
+            failure_list = result.get_child_by_name(
+                'failure-list') or netapp_api.NaElement('none')
+            errors = failure_list.get_children()
+            if errors:
+                raise netapp_api.NaApiError(
+                    errors[0].get_child_content('error-code'),
+                    errors[0].get_child_content('error-message'))
 
     @na_utils.trace
     def volume_exists(self, volume_name):
