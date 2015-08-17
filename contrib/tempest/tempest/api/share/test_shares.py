@@ -61,6 +61,8 @@ class SharesNFSTest(base.BaseSharesTest):
                           share['id'])
 
     @test.attr(type=["gate", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_create_delete_snapshot(self):
 
         # create snapshot
@@ -81,6 +83,8 @@ class SharesNFSTest(base.BaseSharesTest):
                           self.shares_client.get_snapshot, snap['id'])
 
     @test.attr(type=["gate", "smoke", ])
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_create_share_from_snapshot(self):
         # If multitenant driver used, share_network will be provided by default
 
@@ -101,6 +105,8 @@ class SharesNFSTest(base.BaseSharesTest):
     @test.attr(type=["gate", "smoke", ])
     @testtools.skipIf(not CONF.share.multitenancy_enabled,
                       "Only for multitenancy.")
+    @testtools.skipUnless(CONF.share.run_snapshot_tests,
+                          "Snapshot tests are disabled.")
     def test_create_share_from_snapshot_share_network_not_provided(self):
         # We expect usage of share network from parent's share
         # when creating share from snapshot using multitenant driver.
