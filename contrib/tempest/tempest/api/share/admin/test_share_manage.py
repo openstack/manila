@@ -153,3 +153,11 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
 class ManageCIFSShareTest(ManageNFSShareTest):
     protocol = 'cifs'
+
+
+class ManageGLUSTERFSShareTest(ManageNFSShareTest):
+    protocol = 'glusterfs'
+
+
+class ManageHDFSShareTest(ManageNFSShareTest):
+    protocol = 'hdfs'
