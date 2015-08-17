@@ -46,6 +46,7 @@ import manila.scheduler.scheduler_options
 import manila.scheduler.simple
 import manila.scheduler.weights
 import manila.scheduler.weights.capacity
+import manila.scheduler.weights.pool
 import manila.service
 import manila.share.api
 import manila.share.driver
