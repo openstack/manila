@@ -30,12 +30,6 @@ from manila.share.drivers.emc.plugins.isilon import isilon_api
 CONF = cfg.CONF
 VERSION = "0.1.0"
 
-ISILON_OPTS = [
-    cfg.StrOpt('isilon_share_root_dir', default='/ifs/manila-shares',
-               help='The path on Isilon where the manila shares will be '
-                    'created.')]
-CONF.register_opts(ISILON_OPTS)
-
 LOG = log.getLogger(__name__)
 
 
@@ -304,7 +298,7 @@ class IsilonStorageConnection(base.StorageConnection):
         self._password = emc_share_driver.configuration.safe_get(
             "emc_nas_password")
         self._root_dir = emc_share_driver.configuration.safe_get(
-            "isilon_share_root_dir")
+            "emc_nas_root_dir")
         # TODO(Shaun Edwards): make verify ssl a config variable?
         self._verify_ssl_cert = False
         self._isilon_api = self._isilon_api_class(self._server_url, auth=(

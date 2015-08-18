@@ -47,7 +47,7 @@ class IsilonTest(test.TestCase):
                 return 'admin'
             elif value == 'emc_nas_password':
                 return 'a'
-            elif value == 'isilon_share_root_dir':
+            elif value == 'emc_nas_root_dir':
                 return '/ifs/manila-test'
             else:
                 return None
