@@ -138,3 +138,13 @@ class SharesNFSTest(base.BaseSharesTest):
 class SharesCIFSTest(SharesNFSTest):
     """Covers share functionality, that is related to CIFS share type."""
     protocol = "cifs"
+
+
+class SharesGLUSTERFSTest(SharesNFSTest):
+    """Covers share functionality that is related to GLUSTERFS share type."""
+    protocol = "glusterfs"
+
+
+class SharesHDFSTest(SharesNFSTest):
+    """Covers share functionality that is related to HDFS share type."""
+    protocol = "hdfs"
