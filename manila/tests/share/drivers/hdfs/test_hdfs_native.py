@@ -358,7 +358,7 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
         cmd = 'testcmd'
         self.mock_object(utils, 'execute', mock.Mock(return_value=True))
         self._driver._hdfs_local_execute(cmd)
-        utils.execute.assert_called_once_with(cmd, run_as_root=True)
+        utils.execute.assert_called_once_with(cmd, run_as_root=False)
 
     def test__hdfs_remote_execute(self):
         self._driver._run_ssh = mock.Mock(return_value=True)

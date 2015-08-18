@@ -107,7 +107,7 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _hdfs_local_execute(self, *cmd, **kwargs):
         if 'run_as_root' not in kwargs:
-            kwargs.update({'run_as_root': True})
+            kwargs.update({'run_as_root': False})
 
         return utils.execute(*cmd, **kwargs)
 
