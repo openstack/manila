@@ -621,6 +621,102 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # TODO(deepakcs): Disable quota.
 
+    @staticmethod
+    def _find_actual_backend_snapshot_name(gluster_mgr, snapshot):
+        args = ('snapshot', 'list', gluster_mgr.volume, '--mode=script')
+        try:
+            out, err = gluster_mgr.gluster_call(*args)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_LE("Error retrieving snapshot list: %s"), exc.stderr)
+            raise exception.GlusterfsException(_("gluster %s failed") %
+                                               ' '.join(args))
+        snapgrep = list(filter(lambda x: snapshot['id'] in x, out.split("\n")))
+        if len(snapgrep) != 1:
+            msg = (_("Failed to identify backing GlusterFS object "
+                     "for snapshot %(snap_id)s of share %(share_id)s: "
+                     "a single candidate was expected, %(found)d was found.") %
+                   {'snap_id': snapshot['id'],
+                    'share_id': snapshot['share_id'],
+                    'found': len(snapgrep)})
+            raise exception.GlusterfsException(msg)
+        backend_snapshot_name = snapgrep[0]
+        return backend_snapshot_name
+
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
+        old_exportlocation = snapshot['share']['export_location']
+        old_gmgr = self.gluster_used_vols_dict[old_exportlocation]
+
+        # Snapshot clone feature in GlusterFS server essential to support this
+        # API is available in GlusterFS server versions 3.7 and higher. So do
+        # a version check.
+        vers = self.glusterfs_versions[old_gmgr.management_address]
+        minvers = (3, 7)
+        if glusterfs.GlusterManager.numreduct(vers) < minvers:
+            minvers_str = '.'.join(six.text_type(c) for c in minvers)
+            vers_str = '.'.join(vers)
+            msg = (_("GlusterFS version %(version)s on server %(server)s does "
+                     "not support creation of shares from snapshot. "
+                     "minimum requirement: %(minversion)s") %
+                   {'version': vers_str, 'server': old_gmgr.host,
+                    'minversion': minvers_str})
+            LOG.error(msg)
+            raise exception.GlusterfsException(msg)
+
+        # Clone the snapshot. The snapshot clone, a new GlusterFS volume
+        # would serve as a share.
+        backend_snapshot_name = self._find_actual_backend_snapshot_name(
+            old_gmgr, snapshot)
+        volume = ''.join(['manila-', share['id']])
+        args_tuple = (('snapshot', 'activate', backend_snapshot_name,
+                      'force', '--mode=script'),
+                      ('snapshot', 'clone', volume, backend_snapshot_name))
+        try:
+            for args in args_tuple:
+                out, err = old_gmgr.gluster_call(*args)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_LE("Error creating share from snapshot: %s"),
+                      exc.stderr)
+            raise exception.GlusterfsException(_("gluster %s failed") %
+                                               ' '.join(args))
+
+        # Construct the volume address/export location of the new
+        # volume/share.
+        export_location = ':/'.join([old_gmgr.management_address, volume])
+
+        # Configure the GlusterFS volume to be used as share.
+        # 1. The clone of the snapshot, the new volume, retains the authorized
+        #    access list of the snapshotted volume/share, which includes
+        #    identities of the backend servers and Manila clients. So only
+        #    retain the identities of the GlusterFS servers volume in the
+        #    authorized access list of the new volume. The identities of
+        #    GlusterFS are easy to figure as they're pre-fixed by
+        #    "glusterfs-server".
+        # 2. Start the new volume.
+        gmgr = self._glustermanager(export_location)
+        old_access = gmgr.get_gluster_vol_option(AUTH_SSL_ALLOW)
+        # wrt. GlusterFS' parsing of auth.ssl-allow, please see code from
+        # https://github.com/gluster/glusterfs/blob/v3.6.2/
+        # xlators/protocol/auth/login/src/login.c#L80
+        # until end of gf_auth() function
+        old_access_list = re.split('[ ,]', old_access)
+        regex = re.compile('\Aglusterfs-server*')
+        access_to = ','.join(filter(regex.match, old_access_list))
+        args_tuple = (('volume', 'set', gmgr.volume, AUTH_SSL_ALLOW,
+                       access_to),
+                      ('volume', 'start', gmgr.volume))
+        try:
+            for args in args_tuple:
+                out, err = gmgr.gluster_call(*args)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_LE("Error creating share from snapshot: %s"),
+                      exc.stderr)
+            raise exception.GlusterfsException(_("gluster %s failed") %
+                                               ' '.join(args))
+
+        self.gluster_used_vols_dict[export_location] = gmgr
+        return export_location
+
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""
 
@@ -673,23 +769,10 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         vol = snapshot['share']['export_location']
         gluster_mgr = self.gluster_used_vols_dict[vol]
-        args = ('snapshot', 'list', gluster_mgr.volume, '--mode=script')
-        try:
-            out, err = gluster_mgr.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error retrieving snapshot list: %s"), exc.stderr)
-            raise exception.GlusterfsException(_("gluster %s failed") %
-                                               ' '.join(args))
-        snapgrep = list(filter(lambda x: snapshot['id'] in x, out.split("\n")))
-        if len(snapgrep) != 1:
-            msg = (_("Failed to identify backing GlusterFS object "
-                     "for snapshot %(snap_id)s of share %(share_id)s: "
-                     "a single candidate was expected, %(found)d was found.") %
-                   {'snap_id': snapshot['id'],
-                    'share_id': snapshot['share_id'],
-                    'found': len(snapgrep)})
-            raise exception.GlusterfsException(msg)
-        args = ('--xml', 'snapshot', 'delete', snapgrep[0], '--mode=script')
+        backend_snapshot_name = self._find_actual_backend_snapshot_name(
+            gluster_mgr, snapshot)
+        args = ('--xml', 'snapshot', 'delete', backend_snapshot_name,
+                '--mode=script')
         try:
             out, err = gluster_mgr.gluster_call(*args)
         except exception.ProcessExecutionError as exc:
