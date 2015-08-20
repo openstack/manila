@@ -76,6 +76,13 @@ Module Reference
    manila
    ganesha
 
+Capabilities and Extra-Specs
+----------------------------
+.. toctree::
+   :maxdepth: 3
+
+   capabilities_and_extra_specs
+
 Share backends feature support mapping
 --------------------------------------
 .. toctree::
