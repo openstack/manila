@@ -36,7 +36,7 @@ MIN_CLIENT_VERSION = (3, 2, 1)
 MIN_SMB_CA_VERSION = (3, 2, 2)
 DENY = '-'
 ALLOW = '+'
-OPEN_STACK_MANILA_FSHARE = 'OpenStack Manila fshare'
+OPEN_STACK_MANILA = 'OpenStack Manila'
 FULL = 1
 THIN = 2
 DEDUPE = 6
@@ -54,7 +54,7 @@ SMB_EXTRA_SPECS_MAP = {
 
 class HP3ParMediator(object):
 
-    VERSION = "1.0.00"
+    VERSION = "1.0.01"
 
     def __init__(self, **kwargs):
 
@@ -307,11 +307,11 @@ class HP3ParMediator(object):
         return ','.join(options)
 
     def _build_createfshare_kwargs(self, protocol, fpg, fstore, readonly,
-                                   sharedir, extra_specs):
+                                   sharedir, extra_specs, comment):
         createfshare_kwargs = dict(fpg=fpg,
                                    fstore=fstore,
                                    sharedir=sharedir,
-                                   comment=OPEN_STACK_MANILA_FSHARE)
+                                   comment=comment)
         if protocol == 'nfs':
             createfshare_kwargs['clientip'] = '127.0.0.1'
             options = self._get_nfs_options(extra_specs, readonly)
@@ -333,7 +333,8 @@ class HP3ParMediator(object):
 
     def create_share(self, project_id, share_id, share_proto, extra_specs,
                      fpg, vfs,
-                     fstore=None, sharedir=None, readonly=False, size=None):
+                     fstore=None, sharedir=None, readonly=False, size=None,
+                     comment=OPEN_STACK_MANILA):
         """Create the share and return its path.
 
         This method can create a share when called by the driver or when
@@ -374,14 +375,15 @@ class HP3ParMediator(object):
                                                               fstore,
                                                               readonly,
                                                               sharedir,
-                                                              extra_specs)
+                                                              extra_specs,
+                                                              comment)
 
         if not use_existing_fstore:
 
             try:
                 result = self._client.createfstore(
                     vfs, fstore, fpg=fpg,
-                    comment='OpenStack Manila fstore')
+                    comment=comment)
                 LOG.debug("createfstore result=%s", result)
             except Exception as e:
                 msg = (_('Failed to create fstore %(fstore)s: %(e)s') %
@@ -459,7 +461,8 @@ class HP3ParMediator(object):
 
     def create_share_from_snapshot(self, share_id, share_proto, extra_specs,
                                    orig_project_id, orig_share_id, orig_proto,
-                                   snapshot_id, fpg, vfs):
+                                   snapshot_id, fpg, vfs,
+                                   comment=OPEN_STACK_MANILA):
 
         protocol = self.ensure_supported_protocol(share_proto)
         snapshot_tag = self.ensure_prefix(snapshot_id)
@@ -502,6 +505,7 @@ class HP3ParMediator(object):
             fstore=fstore,
             sharedir=sharedir,
             readonly=True,
+            comment=comment,
         )
 
     def delete_share(self, project_id, share_id, share_proto, fpg, vfs):

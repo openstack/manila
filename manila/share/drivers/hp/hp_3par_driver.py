@@ -14,10 +14,12 @@
 
 """HP 3PAR Driver for OpenStack Manila."""
 
+import datetime
 import hashlib
 import inspect
 import logging
 import os
+import re
 
 from oslo_config import cfg
 from oslo_log import log
@@ -81,7 +83,7 @@ class HP3ParShareDriver(driver.ShareDriver):
      Supports NFS and CIFS protocols on arrays with File Persona.
      """
 
-    VERSION = "1.0.00"
+    VERSION = "1.0.01"
 
     def __init__(self, *args, **kwargs):
         super(HP3ParShareDriver, self).__init__(False, *args, **kwargs)
@@ -173,6 +175,22 @@ class HP3ParShareDriver(driver.ShareDriver):
             raise exception.InvalidInput(message)
         return location
 
+    @staticmethod
+    def build_share_comment(share):
+        """Create an informational only comment to help admins and testers."""
+
+        info = {
+            'name': share['display_name'],
+            'host': share['host'],
+            'now': datetime.datetime.now().strftime('%H%M%S'),
+        }
+
+        acceptable = re.compile('[^a-zA-Z0-9_=:@# \-]+', re.UNICODE)
+        comment = ("OpenStack Manila - host=%(host)s  orig_name=%(name)s "
+                   "created=%(now)s" % info)
+
+        return acceptable.sub('_', comment)[:254]  # clean and truncate
+
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
 
@@ -187,7 +205,8 @@ class HP3ParShareDriver(driver.ShareDriver):
             protocol,
             extra_specs,
             self.fpg, self.vfs,
-            size=share['size']
+            size=share['size'],
+            comment=self.build_share_comment(share)
         )
 
         return self._build_export_location(protocol, ip, path)
@@ -210,7 +229,8 @@ class HP3ParShareDriver(driver.ShareDriver):
             snapshot['share']['share_proto'],
             snapshot['id'],
             self.fpg,
-            self.vfs
+            self.vfs,
+            comment=self.build_share_comment(share)
         )
 
         return self._build_export_location(protocol, ip, path)

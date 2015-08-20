@@ -241,7 +241,7 @@ class HP3ParMediatorTestCase(test.TestCase):
                                             expected_share_id):
         expected_sharedir = expected_share_id
 
-        createfshare_kwargs = dict(comment='OpenStack Manila fshare',
+        createfshare_kwargs = dict(comment=mock.ANY,
                                    fpg=expected_fpg,
                                    sharedir=expected_sharedir,
                                    fstore=expected_project_id)
@@ -263,7 +263,7 @@ class HP3ParMediatorTestCase(test.TestCase):
 
             expected_calls = [
                 mock.call.createfstore(expected_vfsname, expected_project_id,
-                                       comment='OpenStack Manila fstore',
+                                       comment=mock.ANY,
                                        fpg=expected_fpg),
                 mock.call.getfsquota(fpg=expected_fpg,
                                      vfs=expected_vfsname,
@@ -298,7 +298,7 @@ class HP3ParMediatorTestCase(test.TestCase):
 
             expected_calls = [
                 mock.call.createfstore(expected_vfsname, expected_project_id,
-                                       comment='OpenStack Manila fstore',
+                                       comment=mock.ANY,
                                        fpg=expected_fpg),
                 mock.call.getfsquota(fpg=expected_fpg,
                                      vfs=expected_vfsname,
