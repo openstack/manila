@@ -24,47 +24,27 @@ server supports only NFSv3 protocol.
 TODO(rraja): support SMB protocol.
 """
 
-import errno
-import os
 import re
 import sys
 
 from oslo_config import cfg
 from oslo_log import log
-import six
 
 from manila import exception
-from manila.i18n import _
 from manila.i18n import _LE
 from manila.share import driver
 from manila.share.drivers import ganesha
 from manila.share.drivers.ganesha import utils as ganesha_utils
-from manila.share.drivers.glusterfs import common
+from manila.share.drivers.glusterfs import layout
+from manila import utils
 
 LOG = log.getLogger(__name__)
 
 GlusterfsManilaShare_opts = [
-    cfg.StrOpt('glusterfs_target',
-               help='Specifies the GlusterFS volume to be mounted on the '
-                    'Manila host. It is of the form '
-                    '[remoteuser@]<volserver>:<volid>.'),
-    cfg.StrOpt('glusterfs_mount_point_base',
-               default='$state_path/mnt',
-               help='Base directory containing mount points for Gluster '
-                    'volumes.'),
     cfg.StrOpt('glusterfs_nfs_server_type',
                default='Gluster',
                help='Type of NFS server that mediate access to the Gluster '
                     'volumes (Gluster or Ganesha).'),
-    cfg.StrOpt('glusterfs_server_password',
-               default=None,
-               secret=True,
-               help="Remote GlusterFS server node's login password. "
-                    "This is not required if 'glusterfs_path_to_private_key'"
-                    ' is configured.'),
-    cfg.StrOpt('glusterfs_path_to_private_key',
-               default=None,
-               help='Path of Manila host\'s private SSH key file.'),
     cfg.StrOpt('glusterfs_ganesha_server_ip',
                default=None,
                help="Remote Ganesha server node's IP address."),
@@ -85,191 +65,77 @@ CONF.register_opts(GlusterfsManilaShare_opts)
 NFS_EXPORT_DIR = 'nfs.export-dir'
 NFS_EXPORT_VOL = 'nfs.export-volumes'
 
-GLUSTERFS_VERSION_MIN = (3, 5)
-
 
 class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
-                           driver.ShareDriver,):
+                           layout.GlusterfsShareDriverBase):
     """Execute commands relating to Shares."""
+
+    GLUSTERFS_VERSION_MIN = (3, 5)
+
+    supported_layouts = ('layout_directory.GlusterfsDirectoryMappedLayout',
+                         'layout_volume.GlusterfsVolumeMappedLayout')
+    supported_protocols = ('NFS',)
 
     def __init__(self, *args, **kwargs):
         super(GlusterfsShareDriver, self).__init__(False, *args, **kwargs)
         self._helpers = {}
-        self.gluster_manager = None
         self.configuration.append_config_values(GlusterfsManilaShare_opts)
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'GlusterFS'
-
-    def do_setup(self, context):
-        """Prepares the backend and appropriate NAS helpers."""
-        super(GlusterfsShareDriver, self).do_setup(context)
-        if not self.configuration.glusterfs_target:
-            raise exception.GlusterfsException(
-                _('glusterfs_target configuration that specifies the GlusterFS'
-                  ' volume to be mounted on the Manila host is not set.'))
-        self.gluster_manager = common.GlusterManager(
-            self.configuration.glusterfs_target,
-            self._execute,
-            self.configuration.glusterfs_path_to_private_key,
-            self.configuration.glusterfs_server_password,
-            requires={'volume': True}
-        )
-        self.gluster_manager.check_gluster_version(GLUSTERFS_VERSION_MIN)
-        try:
-            self._execute('mount.glusterfs', check_exit_code=False)
-        except OSError as exc:
-            if exc.errno == errno.ENOENT:
-                raise exception.GlusterfsException(
-                    _('mount.glusterfs is not installed.'))
-            else:
-                raise
-
-        # enable quota options of a GlusteFS volume to allow
-        # creation of shares of specific size
-        args = ('volume', 'quota', self.gluster_manager.volume, 'enable')
-        try:
-            self.gluster_manager.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            if (self.gluster_manager.
-                    get_gluster_vol_option('features.quota')) != 'on':
-                LOG.error(_LE("Error in tuning GlusterFS volume to enable "
-                              "creation of shares of specific size: %s"),
-                          exc.stderr)
-                raise exception.GlusterfsException(exc)
-
-        self._setup_helpers()
-        self._ensure_gluster_vol_mounted()
-
-    def _setup_helpers(self):
-        """Initializes protocol-specific NAS drivers."""
-        # TODO(rraja): The below seems crude. Accommodate CIFS helper as well?
-        nfs_helper = getattr(
+        self.nfs_helper = getattr(
             sys.modules[__name__],
             self.configuration.glusterfs_nfs_server_type + 'NFSHelper')
-        self._helpers['NFS'] = nfs_helper(self._execute,
-                                          self.configuration,
-                                          gluster_manager=self.gluster_manager)
-        for helper in self._helpers.values():
-            helper.init_helper()
+
+    def do_setup(self, context):
+        # in order to do an initial instantialization of the helper
+        self._get_helper()
+        super(GlusterfsShareDriver, self).do_setup(context)
+
+    def _setup_via_manager(self, gluster_manager, gluster_manager_parent=None):
+        # exporting the whole volume must be prohibited
+        # to not to defeat access control
+        args = ('volume', 'set', gluster_manager.volume, NFS_EXPORT_VOL,
+                'off')
+        try:
+            gluster_manager.gluster_call(*args)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_LE("Error in tuning GlusterFS volume to prevent "
+                          "exporting the entire volume: %s"), exc.stderr)
+            raise exception.GlusterfsException("gluster %s failed" %
+                                               ' '.join(args))
 
     def check_for_setup_error(self):
         pass
 
-    def _get_mount_point_for_gluster_vol(self):
-        """Return mount point for the GlusterFS volume."""
-        return os.path.join(self.configuration.glusterfs_mount_point_base,
-                            self.gluster_manager.volume)
-
-    def _ensure_gluster_vol_mounted(self):
-        """Ensure GlusterFS volume is native-mounted on Manila host."""
-        mount_path = self._get_mount_point_for_gluster_vol()
-        try:
-            common._mount_gluster_vol(self._execute,
-                                      self.gluster_manager.export, mount_path,
-                                      ensure=True)
-        except exception.GlusterfsException:
-            LOG.error(_LE('Could not mount the Gluster volume %s'),
-                      self.gluster_manager.volume)
-            raise
-
-    def _get_local_share_path(self, share):
-        """Determine mount path of the GlusterFS volume in the Manila host."""
-        local_vol_path = self._get_mount_point_for_gluster_vol()
-        if not os.access(local_vol_path, os.R_OK):
-            raise exception.GlusterfsException('share path %s does not exist' %
-                                               local_vol_path)
-        return os.path.join(local_vol_path, share['name'])
-
     def _update_share_stats(self):
         """Retrieve stats info from the GlusterFS volume."""
-
-        # sanity check for gluster ctl mount
-        smpb = os.stat(self.configuration.glusterfs_mount_point_base)
-        smp = os.stat(self._get_mount_point_for_gluster_vol())
-        if smpb.st_dev == smp.st_dev:
-            raise exception.GlusterfsException(
-                _("GlusterFS control mount is not available")
-            )
-        smpv = os.statvfs(self._get_mount_point_for_gluster_vol())
 
         data = dict(
             storage_protocol='NFS',
             vendor_name='Red Hat',
             share_backend_name=self.backend_name,
-            reserved_percentage=self.configuration.reserved_share_percentage,
-            total_capacity_gb=(smpv.f_blocks * smpv.f_frsize) >> 30,
-            free_capacity_gb=(smpv.f_bavail * smpv.f_frsize) >> 30)
+            reserved_percentage=self.configuration.reserved_share_percentage)
         super(GlusterfsShareDriver, self)._update_share_stats(data)
 
     def get_network_allocations_number(self):
         return 0
 
-    def create_share(self, ctx, share, share_server=None):
-        """Create a sub-directory/share in the GlusterFS volume."""
-        # probe into getting a NAS protocol helper for the share in order
-        # to facilitate early detection of unsupported protocol type
-        self._get_helper(share)
-        sizestr = six.text_type(share['size']) + 'GB'
-        share_dir = '/' + share['name']
-        local_share_path = self._get_local_share_path(share)
-        cmd = ['mkdir', local_share_path]
-        # set hard limit quota on the sub-directory/share
-        args = ('volume', 'quota', self.gluster_manager.volume,
-                'limit-usage', share_dir, sizestr)
-        try:
-            self._execute(*cmd, run_as_root=True)
-            self.gluster_manager.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            self._cleanup_create_share(local_share_path, share['name'])
-            LOG.error(_LE('Unable to create share %s'), share['name'])
-            raise exception.GlusterfsException(exc)
-
-        export_location = os.path.join(self.gluster_manager.qualified,
-                                       share['name'])
-        return export_location
-
-    def _cleanup_create_share(self, share_path, share_name):
-        """Cleanup share that errored out during its creation."""
-        if os.path.exists(share_path):
-            cmd = ['rm', '-rf', share_path]
-            try:
-                self._execute(*cmd, run_as_root=True)
-            except exception.ProcessExecutionError as exc:
-                LOG.error(_LE('Cannot cleanup share, %s, that errored out '
-                              'during its creation, but exists in GlusterFS '
-                              'volume.'), share_name)
-                raise exception.GlusterfsException(exc)
-
-    def delete_share(self, context, share, share_server=None):
-        """Remove a sub-directory/share from the GlusterFS volume."""
-        local_share_path = self._get_local_share_path(share)
-        cmd = ['rm', '-rf', local_share_path]
-        try:
-            self._execute(*cmd, run_as_root=True)
-        except exception.ProcessExecutionError:
-            LOG.error(_LE('Unable to delete share %s'), share['name'])
-            raise
-
-    def ensure_share(self, context, share, share_server=None):
-        """Might not be needed?"""
-        pass
-
-    def _get_helper(self, share):
+    def _get_helper(self, gluster_mgr=None):
         """Choose a protocol specific helper class."""
-        if share['share_proto'] == 'NFS':
-            return self._helpers['NFS']
-        else:
-            raise exception.InvalidShare(
-                reason=(_('Unsupported share type, %s.')
-                        % share['share_proto']))
+        helper = self.nfs_helper(self._execute, self.configuration,
+                                 gluster_manager=gluster_mgr)
+        helper.init_helper()
+        return helper
 
-    def allow_access(self, context, share, access, share_server=None):
+    def _allow_access_via_manager(self, gluster_mgr, context, share, access,
+                                  share_server=None):
         """Allow access to the share."""
-        self._get_helper(share).allow_access('/', share, access)
+        self._get_helper(gluster_mgr).allow_access('/', share, access)
 
-    def deny_access(self, context, share, access, share_server=None):
-        """Deny access to the share."""
-        self._get_helper(share).deny_access('/', share, access)
+    def _deny_access_via_manager(self, gluster_mgr, context, share, access,
+                                 share_server=None):
+        """Allow access to the share."""
+        self._get_helper(gluster_mgr).deny_access('/', share, access)
 
 
 class GlusterNFSHelper(ganesha.NASHelperBase):
@@ -279,19 +145,6 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
         self.gluster_manager = kwargs.pop('gluster_manager')
         super(GlusterNFSHelper, self).__init__(execute, config_object,
                                                **kwargs)
-
-    def init_helper(self):
-        # exporting the whole volume must be prohibited
-        # to not to defeat access control
-        args = ('volume', 'set', self.gluster_manager.volume, NFS_EXPORT_VOL,
-                'off')
-        try:
-            self.gluster_manager.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error in tuning GlusterFS volume to prevent "
-                          "exporting the entire volume: %s"), exc.stderr)
-            raise exception.GlusterfsException("gluster %s failed" %
-                                               ' '.join(args))
 
     def _get_export_dir_dict(self):
         """Get the export entries of shares in the GlusterFS volume."""
@@ -364,7 +217,10 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
             if host in ddict[edir]:
                 return True
             ddict[edir].append(host)
-        self._manage_access(share['name'], access['access_type'],
+        path = self.gluster_manager.path
+        if not path:
+            path = "/"
+        self._manage_access(path[1:], access['access_type'],
                             access['access_to'], cbk)
 
     def deny_access(self, base, share, access):
@@ -375,11 +231,16 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
             ddict[edir].remove(host)
             if not ddict[edir]:
                 ddict.pop(edir)
-        self._manage_access(share['name'], access['access_type'],
+        path = self.gluster_manager.path
+        if not path:
+            path = "/"
+        self._manage_access(path[1:], access['access_type'],
                             access['access_to'], cbk)
 
 
 class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
+
+    shared_data = {}
 
     def __init__(self, execute, config_object, **kwargs):
         self.gluster_manager = kwargs.pop('gluster_manager')
@@ -391,8 +252,28 @@ class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
                 privatekey=config_object.glusterfs_path_to_private_key)
         else:
             execute = ganesha_utils.RootExecutor(execute)
+        ganesha_host = config_object.glusterfs_ganesha_server_ip
+        if not ganesha_host:
+            ganesha_host = 'localhost'
+        kwargs['tag'] = '-'.join(('GLUSTER', 'Ganesha', ganesha_host))
         super(GaneshaNFSHelper, self).__init__(execute, config_object,
                                                **kwargs)
+
+    def init_helper(self):
+        @utils.synchronized(self.tag)
+        def _init_helper():
+            if self.tag in self.shared_data:
+                return True
+            super(GaneshaNFSHelper, self).init_helper()
+            self.shared_data[self.tag] = {
+                'ganesha': self.ganesha,
+                'export_template': self.export_template}
+            return False
+
+        if _init_helper():
+            tagdata = self.shared_data[self.tag]
+            self.ganesha = tagdata['ganesha']
+            self.export_template = tagdata['export_template']
 
     def _default_config_hook(self):
         """Callback to provide default export block."""
@@ -405,4 +286,4 @@ class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
         """Callback to create FSAL subblock."""
         return {"Hostname": self.gluster_manager.host,
                 "Volume": self.gluster_manager.volume,
-                "Volpath": "/" + share['name']}
+                "Volpath": self.gluster_manager.path}
