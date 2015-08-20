@@ -112,6 +112,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             self._execute,
             self.configuration.glusterfs_path_to_private_key,
             self.configuration.glusterfs_server_password,
+            requires={'volume': True}
         )
         self.gluster_manager.check_gluster_version(GLUSTERFS_VERSION_MIN)
         try:
