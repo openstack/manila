@@ -121,7 +121,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         super(GlusterfsNativeShareDriver, self).__init__(
             False, *args, **kwargs)
         self._helpers = None
-        self.gluster_used_vols_dict = {}
+        self.gluster_used_vols = set()
         self.configuration.append_config_values(
             glusterfs_native_manila_share_opts)
         self.gluster_nosnap_vols_dict = {}
@@ -129,11 +129,9 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             'share_backend_name') or 'GlusterFS-Native'
         self.volume_pattern = self._compile_volume_pattern()
         self.volume_pattern_keys = self.volume_pattern.groupindex.keys()
-        glusterfs_servers = {}
         for srvaddr in self.configuration.glusterfs_servers:
-            glusterfs_servers[srvaddr] = self._glustermanager(
-                srvaddr, requires={'volume': False})
-        self.glusterfs_servers = glusterfs_servers
+            # format check for srvaddr
+            self._glustermanager(srvaddr, False)
         self.glusterfs_versions = {}
 
     def _compile_volume_pattern(self):
@@ -162,9 +160,10 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # We don't use a service mount as its not necessary for us.
         # Do some sanity checks.
         glusterfs_versions, exceptions = {}, {}
-        for srvaddr, gluster_mgr in six.iteritems(self.glusterfs_servers):
+        for srvaddr in self.configuration.glusterfs_servers:
             try:
-                glusterfs_versions[srvaddr] = gluster_mgr.get_gluster_version()
+                glusterfs_versions[srvaddr] = self._glustermanager(
+                    srvaddr, False).get_gluster_version()
             except exception.GlusterfsException as exc:
                 exceptions[srvaddr] = six.text_type(exc)
         if exceptions:
@@ -222,14 +221,18 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 LOG.error(msg)
                 raise
 
-    def _glustermanager(self, gluster_address, requires={'volume': True}):
+    def _glustermanager(self, gluster_address, req_volume=True):
         """Create GlusterManager object for gluster_address."""
 
         return common.GlusterManager(
             gluster_address, self._execute,
             self.configuration.glusterfs_native_path_to_private_key,
             self.configuration.glusterfs_native_server_password,
-            requires=requires)
+            requires={'volume': req_volume})
+
+    def _share_manager(self, share):
+        """Return GlusterManager object representing share's backend."""
+        return self._glustermanager(share['export_location'])
 
     def _fetch_gluster_volumes(self):
         """Do a 'gluster volume list | grep <volume pattern>'.
@@ -243,7 +246,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         """
 
         volumes_dict = {}
-        for gsrv, gluster_mgr in six.iteritems(self.glusterfs_servers):
+        for srvaddr in self.configuration.glusterfs_servers:
+            gluster_mgr = self._glustermanager(srvaddr, False)
             try:
                 out, err = gluster_mgr.gluster_call('volume', 'list')
             except exception.ProcessExecutionError as exc:
@@ -266,7 +270,10 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     else:
                         trans = PATTERN_DICT[key].get('trans', lambda x: x)
                         pattern_dict[key] = trans(keymatch)
-                volumes_dict[gsrv + ':/' + volname] = pattern_dict
+                comp_vol = gluster_mgr.components.copy()
+                comp_vol.update({'volume': volname})
+                gluster_mgr_vol = self._glustermanager(comp_vol)
+                volumes_dict[gluster_mgr_vol.qualified] = pattern_dict
         return volumes_dict
 
     def _setup_gluster_vol(self, vol):
@@ -309,7 +316,6 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # TODO(deepakcs) Remove this once ssl options can be
         # set dynamically.
         common._restart_gluster_vol(gluster_mgr)
-        return gluster_mgr
 
     @utils.synchronized("glusterfs_native", external=False)
     def _pop_gluster_vol(self, size=None):
@@ -327,10 +333,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         voldict = self._fetch_gluster_volumes()
         # calculate the set of unused volumes
-        set1, set2 = (
-            set(d) for d in (voldict, self.gluster_used_vols_dict)
-        )
-        unused_vols = set1 - set2
+        unused_vols = set(voldict) - self.gluster_used_vols
 
         if not unused_vols:
             # No volumes available for use as share. Warn user.
@@ -343,7 +346,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.info(_LI("Number of gluster volumes in use:  "
                          "%(inuse-numvols)s. Number of gluster volumes "
                          "available for use as share: %(unused-numvols)s"),
-                     {'inuse-numvols': len(self.gluster_used_vols_dict),
+                     {'inuse-numvols': len(self.gluster_used_vols),
                      'unused-numvols': len(unused_vols)})
 
         # volmap is the data structure used to categorize and sort
@@ -404,13 +407,14 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # Within a host's volumes, choose alphabetically first,
         # to make it predictable.
         vol = sorted(chosen_hostmap[chosen_host])[0]
-        self.gluster_used_vols_dict[vol] = self._setup_gluster_vol(vol)
+        self._setup_gluster_vol(vol)
+        self.gluster_used_vols.add(vol)
         return vol
 
     @utils.synchronized("glusterfs_native", external=False)
     def _push_gluster_vol(self, exp_locn):
         try:
-            self.gluster_used_vols_dict.pop(exp_locn)
+            self.gluster_used_vols.remove(exp_locn)
         except KeyError:
             msg = (_("Couldn't find the share in used list."))
             LOG.error(msg)
@@ -548,19 +552,10 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         1 Manila share = 1 GlusterFS volume. Put the gluster
         volume back in the available list.
         """
-        exp_locn = share.get('export_location', None)
-        try:
-            # Get the gluster address associated with the export.
-            gmgr = self.gluster_used_vols_dict[exp_locn]
-        except KeyError:
-            msg = (_LW("Invalid request. Ignoring delete_share request for "
-                       "share %(share_id)s"), {'share_id': share['id']})
-            LOG.warn(msg)
-            return
-
+        gmgr = self._share_manager(share)
         try:
             self._wipe_gluster_vol(gmgr)
-            self._push_gluster_vol(exp_locn)
+            self._push_gluster_vol(gmgr.qualified)
         except exception.GlusterfsException:
             msg = (_LE("Error during delete_share request for "
                        "share %(share_id)s"), {'share_id': share['id']})
@@ -592,8 +587,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def create_share_from_snapshot(self, context, share, snapshot,
                                    share_server=None):
-        old_exportlocation = snapshot['share']['export_location']
-        old_gmgr = self.gluster_used_vols_dict[old_exportlocation]
+        old_gmgr = self._share_manager(snapshot['share'])
 
         # Snapshot clone feature in GlusterFS server essential to support this
         # API is available in GlusterFS server versions 3.7 and higher. So do
@@ -628,9 +622,10 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.GlusterfsException(_("gluster %s failed") %
                                                ' '.join(args))
 
-        # Construct the volume address/export location of the new
-        # volume/share.
-        export_location = ':/'.join([old_gmgr.host_access, volume])
+        # Get a manager for the the new volume/share.
+        comp_vol = old_gmgr.components.copy()
+        comp_vol.update({'volume': volume})
+        gmgr = self._glustermanager(comp_vol)
 
         # Configure the GlusterFS volume to be used as share.
         # 1. The clone of the snapshot, the new volume, retains the authorized
@@ -641,7 +636,6 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         #    GlusterFS are easy to figure as they're pre-fixed by
         #    "glusterfs-server".
         # 2. Start the new volume.
-        gmgr = self._glustermanager(export_location)
         old_access = gmgr.get_gluster_vol_option(AUTH_SSL_ALLOW)
         # wrt. GlusterFS' parsing of auth.ssl-allow, please see code from
         # https://github.com/gluster/glusterfs/blob/v3.6.2/
@@ -662,17 +656,16 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.GlusterfsException(_("gluster %s failed") %
                                                ' '.join(args))
 
-        self.gluster_used_vols_dict[export_location] = gmgr
-        return export_location
+        self.gluster_used_vols.add(gmgr.qualified)
+        return gmgr.qualified
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""
 
-        vol = snapshot['share']['export_location']
-        gluster_mgr = self.gluster_used_vols_dict[vol]
-        if vol in self.gluster_nosnap_vols_dict:
+        gluster_mgr = self._share_manager(snapshot['share'])
+        if gluster_mgr.qualified in self.gluster_nosnap_vols_dict:
             opret, operrno = -1, 0
-            operrstr = self.gluster_nosnap_vols_dict[vol]
+            operrstr = self.gluster_nosnap_vols_dict[gluster_mgr.qualified]
         else:
             args = ('--xml', 'snapshot', 'create', 'manila-' + snapshot['id'],
                     gluster_mgr.volume)
@@ -699,7 +692,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             if common.GlusterManager.numreduct(vers) > (3, 6):
                 # This logic has not yet been implemented in GlusterFS 3.6
                 if operrno == 0:
-                    self.gluster_nosnap_vols_dict[vol] = operrstr
+                    self.gluster_nosnap_vols_dict[
+                        gluster_mgr.qualified] = operrstr
                     msg = _("Share %(share_id)s does not support snapshots: "
                             "%(errstr)s.") % {'share_id': snapshot['share_id'],
                                               'errstr': operrstr}
@@ -715,8 +709,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot."""
 
-        vol = snapshot['share']['export_location']
-        gluster_mgr = self.gluster_used_vols_dict[vol]
+        gluster_mgr = self._share_manager(snapshot['share'])
         backend_snapshot_name = self._find_actual_backend_snapshot_name(
             gluster_mgr, snapshot)
         args = ('--xml', 'snapshot', 'delete', backend_snapshot_name,
@@ -758,8 +751,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         if access['access_type'] != ACCESS_TYPE_CERT:
             raise exception.InvalidShareAccess(_("Only 'cert' access type "
                                                  "allowed"))
-        exp_locn = share.get('export_location', None)
-        gluster_mgr = self.gluster_used_vols_dict.get(exp_locn)
+        gluster_mgr = self._share_manager(share)
 
         ssl_allow_opt = gluster_mgr.get_gluster_vol_option(AUTH_SSL_ALLOW)
         # wrt. GlusterFS' parsing of auth.ssl-allow, please see code from
@@ -772,7 +764,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.warn(_LW("Access to %(share)s at %(export)s is already "
                          "granted for %(access_to)s. GlusterFS volume "
                          "options might have been changed externally."),
-                     {'share': share['id'], 'export': exp_locn,
+                     {'share': share['id'], 'export': gluster_mgr.qualified,
                       'access_to': access_to})
             return
 
@@ -807,8 +799,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.InvalidShareAccess(_("Only 'cert' access type "
                                                  "allowed for access "
                                                  "removal."))
-        exp_locn = share.get('export_location', None)
-        gluster_mgr = self.gluster_used_vols_dict.get(exp_locn)
+        gluster_mgr = self._share_manager(share)
 
         ssl_allow_opt = gluster_mgr.get_gluster_vol_option(AUTH_SSL_ALLOW)
         ssl_allow = re.split('[ ,]', ssl_allow_opt)
@@ -817,7 +808,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.warn(_LW("Access to %(share)s at %(export)s is already "
                          "denied for %(access_to)s. GlusterFS volume "
                          "options might have been changed externally."),
-                     {'share': share['id'], 'export': exp_locn,
+                     {'share': share['id'], 'export': gluster_mgr.qualified,
                       'access_to': access_to})
             return
 
@@ -864,6 +855,4 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def ensure_share(self, context, share, share_server=None):
         """Invoked to ensure that share is exported."""
-        vol = share['export_location']
-        gluster_mgr = self._glustermanager(vol)
-        self.gluster_used_vols_dict[vol] = gluster_mgr
+        self.gluster_used_vols.add(share['export_location'])
