@@ -24,7 +24,9 @@ from manila import exception
 from manila.i18n import _, _LI, _LW
 from manila.share.drivers.huawei import base as driver
 from manila.share.drivers.huawei import constants
+from manila.share.drivers.huawei import huawei_utils
 from manila.share.drivers.huawei.v3 import helper
+from manila.share.drivers.huawei.v3 import smartx
 from manila.share import share_types
 from manila.share import utils as share_utils
 
@@ -235,15 +237,29 @@ class V3StorageConnection(driver.HuaweiBase):
             pool_name = pool_name.strip().strip('\n')
             capacity = self._get_capacity(pool_name, result)
             if capacity:
-                pool = dict(
+                pool_thin = dict(
                     pool_name=pool_name,
                     total_capacity_gb=capacity['TOTALCAPACITY'],
                     free_capacity_gb=capacity['CAPACITY'],
+                    provisioned_capacity_gb=capacity['PROVISIONEDCAPACITYGB'],
+                    max_over_subscription_ratio=self.configuration.safe_get(
+                        'max_over_subscription_ratio'),
                     allocated_capacity_gb=capacity['CONSUMEDCAPACITY'],
                     QoS_support=False,
                     reserved_percentage=0,
+                    thin_provisioning=True,
+                    dedupe=True,
+                    compression=True,
                 )
-                stats_dict["pools"].append(pool)
+
+                stats_dict["pools"].append(pool_thin)
+
+                # One pool can support both thin and thick
+                pool_thick = pool_thin.copy()
+                pool_thick["thin_provisioning"] = False
+                pool_thick["dedupe"] = False
+                pool_thick["compression"] = False
+                stats_dict["pools"].append(pool_thick)
 
     def delete_share(self, share, share_server=None):
         """Delete share."""
@@ -281,16 +297,18 @@ class V3StorageConnection(driver.HuaweiBase):
         poolinfo = self.helper._find_pool_info(pool_name, result)
 
         if poolinfo:
-            total = int(poolinfo['TOTALCAPACITY']) / units.Mi / 2
-            free = int(poolinfo['CAPACITY']) / units.Mi / 2
-            consumed = int(poolinfo['CONSUMEDCAPACITY']) / units.Mi / 2
+            total = float(poolinfo['TOTALCAPACITY']) / units.Mi / 2
+            free = float(poolinfo['CAPACITY']) / units.Mi / 2
+            consumed = float(poolinfo['CONSUMEDCAPACITY']) / units.Mi / 2
             poolinfo['TOTALCAPACITY'] = total
             poolinfo['CAPACITY'] = free
             poolinfo['CONSUMEDCAPACITY'] = consumed
+            poolinfo['PROVISIONEDCAPACITYGB'] = round(
+                float(total) - float(free), 2)
 
         return poolinfo
 
-    def _init_filesys_para(self, share, poolinfo):
+    def _init_filesys_para(self, share, poolinfo, extra_specs):
         """Init basic filesystem parameters."""
         name = share['name']
         size = share['size'] * units.Mi * 2
@@ -309,8 +327,8 @@ class V3StorageConnection(driver.HuaweiBase):
             "RECYCLEHOLDTIME": 15,
             "RECYCLETHRESHOLD": 0,
             "RECYCLEAUTOCLEANSWITCH": 0,
-            "ENABLEDEDUP": False,
-            "ENABLECOMPRESSION": False,
+            "ENABLEDEDUP": extra_specs['dedupe'],
+            "ENABLECOMPRESSION": extra_specs['compression'],
         }
 
         root = self.helper._read_xml()
@@ -328,6 +346,18 @@ class V3StorageConnection(driver.HuaweiBase):
                     {'fetchtype': fstype})
                 LOG.error(err_msg)
                 raise exception.InvalidShare(reason=err_msg)
+
+        if 'LUNType' in extra_specs:
+            fileparam['ALLOCTYPE'] = extra_specs['LUNType']
+
+        if fileparam['ALLOCTYPE'] == 0:
+            if (extra_specs['dedupe'] or
+                    extra_specs['compression']):
+                err_msg = _(
+                    'The filesystem type is "Thick",'
+                    ' so dedupe or compression cannot be set.')
+                LOG.error(err_msg)
+                raise exception.InvalidInput(reason=err_msg)
 
         return fileparam
 
@@ -423,7 +453,15 @@ class V3StorageConnection(driver.HuaweiBase):
 
     def allocate_container(self, share, poolinfo):
         """Creates filesystem associated to share by name."""
-        fileParam = self._init_filesys_para(share, poolinfo)
+        opts = huawei_utils.get_share_extra_specs_params(
+            share['share_type_id'])
+
+        smartx_opts = constants.OPTS_CAPABILITIES
+        if opts is not None:
+            smart = smartx.SmartX()
+            smartx_opts = smart.get_smartx_extra_specs_opts(opts)
+
+        fileParam = self._init_filesys_para(share, poolinfo, smartx_opts)
         fsid = self.helper._create_filesystem(fileParam)
         return fsid
 

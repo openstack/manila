@@ -29,3 +29,9 @@ ACCESS_CIFS_RO = "0"
 
 ERROR_CONNECT_TO_SERVER = -403
 ERROR_UNAUTHORIZED_TO_SERVER = -401
+
+OPTS_CAPABILITIES = {
+    'dedupe': False,
+    'compression': False,
+    'thin_provisioning': False,
+}
