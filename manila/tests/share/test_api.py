@@ -1392,7 +1392,7 @@ class ShareAPITestCase(test.TestCase):
         new_size = 123
         usages = {'gigabytes': {'reserved': 'fake', 'in_use': 'fake'}}
         quotas = {'gigabytes': 'fake'}
-        exc = exception.OverQuota(usages=usages, quotas=quotas)
+        exc = exception.OverQuota(usages=usages, quotas=quotas, overs=new_size)
         self.mock_object(quota.QUOTAS, 'reserve', mock.Mock(side_effect=exc))
 
         self.assertRaises(exception.ShareSizeExceedsAvailableQuota,
