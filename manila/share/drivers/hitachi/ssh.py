@@ -19,6 +19,8 @@ from oslo_utils import units
 import paramiko
 import six
 
+import time
+
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -30,7 +32,7 @@ LOG = log.getLogger(__name__)
 
 class HNASSSHBackend(object):
     def __init__(self, hnas_ip, hnas_username, hnas_password, ssh_private_key,
-                 cluster_admin_ip0, evs_id, evs_ip, fs_name):
+                 cluster_admin_ip0, evs_id, evs_ip, fs_name, job_timeout):
         self.ip = hnas_ip
         self.port = 22
         self.user = hnas_username
@@ -41,6 +43,7 @@ class HNASSSHBackend(object):
         self.fs_name = fs_name
         self.evs_ip = evs_ip
         self.sshpool = None
+        self.job_timeout = job_timeout
 
     def get_stats(self):
         """Get the stats from file-system.
@@ -253,16 +256,76 @@ class HNASSSHBackend(object):
         :param share_id: ID of share for snapshot.
         :param snapshot_id: ID of new snapshot.
         """
+
+        export = self._nfs_export_list(share_id)
+        saved_list = export[0].export_configuration
+        new_list = []
+        for access in saved_list:
+            new_list.append(access.replace('(rw)', '(ro)'))
+        self._update_access_rule(share_id, new_list)
+
         src_path = '/shares/' + share_id
         snap_path = '/snapshots/' + share_id + '/' + snapshot_id
 
         try:
             command = ['tree-clone-job-submit', '-e', '-f', self.fs_name,
                        src_path, snap_path]
+
             output, err = self._execute(command)
-            if 'Request submitted successfully' in output:
-                LOG.debug("Request for creating snapshot submitted "
-                          "successfully.")
+            job_submit = JobSubmit(output)
+            if job_submit.request_status == 'Request submitted successfully':
+                job_id = job_submit.job_id
+
+                job_status = None
+                progress = ''
+                job_rechecks = 0
+                starttime = time.time()
+                deadline = starttime + self.job_timeout
+                while not job_status or \
+                        job_status.job_state != "Job was completed":
+
+                    command = ['tree-clone-job-status', job_id]
+                    output, err = self._execute(command)
+                    job_status = JobStatus(output)
+
+                    if job_status.job_state == 'Job failed':
+                        break
+
+                    old_progress = progress
+                    progress = job_status.data_bytes_processed
+
+                    if old_progress == progress:
+                        job_rechecks += 1
+                        now = time.time()
+                        if now > deadline:
+                            command = ['tree-clone-job-abort', job_id]
+                            output, err = self._execute(command)
+                            LOG.error(_LE("Timeout in snapshot %s creation.") %
+                                      snapshot_id)
+                            msg = (_("Share snapshot %s was not created.")
+                                   % snapshot_id)
+                            raise exception.HNASBackendException(msg=msg)
+                        else:
+                            time.sleep(job_rechecks ** 2)
+                    else:
+                        job_rechecks = 0
+
+                if (job_status.job_state, job_status.job_status,
+                    job_status.directories_missing,
+                    job_status.files_missing) == ("Job was completed",
+                                                  "Success", '0', '0'):
+
+                    LOG.debug("Snapshot %(snapshot_id)s from share "
+                              "%(share_id)s created successfully.",
+                              {'snapshot_id': snapshot_id,
+                               'share_id': share_id})
+                else:
+                    LOG.error(_LE('Error in snapshot %s creation.'),
+                              snapshot_id)
+                    msg = (_('Share snapshot %s was not created.') %
+                           snapshot_id)
+                    raise exception.HNASBackendException(msg=msg)
+
         except processutils.ProcessExecutionError as e:
             if ('Cannot find any clonable files in the source directory' in
                     e.stderr):
@@ -274,6 +337,8 @@ class HNASSSHBackend(object):
                 msg = six.text_type(e)
                 LOG.exception(msg)
                 raise exception.HNASBackendException(msg=msg)
+        finally:
+            self._update_access_rule(share_id, saved_list)
 
     def delete_snapshot(self, share_id, snapshot_id):
         """Deletes snapshot.
@@ -706,3 +771,66 @@ class Export(object):
             for i in range(0, len(export_config)):
                 if any(j.isdigit() or j.isalpha() for j in export_config[i]):
                     self.export_configuration.append(export_config[i])
+
+
+class JobStatus(object):
+    def __init__(self, data):
+        if data:
+            split_data = data.replace(",", "").split()
+
+            self.job_id = split_data[4]
+            self.pysical_node = split_data[14]
+            self.evs = split_data[17]
+            self.volume_number = split_data[21]
+            self.fs_id = split_data[26]
+            self.fs_name = split_data[31]
+            self.source_path = split_data[35]
+            self.creation_time = split_data[39] + " " + split_data[40]
+            self.destination_path = split_data[44]
+            self.ensure_destination_path_exists = split_data[50]
+
+            if split_data[55] == 'failed':
+                self.job_state = " ".join(split_data[54:56])
+            else:
+                self.job_state = " ".join(split_data[54:57])
+
+            for i in range(55, len(split_data)):
+                if split_data[i] == "Started":
+                    self.job_started = " ".join(split_data[i + 2:i + 4])
+                elif split_data[i] == "Ended":
+                    self.job_ended = " ".join(split_data[i + 2:i + 4])
+                elif split_data[i] == "Status":
+                    self.job_status = split_data[i + 2]
+                elif " ".join(split_data[i:i + 2]) == "Error details":
+                    self.error_details = \
+                        split_data[i + 2] if split_data[i + 2] != ":" else ""
+                elif " ".join(split_data[i:i + 2]) == "Directories processed":
+                    self.directories_processed = split_data[i + 3]
+                elif " ".join(split_data[i:i + 2]) == "Files processed":
+                    self.files_processed = split_data[i + 3]
+                elif " ".join(split_data[i:i + 3]) == "Data bytes processed":
+                    self.data_bytes_processed = split_data[i + 4]
+                elif " ".join(split_data[i:i + 3]) == "Source directories " \
+                                                      "missing":
+                    self.directories_missing = split_data[i + 4]
+                elif " ".join(split_data[i:i + 3]) == "Source files missing":
+                    self.files_missing = split_data[i + 4]
+                elif " ".join(split_data[i:i + 3]) == "Source files skipped":
+                    self.files_skipped = split_data[i + 4]
+                elif split_data[i] == "symlinks":
+                    self.symlinks_skipped = split_data[i - 1]
+                elif " ".join(split_data[i:i + 2]) == "hard links":
+                    self.hard_links_skipped = split_data[i - 1]
+                elif " ".join(split_data[i:i + 3]) == "block special devices":
+                    self.block_special_devices_skipped = split_data[i - 1]
+                elif " ".join(split_data[i:i + 2]) == "character devices":
+                    self.character_devices_skipped = split_data[i - 1]
+
+
+class JobSubmit(object):
+    def __init__(self, data):
+        if data:
+            split_data = data.replace(".", "").split()
+
+            self.request_status = " ".join(split_data[1:4])
+            self.job_id = split_data[8]

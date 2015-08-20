@@ -61,6 +61,10 @@ hds_hnas_opts = [
                default=None,
                help="The IP of the clusters admin node. Only set in HNAS "
                     "multinode clusters."),
+    cfg.IntOpt('hds_hnas_stalled_job_timeout',
+               default=30,
+               help="The time (in seconds) to wait for stalled HNAS jobs "
+                    "before aborting."),
 ]
 
 CONF = cfg.CONF
@@ -95,6 +99,8 @@ class HDSHNASDriver(driver.ShareDriver):
         cluster_admin_ip0 = self.configuration.safe_get(
             'hds_hnas_cluster_admin_ip0')
         self.private_storage = kwargs.get('private_storage')
+        job_timeout = self.configuration.safe_get(
+            'hds_hnas_stalled_job_timeout')
 
         if hnas_evs_id is None:
             msg = _("The config parameter hds_hnas_evs_id is not set.")
@@ -122,7 +128,8 @@ class HDSHNASDriver(driver.ShareDriver):
 
         self.hnas = ssh.HNASSSHBackend(hnas_ip, hnas_username, hnas_password,
                                        ssh_private_key, cluster_admin_ip0,
-                                       hnas_evs_id, self.hnas_evs_ip, fs_name)
+                                       hnas_evs_id, self.hnas_evs_ip, fs_name,
+                                       job_timeout)
 
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to a share.
