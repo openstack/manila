@@ -15,6 +15,7 @@
 
 import mock
 from oslo_config import cfg
+import six
 
 from manila import context
 from manila import exception
@@ -240,10 +241,27 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
     @mock.patch.object(driver.ShareDriver, '_update_share_stats')
     def test_update_share_stats(self, mock_uss):
+        self._driver._get_capacities = mock.Mock(return_value=[42, 23])
+
         self._driver._update_share_stats()
 
         mock_uss.assert_called_once_with(
             dict(storage_protocol='NFS',
                  vendor_name='Quobyte',
                  share_backend_name=self._driver.backend_name,
-                 driver_version=self._driver.DRIVER_VERSION))
+                 driver_version=self._driver.DRIVER_VERSION,
+                 total_capacity_gb=42,
+                 free_capacity_gb=23,
+                 reserved_percentage=0))
+
+    def test_get_capacities_gb(self):
+        capval = 42115548133
+        useval = 19695128917
+        self._driver.rpc.call = mock.Mock(
+            return_value={'statistics': {'total_logical_capacity':
+                                         six.text_type(capval),
+                                         'total_logical_usage':
+                                         six.text_type(useval)}})
+
+        self.assertEqual((39.223160718, 20.880642548),
+                         self._driver._get_capacities())
