@@ -82,6 +82,7 @@ class GenericDatabaseAPITestCase(test.TestCase):
                           self.ctxt, share_access.id)
 
 
+@ddt.ddt
 class ShareDatabaseAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -90,28 +91,83 @@ class ShareDatabaseAPITestCase(test.TestCase):
         self.ctxt = context.get_admin_context()
 
     def test_share_filter_by_host_with_pools(self):
-        shares = [[db_api.share_create(self.ctxt, {'host': value})
-                   for value in ('foo', 'foo#pool0')]]
+        share_instances = [[
+            db_api.share_create(self.ctxt, {'host': value}).instance
+            for value in ('foo', 'foo#pool0')]]
 
         db_utils.create_share()
-        self._assertEqualListsOfObjects(shares[0],
-                                        db_api.share_get_all_by_host(
+        self._assertEqualListsOfObjects(share_instances[0],
+                                        db_api.share_instances_get_all_by_host(
                                             self.ctxt, 'foo'),
                                         ignored_keys=['share_type',
                                                       'share_type_id',
                                                       'export_locations'])
 
     def test_share_filter_all_by_host_with_pools_multiple_hosts(self):
-        shares = [[db_api.share_create(self.ctxt, {'host': value})
-                   for value in ('foo', 'foo#pool0', 'foo', 'foo#pool1')]]
+        share_instances = [[
+            db_api.share_create(self.ctxt, {'host': value}).instance
+            for value in ('foo', 'foo#pool0', 'foo', 'foo#pool1')]]
 
         db_utils.create_share()
-        self._assertEqualListsOfObjects(shares[0],
-                                        db_api.share_get_all_by_host(
+        self._assertEqualListsOfObjects(share_instances[0],
+                                        db_api.share_instances_get_all_by_host(
                                             self.ctxt, 'foo'),
                                         ignored_keys=['share_type',
                                                       'share_type_id',
                                                       'export_locations'])
+
+    def test_share_filter_all_by_share_server(self):
+        share_network = db_utils.create_share_network()
+        share_server = db_utils.create_share_server(
+            share_network_id=share_network['id'])
+        share = db_utils.create_share(share_server_id=share_server['id'],
+                                      share_network_id=share_network['id'])
+
+        actual_result = db_api.share_get_all_by_share_server(
+            self.ctxt, share_server['id'])
+
+        self.assertEqual(1, len(actual_result))
+        self.assertEqual(share['id'], actual_result[0].id)
+
+    @ddt.data('host', 'availability_zone')
+    def test_share_get_all_sort_by_share_instance_fields(self, sort_key):
+        shares = [db_utils.create_share(**{sort_key: n, 'size': 1})
+                  for n in ('test1', 'test2')]
+
+        actual_result = db_api.share_get_all(
+            self.ctxt, sort_key=sort_key, sort_dir='desc')
+
+        self.assertEqual(2, len(actual_result))
+        self.assertEqual(shares[0]['id'], actual_result[1]['id'])
+
+
+class ShareSnapshotDatabaseAPITestCase(test.TestCase):
+
+    def setUp(self):
+        """Run before each test."""
+        super(ShareSnapshotDatabaseAPITestCase, self).setUp()
+        self.ctxt = context.get_admin_context()
+
+    def test_create(self):
+        share = db_utils.create_share(size=1)
+        values = {
+            'share_id': share['id'],
+            'size': share['size'],
+            'user_id': share['user_id'],
+            'project_id': share['project_id'],
+            'status': constants.STATUS_CREATING,
+            'progress': '0%',
+            'share_size': share['size'],
+            'display_name': 'fake',
+            'display_description': 'fake',
+            'share_proto': share['share_proto']
+        }
+
+        actual_result = db_api.share_snapshot_create(
+            self.ctxt, values, create_snapshot_instance=True)
+
+        self.assertEqual(1, len(actual_result.instances))
+        self.assertSubDictMatch(values, actual_result.to_dict())
 
 
 class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
@@ -127,10 +183,10 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
         update_locations = ['fake4/4', 'fake2/2', 'fake3/3']
 
         # add initial locations
-        db_api.share_export_locations_update(self.ctxt, share['id'],
+        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
                                              initial_locations, False)
         # update locations
-        db_api.share_export_locations_update(self.ctxt, share['id'],
+        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
                                              update_locations, True)
         actual_result = db_api.share_export_locations_get(self.ctxt,
                                                           share['id'])
@@ -142,7 +198,7 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
         share = db_utils.create_share()
         initial_location = 'fake1/1/'
 
-        db_api.share_export_locations_update(self.ctxt, share['id'],
+        db_api.share_export_locations_update(self.ctxt, share.instance['id'],
                                              initial_location, False)
         actual_result = db_api.share_export_locations_get(self.ctxt,
                                                           share['id'])
@@ -286,7 +342,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                              self.share_nw_dict)
 
         self._check_fields(expected=self.share_nw_dict, actual=result)
-        self.assertEqual(len(result['shares']), 0)
+        self.assertEqual(len(result['share_instances']), 0)
         self.assertEqual(len(result['security_services']), 0)
 
     def test_create_two_networks_in_different_tenants(self):
@@ -325,23 +381,29 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                           self.share_nw_dict['id'])
 
         self._check_fields(expected=self.share_nw_dict, actual=result)
-        self.assertEqual(len(result['shares']), 0)
+        self.assertEqual(len(result['share_instances']), 0)
         self.assertEqual(len(result['security_services']), 0)
 
     @ddt.data([{'id': 'fake share id1'}],
               [{'id': 'fake share id1'}, {'id': 'fake share id2'}],)
     def test_get_with_shares(self, shares):
         db_api.share_network_create(self.fake_context, self.share_nw_dict)
+        share_instances = []
         for share in shares:
             share.update({'share_network_id': self.share_nw_dict['id']})
-            db_api.share_create(self.fake_context, share)
+            share_instances.append(
+                db_api.share_create(self.fake_context, share).instance
+            )
 
         result = db_api.share_network_get(self.fake_context,
                                           self.share_nw_dict['id'])
 
-        self.assertEqual(len(result['shares']), len(shares))
-        for index, share in enumerate(shares):
-            self._check_fields(expected=share, actual=result['shares'][index])
+        self.assertEqual(len(result['share_instances']), len(shares))
+        for index, share_instance in enumerate(share_instances):
+            self.assertEqual(
+                share_instance['share_network_id'],
+                result['share_instances'][index]['share_network_id']
+            )
 
     @ddt.data([{'id': 'fake security service id1', 'type': 'fake type'}],
               [{'id': 'fake security service id1', 'type': 'fake type'},
@@ -587,7 +649,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         result = db_api.share_network_get(self.fake_context,
                                           self.share_nw_dict['id'])
 
-        self.assertEqual(len(result['shares']), 0)
+        self.assertEqual(len(result['share_instances']), 0)
 
 
 @ddt.ddt

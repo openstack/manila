@@ -263,7 +263,7 @@ class API(base.Base):
             msg = _("Share already exists.")
             raise exception.ManilaException(msg)
 
-        self.db.share_export_locations_update(context, share['id'],
+        self.db.share_export_locations_update(context, share.instance['id'],
                                               export_location)
 
         self.share_rpcapi.manage_share(context, share, driver_options)

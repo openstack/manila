@@ -281,6 +281,21 @@ def reservation_expire(context):
 ###################
 
 
+def share_instance_get(context, instance_id, with_share_data=False):
+    """Get share instance by id."""
+    return IMPL.share_instance_get(context, instance_id,
+                                   with_share_data=with_share_data)
+
+
+def share_instance_update(context, instance_id, values, with_share_data=False):
+    """Update share instance fields."""
+    return IMPL.share_instance_update(context, instance_id, values,
+                                      with_share_data=with_share_data)
+
+
+###################
+
+
 def share_create(context, values):
     """Create new share."""
     return IMPL.share_create(context, values)
@@ -308,12 +323,9 @@ def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
     )
 
 
-def share_get_all_by_host(context, host, filters=None, sort_key=None,
-                          sort_dir=None):
-    """Returns all shares with given host."""
-    return IMPL.share_get_all_by_host(
-        context, host, filters=filters, sort_key=sort_key, sort_dir=sort_dir,
-    )
+def share_instances_get_all_by_host(context, host):
+    """Returns all share instances with given host."""
+    return IMPL.share_instances_get_all_by_host(context, host)
 
 
 def share_get_all_by_project(context, project_id, filters=None,
@@ -325,12 +337,10 @@ def share_get_all_by_project(context, project_id, filters=None,
     )
 
 
-def share_get_all_by_share_network(context, share_network_id, filters=None,
-                                   sort_key=None, sort_dir=None):
+def share_instances_get_all_by_share_network(context, share_network_id):
     """Returns list of shares that belong to given share network."""
-    return IMPL.share_get_all_by_share_network(
-        context, share_network_id, filters=filters, sort_key=sort_key,
-        sort_dir=sort_dir)
+    return IMPL.share_instances_get_all_by_share_network(context,
+                                                         share_network_id)
 
 
 def share_get_all_by_share_server(context, share_server_id, filters=None,
@@ -380,6 +390,23 @@ def share_access_delete(context, access_id):
 def share_access_update(context, access_id, values):
     """Update access record."""
     return IMPL.share_access_update(context, access_id, values)
+
+
+####################
+
+
+def share_snapshot_instance_update(context, instance_id, values):
+    """Set the given properties on an snapshot instance and update it.
+
+    Raises NotFound if snapshot instance does not exist.
+    """
+    return IMPL.share_snapshot_instance_update(context, instance_id, values)
+
+
+def share_snapshot_instance_get(context, instance_id, with_share_data=False):
+    """Get a snapshot or raise if it does not exist."""
+    return IMPL.share_snapshot_instance_get(
+        context, instance_id, with_share_data=with_share_data)
 
 
 ####################
@@ -502,10 +529,10 @@ def share_export_locations_get(context, share_id):
     return IMPL.share_export_locations_get(context, share_id)
 
 
-def share_export_locations_update(context, share_id, export_locations,
+def share_export_locations_update(context, share_instance_id, export_locations,
                                   delete=True):
     """Update export locations of share."""
-    return IMPL.share_export_locations_update(context, share_id,
+    return IMPL.share_export_locations_update(context, share_instance_id,
                                               export_locations, delete)
 
 

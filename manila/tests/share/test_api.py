@@ -545,10 +545,12 @@ class ShareAPITestCase(test.TestCase):
         driver_options = {}
         date = datetime.datetime(1, 1, 1, 1, 1, 1)
         timeutils.utcnow.return_value = date
-        share = fake_share('fakeid',
-                           user_id=self.context.user_id,
-                           project_id=self.context.project_id,
-                           status=constants.STATUS_CREATING)
+        fake_share_data = {
+            'id': 'fakeid',
+            'status': constants.STATUS_CREATING,
+        }
+        share = db_driver.share_create(self.context, fake_share_data)
+
         self.mock_object(db_driver, 'share_create',
                          mock.Mock(return_value=share))
         self.mock_object(db_driver, 'share_export_locations_update')
@@ -573,7 +575,7 @@ class ShareAPITestCase(test.TestCase):
                                                        share_data)
         db_driver.share_get.assert_called_once_with(self.context, share['id'])
         db_driver.share_export_locations_update.assert_called_once_with(
-            self.context, share['id'], export_location
+            self.context, share.instance['id'], export_location
         )
         self.share_rpcapi.manage_share.assert_called_once_with(
             self.context, share, driver_options)
@@ -586,7 +588,8 @@ class ShareAPITestCase(test.TestCase):
             'share_proto': 'fake',
         }
         driver_options = {}
-        share = fake_share('fakeid')
+        fake_share_data = {'id': 'fakeid'}
+        share = db_driver.share_create(self.context, fake_share_data)
         self.mock_object(db_driver, 'share_update',
                          mock.Mock(return_value=share))
         self.mock_object(db_driver, 'share_get',
@@ -604,7 +607,7 @@ class ShareAPITestCase(test.TestCase):
         self.share_rpcapi.manage_share.assert_called_once_with(
             self.context, mock.ANY, driver_options)
         db_driver.share_export_locations_update.assert_called_once_with(
-            self.context, share['id'], mock.ANY
+            self.context, share.instance['id'], mock.ANY
         )
 
     def test_manage_duplicate(self):

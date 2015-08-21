@@ -125,24 +125,26 @@ class ShareManager(manager.SchedulerDependentManager):
             configuration=self.configuration
         )
 
-    def _ensure_share_has_pool(self, ctxt, share):
-        pool = share_utils.extract_host(share['host'], 'pool')
+    def _ensure_share_instance_has_pool(self, ctxt, share_instance):
+        pool = share_utils.extract_host(share_instance['host'], 'pool')
         if pool is None:
             # No pool name encoded in host, so this is a legacy
             # share created before pool is introduced, ask
             # driver to provide pool info if it has such
             # knowledge and update the DB.
             try:
-                pool = self.driver.get_pool(share)
+                pool = self.driver.get_pool(share_instance)
             except Exception as err:
                 LOG.error(_LE("Failed to fetch pool name for share: "
                               "%(share)s. Error: %(error)s."),
-                          {'share': share['id'], 'error': err})
+                          {'share': share_instance['id'], 'error': err})
                 return
 
             if pool:
-                new_host = share_utils.append_host(share['host'], pool)
-                self.db.share_update(ctxt, share['id'], {'host': new_host})
+                new_host = share_utils.append_host(
+                    share_instance['host'], pool)
+                self.db.share_update(
+                    ctxt, share_instance['id'], {'host': new_host})
 
         return pool
 
@@ -153,41 +155,46 @@ class ShareManager(manager.SchedulerDependentManager):
         self.driver.do_setup(ctxt)
         self.driver.check_for_setup_error()
 
-        shares = self.db.share_get_all_by_host(ctxt, self.host)
-        LOG.debug("Re-exporting %s shares", len(shares))
-        for share in shares:
-            if share['status'] != constants.STATUS_AVAILABLE:
+        share_instances = self.db.share_instances_get_all_by_host(ctxt,
+                                                                  self.host)
+        LOG.debug("Re-exporting %s shares", len(share_instances))
+        for share_instance in share_instances:
+            if share_instance['status'] != constants.STATUS_AVAILABLE:
                 LOG.info(
-                    _LI("Share %(name)s: skipping export, because it has "
-                        "'%(status)s' status."),
-                    {'name': share['name'], 'status': share['status']},
+                    _LI("Share instance %(id)s: skipping export, "
+                        "because it has '%(status)s' status."),
+                    {'id': share_instance['id'],
+                     'status': share_instance['status']},
                 )
                 continue
 
-            self._ensure_share_has_pool(ctxt, share)
-            share_server = self._get_share_server(ctxt, share)
+            self._ensure_share_instance_has_pool(ctxt, share_instance)
+            share_server = self._get_share_server(ctxt, share_instance)
+            share_instance = self.db.share_instance_get(
+                ctxt, share_instance['id'], with_share_data=True)
             try:
                 export_locations = self.driver.ensure_share(
-                    ctxt, share, share_server=share_server)
+                    ctxt, share_instance, share_server=share_server)
             except Exception as e:
                 LOG.error(
                     _LE("Caught exception trying ensure share '%(s_id)s'. "
                         "Exception: \n%(e)s."),
-                    {'s_id': share['id'], 'e': six.text_type(e)},
+                    {'s_id': share_instance['id'], 'e': six.text_type(e)},
                 )
                 continue
 
             if export_locations:
                 self.db.share_export_locations_update(
-                    ctxt, share['id'], export_locations)
+                    ctxt, share_instance['id'], export_locations)
 
-            rules = self.db.share_access_get_all_for_share(ctxt, share['id'])
+            rules = self.db.share_access_get_all_for_share(
+                ctxt, share_instance['id'])
             for access_ref in rules:
                 if access_ref['state'] != access_ref.STATE_ACTIVE:
                     continue
 
                 try:
-                    self.driver.allow_access(ctxt, share, access_ref,
+                    self.driver.allow_access(ctxt, share_instance, access_ref,
                                              share_server=share_server)
                 except exception.ShareAccessExists:
                     pass
@@ -198,7 +205,7 @@ class ShareManager(manager.SchedulerDependentManager):
                             ", access rule type is '%(ar_type)s', "
                             "access rule id is '%(ar_id)s', exception"
                             " is '%(e)s'."),
-                        {'s_id': share['id'],
+                        {'s_id': share_instance['id'],
                          'ar_type': access_ref['access_type'],
                          'ar_id': access_ref['id'],
                          'e': six.text_type(e)},
@@ -207,7 +214,7 @@ class ShareManager(manager.SchedulerDependentManager):
         self.publish_service_capabilities(ctxt)
 
     def _provide_share_server_for_share(self, context, share_network_id,
-                                        share, snapshot=None):
+                                        share_instance, snapshot=None):
         """Gets or creates share_server and updates share with its id.
 
         Active share_server can be deleted if there are no dependent shares
@@ -224,7 +231,7 @@ class ShareManager(manager.SchedulerDependentManager):
                                  should be found or created. If
                                  share_network_id is None method use
                                  share_network_id from provided snapshot.
-        :param share: Share model
+        :param share_instance: Share Instance model
         :param snapshot: Optional -- Snapshot model
 
         :returns: dict, dict -- first value is share_server, that
@@ -240,8 +247,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
         def error(msg, *args):
             LOG.error(msg, *args)
-            self.db.share_update(context, share['id'],
-                                 {'status': constants.STATUS_ERROR})
+
+            self.db.share_instance_update(context, share_instance['id'],
+                                          {'status': constants.STATUS_ERROR})
 
         if snapshot:
             parent_share_server_id = snapshot['share']['share_server_id']
@@ -289,8 +297,8 @@ class ShareManager(manager.SchedulerDependentManager):
                 try:
                     compatible_share_server = (
                         self.driver.choose_share_server_compatible_with_share(
-                            context, available_share_servers, share,
-                            snapshot=snapshot
+                            context, available_share_servers, share_instance,
+                            snapshot=snapshot.instance if snapshot else None
                         )
                     )
                 except Exception as e:
@@ -308,16 +316,18 @@ class ShareManager(manager.SchedulerDependentManager):
                     }
                 )
 
-            msg = "Using share_server %(share_server)s for share %(share_id)s"
+            msg = ("Using share_server %(share_server)s for share instance"
+                   " %(share_instance_id)s")
             LOG.debug(msg, {
                 'share_server': compatible_share_server['id'],
-                'share_id': share['id']
+                'share_instance_id': share_instance['id']
             })
 
-            share_ref = self.db.share_update(
+            share_instance_ref = self.db.share_instance_update(
                 context,
-                share['id'],
+                share_instance['id'],
                 {'share_server_id': compatible_share_server['id']},
+                with_share_data=True
             )
 
             if compatible_share_server['status'] == constants.STATUS_CREATING:
@@ -329,7 +339,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 LOG.info(_LI("Used preexisting share server "
                              "'%(share_server_id)s'"),
                          {'share_server_id': compatible_share_server['id']})
-            return compatible_share_server, share_ref
+            return compatible_share_server, share_instance_ref
 
         return _provide_share_server_for_share()
 
@@ -340,6 +350,10 @@ class ShareManager(manager.SchedulerDependentManager):
         else:
             return None
 
+    def _get_share_instance(self, context, share):
+        return self.db.share_instance_get(
+            context, share.instance['id'], with_share_data=True)
+
     def create_share(self, context, share_id, request_spec=None,
                      filter_properties=None, snapshot_id=None):
         """Creates a share."""
@@ -348,7 +362,8 @@ class ShareManager(manager.SchedulerDependentManager):
             filter_properties = {}
 
         share_ref = self.db.share_get(context, share_id)
-        share_network_id = share_ref.get('share_network_id', None)
+        share_instance = self._get_share_instance(context, share_ref)
+        share_network_id = share_instance.get('share_network_id', None)
 
         if share_network_id and not self.driver.driver_handles_share_servers:
             self.db.share_update(
@@ -366,9 +381,11 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if share_network_id or parent_share_server_id:
             try:
-                share_server, share_ref = self._provide_share_server_for_share(
-                    context, share_network_id, share_ref,
-                    snapshot=snapshot_ref
+                share_server, share_instance = (
+                    self._provide_share_server_for_share(
+                        context, share_network_id, share_instance,
+                        snapshot=snapshot_ref
+                    )
                 )
             except Exception:
                 with excutils.save_and_reraise_exception():
@@ -382,14 +399,14 @@ class ShareManager(manager.SchedulerDependentManager):
         try:
             if snapshot_ref:
                 export_locations = self.driver.create_share_from_snapshot(
-                    context, share_ref, snapshot_ref,
+                    context, share_instance, snapshot_ref.instance,
                     share_server=share_server)
             else:
                 export_locations = self.driver.create_share(
-                    context, share_ref, share_server=share_server)
+                    context, share_instance, share_server=share_server)
 
-            self.db.share_export_locations_update(context, share_id,
-                                                  export_locations)
+            self.db.share_export_locations_update(
+                context, share_instance['id'], export_locations)
 
         except Exception as e:
             with excutils.save_and_reraise_exception():
@@ -406,7 +423,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
                 if export_locations:
                     self.db.share_export_locations_update(
-                        context, share_id, export_locations)
+                        context, share_instance['id'], export_locations)
                 else:
                     LOG.warning(_LW('Share information in exception '
                                     'can not be written to db because it '
@@ -423,6 +440,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def manage_share(self, context, share_id, driver_options):
         context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
+        share_instance = self._get_share_instance(context, share_ref)
         project_id = share_ref['project_id']
 
         try:
@@ -432,7 +450,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 raise exception.InvalidShare(reason=msg)
 
             share_update = (
-                self.driver.manage_existing(share_ref, driver_options) or {})
+                self.driver.manage_existing(share_instance, driver_options)
+                or {}
+            )
 
             if not share_update.get('size'):
                 msg = _("Driver cannot calculate share size.")
@@ -453,7 +473,8 @@ class ShareManager(manager.SchedulerDependentManager):
             # provided by user.
             if 'export_locations' in share_update:
                 self.db.share_export_locations_update(
-                    context, share_id, share_update.pop('export_locations'),
+                    context, share_instance['id'],
+                    share_update.pop('export_locations'),
                     delete=True)
 
             self.db.share_update(context, share_id, share_update)
@@ -482,6 +503,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def unmanage_share(self, context, share_id):
         context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
+        share_instance = self._get_share_instance(context, share_ref)
         share_server = self._get_share_server(context, share_ref)
         project_id = share_ref['project_id']
 
@@ -501,7 +523,7 @@ class ShareManager(manager.SchedulerDependentManager):
                         "shares with share servers.")
                 raise exception.InvalidShare(reason=msg)
 
-            self.driver.unmanage(share_ref)
+            self.driver.unmanage(share_instance)
 
         except exception.InvalidShare as e:
             share_manage_set_error_status(
@@ -539,6 +561,7 @@ class ShareManager(manager.SchedulerDependentManager):
         """Delete a share."""
         context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
+        share_instance = self._get_share_instance(context, share_ref)
         share_server = self._get_share_server(context, share_ref)
 
         if context.project_id != share_ref['project_id']:
@@ -548,7 +571,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         try:
             self._remove_share_access_rules(context, share_ref, share_server)
-            self.driver.delete_share(context, share_ref,
+            self.driver.delete_share(context, share_instance,
                                      share_server=share_server)
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -573,7 +596,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if CONF.delete_share_server_with_last_share:
             share_server = self._get_share_server(context, share_ref)
-            if share_server and not share_server.shares:
+            if share_server and not share_server.share_instances:
                 LOG.debug("Scheduled deletion of share-server "
                           "with id '%s' automatically by "
                           "deletion of last share.", share_server['id'])
@@ -605,26 +628,33 @@ class ShareManager(manager.SchedulerDependentManager):
         snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
         share_server = self._get_share_server(context,
                                               snapshot_ref['share'])
+        snapshot_instance = self.db.share_snapshot_instance_get(
+            context, snapshot_ref.instance['id'], with_share_data=True
+        )
+        snapshot_instance_id = snapshot_instance['id']
+
         try:
             model_update = self.driver.create_snapshot(
-                context, snapshot_ref, share_server=share_server)
+                context, snapshot_instance, share_server=share_server)
 
             if model_update:
                 model_dict = model_update.to_dict()
-                self.db.share_snapshot_update(context, snapshot_ref['id'],
-                                              model_dict)
+                self.db.share_snapshot_instance_update(
+                    context, snapshot_instance_id, model_dict)
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_snapshot_update(
+                self.db.share_snapshot_instance_update(
                     context,
-                    snapshot_ref['id'],
+                    snapshot_instance_id,
                     {'status': constants.STATUS_ERROR})
 
-        self.db.share_snapshot_update(context,
-                                      snapshot_ref['id'],
-                                      {'status': constants.STATUS_AVAILABLE,
-                                       'progress': '100%'})
+        self.db.share_snapshot_instance_update(
+            context,
+            snapshot_instance_id,
+            {'status': constants.STATUS_AVAILABLE,
+             'progress': '100%'}
+        )
         return snapshot_id
 
     def delete_snapshot(self, context, snapshot_id):
@@ -634,6 +664,10 @@ class ShareManager(manager.SchedulerDependentManager):
 
         share_server = self._get_share_server(context,
                                               snapshot_ref['share'])
+        snapshot_instance = self.db.share_snapshot_instance_get(
+            context, snapshot_ref.instance['id'], with_share_data=True
+        )
+        snapshot_instance_id = snapshot_instance['id']
 
         if context.project_id != snapshot_ref['project_id']:
             project_id = snapshot_ref['project_id']
@@ -641,18 +675,18 @@ class ShareManager(manager.SchedulerDependentManager):
             project_id = context.project_id
 
         try:
-            self.driver.delete_snapshot(context, snapshot_ref,
+            self.driver.delete_snapshot(context, snapshot_instance,
                                         share_server=share_server)
         except exception.ShareSnapshotIsBusy:
-            self.db.share_snapshot_update(
+            self.db.share_snapshot_instance_update(
                 context,
-                snapshot_ref['id'],
+                snapshot_instance_id,
                 {'status': constants.STATUS_AVAILABLE})
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_snapshot_update(
+                self.db.share_snapshot_instance_update(
                     context,
-                    snapshot_ref['id'],
+                    snapshot_instance_id,
                     {'status': constants.STATUS_ERROR_DELETING})
         else:
             self.db.share_snapshot_destroy(context, snapshot_id)
@@ -675,7 +709,9 @@ class ShareManager(manager.SchedulerDependentManager):
             share_server = self._get_share_server(context,
                                                   share_ref)
             if access_ref['state'] == access_ref.STATE_NEW:
-                self.driver.allow_access(context, share_ref, access_ref,
+                share_instance = self._get_share_instance(context, share_ref)
+                self.driver.allow_access(context, share_instance,
+                                         access_ref,
                                          share_server=share_server)
                 self.db.share_access_update(
                     context, access_id, {'state': access_ref.STATE_ACTIVE})
@@ -694,8 +730,9 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def _deny_access(self, context, access_ref, share_ref, share_server):
         access_id = access_ref['id']
+        share_instance = self._get_share_instance(context, share_ref)
         try:
-            self.driver.deny_access(context, share_ref, access_ref,
+            self.driver.deny_access(context, share_instance, access_ref,
                                     share_server=share_server)
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -929,12 +966,13 @@ class ShareManager(manager.SchedulerDependentManager):
     def extend_share(self, context, share_id, new_size, reservations):
         context = context.elevated()
         share = self.db.share_get(context, share_id)
+        share_instance = self._get_share_instance(context, share)
         share_server = self._get_share_server(context, share)
         project_id = share['project_id']
 
         try:
             self.driver.extend_share(
-                share, new_size, share_server=share_server)
+                share_instance, new_size, share_server=share_server)
         except Exception as e:
             LOG.exception(_LE("Extend share failed."), resource=share)
 
@@ -963,6 +1001,7 @@ class ShareManager(manager.SchedulerDependentManager):
     def shrink_share(self, context, share_id, new_size):
         context = context.elevated()
         share = self.db.share_get(context, share_id)
+        share_instance = self._get_share_instance(context, share)
         share_server = self._get_share_server(context, share)
         project_id = share['project_id']
         new_size = int(new_size)
@@ -987,7 +1026,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         try:
             self.driver.shrink_share(
-                share, new_size, share_server=share_server)
+                share_instance, new_size, share_server=share_server)
         # NOTE(u_glide): Replace following except block by error notification
         # when Manila has such mechanism. It's possible because drivers
         # shouldn't shrink share when this validation error occurs.
