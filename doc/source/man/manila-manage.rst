@@ -57,7 +57,7 @@ Manila Db
 
 ``manila-manage db stamp <version>``
 
-    Stamp database with given revision.
+    Stamp database with given version.
 
 ``manila-manage db revision <message> <autogenerate>``
 
