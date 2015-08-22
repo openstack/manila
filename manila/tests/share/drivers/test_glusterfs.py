@@ -97,7 +97,7 @@ class GlusterManagerTestCase(test.TestCase):
     def test_gluster_manager_init_no_vol(self, has_volume):
         test_gluster_manager = glusterfs.GlusterManager(
             'testuser@127.0.0.1', self.fake_execf, has_volume=has_volume)
-        self.assertEqual(None, test_gluster_manager.volume)
+        self.assertIsNone(test_gluster_manager.volume)
 
     def test_gluster_manager_init_has_shouldnt_have_vol(self):
         self.assertRaises(exception.GlusterfsException,
@@ -208,7 +208,7 @@ class GlusterManagerTestCase(test.TestCase):
         self.mock_object(self._gluster_manager, 'gluster_call',
                          mock.Mock(side_effect=xml_output))
         ret = self._gluster_manager.get_gluster_vol_option(NFS_EXPORT_DIR)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         self._gluster_manager.gluster_call.assert_called_once_with(*args)
 
     def test_get_gluster_vol_option(self):
@@ -271,7 +271,7 @@ class GlusterManagerTestCase(test.TestCase):
                          mock.Mock(return_value=('3', '6')))
 
         ret = self._gluster_manager.check_gluster_version((3, 5, 2))
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         self._gluster_manager.get_gluster_version.assert_called_once_with()
 
     def test_check_gluster_version_unmet(self):
@@ -435,7 +435,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         expected_exec = ['true']
         ret = self._driver._do_mount(expected_exec, False)
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
-        self.assertEqual(ret, None)
+        self.assertIsNone(ret)
 
     def test_do_mount_mounted_noensure(self):
         def exec_runner(*ignore_args, **ignore_kwargs):
@@ -454,7 +454,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
         ret = self._driver._do_mount(expected_exec, True)
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
-        self.assertEqual(ret, None)
+        self.assertIsNone(ret)
         glusterfs.LOG.warn.assert_called_with(
             "%s is already mounted", self._driver.gluster_manager.export)
 
@@ -615,7 +615,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         with mock.patch.object(os.path, 'join', return_value=None):
             ret = self._driver.create_share(self._context, self.share,
                                             share_server)
-            self.assertEqual(None, ret)
+            self.assertIsNone(ret)
             self._driver._get_local_share_path.called_once_with(self.share)
             self._driver._get_local_share_path.assert_called_once_with(
                 self.share)
@@ -629,7 +629,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
                                                  self.share['name'])
         os.path.exists.assert_called_once_with(fake_local_share_path)
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_cleanup_create_share_cannot_cleanup_unusable_share(self):
         def exec_runner(*ignore_args, **ignore_kw):
@@ -651,7 +651,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         ret = self._driver._cleanup_create_share(fake_local_share_path,
                                                  self.share['name'])
         os.path.exists.assert_called_once_with(fake_local_share_path)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_delete_share(self):
         self._driver._get_local_share_path =\
@@ -679,13 +679,13 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver._get_local_share_path = mock.Mock()
         ret = self._driver.delete_share(self._context, self.share,
                                         share_server)
-        self.assertEqual(ret, None)
+        self.assertIsNone(ret)
         self._driver._get_local_share_path.assert_called_once_with(self.share)
 
     def test_get_helper_NFS(self):
         self._driver._helpers['NFS'] = None
         ret = self._driver._get_helper(self.share)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_get_helper_not_implemented(self):
         share = fake_share.fake_share(share_proto='Others')
@@ -700,7 +700,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver._get_helper().\
             allow_access.assert_called_once_with(
                 '/', self.share, fake_share.fake_access)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_allow_access_can_be_called_with_extra_arg_share_server(self):
         self.mock_object(self._driver, '_get_helper')
@@ -711,7 +711,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver._get_helper().\
             allow_access.assert_called_once_with(
                 '/', self.share, fake_share.fake_access)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_deny_access(self):
         self.mock_object(self._driver, '_get_helper')
@@ -721,7 +721,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver._get_helper().\
             deny_access.assert_called_once_with(
                 '/', self.share, fake_share.fake_access)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_deny_access_can_be_called_with_extra_arg_share_server(self):
         self.mock_object(self._driver, '_get_helper')
@@ -732,7 +732,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver._get_helper().\
             deny_access.assert_called_once_with(
                 '/', self.share, fake_share.fake_access)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
 
 class GlusterNFSHelperTestCase(test.TestCase):
@@ -800,7 +800,7 @@ class GlusterNFSHelperTestCase(test.TestCase):
         self._helper._get_export_dir_dict.assert_called_once_with()
         cbk.assert_called_once_with(export_dir_dict, fake_share_name,
                                     access['access_to'])
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_manage_access_adding_entry(self):
 
@@ -820,7 +820,7 @@ class GlusterNFSHelperTestCase(test.TestCase):
         ret = self._helper._manage_access(fake_share_name,
                                           access['access_type'],
                                           access['access_to'], cbk)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         self._helper._get_export_dir_dict.assert_called_once_with()
         self._helper.gluster_manager.gluster_call.assert_called_once_with(
             *args)
@@ -869,7 +869,7 @@ class GlusterNFSHelperTestCase(test.TestCase):
         ret = self._helper._manage_access(fake_share_name,
                                           access['access_type'],
                                           access['access_to'], cbk)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         self._helper._get_export_dir_dict.assert_called_once_with()
         self._helper.gluster_manager.gluster_call.assert_called_once_with(
             *args)

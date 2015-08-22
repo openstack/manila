@@ -186,7 +186,7 @@ class ShareTypesTestCase(test.TestCase):
         actual_result = share_types.is_valid_required_extra_spec(
             'fake', 'fake')
 
-        self.assertEqual(None, actual_result)
+        self.assertIsNone(actual_result)
 
     @ddt.data('1', 'True', 'false', '0', True, False)
     def test_validate_required_extra_spec_valid(self, value):

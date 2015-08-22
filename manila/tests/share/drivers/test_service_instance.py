@@ -254,7 +254,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertEqual(
             True,
             self._manager.get_config_option("driver_handles_share_servers"))
-        self.assertEqual(None, self._manager.driver_config)
+        self.assertIsNone(self._manager.driver_config)
         self.assertTrue(hasattr(self._manager, 'network_helper'))
         self.assertTrue(service_instance.NovaNetworkHelper.called)
         self.assertFalse(service_instance.NeutronNetworkHelper.called)
@@ -270,7 +270,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertEqual(
             False,
             self._manager.get_config_option("driver_handles_share_servers"))
-        self.assertEqual(None, self._manager.driver_config)
+        self.assertIsNone(self._manager.driver_config)
         self.assertFalse(hasattr(self._manager, 'network_helper'))
         self.assertFalse(service_instance.NovaNetworkHelper.called)
         self.assertFalse(service_instance.NeutronNetworkHelper.called)
@@ -320,7 +320,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         with test_utils.create_temp_config_with_opts(config_data):
             self._manager = service_instance.ServiceInstanceManager()
         result = self._manager._get_service_instance_name(fake_server_id)
-        self.assertEqual(None, self._manager.driver_config)
+        self.assertIsNone(self._manager.driver_config)
         self.assertEqual(
             self._manager.get_config_option(
                 "service_instance_name_template") % fake_server_id, result)
@@ -407,7 +407,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
                          mock.Mock(return_value=None))
         result = self._manager._get_or_create_security_group(
             self._manager.admin_context)
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
         self._manager.get_config_option.assert_called_once_with(
             'service_instance_security_group')
 
@@ -2033,7 +2033,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
         result = instance._get_service_subnet(subnet_name)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
         instance._get_all_service_subnets.assert_called_once_with()
 
     def test__get_service_subnet_unused_found(self):
@@ -2109,9 +2109,9 @@ class NovaNetworkHelperTestCase(test.TestCase):
     def test_init(self):
         instance = service_instance.NovaNetworkHelper(self.fake_manager)
         self.assertEqual(service_instance.NOVA_NAME, instance.NAME)
-        self.assertEqual(None, instance.teardown_network('fake'))
-        self.assertEqual(
-            None, instance.setup_connectivity_with_service_instances())
+        self.assertIsNone(instance.teardown_network('fake'))
+        self.assertIsNone(
+            instance.setup_connectivity_with_service_instances())
 
     def test_get_network_name(self):
         network_info = dict(nova_net_id='fake_nova_net_id')

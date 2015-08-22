@@ -299,7 +299,7 @@ class IsilonApiTest(test.TestCase):
         r = self.isilon_api.get_nfs_export(export_id)
 
         self.assertEqual(1, len(m.request_history))
-        self.assertEqual(None, r)
+        self.assertIsNone(r)
 
     @requests_mock.mock()
     def test_lookup_smb_share(self, m):
@@ -326,7 +326,7 @@ class IsilonApiTest(test.TestCase):
         r = self.isilon_api.lookup_smb_share(share_name)
 
         self.assertEqual(1, len(m.request_history))
-        self.assertEqual(None, r)
+        self.assertIsNone(r)
 
     @ddt.data((201, True), (404, False))
     def test_create_nfs_export(self, data):

@@ -551,7 +551,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         result = self._driver._get_volume(self._context, self.share['id'])
 
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         self._driver.volume_api.get_all.assert_called_once_with(
             self._context, {'all_tenants': True, 'name': vol_name})
 
@@ -601,7 +601,7 @@ class GenericShareDriverTestCase(test.TestCase):
                          mock.Mock(return_value=[]))
         result = self._driver._get_volume_snapshot(self._context,
                                                    self.share['id'])
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         self._driver.volume_api.get_all_snapshots.assert_called_once_with(
             self._context, {'name': snap_name})
 

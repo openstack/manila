@@ -50,8 +50,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
 
         self.assertEqual('10.0.0.1', instance.gateway)
         self.assertEqual('24', instance.mask)
-        self.assertEqual(None, instance.segmentation_id)
-        self.assertEqual(None, instance.allowed_ip_ranges)
+        self.assertIsNone(instance.segmentation_id)
+        self.assertIsNone(instance.allowed_ip_ranges)
         self.assertEqual(4, instance.ip_version)
         self.assertEqual(netaddr.IPNetwork('10.0.0.1/24'), instance.net)
         self.assertEqual(['10.0.0.1/24'], instance.allowed_cidrs)
@@ -111,8 +111,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
         self.assertEqual(
             '2001:cdba::3257:9652', instance.gateway)
         self.assertEqual('48', instance.mask)
-        self.assertEqual(None, instance.segmentation_id)
-        self.assertEqual(None, instance.allowed_ip_ranges)
+        self.assertIsNone(instance.segmentation_id)
+        self.assertIsNone(instance.allowed_ip_ranges)
         self.assertEqual(6, instance.ip_version)
         self.assertEqual(
             netaddr.IPNetwork('2001:cdba::3257:9652/48'),

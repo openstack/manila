@@ -154,7 +154,7 @@ class GaneshaUtilsTestCase(test.TestCase):
         share_path = '/fs0/share-1111'
         export = ganesha_utils._get_export_by_path(self.fake_exports,
                                                    share_path)
-        self.assertEqual(export, None)
+        self.assertIsNone(export)
 
     def test_get_next_id(self):
         expected_id = 102

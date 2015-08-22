@@ -94,7 +94,7 @@ class SopShareDriverTestCase(test.TestCase):
         }
 
         fsadd = self._driver._add_file_system_sopapi(httpclient, fakepayload1)
-        self.assertEqual(None, fsadd)
+        self.assertIsNone(fsadd)
         httpclient.request.assert_called_once_with(
             'https://' +
             self.server['backend_details']['ip'] +
