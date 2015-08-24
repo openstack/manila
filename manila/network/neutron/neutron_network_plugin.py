@@ -22,6 +22,7 @@ from manila import exception
 from manila import network
 from manila.network.neutron import api as neutron_api
 from manila.network.neutron import constants as neutron_constants
+from manila import utils
 
 neutron_single_network_plugin_opts = [
     cfg.StrOpt(
@@ -50,7 +51,17 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
     def __init__(self, *args, **kwargs):
         db_driver = kwargs.pop('db_driver', None)
         super(NeutronNetworkPlugin, self).__init__(db_driver=db_driver)
-        self.neutron_api = neutron_api.API(*args, **kwargs)
+        self._neutron_api = None
+        self._neutron_api_args = args
+        self._neutron_api_kwargs = kwargs
+
+    @property
+    @utils.synchronized("instantiate_neutron_api")
+    def neutron_api(self):
+        if not self._neutron_api:
+            self._neutron_api = neutron_api.API(*self._neutron_api_args,
+                                                **self._neutron_api_kwargs)
+        return self._neutron_api
 
     def allocate_network(self, context, share_server, share_network, **kwargs):
         """Allocate network resources using given network information.

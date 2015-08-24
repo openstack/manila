@@ -216,8 +216,15 @@ class ServiceInstanceManager(object):
         if self.get_config_option("driver_handles_share_servers"):
             self.path_to_public_key = self.get_config_option(
                 "path_to_public_key")
-            self.network_helper = self._get_network_helper()
-            self.network_helper.setup_connectivity_with_service_instances()
+            self._network_helper = None
+
+    @property
+    @utils.synchronized("instantiate_network_helper")
+    def network_helper(self):
+        if not self._network_helper:
+            self._network_helper = self._get_network_helper()
+            self._network_helper.setup_connectivity_with_service_instances()
+        return self._network_helper
 
     def get_common_server(self):
         data = {
@@ -630,14 +637,14 @@ class NeutronNetworkHelper(BaseNetworkhelper):
             self.get_config_option("interface_driver"))()
 
         if service_instance_manager.driver_config:
-            network_config_group = (
+            self._network_config_group = (
                 service_instance_manager.driver_config.network_config_group or
                 service_instance_manager.driver_config.config_group)
         else:
-            network_config_group = None
+            self._network_config_group = None
 
-        self.neutron_api = neutron.API(config_group_name=network_config_group)
-        self.service_network_id = self.get_service_network_id()
+        self._neutron_api = None
+        self._service_network_id = None
         self.connect_share_server_to_tenant_network = (
             self.get_config_option('connect_share_server_to_tenant_network'))
 
@@ -649,13 +656,28 @@ class NeutronNetworkHelper(BaseNetworkhelper):
     def admin_project_id(self):
         return self.neutron_api.admin_project_id
 
+    @property
+    @utils.synchronized("instantiate_neutron_api_neutron_net_helper")
+    def neutron_api(self):
+        if not self._neutron_api:
+            self._neutron_api = neutron.API(
+                config_group_name=self._network_config_group)
+        return self._neutron_api
+
+    @property
+    @utils.synchronized("service_network_id_neutron_net_helper")
+    def service_network_id(self):
+        if not self._service_network_id:
+            self._service_network_id = self._get_service_network_id()
+        return self._service_network_id
+
     def get_network_name(self, network_info):
         """Returns name of network for service instance."""
         net = self.neutron_api.get_network(network_info['neutron_net_id'])
         return net['name']
 
     @utils.synchronized("service_instance_get_service_network", external=True)
-    def get_service_network_id(self):
+    def _get_service_network_id(self):
         """Finds existing or creates new service network."""
         service_network_name = self.get_config_option("service_network_name")
         networks = []

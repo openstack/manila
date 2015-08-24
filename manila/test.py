@@ -200,6 +200,20 @@ class TestCase(base_test.BaseTestCase):
         self.addCleanup(patcher.stop)
         return new_attr
 
+    def mock_class(self, class_name, new_val=None, **kwargs):
+        """Use python mock to mock a class
+
+        Mocks the specified objects attribute with the given value.
+        Automatically performs 'addCleanup' for the mock.
+
+        """
+        if not new_val:
+            new_val = mock.Mock()
+        patcher = mock.patch(class_name, new_val, **kwargs)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return new_val
+
     # Useful assertions
     def assertDictMatch(self, d1, d2, approx_equal=False, tolerance=0.001):
         """Assert two dicts are equivalent.
