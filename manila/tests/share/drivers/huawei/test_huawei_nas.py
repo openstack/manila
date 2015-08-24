@@ -501,24 +501,28 @@ class HuaweiShareDriverTestCase(test.TestCase):
 
         self.nfs_snapshot = {
             'id': 'fake_snapshot_uuid',
-            'share_name': 'share_fake_uuid',
-            'share_id': 'fake_uuid',
             'display_name': 'snapshot',
             'name': 'fake_snapshot_name',
-            'share_size': 1,
             'size': 1,
-            'share_proto': 'NFS',
+            'share': {
+                'share_name': 'share_fake_uuid',
+                'share_id': 'fake_uuid',
+                'share_size': 1,
+                'share_proto': 'NFS',
+            },
         }
 
         self.cifs_snapshot = {
             'id': 'fake_snapshot_uuid',
-            'share_name': 'share_fake_uuid',
-            'share_id': 'fake_uuid',
             'display_name': 'snapshot',
             'name': 'fake_snapshot_name',
-            'share_size': 1,
             'size': 1,
-            'share_proto': 'CIFS',
+            'share': {
+                'share_name': 'share_fake_uuid',
+                'share_id': 'fake_uuid',
+                'share_size': 1,
+                'share_proto': 'CIFS',
+            },
         }
 
         self.security_service = {
