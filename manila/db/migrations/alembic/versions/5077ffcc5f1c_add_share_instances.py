@@ -83,7 +83,7 @@ def create_share_instances_table(connection):
 
     # Remove columns moved to 'share_instances' table
     with op.batch_alter_table("shares") as batch_op:
-        for fk in shares_table.foreign_key_constraints:
+        for fk in shares_table.foreign_keys:
             batch_op.drop_constraint(fk.name, type_='foreignkey')
 
         batch_op.drop_column('host')
