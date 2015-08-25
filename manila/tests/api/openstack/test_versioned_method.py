@@ -23,7 +23,7 @@ class VersionedMethodTestCase(test.TestCase):
 
     def test_str(self):
         args = ('fake_name', 'fake_min', 'fake_max')
-        method = versioned_method.VersionedMethod(*(args + (None,)))
+        method = versioned_method.VersionedMethod(*(args + (False, None)))
         method_string = six.text_type(method)
 
         self.assertEqual('Version Method %s: min: %s, max: %s' % args,
@@ -31,5 +31,6 @@ class VersionedMethodTestCase(test.TestCase):
 
     def test_cmpkey(self):
         method = versioned_method.VersionedMethod(
-            'fake_name', 'fake_start_version', 'fake_end_version', 'fake_func')
+            'fake_name', 'fake_start_version', 'fake_end_version', False,
+            'fake_func')
         self.assertEqual('fake_start_version', method._cmpkey())

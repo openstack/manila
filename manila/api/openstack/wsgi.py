@@ -49,6 +49,7 @@ VER_METHOD_ATTR = 'versioned_methods'
 # Name of header used by clients to request a specific version
 # of the REST API
 API_VERSION_REQUEST_HEADER = 'X-OpenStack-Manila-API-Version'
+EXPERIMENTAL_API_REQUEST_HEADER = 'X-OpenStack-Manila-API-Experimental'
 
 
 class Request(webob.Request):
@@ -230,6 +231,11 @@ class Request(webob.Request):
         else:
             self.api_version_request = api_version.APIVersionRequest(
                 api_version.DEFAULT_API_VERSION)
+
+        # Check if experimental API was requested
+        if EXPERIMENTAL_API_REQUEST_HEADER in self.headers:
+            self.api_version_request.experimental = strutils.bool_from_string(
+                self.headers[EXPERIMENTAL_API_REQUEST_HEADER])
 
 
 class ActionDispatcher(object):
@@ -849,6 +855,9 @@ class Resource(wsgi.Application):
             if not request.api_version_request.is_null():
                 response.headers[API_VERSION_REQUEST_HEADER] = (
                     request.api_version_request.get_string())
+                if request.api_version_request.experimental:
+                    response.headers[EXPERIMENTAL_API_REQUEST_HEADER] = (
+                        request.api_version_request.experimental)
                 response.headers['Vary'] = API_VERSION_REQUEST_HEADER
 
         return response
@@ -1017,13 +1026,13 @@ class Controller(object):
             # object. The version for the request is attached to the
             # request object
             if len(args) == 0:
-                ver = kwargs['req'].api_version_request
+                version_request = kwargs['req'].api_version_request
             else:
-                ver = args[0].api_version_request
+                version_request = args[0].api_version_request
 
             func_list = self.versioned_methods[key]
             for func in func_list:
-                if ver.matches(func.start_version, func.end_version):
+                if version_request.matches_versioned_method(func):
                     # Update the version_select wrapper function so
                     # other decorator attributes like wsgi.response
                     # are still respected.
@@ -1031,7 +1040,8 @@ class Controller(object):
                     return func.func(self, *args, **kwargs)
 
             # No version match
-            raise exception.VersionNotFoundForAPIMethod(version=ver)
+            raise exception.VersionNotFoundForAPIMethod(
+                version=version_request)
 
         try:
             version_meth_dict = object.__getattribute__(self, VER_METHOD_ATTR)
@@ -1048,7 +1058,7 @@ class Controller(object):
     # NOTE(cyeoh): This decorator MUST appear first (the outermost
     # decorator) on an API method for it to work correctly
     @classmethod
-    def api_version(cls, min_ver, max_ver=None):
+    def api_version(cls, min_ver, max_ver=None, experimental=False):
         """Decorator for versioning API methods.
 
         Add the decorator to any method which takes a request object
@@ -1057,6 +1067,8 @@ class Controller(object):
 
         :param min_ver: string representing minimum version
         :param max_ver: optional string representing maximum version
+        :param experimental: flag indicating an API is experimental and is
+                             subject to change or removal at any time
         """
 
         def decorator(f):
@@ -1069,7 +1081,7 @@ class Controller(object):
             # Add to list of versioned methods registered
             func_name = f.__name__
             new_func = versioned_method.VersionedMethod(
-                func_name, obj_min_ver, obj_max_ver, f)
+                func_name, obj_min_ver, obj_max_ver, experimental, f)
 
             func_dict = getattr(cls, VER_METHOD_ATTR, {})
             if not func_dict:
@@ -1145,6 +1157,9 @@ class Fault(webob.exc.HTTPException):
         if not req.api_version_request.is_null():
             self.wrapped_exc.headers[API_VERSION_REQUEST_HEADER] = (
                 req.api_version_request.get_string())
+            if req.api_version_request.experimental:
+                self.wrapped_exc.headers[EXPERIMENTAL_API_REQUEST_HEADER] = (
+                    req.api_version_request.experimental)
             self.wrapped_exc.headers['Vary'] = API_VERSION_REQUEST_HEADER
 
         content_type = req.best_match_content_type()
