@@ -41,6 +41,7 @@ def stub_share(id, **kwargs):
         'share_network_id': None,
         'share_server_id': 'fake_share_server_id',
         'is_public': False,
+        'snapshot_support': True,
     }
     share.update(kwargs)
     return share

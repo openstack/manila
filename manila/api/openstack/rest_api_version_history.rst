@@ -35,3 +35,8 @@ user documentation.
 ---
   Share create() method doesn't ignore availability_zone field of provided
   share.
+
+1.3
+---
+  Snapshots become optional and share payload now has
+  boolean attr 'snapshot_support'.

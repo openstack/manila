@@ -123,6 +123,7 @@ class HostState(object):
         self.thin_provisioning_support = False
         self.thick_provisioning_support = False
         self.driver_handles_share_servers = False
+        self.snapshot_support = True
 
         # PoolState for all pools
         self.pools = {}
@@ -275,6 +276,9 @@ class HostState(object):
             pool_cap['driver_handles_share_servers'] = \
                 self.driver_handles_share_servers
 
+        if not pool_cap.get('snapshot_support'):
+            pool_cap['snapshot_support'] = True
+
     def update_backend(self, capability):
         self.share_backend_name = capability.get('share_backend_name')
         self.vendor_name = capability.get('vendor_name')
@@ -282,6 +286,7 @@ class HostState(object):
         self.storage_protocol = capability.get('storage_protocol')
         self.driver_handles_share_servers = capability.get(
             'driver_handles_share_servers')
+        self.snapshot_support = capability.get('snapshot_support')
         self.updated = capability['timestamp']
 
     def consume_from_share(self, share):

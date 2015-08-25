@@ -126,12 +126,13 @@ class FilterScheduler(driver.Scheduler):
         extra_specs = share_type.get('extra_specs', {})
 
         if extra_specs:
-            for extra_spec_name in share_types.get_required_extra_specs():
+            for extra_spec_name in share_types.get_boolean_extra_specs():
                 extra_spec = extra_specs.get(extra_spec_name)
 
                 if extra_spec is not None:
-                    share_type['extra_specs'][extra_spec_name] = (
-                        "<is> %s" % extra_spec)
+                    if not extra_spec.startswith("<is>"):
+                        extra_spec = "<is> %s" % extra_spec
+                    share_type['extra_specs'][extra_spec_name] = extra_spec
 
         resource_type = request_spec.get("share_type") or {}
         request_spec.update({'resource_properties': resource_properties})

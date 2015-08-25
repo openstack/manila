@@ -39,6 +39,9 @@ def create(context, name, extra_specs=None, is_public=True, projects=None):
     extra_specs = extra_specs or {}
     projects = projects or []
 
+    if constants.ExtraSpecs.SNAPSHOT_SUPPORT not in list(extra_specs):
+        extra_specs[constants.ExtraSpecs.SNAPSHOT_SUPPORT] = 'True'
+
     try:
         get_valid_required_extra_specs(extra_specs)
     except exception.InvalidExtraSpec as e:
@@ -194,6 +197,14 @@ def get_share_type_extra_specs(share_type_id, key=False):
 
 def get_required_extra_specs():
     return constants.ExtraSpecs.REQUIRED
+
+
+def get_undeletable_extra_specs():
+    return constants.ExtraSpecs.UNDELETABLE
+
+
+def get_boolean_extra_specs():
+    return constants.ExtraSpecs.BOOLEAN
 
 
 def is_valid_required_extra_spec(key, value):

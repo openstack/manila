@@ -149,6 +149,14 @@ class ShareSnapshotsController(wsgi.Controller):
 
         share_id = snapshot['share_id']
         share = self.share_api.get(context, share_id)
+
+        # Verify that share can be snapshotted
+        if not share['snapshot_support']:
+            msg = _("Snapshot cannot be created from share '%s', because "
+                    "share back end does not support it.") % share_id
+            LOG.error(msg)
+            raise exc.HTTPUnprocessableEntity(msg)
+
         LOG.info(_LI("Create snapshot from share %s"),
                  share_id, context=context)
 

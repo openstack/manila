@@ -1103,6 +1103,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         expected['total_capacity_gb'] = 0.0
         expected['free_capacity_gb'] = 0.0
         expected['QoS_support'] = False
+        expected["snapshot_support"] = False
         expected["pools"] = []
         pool_thin = dict(
             pool_name='OpenStack_Pool',

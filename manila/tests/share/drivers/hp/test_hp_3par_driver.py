@@ -469,6 +469,7 @@ class HP3ParDriverTestCase(test.TestCase):
             'thin_provisioning': True,
             'dedupe': False,
             'hpe3par_flash_cache': False,
+            'snapshot_support': True,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -501,6 +502,7 @@ class HP3ParDriverTestCase(test.TestCase):
             'thin_provisioning': True,
             'total_capacity_gb': 0,
             'vendor_name': 'HP',
+            'snapshot_support': True,
         }
 
         result = self.driver.get_share_stats(refresh=True)

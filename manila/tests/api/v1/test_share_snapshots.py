@@ -15,6 +15,7 @@
 
 import datetime
 
+import ddt
 import mock
 import webob
 
@@ -25,6 +26,7 @@ from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
 
 
+@ddt.ddt
 class ShareSnapshotApiTest(test.TestCase):
     """Share Snapshot Api Test."""
 
@@ -48,7 +50,8 @@ class ShareSnapshotApiTest(test.TestCase):
         }
         self.maxDiff = None
 
-    def test_snapshot_create(self):
+    @ddt.data('true', 'True', '<is> True', '1')
+    def test_snapshot_create(self, snapshot_support):
         self.mock_object(share_api.API, 'create_snapshot',
                          stubs.stub_snapshot_create)
         body = {
@@ -60,7 +63,9 @@ class ShareSnapshotApiTest(test.TestCase):
             }
         }
         req = fakes.HTTPRequest.blank('/snapshots')
+
         res_dict = self.controller.create(req, body)
+
         expected = {
             'snapshot': {
                 'id': 200,
@@ -85,6 +90,29 @@ class ShareSnapshotApiTest(test.TestCase):
             }
         }
         self.assertEqual(expected, res_dict)
+
+    @ddt.data(0, False)
+    def test_snapshot_create_no_support(self, snapshot_support):
+        self.mock_object(share_api.API, 'create_snapshot')
+        self.mock_object(
+            share_api.API,
+            'get',
+            mock.Mock(return_value={'snapshot_support': snapshot_support}))
+        body = {
+            'snapshot': {
+                'share_id': 100,
+                'force': False,
+                'name': 'fake_share_name',
+                'description': 'fake_share_description',
+            }
+        }
+        req = fakes.HTTPRequest.blank('/snapshots')
+
+        self.assertRaises(
+            webob.exc.HTTPUnprocessableEntity,
+            self.controller.create, req, body)
+
+        self.assertFalse(share_api.API.create_snapshot.called)
 
     def test_snapshot_create_no_body(self):
         body = {}

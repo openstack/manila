@@ -83,5 +83,20 @@ ACCESS_LEVELS = (
 
 
 class ExtraSpecs(object):
+
+    # Extra specs key names
     DRIVER_HANDLES_SHARE_SERVERS = "driver_handles_share_servers"
-    REQUIRED = (DRIVER_HANDLES_SHARE_SERVERS, )
+    SNAPSHOT_SUPPORT = "snapshot_support"
+
+    # Extra specs containers
+    REQUIRED = (
+        DRIVER_HANDLES_SHARE_SERVERS,
+    )
+    UNDELETABLE = (
+        DRIVER_HANDLES_SHARE_SERVERS,
+        SNAPSHOT_SUPPORT,
+    )
+    BOOLEAN = (
+        DRIVER_HANDLES_SHARE_SERVERS,
+        SNAPSHOT_SUPPORT,
+    )

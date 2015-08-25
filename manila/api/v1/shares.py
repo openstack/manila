@@ -162,7 +162,17 @@ class ShareController(wsgi.Controller):
         share.update(update_dict)
         return self._view_builder.detail(req, share)
 
+    @wsgi.Controller.api_version("1.3")
     def create(self, req, body):
+        return self._create(req, body)
+
+    @wsgi.Controller.api_version("1.0", "1.2")  # noqa
+    def create(self, req, body):
+        share = self._create(req, body)
+        share.pop('snapshot_support', None)
+        return share
+
+    def _create(self, req, body):
         """Creates a new share."""
         context = req.environ['manila.context']
 

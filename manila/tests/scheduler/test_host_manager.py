@@ -195,6 +195,7 @@ class HostManagerTestCase(test.TestCase):
                         'vendor_name': None,
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                     },
                 }, {
                     'name': 'host2@back1#BBB',
@@ -215,6 +216,7 @@ class HostManagerTestCase(test.TestCase):
                         'vendor_name': None,
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                     },
                 }, {
                     'name': 'host2@back2#CCC',
@@ -235,6 +237,7 @@ class HostManagerTestCase(test.TestCase):
                         'vendor_name': None,
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                     },
                 },
             ]
@@ -277,6 +280,7 @@ class HostManagerTestCase(test.TestCase):
                         'vendor_name': None,
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                     },
                 }, {
                     'name': 'host2@BBB#pool2',
@@ -298,6 +302,7 @@ class HostManagerTestCase(test.TestCase):
                         'vendor_name': None,
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                     },
                 }, {
                     'name': 'host3@CCC#pool3',
@@ -319,6 +324,7 @@ class HostManagerTestCase(test.TestCase):
                         'vendor_name': None,
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                     },
                 }, {
                     'name': 'host4@DDD#pool4a',
@@ -340,6 +346,7 @@ class HostManagerTestCase(test.TestCase):
                         'vendor_name': None,
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                     },
                 }, {
                     'name': 'host4@DDD#pool4b',
@@ -361,6 +368,7 @@ class HostManagerTestCase(test.TestCase):
                         'vendor_name': None,
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                     },
                 },
             ]
@@ -404,6 +412,7 @@ class HostManagerTestCase(test.TestCase):
                     'capabilities': {
                         'timestamp': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                         'share_backend_name': 'AAA',
                         'free_capacity_gb': 200,
                         'driver_version': None,
@@ -424,6 +433,7 @@ class HostManagerTestCase(test.TestCase):
                     'capabilities': {
                         'timestamp': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                         'share_backend_name': 'BBB',
                         'free_capacity_gb': 100,
                         'driver_version': None,
@@ -470,6 +480,7 @@ class HostManagerTestCase(test.TestCase):
                         'pool_name': 'pool2',
                         'timestamp': None,
                         'driver_handles_share_servers': False,
+                        'snapshot_support': True,
                         'share_backend_name': 'BBB',
                         'free_capacity_gb': 42,
                         'driver_version': None,

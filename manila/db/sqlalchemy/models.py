@@ -245,6 +245,7 @@ class Share(BASE, ManilaBase):
     display_name = Column(String(255))
     display_description = Column(String(255))
     snapshot_id = Column(String(36))
+    snapshot_support = Column(Boolean, default=True)
     share_proto = Column(String(255))
     share_type_id = Column(String(36), ForeignKey('share_types.id'),
                            nullable=True)
