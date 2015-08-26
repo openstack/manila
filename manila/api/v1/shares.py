@@ -26,6 +26,7 @@ from webob import exc
 from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import shares as share_views
+from manila import db
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
@@ -188,8 +189,16 @@ class ShareController(wsgi.Controller):
                {'share_proto': share_proto, 'size': size})
         LOG.info(msg, context=context)
 
+        availability_zone = share.get('availability_zone')
+
+        if availability_zone:
+            try:
+                db.availability_zone_get(context, availability_zone)
+            except exception.AvailabilityZoneNotFound as e:
+                raise exc.HTTPNotFound(explanation=six.text_type(e))
+
         kwargs = {
-            'availability_zone': share.get('availability_zone'),
+            'availability_zone': availability_zone,
             'metadata': share.get('metadata'),
             'is_public': share.get('is_public', False),
         }

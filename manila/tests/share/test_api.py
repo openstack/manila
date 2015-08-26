@@ -153,6 +153,10 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value=share_metadata))
         self.mock_object(db_api, 'share_type_get',
                          mock.Mock(return_value=share_type))
+        az_mock = mock.Mock()
+        type(az_mock.return_value).id = mock.PropertyMock(
+            return_value='fake_id')
+        self.mock_object(db_api, 'availability_zone_get', az_mock)
         self.mock_object(self.api.share_rpcapi, 'create_share_instance')
         self.mock_object(self.api.scheduler_rpcapi, 'create_share_instance')
 
@@ -500,6 +504,7 @@ class ShareAPITestCase(test.TestCase):
     @ddt.data(True, False)
     def test_create_public_and_private_share(self, is_public):
         share, share_data = self._setup_create_mocks(is_public=is_public)
+        az = share_data.pop('availability_zone')
 
         self.api.create(
             self.context,
@@ -507,7 +512,7 @@ class ShareAPITestCase(test.TestCase):
             share_data['size'],
             share_data['display_name'],
             share_data['display_description'],
-            availability_zone=share_data['availability_zone']
+            availability_zone=az
         )
 
         self.assertSubDictMatch(share_data,
@@ -522,6 +527,7 @@ class ShareAPITestCase(test.TestCase):
     @ddt.data(*constants.SUPPORTED_SHARE_PROTOCOLS)
     def test_create_share_valid_protocol(self, proto):
         share, share_data = self._setup_create_mocks(protocol=proto)
+        az = share_data.pop('availability_zone')
 
         all_protos = ','.join(
             proto for proto in constants.SUPPORTED_SHARE_PROTOCOLS)
@@ -531,7 +537,7 @@ class ShareAPITestCase(test.TestCase):
                 self.context, proto, share_data['size'],
                 share_data['display_name'],
                 share_data['display_description'],
-                availability_zone=share_data['availability_zone'])
+                availability_zone=az)
 
         self.assertSubDictMatch(share_data,
                                 db_api.share_create.call_args[0][1])
@@ -603,10 +609,11 @@ class ShareAPITestCase(test.TestCase):
                                                       reservation)
         db_api.share_delete.assert_called_once_with(self.context, share['id'])
 
-    def test_create_share_instance_with_host(self):
+    def test_create_share_instance_with_host_and_az(self):
         host, share, share_instance = self._setup_create_instance_mocks()
 
-        self.api.create_instance(self.context, share, host=host)
+        self.api.create_instance(self.context, share, host=host,
+                                 availability_zone='fake')
 
         db_api.share_instance_create.assert_called_once_with(
             self.context, share['id'],
@@ -615,6 +622,7 @@ class ShareAPITestCase(test.TestCase):
                 'status': constants.STATUS_CREATING,
                 'scheduled_at': self.dt_utc,
                 'host': host,
+                'availability_zone_id': 'fake_id',
             }
         )
         db_api.share_metadata_get.assert_called_once_with(self.context,
@@ -627,7 +635,7 @@ class ShareAPITestCase(test.TestCase):
             host,
             request_spec=mock.ANY,
             filter_properties={},
-            snapshot_id=share['snapshot_id']
+            snapshot_id=share['snapshot_id'],
         )
         self.assertFalse(
             self.api.scheduler_rpcapi.create_share_instance.called)
@@ -857,6 +865,7 @@ class ShareAPITestCase(test.TestCase):
             self._setup_create_from_snapshot_mocks(
                 use_scheduler=use_scheduler, host=valid_host)
         )
+        az = share_data.pop('availability_zone')
 
         self.api.create(
             self.context,
@@ -865,7 +874,7 @@ class ShareAPITestCase(test.TestCase):
             share_data['display_name'],
             share_data['display_description'],
             snapshot=snapshot,
-            availability_zone=share_data['availability_zone']
+            availability_zone=az
         )
 
         self.assertEqual(0, share_types.get_share_type.call_count)
@@ -873,7 +882,8 @@ class ShareAPITestCase(test.TestCase):
                                 db_api.share_create.call_args[0][1])
         self.api.create_instance.assert_called_once_with(
             self.context, share, share_network_id=share['share_network_id'],
-            host=valid_host)
+            host=valid_host,
+            availability_zone=snapshot['share']['availability_zone'])
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'create')
         quota.QUOTAS.reserve.assert_called_once_with(

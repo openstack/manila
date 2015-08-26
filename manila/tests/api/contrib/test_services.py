@@ -32,7 +32,7 @@ fake_services_list = [
     {
         'binary': 'manila-scheduler',
         'host': 'host1',
-        'availability_zone': 'manila1',
+        'availability_zone': {'name': 'manila1'},
         'id': 1,
         'disabled': True,
         'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 2),
@@ -41,7 +41,7 @@ fake_services_list = [
     {
         'binary': 'manila-share',
         'host': 'host1',
-        'availability_zone': 'manila1',
+        'availability_zone': {'name': 'manila1'},
         'id': 2,
         'disabled': True,
         'updated_at': datetime.datetime(2012, 10, 29, 13, 42, 5),
@@ -49,7 +49,7 @@ fake_services_list = [
     {
         'binary': 'manila-scheduler',
         'host': 'host2',
-        'availability_zone': 'manila2',
+        'availability_zone': {'name': 'manila2'},
         'id': 3,
         'disabled': False,
         'updated_at': datetime.datetime(2012, 9, 19, 6, 55, 34),
@@ -57,7 +57,7 @@ fake_services_list = [
     {
         'binary': 'manila-share',
         'host': 'host2',
-        'availability_zone': 'manila2',
+        'availability_zone': {'name': 'manila2'},
         'id': 4,
         'disabled': True,
         'updated_at': datetime.datetime(2012, 9, 18, 8, 3, 38),

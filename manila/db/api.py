@@ -830,3 +830,15 @@ def driver_private_data_update(context, host, entity_id, details,
 def driver_private_data_delete(context, host, entity_id, key=None):
     """Remove one, list or all key-value pairs for given host and entity_id."""
     return IMPL.driver_private_data_delete(context, host, entity_id, key)
+
+
+####################
+
+def availability_zone_get(context, id_or_name):
+    """Get availability zone by name or id."""
+    return IMPL.availability_zone_get(context, id_or_name)
+
+
+def availability_zone_get_all(context):
+    """Get all active availability zones."""
+    return IMPL.availability_zone_get_all(context)

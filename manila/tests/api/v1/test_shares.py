@@ -24,6 +24,7 @@ from manila.api import common
 from manila.api.v1 import shares
 from manila.common import constants
 from manila import context
+from manila import db
 from manila import exception
 from manila.share import api as share_api
 from manila.share import share_types
@@ -40,6 +41,7 @@ class ShareApiTest(test.TestCase):
     def setUp(self):
         super(ShareApiTest, self).setUp()
         self.controller = shares.ShareController()
+        self.mock_object(db, 'availability_zone_get')
         self.mock_object(share_api.API, 'get_all',
                          stubs.stub_get_all_shares)
         self.mock_object(share_api.API, 'get',
@@ -311,6 +313,20 @@ class ShareApiTest(test.TestCase):
         body = {}
         req = fakes.HTTPRequest.blank('/shares')
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
+                          self.controller.create,
+                          req,
+                          body)
+
+    def test_share_create_invalid_availability_zone(self):
+        self.mock_object(
+            db,
+            'availability_zone_get',
+            mock.Mock(side_effect=exception.AvailabilityZoneNotFound(id='id'))
+        )
+        body = {"share": copy.deepcopy(self.share)}
+
+        req = fakes.HTTPRequest.blank('/shares')
+        self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.create,
                           req,
                           body)

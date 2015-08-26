@@ -366,6 +366,13 @@ class ShareManager(manager.SchedulerDependentManager):
         share_instance = self._get_share_instance(context, share_instance_id)
         share_network_id = share_instance.get('share_network_id', None)
 
+        if not share_instance['availability_zone']:
+            share_instance = self.db.share_instance_update(
+                context, share_instance_id,
+                {'availability_zone': CONF.storage_availability_zone},
+                with_share_data=True
+            )
+
         if share_network_id and not self.driver.driver_handles_share_servers:
             self.db.share_instance_update(
                 context, share_instance_id, {'status': constants.STATUS_ERROR})
@@ -474,6 +481,7 @@ class ShareManager(manager.SchedulerDependentManager):
             share_update.update({
                 'status': constants.STATUS_AVAILABLE,
                 'launched_at': timeutils.utcnow(),
+                'availability_zone': CONF.storage_availability_zone,
             })
 
             # NOTE(vponomaryov): we should keep only those export locations

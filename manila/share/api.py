@@ -106,6 +106,7 @@ class API(base.Base):
             share_type_id = share_type['id'] if share_type else None
         else:
             source_share = self.db.share_get(context, snapshot['share_id'])
+            availability_zone = source_share['availability_zone']
             if share_type is None:
                 share_type_id = source_share['share_type_id']
             else:
@@ -157,9 +158,6 @@ class API(base.Base):
                                  'd_consumed': _consumed('shares')})
                 raise exception.ShareLimitExceeded(allowed=quotas['shares'])
 
-        if availability_zone is None:
-            availability_zone = CONF.storage_availability_zone
-
         try:
             is_public = strutils.bool_from_string(is_public, strict=True)
         except ValueError as e:
@@ -169,7 +167,6 @@ class API(base.Base):
                    'user_id': context.user_id,
                    'project_id': context.project_id,
                    'snapshot_id': snapshot_id,
-                   'availability_zone': availability_zone,
                    'metadata': metadata,
                    'display_name': name,
                    'display_description': description,
@@ -196,13 +193,22 @@ class API(base.Base):
             host = snapshot['share']['host']
 
         self.create_instance(context, share, share_network_id=share_network_id,
-                             host=host)
+                             host=host, availability_zone=availability_zone)
 
         return share
 
     def create_instance(self, context, share, share_network_id=None,
-                        host=None):
+                        host=None, availability_zone=None):
         policy.check_policy(context, 'share', 'create')
+
+        availability_zone_id = None
+        if availability_zone:
+            availability_zone_id = self.db.availability_zone_get(
+                context, availability_zone).id
+
+        # TODO(u_glide): Add here validation that provided share network
+        # doesn't conflict with provided availability_zone when Neutron
+        # will have AZ support.
 
         share_instance = self.db.share_instance_create(
             context, share['id'],
@@ -210,7 +216,8 @@ class API(base.Base):
                 'share_network_id': share_network_id,
                 'status': constants.STATUS_CREATING,
                 'scheduled_at': timeutils.utcnow(),
-                'host': host or ''
+                'host': host if host else '',
+                'availability_zone_id': availability_zone_id,
             }
         )
 
@@ -226,6 +233,7 @@ class API(base.Base):
 
         request_spec = {
             'share_properties': share_dict,
+            'share_instance_properties': share_instance.to_dict(),
             'share_proto': share['share_proto'],
             'share_id': share['id'],
             'snapshot_id': share['snapshot_id'],

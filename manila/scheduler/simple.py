@@ -49,30 +49,15 @@ class SimpleScheduler(chance.ChanceScheduler):
         snapshot_id = request_spec.get('snapshot_id')
         share_properties = request_spec.get('share_properties')
         share_size = share_properties.get('size')
-        availability_zone = share_properties.get('availability_zone')
 
-        zone, host = None, None
-        if availability_zone:
-            zone, _x, host = availability_zone.partition(':')
-        if host and context.is_admin:
-            service = db.service_get_by_args(elevated, host, CONF.share_topic)
-            if not utils.service_is_up(service):
-                raise exception.WillNotSchedule(host=host)
-            updated_share = driver.share_update_db(context, share_id, host)
-            self.share_rpcapi.create_share_instance(
-                context,
-                updated_share.instance,
-                host,
-                request_spec,
-                None,
-                snapshot_id=snapshot_id
-            )
-            return None
+        instance_properties = request_spec.get('share_instance_properties', {})
+        availability_zone_id = instance_properties.get('availability_zone_id')
 
         results = db.service_get_all_share_sorted(elevated)
-        if zone:
+        if availability_zone_id:
             results = [(service_g, gigs) for (service_g, gigs) in results
-                       if service_g['availability_zone'] == zone]
+                       if (service_g['availability_zone_id']
+                           == availability_zone_id)]
         for result in results:
             (service, share_gigabytes) = result
             if share_gigabytes + share_size > CONF.max_gigabytes:

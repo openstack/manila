@@ -194,6 +194,10 @@ class InUse(ManilaException):
     message = _("Resource is in use.")
 
 
+class AvailabilityZoneNotFound(NotFound):
+    message = _("Availability zone %(id)s could not be found.")
+
+
 class ShareNetworkNotFound(NotFound):
     message = _("Share network %(share_network_id)s could not be found.")
 

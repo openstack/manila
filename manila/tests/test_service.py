@@ -128,7 +128,7 @@ service_ref = {
     'binary': binary,
     'topic': topic,
     'report_count': 0,
-    'availability_zone': 'nova',
+    'availability_zone': {'name': 'nova'},
     'id': 1,
 }
 

@@ -239,7 +239,7 @@ class Service(service.Service):
                 service_ref = db.service_get(ctxt, self.service_id)
 
             state_catalog['report_count'] = service_ref['report_count'] + 1
-            if zone != service_ref['availability_zone']:
+            if zone != service_ref['availability_zone']['name']:
                 state_catalog['availability_zone'] = zone
 
             db.service_update(ctxt,
