@@ -47,6 +47,25 @@ class SharesClient(rest_client.RestClient):
         self.share_network_id = CONF.share.share_network_id
         self.build_interval = CONF.share.build_interval
         self.build_timeout = CONF.share.build_timeout
+        self.API_MICROVERSIONS_HEADER = 'x-openstack-manila-api-version'
+
+    def send_microversion_request(self, version=None):
+        """Prepare and send the HTTP GET Request to the base URL.
+
+        Extracts the base URL from the shares_client endpoint and makes a GET
+        request with the microversions request header.
+        """
+
+        headers = self.get_headers()
+        url, headers, body = self.auth_provider.auth_request(
+            'GET', 'shares', headers, None, self.filters)
+        url = '/'.join(url.split('/')[:3]) + '/'
+        if version:
+            headers[self.API_MICROVERSIONS_HEADER] = version
+        resp, resp_body = self.raw_request(url, 'GET', headers=headers)
+        self.response_checker('GET', resp, resp_body)
+        resp_body = json.loads(resp_body)
+        return resp, resp_body
 
     def create_share(self, share_protocol=None, size=1,
                      name=None, snapshot_id=None, description=None,
