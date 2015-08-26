@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 import six
@@ -24,7 +25,6 @@ from manila import db
 from manila import exception
 from manila.share import api as share_api
 from manila import test
-from manila.tests.api.contrib import stubs
 from manila.tests.api import fakes
 from manila.tests import db_utils
 
@@ -39,6 +39,25 @@ def app():
     return mapper
 
 
+fixture_reset_status_with_different_roles = (
+    {'role': 'admin', 'valid_code': 202,
+     'valid_status': constants.STATUS_ERROR},
+    {'role': 'member', 'valid_code': 403,
+     'valid_status': constants.STATUS_AVAILABLE}
+)
+
+fixture_force_delete_with_different_roles = (
+    {'role': 'admin', 'resp_code': 202},
+    {'role': 'member', 'resp_code': 403},
+)
+
+fixture_invalid_reset_status_body = (
+    {'os-reset_status': {'x-status': 'bad'}},
+    {'os-reset_status': {'status': 'invalid'}}
+)
+
+
+@ddt.ddt
 class AdminActionsTest(test.TestCase):
 
     def setUp(self):
@@ -48,193 +67,137 @@ class AdminActionsTest(test.TestCase):
         self.admin_context = context.RequestContext('admin', 'fake', True)
         self.member_context = context.RequestContext('fake', 'fake')
 
-    def test_reset_status_as_admin(self):
-        # current status is available
-        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
+    def _get_context(self, role):
+        return getattr(self, '%s_context' % role)
+
+    def _setup_share_data(self, share=None):
+        if share is None:
+            share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                          size='1',
+                                          override_defaults=True)
         req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
+        return share, req
+
+    def _setup_snapshot_data(self, snapshot=None):
+        if snapshot is None:
+            share = db_utils.create_share()
+            snapshot = db_utils.create_snapshot(
+                status=constants.STATUS_AVAILABLE, share_id=share['id'])
+        req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
+                                  snapshot['id'])
+        return snapshot, req
+
+    def _reset_status(self, ctxt, model, req, db_access_method,
+                      valid_code, valid_status=None, body=None):
+        if body is None:
+            body = {'os-reset_status': {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        # request status of 'error'
-        req.body = six.b(jsonutils.dumps(
-            {'os-reset_status': {'status': constants.STATUS_ERROR}}))
-        # attach admin context to request
-        req.environ['manila.context'] = self.admin_context
-        resp = req.get_response(app())
-        # request is accepted
-        self.assertEqual(resp.status_int, 202)
-        share = db.share_get(self.admin_context, share['id'])
-        # status changed to 'error'
-        self.assertEqual(share['status'], constants.STATUS_ERROR)
+        req.body = six.b(jsonutils.dumps(body))
+        req.environ['manila.context'] = ctxt
 
-    def test_reset_status_as_non_admin(self):
-        # current status is 'error'
-        share = db_utils.create_share(status=constants.STATUS_ERROR)
-        req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        # request changing status to available
-        req.body = six.b(jsonutils.dumps(
-            {'os-reset_status': {'status': constants.STATUS_AVAILABLE}}))
-        # non-admin context
-        req.environ['manila.context'] = self.member_context
         resp = req.get_response(app())
-        # request is not authorized
-        self.assertEqual(resp.status_int, 403)
-        share = db.share_get(context.get_admin_context(), share['id'])
-        # status is still 'error'
-        self.assertEqual(share['status'], constants.STATUS_ERROR)
 
-    def test_malformed_reset_status_body(self):
-        # current status is available
-        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
-        req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        # malformed request body
-        req.body = six.b(jsonutils.dumps(
-            {'os-reset_status': {'x-status': 'bad'}}))
-        # attach admin context to request
-        req.environ['manila.context'] = self.admin_context
-        resp = req.get_response(app())
-        # bad request
-        self.assertEqual(resp.status_int, 400)
-        share = db.share_get(self.admin_context, share['id'])
-        # status is still 'available'
-        self.assertEqual(share['status'], constants.STATUS_AVAILABLE)
+        # validate response code and model status
+        self.assertEqual(resp.status_int, valid_code)
 
-    def test_invalid_status_for_share(self):
-        # current status is available
-        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
-        req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        # 'invalid' is not a valid status
-        req.body = six.b(jsonutils.dumps(
-            {'os-reset_status': {'status': 'invalid'}}))
-        # attach admin context to request
-        req.environ['manila.context'] = self.admin_context
-        resp = req.get_response(app())
-        # bad request
-        self.assertEqual(resp.status_int, 400)
-        share = db.share_get(self.admin_context, share['id'])
-        # status is still 'available'
-        self.assertEqual(share['status'], constants.STATUS_AVAILABLE)
+        if valid_code == 404:
+            self.assertRaises(exception.NotFound,
+                              db_access_method,
+                              ctxt,
+                              model['id'])
+        else:
+            actual_model = db_access_method(ctxt, model['id'])
+            self.assertEqual(actual_model['status'], valid_status)
 
-    def test_reset_status_for_missing_share(self):
-        # missing-share-id
+    @ddt.data(*fixture_reset_status_with_different_roles)
+    @ddt.unpack
+    def test_share_reset_status_with_different_roles(self, role, valid_code,
+                                                     valid_status):
+        share, req = self._setup_share_data()
+        ctxt = self._get_context(role)
+
+        self._reset_status(ctxt, share, req, db.share_get, valid_code,
+                           valid_status)
+
+    @ddt.data(*fixture_reset_status_with_different_roles)
+    @ddt.unpack
+    def test_snapshot_reset_status_with_different_roles(self, role, valid_code,
+                                                        valid_status):
+        ctxt = self._get_context(role)
+        snapshot, req = self._setup_snapshot_data()
+
+        self._reset_status(ctxt, snapshot, req, db.share_snapshot_get,
+                           valid_code, valid_status)
+
+    @ddt.data(*fixture_invalid_reset_status_body)
+    def test_share_invalid_reset_status_body(self, body):
+        share, req = self._setup_share_data()
+        ctxt = self.admin_context
+
+        self._reset_status(ctxt, share, req, db.share_get, 400,
+                           constants.STATUS_AVAILABLE, body)
+
+    @ddt.data(*fixture_invalid_reset_status_body)
+    def test_snapshot_invalid_reset_status_body(self, body):
+        snapshot, req = self._setup_snapshot_data()
+
+        self._reset_status(self.admin_context, snapshot, req,
+                           db.share_snapshot_get, 400,
+                           constants.STATUS_AVAILABLE, body)
+
+    def test_share_reset_status_for_missing(self):
+        fake_share = {'id': 'missing-share-id'}
         req = webob.Request.blank('/v1/fake/shares/%s/action' %
-                                  'missing-share-id')
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        # malformed request body
-        req.body = six.b(jsonutils.dumps(
-            {'os-reset_status': {'status': constants.STATUS_AVAILABLE}}))
-        # attach admin context to request
-        req.environ['manila.context'] = self.admin_context
-        resp = req.get_response(app())
-        # not found
-        self.assertEqual(resp.status_int, 404)
-        self.assertRaises(exception.NotFound,
-                          db.share_get,
-                          self.admin_context,
-                          'missing-share-id')
+                                  fake_share['id'])
 
-    def test_snapshot_reset_status(self):
-        # snapshot in 'error_deleting'
-        share = db_utils.create_share()
-        snapshot = db_utils.create_snapshot(
-            status=constants.STATUS_ERROR_DELETING,
-            share_id=share['id']
-        )
-        req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
-                                  snapshot['id'])
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        # request status of 'error'
-        req.body = six.b(jsonutils.dumps(
-            {'os-reset_status': {'status': constants.STATUS_ERROR}}))
-        # attach admin context to request
-        req.environ['manila.context'] = self.admin_context
-        resp = req.get_response(app())
-        # request is accepted
-        self.assertEqual(resp.status_int, 202)
-        snapshot = db.share_snapshot_get(self.admin_context, snapshot['id'])
-        # status changed to 'error'
-        self.assertEqual(snapshot['status'], constants.STATUS_ERROR)
+        self._reset_status(self.admin_context, fake_share, req,
+                           db.share_snapshot_get, 404)
 
-    def test_invalid_status_for_snapshot(self):
-        # snapshot in 'available'
-        share = db_utils.create_share()
-        snapshot = db_utils.create_snapshot(
-            status=constants.STATUS_AVAILABLE,
-            share_id=share['id']
-        )
-        req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
-                                  snapshot['id'])
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        # 'attaching' is not a valid status for snapshots
-        req.body = six.b(jsonutils.dumps(
-            {'os-reset_status': {'status': 'attaching'}}))
-        # attach admin context to request
-        req.environ['manila.context'] = self.admin_context
-        resp = req.get_response(app())
-        # request is accepted
-        self.assertEqual(resp.status_int, 400)
-        snapshot = db.share_snapshot_get(self.admin_context, snapshot['id'])
-        # status is still 'available'
-        self.assertEqual(snapshot['status'], constants.STATUS_AVAILABLE)
-
-    def test_admin_force_delete_share(self):
-        share = db_utils.create_share(size=1, override_defaults=True)
-        req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
+    def _force_delete(self, ctxt, model, req, db_access_method, valid_code,
+                      check_model_in_db=False):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
-        req.environ['manila.context'] = self.admin_context
-        resp = req.get_response(app())
-        self.assertEqual(resp.status_int, 202)
-        self.assertRaises(exception.NotFound,
-                          db.share_get,
-                          self.admin_context,
-                          share['id'])
+        req.environ['manila.context'] = ctxt
 
-    def test_member_force_delete_share(self):
-        share = db_utils.create_share(size=1)
-        req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
-        req.environ['manila.context'] = self.member_context
         resp = req.get_response(app())
-        self.assertEqual(resp.status_int, 403)
 
-    def test_admin_force_delete_snapshot(self):
-        snapshot = stubs.stub_snapshot(1, host='foo')
-        self.mock_object(db, 'share_get', lambda x, y: snapshot)
-        self.mock_object(db, 'share_snapshot_get', lambda x, y: snapshot)
-        self.mock_object(share_api.API, 'delete_snapshot',
-                         lambda *x, **y: True)
-        path = '/v1/fake/snapshots/%s/action' % snapshot['id']
-        req = webob.Request.blank(path)
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
-        req.environ['manila.context'] = self.admin_context
-        resp = req.get_response(app())
-        self.assertEqual(resp.status_int, 202)
+        # validate response
+        self.assertEqual(resp.status_int, valid_code)
 
-    def test_member_force_delete_snapshot(self):
-        snapshot = stubs.stub_snapshot(1, host='foo')
-        self.mock_object(db, 'share_get', lambda x, y: snapshot)
-        self.mock_object(db, 'share_snapshot_get', lambda x, y: snapshot)
-        self.mock_object(share_api.API, 'delete_snapshot',
-                         lambda *x, **y: True)
-        path = '/v1/fake/snapshots/%s/action' % snapshot['id']
-        req = webob.Request.blank(path)
-        req.method = 'POST'
-        req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
-        req.environ['manila.context'] = self.member_context
-        resp = req.get_response(app())
-        self.assertEqual(resp.status_int, 403)
+        if valid_code == 202 and check_model_in_db:
+            self.assertRaises(exception.NotFound,
+                              db_access_method,
+                              ctxt,
+                              model['id'])
+
+    @ddt.data(*fixture_force_delete_with_different_roles)
+    @ddt.unpack
+    def test_share_force_delete_with_different_roles(self, role, resp_code):
+        share, req = self._setup_share_data()
+        ctxt = self._get_context(role)
+
+        self._force_delete(ctxt, share, req, db.share_get, resp_code,
+                           check_model_in_db=True)
+
+    def test_share_force_delete_missing(self):
+        share, req = self._setup_share_data(share={'id': 'fake'})
+        ctxt = self._get_context('admin')
+
+        self._force_delete(ctxt, share, req, db.share_get, 404)
+
+    @ddt.data(*fixture_force_delete_with_different_roles)
+    @ddt.unpack
+    def test_snapshot_force_delete_with_different_roles(self, role, resp_code):
+        snapshot, req = self._setup_snapshot_data()
+        ctxt = self._get_context(role)
+
+        self._force_delete(ctxt, snapshot, req, db.share_snapshot_get,
+                           resp_code)
+
+    def test_snapshot_force_delete_missing(self):
+        snapshot, req = self._setup_snapshot_data(snapshot={'id': 'fake'})
+        ctxt = self._get_context('admin')
+
+        self._force_delete(ctxt, snapshot, req, db.share_snapshot_get, 404)
