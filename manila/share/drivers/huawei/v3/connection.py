@@ -103,10 +103,8 @@ class V3StorageConnection(driver.HuaweiBase):
             if fs_id is not None:
                 self.helper._delete_fs(fs_id)
             raise exception.InvalidShare(
-                reason=(_('Failed to create share %(name)s.'
-                          'Reason: %(err)s.')
-                        % {'name': share_name,
-                           'err': err}))
+                reason=(_('Failed to create share %(name)s. Reason: %(err)s.')
+                        % {'name': share_name, 'err': err}))
 
         location = self._get_location_path(share_name, share_proto)
         return location
@@ -250,6 +248,8 @@ class V3StorageConnection(driver.HuaweiBase):
                     thin_provisioning=True,
                     dedupe=True,
                     compression=True,
+                    huawei_smartcache=True,
+                    huawei_smartpartition=True,
                 )
 
                 stats_dict["pools"].append(pool_thin)
@@ -463,6 +463,19 @@ class V3StorageConnection(driver.HuaweiBase):
 
         fileParam = self._init_filesys_para(share, poolinfo, smartx_opts)
         fsid = self.helper._create_filesystem(fileParam)
+
+        try:
+            smartpartition = smartx.SmartPartition(self.helper)
+            smartpartition.add(opts, fsid)
+
+            smartcache = smartx.SmartCache(self.helper)
+            smartcache.add(opts, fsid)
+        except Exception as err:
+            if fsid is not None:
+                self.helper._delete_fs(fsid)
+            message = (_('Failed to add smartx. Reason: %(err)s.')
+                       % {'err': err})
+            raise exception.InvalidShare(reason=message)
         return fsid
 
     def manage_existing(self, share, driver_options):

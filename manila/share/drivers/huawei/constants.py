@@ -33,5 +33,17 @@ ERROR_UNAUTHORIZED_TO_SERVER = -401
 OPTS_CAPABILITIES = {
     'dedupe': False,
     'compression': False,
+    'huawei_smartcache': False,
+    'huawei_smartpartition': False,
     'thin_provisioning': False,
+}
+
+OPTS_VALUE = {
+    'cachename': None,
+    'partitionname': None,
+}
+
+OPTS_ASSOCIATE = {
+    'huawei_smartcache': 'cachename',
+    'huawei_smartpartition': 'partitionname',
 }
