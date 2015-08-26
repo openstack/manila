@@ -287,18 +287,51 @@ def share_instance_get(context, instance_id, with_share_data=False):
                                    with_share_data=with_share_data)
 
 
+def share_instance_create(context, share_id, values):
+    """Create new share instance."""
+    return IMPL.share_instance_create(context, share_id, values)
+
+
+def share_instance_delete(context, instance_id):
+    """Delete share instance."""
+    return IMPL.share_instance_delete(context, instance_id)
+
+
 def share_instance_update(context, instance_id, values, with_share_data=False):
     """Update share instance fields."""
     return IMPL.share_instance_update(context, instance_id, values,
                                       with_share_data=with_share_data)
 
 
+def share_instances_get_all_by_share_server(context, share_server_id):
+    """Returns all share instances with given share_server_id."""
+    return IMPL.share_instances_get_all_by_share_server(context,
+                                                        share_server_id)
+
+
+def share_instances_get_all_by_host(context, host):
+    """Returns all share instances with given host."""
+    return IMPL.share_instances_get_all_by_host(context, host)
+
+
+def share_instances_get_all_by_share_network(context, share_network_id):
+    """Returns list of shares that belong to given share network."""
+    return IMPL.share_instances_get_all_by_share_network(context,
+                                                         share_network_id)
+
+
+def share_instances_get_all_by_share(context, share_id):
+    """Returns list of shares that belong to given share."""
+    return IMPL.share_instances_get_all_by_share_network(context, share_id)
+
+
 ###################
 
 
-def share_create(context, values):
+def share_create(context, values, create_share_instance=True):
     """Create new share."""
-    return IMPL.share_create(context, values)
+    return IMPL.share_create(context, values,
+                             create_share_instance=create_share_instance)
 
 
 def share_data_get_for_project(context, project_id, session=None):
@@ -323,11 +356,6 @@ def share_get_all(context, filters=None, sort_key=None, sort_dir=None):
     )
 
 
-def share_instances_get_all_by_host(context, host):
-    """Returns all share instances with given host."""
-    return IMPL.share_instances_get_all_by_host(context, host)
-
-
 def share_get_all_by_project(context, project_id, filters=None,
                              is_public=False, sort_key=None, sort_dir=None):
     """Returns all shares with given project ID."""
@@ -335,12 +363,6 @@ def share_get_all_by_project(context, project_id, filters=None,
         context, project_id, filters=filters, is_public=is_public,
         sort_key=sort_key, sort_dir=sort_dir,
     )
-
-
-def share_instances_get_all_by_share_network(context, share_network_id):
-    """Returns list of shares that belong to given share network."""
-    return IMPL.share_instances_get_all_by_share_network(context,
-                                                         share_network_id)
 
 
 def share_get_all_by_share_server(context, share_server_id, filters=None,
@@ -366,12 +388,17 @@ def share_access_create(context, values):
 
 
 def share_access_get(context, access_id):
-    """Allow access to share."""
+    """Get share access rule."""
     return IMPL.share_access_get(context, access_id)
 
 
+def share_instance_access_get(context, access_id, instance_id):
+    """Get access rule mapping for share instance."""
+    return IMPL.share_instance_access_get(context, access_id, instance_id)
+
+
 def share_access_get_all_for_share(context, share_id):
-    """Allow access to share."""
+    """Get all access rules for given share."""
     return IMPL.share_access_get_all_for_share(context, share_id)
 
 
@@ -387,9 +414,14 @@ def share_access_delete(context, access_id):
     return IMPL.share_access_delete(context, access_id)
 
 
-def share_access_update(context, access_id, values):
-    """Update access record."""
-    return IMPL.share_access_update(context, access_id, values)
+def share_instance_access_delete(context, mapping_id):
+    """Deny access to share instance."""
+    return IMPL.share_instance_access_delete(context, mapping_id)
+
+
+def share_instance_access_update_state(context, mapping_id, state):
+    """Update state of access rule mapping."""
+    return IMPL.share_instance_access_update_state(context, mapping_id, state)
 
 
 ####################

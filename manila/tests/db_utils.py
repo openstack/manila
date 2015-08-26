@@ -41,18 +41,37 @@ def create_share(**kwargs):
         'project_id': 'fake',
         'metadata': {'fake_key': 'fake_value'},
         'availability_zone': 'fake_availability_zone',
-        'status': "creating",
+        'status': constants.STATUS_CREATING,
         'host': 'fake_host'
     }
     return _create_db_row(db.share_create, share, kwargs)
 
 
+def create_share_instance(**kwargs):
+    """Create a share instance object."""
+    instance = {
+        'host': 'fake',
+        'status': constants.STATUS_CREATING,
+    }
+    instance.update(kwargs)
+
+    return db.share_instance_create(context.get_admin_context(),
+                                    kwargs.pop('share_id'), kwargs)
+
+
 def create_snapshot(**kwargs):
     """Create a snapshot object."""
+    with_share = kwargs.pop('with_share', False)
+
+    share = None
+    if with_share:
+        share = create_share(status=constants.STATUS_AVAILABLE,
+                             size=kwargs.get('size', 0))
+
     snapshot = {
         'share_proto': "NFS",
         'size': 0,
-        'share_id': None,
+        'share_id': share['id'] if with_share else None,
         'user_id': 'fake',
         'project_id': 'fake',
         'status': 'creating'
@@ -66,7 +85,6 @@ def create_access(**kwargs):
         'access_type': 'fake_type',
         'access_to': 'fake_IP',
         'share_id': None,
-        'state': 'new',
     }
     return _create_db_row(db.share_access_create, access, kwargs)
 

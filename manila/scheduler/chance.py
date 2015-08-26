@@ -66,7 +66,11 @@ class ChanceScheduler(driver.Scheduler):
         snapshot_id = request_spec['snapshot_id']
 
         updated_share = driver.share_update_db(context, share_id, host)
-        self.share_rpcapi.create_share(context, updated_share, host,
-                                       request_spec,
-                                       filter_properties,
-                                       snapshot_id)
+        self.share_rpcapi.create_share_instance(
+            context,
+            updated_share.instance,
+            host,
+            request_spec,
+            filter_properties,
+            snapshot_id
+        )

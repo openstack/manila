@@ -65,11 +65,13 @@ class ShareRpcAPITestCase(test.TestCase):
             share = expected_msg['share']
             del expected_msg['share']
             expected_msg['share_id'] = share['id']
+        if 'share_instance' in expected_msg:
+            share_instance = expected_msg.pop('share_instance', None)
+            expected_msg['share_instance_id'] = share_instance['id']
         if 'access' in expected_msg:
             access = expected_msg['access']
             del expected_msg['access']
             expected_msg['access_id'] = access['id']
-            del expected_msg['share_id']
         if 'host' in expected_msg:
             del expected_msg['host']
         if 'snapshot' in expected_msg:
@@ -81,6 +83,8 @@ class ShareRpcAPITestCase(test.TestCase):
             host = kwargs['host']
         elif 'share_server' in kwargs:
             host = kwargs['share_server']['host']
+        elif 'share_instance' in kwargs:
+            host = kwargs['share_instance']['host']
         else:
             host = kwargs['share']['host']
         target['server'] = host
@@ -113,30 +117,34 @@ class ShareRpcAPITestCase(test.TestCase):
         for kwarg, value in six.iteritems(self.fake_kwargs):
             self.assertEqual(value, expected_msg[kwarg])
 
-    def test_create_share(self):
-        self._test_share_api('create_share',
+    def test_create_share_instance(self):
+        self._test_share_api('create_share_instance',
                              rpc_method='cast',
-                             share=self.fake_share,
+                             version='1.4',
+                             share_instance=self.fake_share,
                              host='fake_host1',
                              snapshot_id='fake_snapshot_id',
                              filter_properties=None,
                              request_spec=None)
 
-    def test_delete_share(self):
-        self._test_share_api('delete_share',
+    def test_delete_share_instance(self):
+        self._test_share_api('delete_share_instance',
                              rpc_method='cast',
-                             share=self.fake_share)
+                             version='1.4',
+                             share_instance=self.fake_share)
 
     def test_allow_access(self):
         self._test_share_api('allow_access',
                              rpc_method='cast',
-                             share=self.fake_share,
+                             version='1.4',
+                             share_instance=self.fake_share,
                              access=self.fake_access)
 
     def test_deny_access(self):
         self._test_share_api('deny_access',
                              rpc_method='cast',
-                             share=self.fake_share,
+                             version='1.4',
+                             share_instance=self.fake_share,
                              access=self.fake_access)
 
     def test_create_snapshot(self):

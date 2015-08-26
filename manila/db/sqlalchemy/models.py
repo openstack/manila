@@ -373,24 +373,76 @@ class ShareMetadata(BASE, ManilaBase):
 
 
 class ShareAccessMapping(BASE, ManilaBase):
-    """Represents access to NFS."""
+    """Represents access to share."""
+    __tablename__ = 'share_access_map'
+
+    @property
+    def state(self):
+        state = ShareInstanceAccessMapping.STATE_NEW
+
+        if len(self.instance_mappings) > 0:
+            state = ShareInstanceAccessMapping.STATE_ACTIVE
+            priorities = ShareInstanceAccessMapping.STATE_PRIORITIES
+
+            for mapping in self.instance_mappings:
+                priority = priorities.get(
+                    mapping['state'], ShareInstanceAccessMapping.STATE_ERROR)
+
+                if priority > priorities.get(state):
+                    state = mapping['state']
+
+                if state == ShareInstanceAccessMapping.STATE_ERROR:
+                    break
+
+        return state
+
+    id = Column(String(36), primary_key=True)
+    deleted = Column(String(36), default='False')
+    share_id = Column(String(36), ForeignKey('shares.id'))
+    access_type = Column(String(255))
+    access_to = Column(String(255))
+
+    access_level = Column(Enum(*constants.ACCESS_LEVELS),
+                          default=constants.ACCESS_LEVEL_RW)
+
+    instance_mappings = orm.relationship(
+        "ShareInstanceAccessMapping",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'ShareAccessMapping.id == '
+            'ShareInstanceAccessMapping.access_id, '
+            'ShareInstanceAccessMapping.deleted == "False")'
+        )
+    )
+
+
+class ShareInstanceAccessMapping(BASE, ManilaBase):
+    """Represents access to individual share instances."""
     STATE_NEW = constants.STATUS_NEW
     STATE_ACTIVE = constants.STATUS_ACTIVE
     STATE_DELETING = constants.STATUS_DELETING
     STATE_DELETED = constants.STATUS_DELETED
     STATE_ERROR = constants.STATUS_ERROR
 
-    __tablename__ = 'share_access_map'
+    # NOTE(u_glide): State with greatest priority becomes a state of access
+    # rule
+    STATE_PRIORITIES = {
+        STATE_ACTIVE: 0,
+        STATE_NEW: 1,
+        STATE_DELETED: 2,
+        STATE_DELETING: 3,
+        STATE_ERROR: 4
+    }
+
+    __tablename__ = 'share_instance_access_map'
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
-    share_id = Column(String(36), ForeignKey('shares.id'))
-    access_type = Column(String(255))
-    access_to = Column(String(255))
+    share_instance_id = Column(String(36), ForeignKey('share_instances.id'))
+    access_id = Column(String(36), ForeignKey('share_access_map.id'))
     state = Column(Enum(STATE_NEW, STATE_ACTIVE,
                         STATE_DELETING, STATE_DELETED, STATE_ERROR),
                    default=STATE_NEW)
-    access_level = Column(Enum(*constants.ACCESS_LEVELS),
-                          default=constants.ACCESS_LEVEL_RW)
 
 
 class ShareSnapshot(BASE, ManilaBase):

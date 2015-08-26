@@ -94,7 +94,7 @@ QUOTAS = quota.QUOTAS
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.3'
+    RPC_API_VERSION = '1.4'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -188,9 +188,9 @@ class ShareManager(manager.SchedulerDependentManager):
                     ctxt, share_instance['id'], export_locations)
 
             rules = self.db.share_access_get_all_for_share(
-                ctxt, share_instance['id'])
+                ctxt, share_instance['share_id'])
             for access_ref in rules:
-                if access_ref['state'] != access_ref.STATE_ACTIVE:
+                if access_ref['state'] != constants.STATUS_ACTIVE:
                     continue
 
                 try:
@@ -343,31 +343,32 @@ class ShareManager(manager.SchedulerDependentManager):
 
         return _provide_share_server_for_share()
 
-    def _get_share_server(self, context, share):
-        if share['share_server_id']:
+    def _get_share_server(self, context, share_instance):
+        if share_instance['share_server_id']:
             return self.db.share_server_get(
-                context, share['share_server_id'])
+                context, share_instance['share_server_id'])
         else:
             return None
 
     def _get_share_instance(self, context, share):
-        return self.db.share_instance_get(
-            context, share.instance['id'], with_share_data=True)
+        if isinstance(share, six.string_types):
+            id = share
+        else:
+            id = share.instance['id']
+        return self.db.share_instance_get(context, id, with_share_data=True)
 
-    def create_share(self, context, share_id, request_spec=None,
-                     filter_properties=None, snapshot_id=None):
-        """Creates a share."""
+    def create_share_instance(self, context, share_instance_id,
+                              request_spec=None, filter_properties=None,
+                              snapshot_id=None):
+        """Creates a share instance."""
         context = context.elevated()
-        if filter_properties is None:
-            filter_properties = {}
 
-        share_ref = self.db.share_get(context, share_id)
-        share_instance = self._get_share_instance(context, share_ref)
+        share_instance = self._get_share_instance(context, share_instance_id)
         share_network_id = share_instance.get('share_network_id', None)
 
         if share_network_id and not self.driver.driver_handles_share_servers:
-            self.db.share_update(
-                context, share_id, {'status': constants.STATUS_ERROR})
+            self.db.share_instance_update(
+                context, share_instance_id, {'status': constants.STATUS_ERROR})
             raise exception.ManilaException(
                 "Driver does not expect share-network to be provided "
                 "with current configuration.")
@@ -390,9 +391,11 @@ class ShareManager(manager.SchedulerDependentManager):
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE("Failed to get share server"
-                                  " for share creation."))
-                    self.db.share_update(context, share_id,
-                                         {'status': constants.STATUS_ERROR})
+                                  " for share instance creation."))
+                    self.db.share_instance_update(
+                        context, share_instance_id,
+                        {'status': constants.STATUS_ERROR}
+                    )
         else:
             share_server = None
 
@@ -410,7 +413,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Share %s failed on creation."), share_id)
+                LOG.error(_LE("Share instance %s failed on creation."),
+                          share_instance_id)
                 detail_data = getattr(e, 'detail_data', {})
 
                 def get_export_location(details):
@@ -425,17 +429,21 @@ class ShareManager(manager.SchedulerDependentManager):
                     self.db.share_export_locations_update(
                         context, share_instance['id'], export_locations)
                 else:
-                    LOG.warning(_LW('Share information in exception '
+                    LOG.warning(_LW('Share instance information in exception '
                                     'can not be written to db because it '
                                     'contains %s and it is not a dictionary.'),
                                 detail_data)
-                self.db.share_update(
-                    context, share_id, {'status': constants.STATUS_ERROR})
+                self.db.share_instance_update(
+                    context, share_instance_id,
+                    {'status': constants.STATUS_ERROR}
+                )
         else:
-            LOG.info(_LI("Share created successfully."))
-            self.db.share_update(context, share_id,
-                                 {'status': constants.STATUS_AVAILABLE,
-                                  'launched_at': timeutils.utcnow()})
+            LOG.info(_LI("Share instance created successfully."))
+            self.db.share_instance_update(
+                context, share_instance_id,
+                {'status': constants.STATUS_AVAILABLE,
+                 'launched_at': timeutils.utcnow()}
+            )
 
     def manage_share(self, context, share_id, driver_options):
         context = context.elevated()
@@ -547,7 +555,7 @@ class ShareManager(manager.SchedulerDependentManager):
         if self.configuration.safe_get('unmanage_remove_access_rules'):
             try:
                 self._remove_share_access_rules(context, share_ref,
-                                                share_server)
+                                                share_instance, share_server)
             except Exception as e:
                 share_manage_set_error_status(
                     _LE("Can not remove access rules of share: %s."), e)
@@ -557,46 +565,32 @@ class ShareManager(manager.SchedulerDependentManager):
                              {'status': constants.STATUS_UNMANAGED,
                               'deleted': True})
 
-    def delete_share(self, context, share_id):
-        """Delete a share."""
+    def delete_share_instance(self, context, share_instance_id):
+        """Delete a share instance."""
         context = context.elevated()
-        share_ref = self.db.share_get(context, share_id)
-        share_instance = self._get_share_instance(context, share_ref)
-        share_server = self._get_share_server(context, share_ref)
-
-        if context.project_id != share_ref['project_id']:
-            project_id = share_ref['project_id']
-        else:
-            project_id = context.project_id
+        share_instance = self._get_share_instance(context, share_instance_id)
+        share = self.db.share_get(context, share_instance['share_id'])
+        share_server = self._get_share_server(context, share_instance)
 
         try:
-            self._remove_share_access_rules(context, share_ref, share_server)
+            self._remove_share_access_rules(context, share, share_instance,
+                                            share_server)
             self.driver.delete_share(context, share_instance,
                                      share_server=share_server)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_update(
+                self.db.share_instance_update(
                     context,
-                    share_id,
+                    share_instance_id,
                     {'status': constants.STATUS_ERROR_DELETING})
-        try:
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
-                                          shares=-1,
-                                          gigabytes=-share_ref['size'])
-        except Exception:
-            reservations = None
-            LOG.exception(_LE("Failed to update usages deleting share"))
 
-        self.db.share_delete(context, share_id)
-        LOG.info(_LI("Share %s: deleted successfully."), share_ref['name'])
-
-        if reservations:
-            QUOTAS.commit(context, reservations, project_id=project_id)
+        self.db.share_instance_delete(context, share_instance_id)
+        LOG.info(_LI("Share instance %s: deleted successfully."),
+                 share_instance_id)
 
         if CONF.delete_share_server_with_last_share:
-            share_server = self._get_share_server(context, share_ref)
-            if share_server and not share_server.share_instances:
+            share_server = self._get_share_server(context, share_instance)
+            if share_server and len(share_server.share_instances) == 0:
                 LOG.debug("Scheduled deletion of share-server "
                           "with id '%s' automatically by "
                           "deletion of last share.", share_server['id'])
@@ -616,12 +610,14 @@ class ShareManager(manager.SchedulerDependentManager):
         for server in servers:
             self.delete_share_server(ctxt, server)
 
-    def _remove_share_access_rules(self, context, share_ref, share_server):
+    def _remove_share_access_rules(self, context, share_ref, share_instance,
+                                   share_server):
         rules = self.db.share_access_get_all_for_share(
             context, share_ref['id'])
 
         for access_ref in rules:
-            self._deny_access(context, access_ref, share_ref, share_server)
+            self._deny_access(context, access_ref,
+                              share_instance, share_server)
 
     def create_snapshot(self, context, share_id, snapshot_id):
         """Create snapshot for share."""
@@ -701,44 +697,47 @@ class ShareManager(manager.SchedulerDependentManager):
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
 
-    def allow_access(self, context, access_id):
-        """Allow access to some share."""
+    def allow_access(self, context, share_instance_id, access_id):
+        """Allow access to some share instance."""
+        access_mapping = self.db.share_instance_access_get(context, access_id,
+                                                           share_instance_id)
+
+        if access_mapping['state'] != access_mapping.STATE_NEW:
+            return
+
         try:
             access_ref = self.db.share_access_get(context, access_id)
-            share_ref = self.db.share_get(context, access_ref['share_id'])
-            share_server = self._get_share_server(context,
-                                                  share_ref)
-            if access_ref['state'] == access_ref.STATE_NEW:
-                share_instance = self._get_share_instance(context, share_ref)
-                self.driver.allow_access(context, share_instance,
-                                         access_ref,
-                                         share_server=share_server)
-                self.db.share_access_update(
-                    context, access_id, {'state': access_ref.STATE_ACTIVE})
+            share_instance = self.db.share_instance_get(
+                context, share_instance_id, with_share_data=True)
+            share_server = self._get_share_server(context, share_instance)
+            self.driver.allow_access(context, share_instance, access_ref,
+                                     share_server=share_server)
+            self.db.share_instance_access_update_state(
+                context, access_mapping['id'], access_mapping.STATE_ACTIVE)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_access_update(
-                    context, access_id, {'state': access_ref.STATE_ERROR})
+                self.db.share_instance_access_update_state(
+                    context, access_mapping['id'], access_mapping.STATE_ERROR)
 
-    def deny_access(self, context, access_id):
+    def deny_access(self, context, share_instance_id, access_id):
         """Deny access to some share."""
         access_ref = self.db.share_access_get(context, access_id)
-        share_ref = self.db.share_get(context, access_ref['share_id'])
-        share_server = self._get_share_server(context,
-                                              share_ref)
-        self._deny_access(context, access_ref, share_ref, share_server)
+        share_instance = self.db.share_instance_get(
+            context, share_instance_id, with_share_data=True)
+        share_server = self._get_share_server(context, share_instance)
+        self._deny_access(context, access_ref, share_instance, share_server)
 
-    def _deny_access(self, context, access_ref, share_ref, share_server):
-        access_id = access_ref['id']
-        share_instance = self._get_share_instance(context, share_ref)
+    def _deny_access(self, context, access_ref, share_instance, share_server):
+        access_mapping = self.db.share_instance_access_get(
+            context, access_ref['id'], share_instance['id'])
         try:
             self.driver.deny_access(context, share_instance, access_ref,
                                     share_server=share_server)
+            self.db.share_instance_access_delete(context, access_mapping['id'])
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.share_access_update(
-                    context, access_id, {'state': access_ref.STATE_ERROR})
-        self.db.share_access_delete(context, access_id)
+                self.db.share_instance_access_update_state(
+                    context, access_mapping['id'], access_mapping.STATE_ERROR)
 
     @periodic_task.periodic_task(spacing=CONF.periodic_interval)
     def _report_driver_status(self, context):
@@ -920,7 +919,8 @@ class ShareManager(manager.SchedulerDependentManager):
             # this method starts executing when amount of dependent shares
             # has been changed.
             server_id = share_server['id']
-            shares = self.db.share_get_all_by_share_server(context, server_id)
+            shares = self.db.share_instances_get_all_by_share_server(
+                context, server_id)
 
             if shares:
                 raise exception.ShareServerInUse(share_server_id=server_id)

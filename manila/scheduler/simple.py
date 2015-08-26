@@ -59,13 +59,14 @@ class SimpleScheduler(chance.ChanceScheduler):
             if not utils.service_is_up(service):
                 raise exception.WillNotSchedule(host=host)
             updated_share = driver.share_update_db(context, share_id, host)
-            self.share_rpcapi.create_share(context,
-                                           updated_share,
-                                           host,
-                                           request_spec,
-                                           None,
-                                           snapshot_id=snapshot_id
-                                           )
+            self.share_rpcapi.create_share_instance(
+                context,
+                updated_share.instance,
+                host,
+                request_spec,
+                None,
+                snapshot_id=snapshot_id
+            )
             return None
 
         results = db.service_get_all_share_sorted(elevated)
@@ -80,12 +81,13 @@ class SimpleScheduler(chance.ChanceScheduler):
             if utils.service_is_up(service) and not service['disabled']:
                 updated_share = driver.share_update_db(context, share_id,
                                                        service['host'])
-                self.share_rpcapi.create_share(context,
-                                               updated_share,
-                                               service['host'],
-                                               request_spec,
-                                               None,
-                                               snapshot_id=snapshot_id)
+                self.share_rpcapi.create_share_instance(
+                    context,
+                    updated_share.instance,
+                    service['host'],
+                    request_spec,
+                    None,
+                    snapshot_id=snapshot_id)
                 return None
         msg = _("Is the appropriate service running?")
         raise exception.NoValidHost(reason=msg)
