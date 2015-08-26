@@ -240,7 +240,10 @@ class FilterScheduler(driver.Scheduler):
         Can be overridden in a subclass to add more data.
         """
         shr = request_spec['share_properties']
+        inst = request_spec['share_instance_properties']
         filter_properties['size'] = shr['size']
-        filter_properties['availability_zone'] = shr.get('availability_zone')
+        filter_properties['availability_zone_id'] = (
+            inst.get('availability_zone_id')
+        )
         filter_properties['user_id'] = shr.get('user_id')
         filter_properties['metadata'] = shr.get('metadata')

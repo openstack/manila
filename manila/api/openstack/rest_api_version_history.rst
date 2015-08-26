@@ -30,3 +30,8 @@ user documentation.
   The only API change in version 1.1 is versions, i.e.
   GET http://localhost:8786/, which now returns the minimum and
   current microversion values.
+
+1.2
+---
+  Share create() method doesn't ignore availability_zone field of provided
+  share.

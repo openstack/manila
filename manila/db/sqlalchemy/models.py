@@ -69,7 +69,20 @@ class Service(BASE, ManilaBase):
     topic = Column(String(255))
     report_count = Column(Integer, nullable=False, default=0)
     disabled = Column(Boolean, default=False)
-    availability_zone = Column(String(255), default='manila')
+    availability_zone_id = Column(String(36),
+                                  ForeignKey('availability_zones.id'),
+                                  nullable=True)
+
+    availability_zone = orm.relationship(
+        "AvailabilityZone",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'Service.availability_zone_id == '
+            'AvailabilityZone.id, '
+            'AvailabilityZone.deleted == \'False\')'
+        )
+    )
 
 
 class ManilaNode(BASE, ManilaBase):
@@ -253,6 +266,7 @@ class Share(BASE, ManilaBase):
 class ShareInstance(BASE, ManilaBase):
     __tablename__ = 'share_instances'
 
+    _extra_keys = ['export_location', 'availability_zone']
     _proxified_properties = ('name', 'user_id', 'project_id', 'size',
                              'display_name', 'display_description',
                              'snapshot_id', 'share_proto', 'share_type_id',
@@ -267,6 +281,11 @@ class ShareInstance(BASE, ManilaBase):
         if len(self.export_locations) > 0:
             return self.export_locations[0]['path']
 
+    @property
+    def availability_zone(self):
+        if self._availability_zone:
+            return self._availability_zone['name']
+
     id = Column(String(36), primary_key=True)
     share_id = Column(String(36), ForeignKey('shares.id'))
     deleted = Column(String(36), default='False')
@@ -275,7 +294,21 @@ class ShareInstance(BASE, ManilaBase):
     scheduled_at = Column(DateTime)
     launched_at = Column(DateTime)
     terminated_at = Column(DateTime)
-    availability_zone = Column(String(255))
+
+    availability_zone_id = Column(String(36),
+                                  ForeignKey('availability_zones.id'),
+                                  nullable=True)
+    _availability_zone = orm.relationship(
+        "AvailabilityZone",
+        lazy='immediate',
+        foreign_keys=availability_zone_id,
+        primaryjoin=(
+            'and_('
+            'ShareInstance.availability_zone_id == '
+            'AvailabilityZone.id, '
+            'AvailabilityZone.deleted == \'False\')'
+        )
+    )
 
     export_locations = orm.relationship(
         "ShareInstanceExportLocations",
@@ -522,7 +555,6 @@ class ShareSnapshotInstance(BASE, ManilaBase):
     progress = Column(String(255))
     share_instance = orm.relationship(
         ShareInstance, backref="snapshot_instances",
-        foreign_keys=share_instance_id,
         primaryjoin=(
             'and_('
             'ShareSnapshotInstance.share_instance_id == ShareInstance.id,'
@@ -672,6 +704,14 @@ class DriverPrivateData(BASE, ManilaBase):
     entity_uuid = Column(String(36), nullable=False, primary_key=True)
     key = Column(String(255), nullable=False, primary_key=True)
     value = Column(String(1023), nullable=False)
+
+
+class AvailabilityZone(BASE, ManilaBase):
+    """Represents a private data as key-value pairs for a driver."""
+    __tablename__ = 'availability_zones'
+    id = Column(String(36), primary_key=True, nullable=False)
+    deleted = Column(String(36), default='False')
+    name = Column(String(255), nullable=False)
 
 
 def register_models():

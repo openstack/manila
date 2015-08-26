@@ -36,6 +36,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         fake_context = context.RequestContext('user', 'project')
         request_spec = {
             'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
             'share_type': {'name': 'NFS'},
             'share_id': ['fake-id1'],
         }
@@ -60,6 +61,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         fake_context = context.RequestContext('user', 'project')
         request_spec = {
             'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
             'share_type': {'name': 'NFS'},
             'share_id': ['fake-id1'],
         }
@@ -79,6 +81,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {
             'share_type': {'name': 'NFS'},
             'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
         }
         weighed_host = sched._schedule_share(fake_context, request_spec, {})
         self.assertIsNotNone(weighed_host.obj)
@@ -101,6 +104,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {
             'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
         }
         filter_properties = {}
         sched._schedule_share(self.context, request_spec,
@@ -115,6 +119,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {
             'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
         }
         filter_properties = {}
         sched._schedule_share(self.context, request_spec,
@@ -129,6 +134,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {
             'share_type': {'name': 'iSCSI'},
             'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
         }
         retry = dict(num_attempts=1)
         filter_properties = dict(retry=retry)

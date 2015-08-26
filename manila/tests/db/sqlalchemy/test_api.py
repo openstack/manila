@@ -186,7 +186,7 @@ class ShareDatabaseAPITestCase(test.TestCase):
         self.assertRaises(exception.NotFound, db_api.share_get,
                           self.ctxt, share['id'])
 
-    @ddt.data('host', 'availability_zone')
+    @ddt.data('host')
     def test_share_get_all_sort_by_share_instance_fields(self, sort_key):
         shares = [db_utils.create_share(**{sort_key: n, 'size': 1})
                   for n in ('test1', 'test2')]
@@ -1038,3 +1038,80 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         db_api.share_server_delete(self.ctxt, server['id'])
         self.assertEqual(len(db_api.share_server_get_all(self.ctxt)),
                          num_records - 1)
+
+
+class ServiceDatabaseAPITestCase(test.TestCase):
+
+    def setUp(self):
+        super(ServiceDatabaseAPITestCase, self).setUp()
+        self.ctxt = context.RequestContext(user_id='user_id',
+                                           project_id='project_id',
+                                           is_admin=True)
+
+        self.service_data = {'host': "fake_host",
+                             'binary': "fake_binary",
+                             'topic': "fake_topic",
+                             'report_count': 0,
+                             'availability_zone': "fake_zone"}
+
+    def test_create(self):
+        service = db_api.service_create(self.ctxt, self.service_data)
+        az = db_api.availability_zone_get(self.ctxt, "fake_zone")
+
+        self.assertEqual(az.id, service.availability_zone_id)
+        self.assertSubDictMatch(self.service_data, service.to_dict())
+
+    def test_update(self):
+        az_name = 'fake_zone2'
+        update_data = {"availability_zone": az_name}
+
+        service = db_api.service_create(self.ctxt, self.service_data)
+        db_api.service_update(self.ctxt, service['id'], update_data)
+        service = db_api.service_get(self.ctxt, service['id'])
+
+        az = db_api.availability_zone_get(self.ctxt, az_name)
+        self.assertEqual(az.id, service.availability_zone_id)
+        valid_values = self.service_data
+        valid_values.update(update_data)
+        self.assertSubDictMatch(valid_values, service.to_dict())
+
+
+@ddt.ddt
+class AvailabilityZonesDatabaseAPITestCase(test.TestCase):
+
+    def setUp(self):
+        super(AvailabilityZonesDatabaseAPITestCase, self).setUp()
+        self.ctxt = context.RequestContext(user_id='user_id',
+                                           project_id='project_id',
+                                           is_admin=True)
+
+    @ddt.data({'fake': 'fake'}, {}, {'fakeavailability_zone': 'fake'},
+              {'availability_zone': None}, {'availability_zone': ''})
+    def test_ensure_availability_zone_exists_invalid(self, test_values):
+        session = db_api.get_session()
+
+        self.assertRaises(ValueError, db_api.ensure_availability_zone_exists,
+                          self.ctxt, test_values, session)
+
+    def test_az_get(self):
+        az_name = 'test_az'
+        az = db_api.availability_zone_create_if_not_exist(self.ctxt, az_name)
+
+        az_by_id = db_api.availability_zone_get(self.ctxt, az['id'])
+        az_by_name = db_api.availability_zone_get(self.ctxt, az_name)
+
+        self.assertEqual(az_name, az_by_id['name'])
+        self.assertEqual(az_name, az_by_name['name'])
+        self.assertEqual(az['id'], az_by_id['id'])
+        self.assertEqual(az['id'], az_by_name['id'])
+
+    def test_az_get_all(self):
+        db_api.availability_zone_create_if_not_exist(self.ctxt, 'test1')
+        db_api.availability_zone_create_if_not_exist(self.ctxt, 'test2')
+        db_api.availability_zone_create_if_not_exist(self.ctxt, 'test3')
+        db_api.service_create(self.ctxt, {'availability_zone': 'test2'})
+
+        actual_result = db_api.availability_zone_get_all(self.ctxt)
+
+        self.assertEqual(1, len(actual_result))
+        self.assertEqual('test2', actual_result[0]['name'])

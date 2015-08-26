@@ -410,12 +410,15 @@ def service_get_by_args(context, host, binary):
 
 @require_admin_context
 def service_create(context, values):
+    session = get_session()
+
+    ensure_availability_zone_exists(context, values, session)
+
     service_ref = models.Service()
     service_ref.update(values)
     if not CONF.enable_new_services:
         service_ref.disabled = True
 
-    session = get_session()
     with session.begin():
         service_ref.save(session)
         return service_ref
@@ -425,6 +428,9 @@ def service_create(context, values):
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def service_update(context, service_id, values):
     session = get_session()
+
+    ensure_availability_zone_exists(context, values, session, strict=False)
+
     with session.begin():
         service_ref = service_get(context, service_id, session=session)
         service_ref.update(values)
@@ -1138,6 +1144,7 @@ def _share_instance_create(context, share_id, values, session):
 def share_instance_update(context, share_instance_id, values,
                           with_share_data=False):
     session = get_session()
+    ensure_availability_zone_exists(context, values, session, strict=False)
     with session.begin():
         instance_ref = _share_instance_update(
             context, share_instance_id, values, session
@@ -1273,10 +1280,13 @@ def share_create(context, values, create_share_instance=True):
     values = ensure_model_dict_has_id(values)
     values['share_metadata'] = _metadata_refs(values.get('metadata'),
                                               models.ShareMetadata)
+    session = get_session()
     share_ref = models.Share()
     share_instance_values = extract_share_instance_values(values)
+    ensure_availability_zone_exists(context, share_instance_values, session,
+                                    strict=False)
     share_ref.update(values)
-    session = get_session()
+
     with session.begin():
         share_ref.save(session=session)
 
@@ -1308,10 +1318,14 @@ def share_data_get_for_project(context, project_id, user_id, session=None):
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def share_update(context, share_id, values):
     session = get_session()
+
+    share_instance_values = extract_share_instance_values(values)
+    ensure_availability_zone_exists(context, share_instance_values, session,
+                                    strict=False)
+
     with session.begin():
         share_ref = share_get(context, share_id, session=session)
 
-        share_instance_values = extract_share_instance_values(values)
         _share_instance_update(context, share_ref.instance['id'],
                                share_instance_values, session=session)
 
@@ -1384,23 +1398,25 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
                                      models.ShareTypeExtraSpecs.value == v))
 
     # Apply sorting
-    try:
-        attr = getattr(models.Share, sort_key)
-    except AttributeError:
-        try:
-            attr = getattr(models.ShareInstance, sort_key)
-        except AttributeError:
-            msg = _("Wrong sorting key provided - '%s'.") % sort_key
-            raise exception.InvalidInput(reason=msg)
-    if sort_dir.lower() == 'desc':
-        query = query.order_by(attr.desc())
-    elif sort_dir.lower() == 'asc':
-        query = query.order_by(attr.asc())
-    else:
+    if sort_dir.lower() not in ('desc', 'asc'):
         msg = _("Wrong sorting data provided: sort key is '%(sort_key)s' "
                 "and sort direction is '%(sort_dir)s'.") % {
                     "sort_key": sort_key, "sort_dir": sort_dir}
         raise exception.InvalidInput(reason=msg)
+
+    def apply_sorting(model, query):
+        sort_attr = getattr(model, sort_key)
+        sort_method = getattr(sort_attr, sort_dir.lower())
+        return query.order_by(sort_method())
+
+    try:
+        query = apply_sorting(models.Share, query)
+    except AttributeError:
+        try:
+            query = apply_sorting(models.ShareInstance, query)
+        except AttributeError:
+            msg = _("Wrong sorting key provided - '%s'.") % sort_key
+            raise exception.InvalidInput(reason=msg)
 
     # Returns list of shares that satisfy filters.
     query = query.all()
@@ -2838,3 +2854,73 @@ def share_type_extra_specs_update_or_create(context, share_type_id, specs):
             spec_ref.save(session=session)
 
         return specs
+
+
+def ensure_availability_zone_exists(context, values, session, strict=True):
+    az_name = values.pop('availability_zone', None)
+
+    if strict and not az_name:
+        msg = _("Values dict should have 'availability_zone' field.")
+        raise ValueError(msg)
+    elif not az_name:
+        return
+
+    if uuidutils.is_uuid_like(az_name):
+        az_ref = availability_zone_get(context, az_name, session=session)
+    else:
+        az_ref = availability_zone_create_if_not_exist(
+            context, az_name, session=session)
+
+    values.update({'availability_zone_id': az_ref['id']})
+
+
+def availability_zone_get(context, id_or_name, session=None):
+    if session is None:
+        session = get_session()
+
+    query = model_query(context, models.AvailabilityZone, session=session)
+
+    if uuidutils.is_uuid_like(id_or_name):
+        query = query.filter_by(id=id_or_name)
+    else:
+        query = query.filter_by(name=id_or_name)
+
+    result = query.first()
+
+    if not result:
+        raise exception.AvailabilityZoneNotFound(id=id_or_name)
+
+    return result
+
+
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def availability_zone_create_if_not_exist(context, name, session=None):
+    if session is None:
+        session = get_session()
+
+    az = models.AvailabilityZone()
+    az.update({'id': uuidutils.generate_uuid(), 'name': name})
+    try:
+        with session.begin():
+            az.save(session)
+    # NOTE(u_glide): Do not catch specific exception here, because it depends
+    # on concrete backend used by SqlAlchemy
+    except Exception:
+        return availability_zone_get(context, name, session=session)
+    return az
+
+
+def availability_zone_get_all(context):
+    session = get_session()
+
+    enabled_services = model_query(
+        context, models.Service,
+        models.Service.availability_zone_id,
+        session=session,
+        read_deleted="no"
+    ).filter_by(disabled=0).distinct()
+
+    return model_query(context, models.AvailabilityZone, session=session,
+                       read_deleted="no").filter(
+        models.AvailabilityZone.id.in_(enabled_services)
+    ).all()

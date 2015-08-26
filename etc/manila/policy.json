@@ -37,6 +37,7 @@
     "share_extension:snapshot_admin_actions:reset_status": "rule:admin_api",
 
     "share_extension:services": "rule:admin_api",
+    "share_extension:availability_zones": "",
 
     "share_extension:types_manage": "rule:admin_api",
     "share_extension:types_extra_specs": "rule:admin_api",

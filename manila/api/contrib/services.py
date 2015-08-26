@@ -38,7 +38,7 @@ class ServiceController(object):
                 'id': service['id'],
                 'binary': service['binary'],
                 'host': service['host'],
-                'zone': service['availability_zone'],
+                'zone': service['availability_zone']['name'],
                 'status': 'disabled' if service['disabled'] else 'enabled',
                 'state': 'up' if utils.service_is_up(service) else 'down',
                 'updated_at': service['updated_at'],

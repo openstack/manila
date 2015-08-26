@@ -674,6 +674,18 @@ class ShareManagerTestCase(test.TestCase):
             utils.IsAMatcher(models.ShareInstance),
             share_server=None)
 
+    def test_create_share_instance_update_availability_zone(self):
+        share = db_utils.create_share(availability_zone=None)
+        share_id = share['id']
+
+        self.share_manager.create_share_instance(
+            self.context, share.instance['id'])
+
+        actual_share = db.share_get(context.get_admin_context(), share_id)
+        self.assertIsNotNone(actual_share.availability_zone)
+        self.assertEqual(manager.CONF.storage_availability_zone,
+                         actual_share.availability_zone)
+
     def test_provide_share_server_for_share_incompatible_servers(self):
         fake_exception = exception.ManilaException("fake")
         fake_share_server = {'id': 'fake'}
