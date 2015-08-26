@@ -641,6 +641,15 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.set_volume_size(share_name, new_size)
 
     @na_utils.trace
+    def shrink_share(self, share, new_size, share_server=None):
+        """Shrinks size of existing share."""
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_name = self._get_valid_share_name(share['id'])
+        LOG.debug('Shrinking share %(name)s to %(size)s GB.',
+                  {'name': share_name, 'size': new_size})
+        vserver_client.set_volume_size(share_name, new_size)
+
+    @na_utils.trace
     def allow_access(self, context, share, access, share_server=None):
         """Allows access to a given NAS storage."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)

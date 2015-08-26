@@ -64,6 +64,9 @@ class NetAppCmodeSingleSvmShareDriver(driver.ShareDriver):
     def extend_share(self, share, new_size, **kwargs):
         self.library.extend_share(share, new_size, **kwargs)
 
+    def shrink_share(self, share, new_size, **kwargs):
+        self.library.shrink_share(share, new_size, **kwargs)
+
     def ensure_share(self, context, share, **kwargs):
         pass
 
