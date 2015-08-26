@@ -46,7 +46,7 @@ CONF.register_opt(scheduler_driver_opt)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
 
-    RPC_API_VERSION = '1.1'
+    RPC_API_VERSION = '1.2'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -76,8 +76,8 @@ class SchedulerManager(manager.Manager):
                                                 host,
                                                 capabilities)
 
-    def create_share(self, context, topic, share_id, snapshot_id=None,
-                     request_spec=None, filter_properties=None):
+    def create_share_instance(self, context, request_spec=None,
+                              filter_properties=None):
         try:
             self.driver.schedule_create_share(context, request_spec,
                                               filter_properties)

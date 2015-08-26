@@ -77,9 +77,58 @@ class GenericDatabaseAPITestCase(test.TestCase):
         share = db_utils.create_share()
         share_access = db_utils.create_access(share_id=share['id'])
 
+        db_api.share_instance_access_delete(
+            self.ctxt, share_access.instance_mappings[0].id)
         db_api.share_access_delete(self.ctxt, share_access.id)
         self.assertRaises(exception.NotFound, db_api.share_access_get,
                           self.ctxt, share_access.id)
+
+
+@ddt.ddt
+class ShareAccessDatabaseAPITestCase(test.TestCase):
+
+    def setUp(self):
+        """Run before each test."""
+        super(ShareAccessDatabaseAPITestCase, self).setUp()
+        self.ctxt = context.get_admin_context()
+
+    @ddt.data(
+        {'statuses': (constants.STATUS_ACTIVE, constants.STATUS_ACTIVE,
+                      constants.STATUS_ACTIVE),
+         'valid': constants.STATUS_ACTIVE},
+        {'statuses': (constants.STATUS_ACTIVE, constants.STATUS_ACTIVE,
+                      constants.STATUS_NEW),
+         'valid': constants.STATUS_NEW},
+        {'statuses': (constants.STATUS_ACTIVE, constants.STATUS_ACTIVE,
+                      constants.STATUS_ERROR),
+         'valid': constants.STATUS_ERROR},
+        {'statuses': (constants.STATUS_DELETING, constants.STATUS_DELETED,
+                      constants.STATUS_ERROR),
+         'valid': constants.STATUS_ERROR},
+        {'statuses': (constants.STATUS_DELETING, constants.STATUS_DELETED,
+                      constants.STATUS_ACTIVE),
+         'valid': constants.STATUS_DELETING},
+        {'statuses': (constants.STATUS_DELETED, constants.STATUS_DELETED,
+                      constants.STATUS_DELETED),
+         'valid': constants.STATUS_DELETED},
+    )
+    @ddt.unpack
+    def test_share_access_state(self, statuses, valid):
+        share = db_utils.create_share()
+        db_utils.create_share_instance(share_id=share['id'])
+        db_utils.create_share_instance(share_id=share['id'])
+
+        share = db_api.share_get(self.ctxt, share['id'])
+        access = db_utils.create_access(state=constants.STATUS_ACTIVE,
+                                        share_id=share['id'])
+
+        for index, mapping in enumerate(access.instance_mappings):
+            db_api.share_instance_access_update_state(
+                self.ctxt, mapping['id'], statuses[index])
+
+        access = db_api.share_access_get(self.ctxt, access['id'])
+
+        self.assertEqual(valid, access.state)
 
 
 @ddt.ddt
@@ -128,6 +177,14 @@ class ShareDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(1, len(actual_result))
         self.assertEqual(share['id'], actual_result[0].id)
+
+    def test_share_instance_delete_with_share(self):
+        share = db_utils.create_share()
+
+        db_api.share_instance_delete(self.ctxt, share.instance['id'])
+
+        self.assertRaises(exception.NotFound, db_api.share_get,
+                          self.ctxt, share['id'])
 
     @ddt.data('host', 'availability_zone')
     def test_share_get_all_sort_by_share_instance_fields(self, sort_key):

@@ -1115,7 +1115,13 @@ def extract_snapshot_instance_values(values):
 
 
 @require_context
-def share_instance_create(context, share_id, values, session):
+def share_instance_create(context, share_id, values):
+    session = get_session()
+    with session.begin():
+        return _share_instance_create(context, share_id, values, session)
+
+
+def _share_instance_create(context, share_id, values, session):
     if not values.get('id'):
         values['id'] = uuidutils.generate_uuid()
     values.update({'share_id': share_id})
@@ -1171,6 +1177,26 @@ def share_instance_get(context, share_instance_id, session=None,
     return result
 
 
+@require_context
+def share_instance_delete(context, instance_id, session=None):
+    if session is None:
+        session = get_session()
+
+    with session.begin():
+        instance_ref = share_instance_get(context, instance_id,
+                                          session=session)
+        instance_ref.soft_delete(session=session, update_status=True)
+
+        session.query(models.ShareInstanceExportLocations).filter_by(
+            share_instance_id=instance_id).soft_delete()
+
+        share = share_get(context, instance_ref['share_id'], session=session)
+
+        if len(share.instances) == 0:
+            share.soft_delete(session=session)
+            share_access_delete_all_by_share(context, share['id'])
+
+
 @require_admin_context
 def share_instances_get_all_by_host(context, host):
     """Retrieves all share instances hosted on a host."""
@@ -1191,6 +1217,28 @@ def share_instances_get_all_by_share_network(context, share_network_id):
     result = (
         model_query(context, models.ShareInstance).filter(
             models.ShareInstance.share_network_id == share_network_id,
+        ).all()
+    )
+    return result
+
+
+@require_context
+def share_instances_get_all_by_share_server(context, share_server_id):
+    """Returns list of share instance with given share server."""
+    result = (
+        model_query(context, models.ShareInstance).filter(
+            models.ShareInstance.share_server_id == share_server_id,
+        ).all()
+    )
+    return result
+
+
+@require_context
+def share_instances_get_all_by_share(context, share_id):
+    """Returns list of share instances that belong to given share."""
+    result = (
+        model_query(context, models.ShareInstance).filter(
+            models.ShareInstance.share_id == share_id,
         ).all()
     )
     return result
@@ -1233,8 +1281,8 @@ def share_create(context, values, create_share_instance=True):
         share_ref.save(session=session)
 
         if create_share_instance:
-            share_instance_create(context, share_ref['id'],
-                                  share_instance_values, session=session)
+            _share_instance_create(context, share_ref['id'],
+                                   share_instance_values, session=session)
 
         # NOTE(u_glide): Do so to prevent errors with relationships
         return share_get(context, share_ref['id'], session=session)
@@ -1394,22 +1442,37 @@ def share_delete(context, share_id):
 
     with session.begin():
         share_ref = share_get(context, share_id, session)
+
+        if len(share_ref.instances) > 0:
+            msg = _("Share %(id)s has %(count)s share instances.") % {
+                'id': share_id, 'count': len(share_ref.instances)}
+            raise exception.InvalidShare(msg)
+
         share_ref.soft_delete(session=session)
-        share_ref.instance.soft_delete(session=session, update_status=True)
 
         session.query(models.ShareMetadata).\
             filter_by(share_id=share_id).soft_delete()
-        session.query(models.ShareInstanceExportLocations).\
-            filter_by(share_instance_id=share_ref.instance['id']).soft_delete()
 
 
 ###################
 
 
-def _share_access_get_query(context, session, values):
+def _share_access_get_query(context, session, values, read_deleted='no'):
     """Get access record."""
-    query = model_query(context, models.ShareAccessMapping, session=session)
+    query = model_query(context, models.ShareAccessMapping, session=session,
+                        read_deleted=read_deleted)
     return query.filter_by(**values)
+
+
+def _share_instance_access_query(context, session, access_id,
+                                 instance_id=None):
+    filters = {'access_id': access_id}
+
+    if instance_id is not None:
+        filters.update({'share_instance_id': instance_id})
+
+    return model_query(context, models.ShareInstanceAccessMapping,
+                       session=session).filter_by(**filters)
 
 
 @require_context
@@ -1418,17 +1481,52 @@ def share_access_create(context, values):
     session = get_session()
     with session.begin():
         access_ref = models.ShareAccessMapping()
+        state = values.pop('state', None)
         access_ref.update(values)
         access_ref.save(session=session)
-        return access_ref
+
+        parent_share = share_get(context, values['share_id'], session=session)
+
+        for instance in parent_share.instances:
+            vals = {
+                'share_instance_id': instance['id'],
+                'access_id': access_ref['id'],
+            }
+            if state is not None:
+                vals.update({'state': state})
+
+            _share_instance_access_create(vals, session)
+
+    return share_access_get(context, access_ref['id'])
+
+
+def _share_instance_access_create(values, session):
+    access_ref = models.ShareInstanceAccessMapping()
+    access_ref.update(ensure_model_dict_has_id(values))
+    access_ref.save(session=session)
+    return access_ref
 
 
 @require_context
 def share_access_get(context, access_id):
     """Get access record."""
     session = get_session()
-    access = _share_access_get_query(context, session,
-                                     {'id': access_id}).first()
+
+    access = _share_access_get_query(
+        context, session, {'id': access_id}).first()
+    if access:
+        return access
+    else:
+        raise exception.NotFound()
+
+
+@require_context
+def share_instance_access_get(context, access_id, instance_id):
+    """Get access record."""
+    session = get_session()
+
+    access = _share_instance_access_query(context, session, access_id,
+                                          instance_id).first()
     if access:
         return access
     else:
@@ -1440,6 +1538,10 @@ def share_access_get_all_for_share(context, share_id):
     session = get_session()
     return _share_access_get_query(context, session,
                                    {'share_id': share_id}).all()
+
+
+def _share_instance_access_get_all(context, access_id, session):
+    return _share_instance_access_query(context, session, access_id).all()
 
 
 @require_context
@@ -1455,22 +1557,65 @@ def share_access_get_all_by_type_and_access(context, share_id, access_type,
 @require_context
 def share_access_delete(context, access_id):
     session = get_session()
+
     with session.begin():
+        mappings = _share_instance_access_get_all(context, access_id, session)
+
+        if len(mappings) > 0:
+            msg = (_("Access rule %s has mappings"
+                     " to share instances.") % access_id)
+            raise exception.InvalidShareAccess(msg)
+
         session.query(models.ShareAccessMapping).\
             filter_by(id=access_id).soft_delete(update_status=True,
                                                 status_field_name='state')
 
 
 @require_context
-@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def share_access_update(context, access_id, values):
+def share_access_delete_all_by_share(context, share_id):
     session = get_session()
     with session.begin():
-        access = _share_access_get_query(context, session, {'id': access_id})
-        access = access.one()
-        access.update(values)
-        access.save(session=session)
-        return access
+        session.query(models.ShareAccessMapping). \
+            filter_by(share_id=share_id).soft_delete(update_status=True,
+                                                     status_field_name='state')
+
+
+@require_context
+def share_instance_access_delete(context, mapping_id):
+    session = get_session()
+    with session.begin():
+
+        mapping = session.query(models.ShareInstanceAccessMapping).\
+            filter_by(id=mapping_id).first()
+
+        if not mapping:
+            exception.NotFound()
+
+        mapping.soft_delete(session, update_status=True,
+                            status_field_name='state')
+
+        other_mappings = _share_instance_access_get_all(
+            context, mapping['access_id'], session)
+
+        # NOTE(u_glide): Remove access rule if all mappings were removed.
+        if len(other_mappings) == 0:
+            (
+                session.query(models.ShareAccessMapping)
+                .filter_by(id=mapping['access_id'])
+                .soft_delete(update_status=True, status_field_name='state')
+            )
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def share_instance_access_update_state(context, mapping_id, state):
+    session = get_session()
+    with session.begin():
+        mapping = session.query(models.ShareInstanceAccessMapping).\
+            filter_by(id=mapping_id).first()
+        mapping.update({'state': state})
+        mapping.save(session=session)
+        return mapping
 
 
 ###################

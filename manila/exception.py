@@ -363,6 +363,10 @@ class InvalidShare(Invalid):
     message = _("Invalid share: %(reason)s.")
 
 
+class InvalidShareInstance(Invalid):
+    message = _("Invalid share instance: %(reason)s.")
+
+
 class ManageInvalidShare(InvalidShare):
     message = _("Manage existing share failed due to "
                 "invalid share: %(reason)s")

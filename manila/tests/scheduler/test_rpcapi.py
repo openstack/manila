@@ -80,15 +80,12 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  capabilities='fake_capabilities',
                                  fanout=True)
 
-    def test_create_share(self):
-        self._test_scheduler_api('create_share',
+    def test_create_share_instance(self):
+        self._test_scheduler_api('create_share_instance',
                                  rpc_method='cast',
-                                 topic='topic',
-                                 share_id='share_id',
-                                 snapshot_id='snapshot_id',
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
-                                 version='1.0')
+                                 version='1.2')
 
     def test_get_pools(self):
         self._test_scheduler_api('get_pools',

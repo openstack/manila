@@ -2,6 +2,7 @@
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2015 Mirantis Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -38,7 +39,6 @@ from manila import policy
 from manila import quota
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila.share import rpcapi as share_rpcapi
-from manila.share import share_types
 
 share_api_opts = [
     cfg.BoolOpt('use_scheduler_creating_share_from_snapshot',
@@ -108,9 +108,6 @@ class API(base.Base):
             source_share = self.db.share_get(context, snapshot['share_id'])
             if share_type is None:
                 share_type_id = source_share['share_type_id']
-                if share_type_id is not None:
-                    share_type = share_types.get_share_type(context,
-                                                            share_type_id)
             else:
                 share_type_id = share_type['id']
                 if share_type_id != source_share['share_type_id']:
@@ -172,11 +169,8 @@ class API(base.Base):
                    'user_id': context.user_id,
                    'project_id': context.project_id,
                    'snapshot_id': snapshot_id,
-                   'share_network_id': share_network_id,
                    'availability_zone': availability_zone,
                    'metadata': metadata,
-                   'status': constants.STATUS_CREATING,
-                   'scheduled_at': timeutils.utcnow(),
                    'display_name': name,
                    'display_description': description,
                    'share_proto': share_proto,
@@ -185,7 +179,8 @@ class API(base.Base):
                    }
 
         try:
-            share = self.db.share_create(context, options)
+            share = self.db.share_create(context, options,
+                                         create_share_instance=False)
             QUOTAS.commit(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -194,42 +189,63 @@ class API(base.Base):
                 finally:
                     QUOTAS.rollback(context, reservations)
 
-        request_spec = {
-            'share_properties': options,
-            'share_proto': share_proto,
-            'share_id': share['id'],
-            'snapshot_id': snapshot_id,
-            'share_type': share_type,
-        }
-        filter_properties = {}
-
-        if (snapshot and not CONF.use_scheduler_creating_share_from_snapshot):
+        host = None
+        if snapshot and not CONF.use_scheduler_creating_share_from_snapshot:
             # Shares from snapshots with restriction - source host only.
             # It is common situation for different types of backends.
             host = snapshot['share']['host']
-            share = self.db.share_update(context, share['id'], {'host': host})
-            self.share_rpcapi.create_share(
-                context,
-                share,
-                host,
-                request_spec=request_spec,
-                filter_properties=filter_properties,
-                snapshot_id=snapshot_id,
-            )
-        else:
-            # Shares from scratch and from snapshots when source host is not
-            # the only allowed, it is possible, for example, in multibackend
-            # installation with Generic drivers only.
-            self.scheduler_rpcapi.create_share(
-                context,
-                CONF.share_topic,
-                share['id'],
-                snapshot_id,
-                request_spec=request_spec,
-                filter_properties=filter_properties,
-            )
+
+        self.create_instance(context, share, share_network_id=share_network_id,
+                             host=host)
 
         return share
+
+    def create_instance(self, context, share, share_network_id=None,
+                        host=None):
+        policy.check_policy(context, 'share', 'create')
+
+        share_instance = self.db.share_instance_create(
+            context, share['id'],
+            {
+                'share_network_id': share_network_id,
+                'status': constants.STATUS_CREATING,
+                'scheduled_at': timeutils.utcnow(),
+                'host': host or ''
+            }
+        )
+
+        share_dict = share.to_dict()
+        share_dict.update(
+            {'metadata': self.db.share_metadata_get(context, share['id'])}
+        )
+
+        share_type = None
+        if share['share_type_id']:
+            share_type = self.db.share_type_get(
+                context, share['share_type_id'])
+
+        request_spec = {
+            'share_properties': share_dict,
+            'share_proto': share['share_proto'],
+            'share_id': share['id'],
+            'snapshot_id': share['snapshot_id'],
+            'share_type': share_type,
+        }
+
+        if host:
+            self.share_rpcapi.create_share_instance(
+                context,
+                share_instance,
+                host,
+                request_spec=request_spec,
+                filter_properties={},
+                snapshot_id=share['snapshot_id'],
+            )
+        else:
+            # Create share instance from scratch or from snapshot could happen
+            # on hosts other than the source host.
+            self.scheduler_rpcapi.create_share_instance(
+                context, request_spec=request_spec, filter_properties={})
 
     def manage(self, context, share_data, driver_options):
         policy.check_policy(context, 'share', 'manage')
@@ -285,26 +301,13 @@ class API(base.Base):
     @policy.wrap_check_policy('share')
     def delete(self, context, share, force=False):
         """Delete share."""
+        share = self.db.share_get(context, share['id'])
         if context.is_admin and context.project_id != share['project_id']:
             project_id = share['project_id']
         else:
             project_id = context.project_id
 
         share_id = share['id']
-        if not share['host']:
-            try:
-                reservations = QUOTAS.reserve(context,
-                                              project_id=project_id,
-                                              shares=-1,
-                                              gigabytes=-share['size'])
-            except Exception:
-                reservations = None
-                LOG.exception(_LE("Failed to update quota for deleting share"))
-            self.db.share_delete(context.elevated(), share_id)
-
-            if reservations:
-                QUOTAS.commit(context, reservations, project_id=project_id)
-            return
 
         statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR)
         if not (force or share['status'] in statuses):
@@ -317,12 +320,43 @@ class API(base.Base):
             msg = _("Share still has %d dependent snapshots") % len(snapshots)
             raise exception.InvalidShare(reason=msg)
 
-        now = timeutils.utcnow()
-        share = self.db.share_update(
-            context, share_id, {'status': constants.STATUS_DELETING,
-                                'terminated_at': now})
+        try:
+            reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
+                                          shares=-1,
+                                          gigabytes=-share['size'])
+        except Exception as e:
+            reservations = None
+            LOG.exception(
+                _LE("Failed to update quota for deleting share: %s"),
+                six.text_type(e)
+            )
 
-        self.share_rpcapi.delete_share(context, share)
+        for share_instance in share.instances:
+            if share_instance['host']:
+                self.delete_instance(context, share_instance, force=force)
+            else:
+                self.db.share_instance_delete(context, share_instance['id'])
+
+        if reservations:
+            QUOTAS.commit(context, reservations, project_id=project_id)
+
+    def delete_instance(self, context, share_instance, force=False):
+        policy.check_policy(context, 'share', 'delete')
+
+        statuses = (constants.STATUS_AVAILABLE, constants.STATUS_ERROR)
+        if not (force or share_instance['status'] in statuses):
+            msg = _("Share instance status must be one of %(statuses)s") % {
+                "statuses": statuses}
+            raise exception.InvalidShareInstance(reason=msg)
+
+        share_instance = self.db.share_instance_update(
+            context, share_instance['id'],
+            {'status': constants.STATUS_DELETING,
+             'terminated_at': timeutils.utcnow()}
+        )
+
+        self.share_rpcapi.delete_share_instance(context, share_instance)
 
         # NOTE(u_glide): 'updated_at' timestamp is used to track last usage of
         # share server. This is required for automatic share servers cleanup
@@ -330,16 +364,17 @@ class API(base.Base):
         # doesn't have shares (unused). We do this update only on share
         # deletion because share server with shares cannot be deleted, so no
         # need to do this update on share creation or any other share operation
-        if share['share_server_id']:
+        if share_instance['share_server_id']:
             self.db.share_server_update(
                 context,
-                share['share_server_id'],
+                share_instance['share_server_id'],
                 {'updated_at': timeutils.utcnow()})
 
     def delete_share_server(self, context, server):
         """Delete share server."""
         policy.check_policy(context, 'share_server', 'delete', server)
-        shares = self.db.share_get_all_by_share_server(context, server['id'])
+        shares = self.db.share_instances_get_all_by_share_server(context,
+                                                                 server['id'])
         if shares:
             raise exception.ShareServerInUse(share_server_id=server['id'])
         # NOTE(vponomaryov): There is no share_server status update here,
@@ -560,13 +595,11 @@ class API(base.Base):
     def allow_access(self, ctx, share, access_type, access_to,
                      access_level=None):
         """Allow access to share."""
-        if not share['host']:
-            msg = _("Share host is None")
-            raise exception.InvalidShare(reason=msg)
+        policy.check_policy(ctx, 'share', 'allow_access')
+        share = self.db.share_get(ctx, share['id'])
         if share['status'] != constants.STATUS_AVAILABLE:
             msg = _("Share status must be %s") % constants.STATUS_AVAILABLE
             raise exception.InvalidShare(reason=msg)
-        policy.check_policy(ctx, 'share', 'allow_access')
         values = {
             'share_id': share['id'],
             'access_type': access_type,
@@ -582,33 +615,60 @@ class API(base.Base):
             msg = _("Invalid share access level: %s.") % access_level
             raise exception.InvalidShareAccess(reason=msg)
         access = self.db.share_access_create(ctx, values)
-        self.share_rpcapi.allow_access(ctx, share, access)
+
+        for share_instance in share.instances:
+            self.allow_access_to_instance(ctx, share_instance, access)
+
         return access
+
+    def allow_access_to_instance(self, context, share_instance, access):
+        policy.check_policy(context, 'share', 'allow_access')
+
+        if not share_instance['host']:
+            msg = _("Invalid share instance host: %s") % share_instance['host']
+            raise exception.InvalidShareInstance(reason=msg)
+
+        self.share_rpcapi.allow_access(context, share_instance, access)
 
     def deny_access(self, ctx, share, access):
         """Deny access to share."""
         policy.check_policy(ctx, 'share', 'deny_access')
         # First check state of the target share
-        if not share['host']:
-            msg = _("Share host is None")
+        share = self.db.share_get(ctx, share['id'])
+        if not (share.instances and share.instance['host']):
+            msg = _("Share doesn't have any instances")
             raise exception.InvalidShare(reason=msg)
         if share['status'] != constants.STATUS_AVAILABLE:
             msg = _("Share status must be %s") % constants.STATUS_AVAILABLE
             raise exception.InvalidShare(reason=msg)
 
         # Then check state of the access rule
-        if access['state'] == access.STATE_ERROR:
+        if access['state'] == constants.STATUS_ERROR:
             self.db.share_access_delete(ctx, access["id"])
-        elif access['state'] == access.STATE_ACTIVE:
-            self.db.share_access_update(ctx, access["id"],
-                                        {'state': access.STATE_DELETING})
-            self.share_rpcapi.deny_access(ctx, share, access)
+        elif access['state'] == constants.STATUS_ACTIVE:
+            for share_instance in share.instances:
+                self.deny_access_to_instance(ctx, share_instance, access)
         else:
             msg = _("Access policy should be %(active)s or in %(error)s "
                     "state") % {"active": constants.STATUS_ACTIVE,
                                 "error": constants.STATUS_ERROR}
             raise exception.InvalidShareAccess(reason=msg)
             # update share state and send message to manager
+
+    def deny_access_to_instance(self, context, share_instance, access):
+        policy.check_policy(context, 'share', 'deny_access')
+
+        if not share_instance['host']:
+            msg = _("Invalid share instance host: %s") % share_instance['host']
+            raise exception.InvalidShareInstance(reason=msg)
+
+        access_mapping = self.db.share_instance_access_get(
+            context, access['id'], share_instance['id'])
+        self.db.share_instance_access_update_state(
+            context, access_mapping['id'],
+            access_mapping.STATE_DELETING)
+
+        self.share_rpcapi.deny_access(context, share_instance, access)
 
     def access_get_all(self, context, share):
         """Returns all access rules for share."""

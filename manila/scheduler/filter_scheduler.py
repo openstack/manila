@@ -102,10 +102,12 @@ class FilterScheduler(driver.Scheduler):
         # context is not serializable
         filter_properties.pop('context', None)
 
-        self.share_rpcapi.create_share(context, updated_share, host,
-                                       request_spec=request_spec,
-                                       filter_properties=filter_properties,
-                                       snapshot_id=snapshot_id)
+        self.share_rpcapi.create_share_instance(
+            context, updated_share.instance, host,
+            request_spec=request_spec,
+            filter_properties=filter_properties,
+            snapshot_id=snapshot_id
+        )
 
     def _schedule_share(self, context, request_spec, filter_properties=None):
         """Returns a list of hosts that meet the required specs.
