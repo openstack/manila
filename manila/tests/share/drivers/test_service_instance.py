@@ -165,6 +165,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             service_instance_network_helper_type=service_instance.NOVA_NAME))
         with test_utils.create_temp_config_with_opts(config_data):
             self._manager = service_instance.ServiceInstanceManager()
+            self._manager.network_helper
         service_instance.NovaNetworkHelper.assert_called_once_with(
             self._manager)
         self.assertFalse(service_instance.NeutronNetworkHelper.called)
@@ -180,6 +181,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         )
         with test_utils.create_temp_config_with_opts(config_data):
             self._manager = service_instance.ServiceInstanceManager()
+            self._manager.network_helper
         service_instance.NeutronNetworkHelper.assert_called_once_with(
             self._manager)
         self.assertFalse(service_instance.NovaNetworkHelper.called)
@@ -198,9 +200,9 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             driver_handles_share_servers=True,
             service_instance_network_helper_type=value))
         with test_utils.create_temp_config_with_opts(config_data):
-            self.assertRaises(
-                exception.ManilaException,
-                service_instance.ServiceInstanceManager)
+            manager = service_instance.ServiceInstanceManager()
+            self.assertRaises(exception.ManilaException,
+                              lambda: manager.network_helper)
         self.assertFalse(service_instance.NeutronNetworkHelper.called)
         self.assertFalse(service_instance.NovaNetworkHelper.called)
 
@@ -1270,7 +1272,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
     def _init_neutron_network_plugin(self):
         self.mock_object(
-            service_instance.NeutronNetworkHelper, 'get_service_network_id',
+            service_instance.NeutronNetworkHelper, '_get_service_network_id',
             mock.Mock(return_value='fake_service_network_id'))
         return service_instance.NeutronNetworkHelper(self.fake_manager)
 
@@ -1282,7 +1284,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             'connect_share_server_to_tenant_network', 'get_config_option']
         for attr in attrs:
             self.assertTrue(hasattr(instance, attr), "No attr '%s'" % attr)
-        service_instance.NeutronNetworkHelper.get_service_network_id.\
+        service_instance.NeutronNetworkHelper._get_service_network_id.\
             assert_called_once_with()
         self.assertEqual('DEFAULT', instance.neutron_api.config_group_name)
 
@@ -1308,7 +1310,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
     def test_admin_project_id(self):
         instance = self._init_neutron_network_plugin()
         admin_project_id = 'fake_admin_project_id'
-        instance.neutron_api = mock.Mock()
+        self.mock_class('manila.network.neutron.api.API', mock.Mock())
         instance.neutron_api.admin_project_id = admin_project_id
         self.assertEqual(admin_project_id, instance.admin_project_id)
 
@@ -1341,13 +1343,12 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             mock.Mock(return_value=network))
         instance = service_instance.NeutronNetworkHelper(self.fake_manager)
 
-        result = instance.get_service_network_id()
+        result = instance._get_service_network_id()
 
         self.assertEqual(network['id'], result)
-        service_instance.neutron.API.get_all_admin_project_networks.\
-            assert_has_calls([mock.call(), mock.call()])
+        self.assertTrue(service_instance.neutron.API.
+                        get_all_admin_project_networks.called)
         service_instance.neutron.API.network_create.assert_has_calls([
-            mock.call(instance.admin_project_id, service_network_name),
             mock.call(instance.admin_project_id, service_network_name)])
 
     def test_get_service_network_id_one_exist(self):
@@ -1362,11 +1363,11 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             mock.Mock(return_value=admin_project_id))
         instance = service_instance.NeutronNetworkHelper(self.fake_manager)
 
-        result = instance.get_service_network_id()
+        result = instance._get_service_network_id()
 
         self.assertEqual(network['id'], result)
-        service_instance.neutron.API.get_all_admin_project_networks.\
-            assert_has_calls([mock.call(), mock.call()])
+        self.assertTrue(service_instance.neutron.API.
+                        get_all_admin_project_networks.called)
 
     def test_get_service_network_id_two_exist(self):
         service_network_name = fake_get_config_option('service_network_name')
@@ -1375,9 +1376,9 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             service_instance.neutron.API, 'get_all_admin_project_networks',
             mock.Mock(return_value=[network, network]))
 
-        self.assertRaises(
-            exception.ServiceInstanceException,
-            service_instance.NeutronNetworkHelper, self.fake_manager)
+        helper = service_instance.NeutronNetworkHelper(self.fake_manager)
+        self.assertRaises(exception.ManilaException,
+                          lambda: helper.service_network_id)
 
         service_instance.neutron.API.get_all_admin_project_networks.\
             assert_has_calls([mock.call()])
@@ -1604,7 +1605,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         service_subnet = dict(id='fake_service_subnet')
         instance = self._init_neutron_network_plugin()
         instance.connect_share_server_to_tenant_network = True
-        instance.service_network_id = 'fake_service_network_id'
+        self.mock_object(instance, '_get_service_network_id',
+                         mock.Mock(return_value='fake_service_network_id'))
         self.mock_object(
             service_instance.neutron.API, 'admin_project_id',
             mock.Mock(return_value=admin_project_id))
@@ -1652,7 +1654,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         service_subnet = dict(id='fake_service_subnet')
         instance = self._init_neutron_network_plugin()
         instance.connect_share_server_to_tenant_network = False
-        instance.service_network_id = 'fake_service_network_id'
+        self.mock_object(instance, '_get_service_network_id',
+                         mock.Mock(return_value='fake_service_network_id'))
         router = dict(id='fake_router_id')
         self.mock_object(
             service_instance.neutron.API, 'admin_project_id',
@@ -1700,7 +1703,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         service_subnet = dict(id='fake_service_subnet')
         instance = self._init_neutron_network_plugin()
         instance.connect_share_server_to_tenant_network = False
-        instance.service_network_id = 'fake_service_network_id'
+        self.mock_object(instance, '_get_service_network_id',
+                         mock.Mock(return_value='fake_service_network_id'))
         router = dict(id='fake_router_id')
         self.mock_object(
             instance, '_get_private_router', mock.Mock(return_value=router))
@@ -1733,7 +1737,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         service_subnet = dict(id='fake_service_subnet')
         instance = self._init_neutron_network_plugin()
         instance.connect_share_server_to_tenant_network = False
-        instance.service_network_id = 'fake_service_network_id'
+        self.mock_object(instance, '_get_service_network_id',
+                         mock.Mock(return_value='fake_service_network_id'))
         router = dict(id='fake_router_id')
         self.mock_object(
             service_instance.neutron.API, 'admin_project_id',
