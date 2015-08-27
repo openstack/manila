@@ -516,6 +516,7 @@ class ServiceInstanceManager(object):
                 flavor=self.get_config_option("service_instance_flavor_id"),
                 key_name=key_name,
                 nics=network_data['nics'],
+                availability_zone=CONF.storage_availability_zone,
                 **create_kwargs)
 
             fail_safe_data['instance_id'] = service_instance['id']
