@@ -18,13 +18,17 @@ NetApp CIFS protocol helper class.
 import re
 
 from oslo_log import log
+from oslo_utils import importutils
 
 from manila import exception
 from manila.i18n import _, _LE
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.protocols import base
 from manila.share.drivers.netapp import utils as na_utils
 
+netapp_lib = importutils.try_import('netapp_lib')
+if netapp_lib:
+    from netapp_lib.api.zapi import errors as netapp_error
+    from netapp_lib.api.zapi import zapi as netapp_api
 
 LOG = log.getLogger(__name__)
 
@@ -58,7 +62,7 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         try:
             self._client.add_cifs_share_access(share_name, access['access_to'])
         except netapp_api.NaApiError as e:
-            if e.code == netapp_api.EDUPLICATEENTRY:
+            if e.code == netapp_error.EDUPLICATEENTRY:
                 # Duplicate entry, so use specific exception.
                 raise exception.ShareAccessExists(
                     access_type=access['access_type'], access=access)
@@ -72,9 +76,9 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         try:
             self._client.remove_cifs_share_access(share_name, user_name)
         except netapp_api.NaApiError as e:
-            if e.code == netapp_api.EONTAPI_EINVAL:
+            if e.code == netapp_error.EONTAPI_EINVAL:
                 LOG.error(_LE("User %s does not exist."), user_name)
-            elif e.code == netapp_api.EOBJECTNOTFOUND:
+            elif e.code == netapp_error.EOBJECTNOTFOUND:
                 LOG.error(_LE("Rule %s does not exist."), user_name)
             else:
                 raise e

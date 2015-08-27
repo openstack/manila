@@ -15,7 +15,7 @@
 Mock unit tests for the NetApp driver protocols base class module.
 """
 
-from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
+from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila import test
 
 
@@ -24,7 +24,7 @@ class NetAppNASHelperBaseTestCase(test.TestCase):
     def test_set_client(self):
         # The base class is abstract, so we'll use a subclass to test
         # base class functionality.
-        helper = cifs_cmode.NetAppCmodeCIFSHelper()
+        helper = nfs_cmode.NetAppCmodeNFSHelper()
         self.assertIsNone(helper._client)
 
         helper.set_client('fake_client')

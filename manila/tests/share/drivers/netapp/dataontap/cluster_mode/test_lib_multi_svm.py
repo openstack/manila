@@ -23,11 +23,12 @@ from oslo_log import log
 
 from manila import context
 from manila import exception
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_base
 from manila.share.drivers.netapp.dataontap.cluster_mode import lib_multi_svm
 from manila.share.drivers.netapp import utils as na_utils
 from manila import test
+from manila.tests.share.drivers.netapp.dataontap.client \
+    import fake_api as netapp_api
 from manila.tests.share.drivers.netapp.dataontap import fakes as fake
 
 
@@ -52,6 +53,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             'configuration': fake.get_config_cmode(),
             'app_version': fake.APP_VERSION
         }
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([lib_multi_svm])
 
         self.library = lib_multi_svm.NetAppCmodeMultiSVMFileStorageLibrary(
             fake.DRIVER_NAME, **kwargs)

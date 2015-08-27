@@ -15,10 +15,14 @@
 
 from oslo_log import log
 from oslo_utils import excutils
+from oslo_utils import importutils
 
 from manila.i18n import _LE
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp import utils as na_utils
+
+netapp_lib = importutils.try_import('netapp_lib')
+if netapp_lib:
+    from netapp_lib.api.zapi import zapi as netapp_api
 
 
 LOG = log.getLogger(__name__)
@@ -41,20 +45,15 @@ class NetAppBaseClient(object):
         if cached:
             return self.connection.get_api_version()
 
-        ontapi_version = netapp_api.NaElement('system-get-ontapi-version')
-        res = self.connection.invoke_successfully(ontapi_version, False)
-        major = res.get_child_content('major-version')
-        minor = res.get_child_content('minor-version')
+        result = self.send_request('system-get-ontapi-version',
+                                   enable_tunneling=False)
+        major = result.get_child_content('major-version')
+        minor = result.get_child_content('minor-version')
         return major, minor
 
     def _init_features(self):
         """Set up the repository of available Data ONTAP features."""
         self.features = Features()
-
-    def check_is_naelement(self, elem):
-        """Checks if object is instance of NaElement."""
-        if not isinstance(elem, netapp_api.NaElement):
-            raise ValueError('Expects NaElement')
 
     def send_request(self, api_name, api_args=None, enable_tunneling=True):
         """Sends request to Ontapi."""

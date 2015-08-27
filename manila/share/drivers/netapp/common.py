@@ -67,6 +67,7 @@ class NetAppDriver(object):
         config.append_config_values(driver.share_opts)
         config.append_config_values(options.netapp_proxy_opts)
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
+        na_utils.check_netapp_lib()
 
         app_version = na_utils.OpenStackInfo().info()
         LOG.info(_LI('OpenStack OS Version Info: %s'), app_version)

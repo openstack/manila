@@ -21,6 +21,7 @@ import platform
 import mock
 from oslo_concurrency import processutils as putils
 from oslo_log import log
+from oslo_utils import importutils
 
 from manila import exception
 from manila.share.drivers.netapp import utils as na_utils
@@ -129,6 +130,21 @@ class NetAppDriverUtilsTestCase(test.TestCase):
             sorted(['key1', 'key2']),
             sorted(na_utils.convert_to_list({'key1': 'value1',
                                              'key2': 'value2'})))
+
+    def test_check_netapp_lib(self):
+        mock_try_import = self.mock_object(importutils, 'try_import')
+
+        na_utils.check_netapp_lib()
+
+        mock_try_import.assert_called_once_with('netapp_lib')
+
+    def test_check_netapp_lib_not_found(self):
+        self.mock_object(importutils,
+                         'try_import',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(exception.NetAppException,
+                          na_utils.check_netapp_lib)
 
 
 class OpenstackInfoTestCase(test.TestCase):
