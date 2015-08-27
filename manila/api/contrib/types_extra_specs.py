@@ -135,8 +135,8 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         authorize(context)
 
-        if id in share_types.get_required_extra_specs():
-            msg = _("Required extra specs can't be deleted.")
+        if id in share_types.get_undeletable_extra_specs():
+            msg = _("Extra spec '%s' can't be deleted.") % id
             raise webob.exc.HTTPForbidden(explanation=msg)
 
         try:

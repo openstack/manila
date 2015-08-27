@@ -247,3 +247,23 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.update_share_type_extra_specs,
                           st["share_type"]["id"], {"": "new_value"})
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_try_delete_spec_driver_handles_share_servers(self):
+        st = self._create_share_type()
+
+        # Try delete extra spec 'driver_handles_share_servers'
+        self.assertRaises(lib_exc.Forbidden,
+                          self.shares_client.delete_share_type_extra_spec,
+                          st["share_type"]["id"],
+                          "driver_handles_share_servers")
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_try_delete_spec_snapshot_support(self):
+        st = self._create_share_type()
+
+        # Try delete extra spec 'snapshot_support'
+        self.assertRaises(lib_exc.Forbidden,
+                          self.shares_client.delete_share_type_extra_spec,
+                          st["share_type"]["id"],
+                          "snapshot_support")

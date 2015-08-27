@@ -160,6 +160,10 @@ class API(base.Base):
 
         try:
             is_public = strutils.bool_from_string(is_public, strict=True)
+            snapshot_support = strutils.bool_from_string(
+                share_type.get('extra_specs', {}).get(
+                    'snapshot_support', True) if share_type else True,
+                strict=True)
         except ValueError as e:
             raise exception.InvalidParameterValue(six.text_type(e))
 
@@ -167,6 +171,7 @@ class API(base.Base):
                    'user_id': context.user_id,
                    'project_id': context.project_id,
                    'snapshot_id': snapshot_id,
+                   'snapshot_support': snapshot_support,
                    'metadata': metadata,
                    'display_name': name,
                    'display_description': description,

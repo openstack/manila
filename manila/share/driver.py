@@ -445,6 +445,36 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
+    def _has_redefined_driver_methods(self, methods):
+        """Returns boolean as a result of methods presence and redefinition."""
+        if not isinstance(methods, (set, list, tuple)):
+            methods = (methods, )
+        parent = super(self.__class__, self)
+        for method in methods:
+            # NOTE(vponomaryov): criteria:
+            # - If parent does not have such attr, then was called method of
+            #   this class which has no implementation.
+            # - If parent's method is equal to child's method then child did
+            #   not redefine it and has no implementation.
+            if (not hasattr(parent, method) or
+                    getattr(self, method) == getattr(parent, method)):
+                return False
+        return True
+
+    @property
+    def snapshots_are_supported(self):
+        if not hasattr(self, '_snapshots_are_supported'):
+            methods = (
+                "create_snapshot",
+                "delete_snapshot",
+                "create_share_from_snapshot")
+            # NOTE(vponomaryov): calculate default value for
+            # stat 'snapshot_support' based on implementation of
+            # appropriate methods of this base driver class.
+            self._snapshots_are_supported = self._has_redefined_driver_methods(
+                methods)
+        return self._snapshots_are_supported
+
     def _update_share_stats(self, data=None):
         """Retrieve stats info from share group.
 
@@ -469,6 +499,7 @@ class ShareDriver(object):
             reserved_percentage=0,
             QoS_support=False,
             pools=self.pools or None,
+            snapshot_support=self.snapshots_are_supported,
         )
         if isinstance(data, dict):
             common.update(data)

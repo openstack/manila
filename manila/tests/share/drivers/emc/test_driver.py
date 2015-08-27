@@ -138,6 +138,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         data['pools'] = None
+        data['snapshot_support'] = True
         self.assertEqual(data, self.driver._stats)
 
     def _fake_safe_get(self, value):
