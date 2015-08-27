@@ -167,15 +167,15 @@ class CGAdminController(AdminController):
     def _delete(self, context, resource, force=True):
         db.consistency_group_destroy(context.elevated(), resource['id'])
 
+    @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.action('os-reset_status')
     @wsgi.response(202)
-    @wsgi.Controller.api_version('1.5', experimental=True)
     def cg_reset_status(self, req, id, body):
         super(CGAdminController, self)._reset_status(req, id, body)
 
+    @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.action('os-force_delete')
     @wsgi.response(202)
-    @wsgi.Controller.api_version('1.5', experimental=True)
     def cg_force_delete(self, req, id, body):
         super(CGAdminController, self)._force_delete(req, id, body)
 
@@ -198,15 +198,15 @@ class CGSnapshotAdminController(AdminController):
     def _delete(self, context, resource, force=True):
         db.cgsnapshot_destroy(context.elevated(), resource['id'])
 
+    @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.action('os-reset_status')
     @wsgi.response(202)
-    @wsgi.Controller.api_version('1.5', experimental=True)
     def cgsnapshot_reset_status(self, req, id, body):
         super(CGSnapshotAdminController, self)._reset_status(req, id, body)
 
+    @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.action('os-force_delete')
     @wsgi.response(202)
-    @wsgi.Controller.api_version('1.5', experimental=True)
     def cgsnapshot_force_delete(self, req, id, body):
         super(CGSnapshotAdminController, self)._force_delete(req, id, body)
 

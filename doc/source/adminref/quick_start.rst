@@ -132,6 +132,11 @@ Here are the registration steps, similar to those of Cinder:
         --type share \
         --description "OpenStack Shared Filesystems"
 
+    $ keystone service-create \
+        --name manilav2 \
+        --type sharev2 \
+        --description "OpenStack Shared Filesystems V2"
+
 
 Result::
 
@@ -145,6 +150,16 @@ Result::
     |     type    |              share               |
     +-------------+----------------------------------+
 
+    +-------------+----------------------------------+
+    |   Property  |              Value               |
+    +-------------+----------------------------------+
+    | description | OpenStack Shared Filesystems V2  |
+    |   enabled   |               True               |
+    |      id     | 2840d1e7b033437f8776a7bd5045b28d |
+    |     name    |             manilav2             |
+    |     type    |             sharev2              |
+    +-------------+----------------------------------+
+
 
 4) Create the Share Filesystems service API endpoints::
 
@@ -153,6 +168,13 @@ Result::
         --publicurl http://controller:8786/v1/%\(tenant_id\)s \
         --internalurl http://controller:8786/v1/%\(tenant_id\)s \
         --adminurl http://controller:8786/v1/%\(tenant_id\)s \
+        --region regionOne
+
+    $ keystone endpoint-create \
+        --service-id $(keystone service-list | awk '/ sharev2 / {print $2}') \
+        --publicurl http://controller:8786/v2/%\(tenant_id\)s \
+        --internalurl http://controller:8786/v2/%\(tenant_id\)s \
+        --adminurl http://controller:8786/v2/%\(tenant_id\)s \
         --region regionOne
 
 Result::
@@ -166,6 +188,17 @@ Result::
     |  publicurl  | http://controller:8786/v1/%(tenant_id)s |
     |    region   |                regionOne                |
     |  service_id |    4c13e9ff7ec04f4e95a26f72ecdf9919     |
+    +-------------+-----------------------------------------+
+
+    +-------------+-----------------------------------------+
+    |   Property  |                  Value                  |
+    +-------------+-----------------------------------------+
+    |   adminurl  | http://controller:8786/v2/%(tenant_id)s |
+    |      id     |     63ddffd27e8c4c62b4ffb228083325e6    |
+    | internalurl | http://controller:8786/v2/%(tenant_id)s |
+    |  publicurl  | http://controller:8786/v2/%(tenant_id)s |
+    |    region   |                regionOne                |
+    |  service_id |     2840d1e7b033437f8776a7bd5045b28d    |
     +-------------+-----------------------------------------+
 
 .. note::

@@ -43,11 +43,13 @@ class ConsistencyGroupsTest(base.BaseSharesAdminTest):
         cls.share_type2 = share_type['share_type']
 
     @test.attr(type=["gate", ])
-    def test_create_cg_with_multiple_share_types(self):
+    def test_create_cg_with_multiple_share_types_v2_4(self):
         # Create a consistency group
         consistency_group = self.create_consistency_group(
-            cleanup_in_class=False, share_type_ids=[self.share_type['id'],
-                                                    self.share_type2['id']])
+            cleanup_in_class=False,
+            share_type_ids=[self.share_type['id'], self.share_type2['id']],
+            version='2.4',
+        )
 
         self.assertTrue(CG_REQUIRED_ELEMENTS.issubset(
             consistency_group.keys()),

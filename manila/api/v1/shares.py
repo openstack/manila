@@ -89,7 +89,7 @@ class ShareController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
-    @wsgi.Controller.api_version("1.6", None, True)
+    @wsgi.Controller.api_version("2.5", None, True)
     @wsgi.action("os-migrate_share")
     def migrate_share(self, req, id, body):
         """Migrate a share to the specified host."""
@@ -205,11 +205,11 @@ class ShareController(wsgi.Controller):
         share.update(update_dict)
         return self._view_builder.detail(req, share)
 
-    @wsgi.Controller.api_version("1.5")
+    @wsgi.Controller.api_version("2.4")
     def create(self, req, body):
         return self._create(req, body)
 
-    @wsgi.Controller.api_version("1.0", "1.4")  # noqa
+    @wsgi.Controller.api_version("1.0", "2.3")  # noqa
     def create(self, req, body):  # pylint: disable=E0102
         # Remove consistency group attributes
         share = body.get('share', {})

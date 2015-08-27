@@ -8,15 +8,15 @@ user documentation.
 
 1.0
 ---
-
   The 1.0 Manila API includes all v1 core APIs existing prior to
-  the introduction of microversions.
+  the introduction of microversions.  The /v1 URL is used to call
+  1.0 APIs, and microversions headers sent to this endpoint are
+  ignored.
 
-1.1
+2.0
 ---
-
   This is the initial version of the Manila API which supports
-  microversions.
+  microversions.  The /v2 URL is used to call 2.x APIs.
 
   A user can specify a header in the API request::
 
@@ -24,33 +24,35 @@ user documentation.
 
   where ``<version>`` is any valid api version for this API.
 
-  If no version is specified then the API will behave as version 1.0
+  If no version is specified then the API will behave as if version 2.0
   was requested.
 
-  The only API change in version 1.1 is versions, i.e.
-  GET http://localhost:8786/, which now returns the minimum and
-  current microversion values.
+  The only API change in version 2.0 is versions, i.e.
+  GET http://localhost:8786/, which now returns information about
+  both 1.0 and 2.x versions and their respective /v1 and /v2 endpoints.
 
-1.2
+  All other 2.0 APIs are functionally identical to version 1.0.
+
+2.1
 ---
   Share create() method doesn't ignore availability_zone field of provided
   share.
 
-1.3
+2.2
 ---
   Snapshots become optional and share payload now has
   boolean attr 'snapshot_support'.
 
-1.4
+2.3
 ---
   Share instances admin API and update of Admin Actions extension.
 
-1.5
+2.4
 ---
   Consistency groups support. /consistency-groups and /cgsnapshots are
   implemented. AdminActions 'os-force_delete and' 'os-reset_status' have been
   updated for both new resources.
 
-1.6
+2.5
 ---
   Share Migration admin API.

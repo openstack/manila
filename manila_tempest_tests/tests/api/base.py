@@ -98,7 +98,8 @@ class BaseSharesTest(test.BaseTestCase):
     def get_client_with_isolated_creds(cls,
                                        name=None,
                                        type_of_creds="admin",
-                                       cleanup_in_class=False):
+                                       cleanup_in_class=False,
+                                       client_version='1'):
         """Creates isolated creds.
 
         :param name: name, will be used for naming ic and related stuff
@@ -126,7 +127,10 @@ class BaseSharesTest(test.BaseTestCase):
 
         # create client with isolated creds
         os = clients.Manager(credentials=creds)
-        client = os.shares_client
+        if client_version == '1':
+            client = os.shares_client
+        elif client_version == '2':
+            client = os.shares_v2_client
 
         # Set place where will be deleted isolated creds
         ic_res = {
@@ -183,7 +187,9 @@ class BaseSharesTest(test.BaseTestCase):
             nc = cls.os.network_client
             share_network_id = cls.provide_share_network(sc, nc)
             cls.os.shares_client.share_network_id = share_network_id
+            cls.os.shares_v2_client.share_network_id = share_network_id
         cls.shares_client = cls.os.shares_client
+        cls.shares_v2_client = cls.os.shares_v2_client
 
     def setUp(self):
         super(BaseSharesTest, self).setUp()
@@ -281,12 +287,12 @@ class BaseSharesTest(test.BaseTestCase):
                       snapshot_id=None, description=None, metadata=None,
                       share_network_id=None, share_type_id=None,
                       consistency_group_id=None, client=None,
-                      cleanup_in_class=True, is_public=False):
+                      cleanup_in_class=True, is_public=False, **kwargs):
         client = client or cls.shares_client
         description = description or "Tempest's share"
         share_network_id = share_network_id or client.share_network_id or None
         metadata = metadata or {}
-        kwargs = {
+        kwargs.update({
             'share_protocol': share_protocol,
             'size': size,
             'name': name,
@@ -296,7 +302,7 @@ class BaseSharesTest(test.BaseTestCase):
             'share_network_id': share_network_id,
             'share_type_id': share_type_id,
             'is_public': is_public,
-        }
+        })
         if consistency_group_id:
             kwargs['consistency_group_id'] = consistency_group_id
 
@@ -309,9 +315,9 @@ class BaseSharesTest(test.BaseTestCase):
         return share
 
     @classmethod
-    def migrate_share(cls, share_id, dest_host, client=None):
-        client = client or cls.shares_client
-        client.migrate_share(share_id, dest_host)
+    def migrate_share(cls, share_id, dest_host, client=None, **kwargs):
+        client = client or cls.shares_v2_client
+        client.migrate_share(share_id, dest_host, **kwargs)
         share = client.wait_for_migration_completed(share_id, dest_host)
         return share
 
@@ -383,7 +389,7 @@ class BaseSharesTest(test.BaseTestCase):
     @classmethod
     def create_consistency_group(cls, client=None, cleanup_in_class=True,
                                  share_network_id=None, **kwargs):
-        client = client or cls.shares_client
+        client = client or cls.shares_v2_client
         kwargs['share_network_id'] = (share_network_id or
                                       client.share_network_id or None)
         consistency_group = client.create_consistency_group(**kwargs)
@@ -440,12 +446,15 @@ class BaseSharesTest(test.BaseTestCase):
     @classmethod
     def create_cgsnapshot_wait_for_active(cls, consistency_group_id,
                                           name=None, description=None,
-                                          client=None, cleanup_in_class=True):
-        client = client or cls.shares_client
+                                          client=None, cleanup_in_class=True,
+                                          **kwargs):
+        client = client or cls.shares_v2_client
         if description is None:
             description = "Tempest's cgsnapshot"
-        cgsnapshot = client.create_cgsnapshot(consistency_group_id, name=name,
-                                              description=description)
+        cgsnapshot = client.create_cgsnapshot(consistency_group_id,
+                                              name=name,
+                                              description=description,
+                                              **kwargs)
         resource = {
             "type": "cgsnapshot",
             "id": cgsnapshot["id"],
@@ -556,11 +565,12 @@ class BaseSharesTest(test.BaseTestCase):
                 client = res["client"]
                 with handle_cleanup_exceptions():
                     if res["type"] is "share":
-                        params = None
                         cg_id = res.get('consistency_group_id')
                         if cg_id:
                             params = {'consistency_group_id': cg_id}
-                        client.delete_share(res_id, params=params)
+                            client.delete_share(res_id, params=params)
+                        else:
+                            client.delete_share(res_id)
                         client.wait_for_resource_deletion(share_id=res_id)
                     elif res["type"] is "snapshot":
                         client.delete_snapshot(res_id)
@@ -679,6 +689,7 @@ class BaseSharesAltTest(BaseSharesTest):
         cls.os = clients.AltManager()
         alt_share_network_id = CONF.share.alt_share_network_id
         cls.os.shares_client.share_network_id = alt_share_network_id
+        cls.os.shares_v2_client.share_network_id = alt_share_network_id
         super(BaseSharesAltTest, cls).resource_setup()
 
 
@@ -694,4 +705,5 @@ class BaseSharesAdminTest(BaseSharesTest):
         cls.os = clients.AdminManager()
         admin_share_network_id = CONF.share.admin_share_network_id
         cls.os.shares_client.share_network_id = admin_share_network_id
+        cls.os.shares_v2_client.share_network_id = admin_share_network_id
         super(BaseSharesAdminTest, cls).resource_setup()

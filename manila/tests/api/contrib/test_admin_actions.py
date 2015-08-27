@@ -36,7 +36,7 @@ def app():
     # no auth, just let environ['manila.context'] pass through
     api = fakes.router.APIRouter()
     mapper = fakes.urlmap.URLMap()
-    mapper['/v1'] = api
+    mapper['/v2'] = api
     return mapper
 
 
@@ -76,7 +76,7 @@ class AdminActionsTest(test.TestCase):
             share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                           size='1',
                                           override_defaults=True)
-        req = webob.Request.blank('/v1/fake/shares/%s/action' % share['id'])
+        req = webob.Request.blank('/v2/fake/shares/%s/action' % share['id'])
         return share, req
 
     def _setup_snapshot_data(self, snapshot=None):
@@ -84,7 +84,7 @@ class AdminActionsTest(test.TestCase):
             share = db_utils.create_share()
             snapshot = db_utils.create_snapshot(
                 status=constants.STATUS_AVAILABLE, share_id=share['id'])
-        req = webob.Request.blank('/v1/fake/snapshots/%s/action' %
+        req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
                                   snapshot['id'])
         return snapshot, req
 
@@ -93,16 +93,16 @@ class AdminActionsTest(test.TestCase):
             instance = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                              size='1').instance
         req = webob.Request.blank(
-            '/v1/fake/share_instances/%s/action' % instance['id'])
+            '/v2/fake/share_instances/%s/action' % instance['id'])
         return instance, req
 
     def _setup_cg_data(self, cg=None):
         if cg is None:
             cg = db_utils.create_consistency_group(
                 status=constants.STATUS_AVAILABLE)
-        req = webob.Request.blank('/v1/fake/consistency-groups/%s/action' %
+        req = webob.Request.blank('/v2/fake/consistency-groups/%s/action' %
                                   cg['id'])
-        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '1.5'
+        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '2.4'
         req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
 
         return cg, req
@@ -111,9 +111,9 @@ class AdminActionsTest(test.TestCase):
         if cgsnapshot is None:
             cgsnapshot = db_utils.create_cgsnapshot(
                 'fake_id', status=constants.STATUS_AVAILABLE)
-        req = webob.Request.blank('/v1/fake/cgsnapshots/%s/action' %
+        req = webob.Request.blank('/v2/fake/cgsnapshots/%s/action' %
                                   cgsnapshot['id'])
-        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '1.5'
+        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '2.4'
         req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
         return cgsnapshot, req
 

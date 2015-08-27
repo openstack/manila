@@ -57,6 +57,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
             size=cls.share_size,
             consistency_group_id=cls.consistency_group['id'],
             metadata={'key': 'value'},
+            client=cls.shares_v2_client,
         )
 
         cls.share_name2 = data_utils.rand_name("tempest-share-name")
@@ -67,6 +68,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
             description=cls.share_desc2,
             size=cls.share_size2,
             consistency_group_id=cls.consistency_group['id'],
+            client=cls.shares_v2_client,
         )
 
         cls.cgsnap_name = data_utils.rand_name("tempest-cgsnap-name")
@@ -93,6 +95,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
             description=cls.share_desc3,
             size=cls.share_size,
             consistency_group_id=cls.consistency_group2['id'],
+            client=cls.shares_v2_client,
         )
 
         cls.cgsnap_name2 = data_utils.rand_name("tempest-cgsnap-name")
@@ -103,11 +106,11 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
             description=cls.cgsnap_desc2)
 
     @test.attr(type=["gate", ])
-    def test_get_consistency_group(self):
+    def test_get_consistency_group_v2_4(self):
 
         # Get consistency group
-        consistency_group = self.shares_client.get_consistency_group(
-            self.consistency_group['id'])
+        consistency_group = self.shares_v2_client.get_consistency_group(
+            self.consistency_group['id'], version='2.4')
 
         # Verify keys
         actual_keys = set(consistency_group.keys())
@@ -129,10 +132,11 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                          msg)
 
     @test.attr(type=["gate", ])
-    def test_get_share(self):
+    def test_get_share_v2_4(self):
 
         # Get share
-        share = self.shares_client.get_share(self.share['id'])
+        share = self.shares_v2_client.get_share(self.share['id'],
+                                                version='2.4')
 
         # Verify keys
         expected_keys = {"status", "description", "links", "availability_zone",
@@ -165,10 +169,11 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
             self.consistency_group["id"], share["consistency_group_id"], msg)
 
     @test.attr(type=["gate", ])
-    def test_list_consistency_groups(self):
+    def test_list_consistency_groups_v2_4(self):
 
         # List consistency groups
-        consistency_groups = self.shares_client.list_consistency_groups()
+        consistency_groups = self.shares_v2_client.list_consistency_groups(
+            version='2.4')
 
         # Verify keys
         [self.assertEqual(CG_SIMPLE_KEYS, set(cg.keys())) for cg in
@@ -184,11 +189,11 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
             self.assertEqual(1, len(gen), msg)
 
     @test.attr(type=["gate", ])
-    def test_list_consistency_groups_with_detail(self):
+    def test_list_consistency_groups_with_detail_v2_4(self):
 
         # List consistency groups
-        consistency_groups = self.shares_client.list_consistency_groups(
-            detailed=True)
+        consistency_groups = self.shares_v2_client.list_consistency_groups(
+            detailed=True, version='2.4')
 
         # Verify keys
         [self.assertTrue(CG_DETAIL_REQUIRED_KEYS.issubset(set(cg.keys())))
@@ -204,10 +209,13 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
             self.assertEqual(1, len(gen), msg)
 
     @test.attr(type=["gate", ])
-    def test_filter_shares_by_consistency_group_id(self):
+    def test_filter_shares_by_consistency_group_id_v2_4(self):
 
-        shares = self.shares_client.list_shares(detailed=True, params={
-            'consistency_group_id': self.consistency_group['id']})
+        shares = self.shares_v2_client.list_shares(
+            detailed=True,
+            params={'consistency_group_id': self.consistency_group['id']},
+            version='2.4'
+        )
 
         share_ids = [share['id'] for share in shares]
 
@@ -222,10 +230,10 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                       % (self.share['id'], share_ids))
 
     @test.attr(type=["gate", ])
-    def test_get_cgsnapshot(self):
+    def test_get_cgsnapshot_v2_4(self):
         # Get consistency group
-        consistency_group = self.shares_client.get_consistency_group(
-            self.consistency_group['id'])
+        consistency_group = self.shares_v2_client.get_consistency_group(
+            self.consistency_group['id'], version='2.4')
 
         # Verify keys
         actual_keys = set(consistency_group.keys())
@@ -247,10 +255,10 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                          msg)
 
     @test.attr(type=["gate", ])
-    def test_get_cgsnapshot_members(self):
+    def test_get_cgsnapshot_members_v2_4(self):
 
-        cgsnapshot_members = self.shares_client.list_cgsnapshot_members(
-            self.cgsnapshot['id'])
+        cgsnapshot_members = self.shares_v2_client.list_cgsnapshot_members(
+            self.cgsnapshot['id'], version='2.4')
         member_share_ids = [member['share_id'] for member in
                             cgsnapshot_members]
         self.assertEqual(2, len(cgsnapshot_members),
@@ -272,17 +280,22 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                     #                  member['share_type_id'])
 
     @test.attr(type=["gate", "smoke", ])
-    def test_create_consistency_group_from_populated_cgsnapshot(self):
+    def test_create_consistency_group_from_populated_cgsnapshot_v2_4(self):
 
-        cgsnapshot_members = self.shares_client.list_cgsnapshot_members(
-            self.cgsnapshot['id'])
+        cgsnapshot_members = self.shares_v2_client.list_cgsnapshot_members(
+            self.cgsnapshot['id'], version='2.4')
 
         new_consistency_group = self.create_consistency_group(
-            cleanup_in_class=False, source_cgsnapshot_id=self.cgsnapshot['id'])
+            cleanup_in_class=False,
+            source_cgsnapshot_id=self.cgsnapshot['id'],
+            version='2.4'
+        )
 
-        new_shares = self.shares_client.list_shares(
+        new_shares = self.shares_v2_client.list_shares(
             params={'consistency_group_id': new_consistency_group['id']},
-            detailed=True)
+            detailed=True,
+            version='2.4'
+        )
 
         # Verify each new share is available
         for share in new_shares:
@@ -326,46 +339,58 @@ class ConsistencyGroupRenameTest(base.BaseSharesTest):
         )
 
     @test.attr(type=["gate", ])
-    def test_update_consistency_group(self):
+    def test_update_consistency_group_v2_4(self):
 
         # Get consistency_group
-        consistency_group = self.shares_client.get_consistency_group(
-            self.consistency_group['id'])
+        consistency_group = self.shares_v2_client.get_consistency_group(
+            self.consistency_group['id'], version='2.4')
         self.assertEqual(self.cg_name, consistency_group["name"])
         self.assertEqual(self.cg_desc, consistency_group["description"])
 
         # Update consistency_group
         new_name = data_utils.rand_name("tempest-new-name")
         new_desc = data_utils.rand_name("tempest-new-description")
-        updated = self.shares_client.update_consistency_group(
-            consistency_group["id"], name=new_name, description=new_desc)
+        updated = self.shares_v2_client.update_consistency_group(
+            consistency_group["id"],
+            name=new_name,
+            description=new_desc,
+            version='2.4'
+        )
         self.assertEqual(new_name, updated["name"])
         self.assertEqual(new_desc, updated["description"])
 
         # Get consistency_group
-        consistency_group = self.shares_client.get_consistency_group(
-            self.consistency_group['id'])
+        consistency_group = self.shares_v2_client.get_consistency_group(
+            self.consistency_group['id'], version='2.4')
         self.assertEqual(new_name, consistency_group["name"])
         self.assertEqual(new_desc, consistency_group["description"])
 
     @test.attr(type=["gate", ])
-    def test_create_update_read_consistency_group_with_unicode(self):
+    def test_create_update_read_consistency_group_with_unicode_v2_4(self):
         value1 = u'ಠ_ಠ'
         value2 = u'ಠ_ರೃ'
         # Create consistency_group
         consistency_group = self.create_consistency_group(
-            cleanup_in_class=False, name=value1, description=value1)
+            cleanup_in_class=False,
+            name=value1,
+            description=value1,
+            version='2.4'
+        )
         self.assertEqual(value1, consistency_group["name"])
         self.assertEqual(value1, consistency_group["description"])
 
         # Update consistency_group
-        updated = self.shares_client.update_consistency_group(
-            consistency_group["id"], name=value2, description=value2)
+        updated = self.shares_v2_client.update_consistency_group(
+            consistency_group["id"],
+            name=value2,
+            description=value2,
+            version='2.4'
+        )
         self.assertEqual(value2, updated["name"])
         self.assertEqual(value2, updated["description"])
 
         # Get consistency_group
-        consistency_group = self.shares_client.get_consistency_group(
-            consistency_group['id'])
+        consistency_group = self.shares_v2_client.get_consistency_group(
+            consistency_group['id'], version='2.4')
         self.assertEqual(value2, consistency_group["name"])
         self.assertEqual(value2, consistency_group["description"])

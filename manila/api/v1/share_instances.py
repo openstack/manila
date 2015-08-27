@@ -39,7 +39,7 @@ class ShareInstancesController(wsgi.Controller):
         except exception.PolicyNotAuthorized:
             raise exc.HTTPForbidden()
 
-    @wsgi.Controller.api_version("1.4")
+    @wsgi.Controller.api_version("2.3")
     def index(self, req):
         context = req.environ['manila.context']
         self._authorize(context, 'index')
@@ -47,7 +47,7 @@ class ShareInstancesController(wsgi.Controller):
         instances = db.share_instances_get_all(context)
         return self._view_builder.detail_list(req, instances)
 
-    @wsgi.Controller.api_version("1.4")
+    @wsgi.Controller.api_version("2.3")
     def show(self, req, id):
         context = req.environ['manila.context']
         self._authorize(context, 'show')
@@ -59,7 +59,7 @@ class ShareInstancesController(wsgi.Controller):
 
         return self._view_builder.detail(req, instance)
 
-    @wsgi.Controller.api_version("1.4")
+    @wsgi.Controller.api_version("2.3")
     def get_share_instances(self, req, share_id):
         context = req.environ['manila.context']
         self._authorize(context, 'index')

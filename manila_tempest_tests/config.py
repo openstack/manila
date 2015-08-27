@@ -32,11 +32,11 @@ share_group = cfg.OptGroup(name="share", title="Share Service Options")
 
 ShareGroup = [
     cfg.StrOpt("min_api_microversion",
-               default="1.0",
+               default="2.0",
                help="The minimum api microversion is configured to be the "
                     "value of the minimum microversion supported by Manila."),
     cfg.StrOpt("max_api_microversion",
-               default="1.6",
+               default="2.5",
                help="The maximum api microversion is configured to be the "
                     "value of the latest microversion supported by Manila."),
     cfg.StrOpt("region",

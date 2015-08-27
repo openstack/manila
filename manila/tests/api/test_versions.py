@@ -36,94 +36,81 @@ class VersionsControllerTestCase(test.TestCase):
         super(VersionsControllerTestCase, self).setUp()
         self.wsgi_apps = (versions.VersionsRouter(), router.APIRouter())
 
-    @ddt.data(('', 302), ('/', 200))
-    @ddt.unpack
-    def test_versions_return_codes(self, request_path, return_code):
-        req = fakes.HTTPRequest.blank(request_path)
+    @ddt.data('1.0', '1.1', '2.0', '3.0')
+    def test_versions_root(self, version):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost')
         req.method = 'GET'
         req.content_type = 'application/json'
+        req.headers = {version_header_name: version}
 
-        for app in self.wsgi_apps:
-            response = req.get_response(app)
-            self.assertEqual(return_code, response.status_int)
+        response = req.get_response(versions.VersionsRouter())
+        self.assertEqual(300, response.status_int)
+        body = jsonutils.loads(response.body)
+        version_list = body['versions']
 
-    @ddt.data(
-        ('http://localhost/', True),
-        (None, True),
-        ('http://localhost/', False),
-        (None, False),
-    )
-    @ddt.unpack
-    def test_versions_index_v10(self, base_url, include_header):
-        req = fakes.HTTPRequest.blank('/', base_url=base_url)
+        ids = [v['id'] for v in version_list]
+        self.assertEqual({'v1.0', 'v2.0'}, set(ids))
+        self.assertNotIn(version_header_name, response.headers)
+        self.assertNotIn('Vary', response.headers)
+
+        v1 = [v for v in version_list if v['id'] == 'v1.0'][0]
+        self.assertEqual('', v1.get('min_version'))
+        self.assertEqual('', v1.get('version'))
+
+        v2 = [v for v in version_list if v['id'] == 'v2.0'][0]
+        self.assertEqual(api_version_request._MIN_API_VERSION,
+                         v2.get('min_version'))
+        self.assertEqual(api_version_request._MAX_API_VERSION,
+                         v2.get('version'))
+
+    @ddt.data('1.0',
+              '1.1',
+              api_version_request._MIN_API_VERSION,
+              api_version_request._MAX_API_VERSION)
+    def test_versions_v1(self, version):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v1')
         req.method = 'GET'
         req.content_type = 'application/json'
-        if include_header:
-            req.headers = {version_header_name: '1.0'}
+        req.headers = {version_header_name: version}
 
-        for app in self.wsgi_apps:
-            response = req.get_response(app)
-            body = jsonutils.loads(response.body)
-            version_list = body['versions']
+        response = req.get_response(router.APIRouter())
+        self.assertEqual(200, response.status_int)
+        body = jsonutils.loads(response.body)
+        version_list = body['versions']
 
-            ids = [v['id'] for v in version_list]
-            self.assertEqual({'v1.0'}, set(ids))
-            self.assertEqual('1.0', response.headers[version_header_name])
-            self.assertEqual(version_header_name, response.headers['Vary'])
-            self.assertIsNone(version_list[0].get('min_version'))
-            self.assertIsNone(version_list[0].get('version'))
+        ids = [v['id'] for v in version_list]
+        self.assertEqual({'v1.0'}, set(ids))
+        self.assertEqual('1.0', response.headers[version_header_name])
+        self.assertEqual(version_header_name, response.headers['Vary'])
+        self.assertEqual('', version_list[0].get('min_version'))
+        self.assertEqual('', version_list[0].get('version'))
 
-    @ddt.data(
-        ('http://localhost/', '1.1'),
-        (None, '1.1'),
-        ('http://localhost/', 'latest'),
-        (None, 'latest')
-    )
-    @ddt.unpack
-    def test_versions_index_v11(self, base_url, req_version):
-        req = fakes.HTTPRequest.blank('/', base_url=base_url)
+    @ddt.data(api_version_request._MIN_API_VERSION,
+              api_version_request._MAX_API_VERSION)
+    def test_versions_v2(self, version):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v2')
         req.method = 'GET'
         req.content_type = 'application/json'
-        req.headers = {version_header_name: req_version}
+        req.headers = {version_header_name: version}
 
-        for app in self.wsgi_apps:
-            response = req.get_response(app)
-            body = jsonutils.loads(response.body)
-            version_list = body['versions']
+        response = req.get_response(router.APIRouter())
+        self.assertEqual(200, response.status_int)
+        body = jsonutils.loads(response.body)
+        version_list = body['versions']
 
-            ids = [v['id'] for v in version_list]
-            self.assertEqual({'v1.0'}, set(ids))
+        ids = [v['id'] for v in version_list]
+        self.assertEqual({'v2.0'}, set(ids))
+        self.assertEqual(version, response.headers[version_header_name])
+        self.assertEqual(version_header_name, response.headers['Vary'])
 
-            if req_version == 'latest':
-                self.assertEqual(api_version_request._MAX_API_VERSION,
-                                 response.headers[version_header_name])
-            else:
-                self.assertEqual(req_version,
-                                 response.headers[version_header_name])
+        v2 = [v for v in version_list if v['id'] == 'v2.0'][0]
+        self.assertEqual(api_version_request._MIN_API_VERSION,
+                         v2.get('min_version'))
+        self.assertEqual(api_version_request._MAX_API_VERSION,
+                         v2.get('version'))
 
-            self.assertEqual(version_header_name, response.headers['Vary'])
-            self.assertEqual(api_version_request._MIN_API_VERSION,
-                             version_list[0].get('min_version'))
-            self.assertEqual(api_version_request._MAX_API_VERSION,
-                             version_list[0].get('version'))
-
-    @ddt.data('http://localhost/', None)
-    def test_versions_index_v2(self, base_url):
-        req = fakes.HTTPRequest.blank('/', base_url=base_url)
-        req.method = 'GET'
-        req.content_type = 'application/json'
-        req.headers = {version_header_name: '2.0'}
-
-        for app in self.wsgi_apps:
-            response = req.get_response(app)
-
-            self.assertEqual(406, response.status_int)
-            self.assertEqual('2.0', response.headers[version_header_name])
-            self.assertEqual(version_header_name, response.headers['Vary'])
-
-    @ddt.data('http://localhost/', None)
-    def test_versions_index_invalid_version_request(self, base_url):
-        req = fakes.HTTPRequest.blank('/', base_url=base_url)
+    def test_versions_version_invalid(self):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v2')
         req.method = 'GET'
         req.content_type = 'application/json'
         req.headers = {version_header_name: '2.0.1'}
@@ -132,8 +119,6 @@ class VersionsControllerTestCase(test.TestCase):
             response = req.get_response(app)
 
             self.assertEqual(400, response.status_int)
-            self.assertEqual('1.0', response.headers[version_header_name])
-            self.assertEqual(version_header_name, response.headers['Vary'])
 
     def test_versions_version_not_found(self):
         api_version_request_3_0 = api_version_request.APIVersionRequest('3.0')
@@ -142,45 +127,59 @@ class VersionsControllerTestCase(test.TestCase):
                          mock.Mock(return_value=api_version_request_3_0))
 
         class Controller(wsgi.Controller):
-            @wsgi.Controller.api_version('1.0', '1.0')
+            @wsgi.Controller.api_version('2.0', '2.0')
             def index(self, req):
                 return 'off'
 
-        req = fakes.HTTPRequest.blank('/tests')
-        req.headers = {version_header_name: '2.0'}
+        req = fakes.HTTPRequest.blank('/tests', base_url='http://localhost/v2')
+        req.headers = {version_header_name: '2.5'}
         app = fakes.TestRouter(Controller())
+
         response = req.get_response(app)
 
         self.assertEqual(404, response.status_int)
+
+    def test_versions_version_not_acceptable(self):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v2')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        req.headers = {version_header_name: '3.0'}
+
+        response = req.get_response(router.APIRouter())
+
+        self.assertEqual(406, response.status_int)
+        self.assertEqual('3.0', response.headers[version_header_name])
+        self.assertEqual(version_header_name, response.headers['Vary'])
 
 
 @ddt.ddt
 class ExperimentalAPITestCase(test.TestCase):
 
     class Controller(wsgi.Controller):
-        @wsgi.Controller.api_version('1.0', '1.0')
+        @wsgi.Controller.api_version('2.0', '2.0')
         def index(self, req):
             return {'fake_key': 'fake_value'}
 
-        @wsgi.Controller.api_version('1.1', '1.1', experimental=True)  # noqa
+        @wsgi.Controller.api_version('2.1', '2.1', experimental=True)  # noqa
         def index(self, req):  # pylint: disable=E0102
             return {'fake_key': 'fake_value'}
 
     def setUp(self):
         super(ExperimentalAPITestCase, self).setUp()
         self.app = fakes.TestRouter(ExperimentalAPITestCase.Controller())
+        self.req = fakes.HTTPRequest.blank('/tests',
+                                           base_url='http://localhost/v2')
 
     @ddt.data(True, False)
     def test_stable_api_always_called(self, experimental):
 
-        req = fakes.HTTPRequest.blank('/tests')
-        req.headers = {version_header_name: '1.0'}
+        self.req.headers = {version_header_name: '2.0'}
         if experimental:
-            req.headers[experimental_header_name] = experimental
-        response = req.get_response(self.app)
+            self.req.headers[experimental_header_name] = experimental
+        response = self.req.get_response(self.app)
 
         self.assertEqual(200, response.status_int)
-        self.assertEqual('1.0', response.headers[version_header_name])
+        self.assertEqual('2.0', response.headers[version_header_name])
 
         if experimental:
             self.assertEqual(experimental,
@@ -190,22 +189,20 @@ class ExperimentalAPITestCase(test.TestCase):
 
     def test_experimental_api_called_when_requested(self):
 
-        req = fakes.HTTPRequest.blank('/tests')
-        req.headers = {
-            version_header_name: '1.1',
+        self.req.headers = {
+            version_header_name: '2.1',
             experimental_header_name: 'True',
         }
-        response = req.get_response(self.app)
+        response = self.req.get_response(self.app)
 
         self.assertEqual(200, response.status_int)
-        self.assertEqual('1.1', response.headers[version_header_name])
+        self.assertEqual('2.1', response.headers[version_header_name])
         self.assertTrue(response.headers.get(experimental_header_name))
 
     def test_experimental_api_not_called_when_not_requested(self):
 
-        req = fakes.HTTPRequest.blank('/tests')
-        req.headers = {version_header_name: '1.1'}
-        response = req.get_response(self.app)
+        self.req.headers = {version_header_name: '2.1'}
+        response = self.req.get_response(self.app)
 
         self.assertEqual(404, response.status_int)
         self.assertFalse(experimental_header_name in response.headers)
@@ -217,12 +214,11 @@ class ExperimentalAPITestCase(test.TestCase):
                          'max_api_version',
                          mock.Mock(return_value=api_version_request_3_0))
 
-        req = fakes.HTTPRequest.blank('/tests')
-        req.headers = {
-            version_header_name: '1.2',
+        self.req.headers = {
+            version_header_name: '2.2',
             experimental_header_name: 'True',
         }
-        response = req.get_response(self.app)
+        response = self.req.get_response(self.app)
 
         self.assertEqual(404, response.status_int)
         self.assertTrue(response.headers.get(experimental_header_name))

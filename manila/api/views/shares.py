@@ -85,7 +85,7 @@ class ViewBuilder(common.ViewBuilder):
             share_dict['share_server_id'] = share.get('share_server_id')
         return {'share': share_dict}
 
-    @common.ViewBuilder.versioned_method("1.5")
+    @common.ViewBuilder.versioned_method("2.4")
     def add_consistency_group_fields(self, share_dict, share):
         share_dict['consistency_group_id'] = share.get(
             'consistency_group_id')

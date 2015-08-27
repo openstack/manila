@@ -42,7 +42,7 @@ class CGController(wsgi.Controller):
         super(CGController, self).__init__()
         self.cg_api = cg_api.API()
 
-    @wsgi.Controller.api_version('1.5', experimental=True)
+    @wsgi.Controller.api_version('2.4', experimental=True)
     def show(self, req, id):
         """Return data about the given CG."""
         context = req.environ['manila.context']
@@ -55,7 +55,7 @@ class CGController(wsgi.Controller):
 
         return self._view_builder.detail(req, cg)
 
-    @wsgi.Controller.api_version('1.5', experimental=True)
+    @wsgi.Controller.api_version('2.4', experimental=True)
     def delete(self, req, id):
         """Delete a CG."""
         context = req.environ['manila.context']
@@ -76,12 +76,12 @@ class CGController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
-    @wsgi.Controller.api_version('1.5', experimental=True)
+    @wsgi.Controller.api_version('2.4', experimental=True)
     def index(self, req):
         """Returns a summary list of shares."""
         return self._get_cgs(req, is_detail=False)
 
-    @wsgi.Controller.api_version('1.5', experimental=True)
+    @wsgi.Controller.api_version('2.4', experimental=True)
     def detail(self, req):
         """Returns a detailed list of shares."""
         return self._get_cgs(req, is_detail=True)
@@ -108,7 +108,7 @@ class CGController(wsgi.Controller):
             cgs = self._view_builder.summary_list(req, limited_list)
         return cgs
 
-    @wsgi.Controller.api_version('1.5', experimental=True)
+    @wsgi.Controller.api_version('2.4', experimental=True)
     def update(self, req, id, body):
         """Update a share."""
         context = req.environ['manila.context']
@@ -136,7 +136,7 @@ class CGController(wsgi.Controller):
         cg = self.cg_api.update(context, cg, cg_data)
         return self._view_builder.detail(req, cg)
 
-    @wsgi.Controller.api_version('1.5', experimental=True)
+    @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.response(202)
     def create(self, req, body):
         """Creates a new share."""
