@@ -17,14 +17,13 @@ import json
 import time
 import urllib
 
-import six  # noqa
-from tempest_lib.common import rest_client  # noqa
-from tempest_lib.common.utils import data_utils  # noqa
-from tempest_lib import exceptions as lib_exc  # noqa
+import six
+from tempest_lib.common import rest_client
+from tempest_lib.common.utils import data_utils
+from tempest_lib import exceptions
 
-from tempest import config_share as config
-from tempest import exceptions
-from tempest import share_exceptions
+from tempest import config_share as config  # noqa
+from tempest import share_exceptions  # noqa
 
 CONF = config.CONF
 
@@ -392,7 +391,7 @@ class SharesClient(rest_client.RestClient):
     def _is_resource_deleted(self, func, res_id):
         try:
             res = func(res_id)
-        except lib_exc.NotFound:
+        except exceptions.NotFound:
             return True
         if res.get('status') == 'error_deleting':
             # Resource has "error_deleting" status and can not be deleted.
