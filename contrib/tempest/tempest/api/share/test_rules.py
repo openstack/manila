@@ -29,7 +29,7 @@ def _create_delete_ro_access_rule(self):
     :param self: instance of test class
     """
     rule = self.shares_client.create_access_rule(
-        self.share["id"], 'ip', '2.2.2.2', 'ro')
+        self.share["id"], self.access_type, self.access_to, 'ro')
     self.assertEqual('ro', rule['access_level'])
     self.shares_client.wait_for_access_rule_status(
         self.share["id"], rule["id"], "active")
@@ -47,17 +47,18 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
             msg = "IP rule tests for %s protocol are disabled" % cls.protocol
             raise cls.skipException(msg)
         cls.share = cls.create_share(cls.protocol)
+        cls.access_type = "ip"
+        cls.access_to = "2.2.2.2"
 
     @test.attr(type=["gate", ])
     def test_create_delete_access_rules_with_one_ip(self):
 
         # test data
-        access_type = "ip"
         access_to = "1.1.1.1"
 
         # create rule
         rule = self.shares_client.create_access_rule(
-            self.share["id"], access_type, access_to)
+            self.share["id"], self.access_type, access_to)
         self.assertEqual('rw', rule['access_level'])
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
@@ -69,12 +70,11 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
     def test_create_delete_access_rule_with_cidr(self):
 
         # test data
-        access_type = "ip"
         access_to = "1.2.3.4/32"
 
         # create rule
         rule = self.shares_client.create_access_rule(
-            self.share["id"], access_type, access_to)
+            self.share["id"], self.access_type, access_to)
         self.assertEqual('rw', rule['access_level'])
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
