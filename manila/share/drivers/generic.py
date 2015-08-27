@@ -35,6 +35,7 @@ from manila import context
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
+from manila.i18n import _LI
 from manila.i18n import _LW
 from manila.share import driver
 from manila.share.drivers import service_instance
@@ -524,7 +525,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def _deallocate_container(self, context, share):
         """Deletes cinder volume."""
-        volume = self._get_volume(context, share['id'])
+        try:
+            volume = self._get_volume(context, share['id'])
+        except exception.VolumeNotFound:
+            LOG.info(_LI("Volume not found. Already deleted?"))
+            volume = None
         if volume:
             if volume['status'] == 'in-use':
                 raise exception.ManilaException(
