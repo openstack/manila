@@ -1215,6 +1215,20 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             expected_try_count=1,
             expected_ret_val=mock_instance)
 
+    def test_reboot_server(self):
+        fake_server = {'instance_id': mock.sentinel.instance_id}
+        soft_reboot = True
+
+        mock_reboot = mock.Mock()
+        self.mock_object(self._manager.compute_api, 'server_reboot',
+                         mock_reboot)
+
+        self._manager.reboot_server(fake_server, soft_reboot)
+
+        mock_reboot.assert_called_once_with(self._manager.admin_context,
+                                            fake_server['instance_id'],
+                                            soft_reboot)
+
 
 class BaseNetworkHelperTestCase(test.TestCase):
     """Tests Base network helper for service instance."""

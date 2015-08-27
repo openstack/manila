@@ -637,6 +637,11 @@ class ServiceInstanceManager(object):
                  timeout=timeout,
                  instance_status=instance_status))
 
+    def reboot_server(self, server, soft_reboot=False):
+        self.compute_api.server_reboot(self.admin_context,
+                                       server['instance_id'],
+                                       soft_reboot)
+
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseNetworkhelper(object):
