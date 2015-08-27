@@ -33,6 +33,7 @@ EXPECTED_IP_127 = '127.0.0.1'
 EXPECTED_PROJECT_ID = 'osf-nfs-project-id'
 EXPECTED_SHARE_ID = 'osf-share-id'
 EXPECTED_SHARE_NAME = 'share-name'
+EXPECTED_HOST = 'hostname@backend#pool'
 EXPECTED_SHARE_PATH = '/anyfpg/anyvfs/anyfstore'
 EXPECTED_SIZE_1 = 1
 EXPECTED_SIZE_2 = 2

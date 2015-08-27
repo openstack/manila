@@ -14,6 +14,7 @@
 
 import sys
 
+import ddt
 import mock
 if 'hp3parclient' not in sys.modules:
     sys.modules['hp3parclient'] = mock.Mock()
@@ -25,6 +26,7 @@ from manila import test
 from manila.tests.share.drivers.hp import test_hp_3par_constants as constants
 
 
+@ddt.ddt
 class HP3ParDriverTestCase(test.TestCase):
 
     def setUp(self):
@@ -154,6 +156,8 @@ class HP3ParDriverTestCase(test.TestCase):
         context = None
         share_server = None
         share = {
+            'display_name': constants.EXPECTED_SHARE_NAME,
+            'host': constants.EXPECTED_HOST,
             'project_id': expected_project_id,
             'id': expected_share_id,
             'share_proto': protocol,
@@ -173,6 +177,8 @@ class HP3ParDriverTestCase(test.TestCase):
         context = None
         share_server = None
         share = {
+            'display_name': constants.EXPECTED_SHARE_NAME,
+            'host': constants.EXPECTED_HOST,
             'id': expected_share_id,
             'share_proto': protocol,
             'share_type_id': share_type_id,
@@ -235,6 +241,7 @@ class HP3ParDriverTestCase(test.TestCase):
             constants.EXPECTED_EXTRA_SPECS,
             constants.EXPECTED_FPG,
             constants.EXPECTED_VFS,
+            comment=mock.ANY,
             size=constants.EXPECTED_SIZE_2)]
         self.mock_mediator.assert_has_calls(expected_calls)
 
@@ -261,6 +268,7 @@ class HP3ParDriverTestCase(test.TestCase):
                                    constants.EXPECTED_EXTRA_SPECS,
                                    constants.EXPECTED_FPG,
                                    constants.EXPECTED_VFS,
+                                   comment=mock.ANY,
                                    size=constants.EXPECTED_SIZE_1)]
 
         self.mock_mediator.assert_has_calls(expected_calls)
@@ -292,7 +300,8 @@ class HP3ParDriverTestCase(test.TestCase):
                 constants.NFS,
                 constants.EXPECTED_SNAP_ID,
                 constants.EXPECTED_FPG,
-                constants.EXPECTED_VFS),
+                constants.EXPECTED_VFS,
+                comment=mock.ANY),
         ]
         self.mock_mediator.assert_has_calls(expected_calls)
 
@@ -323,7 +332,8 @@ class HP3ParDriverTestCase(test.TestCase):
                 constants.NFS,
                 constants.EXPECTED_SNAP_ID,
                 constants.EXPECTED_FPG,
-                constants.EXPECTED_VFS)
+                constants.EXPECTED_VFS,
+                comment=mock.ANY),
         ]
 
         self.mock_mediator.assert_has_calls(expected_calls)
@@ -508,3 +518,34 @@ class HP3ParDriverTestCase(test.TestCase):
         result = self.driver.get_share_stats(refresh=True)
         self.assertEqual(expected_result, result)
         self.assertFalse(self.mock_mediator.get_fpg_status.called)
+
+    @ddt.data(('test"dquote', 'test_dquote'),
+              ("test'squote", "test_squote"),
+              ('test-:;,.punc', 'test-:_punc'),
+              ('test with spaces ', 'test with spaces '),
+              ('x' * 300, 'x' * 300))
+    @ddt.unpack
+    def test_build_comment(self, display_name, clean_name):
+
+        host = 'test-stack1@backend#pool'
+        share = {
+            'host': host,
+            'display_name': display_name
+        }
+        comment = self.driver.build_share_comment(share)
+
+        cleaned = {
+            'host': host,
+            'clean_name': clean_name
+        }
+
+        expected = ("OpenStack Manila - host=%(host)s  "
+                    "orig_name=%(clean_name)s created=" % cleaned)[:254]
+
+        self.assertLess(len(comment), 255)
+        self.assertTrue(comment.startswith(expected))
+
+        # Test for some chars that are not allowed.
+        # Don't test with same regex as the code uses.
+        for c in "'\".,;":
+            self.assertNotIn(c, comment)
