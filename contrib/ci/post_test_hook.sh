@@ -88,7 +88,7 @@ fi
 set +o errexit
 cd $BASE/new/tempest
 
-export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-12}
+export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-6}
 export MANILA_TESTS=${MANILA_TESTS:-'manila_tempest_tests.tests.api'}
 
 if [[ "$JOB_NAME" =~ "scenario" ]]; then
