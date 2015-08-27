@@ -63,6 +63,15 @@ be created.
   prevent a share type from using deduplication by setting this extra-spec to
   '<is> False'. Added in Liberty.
 
+* `compression` - indicates that a backend/pool can provide shares using some
+  compression technology. The default value of the compression capability (if a
+  driver doesn't report it) is False. Drivers cannot report to the scheduler
+  that they support both compression and non-compression. For each pool it's
+  either always on or always off. Administrators can make a share type use
+  compression by setting this extra-spec to '<is> True'. Administrators can
+  prevent a share type from using compression by setting this extra-spec to
+  '<is> False'. Added in Liberty.
+
 * `thin_provisioning` - shares will not be space guaranteed and
   overprovisioning will be enabled. This capability defaults to False.
   Backends/pools that support thin provisioning must report True for this
@@ -104,13 +113,15 @@ example vendor prefix:
         'my_capability_2': True,                 # stats & capabilities
                                                  #/
         'pools': [
-            {'pool_name': 'thin-dedupe pool',    #\
+            {'pool_name': 
+               'thin-dedupe-compression pool',   #\
              'total_capacity_gb': 500,           #  mandatory stats for
              'free_capacity_gb': 230,            #  pools
              'QoS_support': 'False',             # |
              'reserved_percentage': 0,           #/
                                                  #\
              'dedupe': True,                     # common capabilities
+             'compression': True,                #
              'thin_provisioning': True,          #
              'max_over_subscription_ratio': 10,  # (mandatory for thin)
              'provisioned_capacity_gb': 270,     # (mandatory for thin)
@@ -126,6 +137,7 @@ example vendor prefix:
              'QoS_support': 'False',
              'reserved_percentage': 0,
              'dedupe': False,
+             'compression': False,
              'thin_provisioning': False,
              'my_dying_disks': 200,
              'my_super_hero_1': 'Batman',
