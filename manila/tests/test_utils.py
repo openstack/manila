@@ -193,6 +193,7 @@ class GetFromPathTestCase(test.TestCase):
         self.assertEqual(['b_1'], f(input, "a/b"))
 
 
+@ddt.ddt
 class GenericUtilsTestCase(test.TestCase):
     def test_read_cached_file(self):
         cache_data = {"data": 1123, "mtime": 1}
@@ -331,6 +332,26 @@ class GenericUtilsTestCase(test.TestCase):
                 'eventlet.support.greendns': fake_dns}):
             self.assertFalse(utils.is_eventlet_bug105())
             fake_dns.getaddrinfo.assert_called_once_with('::1', 80)
+
+    @ddt.data(['ssh', '-D', 'my_name@name_of_remote_computer'],
+              ['echo', '"quoted arg with space"'],
+              ['echo', "'quoted arg with space'"])
+    def test_check_ssh_injection(self, cmd):
+        cmd_list = cmd
+        self.assertIsNone(utils.check_ssh_injection(cmd_list))
+
+    @ddt.data(['ssh', 'my_name@      name_of_remote_computer'],
+              ['||', 'my_name@name_of_remote_computer'],
+              ['cmd', 'virus;ls'],
+              ['cmd', '"arg\"withunescaped"'],
+              ['cmd', 'virus;"quoted argument"'],
+              ['echo', '"quoted argument";rm -rf'],
+              ['echo', "'quoted argument `rm -rf`'"],
+              ['echo', '"quoted";virus;"quoted"'],
+              ['echo', '"quoted";virus;\'quoted\''])
+    def test_check_ssh_injection_on_error0(self, cmd):
+        self.assertRaises(exception.SSHInjectionThreat,
+                          utils.check_ssh_injection, cmd)
 
 
 class MonkeyPatchTestCase(test.TestCase):
