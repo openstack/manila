@@ -18,10 +18,6 @@ the ``DEFAULT_API_VERSION`` as defined in
 ``manila/api/openstack/wsgi.py``.  This value is currently ``1.0`` and
 is expected to remain so for quite a long time.
 
-There is a special value ``latest`` which can be specified, which will
-allow a client to always receive the most recent version of API
-responses from the server.
-
 The Nova project was the first to implement microversions. For full
 details please read Nova's `Kilo spec for microversions
 <http://git.openstack.org/cgit/openstack/nova-specs/tree/specs/kilo/implemented/api-microversions.rst>`_

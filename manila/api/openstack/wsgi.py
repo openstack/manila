@@ -222,23 +222,18 @@ class Request(webob.Request):
         else:
             if API_VERSION_REQUEST_HEADER in self.headers:
                 hdr_string = self.headers[API_VERSION_REQUEST_HEADER]
-                # 'latest' is a special keyword which is equivalent to
-                # requesting the maximum version of the API supported
-                if hdr_string == 'latest':
-                    self.api_version_request = api_version.max_api_version()
-                else:
-                    self.api_version_request = api_version.APIVersionRequest(
-                        hdr_string)
+                self.api_version_request = api_version.APIVersionRequest(
+                    hdr_string)
 
-                    # Check that the version requested is within the global
-                    # minimum/maximum of supported API versions
-                    if not self.api_version_request.matches(
-                            api_version.min_api_version(),
-                            api_version.max_api_version()):
-                        raise exception.InvalidGlobalAPIVersion(
-                            req_ver=self.api_version_request.get_string(),
-                            min_ver=api_version.min_api_version().get_string(),
-                            max_ver=api_version.max_api_version().get_string())
+                # Check that the version requested is within the global
+                # minimum/maximum of supported API versions
+                if not self.api_version_request.matches(
+                        api_version.min_api_version(),
+                        api_version.max_api_version()):
+                    raise exception.InvalidGlobalAPIVersion(
+                        req_ver=self.api_version_request.get_string(),
+                        min_ver=api_version.min_api_version().get_string(),
+                        max_ver=api_version.max_api_version().get_string())
 
             else:
                 self.api_version_request = api_version.APIVersionRequest(
