@@ -777,6 +777,19 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver.volume_api.get.assert_called_once_with(
             self._context, fake_vol['id'])
 
+    def test_deallocate_container_with_volume_not_found(self):
+        fake_vol = fake_volume.FakeVolume()
+        self.mock_object(self._driver, '_get_volume',
+                         mock.Mock(side_effect=exception.VolumeNotFound(
+                             volume_id=fake_vol['id'])))
+        self.mock_object(self._driver.volume_api, 'delete')
+
+        self._driver._deallocate_container(self._context, self.share)
+
+        self._driver._get_volume.assert_called_once_with(
+            self._context, self.share['id'])
+        self.assertFalse(self._driver.volume_api.delete.called)
+
     def test_create_share_from_snapshot(self):
         vol1 = 'fake_vol1'
         vol2 = 'fake_vol2'
