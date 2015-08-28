@@ -246,7 +246,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         shares = self.shares_client.list_shares_with_detail(params=filters)
 
         # verify response
-        self.assertTrue(len(shares) > 1)
+        self.assertTrue(len(shares) > 0)
         for share in shares:
             self.assertEqual(
                 filters['share_network_id'], share['share_network_id'])
