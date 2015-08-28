@@ -186,6 +186,13 @@ class ShareDatabaseAPITestCase(test.TestCase):
         self.assertRaises(exception.NotFound, db_api.share_get,
                           self.ctxt, share['id'])
 
+    def test_share_instance_get(self):
+        share = db_utils.create_share()
+
+        instance = db_api.share_instance_get(self.ctxt, share.instance['id'])
+
+        self.assertEqual('share-%s' % instance['id'], instance['name'])
+
     @ddt.data('host')
     def test_share_get_all_sort_by_share_instance_fields(self, sort_key):
         shares = [db_utils.create_share(**{sort_key: n, 'size': 1})

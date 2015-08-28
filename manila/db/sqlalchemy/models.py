@@ -267,8 +267,8 @@ class Share(BASE, ManilaBase):
 class ShareInstance(BASE, ManilaBase):
     __tablename__ = 'share_instances'
 
-    _extra_keys = ['export_location', 'availability_zone']
-    _proxified_properties = ('name', 'user_id', 'project_id', 'size',
+    _extra_keys = ['name', 'export_location', 'availability_zone']
+    _proxified_properties = ('user_id', 'project_id', 'size',
                              'display_name', 'display_description',
                              'snapshot_id', 'share_proto', 'share_type_id',
                              'is_public')
@@ -276,6 +276,10 @@ class ShareInstance(BASE, ManilaBase):
     def set_share_data(self, share):
         for share_property in self._proxified_properties:
             setattr(self, share_property, share[share_property])
+
+    @property
+    def name(self):
+        return CONF.share_name_template % self.id
 
     @property
     def export_location(self):
