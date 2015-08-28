@@ -364,8 +364,17 @@ class SharesClient(rest_client.RestClient):
         :raises share_exceptions.InvalidResource
         """
         if "share_id" in kwargs:
-            return self._is_resource_deleted(
-                self.get_share, kwargs.get("share_id"))
+            if "rule_id" in kwargs:
+                rule_id = kwargs.get("rule_id")
+                share_id = kwargs.get("share_id")
+                rules = self.list_access_rules(share_id)
+                for rule in rules:
+                    if rule["id"] == rule_id:
+                        return False
+                return True
+            else:
+                return self._is_resource_deleted(
+                    self.get_share, kwargs.get("share_id"))
         elif "snapshot_id" in kwargs:
             return self._is_resource_deleted(
                 self.get_snapshot, kwargs.get("snapshot_id"))

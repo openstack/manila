@@ -34,6 +34,8 @@ def _create_delete_ro_access_rule(self):
     self.shares_client.wait_for_access_rule_status(
         self.share["id"], rule["id"], "active")
     self.shares_client.delete_access_rule(self.share["id"], rule["id"])
+    self.shares_client.wait_for_resource_deletion(
+        rule_id=rule["id"], share_id=self.share['id'])
 
 
 class ShareIpRulesForNFSTest(base.BaseSharesTest):
@@ -63,8 +65,10 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
-        # delete rule
+        # delete rule and wait for deletion
         self.shares_client.delete_access_rule(self.share["id"], rule["id"])
+        self.shares_client.wait_for_resource_deletion(
+            rule_id=rule["id"], share_id=self.share['id'])
 
     @test.attr(type=["gate", ])
     def test_create_delete_access_rule_with_cidr(self):
@@ -79,8 +83,10 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
-        # delete rule
+        # delete rule and wait for deletion
         self.shares_client.delete_access_rule(self.share["id"], rule["id"])
+        self.shares_client.wait_for_resource_deletion(
+            rule_id=rule["id"], share_id=self.share['id'])
 
     @test.attr(type=["gate", ])
     @testtools.skipIf(
@@ -126,8 +132,10 @@ class ShareUserRulesForNFSTest(base.BaseSharesTest):
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
-        # delete rule
+        # delete rule and wait for deletion
         self.shares_client.delete_access_rule(self.share["id"], rule["id"])
+        self.shares_client.wait_for_resource_deletion(
+            rule_id=rule["id"], share_id=self.share['id'])
 
     @test.attr(type=["gate", ])
     @testtools.skipIf(
