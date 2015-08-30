@@ -284,6 +284,29 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             assert_called_once_with(fake.AGGREGATES)
         self.assertDictEqual(fake.AGGREGATE_CAPACITIES, result)
 
+    def test_get_aggregate_node_cluster_creds(self):
+
+        self.library._have_cluster_creds = True
+        self.mock_object(self.library._client,
+                         'get_node_for_aggregate',
+                         mock.Mock(return_value=fake.CLUSTER_NODE))
+
+        result = self.library._get_aggregate_node(fake.AGGREGATE)
+
+        self.library._client.get_node_for_aggregate.\
+            assert_called_once_with(fake.AGGREGATE)
+        self.assertEqual(fake.CLUSTER_NODE, result)
+
+    def test_get_aggregate_node_no_cluster_creds(self):
+
+        self.library._have_cluster_creds = False
+        self.mock_object(self.library._client, 'get_node_for_aggregate')
+
+        result = self.library._get_aggregate_node(fake.AGGREGATE)
+
+        self.assertFalse(self.library._client.get_node_for_aggregate.called)
+        self.assertIsNone(result)
+
     def test_get_share_stats(self):
 
         self.mock_object(self.library,
@@ -895,6 +918,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=protocol_helper))
         vserver_client = mock.Mock()
         vserver_client.get_network_interfaces.return_value = fake.LIFS
+        mock_sort_lifs_by_aggregate_locality = self.mock_object(
+            self.library, '_sort_lifs_by_aggregate_locality',
+            mock.Mock(return_value=fake.LIFS))
 
         result = self.library._create_export(fake.SHARE,
                                              fake.VSERVER1,
@@ -903,6 +929,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(fake.NFS_EXPORTS, result)
         protocol_helper.create_share.assert_called_once_with(
             fake.SHARE, fake.SHARE_NAME, fake.LIF_ADDRESSES)
+        mock_sort_lifs_by_aggregate_locality.assert_called_once_with(
+            fake.SHARE, fake.LIFS)
 
     def test_create_export_lifs_not_found(self):
 
@@ -915,6 +943,37 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.SHARE,
                           fake.VSERVER1,
                           vserver_client)
+
+    @ddt.data(fake.CLUSTER_NODES[0], fake.CLUSTER_NODES[1])
+    def test_sort_lifs_by_aggregate_locality(self, node):
+
+        mock_get_aggregate_node = self.mock_object(
+            self.library, '_get_aggregate_node', mock.Mock(return_value=node))
+
+        fake_share = copy.deepcopy(fake.SHARE)
+        fake_share['host'] = 'fake_host@fake_backend#fake_pool'
+
+        result = self.library._sort_lifs_by_aggregate_locality(fake.SHARE,
+                                                               fake.LIFS)
+
+        mock_get_aggregate_node.assert_called_once_with('fake_pool')
+        self.assertEqual(2, len(result))
+        self.assertEqual(node, result[0]['home-node'])
+
+    def test_sort_lifs_by_aggregate_locality_node_unknown(self):
+
+        mock_get_aggregate_node = self.mock_object(
+            self.library, '_get_aggregate_node', mock.Mock(return_value=None))
+
+        fake_share = copy.deepcopy(fake.SHARE)
+        fake_share['host'] = 'fake_host@fake_backend#fake_pool'
+
+        result = self.library._sort_lifs_by_aggregate_locality(fake.SHARE,
+                                                               fake.LIFS)
+
+        mock_get_aggregate_node.assert_called_once_with('fake_pool')
+        self.assertEqual(2, len(result))
+        self.assertEqual(fake.LIFS, result)
 
     def test_remove_export(self):
 

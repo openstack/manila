@@ -771,6 +771,23 @@ AGGR_GET_SPACE_RESPONSE = etree.XML("""
     'aggr2': SHARE_AGGREGATE_NAMES[1],
 })
 
+AGGR_GET_NODE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-ownership-attributes>
+          <home-name>%(node)s</home-name>
+        </aggr-ownership-attributes>
+        <aggregate-name>%(aggr)s</aggregate-name>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': SHARE_AGGREGATE_NAME,
+    'node': NODE_NAME
+})
+
 AGGR_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
