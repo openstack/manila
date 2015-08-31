@@ -57,7 +57,7 @@ class CapacityFilter(filters.BaseHostFilter):
             # is not 0, we cannot calculate the reserved space.
             # float(total_space) will throw an exception. total*reserved
             # also won't work. So the back-ends cannot serve the request.
-            return reserved == 0
+            return reserved == 0 and share_size <= free_space
         total = float(total_space)
         if total <= 0:
             LOG.warning(_LW("Insufficient free space for share creation. "
