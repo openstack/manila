@@ -61,7 +61,7 @@ class CapacityWeigher(weights.BaseHostWeigher):
             free = float('inf')
         else:
             total = float(total_space)
-            if host_state.thin_provisioning_support:
+            if host_state.thin_provisioning:
                 # NOTE(xyang): Calculate virtual free capacity for thin
                 # provisioning.
                 free = math.floor(
