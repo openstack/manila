@@ -20,6 +20,10 @@ class ShareBuildErrorException(exceptions.TempestException):
     message = "Share %(share_id)s failed to build and is in ERROR status"
 
 
+class ShareInstanceBuildErrorException(exceptions.TempestException):
+    message = "Share instance %(id)s failed to build and is in ERROR status"
+
+
 class AccessRuleBuildErrorException(exceptions.TempestException):
     message = "Share's rule with id %(rule_id)s is in ERROR status"
 

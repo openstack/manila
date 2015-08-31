@@ -30,6 +30,9 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         cls.states = ["error", "available"]
         cls.bad_status = "error_deleting"
         cls.sh = cls.create_share()
+        cls.sh_instance = (
+            cls.shares_client.get_instances_of_share(cls.sh["id"])[0]
+        )
         if CONF.share.run_snapshot_tests:
             cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
 
@@ -38,6 +41,14 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         for status in self.states:
             self.shares_client.reset_state(self.sh["id"], status=status)
             self.shares_client.wait_for_share_status(self.sh["id"], status)
+
+    @test.attr(type=["gate", ])
+    def test_reset_share_instance_state(self):
+        id = self.sh_instance["id"]
+        for status in self.states:
+            self.shares_client.reset_state(
+                id, s_type="share_instances", status=status)
+            self.shares_client.wait_for_share_instance_status(id, status)
 
     @test.attr(type=["gate", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
@@ -62,6 +73,29 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         # Share with status 'error_deleting' should be deleted
         self.shares_client.force_delete(share["id"])
         self.shares_client.wait_for_resource_deletion(share_id=share["id"])
+
+    @test.attr(type=["gate", ])
+    def test_force_delete_share_instance(self):
+        share = self.create_share(cleanup_in_class=False)
+        instances = self.shares_client.get_instances_of_share(share["id"])
+        # Check that instance was created
+        self.assertEqual(1, len(instances))
+
+        instance = instances[0]
+
+        # Change status from 'available' to 'error_deleting'
+        self.shares_client.reset_state(
+            instance["id"], s_type="share_instances", status=self.bad_status)
+
+        # Check that status was changed
+        check_status = self.shares_client.get_share_instance(instance["id"])
+        self.assertEqual(self.bad_status, check_status["status"])
+
+        # Share with status 'error_deleting' should be deleted
+        self.shares_client.force_delete(
+            instance["id"], s_type="share_instances")
+        self.shares_client.wait_for_resource_deletion(
+            share_instance_id=instance["id"])
 
     @test.attr(type=["gate", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,

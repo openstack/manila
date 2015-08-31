@@ -303,6 +303,11 @@ def share_instance_update(context, instance_id, values, with_share_data=False):
                                       with_share_data=with_share_data)
 
 
+def share_instances_get_all(context):
+    """Returns all share instances."""
+    return IMPL.share_instances_get_all(context)
+
+
 def share_instances_get_all_by_share_server(context, share_server_id):
     """Returns all share instances with given share_server_id."""
     return IMPL.share_instances_get_all_by_share_server(context,

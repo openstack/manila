@@ -30,6 +30,9 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     def resource_setup(cls):
         super(AdminActionsNegativeTest, cls).resource_setup()
         cls.sh = cls.create_share()
+        cls.sh_instance = (
+            cls.shares_client.get_instances_of_share(cls.sh["id"])[0]
+        )
         if CONF.share.run_snapshot_tests:
             cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
         cls.member_shares_client = clients.Manager().shares_client
@@ -38,6 +41,11 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     def test_reset_nonexistent_share_state(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.reset_state, "fake")
+
+    @test.attr(type=["gate", "negative", ])
+    def test_reset_nonexistent_share_instance_state(self):
+        self.assertRaises(lib_exc.NotFound, self.shares_client.reset_state,
+                          "fake", s_type="share_instances")
 
     @test.attr(type=["gate", "negative", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
@@ -51,6 +59,16 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(lib_exc.BadRequest,
                           self.shares_client.reset_state,
                           self.sh["id"], status="fake")
+
+    @test.attr(type=["gate", "negative", ])
+    def test_reset_share_instance_state_to_unacceptable_state(self):
+        self.assertRaises(
+            lib_exc.BadRequest,
+            self.shares_client.reset_state,
+            self.sh_instance["id"],
+            s_type="share_instances",
+            status="fake"
+        )
 
     @test.attr(type=["gate", "negative", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
@@ -68,6 +86,13 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.sh["id"])
 
     @test.attr(type=["gate", "negative", ])
+    def test_try_reset_share_instance_state_with_member(self):
+        # Even if member from another tenant, it should be unauthorized
+        self.assertRaises(lib_exc.Forbidden,
+                          self.member_shares_client.reset_state,
+                          self.sh_instance["id"], s_type="share_instances")
+
+    @test.attr(type=["gate", "negative", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_try_reset_snapshot_state_with_member(self):
@@ -80,6 +105,13 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     def test_force_delete_nonexistent_share(self):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.force_delete, "fake")
+
+    @test.attr(type=["gate", "negative", ])
+    def test_force_delete_nonexistent_share_instance(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_client.force_delete,
+                          "fake",
+                          s_type="share_instances")
 
     @test.attr(type=["gate", "negative", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
@@ -98,6 +130,13 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
                           self.sh["id"])
 
     @test.attr(type=["gate", "negative", ])
+    def test_try_force_delete_share_instance_with_member(self):
+        # If a non-admin tries to do force_delete, it should be unauthorized
+        self.assertRaises(lib_exc.Forbidden,
+                          self.member_shares_client.force_delete,
+                          self.sh_instance["id"], s_type="share_instances")
+
+    @test.attr(type=["gate", "negative", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_try_force_delete_snapshot_with_member(self):
@@ -105,3 +144,24 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_client.force_delete,
                           self.sn["id"], s_type="snapshots")
+
+    @test.attr(type=["gate", "negative", ])
+    def test_try_get_share_instance_with_member(self):
+        # If a non-admin tries to get instance, it should be unauthorized
+        self.assertRaises(lib_exc.Forbidden,
+                          self.member_shares_client.get_share_instance,
+                          self.sh_instance["id"])
+
+    @test.attr(type=["gate", "negative", ])
+    def test_try_list_share_instance_with_member(self):
+        # If a non-admin tries to list instances, it should be unauthorized
+        self.assertRaises(lib_exc.Forbidden,
+                          self.member_shares_client.list_share_instances)
+
+    @test.attr(type=["gate", "negative", ])
+    def test_try_get_instances_of_share_with_member(self):
+        # If a non-admin tries to list instances of given share, it should be
+        # unauthorized
+        self.assertRaises(lib_exc.Forbidden,
+                          self.member_shares_client.get_instances_of_share,
+                          self.sh['id'])

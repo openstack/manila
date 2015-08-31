@@ -18,6 +18,9 @@
     "share:extend": "",
     "share:shrink": "",
 
+    "share_instance:index": "rule:admin_api",
+    "share_instance:show": "rule:admin_api",
+
     "share_network:create": "",
     "share_network:index": "",
     "share_network:detail": "",
@@ -38,6 +41,8 @@
     "share_extension:share_admin_actions:reset_status": "rule:admin_api",
     "share_extension:snapshot_admin_actions:force_delete": "rule:admin_api",
     "share_extension:snapshot_admin_actions:reset_status": "rule:admin_api",
+    "share_extension:share_instance_admin_actions:force_delete": "rule:admin_api",
+    "share_extension:share_instance_admin_actions:reset_status": "rule:admin_api",
     "share_extension:types_manage": "",
     "share_extension:types_extra_specs": "",
     "share_extension:share_type_access": "",
