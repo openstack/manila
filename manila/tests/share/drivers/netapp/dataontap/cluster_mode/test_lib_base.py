@@ -312,16 +312,27 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.assertListEqual(fake.POOLS, result)
 
-    def test_get_pools(self):
+    @ddt.data(
+        {
+            'capacities': fake.AGGREGATE_CAPACITIES,
+            'pools': fake.POOLS,
+        },
+        {
+            'capacities': fake.AGGREGATE_CAPACITIES_VSERVER_CREDS,
+            'pools': fake.POOLS_VSERVER_CREDS
+        }
+    )
+    @ddt.unpack
+    def test_get_pools(self, capacities, pools):
 
         self.mock_object(self.library,
                          '_get_aggregate_space',
-                         mock.Mock(return_value=fake.AGGREGATE_CAPACITIES))
+                         mock.Mock(return_value=capacities))
         self.library._ssc_stats = fake.SSC_INFO
 
         result = self.library._get_pools()
 
-        self.assertListEqual(fake.POOLS, result)
+        self.assertListEqual(pools, result)
 
     def test_handle_ems_logging(self):
 

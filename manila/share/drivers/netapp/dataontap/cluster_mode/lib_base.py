@@ -233,6 +233,9 @@ class NetAppCmodeFileStorageLibrary(object):
             allocated_capacity_gb = na_utils.round_down(float(
                 aggr_space[aggr_name].get('used', 0)) / units.Gi, '0.01')
 
+            if total_capacity_gb == 0.0:
+                total_capacity_gb = 'unknown'
+
             pool = {
                 'pool_name': aggr_name,
                 'total_capacity_gb': total_capacity_gb,
