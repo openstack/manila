@@ -184,6 +184,10 @@ class InvalidGlobalAPIVersion(Invalid):
                 "is %(min_ver)s and maximum is %(max_ver)s.")
 
 
+class InvalidCapacity(Invalid):
+    message = _("Invalid capacity: %(name)s = %(value)s.")
+
+
 class NotFound(ManilaException):
     message = _("Resource could not be found.")
     code = 404

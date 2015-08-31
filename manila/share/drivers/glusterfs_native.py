@@ -909,8 +909,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # TODO(deepakcs): Change below once glusterfs supports volume
         # specific stats via the gluster cli.
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
+        data['total_capacity_gb'] = 'unknown'
+        data['free_capacity_gb'] = 'unknown'
 
         super(GlusterfsNativeShareDriver, self)._update_share_stats(data)
 

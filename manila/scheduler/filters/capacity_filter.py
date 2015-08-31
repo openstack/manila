@@ -44,16 +44,16 @@ class CapacityFilter(filters.BaseHostFilter):
         free_space = host_state.free_capacity_gb
         total_space = host_state.total_capacity_gb
         reserved = float(host_state.reserved_percentage) / 100
-        if free_space in ('infinite', 'unknown'):
+        if free_space == 'unknown':
             # NOTE(zhiteng) for those back-ends cannot report actual
             # available capacity, we assume it is able to serve the
             # request.  Even if it was not, the retry mechanism is
             # able to handle the failure by rescheduling
             return True
-        elif total_space in ('infinite', 'unknown'):
-            # NOTE(xyang): If total_space is 'infinite' or 'unknown' and
+        elif total_space == 'unknown':
+            # NOTE(xyang): If total_space is 'unknown' and
             # reserved is 0, we assume the back-ends can serve the request.
-            # If total_space is 'infinite' or 'unknown' and reserved
+            # If total_space is 'unknown' and reserved
             # is not 0, we cannot calculate the reserved space.
             # float(total_space) will throw an exception. total*reserved
             # also won't work. So the back-ends cannot serve the request.

@@ -290,15 +290,16 @@ class HostState(object):
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""
-        share_gb = share['size']
-        if self.free_capacity_gb == 'infinite':
-            # There's virtually infinite space on back-end
-            pass
-        elif self.free_capacity_gb == 'unknown':
-            # Unable to determine the actual free space on back-end
-            pass
-        else:
-            self.free_capacity_gb -= share_gb
+
+        if (isinstance(self.free_capacity_gb, six.string_types)
+                and self.free_capacity_gb != 'unknown'):
+            raise exception.InvalidCapacity(
+                name='free_capacity_gb',
+                value=six.text_type(self.free_capacity_gb)
+            )
+
+        if self.free_capacity_gb != 'unknown':
+            self.free_capacity_gb -= share['size']
         self.updated = timeutils.utcnow()
 
     def __repr__(self):
