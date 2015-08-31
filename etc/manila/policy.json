@@ -26,6 +26,9 @@
     "share:delete_share_metadata": "rule:default",
     "share:update_share_metadata": "rule:default",
 
+    "share_instance:index": "rule:admin_api",
+    "share_instance:show": "rule:admin_api",
+
     "share_extension:quotas:show": "",
     "share_extension:quotas:update": "rule:admin_api",
     "share_extension:quotas:delete": "rule:admin_api",
@@ -35,6 +38,8 @@
     "share_extension:share_admin_actions:reset_status": "rule:admin_api",
     "share_extension:snapshot_admin_actions:force_delete": "rule:admin_api",
     "share_extension:snapshot_admin_actions:reset_status": "rule:admin_api",
+    "share_extension:share_instance_admin_actions:force_delete": "rule:admin_api",
+    "share_extension:share_instance_admin_actions:reset_status": "rule:admin_api",
 
     "share_extension:services": "rule:admin_api",
     "share_extension:availability_zones": "",

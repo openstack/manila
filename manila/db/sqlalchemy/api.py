@@ -1184,6 +1184,15 @@ def share_instance_get(context, share_instance_id, session=None,
     return result
 
 
+@require_admin_context
+def share_instances_get_all(context):
+    session = get_session()
+    return (
+        model_query(context, models.ShareInstance, session=session,
+                    read_deleted="no").all()
+    )
+
+
 @require_context
 def share_instance_delete(context, instance_id, session=None):
     if session is None:

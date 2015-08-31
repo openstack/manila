@@ -87,6 +87,14 @@ class AdminActionsTest(test.TestCase):
                                   snapshot['id'])
         return snapshot, req
 
+    def _setup_share_instance_data(self, instance=None):
+        if instance is None:
+            instance = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                             size='1').instance
+        req = webob.Request.blank(
+            '/v1/fake/share_instances/%s/action' % instance['id'])
+        return instance, req
+
     def _reset_status(self, ctxt, model, req, db_access_method,
                       valid_code, valid_status=None, body=None):
         if body is None:
@@ -130,6 +138,17 @@ class AdminActionsTest(test.TestCase):
         self._reset_status(ctxt, snapshot, req, db.share_snapshot_get,
                            valid_code, valid_status)
 
+    @ddt.data(*fixture_reset_status_with_different_roles)
+    @ddt.unpack
+    def test_share_instances_reset_status_with_different_roles(self, role,
+                                                               valid_code,
+                                                               valid_status):
+        ctxt = self._get_context(role)
+        instance, req = self._setup_share_instance_data()
+
+        self._reset_status(ctxt, instance, req, db.share_instance_get,
+                           valid_code, valid_status)
+
     @ddt.data(*fixture_invalid_reset_status_body)
     def test_share_invalid_reset_status_body(self, body):
         share, req = self._setup_share_data()
@@ -144,6 +163,14 @@ class AdminActionsTest(test.TestCase):
 
         self._reset_status(self.admin_context, snapshot, req,
                            db.share_snapshot_get, 400,
+                           constants.STATUS_AVAILABLE, body)
+
+    @ddt.data(*fixture_invalid_reset_status_body)
+    def test_share_instance_invalid_reset_status_body(self, body):
+        instance, req = self._setup_share_instance_data()
+
+        self._reset_status(self.admin_context, instance, req,
+                           db.share_instance_get, 400,
                            constants.STATUS_AVAILABLE, body)
 
     def test_share_reset_status_for_missing(self):
@@ -201,3 +228,19 @@ class AdminActionsTest(test.TestCase):
         ctxt = self._get_context('admin')
 
         self._force_delete(ctxt, snapshot, req, db.share_snapshot_get, 404)
+
+    @ddt.data(*fixture_force_delete_with_different_roles)
+    @ddt.unpack
+    def test_instance_force_delete_with_different_roles(self, role, resp_code):
+        instance, req = self._setup_share_instance_data()
+        ctxt = self._get_context(role)
+
+        self._force_delete(ctxt, instance, req, db.share_instance_get,
+                           resp_code)
+
+    def test_instance_force_delete_missing(self):
+        instance, req = self._setup_share_instance_data(
+            instance={'id': 'fake'})
+        ctxt = self._get_context('admin')
+
+        self._force_delete(ctxt, instance, req, db.share_instance_get, 404)

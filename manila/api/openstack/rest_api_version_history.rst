@@ -40,3 +40,7 @@ user documentation.
 ---
   Snapshots become optional and share payload now has
   boolean attr 'snapshot_support'.
+
+1.4
+---
+  Share instances admin API and update of Admin Actions extension.

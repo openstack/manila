@@ -48,6 +48,9 @@ class SharesClient(rest_client.RestClient):
         self.build_timeout = CONF.share.build_timeout
         self.API_MICROVERSIONS_HEADER = 'x-openstack-manila-api-version'
 
+    def _get_version_dict(self, version):
+        return {self.API_MICROVERSIONS_HEADER: version}
+
     def send_microversion_request(self, version=None):
         """Prepare and send the HTTP GET Request to the base URL.
 
@@ -141,6 +144,27 @@ class SharesClient(rest_client.RestClient):
 
     def get_share(self, share_id):
         resp, body = self.get("shares/%s" % share_id)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_instances_of_share(self, share_id):
+        resp, body = self.get("shares/%s/instances" % share_id,
+                              headers=self._get_version_dict('1.4'),
+                              extra_headers=True)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_share_instances(self):
+        resp, body = self.get("share_instances",
+                              headers=self._get_version_dict('1.4'),
+                              extra_headers=True)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_share_instance(self, instance_id):
+        resp, body = self.get("share_instances/%s" % instance_id,
+                              headers=self._get_version_dict('1.4'),
+                              extra_headers=True)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
@@ -262,6 +286,28 @@ class SharesClient(rest_client.RestClient):
                            (share_name, status, self.build_timeout))
                 raise exceptions.TimeoutException(message)
 
+    def wait_for_share_instance_status(self, instance_id, status):
+        """Waits for a share to reach a given status."""
+        body = self.get_share_instance(instance_id)
+        instance_status = body['status']
+        start = int(time.time())
+
+        while instance_status != status:
+            time.sleep(self.build_interval)
+            body = self.get_share(instance_id)
+            instance_status = body['status']
+            if instance_status == status:
+                return
+            elif 'error' in instance_status.lower():
+                raise share_exceptions.\
+                    ShareInstanceBuildErrorException(id=instance_id)
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ('Share instance %s failed to reach %s status within'
+                           ' the required time (%s s).' %
+                           (instance_id, status, self.build_timeout))
+                raise exceptions.TimeoutException(message)
+
     def wait_for_snapshot_status(self, snapshot_id, status):
         """Waits for a snapshot to reach a given status."""
         body = self.get_snapshot(snapshot_id)
@@ -375,6 +421,9 @@ class SharesClient(rest_client.RestClient):
             else:
                 return self._is_resource_deleted(
                     self.get_share, kwargs.get("share_id"))
+        elif "share_instance_id" in kwargs:
+            return self._is_resource_deleted(
+                self.get_share_instance, kwargs.get("share_instance_id"))
         elif "snapshot_id" in kwargs:
             return self._is_resource_deleted(
                 self.get_snapshot, kwargs.get("snapshot_id"))
