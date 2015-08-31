@@ -1248,13 +1248,13 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.driver.plugin.helper.login()
         result = self.driver.deny_access(self._context, self.share_nfs,
                                          self.access_user, self.share_server)
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_deny_access_user_proto_fail(self):
         self.driver.plugin.helper.login()
         result = self.driver.deny_access(self._context, self.share_cifs,
                                          self.access_ip, self.share_server)
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_allow_access_ip_share_not_exist(self):
         self.driver.plugin.helper.login()
@@ -1511,7 +1511,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.driver.plugin.helper.login()
         self.driver.plugin.helper.share_exist = False
         pool_name = self.driver.get_pool(self.share_nfs_host_not_exist)
-        self.assertEqual(None, pool_name)
+        self.assertIsNone(pool_name)
 
     def test_multi_resturls_success(self):
         share_type = self.fake_type_not_extra['test_with_extra']

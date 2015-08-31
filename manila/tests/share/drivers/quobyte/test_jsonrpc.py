@@ -327,9 +327,8 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         resultdict = {"result": "Sweet gorilla of Manila",
                       "error": {"message": "No Gorilla",
                                 "code": jsonrpc.ERROR_ENOENT}}
-        self.assertEqual(None,
-                         self.rpc.
-                         _checked_for_application_error(result=resultdict))
+        self.assertIsNone(
+            self.rpc._checked_for_application_error(result=resultdict))
 
     def test_checked_for_application_error_exception(self):
         self.assertRaises(exception.QBRpcException,

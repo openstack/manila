@@ -100,7 +100,7 @@ class ShareDriverTestCase(test.TestCase):
 
         share_driver = driver.ShareDriver(True, configuration=None)
 
-        self.assertEqual(None, share_driver.configuration)
+        self.assertIsNone(share_driver.configuration)
         network.API.assert_called_once_with(config_group_name=None)
 
     def test_get_share_stats_refresh_false(self):

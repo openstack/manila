@@ -174,7 +174,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
         self.assertFalse(self._helper._default_config_hook.called)
         self.assertEqual(mock_ganesha_manager, self._helper.ganesha)
         self.assertEqual(mock_template, self._helper.export_template)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_init_helper_conf_dir_empty(self):
         mock_template = mock.Mock()
@@ -197,7 +197,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
         self._helper._default_config_hook.assert_called_once_with()
         self.assertEqual(mock_ganesha_manager, self._helper.ganesha)
         self.assertEqual(mock_template, self._helper.export_template)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_default_config_hook(self):
         fake_template = {'key': 'value'}
@@ -240,7 +240,7 @@ class GaneshaNASHelperTestCase(test.TestCase):
             fake_basepath, self.share, self.access)
         self._helper.ganesha.add_export.assert_called_once_with(
             fake_export_name, fake_output_template)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_allow_access_error_invalid_share(self):
         access = fake_share.fake_access(access_type='notip')
@@ -252,4 +252,4 @@ class GaneshaNASHelperTestCase(test.TestCase):
         ret = self._helper.deny_access('/fakepath', self.share, self.access)
         self._helper.ganesha.remove_export.assert_called_once_with(
             'fakename--fakeaccid')
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)

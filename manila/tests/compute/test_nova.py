@@ -249,12 +249,12 @@ class NovaApiTestCase(test.TestCase):
     def test_fixed_ip_reserve(self):
         fixed_ip = 'fake_fixed_ip'
         result = self.api.fixed_ip_reserve(self.ctx, fixed_ip)
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
 
     def test_fixed_ip_unreserve(self):
         fixed_ip = 'fake_fixed_ip'
         result = self.api.fixed_ip_unreserve(self.ctx, fixed_ip)
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
 
     def test_network_get(self):
         net_id = 'fake_net_id'

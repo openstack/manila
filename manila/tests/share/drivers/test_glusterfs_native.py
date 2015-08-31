@@ -793,7 +793,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=GlusterXMLOut(ret=0, errno=0)))
         ret = self._driver.create_snapshot(self._context, snapshot)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         gmgr1.gluster_call.assert_called_once_with(*args)
 
     def test_create_snapshot_error(self):

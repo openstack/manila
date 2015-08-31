@@ -267,7 +267,7 @@ class GaneshaManagerTestCase(test.TestCase):
             'ls', '/fakedir0/export.d', run_as_root=False)
         self._manager._write_conf_file.assert_called_once_with(
             'INDEX', test_index)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_read_export_file(self):
         test_args = ('cat', test_path)
@@ -322,7 +322,7 @@ class GaneshaManagerTestCase(test.TestCase):
         ret = self._manager._rm_export_file(test_name)
         self._manager._getpath.assert_called_once_with(test_name)
         self._manager.execute.assert_called_once_with('rm', test_path)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_dbus_send_ganesha(self):
         test_args = ('arg1', 'arg2')
@@ -337,14 +337,14 @@ class GaneshaManagerTestCase(test.TestCase):
             'org.ganesha.nfsd.exportmgr.fakemethod',
             *test_args, message='dbus call exportmgr.fakemethod',
             **test_kwargs)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_remove_export_dbus(self):
         self.mock_object(self._manager, '_dbus_send_ganesha')
         ret = self._manager._remove_export_dbus(test_export_id)
         self._manager._dbus_send_ganesha.assert_called_once_with(
             'RemoveExport', 'uint16:101')
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_add_export(self):
         self.mock_object(self._manager, '_write_export_file',
@@ -358,7 +358,7 @@ class GaneshaManagerTestCase(test.TestCase):
             'AddExport', 'string:' + test_path,
             'string:EXPORT(Export_Id=101)')
         self._manager._mkindex.assert_called_once_with()
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_add_export_error_during_mkindex(self):
         self.mock_object(self._manager, '_write_export_file',
@@ -430,7 +430,7 @@ class GaneshaManagerTestCase(test.TestCase):
             test_dict_unicode['EXPORT']['Export_Id'])
         self._manager._rm_export_file.assert_called_once_with(test_name)
         self._manager._mkindex.assert_called_once_with()
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_remove_export_error_during_read_export_file(self):
         self.mock_object(
@@ -503,7 +503,7 @@ class GaneshaManagerTestCase(test.TestCase):
         ret = self._manager.restart_service()
         self._manager.execute.assert_called_once_with(
             'service', 'ganesha.fakeservice', 'restart')
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     def test_reset_exports(self):
         self.mock_object(self._manager, 'execute')
@@ -512,4 +512,4 @@ class GaneshaManagerTestCase(test.TestCase):
         self._manager.execute.assert_called_once_with(
             'sh', '-c', 'rm -f /fakedir0/export.d/*.conf')
         self._manager._mkindex.assert_called_once_with()
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)

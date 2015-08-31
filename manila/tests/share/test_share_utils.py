@@ -33,8 +33,8 @@ class ShareUtilsTestCase(test.TestCase):
 
     def test_extract_host_only_return_pool(self):
         host = 'Host@Backend'
-        self.assertEqual(
-            None, share_utils.extract_host(host, 'pool'))
+        self.assertIsNone(
+            share_utils.extract_host(host, 'pool'))
 
     def test_extract_host_only_return_backend(self):
         host = 'Host@Backend'
@@ -68,8 +68,8 @@ class ShareUtilsTestCase(test.TestCase):
 
     def test_extract_host_missing_pool(self):
         host = 'Host@Backend'
-        self.assertEqual(
-            None, share_utils.extract_host(host, 'pool'))
+        self.assertIsNone(
+            share_utils.extract_host(host, 'pool'))
 
     def test_extract_host_missing_pool_use_default_pool(self):
         host = 'Host@Backend'
