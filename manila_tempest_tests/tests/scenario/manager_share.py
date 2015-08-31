@@ -64,7 +64,10 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         description = description or "Tempest's share"
         if not name:
             name = data_utils.rand_name("manila-scenario")
-        share_network_id = share_network_id or client.share_network_id or None
+        if CONF.share.multitenancy_enabled:
+            share_network_id = (share_network_id or client.share_network_id)
+        else:
+            share_network_id = None
         metadata = metadata or {}
         kwargs = {
             'share_protocol': share_protocol,
@@ -190,3 +193,11 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         client.migrate_share(share_id, dest_host)
         share = client.wait_for_migration_completed(share_id, dest_host)
         return share
+
+    def _create_share_type(self, name, is_public=True, **kwargs):
+        share_type = self.shares_admin_v2_client.create_share_type(name,
+                                                                   is_public,
+                                                                   **kwargs)
+        self.addCleanup(self.shares_admin_v2_client.delete_share_type,
+                        share_type['share_type']['id'])
+        return share_type
