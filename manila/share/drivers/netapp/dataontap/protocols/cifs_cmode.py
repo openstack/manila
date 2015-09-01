@@ -88,6 +88,12 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         """Returns OnTap target IP based on share export location."""
         return self._get_export_location(share)[0]
 
+    @na_utils.trace
+    def get_share_name_for_share(self, share):
+        """Returns the flexvol name that hosts a share."""
+        _, share_name = self._get_export_location(share)
+        return share_name
+
     @staticmethod
     def _get_export_location(share):
         """Returns host ip and share name for a given CIFS share."""

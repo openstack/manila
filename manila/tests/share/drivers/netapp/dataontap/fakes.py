@@ -31,6 +31,9 @@ VOLUME_NAME_TEMPLATE = 'share_%(share_id)s'
 VSERVER_NAME_TEMPLATE = 'os_%s'
 AGGREGATE_NAME_SEARCH_PATTERN = '(.*)'
 SHARE_NAME = 'share_7cf7c200_d3af_4e05_b87e_9167c95dfcad'
+FLEXVOL_NAME = 'fake_volume'
+JUNCTION_PATH = '/%s' % FLEXVOL_NAME
+EXPORT_LOCATION = '%s:%s' % (HOST_NAME, JUNCTION_PATH)
 SNAPSHOT_NAME = 'fake_snapshot'
 SHARE_SIZE = 10
 TENANT_ID = '24cb2448-13d8-4f41-afd9-eff5c4fd2a57'
@@ -73,7 +76,16 @@ SHARE = {
     'share_server_id': '7e6a2cc8-871f-4b1d-8364-5aad0f98da86',
     'network_info': {
         'network_allocations': [{'ip_address': 'ip'}]
-    }
+    },
+}
+
+FLEXVOL_TO_MANAGE = {
+    'aggregate': POOL_NAME,
+    'junction-path': '/%s' % FLEXVOL_NAME,
+    'name': FLEXVOL_NAME,
+    'type': 'rw',
+    'style': 'flex',
+    'size': '1610612736',  # rounds down to 1 GB
 }
 
 EXTRA_SPEC = {
@@ -83,6 +95,8 @@ EXTRA_SPEC = {
     'netapp:dedup': 'True',
     'netapp:compression': 'false',
     'netapp:max_files': 5000,
+    'netapp_disk_type': 'FCAL',
+    'netapp_raid_type': 'raid4',
 }
 
 PROVISIONING_OPTIONS = {

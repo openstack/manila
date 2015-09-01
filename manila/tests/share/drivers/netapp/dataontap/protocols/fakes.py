@@ -45,3 +45,7 @@ USER_ACCESS = {
     'access_to': 'fake_user',
     'access_level': constants.ACCESS_LEVEL_RW,
 }
+
+VOLUME = {
+    'name': SHARE_NAME,
+}

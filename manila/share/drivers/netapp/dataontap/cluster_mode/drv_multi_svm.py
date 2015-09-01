@@ -70,6 +70,12 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def ensure_share(self, context, share, **kwargs):
         pass
 
+    def manage_existing(self, share, driver_options):
+        raise NotImplementedError
+
+    def unmanage(self, share):
+        raise NotImplementedError
+
     def allow_access(self, context, share, access, **kwargs):
         self.library.allow_access(context, share, access, **kwargs)
 

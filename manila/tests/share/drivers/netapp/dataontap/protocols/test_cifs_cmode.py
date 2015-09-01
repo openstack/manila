@@ -189,6 +189,12 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
         target = self.helper.get_target({'export_location': ''})
         self.assertEqual('', target)
 
+    def test_get_share_name_for_share(self):
+
+        share_name = self.helper.get_share_name_for_share(fake.CIFS_SHARE)
+
+        self.assertEqual(fake.SHARE_NAME, share_name)
+
     @ddt.data(
         {
             'location': r'\\%s\%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME),
