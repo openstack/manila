@@ -624,7 +624,7 @@ class ShareTypeAccessTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/2/action',
                                       use_admin_context=True)
 
-        self.assertRaises(webob.exc.HTTPForbidden,
+        self.assertRaises(webob.exc.HTTPConflict,
                           self.controller._add_project_access,
                           req, share_type_id, body)
 
@@ -653,3 +653,29 @@ class ShareTypeAccessTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPForbidden,
                           self.controller._remove_project_access,
                           req, '2', body)
+
+    def test_remove_project_access_from_public_share_type(self):
+        share_type_id = '3'
+        body = {'removeProjectAccess': {'project': PROJ2_UUID}}
+        self.mock_object(share_types, 'get_share_type',
+                         mock.Mock(return_value={"is_public": True}))
+
+        req = fakes.HTTPRequest.blank('/v2/fake/types/2/action',
+                                      use_admin_context=True)
+
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller._remove_project_access,
+                          req, share_type_id, body)
+        share_types.get_share_type.assert_called_once_with(
+            mock.ANY, share_type_id)
+
+    def test_remove_project_access_by_nonexistent_share_type(self):
+        self.mock_object(share_types, 'get_share_type',
+                         return_share_types_get_share_type)
+        body = {'removeProjectAccess': {'project': PROJ2_UUID}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/777/action',
+                                      use_admin_context=True)
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller._remove_project_access,
+                          req, '777', body)

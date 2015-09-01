@@ -68,3 +68,33 @@ class ShareTypesAdminNegativeTest(base.BaseSharesAdminTest):
                           self.create_share_type,
                           st["share_type"]["name"],
                           extra_specs=self.add_required_extra_specs_to_dict())
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_add_share_type_allowed_for_public(self):
+        st = self._create_share_type()
+        self.assertRaises(lib_exc.Conflict,
+                          self.shares_client.add_access_to_share_type,
+                          st["share_type"]["id"],
+                          self.shares_client.tenant_id)
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_remove_share_type_allowed_for_public(self):
+        st = self._create_share_type()
+        self.assertRaises(lib_exc.Conflict,
+                          self.shares_client.remove_access_from_share_type,
+                          st["share_type"]["id"],
+                          self.shares_client.tenant_id)
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_add_share_type_by_nonexistent_id(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_client.add_access_to_share_type,
+                          data_utils.rand_name("fake"),
+                          self.shares_client.tenant_id)
+
+    @test.attr(type=["gate", "smoke", ])
+    def test_remove_share_type_by_nonexistent_id(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_client.remove_access_from_share_type,
+                          data_utils.rand_name("fake"),
+                          self.shares_client.tenant_id)
