@@ -173,7 +173,8 @@ class ManilaExceptionResponseCode400(test.TestCase):
 
     def test_invalid_quota_value(self):
         # Verify response code for exception.InvalidQuotaValue
-        e = exception.InvalidQuotaValue()
+        unders = '-1'
+        e = exception.InvalidQuotaValue(unders=unders)
         self.assertEqual(e.code, 400)
 
     def test_invalid_share(self):
@@ -313,27 +314,32 @@ class ManilaExceptionResponseCode404(test.TestCase):
 
     def test_quota_resource_unknown(self):
         # Verify response code for exception.QuotaResourceUnknown
-        e = exception.QuotaResourceUnknown()
+        unknown = "fake_quota_resource"
+        e = exception.QuotaResourceUnknown(unknown=unknown)
         self.assertEqual(e.code, 404)
 
     def test_project_quota_not_found(self):
         # Verify response code for exception.ProjectQuotaNotFound
-        e = exception.ProjectQuotaNotFound()
+        project_id = "fake_tenant_id"
+        e = exception.ProjectQuotaNotFound(project_id=project_id)
         self.assertEqual(e.code, 404)
 
     def test_quota_class_not_found(self):
         # Verify response code for exception.QuotaClassNotFound
-        e = exception.QuotaClassNotFound()
+        class_name = "FakeQuotaClass"
+        e = exception.QuotaClassNotFound(class_name=class_name)
         self.assertEqual(e.code, 404)
 
     def test_quota_usage_not_found(self):
         # Verify response code for exception.QuotaUsageNotFound
-        e = exception.QuotaUsageNotFound()
+        project_id = "fake_tenant_id"
+        e = exception.QuotaUsageNotFound(project_id=project_id)
         self.assertEqual(e.code, 404)
 
     def test_reservation_not_found(self):
         # Verify response code for exception.ReservationNotFound
-        e = exception.ReservationNotFound()
+        uuid = "fake_uuid"
+        e = exception.ReservationNotFound(uuid=uuid)
         self.assertEqual(e.code, 404)
 
     def test_migration_not_found(self):
