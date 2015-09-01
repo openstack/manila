@@ -169,7 +169,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
     def _change_file_mode(self, filepath):
         pass
 
-    def do_call(self, url, data=None, method=None):
+    def do_call(self, url, data=None, method=None, calltimeout=4):
         url = url.replace('http://100.115.10.69:8082/deviceManager/rest', '')
         url = url.replace('/210235G7J20000000000/', '')
 
@@ -179,18 +179,23 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                 res_json = jsonutils.loads(data)
                 return res_json
             elif self.test_multi_url_flag == 2:
-                if 'http://100.115.10.70:8082/deviceManager/rest' in url:
-                    url = url.replace('http://100.115.10.70:8082/'
-                                      'deviceManager/rest', '')
-                else:
+                if ('http://100.115.10.70:8082/deviceManager/rest/xx/'
+                   'sessions' == url):
+                    self.url = url
+                    data = data_session("/xx/sessions")
+                    res_json = jsonutils.loads(data)
+                    return res_json
+                elif (('/xx/sessions' == url) or (self.url is not None
+                      and 'http://100.115.10.69:8082/deviceManager/rest'
+                      in self.url)):
                     data = '{"error":{"code":-403}}'
                     res_json = jsonutils.loads(data)
                     return res_json
 
-            if url == "/xx/sessions" or url == "sessions":
+            if url == "/xx/sessions" or url == "/sessions":
                 data = data_session(url)
 
-            if url == "storagepool":
+            if url == "/storagepool":
                 data = """{"error":{"code":0},
                     "data":[{"USERFREECAPACITY":"2097152",
                     "ID":"1",
@@ -199,11 +204,11 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "USAGETYPE":"2",
                     "USERCONSUMEDCAPACITY":"2097152"}]}"""
 
-            if url == "filesystem":
+            if url == "/filesystem":
                 data = """{"error":{"code":0},"data":{
                             "ID":"4"}}"""
 
-            if url == "NFSHARE" or url == "CIFSHARE":
+            if url == "/NFSHARE" or url == "/CIFSHARE":
                 if self.create_share_flag:
                     data = '{"error":{"code":31755596}}'
                 elif self.create_share_data_flag:
@@ -212,7 +217,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     data = """{"error":{"code":0},"data":{
                          "ID":"10"}}"""
 
-            if url == "NFSHARE?range=[100-200]":
+            if url == "/NFSHARE?range=[100-200]":
                 if self.share_exist:
                     data = """{"error":{"code":0},
                         "data":[{"ID":"1",
@@ -226,104 +231,104 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                         "NAME":"test",
                         "SHAREPATH":"/share_fake_uuid_fail/"}]}"""
 
-            if url == "CIFSHARE?range=[100-200]":
+            if url == "/CIFSHARE?range=[100-200]":
                 data = """{"error":{"code":0},
                     "data":[{"ID":"2",
                     "FSID":"4",
                     "NAME":"test",
                     "SHAREPATH":"/share_fake_uuid/"}]}"""
 
-            if url == "NFSHARE?range=[0-100]":
+            if url == "/NFSHARE?range=[0-100]":
                 data = """{"error":{"code":0},
                     "data":[{"ID":"1",
                     "FSID":"4",
                     "NAME":"test_fail",
                     "SHAREPATH":"/share_fake_uuid_fail/"}]}"""
 
-            if url == "CIFSHARE?range=[0-100]":
+            if url == "/CIFSHARE?range=[0-100]":
                 data = """{"error":{"code":0},
                     "data":[{"ID":"2",
                     "FSID":"4",
                     "NAME":"test_fail",
                     "SHAREPATH":"/share_fake_uuid_fail/"}]}"""
 
-            if url == "NFSHARE/1" or url == "CIFSHARE/2":
+            if url == "/NFSHARE/1" or url == "/CIFSHARE/2":
                 data = """{"error":{"code":0}}"""
                 self.delete_flag = True
 
-            if url == "FSSNAPSHOT":
+            if url == "/FSSNAPSHOT":
                 data = """{"error":{"code":0},"data":{
                             "ID":"3"}}"""
                 self.create_snapflag = True
 
-            if url == "FSSNAPSHOT/4@share_snapshot_fake_snapshot_uuid":
+            if url == "/FSSNAPSHOT/4@share_snapshot_fake_snapshot_uuid":
                 if self.snapshot_flag:
                     data = """{"error":{"code":0},"data":{"ID":"3"}}"""
                 else:
                     data = '{"error":{"code":1073754118}}'
                 self.delete_flag = True
 
-            if url == "FSSNAPSHOT/3":
+            if url == "/FSSNAPSHOT/3":
                 data = """{"error":{"code":0}}"""
                 self.delete_flag = True
 
-            if url == "NFS_SHARE_AUTH_CLIENT":
+            if url == "/NFS_SHARE_AUTH_CLIENT":
                 data, self.allow_ro_flag, self.allow_rw_flag = \
                     allow_access('NFS', method, data)
                 self.allow_flag = True
 
-            if url == "CIFS_SHARE_AUTH_CLIENT":
+            if url == "/CIFS_SHARE_AUTH_CLIENT":
                 data, self.allow_ro_flag, self.allow_rw_flag = \
                     allow_access('CIFS', method, data)
                 self.allow_flag = True
 
-            if url == "FSSNAPSHOT?TYPE=48&PARENTID=4"\
+            if url == "/FSSNAPSHOT?TYPE=48&PARENTID=4"\
                       "&&sortby=TIMESTAMP,d&range=[0-2000]":
                 data = """{"error":{"code":0},
                 "data":[{"ID":"3",
                 "NAME":"share_snapshot_fake_snapshot_uuid"}]}"""
                 self.delete_flag = True
 
-            if url == "NFS_SHARE_AUTH_CLIENT?"\
+            if url == "/NFS_SHARE_AUTH_CLIENT?"\
                       "filter=PARENTID::1&range=[0-100]":
                 data = """{"error":{"code":0},
                     "data":[{"ID":"0",
                     "NAME":"100.112.0.1_fail"}]}"""
 
-            if url == "CIFS_SHARE_AUTH_CLIENT?"\
+            if url == "/CIFS_SHARE_AUTH_CLIENT?"\
                       "filter=PARENTID::2&range=[0-100]":
                 data = """{"error":{"code":0},
                     "data":[{"ID":"0",
                     "NAME":"user_name_fail"}]}"""
 
-            if url == "NFS_SHARE_AUTH_CLIENT?"\
+            if url == "/NFS_SHARE_AUTH_CLIENT?"\
                       "filter=PARENTID::1&range=[100-200]":
                 data = """{"error":{"code":0},
                     "data":[{"ID":"5",
                     "NAME":"100.112.0.1"}]}"""
 
-            if url == "CIFS_SHARE_AUTH_CLIENT?"\
+            if url == "/CIFS_SHARE_AUTH_CLIENT?"\
                       "filter=PARENTID::2&range=[100-200]":
                 data = """{"error":{"code":0},
                     "data":[{"ID":"6",
                     "NAME":"user_name"}]}"""
 
-            if url == "NFS_SHARE_AUTH_CLIENT/5"\
-                      or url == "CIFS_SHARE_AUTH_CLIENT/6":
+            if url == "/NFS_SHARE_AUTH_CLIENT/5"\
+                      or url == "/CIFS_SHARE_AUTH_CLIENT/6":
                 data = """{"error":{"code":0}}"""
                 self.deny_flag = True
 
-            if url == "NFSHARE/count" or url == "CIFSHARE/count":
+            if url == "/NFSHARE/count" or url == "/CIFSHARE/count":
                 data = """{"error":{"code":0},"data":{
                             "COUNT":"196"}}"""
 
-            if url == "NFS_SHARE_AUTH_CLIENT/count?filter=PARENTID::1"\
-                      or url == "CIFS_SHARE_AUTH_CLIENT/count?filter="\
+            if url == "/NFS_SHARE_AUTH_CLIENT/count?filter=PARENTID::1"\
+                      or url == "/CIFS_SHARE_AUTH_CLIENT/count?filter="\
                       "PARENTID::2":
                 data = """{"error":{"code":0},"data":{
                             "COUNT":"196"}}"""
 
-            if url == "CIFSSERVICE":
+            if url == "/CIFSSERVICE":
                 if self.service_status_flag:
                     data = """{"error":{"code":0},"data":{
                                 "RUNNINGSTATUS":"2"}}"""
@@ -331,7 +336,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     data = """{"error":{"code":0},"data":{
                                 "RUNNINGSTATUS":"1"}}"""
 
-            if url == "NFSSERVICE":
+            if url == "/NFSSERVICE":
                 if self.service_nfs_status_flag:
                     data = """{"error":{"code":0},
                     "data":{"RUNNINGSTATUS":"2",
@@ -344,12 +349,12 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "SUPPORTV4":"true"}}"""
                 self.setupserver_flag = True
 
-            if url == "FILESYSTEM?range=[0-8191]":
+            if url == "/FILESYSTEM?range=[0-8191]":
                 data = """{"error":{"code":0},
                 "data":[{"ID":"4",
                 "NAME":"share_fake_uuid"}]}"""
 
-            if url == "filesystem/4":
+            if url == "/filesystem/4":
                 data, self.extend_share_flag, self.shrink_share_flag = (
                     filesystem(method, data, self.fs_status_flag))
                 self.delete_flag = True
