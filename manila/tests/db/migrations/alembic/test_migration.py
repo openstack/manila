@@ -25,11 +25,13 @@ from oslo_log import log
 from sqlalchemy.sql import text
 
 from manila.db.migrations.alembic import migration
+from manila.tests.db.migrations.alembic import migrations_data_checks
 
 LOG = log.getLogger('manila.tests.test_migrations')
 
 
-class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin):
+class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin,
+                               migrations_data_checks.DbMigrationsData):
     """Test alembic migrations."""
 
     @property
@@ -76,33 +78,30 @@ class ManilaMigrationsCheckers(test_migrations.WalkVersionsMixin):
             self._migrate_up(version.revision, with_data=True)
             if snake_walk:
                 downgraded = self._migrate_down(
-                    version.down_revision, with_data=True)
+                    version, with_data=True)
                 if downgraded:
                     self._migrate_up(version.revision)
 
         if downgrade:
             for version in versions:
-                downgraded = self._migrate_down(version.down_revision)
+                downgraded = self._migrate_down(version)
                 if snake_walk and downgraded:
                     self._migrate_up(version.revision)
-                    self._migrate_down(version.down_revision)
+                    self._migrate_down(version)
 
     def _migrate_down(self, version, with_data=False):
         try:
-            self.migration_api.downgrade(version)
+            self.migration_api.downgrade(version.down_revision)
         except NotImplementedError:
             # NOTE(sirp): some migrations, namely release-level
             # migrations, don't support a downgrade.
             return False
 
-        self.assertEqual(version, self.migration_api.version())
+        self.assertEqual(version.down_revision, self.migration_api.version())
 
-        # NOTE(sirp): `version` is what we're downgrading to (i.e. the 'target'
-        # version). So if we have any downgrade checks, they need to be run for
-        # the previous (higher numbered) migration.
         if with_data:
             post_downgrade = getattr(
-                self, "_post_downgrade_%s" % (version), None)
+                self, "_post_downgrade_%s" % version.revision, None)
             if post_downgrade:
                 post_downgrade(self.engine)
 
