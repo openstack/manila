@@ -33,17 +33,20 @@ from manila.db.migrations import utils
 def collect_existing_az_from_services_table(connection, services_table,
                                             az_table):
     az_name_to_id_mapping = dict()
-    existing_services = []
+    existing_az = []
     for service in connection.execute(services_table.select()):
-        service_id = uuidutils.generate_uuid()
-        az_name_to_id_mapping[service.availability_zone] = service_id
-        existing_services.append({
+        if service.availability_zone in az_name_to_id_mapping:
+            continue
+
+        az_id = uuidutils.generate_uuid()
+        az_name_to_id_mapping[service.availability_zone] = az_id
+        existing_az.append({
             'created_at': timeutils.utcnow(),
-            'id': service_id,
+            'id': az_id,
             'name': service.availability_zone
         })
 
-    op.bulk_insert(az_table, existing_services)
+    op.bulk_insert(az_table, existing_az)
 
     return az_name_to_id_mapping
 
