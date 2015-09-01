@@ -173,7 +173,9 @@ class QuobyteJsonRpcTestCase(test.TestCase):
         self.rpc._connection.connect.assert_called_once_with()
         self.assertEqual("Sweet gorilla of Manila", result)
 
-    def test_jsonrpc_call_ssl_disable(self):
+    @mock.patch('six.moves.http_client.HTTPSConnection')
+    def test_jsonrpc_call_ssl_disable(self, mock_connection):
+        mock_connection.return_value = self.rpc._connection
         self.mock_object(
             self.rpc._connection,
             'request',
