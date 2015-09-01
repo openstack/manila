@@ -57,7 +57,7 @@ def filesystem(method, data, fs_status_flag):
     shrink_share_flag = False
 
     if method == "PUT":
-        if data == """{"CAPACITY": 8388608}""":
+        if data == """{"CAPACITY": 10485760}""":
             data = """{"error":{"code":0},
                 "data":{"ID":"4",
                 "CAPACITY":"8388608"}}"""
@@ -854,17 +854,16 @@ class HuaweiShareDriverTestCase(test.TestCase):
     def test_extend_share_success(self):
         self.driver.plugin.helper.extend_share_flag = False
         self.driver.plugin.helper.login()
-        self.driver.extend_share(self.share_nfs, 4,
+        self.driver.extend_share(self.share_nfs, 5,
                                  self.share_server)
         self.assertTrue(self.driver.plugin.helper.extend_share_flag)
 
     def test_extend_share_fail(self):
         self.driver.plugin.helper.login()
-        self.driver.plugin.helper.test_normal = False
-        self.assertRaises(exception.InvalidShare,
+        self.assertRaises(exception.InvalidInput,
                           self.driver.extend_share,
                           self.share_nfs,
-                          4,
+                          3,
                           self.share_server)
 
     def test_extend_share_not_exist(self):
