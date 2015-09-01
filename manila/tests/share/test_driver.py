@@ -305,3 +305,12 @@ class ShareDriverTestCase(test.TestCase):
             snapshots_are_supported,
             child_class_instance._stats["snapshot_support"])
         self.assertTrue(child_class_instance.configuration.safe_get.called)
+
+    def test_get_periodic_hook_data(self):
+        share_driver = self._instantiate_share_driver(None, False)
+        share_instances = ["list", "of", "share", "instances"]
+
+        result = share_driver.get_periodic_hook_data(
+            "fake_context", share_instances)
+
+        self.assertEqual(share_instances, result)

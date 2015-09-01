@@ -58,6 +58,7 @@ class ShareManagerTestCase(test.TestCase):
         private_data_mock = mock.Mock()
         self.mock_object(drivers_private_data, "DriverPrivateData",
                          private_data_mock)
+        self.mock_object(manager.ShareManager, '_init_hook_drivers')
 
         share_manager = manager.ShareManager(service_name=fake_service_name)
 
@@ -67,6 +68,56 @@ class ShareManagerTestCase(test.TestCase):
             config_group=fake_service_name
         )
         self.assertTrue(import_mock.called)
+        self.assertTrue(manager.ShareManager._init_hook_drivers.called)
+
+    def test__init_hook_drivers(self):
+        fake_service_name = "fake_service"
+        import_mock = mock.Mock()
+        self.mock_object(importutils, "import_object", import_mock)
+        self.mock_object(drivers_private_data, "DriverPrivateData")
+        share_manager = manager.ShareManager(service_name=fake_service_name)
+        share_manager.configuration.safe_get = mock.Mock(
+            return_value=["Foo", "Bar"])
+        self.assertEqual(0, len(share_manager.hooks))
+        import_mock.reset()
+
+        share_manager._init_hook_drivers()
+
+        self.assertEqual(
+            len(share_manager.configuration.safe_get.return_value),
+            len(share_manager.hooks))
+        import_mock.assert_has_calls([
+            mock.call(
+                hook,
+                configuration=share_manager.configuration,
+                host=share_manager.host
+            ) for hook in share_manager.configuration.safe_get.return_value
+        ], any_order=True)
+
+    def test__execute_periodic_hook(self):
+        share_instances_mock = mock.Mock()
+        hook_data_mock = mock.Mock()
+        self.mock_object(
+            self.share_manager.db,
+            "share_instances_get_all_by_host",
+            share_instances_mock)
+        self.mock_object(
+            self.share_manager.driver,
+            "get_periodic_hook_data",
+            hook_data_mock)
+        self.share_manager.hooks = [mock.Mock(return_value=i) for i in (0, 1)]
+
+        self.share_manager._execute_periodic_hook(self.context)
+
+        share_instances_mock.assert_called_once_with(
+            context=self.context, host=self.share_manager.host)
+        hook_data_mock.assert_called_once_with(
+            context=self.context,
+            share_instances=share_instances_mock.return_value)
+        for mock_hook in self.share_manager.hooks:
+            mock_hook.execute_periodic_hook.assert_called_once_with(
+                context=self.context,
+                periodic_hook_data=hook_data_mock.return_value)
 
     def test_init_host_with_no_shares(self):
         self.mock_object(self.share_manager.db,
@@ -1768,3 +1819,46 @@ class ShareManagerTestCase(test.TestCase):
         self.assertFalse(driver.get_share_server_pools.called)
         self.assertEqual(old_capabilities,
                          self.share_manager.last_capabilities)
+
+
+@ddt.ddt
+class HookWrapperTestCase(test.TestCase):
+
+    def setUp(self):
+        super(HookWrapperTestCase, self).setUp()
+        self.configuration = mock.Mock()
+        self.configuration.safe_get.return_value = True
+
+    @manager.add_hooks
+    def _fake_wrapped_method(self, some_arg, some_kwarg):
+        return "foo"
+
+    def test_hooks_enabled(self):
+        self.hooks = [mock.Mock(return_value=i) for i in range(2)]
+
+        result = self._fake_wrapped_method(
+            "some_arg", some_kwarg="some_kwarg_value")
+
+        self.assertEqual("foo", result)
+        for i, mock_hook in enumerate(self.hooks):
+            mock_hook.execute_pre_hook.assert_called_once_with(
+                "some_arg",
+                func_name="_fake_wrapped_method",
+                some_kwarg="some_kwarg_value")
+            mock_hook.execute_post_hook.assert_called_once_with(
+                "some_arg",
+                func_name="_fake_wrapped_method",
+                driver_action_results="foo",
+                pre_hook_data=self.hooks[i].execute_pre_hook.return_value,
+                some_kwarg="some_kwarg_value")
+
+    def test_hooks_disabled(self):
+        self.hooks = []
+
+        result = self._fake_wrapped_method(
+            "some_arg", some_kwarg="some_kwarg_value")
+
+        self.assertEqual("foo", result)
+        for mock_hook in self.hooks:
+            self.assertFalse(mock_hook.execute_pre_hook.called)
+            self.assertFalse(mock_hook.execute_post_hook.called)

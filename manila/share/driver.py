@@ -511,3 +511,18 @@ class ShareDriver(object):
         :param share_server: ShareServer class instance.
         """
         return []
+
+    def get_periodic_hook_data(self, context, share_instances):
+        """Dedicated for update/extend of data for existing share instances.
+
+        Redefine this method in share driver to be able to update/change/extend
+        share instances data that will be used by periodic hook action.
+        One of possible updates is add-on of "automount" CLI commands for each
+        share instance for case of notification is enabled using 'hook'
+        approach.
+
+        :param context: Current context
+        :param share_instances: share instances list provided by share manager
+        :return: list of share instances.
+        """
+        return share_instances

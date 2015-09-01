@@ -50,6 +50,12 @@ share_manager_opts = [
     cfg.StrOpt('share_driver',
                default='manila.share.drivers.generic.GenericShareDriver',
                help='Driver to use for share creation.'),
+    cfg.ListOpt('hook_drivers',
+                default=[],
+                help='Driver(s) to perform some additional actions before and '
+                     'after share driver actions and on a periodic basis. '
+                     'Default is [].',
+                deprecated_group='DEFAULT'),
     cfg.BoolOpt('delete_share_server_with_last_share',
                 default=False,
                 help='Whether share servers will '
@@ -81,6 +87,7 @@ share_manager_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(share_manager_opts)
+CONF.import_opt('periodic_hooks_interval', 'manila.share.hook')
 
 # Drivers that need to change module paths or class names can add their
 # old/new path here to maintain backward compatibility.
@@ -89,6 +96,33 @@ MAPPING = {
     'manila.share.drivers.netapp.common.NetAppDriver', }
 
 QUOTAS = quota.QUOTAS
+
+
+def add_hooks(f):
+
+    def wrapped(self, *args, **kwargs):
+        if not self.hooks:
+            return f(self, *args, **kwargs)
+
+        pre_hook_results = []
+        for hook in self.hooks:
+            pre_hook_results.append(
+                hook.execute_pre_hook(
+                    func_name=f.__name__,
+                    *args, **kwargs))
+
+        wrapped_func_results = f(self, *args, **kwargs)
+
+        for i, hook in enumerate(self.hooks):
+            hook.execute_post_hook(
+                func_name=f.__name__,
+                driver_action_results=wrapped_func_results,
+                pre_hook_data=pre_hook_results[i],
+                *args, **kwargs)
+
+        return wrapped_func_results
+
+    return wrapped
 
 
 class ShareManager(manager.SchedulerDependentManager):
@@ -125,6 +159,21 @@ class ShareManager(manager.SchedulerDependentManager):
             configuration=self.configuration
         )
 
+        self.hooks = []
+        self._init_hook_drivers()
+
+    def _init_hook_drivers(self):
+        # Try to initialize hook driver(s).
+        hook_drivers = self.configuration.safe_get("hook_drivers")
+        for hook_driver in hook_drivers:
+            self.hooks.append(
+                importutils.import_object(
+                    hook_driver,
+                    configuration=self.configuration,
+                    host=self.host,
+                )
+            )
+
     def _ensure_share_instance_has_pool(self, ctxt, share_instance):
         pool = share_utils.extract_host(share_instance['host'], 'pool')
         if pool is None:
@@ -148,6 +197,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         return pool
 
+    @add_hooks
     def init_host(self):
         """Initialization for a standalone service."""
 
@@ -357,6 +407,7 @@ class ShareManager(manager.SchedulerDependentManager):
             id = share.instance['id']
         return self.db.share_instance_get(context, id, with_share_data=True)
 
+    @add_hooks
     def create_share_instance(self, context, share_instance_id,
                               request_spec=None, filter_properties=None,
                               snapshot_id=None):
@@ -452,6 +503,7 @@ class ShareManager(manager.SchedulerDependentManager):
                  'launched_at': timeutils.utcnow()}
             )
 
+    @add_hooks
     def manage_share(self, context, share_id, driver_options):
         context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
@@ -516,6 +568,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.quota_usage_create(context, project_id,
                                            user_id, resource, usage)
 
+    @add_hooks
     def unmanage_share(self, context, share_id):
         context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
@@ -573,6 +626,7 @@ class ShareManager(manager.SchedulerDependentManager):
                              {'status': constants.STATUS_UNMANAGED,
                               'deleted': True})
 
+    @add_hooks
     def delete_share_instance(self, context, share_instance_id):
         """Delete a share instance."""
         context = context.elevated()
@@ -627,6 +681,7 @@ class ShareManager(manager.SchedulerDependentManager):
             self._deny_access(context, access_ref,
                               share_instance, share_server)
 
+    @add_hooks
     def create_snapshot(self, context, share_id, snapshot_id):
         """Create snapshot for share."""
         snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
@@ -661,6 +716,7 @@ class ShareManager(manager.SchedulerDependentManager):
         )
         return snapshot_id
 
+    @add_hooks
     def delete_snapshot(self, context, snapshot_id):
         """Delete share snapshot."""
         context = context.elevated()
@@ -705,6 +761,7 @@ class ShareManager(manager.SchedulerDependentManager):
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
 
+    @add_hooks
     def allow_access(self, context, share_instance_id, access_id):
         """Allow access to some share instance."""
         access_mapping = self.db.share_instance_access_get(context, access_id,
@@ -727,6 +784,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_instance_access_update_state(
                     context, access_mapping['id'], access_mapping.STATE_ERROR)
 
+    @add_hooks
     def deny_access(self, context, share_instance_id, access_id):
         """Deny access to some share."""
         access_ref = self.db.share_access_get(context, access_id)
@@ -761,6 +819,19 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.update_service_capabilities(share_stats)
 
+    @periodic_task.periodic_task(spacing=CONF.periodic_hooks_interval)
+    def _execute_periodic_hook(self, context):
+        """Executes periodic-based hooks."""
+        # TODO(vponomaryov): add also access rules and share servers
+        share_instances = (
+            self.db.share_instances_get_all_by_host(
+                context=context, host=self.host))
+        periodic_hook_data = self.driver.get_periodic_hook_data(
+            context=context, share_instances=share_instances)
+        for hook in self.hooks:
+            hook.execute_periodic_hook(
+                context=context, periodic_hook_data=periodic_hook_data)
+
     def _get_servers_pool_mapping(self, context):
         """Get info about relationships between pools and share_servers."""
         share_servers = self.db.share_server_get_all_by_host(context,
@@ -768,6 +839,7 @@ class ShareManager(manager.SchedulerDependentManager):
         return dict((server['id'], self.driver.get_share_server_pools(server))
                     for server in share_servers)
 
+    @add_hooks
     def publish_service_capabilities(self, context):
         """Collect driver status and then publish it."""
         self._report_driver_status(context)
@@ -914,6 +986,7 @@ class ShareManager(manager.SchedulerDependentManager):
             raise exception.NetworkBadConfigurationException(
                 reason=msg % network_info['segmentation_id'])
 
+    @add_hooks
     def delete_share_server(self, context, share_server):
 
         @utils.synchronized(
@@ -971,6 +1044,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 "Option unused_share_server_cleanup_interval should be "
                 "between 10 minutes and 1 hour.")
 
+    @add_hooks
     def extend_share(self, context, share_id, new_size, reservations):
         context = context.elevated()
         share = self.db.share_get(context, share_id)
@@ -1006,6 +1080,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         LOG.info(_LI("Extend share completed successfully."), resource=share)
 
+    @add_hooks
     def shrink_share(self, context, share_id, new_size):
         context = context.elevated()
         share = self.db.share_get(context, share_id)
