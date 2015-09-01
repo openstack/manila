@@ -156,6 +156,49 @@ class ShareUserRulesForCIFSTest(ShareUserRulesForNFSTest):
         _create_delete_ro_access_rule(self)
 
 
+class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
+    protocol = "glusterfs"
+
+    @classmethod
+    def resource_setup(cls):
+        super(ShareCertRulesForGLUSTERFSTest, cls).resource_setup()
+        if (cls.protocol not in CONF.share.enable_protocols or
+                cls.protocol not in
+                CONF.share.enable_cert_rules_for_protocols):
+            msg = "Cert rule tests for %s protocol are disabled" % cls.protocol
+            raise cls.skipException(msg)
+        cls.share = cls.create_share(cls.protocol)
+        cls.access_type = "cert"
+        # Provide access to a client identified by a common name (CN) of the
+        # certificate that it possesses.
+        cls.access_to = "client1.com"
+
+    @test.attr(type=["gate", ])
+    def test_create_delete_cert_rule(self):
+
+        # create rule
+        rule = self.shares_client.create_access_rule(
+            self.share["id"], self.access_type, self.access_to)
+        self.assertEqual('rw', rule['access_level'])
+        self.shares_client.wait_for_access_rule_status(
+            self.share["id"], rule["id"], "active")
+
+        # delete rule
+        self.shares_client.delete_access_rule(self.share["id"], rule["id"])
+
+    @test.attr(type=["gate", ])
+    @testtools.skipIf(
+        "glusterfs" not in CONF.share.enable_ro_access_level_for_protocols,
+        "RO access rule tests are disabled for GLUSTERFS protocol.")
+    def test_create_delete_cert_ro_access_rule(self):
+        rule = self.shares_client.create_access_rule(
+            self.share["id"], 'cert', 'client2.com', 'ro')
+        self.assertEqual('ro', rule['access_level'])
+        self.shares_client.wait_for_access_rule_status(
+            self.share["id"], rule["id"], "active")
+        self.shares_client.delete_access_rule(self.share["id"], rule["id"])
+
+
 class ShareRulesTest(base.BaseSharesTest):
 
     @classmethod
@@ -164,6 +207,8 @@ class ShareRulesTest(base.BaseSharesTest):
         if not (any(p in CONF.share.enable_ip_rules_for_protocols
                     for p in cls.protocols) or
                 any(p in CONF.share.enable_user_rules_for_protocols
+                    for p in cls.protocols) or
+                any(p in CONF.share.enable_cert_rules_for_protocols
                     for p in cls.protocols)):
             cls.message = "Rule tests are disabled"
             raise cls.skipException(cls.message)
@@ -182,6 +227,10 @@ class ShareRulesTest(base.BaseSharesTest):
             self.access_type = "user"
             self.access_to = CONF.share.username_for_user_rules
             protocol = CONF.share.enable_user_rules_for_protocols[0]
+        elif CONF.share.enable_cert_rules_for_protocols:
+            self.access_type = "cert"
+            self.access_to = "client3.com"
+            protocol = CONF.share.enable_cert_rules_for_protocols[0]
         else:
             raise self.skipException(self.message)
         self.shares_client.protocol = protocol

@@ -70,6 +70,9 @@ ShareGroup = [
                 default=[],
                 help="Selection of protocols, that should "
                      "be covered with user rule tests"),
+    cfg.ListOpt("enable_cert_rules_for_protocols",
+                default=["glusterfs", ],
+                help="Protocols that should be covered with cert rule tests."),
     cfg.StrOpt("username_for_user_rules",
                default="Administrator",
                help="Username, that will be used in user tests."),
