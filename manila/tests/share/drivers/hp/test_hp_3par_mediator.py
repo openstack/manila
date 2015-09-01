@@ -251,7 +251,7 @@ class HP3ParMediatorTestCase(test.TestCase):
             createfshare_kwargs['clientip'] = '127.0.0.1'
 
             # Options from extra-specs.
-            opt_string = extra_specs.get('hpe3par:nfs_options', [])
+            opt_string = extra_specs.get('hp3par:nfs_options', [])
             opt_list = opt_string.split(',')
             # Options that the mediator adds.
             nfs_options = ['rw', 'no_root_squash', 'insecure']
@@ -291,7 +291,7 @@ class HP3ParMediatorTestCase(test.TestCase):
                             hp3parmediator.CACHE)
 
             for smb_opt in smb_opts:
-                opt_value = extra_specs.get('hpe3par:smb_%s' % smb_opt)
+                opt_value = extra_specs.get('hp3par:smb_%s' % smb_opt)
                 if opt_value:
                     opt_key = hp3parmediator.SMB_EXTRA_SPECS_MAP[smb_opt]
                     createfshare_kwargs[opt_key] = opt_value
@@ -320,7 +320,7 @@ class HP3ParMediatorTestCase(test.TestCase):
     def _build_smb_extra_specs(**kwargs):
         extra_specs = {'driver_handles_share_servers': False}
         for k, v in kwargs.items():
-            extra_specs['hpe3par:smb_%s' % k] = v
+            extra_specs['hp3par:smb_%s' % k] = v
         return extra_specs
 
     @ddt.data(((3, 2, 1), None, None, None),
@@ -384,7 +384,7 @@ class HP3ParMediatorTestCase(test.TestCase):
     def test_mediator_create_nfs_share_bad_options(self, nfs_options):
         self.init_mediator()
 
-        extra_specs = {'hpe3par:nfs_options': nfs_options}
+        extra_specs = {'hp3par:nfs_options': nfs_options}
 
         self.assertRaises(exception.InvalidInput,
                           self.mediator.create_share,
@@ -411,7 +411,7 @@ class HP3ParMediatorTestCase(test.TestCase):
 
         self.mock_client.getfsquota.return_value = constants.GET_FSQUOTA
 
-        extra_specs = {'hpe3par:nfs_options': nfs_options}
+        extra_specs = {'hp3par:nfs_options': nfs_options}
 
         location = self.mediator.create_share(constants.EXPECTED_PROJECT_ID,
                                               constants.EXPECTED_SHARE_ID,

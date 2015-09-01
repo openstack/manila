@@ -156,13 +156,13 @@ technology.
 
 Scoped extra-specs are used to influence vendor-specific implementation
 details. Scoped extra-specs use a prefix followed by a colon.  For HP 3PAR
-these extra-specs have a prefix of `hpe3par`.
+these extra-specs have a prefix of `hp3par`.
 
 The following HP 3PAR extra-specs are used when creating CIFS (SMB) shares:
 
-- `hpe3par:smb_access_based_enum` = true or false
-- `hpe3par:smb_continuous_avail` = true or false
-- `hpe3par:smb_cache` = off, manual, optimized or auto
+- `hp3par:smb_access_based_enum` = true or false
+- `hp3par:smb_continuous_avail` = true or false
+- `hp3par:smb_cache` = off, manual, optimized or auto
 
 `smb_access_based_enum` (Access Based Enumeration) specifies if users can see
 only the files and directories to which they have been allowed access on the
@@ -190,7 +190,7 @@ or earlier.
 
 The following HP 3PAR extra-specs are used when creating NFS shares:
 
-- `hpe3par:nfs_options` = Comma separated list of NFS export options
+- `hp3par:nfs_options` = Comma separated list of NFS export options
 
 The NFS export options have the following limitations:
 
