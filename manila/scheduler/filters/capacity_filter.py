@@ -78,13 +78,13 @@ class CapacityFilter(filters.BaseHostFilter):
                   "%(requested)s/%(available)s", msg_args)
 
         # NOTE(xyang): Only evaluate using max_over_subscription_ratio
-        # if thin_provisioning_support is True. Check if the ratio of
+        # if thin_provisioning is True. Check if the ratio of
         # provisioned capacity over total capacity would exceed
         # subscription ratio.
         # If max_over_subscription_ratio = 1, the provisioned_ratio
         # should still be limited by the max_over_subscription_ratio;
         # otherwise, it could result in infinite provisioning.
-        if (host_state.thin_provisioning_support and
+        if (host_state.thin_provisioning and
                 host_state.max_over_subscription_ratio >= 1):
             provisioned_ratio = ((host_state.provisioned_capacity_gb +
                                   share_size) / total)
@@ -105,7 +105,7 @@ class CapacityFilter(filters.BaseHostFilter):
                 adjusted_free_virtual = (
                     free * host_state.max_over_subscription_ratio)
                 return adjusted_free_virtual >= share_size
-        elif host_state.thin_provisioning_support:
+        elif host_state.thin_provisioning:
             LOG.error(_LE("Invalid max_over_subscription_ratio: %(ratio)s. "
                           "Valid value should be >= 1."),
                       {"ratio": host_state.max_over_subscription_ratio})

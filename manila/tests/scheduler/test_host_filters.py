@@ -129,45 +129,34 @@ class HostFiltersTestCase(test.TestCase):
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
     @ddt.data(
-        {'size': 100, 'cap_thin': '<is> True', 'cap_thick': '<is> False',
+        {'size': 100, 'cap_thin': '<is> True',
          'total': 500, 'free': 200, 'provisioned': 500,
-         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': False},
-        {'size': 3000, 'cap_thin': '<is> True', 'cap_thick': '<is> False',
+         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True},
+        {'size': 3000, 'cap_thin': '<is> True',
          'total': 500, 'free': 200, 'provisioned': 7000,
-         'max_ratio': 20, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': False},
-        {'size': 100, 'cap_thin': '<is> False', 'cap_thick': '<is> True',
+         'max_ratio': 20, 'reserved': 5, 'thin_prov': True},
+        {'size': 100, 'cap_thin': '<is> False',
          'total': 500, 'free': 200, 'provisioned': 300,
-         'max_ratio': 1.0, 'reserved': 5, 'thin_prov': False,
-         'thick_prov': True},
-        {'size': 100, 'cap_thin': '<is> True', 'cap_thick': '<is> False',
+         'max_ratio': 1.0, 'reserved': 5, 'thin_prov': False},
+        {'size': 100, 'cap_thin': '<is> True',
          'total': 500, 'free': 200, 'provisioned': 400,
-         'max_ratio': 1.0, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': False},
-        {'size': 100, 'cap_thin': '<is> True', 'cap_thick': '<is> True',
+         'max_ratio': 1.0, 'reserved': 5, 'thin_prov': True},
+        {'size': 100, 'cap_thin': '<is> True',
          'total': 500, 'free': 125, 'provisioned': 400,
-         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': True},
-        {'size': 100, 'cap_thin': '<is> True', 'cap_thick': '<is> False',
+         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True},
+        {'size': 100, 'cap_thin': '<is> True',
          'total': 500, 'free': 80, 'provisioned': 600,
-         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': False},
-        {'size': 100, 'cap_thin': '<is> True', 'cap_thick': '<is> True',
+         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True},
+        {'size': 100, 'cap_thin': '<is> True',
          'total': 500, 'free': 100, 'provisioned': 400,
-         'max_ratio': 2.0, 'reserved': 0, 'thin_prov': True,
-         'thick_prov': True})
+         'max_ratio': 2.0, 'reserved': 0, 'thin_prov': True})
     @ddt.unpack
-    def test_filter_thin_thick_passes(self, size, cap_thin, cap_thick,
-                                      total, free, provisioned, max_ratio,
-                                      reserved, thin_prov, thick_prov):
+    def test_filter_thin_passes(self, size, cap_thin, total, free, provisioned,
+                                max_ratio, reserved, thin_prov):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': size,
-                             'capabilities:thin_provisioning_support':
-                                 cap_thin,
-                             'capabilities:thick_provisioning_support':
-                                 cap_thick}
+                             'capabilities:thin_provisioning': cap_thin}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': total,
@@ -175,56 +164,43 @@ class HostFiltersTestCase(test.TestCase):
                                     'provisioned_capacity_gb': provisioned,
                                     'max_over_subscription_ratio': max_ratio,
                                     'reserved_percentage': reserved,
-                                    'thin_provisioning_support': thin_prov,
-                                    'thick_provisioning_support': thick_prov,
+                                    'thin_provisioning': thin_prov,
                                     'updated_at': None,
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @ddt.data(
-        {'size': 200, 'cap_thin': '<is> True', 'cap_thick': '<is> False',
+        {'size': 200, 'cap_thin': '<is> True',
          'total': 500, 'free': 100, 'provisioned': 400,
-         'max_ratio': 0.8, 'reserved': 0, 'thin_prov': True,
-         'thick_prov': False},
-        {'size': 100, 'cap_thin': '<is> True', 'cap_thick': '<is> False',
+         'max_ratio': 0.8, 'reserved': 0, 'thin_prov': True},
+        {'size': 100, 'cap_thin': '<is> True',
          'total': 500, 'free': 200, 'provisioned': 700,
-         'max_ratio': 1.5, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': False},
-        {'size': 2000, 'cap_thin': '<is> True', 'cap_thick': '<is> False',
+         'max_ratio': 1.5, 'reserved': 5, 'thin_prov': True},
+        {'size': 2000, 'cap_thin': '<is> True',
          'total': 500, 'free': 30, 'provisioned': 9000,
-         'max_ratio': 20.0, 'reserved': 0, 'thin_prov': True,
-         'thick_prov': False},
-        {'size': 100, 'cap_thin': '<is> True', 'cap_thick': '<is> False',
+         'max_ratio': 20.0, 'reserved': 0, 'thin_prov': True},
+        {'size': 100, 'cap_thin': '<is> True',
          'total': 500, 'free': 100, 'provisioned': 1000,
-         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': False},
-        {'size': 100, 'cap_thin': '<is> False', 'cap_thick': '<is> True',
+         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True},
+        {'size': 100, 'cap_thin': '<is> False',
          'total': 500, 'free': 100, 'provisioned': 400,
-         'max_ratio': 1.0, 'reserved': 5, 'thin_prov': False,
-         'thick_prov': True},
-        {'size': 100, 'cap_thin': '<is> True', 'cap_thick': '<is> True',
+         'max_ratio': 1.0, 'reserved': 5, 'thin_prov': False},
+        {'size': 100, 'cap_thin': '<is> True',
          'total': 500, 'free': 0, 'provisioned': 800,
-         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': True},
-        {'size': 100, 'cap_thin': '<is> True', 'cap_thick': '<is> True',
+         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True},
+        {'size': 100, 'cap_thin': '<is> True',
          'total': 500, 'free': 99, 'provisioned': 1000,
-         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': True},
-        {'size': 400, 'cap_thin': '<is> True', 'cap_thick': '<is> False',
+         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True},
+        {'size': 400, 'cap_thin': '<is> True',
          'total': 500, 'free': 200, 'provisioned': 600,
-         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True,
-         'thick_prov': False})
+         'max_ratio': 2.0, 'reserved': 5, 'thin_prov': True})
     @ddt.unpack
-    def test_filter_thin_thick_fails(self, size, cap_thin, cap_thick,
-                                     total, free, provisioned, max_ratio,
-                                     reserved, thin_prov, thick_prov):
+    def test_filter_thin_fails(self, size, cap_thin, total, free, provisioned,
+                               max_ratio, reserved, thin_prov):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': size,
-                             'capabilities:thin_provisioning_support':
-                                 cap_thin,
-                             'capabilities:thick_provisioning_support':
-                                 cap_thick}
+                             'capabilities:thin_provisioning': cap_thin}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': total,
@@ -232,8 +208,7 @@ class HostFiltersTestCase(test.TestCase):
                                     'provisioned_capacity_gb': provisioned,
                                     'max_over_subscription_ratio': max_ratio,
                                     'reserved_percentage': reserved,
-                                    'thin_provisioning_support': thin_prov,
-                                    'thick_provisioning_support': thick_prov,
+                                    'thin_provisioning': thin_prov,
                                     'updated_at': None,
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))

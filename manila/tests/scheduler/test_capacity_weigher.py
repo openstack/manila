@@ -54,7 +54,7 @@ class CapacityWeigherTestCase(test.TestCase):
             ctxt, CONF.share_topic)
         return host_states
 
-    # NOTE(xyang): If thin_provisioning_support = True and
+    # NOTE(xyang): If thin_provisioning = True and
     # max_over_subscription_ratio >= 1, use the following formula:
     # free = math.floor(total * host_state.max_over_subscription_ratio
     #        - host_state.provisioned_capacity_gb
@@ -64,25 +64,25 @@ class CapacityWeigherTestCase(test.TestCase):
     def test_default_of_spreading_first(self):
         hostinfo_list = self._get_all_hosts()
 
-        # host1: thin_provisioning_support = False
+        # host1: thin_provisioning = False
         #        free_capacity_gb = 1024
         #        free = math.floor(1024 - 1024 * 0.1) = 921.0
         #        weight = 0.40
-        # host2: thin_provisioning_support = True
+        # host2: thin_provisioning = True
         #        max_over_subscription_ratio = 2.0
         #        free_capacity_gb = 300
         #        free = math.floor(2048 * 2.0 - 1748 - 2048 * 0.1)=2143.0
         #        weight = 1.0
-        # host3: thin_provisioning_support = False
+        # host3: thin_provisioning = False
         #        free_capacity_gb = 512
         #        free = math.floor(256 - 512 * 0)=256.0
         #        weight = 0.08
-        # host4: thin_provisioning_support = True
+        # host4: thin_provisioning = True
         #        max_over_subscription_ratio = 1.0
         #        free_capacity_gb = 200
         #        free = math.floor(2048 * 1.0 - 1848 - 2048 * 0.05) = 97.0
         #        weight = 0.0
-        # host5: thin_provisioning_support = True
+        # host5: thin_provisioning = True
         #        max_over_subscription_ratio = 1.5
         #        free_capacity_gb = 500
         #        free = math.floor(2048 * 1.5 - 1548 - 2048 * 0.05) = 1421.0
@@ -98,29 +98,29 @@ class CapacityWeigherTestCase(test.TestCase):
         self.flags(capacity_weight_multiplier=-1.0)
         hostinfo_list = self._get_all_hosts()
 
-        # host1: thin_provisioning_support = False
+        # host1: thin_provisioning = False
         #        free_capacity_gb = 1024
         #        free = math.floor(1024 - 1024 * 0.1) = 921.0
         #        free * (-1) = -921.0
         #        weight = -0.40
-        # host2: thin_provisioning_support = True
+        # host2: thin_provisioning = True
         #        max_over_subscription_ratio = 2.0
         #        free_capacity_gb = 300
         #        free = math.floor(2048 * 2.0-1748-2048 * 0.1) = 2143.0
         #        free * (-1) = -2143.0
         #        weight = -1.0
-        # host3: thin_provisioning_support = False
+        # host3: thin_provisioning = False
         #        free_capacity_gb = 512
         #        free = math.floor(256 - 512 * 0) = 256.0
         #        free * (-1) = -256.0
         #        weight = -0.08
-        # host4: thin_provisioning_support = True
+        # host4: thin_provisioning = True
         #        max_over_subscription_ratio = 1.0
         #        free_capacity_gb = 200
         #        free = math.floor(2048 * 1.0 - 1848 - 2048 * 0.05) = 97.0
         #        free * (-1) = -97.0
         #        weight = 0.0
-        # host5: thin_provisioning_support = True
+        # host5: thin_provisioning = True
         #        max_over_subscription_ratio = 1.5
         #        free_capacity_gb = 500
         #        free = math.floor(2048 * 1.5 - 1548 - 2048 * 0.05) = 1421.0
@@ -137,29 +137,29 @@ class CapacityWeigherTestCase(test.TestCase):
         self.flags(capacity_weight_multiplier=2.0)
         hostinfo_list = self._get_all_hosts()
 
-        # host1: thin_provisioning_support = False
+        # host1: thin_provisioning = False
         #        free_capacity_gb = 1024
         #        free = math.floor(1024-1024*0.1) = 921.0
         #        free * 2 = 1842.0
         #        weight = 0.81
-        # host2: thin_provisioning_support = True
+        # host2: thin_provisioning = True
         #        max_over_subscription_ratio = 2.0
         #        free_capacity_gb = 300
         #        free = math.floor(2048 * 2.0 - 1748 - 2048 * 0.1) = 2143.0
         #        free * 2 = 4286.0
         #        weight = 2.0
-        # host3: thin_provisioning_support = False
+        # host3: thin_provisioning = False
         #        free_capacity_gb = 512
         #        free = math.floor(256 - 512 * 0) = 256.0
         #        free * 2 = 512.0
         #        weight = 0.16
-        # host4: thin_provisioning_support = True
+        # host4: thin_provisioning = True
         #        max_over_subscription_ratio = 1.0
         #        free_capacity_gb = 200
         #        free = math.floor(2048 * 1.0 - 1848 - 2048 * 0.05) = 97.0
         #        free * 2 = 194.0
         #        weight = 0.0
-        # host5: thin_provisioning_support = True
+        # host5: thin_provisioning = True
         #        max_over_subscription_ratio = 1.5
         #        free_capacity_gb = 500
         #        free = math.floor(2048 * 1.5 - 1548 - 2048 * 0.05) = 1421.0

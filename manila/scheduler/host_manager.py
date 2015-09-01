@@ -120,8 +120,7 @@ class HostState(object):
         # equal to the allocated_capacity_gb.
         self.provisioned_capacity_gb = 0
         self.max_over_subscription_ratio = 1.0
-        self.thin_provisioning_support = False
-        self.thick_provisioning_support = False
+        self.thin_provisioning = False
         self.driver_handles_share_servers = False
         self.snapshot_support = True
 
@@ -343,10 +342,8 @@ class PoolState(HostState):
             self.max_over_subscription_ratio = capability.get(
                 'max_over_subscription_ratio',
                 CONF.max_over_subscription_ratio)
-            self.thin_provisioning_support = capability.get(
-                'thin_provisioning_support', False)
-            self.thick_provisioning_support = capability.get(
-                'thick_provisioning_support', False)
+            self.thin_provisioning = capability.get(
+                'thin_provisioning', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
