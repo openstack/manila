@@ -53,8 +53,16 @@ SMB_EXTRA_SPECS_MAP = {
 
 
 class HP3ParMediator(object):
+    """3PAR client-facing code for the 3PAR driver.
 
-    VERSION = "1.0.01"
+    Version history:
+        1.0.00 - Begin Liberty development (post-Kilo)
+        1.0.01 - Report thin/dedup/hp_flash_cache capabilities
+        1.0.02 - Add share server/share network support
+
+    """
+
+    VERSION = "1.0.02"
 
     def __init__(self, **kwargs):
 
@@ -828,3 +836,88 @@ class HP3ParMediator(object):
 
         self._change_access(DENY, project_id, share_id, share_proto,
                             access_type, access_to, fpg, vfs)
+
+    def fsip_exists(self, fsip):
+        """Try to get FSIP. Return True if it exists."""
+
+        vfs = fsip['vfs']
+        fpg = fsip['fspool']
+
+        try:
+            result = self._client.getfsip(vfs, fpg=fpg)
+            LOG.debug("getfsip result: %s", result)
+        except Exception as e:
+            LOG.exception(e)
+            msg = (_('Failed to get FSIPs for FPG/VFS %(fspool)s/%(vfs)s.') %
+                   fsip)
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg=msg)
+
+        for member in result['members']:
+            if all(item in member.items() for item in fsip.items()):
+                return True
+
+        return False
+
+    def create_fsip(self, ip, subnet, vlantag, fpg, vfs):
+
+        vlantag_str = six.text_type(vlantag) if vlantag else '0'
+
+        # Try to create it. It's OK if it already exists.
+        try:
+            result = self._client.createfsip(ip,
+                                             subnet,
+                                             vfs,
+                                             fpg=fpg,
+                                             vlantag=vlantag_str)
+            LOG.debug("createfsip result: %s", result)
+
+        except Exception as e:
+            LOG.exception(e)
+            msg = (_('Failed to create FSIP for %s') % ip)
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg=msg)
+
+        # Verify that it really exists.
+        fsip = {
+            'fspool': fpg,
+            'vfs': vfs,
+            'address': ip,
+            'prefixLen': subnet,
+            'vlanTag': vlantag_str,
+        }
+        if not self.fsip_exists(fsip):
+            msg = (_('Failed to get FSIP after creating it for '
+                     'FPG/VFS/IP/subnet/VLAN '
+                     '%(fspool)s/%(vfs)s/'
+                     '%(address)s/%(prefixLen)s/%(vlanTag)s.') % fsip)
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg=msg)
+
+    def remove_fsip(self, ip, fpg, vfs):
+
+        if not (vfs and ip):
+            # If there is no VFS and/or IP, then there is no FSIP to remove.
+            return
+
+        try:
+            result = self._client.removefsip(vfs, ip, fpg=fpg)
+            LOG.debug("removefsip result: %s", result)
+
+        except Exception as e:
+            LOG.exception(e)
+            msg = (_('Failed to remove FSIP %s') % ip)
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg=msg)
+
+        # Verify that it really no longer exists.
+        fsip = {
+            'fspool': fpg,
+            'vfs': vfs,
+            'address': ip,
+        }
+        if self.fsip_exists(fsip):
+            msg = (_('Failed to remove FSIP for FPG/VFS/IP '
+                     '%(fspool)s/%(vfs)s/%(address)s.') % fsip)
+            LOG.exception(msg)
+            raise exception.ShareBackendException(msg=msg)
