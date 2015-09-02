@@ -23,6 +23,7 @@ import paramiko
 from manila import exception
 from manila.share.drivers.hitachi import ssh
 from manila import test
+from manila import utils
 
 CONF = cfg.CONF
 
@@ -68,7 +69,6 @@ Instance name      Dev   On span            State   EVS  Cap/GiB Confined Flag
 file_system        1055  fake_span          Umount   2        4      5
 file_system2       1050  fake_span2         NoEVS    -      10       0     1
 fake_fs            1051  fake_span          Umount   2      100     1024   """
-
 
 HNAS_RESULT_one_fs = """ \
 Instance name      Dev   On span            State   EVS  Cap/GiB Confined Flag
@@ -1170,6 +1170,31 @@ class HNASSSHTestCase(test.TestCase):
                                                       port=self.port)
         self.assertIn('Request submitted successfully.', output)
 
+    def test__execute_retry(self):
+        commands = ['tree-clone-job-submit', '-e', '/src', '/dst']
+        concat_command = ('ssc --smuauth fake console-context --evs 2 '
+                          'tree-clone-job-submit -e /src /dst')
+        msg = 'Failed to establish SSC connection'
+
+        item_mock = mock.Mock()
+        self.mock_object(utils.pools.Pool, 'item',
+                         mock.Mock(return_value=item_mock))
+        setattr(item_mock, '__enter__', mock.Mock())
+        setattr(item_mock, '__exit__', mock.Mock())
+
+        self.mock_object(paramiko.SSHClient, 'connect')
+        # testing retrying 3 times
+        self.mock_object(putils, 'ssh_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(stderr=msg),
+                         putils.ProcessExecutionError(stderr=msg),
+                         putils.ProcessExecutionError(stderr=msg),
+                         (HNAS_RESULT_job, '')]))
+
+        self._driver._execute(commands)
+
+        putils.ssh_execute.assert_called_with(mock.ANY, concat_command,
+                                              check_exit_code=True)
+
     def test__execute_ssh_exception(self):
         key = self.ssh_private_key
         commands = ['tree-clone-job-submit', '-e', '/src', '/dst']
@@ -1177,7 +1202,8 @@ class HNASSSHTestCase(test.TestCase):
                           'tree-clone-job-submit -e /src /dst')
         self.mock_object(paramiko.SSHClient, 'connect')
         self.mock_object(putils, 'ssh_execute',
-                         mock.Mock(side_effect=putils.ProcessExecutionError))
+                         mock.Mock(side_effect=putils.ProcessExecutionError
+                                   (stderr='Error')))
 
         self.assertRaises(putils.ProcessExecutionError,
                           self._driver._execute, commands)

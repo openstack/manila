@@ -414,6 +414,7 @@ class HNASSSHBackend(object):
             msg = (_("Share %s was not created.") % share['id'])
             raise exception.HNASBackendException(msg=msg)
 
+    @mutils.retry(exception=exception.HNASConnException, wait_random=True)
     def _execute(self, commands):
         command = ['ssc', '127.0.0.1']
         if self.admin_ip0 is not None:
@@ -442,13 +443,19 @@ class HNASSSHBackend(object):
                                        'out': out, 'err': err})
                 return out, err
             except processutils.ProcessExecutionError as e:
-                LOG.debug("Command %(cmd)s result: out = %(out)s - err = "
-                          "%(err)s - exit = %(exit)s.", {'cmd': e.cmd,
-                                                         'out': e.stdout,
-                                                         'err': e.stderr,
-                                                         'exit': e.exit_code})
-                LOG.error(_LE("Error running SSH command."))
-                raise
+                if 'Failed to establish SSC connection' in e.stderr:
+                    LOG.debug("SSC connection error!")
+                    msg = _("Failed to establish SSC connection.")
+                    raise exception.HNASConnException(msg=msg)
+                else:
+                    LOG.debug("Command %(cmd)s result: out = %(out)s - err = "
+                              "%(err)s - exit = %(exit)s.", {'cmd': e.cmd,
+                                                             'out': e.stdout,
+                                                             'err': e.stderr,
+                                                             'exit':
+                                                             e.exit_code})
+                    LOG.error(_LE("Error running SSH command."))
+                    raise
 
     def _check_fs_mounted(self, fs_name):
         self._check_fs()
