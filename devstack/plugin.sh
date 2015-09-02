@@ -318,9 +318,7 @@ function configure_manila {
 
 function configure_manila_ui {
     setup_develop $MANILA_UI_DIR
-    local local_settings=$HORIZON_DIR/openstack_dashboard/local/local_settings.py
 
-    _horizon_config_set $local_settings "HORIZON_CONFIG" customization_module "'manila_ui.overrides'"
     cp $MANILA_UI_DIR/manila_ui/enabled/_90_manila_*.py $HORIZON_DIR/openstack_dashboard/local/enabled
 }
 
