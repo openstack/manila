@@ -97,6 +97,9 @@ MANILA_SERVICE_INSTANCE_USER=${MANILA_SERVICE_INSTANCE_USER:-"manila"}
 MANILA_SERVICE_IMAGE_URL=${MANILA_SERVICE_IMAGE_URL:-"https://github.com/uglide/manila-image-elements/releases/download/0.1.0/manila-service-image.qcow2"}
 MANILA_SERVICE_IMAGE_NAME=${MANILA_SERVICE_IMAGE_NAME:-"manila-service-image"}
 
+MANILA_USE_SERVICE_INSTANCE_PASSWORD=${MANILA_USE_SERVICE_INSTANCE_PASSWORD:-"False"}
+MANILA_SERVICE_INSTANCE_PASSWORD=${MANILA_SERVICE_INSTANCE_PASSWORD:-"manila"}
+
 MANILA_SERVICE_VM_FLAVOR_REF=${MANILA_SERVICE_VM_FLAVOR_REF:-100}
 MANILA_SERVICE_VM_FLAVOR_NAME=${MANILA_SERVICE_VM_FLAVOR_NAME:-"manila-service-flavor"}
 MANILA_SERVICE_VM_FLAVOR_RAM=${MANILA_SERVICE_VM_FLAVOR_RAM:-128}
@@ -148,6 +151,10 @@ function configure_default_backends {
         iniset $MANILA_CONF $group_name service_image_name $MANILA_SERVICE_IMAGE_NAME
         iniset $MANILA_CONF $group_name service_instance_user $MANILA_SERVICE_INSTANCE_USER
         iniset $MANILA_CONF $group_name driver_handles_share_servers True
+
+        if [ $(trueorfalse False MANILA_USE_SERVICE_INSTANCE_PASSWORD) == True ]; then
+            iniset $MANILA_CONF $group_name service_instance_password $MANILA_SERVICE_INSTANCE_PASSWORD
+        fi
     done
 }
 
@@ -521,6 +528,15 @@ function stop_manila {
     done
 }
 
+# update_tempest - Function used for updating Tempest config if Tempest service enabled
+function update_tempest {
+    if is_service_enabled tempest; then
+        if [ $(trueorfalse False MANILA_USE_SERVICE_INSTANCE_PASSWORD) == True ]; then
+            iniset $TEMPEST_DIR/etc/tempest.conf share image_password $MANILA_SERVICE_INSTANCE_PASSWORD
+        fi
+    fi
+}
+
 # Main dispatcher
 if [[ "$1" == "stack" && "$2" == "install" ]]; then
     echo_summary "Installing Manila"
@@ -556,6 +572,9 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
 
     echo_summary "Creating Manila default share type"
     create_default_share_type
+
+    echo_summary "Update Tempest config"
+    update_tempest
 fi
 
 if [[ "$1" == "unstack" ]]; then
