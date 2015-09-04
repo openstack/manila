@@ -44,7 +44,7 @@ from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
 from manila.share import driver
-from manila.share.drivers import glusterfs
+from manila.share.drivers.glusterfs import common
 from manila import utils
 
 LOG = log.getLogger(__name__)
@@ -177,7 +177,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 ','.join(exceptions.keys())))
         notsupp_servers = []
         for srvaddr, vers in six.iteritems(glusterfs_versions):
-            if glusterfs.GlusterManager.numreduct(
+            if common.GlusterManager.numreduct(
                vers) < GLUSTERFS_VERSION_MIN:
                 notsupp_servers.append(srvaddr)
         if notsupp_servers:
@@ -225,7 +225,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
     def _glustermanager(self, gluster_address, has_volume=True):
         """Create GlusterManager object for gluster_address."""
 
-        return glusterfs.GlusterManager(
+        return common.GlusterManager(
             gluster_address, self._execute,
             self.configuration.glusterfs_native_path_to_private_key,
             self.configuration.glusterfs_native_server_password,
@@ -308,36 +308,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # TODO(deepakcs) Remove this once ssl options can be
         # set dynamically.
-        self._restart_gluster_vol(gluster_mgr)
+        common._restart_gluster_vol(gluster_mgr)
         return gluster_mgr
-
-    @staticmethod
-    def _restart_gluster_vol(gluster_mgr):
-        try:
-            # TODO(csaba): '--mode=script' ensures that the Gluster CLI runs in
-            # script mode. This seems unnecessary as the Gluster CLI is
-            # expected to run in non-interactive mode when the stdin is not
-            # a terminal, as is the case below. But on testing, found the
-            # behaviour of Gluster-CLI to be the contrary. Need to investigate
-            # this odd-behaviour of Gluster-CLI.
-            gluster_mgr.gluster_call(
-                'volume', 'stop', gluster_mgr.volume, '--mode=script')
-        except exception.ProcessExecutionError as exc:
-            msg = (_("Error stopping gluster volume. "
-                     "Volume: %(volname)s, Error: %(error)s") %
-                   {'volname': gluster_mgr.volume, 'error': exc.stderr})
-            LOG.error(msg)
-            raise exception.GlusterfsException(msg)
-
-        try:
-            gluster_mgr.gluster_call(
-                'volume', 'start', gluster_mgr.volume)
-        except exception.ProcessExecutionError as exc:
-            msg = (_("Error starting gluster volume. "
-                     "Volume: %(volname)s, Error: %(error)s") %
-                   {'volname': gluster_mgr.volume, 'error': exc.stderr})
-            LOG.error(msg)
-            raise exception.GlusterfsException(msg)
 
     @utils.synchronized("glusterfs_native", external=False)
     def _pop_gluster_vol(self, size=None):
@@ -444,30 +416,6 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-    def _do_mount(self, gluster_export, mntdir):
-
-        cmd = ['mount', '-t', 'glusterfs', gluster_export, mntdir]
-        try:
-            self._execute(*cmd, run_as_root=True)
-        except exception.ProcessExecutionError as exc:
-            msg = (_("Unable to mount gluster volume. "
-                     "gluster_export: %(export)s, Error: %(error)s") %
-                   {'export': gluster_export, 'error': exc.stderr})
-            LOG.error(msg)
-            raise exception.GlusterfsException(msg)
-
-    def _do_umount(self, mntdir):
-
-        cmd = ['umount', mntdir]
-        try:
-            self._execute(*cmd, run_as_root=True)
-        except exception.ProcessExecutionError as exc:
-            msg = (_("Unable to unmount gluster volume. "
-                     "mount_dir: %(mntdir)s, Error: %(error)s") %
-                   {'mntdir': mntdir, 'error': exc.stderr})
-            LOG.error(msg)
-            raise exception.GlusterfsException(msg)
-
     def _wipe_gluster_vol(self, gluster_mgr):
 
         # Reset the SSL options.
@@ -497,13 +445,13 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        self._restart_gluster_vol(gluster_mgr)
+        common._restart_gluster_vol(gluster_mgr)
 
         # Create a temporary mount.
         gluster_export = gluster_mgr.export
         tmpdir = tempfile.mkdtemp()
         try:
-            self._do_mount(gluster_export, tmpdir)
+            common._mount_gluster_vol(self._execute, gluster_export, tmpdir)
         except exception.GlusterfsException:
             shutil.rmtree(tmpdir, ignore_errors=True)
             raise
@@ -517,8 +465,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # delete the paths of the two directories, but delete their contents
         # along with the rest of the contents of the volume.
         srvaddr = gluster_mgr.management_address
-        if glusterfs.GlusterManager.numreduct(self.glusterfs_versions[srvaddr]
-                                              ) < (3, 7):
+        if common.GlusterManager.numreduct(self.glusterfs_versions[srvaddr]
+                                           ) < (3, 7):
             cmd = ['find', tmpdir, '-mindepth', '1', '-delete']
         else:
             ignored_dirs = map(lambda x: os.path.join(tmpdir, *x),
@@ -537,7 +485,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.GlusterfsException(msg)
         finally:
             # Unmount.
-            self._do_umount(tmpdir)
+            common._umount_gluster_vol(self._execute, tmpdir)
             shutil.rmtree(tmpdir, ignore_errors=True)
 
         # Set the SSL options.
@@ -567,7 +515,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(msg)
             raise exception.GlusterfsException(msg)
 
-        self._restart_gluster_vol(gluster_mgr)
+        common._restart_gluster_vol(gluster_mgr)
 
     def get_network_allocations_number(self):
         return 0
@@ -652,7 +600,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # a version check.
         vers = self.glusterfs_versions[old_gmgr.management_address]
         minvers = (3, 7)
-        if glusterfs.GlusterManager.numreduct(vers) < minvers:
+        if common.GlusterManager.numreduct(vers) < minvers:
             minvers_str = '.'.join(six.text_type(c) for c in minvers)
             vers_str = '.'.join(vers)
             msg = (_("GlusterFS version %(version)s on server %(server)s does "
@@ -748,7 +696,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         if opret == -1:
             vers = self.glusterfs_versions[gluster_mgr.management_address]
-            if glusterfs.GlusterManager.numreduct(vers) > (3, 6):
+            if common.GlusterManager.numreduct(vers) > (3, 6):
                 # This logic has not yet been implemented in GlusterFS 3.6
                 if operrno == 0:
                     self.gluster_nosnap_vols_dict[vol] = operrstr
@@ -846,7 +794,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # TODO(deepakcs) Remove this once ssl options can be
         # set dynamically.
-        self._restart_gluster_vol(gluster_mgr)
+        common._restart_gluster_vol(gluster_mgr)
 
     @utils.synchronized("glusterfs_native_access", external=False)
     def deny_access(self, context, share, access, share_server=None):
@@ -891,7 +839,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # TODO(deepakcs) Remove this once ssl options can be
         # set dynamically.
-        self._restart_gluster_vol(gluster_mgr)
+        common._restart_gluster_vol(gluster_mgr)
 
     def _update_share_stats(self):
         """Send stats info for the GlusterFS volume."""

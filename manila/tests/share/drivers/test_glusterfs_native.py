@@ -30,7 +30,7 @@ from manila.common import constants
 from manila import context
 from manila import exception
 from manila.share import configuration as config
-from manila.share.drivers import glusterfs
+from manila.share.drivers.glusterfs import common
 from manila.share.drivers import glusterfs_native
 from manila import test
 from manila.tests import fake_utils
@@ -88,7 +88,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.share2 = new_share(
             export_location=self.glusterfs_target2,
             status=constants.STATUS_AVAILABLE)
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         self.gmgr1 = gmgr(self.glusterfs_server1, self._execute, None, None,
                           has_volume=False)
         self.gmgr2 = gmgr(self.glusterfs_server2, self._execute, None, None,
@@ -110,7 +110,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.fake_conf = config.Configuration(None)
         self.mock_object(tempfile, 'mkdtemp',
                          mock.Mock(return_value='/tmp/tmpKGHKJ'))
-        self.mock_object(glusterfs.GlusterManager, 'make_gluster_call')
+        self.mock_object(common.GlusterManager, 'make_gluster_call')
 
         with mock.patch.object(glusterfs_native.GlusterfsNativeShareDriver,
                                '_glustermanager',
@@ -128,11 +128,11 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     @ddt.unpack
     def test_glustermanager(self, test_kwargs, has_volume):
         fake_obj = mock.Mock()
-        self.mock_object(glusterfs, 'GlusterManager',
+        self.mock_object(common, 'GlusterManager',
                          mock.Mock(return_value=fake_obj))
         ret = self._driver._glustermanager(self.glusterfs_target1,
                                            **test_kwargs)
-        glusterfs.GlusterManager.assert_called_once_with(
+        common.GlusterManager.assert_called_once_with(
             self.glusterfs_target1, self._execute,
             self._driver.configuration.glusterfs_native_path_to_private_key,
             self._driver.configuration.glusterfs_native_server_password,
@@ -238,9 +238,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             ('volume', 'set', 'gv1', 'nfs.export-volumes', 'off'),
             ('volume', 'set', 'gv1', 'client.ssl', 'on'),
             ('volume', 'set', 'gv1', 'server.ssl', 'on')]
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self._driver._glustermanager = mock.Mock(return_value=gmgr1)
         self.mock_object(gmgr1, 'get_gluster_vol_option',
@@ -253,7 +253,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             mock.call(*test_args[1]),
             mock.call(*test_args[2]))
         self.assertEqual(gmgr1, ret)
-        self.assertTrue(self._driver._restart_gluster_vol.called)
+        self.assertTrue(common._restart_gluster_vol.called)
 
     @ddt.data(0, 1, 2)
     def test_setup_gluster_vols_excp(self, idx):
@@ -266,9 +266,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             if(args == test_args[idx]):
                 raise exception.ProcessExecutionError()
 
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self._driver._glustermanager = mock.Mock(return_value=gmgr1)
         self.mock_object(gmgr1, 'get_gluster_vol_option',
@@ -281,12 +281,12 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         gmgr1.get_gluster_vol_option.assert_called_once_with('auth.ssl-allow')
         self.assertTrue(
             mock.call(*test_args[idx]) in gmgr1.gluster_call.call_args_list)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
+        self.assertFalse(common._restart_gluster_vol.called)
 
     def test_setup_gluster_vol_no_ssl_allow(self):
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self._driver._glustermanager = mock.Mock(return_value=gmgr1)
         self.mock_object(gmgr1, 'get_gluster_vol_option',
@@ -296,55 +296,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                           self._driver._setup_gluster_vol, gmgr1.volume)
         gmgr1.get_gluster_vol_option.assert_called_once_with('auth.ssl-allow')
         self.assertFalse(gmgr1.gluster_call.called)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
-
-    def test_restart_gluster_vol(self):
-        gmgr = glusterfs.GlusterManager
-        gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
-        test_args = [('volume', 'stop', 'gv1', '--mode=script'),
-                     ('volume', 'start', 'gv1')]
-
-        self._driver._restart_gluster_vol(gmgr1)
-        self.assertEqual(
-            [mock.call(*test_args[0]), mock.call(*test_args[1])],
-            gmgr1.gluster_call.call_args_list)
-
-    def test_restart_gluster_vol_excp1(self):
-        gmgr = glusterfs.GlusterManager
-        gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
-        test_args = ('volume', 'stop', 'gv1', '--mode=script')
-
-        def raise_exception(*args, **kwargs):
-            if(args == test_args):
-                raise exception.ProcessExecutionError()
-
-        self.mock_object(gmgr1, 'gluster_call',
-                         mock.Mock(side_effect=raise_exception))
-
-        self.assertRaises(exception.GlusterfsException,
-                          self._driver._restart_gluster_vol, gmgr1)
-        self.assertEqual(
-            [mock.call(*test_args)],
-            gmgr1.gluster_call.call_args_list)
-
-    def test_restart_gluster_vol_excp2(self):
-        gmgr = glusterfs.GlusterManager
-        gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
-        test_args = [('volume', 'stop', 'gv1', '--mode=script'),
-                     ('volume', 'start', 'gv1')]
-
-        def raise_exception(*args, **kwargs):
-            if(args == test_args[1]):
-                raise exception.ProcessExecutionError()
-
-        self.mock_object(gmgr1, 'gluster_call',
-                         mock.Mock(side_effect=raise_exception))
-
-        self.assertRaises(exception.GlusterfsException,
-                          self._driver._restart_gluster_vol, gmgr1)
-        self.assertEqual(
-            [mock.call(*test_args[0]), mock.call(*test_args[1])],
-            gmgr1.gluster_call.call_args_list)
+        self.assertFalse(common._restart_gluster_vol.called)
 
     @ddt.data({"voldict": {"host:/share2G": {"size": 2}}, "used_vols": {},
                "size": 1, "expected": "host:/share2G"},
@@ -374,7 +326,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                "expected": "host:/share"})
     @ddt.unpack
     def test_pop_gluster_vol(self, voldict, used_vols, size, expected):
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(expected, self._execute, None, None)
         self._driver._fetch_gluster_volumes = mock.Mock(return_value=voldict)
         self._driver.gluster_used_vols_dict = used_vols
@@ -403,7 +355,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.assertFalse(self._driver._setup_gluster_vol.called)
 
     def test_push_gluster_vol(self):
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         gmgr2 = gmgr(self.glusterfs_target2, self._execute, None, None)
 
@@ -417,7 +369,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             self.glusterfs_target2 in self._driver.gluster_used_vols_dict)
 
     def test_push_gluster_vol_excp(self):
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
 
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
@@ -427,50 +379,6 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                           self._driver._push_gluster_vol,
                           self.glusterfs_target2)
 
-    def test_do_mount(self):
-        gmgr = glusterfs.GlusterManager
-        gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
-        tmpdir = '/tmp/tmpKGHKJ'
-        expected_exec = ['mount -t glusterfs host1:/gv1 /tmp/tmpKGHKJ']
-
-        self._driver._do_mount(gmgr1.export, tmpdir)
-
-        self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-
-    def test_do_mount_excp(self):
-        def exec_runner(*ignore_args, **ignore_kwargs):
-            raise exception.ProcessExecutionError
-
-        gmgr = glusterfs.GlusterManager
-        gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
-        tmpdir = '/tmp/tmpKGHKJ'
-        expected_exec = ['mount -t glusterfs host1:/gv1 /tmp/tmpKGHKJ']
-
-        fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
-
-        self.assertRaises(exception.GlusterfsException,
-                          self._driver._do_mount, gmgr1.export, tmpdir)
-
-    def test_do_umount(self):
-        tmpdir = '/tmp/tmpKGHKJ'
-        expected_exec = ['umount /tmp/tmpKGHKJ']
-
-        self._driver._do_umount(tmpdir)
-
-        self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-
-    def test_do_umount_excp(self):
-        def exec_runner(*ignore_args, **ignore_kwargs):
-            raise exception.ProcessExecutionError
-
-        tmpdir = '/tmp/tmpKGHKJ'
-        expected_exec = ['umount /tmp/tmpKGHKJ']
-
-        fake_utils.fake_execute_set_repliers([(expected_exec[0], exec_runner)])
-
-        self.assertRaises(exception.GlusterfsException,
-                          self._driver._do_umount, tmpdir)
-
     @ddt.data({'vers_minor': '6',
                'cmd': 'find /tmp/tmpKGHKJ -mindepth 1 -delete'},
               {'vers_minor': '7',
@@ -479,9 +387,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                       '/tmp/tmpKGHKJ/.trashcan/internal_op -delete'})
     @ddt.unpack
     def test_wipe_gluster_vol(self, vers_minor, cmd):
-        self._driver._restart_gluster_vol = mock.Mock()
-        self._driver._do_mount = mock.Mock()
-        self._driver._do_umount = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
+        common._mount_gluster_vol = mock.Mock()
+        common._umount_gluster_vol = mock.Mock()
         shutil.rmtree = mock.Mock()
         test_args = [
             ('volume', 'set', 'gv1', 'client.ssl', 'off'),
@@ -489,7 +397,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             ('volume', 'set', 'gv1', 'client.ssl', 'on'),
             ('volume', 'set', 'gv1', 'server.ssl', 'on')]
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self._driver.glusterfs_versions = {
             self.glusterfs_server1: ('3', vers_minor)}
@@ -497,21 +405,21 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         self._driver._wipe_gluster_vol(gmgr1)
 
-        self.assertEqual(2, self._driver._restart_gluster_vol.call_count)
+        self.assertEqual(2, common._restart_gluster_vol.call_count)
         self.assertEqual(
             [mock.call(*test_args[0]), mock.call(*test_args[1]),
              mock.call(*test_args[2]), mock.call(*test_args[3])],
             gmgr1.gluster_call.call_args_list)
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
         self.assertTrue(tempfile.mkdtemp.called)
-        self.assertTrue(self._driver._do_mount.called)
-        self.assertTrue(self._driver._do_umount.called)
+        self.assertTrue(common._mount_gluster_vol.called)
+        self.assertTrue(common._umount_gluster_vol.called)
         self.assertTrue(shutil.rmtree.called)
 
     def test_wipe_gluster_vol_excp1(self):
-        self._driver._restart_gluster_vol = mock.Mock()
-        self._driver._do_mount = mock.Mock()
-        self._driver._do_umount = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
+        common._mount_gluster_vol = mock.Mock()
+        common._umount_gluster_vol = mock.Mock()
         shutil.rmtree = mock.Mock()
         test_args = ('volume', 'set', 'gv1', 'client.ssl', 'off')
 
@@ -519,7 +427,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             if(args == test_args):
                 raise exception.ProcessExecutionError()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=raise_exception))
@@ -528,16 +436,16 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                           self._driver._wipe_gluster_vol, gmgr1)
         self.assertEqual(
             [mock.call(*test_args)], gmgr1.gluster_call.call_args_list)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
+        self.assertFalse(common._restart_gluster_vol.called)
         self.assertFalse(tempfile.mkdtemp.called)
-        self.assertFalse(self._driver._do_mount.called)
-        self.assertFalse(self._driver._do_umount.called)
+        self.assertFalse(common._mount_gluster_vol.called)
+        self.assertFalse(common._umount_gluster_vol.called)
         self.assertFalse(shutil.rmtree.called)
 
     def test_wipe_gluster_vol_excp2(self):
-        self._driver._restart_gluster_vol = mock.Mock()
-        self._driver._do_mount = mock.Mock()
-        self._driver._do_umount = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
+        common._mount_gluster_vol = mock.Mock()
+        common._umount_gluster_vol = mock.Mock()
         shutil.rmtree = mock.Mock()
         test_args = [
             ('volume', 'set', 'gv1', 'client.ssl', 'off'),
@@ -547,7 +455,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             if(args == test_args[1]):
                 raise exception.ProcessExecutionError()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=raise_exception))
@@ -557,16 +465,16 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.assertEqual(
             [mock.call(*test_args[0]), mock.call(*test_args[1])],
             gmgr1.gluster_call.call_args_list)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
+        self.assertFalse(common._restart_gluster_vol.called)
         self.assertFalse(tempfile.mkdtemp.called)
-        self.assertFalse(self._driver._do_mount.called)
-        self.assertFalse(self._driver._do_umount.called)
+        self.assertFalse(common._mount_gluster_vol.called)
+        self.assertFalse(common._umount_gluster_vol.called)
         self.assertFalse(shutil.rmtree.called)
 
     def test_wipe_gluster_vol_excp3(self):
-        self._driver._restart_gluster_vol = mock.Mock()
-        self._driver._do_mount = mock.Mock()
-        self._driver._do_umount = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
+        common._mount_gluster_vol = mock.Mock()
+        common._umount_gluster_vol = mock.Mock()
         shutil.rmtree = mock.Mock()
         test_args = [
             ('volume', 'set', 'gv1', 'client.ssl', 'off'),
@@ -577,7 +485,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             if(args == test_args[2]):
                 raise exception.ProcessExecutionError()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=raise_exception))
@@ -591,16 +499,16 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
              mock.call(*test_args[2])],
             gmgr1.gluster_call.call_args_list)
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-        self.assertTrue(self._driver._restart_gluster_vol.called)
+        self.assertTrue(common._restart_gluster_vol.called)
         self.assertTrue(tempfile.mkdtemp.called)
-        self.assertTrue(self._driver._do_mount.called)
-        self.assertTrue(self._driver._do_umount.called)
+        self.assertTrue(common._mount_gluster_vol.called)
+        self.assertTrue(common._umount_gluster_vol.called)
         self.assertTrue(shutil.rmtree.called)
 
     def test_wipe_gluster_vol_excp4(self):
-        self._driver._restart_gluster_vol = mock.Mock()
-        self._driver._do_mount = mock.Mock()
-        self._driver._do_umount = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
+        common._mount_gluster_vol = mock.Mock()
+        common._umount_gluster_vol = mock.Mock()
         shutil.rmtree = mock.Mock()
         test_args = [
             ('volume', 'set', 'gv1', 'client.ssl', 'off'),
@@ -612,7 +520,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             if(args == test_args[3]):
                 raise exception.ProcessExecutionError()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(side_effect=raise_exception))
@@ -626,19 +534,19 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
              mock.call(*test_args[2]), mock.call(*test_args[3])],
             gmgr1.gluster_call.call_args_list)
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-        self.assertTrue(self._driver._restart_gluster_vol.called)
+        self.assertTrue(common._restart_gluster_vol.called)
         self.assertTrue(tempfile.mkdtemp.called)
-        self.assertTrue(self._driver._do_mount.called)
-        self.assertTrue(self._driver._do_umount.called)
+        self.assertTrue(common._mount_gluster_vol.called)
+        self.assertTrue(common._umount_gluster_vol.called)
         self.assertTrue(shutil.rmtree.called)
 
     def test_wipe_gluster_vol_excp5(self):
-        self._driver._restart_gluster_vol = mock.Mock()
-        self._driver._do_mount = mock.Mock()
-        self._driver._do_umount = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
+        common._mount_gluster_vol = mock.Mock()
+        common._umount_gluster_vol = mock.Mock()
         shutil.rmtree = mock.Mock()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
 
         test_args = [
@@ -658,20 +566,20 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.assertEqual(
             [mock.call(*test_args[0]), mock.call(*test_args[1])],
             gmgr1.gluster_call.call_args_list)
-        self.assertTrue(self._driver._restart_gluster_vol.called)
+        self.assertTrue(common._restart_gluster_vol.called)
         self.assertTrue(tempfile.mkdtemp.called)
-        self.assertTrue(self._driver._do_mount.called)
-        self.assertTrue(self._driver._do_umount.called)
+        self.assertTrue(common._mount_gluster_vol.called)
+        self.assertTrue(common._umount_gluster_vol.called)
         self.assertTrue(shutil.rmtree.called)
 
     def test_wipe_gluster_vol_mount_fail(self):
-        self._driver._restart_gluster_vol = mock.Mock()
-        self._driver._do_mount = mock.Mock()
-        self._driver._do_mount.side_effect = exception.GlusterfsException
-        self._driver._do_umount = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
+        common._mount_gluster_vol = mock.Mock()
+        common._mount_gluster_vol.side_effect = exception.GlusterfsException
+        common._umount_gluster_vol = mock.Mock()
         shutil.rmtree = mock.Mock()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
 
         test_args = [
@@ -683,20 +591,20 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.assertEqual(
             [mock.call(*test_args[0]), mock.call(*test_args[1])],
             gmgr1.gluster_call.call_args_list)
-        self.assertTrue(self._driver._restart_gluster_vol.called)
+        self.assertTrue(common._restart_gluster_vol.called)
         self.assertTrue(tempfile.mkdtemp.called)
-        self.assertTrue(self._driver._do_mount.called)
-        self.assertFalse(self._driver._do_umount.called)
+        self.assertTrue(common._mount_gluster_vol.called)
+        self.assertFalse(common._umount_gluster_vol.called)
         self.assertTrue(shutil.rmtree.called)
 
     def test_wipe_gluster_vol_umount_fail(self):
-        self._driver._restart_gluster_vol = mock.Mock()
-        self._driver._do_mount = mock.Mock()
-        self._driver._do_umount = mock.Mock()
-        self._driver._do_umount.side_effect = exception.GlusterfsException
+        common._restart_gluster_vol = mock.Mock()
+        common._mount_gluster_vol = mock.Mock()
+        common._umount_gluster_vol = mock.Mock()
+        common._umount_gluster_vol.side_effect = exception.GlusterfsException
         shutil.rmtree = mock.Mock()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
 
         test_args = [
@@ -711,10 +619,10 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             [mock.call(*test_args[0]), mock.call(*test_args[1])],
             gmgr1.gluster_call.call_args_list)
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
-        self.assertTrue(self._driver._restart_gluster_vol.called)
+        self.assertTrue(common._restart_gluster_vol.called)
         self.assertTrue(tempfile.mkdtemp.called)
-        self.assertTrue(self._driver._do_mount.called)
-        self.assertTrue(self._driver._do_umount.called)
+        self.assertTrue(common._mount_gluster_vol.called)
+        self.assertTrue(common._umount_gluster_vol.called)
         self.assertFalse(shutil.rmtree.called)
 
     def test_create_share(self):
@@ -742,7 +650,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     def test_delete_share(self):
         self._driver._push_gluster_vol = mock.Mock()
         self._driver._wipe_gluster_vol = mock.Mock()
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
         self._driver.delete_share(self._context, self.share1)
@@ -765,7 +673,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver._wipe_gluster_vol.side_effect = (
             exception.GlusterfsException)
         self._driver._push_gluster_vol = mock.Mock()
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
         self.assertRaises(exception.GlusterfsException,
@@ -778,7 +686,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.gluster_nosnap_vols_dict = {}
         self._driver.glusterfs_versions = {self.glusterfs_server1: ('3', '6')}
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
 
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
@@ -800,7 +708,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.gluster_nosnap_vols_dict = {}
         self._driver.glusterfs_versions = {self.glusterfs_server1: ('3', '6')}
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
 
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
@@ -828,7 +736,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.glusterfs_versions = {
             self.glusterfs_server1: ('3', vers_minor)}
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
 
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
@@ -856,7 +764,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.glusterfs_versions = {
             self.glusterfs_server1: ('3', vers_minor)}
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
 
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
@@ -870,7 +778,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                           snapshot)
 
     def test_find_actual_backend_snapshot_name(self):
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.share1['export_location'], self._execute, None, None)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(return_value=('fake_snap_id_xyz', '')))
@@ -886,7 +794,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
     @ddt.data('this is too bad', 'fake_snap_id_xyx\nfake_snap_id_pqr')
     def test_find_actual_backend_snapshot_name_bad_snap_list(self, snaplist):
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.share1['export_location'], self._execute, None, None)
         self.mock_object(gmgr1, 'gluster_call',
                          mock.Mock(return_value=(snaplist, '')))
@@ -915,7 +823,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         }
         volume = ''.join(['manila-', share['id']])
         new_export_location = ':/'.join([glusterfs_server, volume])
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         old_gmgr = gmgr(glusterfs_target, self._execute, None, None)
         new_gmgr = gmgr(new_export_location, self._execute, None, None)
         self._driver.gluster_used_vols_dict = {glusterfs_target: old_gmgr}
@@ -966,7 +874,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         }
         volume = ''.join(['manila-', share['id']])
         new_export_location = ':/'.join([glusterfs_server, volume])
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         old_gmgr = gmgr(glusterfs_target, self._execute, None, None)
         new_gmgr = gmgr(new_export_location, self._execute, None, None)
         self._driver.gluster_used_vols_dict = {glusterfs_target: old_gmgr}
@@ -1011,7 +919,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         }
         volume = ''.join(['manila-', share['id']])
         new_export_location = ':/'.join([glusterfs_server, volume])
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         old_gmgr = gmgr(glusterfs_target, self._execute, None, None)
         new_gmgr = gmgr(new_export_location, self._execute, None, None)
         self._driver.gluster_used_vols_dict = {glusterfs_target: old_gmgr}
@@ -1065,7 +973,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         }
         volume = ''.join(['manila-', share['id']])
         new_export_location = ':/'.join([glusterfs_server, volume])
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         old_gmgr = gmgr(glusterfs_target, self._execute, None, None)
         new_gmgr = gmgr(new_export_location, self._execute, None, None)
         self._driver.gluster_used_vols_dict = {glusterfs_target: old_gmgr}
@@ -1102,7 +1010,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     def test_delete_snapshot(self):
         self._driver.gluster_nosnap_vols_dict = {}
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.share1['export_location'], self._execute, None, None)
 
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
@@ -1128,7 +1036,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
     def test_delete_snapshot_error(self, badxmloutput):
         self._driver.gluster_nosnap_vols_dict = {}
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.share1['export_location'], self._execute, None, None)
 
         self._driver.gluster_used_vols_dict = {self.glusterfs_target1: gmgr1}
@@ -1152,9 +1060,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             assert_called_once_with(gmgr1, snapshot))
 
     def test_allow_access(self):
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
         access = {'access_type': 'cert', 'access_to': 'client.example.com'}
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(gmgr1, 'get_gluster_vol_option',
                          mock.Mock(return_value='some.common.name'))
@@ -1166,12 +1074,12 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.allow_access(self._context, self.share1, access)
         gmgr1.get_gluster_vol_option.assert_called_once_with('auth.ssl-allow')
         gmgr1.gluster_call.assert_called_once_with(*test_args)
-        self._driver._restart_gluster_vol.assert_called_once_with(gmgr1)
+        common._restart_gluster_vol.assert_called_once_with(gmgr1)
 
     def test_allow_access_with_share_having_access(self):
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
         access = {'access_type': 'cert', 'access_to': 'client.example.com'}
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(
             gmgr1, 'get_gluster_vol_option',
@@ -1182,17 +1090,17 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.allow_access(self._context, self.share1, access)
         gmgr1.get_gluster_vol_option.assert_called_once_with('auth.ssl-allow')
         self.assertFalse(gmgr1.gluster_call.called)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
+        self.assertFalse(common._restart_gluster_vol.called)
 
     def test_allow_access_invalid_access_type(self):
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
         access = {'access_type': 'invalid', 'access_to': 'client.example.com'}
         expected_exec = []
 
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver.allow_access,
                           self._context, self.share1, access)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
+        self.assertFalse(common._restart_gluster_vol.called)
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
 
     def test_allow_access_excp(self):
@@ -1204,9 +1112,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             if (args == test_args):
                 raise exception.ProcessExecutionError()
 
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(gmgr1, 'get_gluster_vol_option',
                          mock.Mock(return_value='some.common.name'))
@@ -1220,12 +1128,12 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                           self._context, self.share1, access)
         gmgr1.get_gluster_vol_option.assert_called_once_with('auth.ssl-allow')
         gmgr1.gluster_call.assert_called_once_with(*test_args)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
+        self.assertFalse(common._restart_gluster_vol.called)
 
     def test_deny_access(self):
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
         access = {'access_type': 'cert', 'access_to': 'client.example.com'}
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(
             gmgr1, 'get_gluster_vol_option',
@@ -1238,12 +1146,12 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.deny_access(self._context, self.share1, access)
         gmgr1.get_gluster_vol_option.assert_called_once_with('auth.ssl-allow')
         gmgr1.gluster_call.assert_called_once_with(*test_args)
-        self._driver._restart_gluster_vol.assert_called_once_with(gmgr1)
+        common._restart_gluster_vol.assert_called_once_with(gmgr1)
 
     def test_deny_access_with_share_having_no_access(self):
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
         access = {'access_type': 'cert', 'access_to': 'client.example.com'}
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(gmgr1, 'get_gluster_vol_option',
                          mock.Mock(return_value='some.common.name'))
@@ -1253,16 +1161,16 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self._driver.deny_access(self._context, self.share1, access)
         gmgr1.get_gluster_vol_option.assert_called_once_with('auth.ssl-allow')
         self.assertFalse(gmgr1.gluster_call.called)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
+        self.assertFalse(common._restart_gluster_vol.called)
 
     def test_deny_access_invalid_access_type(self):
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
         access = {'access_type': 'invalid', 'access_to': 'NotApplicable'}
 
         self.assertRaises(exception.InvalidShareAccess,
                           self._driver.deny_access,
                           self._context, self.share1, access)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
+        self.assertFalse(common._restart_gluster_vol.called)
 
     def test_deny_access_excp(self):
         access = {'access_type': 'cert', 'access_to': 'client.example.com'}
@@ -1273,9 +1181,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             if (args == test_args):
                 raise exception.ProcessExecutionError()
 
-        self._driver._restart_gluster_vol = mock.Mock()
+        common._restart_gluster_vol = mock.Mock()
 
-        gmgr = glusterfs.GlusterManager
+        gmgr = common.GlusterManager
         gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
         self.mock_object(
             gmgr1, 'get_gluster_vol_option',
@@ -1290,7 +1198,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                           self._context, self.share1, access)
         gmgr1.get_gluster_vol_option.assert_called_once_with('auth.ssl-allow')
         gmgr1.gluster_call.assert_called_once_with(*test_args)
-        self.assertFalse(self._driver._restart_gluster_vol.called)
+        self.assertFalse(common._restart_gluster_vol.called)
 
     def test_get_share_stats_refresh_false(self):
         self._driver._stats = mock.Mock()

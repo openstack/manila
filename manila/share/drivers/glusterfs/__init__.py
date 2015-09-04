@@ -28,7 +28,6 @@ import errno
 import os
 import re
 import sys
-import xml.etree.cElementTree as etree
 
 from oslo_config import cfg
 from oslo_log import log
@@ -37,10 +36,10 @@ import six
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
-from manila.i18n import _LW
 from manila.share import driver
 from manila.share.drivers import ganesha
 from manila.share.drivers.ganesha import utils as ganesha_utils
+from manila.share.drivers.glusterfs import common
 
 LOG = log.getLogger(__name__)
 
@@ -89,142 +88,6 @@ NFS_EXPORT_VOL = 'nfs.export-volumes'
 GLUSTERFS_VERSION_MIN = (3, 5)
 
 
-class GlusterManager(object):
-    """Interface with a GlusterFS volume."""
-
-    scheme = re.compile('\A(?:(?P<user>[^:@/]+)@)?'
-                        '(?P<host>[^:@/]+)'
-                        '(?::/(?P<vol>.+))?')
-
-    def __init__(self, address, execf, path_to_private_key=None,
-                 remote_server_password=None, has_volume=True):
-        """Initialize a GlusterManager instance.
-
-        :param address: the Gluster URI (in [<user>@]<host>:/<vol> format).
-        :param execf: executor function for management commands.
-        :param path_to_private_key: path to private ssh key of remote server.
-        :param remote_server_password: ssh password for remote server.
-        :param has_volume: instruction to uri parser regarding how to deal
-                           with the optional volume part (True: require its
-                           presence, False: require its absence, None: don't
-                           require anything about volume).
-        """
-        m = self.scheme.search(address)
-        if m:
-            self.volume = m.group('vol')
-            if (has_volume is True and not self.volume) or (
-               has_volume is False and self.volume):
-                m = None
-        if not m:
-            raise exception.GlusterfsException(
-                _('Invalid gluster address %s.') % address)
-        self.remote_user = m.group('user')
-        self.host = m.group('host')
-        self.management_address = '@'.join(
-            filter(None, (self.remote_user, self.host)))
-        self.qualified = address
-        if self.volume:
-            self.export = ':/'.join([self.host, self.volume])
-        else:
-            self.export = None
-        self.path_to_private_key = path_to_private_key
-        self.remote_server_password = remote_server_password
-        self.gluster_call = self.make_gluster_call(execf)
-
-    def make_gluster_call(self, execf):
-        """Execute a Gluster command locally or remotely."""
-        if self.remote_user:
-            gluster_execf = ganesha_utils.SSHExecutor(
-                self.host, 22, None, self.remote_user,
-                password=self.remote_server_password,
-                privatekey=self.path_to_private_key)
-        else:
-            gluster_execf = ganesha_utils.RootExecutor(execf)
-        return lambda *args, **kwargs: gluster_execf(*(('gluster',) + args),
-                                                     **kwargs)
-
-    def get_gluster_vol_option(self, option):
-        """Get the value of an option set on a GlusterFS volume."""
-        args = ('--xml', 'volume', 'info', self.volume)
-        try:
-            out, err = self.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error retrieving volume info: %s"), exc.stderr)
-            raise exception.GlusterfsException("gluster %s failed" %
-                                               ' '.join(args))
-
-        if not out:
-            raise exception.GlusterfsException(
-                'gluster volume info %s: no data received' %
-                self.volume
-            )
-
-        vix = etree.fromstring(out)
-        if int(vix.find('./volInfo/volumes/count').text) != 1:
-            raise exception.InvalidShare('Volume name ambiguity')
-        for e in vix.findall(".//option"):
-            o, v = (e.find(a).text for a in ('name', 'value'))
-            if o == option:
-                return v
-
-    def get_gluster_version(self):
-        """Retrieve GlusterFS version.
-
-        :returns: version (as tuple of strings, example: ('3', '6', '0beta2'))
-        """
-        try:
-            out, err = self.gluster_call('--version')
-        except exception.ProcessExecutionError as exc:
-            raise exception.GlusterfsException(
-                _("'gluster version' failed on server "
-                  "%(server)s: %(message)s") %
-                {'server': self.host, 'message': six.text_type(exc)})
-        try:
-            owords = out.split()
-            if owords[0] != 'glusterfs':
-                raise RuntimeError
-            vers = owords[1].split('.')
-            # provoke an exception if vers does not start with two numerals
-            int(vers[0])
-            int(vers[1])
-        except Exception:
-            raise exception.GlusterfsException(
-                _("Cannot parse version info obtained from server "
-                  "%(server)s, version info: %(info)s") %
-                {'server': self.host, 'info': out})
-        return vers
-
-    def check_gluster_version(self, minvers):
-        """Retrieve and check GlusterFS version.
-
-        :param minvers: minimum version to require
-                        (given as tuple of integers, example: (3, 6))
-        """
-        vers = self.get_gluster_version()
-        if self.numreduct(vers) < minvers:
-            raise exception.GlusterfsException(_(
-                "Unsupported GlusterFS version %(version)s on server "
-                "%(server)s, minimum requirement: %(minvers)s") % {
-                'server': self.host,
-                'version': '.'.join(vers),
-                'minvers': '.'.join(six.text_type(c) for c in minvers)})
-
-    @staticmethod
-    def numreduct(vers):
-        """The numeric reduct of a tuple of strings.
-
-        That is, applying an integer conversion map on the longest
-        initial segment of vers which consists of numerals.
-        """
-        numvers = []
-        for c in vers:
-            try:
-                numvers.append(int(c))
-            except ValueError:
-                break
-        return tuple(numvers)
-
-
 class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                            driver.ShareDriver,):
     """Execute commands relating to Shares."""
@@ -244,7 +107,7 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             raise exception.GlusterfsException(
                 _('glusterfs_target configuration that specifies the GlusterFS'
                   ' volume to be mounted on the Manila host is not set.'))
-        self.gluster_manager = GlusterManager(
+        self.gluster_manager = common.GlusterManager(
             self.configuration.glusterfs_target,
             self._execute,
             self.configuration.glusterfs_path_to_private_key,
@@ -296,35 +159,13 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         return os.path.join(self.configuration.glusterfs_mount_point_base,
                             self.gluster_manager.volume)
 
-    def _do_mount(self, cmd, ensure):
-        """Execute the mount command based on 'ensure' parameter.
-
-        :param cmd: command to do the actual mount
-        :param ensure: boolean to allow remounting a volume with a warning
-        """
-        try:
-            self._execute(*cmd, run_as_root=True)
-        except exception.ProcessExecutionError as exc:
-            if ensure and 'already mounted' in exc.stderr:
-                LOG.warn(_LW("%s is already mounted"),
-                         self.gluster_manager.export)
-            else:
-                raise exception.GlusterfsException(
-                    'Unable to mount Gluster volume'
-                )
-
-    def _mount_gluster_vol(self, mount_path, ensure=False):
-        """Mount GlusterFS volume at the specified mount path."""
-        self._execute('mkdir', '-p', mount_path)
-        command = ['mount', '-t', 'glusterfs', self.gluster_manager.export,
-                   mount_path]
-        self._do_mount(command, ensure)
-
     def _ensure_gluster_vol_mounted(self):
         """Ensure GlusterFS volume is native-mounted on Manila host."""
         mount_path = self._get_mount_point_for_gluster_vol()
         try:
-            self._mount_gluster_vol(mount_path, ensure=True)
+            common._mount_gluster_vol(self._execute,
+                                      self.gluster_manager.export, mount_path,
+                                      ensure=True)
         except exception.GlusterfsException:
             LOG.error(_LE('Could not mount the Gluster volume %s'),
                       self.gluster_manager.volume)
@@ -555,7 +396,7 @@ class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
     def _default_config_hook(self):
         """Callback to provide default export block."""
         dconf = super(GaneshaNFSHelper, self)._default_config_hook()
-        conf_dir = ganesha_utils.path_from(__file__, "glusterfs", "conf")
+        conf_dir = ganesha_utils.path_from(__file__, "conf")
         ganesha_utils.patch(dconf, self._load_conf_dir(conf_dir))
         return dconf
 
