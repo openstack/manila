@@ -422,33 +422,16 @@ function create_manila_service_secgroup {
 }
 
 # create_manila_accounts - Set up common required manila accounts
-# Tenant               User       Roles
-# ------------------------------------------------------------------
-# service              manila     admin        # if enabled
 function create_manila_accounts {
-    SERVICE_TENANT=$(openstack project show $SERVICE_TENANT_NAME -f value -c id)
-    ADMIN_ROLE=$(openstack role show admin -f value -c id)
-    MANILA_USER=$(openstack user create \
-        --password="$SERVICE_PASSWORD" \
-        --project=$SERVICE_TENANT \
-        --email=manila@example.com \
-        manila \
-        -f value -c id)
-    openstack role add \
-        --project $SERVICE_TENANT \
-        --user $MANILA_USER \
-        $ADMIN_ROLE
+
+    create_service_user "manila"
+
     if [[ "$KEYSTONE_CATALOG_BACKEND" = 'sql' ]]; then
-        MANILA_SERVICE=$(openstack service create \
-            --type=share \
-            --description="Manila Shared Filesystem Service" \
-            manila -f value -c id)
-        openstack endpoint create \
-            --region RegionOne \
-            --publicurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
-            --adminurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
-            --internalurl "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
-            $MANILA_SERVICE
+        get_or_create_service "manila" "share" "Manila Shared Filesystem Service"
+        get_or_create_endpoint "share" "$REGION_NAME" \
+            "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
+            "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s" \
+            "$MANILA_SERVICE_PROTOCOL://$MANILA_SERVICE_HOST:$MANILA_SERVICE_PORT/v1/\$(tenant_id)s"
     fi
 }
 
@@ -462,7 +445,14 @@ function create_default_share_type {
     enabled_backends=(${MANILA_ENABLED_BACKENDS//,/ })
     driver_handles_share_servers=$(iniget $MANILA_CONF ${enabled_backends[0]} driver_handles_share_servers)
 
-    manila type-create $MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers
+    manila \
+        --debug \
+        --os-auth-url $KEYSTONE_AUTH_URI/v2.0 \
+        --os-tenant-name $OS_PROJECT_NAME \
+        --os-username $OS_USERNAME \
+        --os-password $OS_PASSWORD \
+        --os-region-name $OS_REGION_NAME \
+        type-create $MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers
     if [[ $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS ]]; then
         manila type-key $MANILA_DEFAULT_SHARE_TYPE set $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS
     fi
