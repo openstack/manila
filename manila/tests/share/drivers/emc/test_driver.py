@@ -133,8 +133,8 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data["vendor_name"] = 'EMC'
         data["driver_version"] = '1.0'
         data["storage_protocol"] = 'NFS_CIFS'
-        data['total_capacity_gb'] = 'infinite'
-        data['free_capacity_gb'] = 'infinite'
+        data['total_capacity_gb'] = 'unknown'
+        data['free_capacity_gb'] = 'unknown'
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
         data['pools'] = None

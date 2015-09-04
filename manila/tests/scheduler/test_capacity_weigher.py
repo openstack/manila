@@ -36,13 +36,13 @@ class CapacityWeigherTestCase(test.TestCase):
         self.weight_handler = weights.HostWeightHandler(
             'manila.scheduler.weights')
 
-    def _get_weighed_host(self, hosts, weight_properties=None):
+    def _get_weighed_host(self, hosts, weight_properties=None, index=0):
         if weight_properties is None:
             weight_properties = {'size': 1}
         return self.weight_handler.get_weighed_objects(
             [capacity.CapacityWeigher],
             hosts,
-            weight_properties)[0]
+            weight_properties)[index]
 
     @mock.patch('manila.db.sqlalchemy.api.service_get_all_by_topic')
     def _get_all_hosts(self, _mock_service_get_all_by_topic, disabled=False):
@@ -87,12 +87,23 @@ class CapacityWeigherTestCase(test.TestCase):
         #        free_capacity_gb = 500
         #        free = math.floor(2048 * 1.5 - 1548 - 2048 * 0.05) = 1421.0
         #        weight = 0.65
+        # host6: thin_provisioning = False
+        #        free = inf
+        #        weight = 0.0
 
         # so, host2 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
         self.assertEqual(1.0, weighed_host.weight)
         self.assertEqual(
             'host2', utils.extract_host(weighed_host.obj.host))
+
+    def test_unknown_is_last(self):
+        hostinfo_list = self._get_all_hosts()
+
+        last_host = self._get_weighed_host(hostinfo_list, index=-1)
+        self.assertEqual(
+            'host6', utils.extract_host(last_host.obj.host))
+        self.assertEqual(0.0, last_host.weight)
 
     def test_capacity_weight_multiplier_negative_1(self):
         self.flags(capacity_weight_multiplier=-1.0)
@@ -126,6 +137,10 @@ class CapacityWeigherTestCase(test.TestCase):
         #        free = math.floor(2048 * 1.5 - 1548 - 2048 * 0.05) = 1421.0
         #        free * (-1) = -1421.0
         #        weight = -0.65
+        # host6: thin_provisioning = False
+        #        free = inf
+        #        free * (-1) = -inf
+        #        weight = 0.0
 
         # so, host4 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
@@ -165,6 +180,9 @@ class CapacityWeigherTestCase(test.TestCase):
         #        free = math.floor(2048 * 1.5 - 1548 - 2048 * 0.05) = 1421.0
         #        free * 2 = 2842.0
         #        weight = 1.29
+        # host6: thin_provisioning = False
+        #        free = inf
+        #        weight = 0.0
 
         # so, host2 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)

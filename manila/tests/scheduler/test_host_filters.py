@@ -85,8 +85,8 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
-    @ddt.data('infinite', 'unknown')
-    def test_capacity_filter_passes_infinite_unknown(self, free):
+    def test_capacity_filter_passes_unknown(self):
+        free = 'unknown'
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
@@ -98,7 +98,6 @@ class HostFiltersTestCase(test.TestCase):
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @ddt.data(
-        {'free_capacity': 'infinite', 'total_capacity': 'infinite'},
         {'free_capacity': 'unknown', 'total_capacity': 'unknown'})
     @ddt.unpack
     def test_capacity_filter_passes_total(self, free_capacity,
@@ -115,7 +114,7 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @ddt.data('infinite', 'unknown', 0)
+    @ddt.data('unknown', 0)
     def test_capacity_filter_fails_total(self, total):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()

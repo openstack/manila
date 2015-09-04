@@ -626,27 +626,9 @@ class HostStateTestCase(test.TestCase):
         self.assertEqual(10000, fake_host.pools['pool3'].total_capacity_gb)
         self.assertEqual(10000, fake_host.pools['pool3'].free_capacity_gb)
 
-    def test_update_from_share_infinite_capability(self):
-        share_capability = {'total_capacity_gb': 'infinite',
-                            'free_capacity_gb': 'infinite',
-                            'reserved_percentage': 0,
-                            'timestamp': None}
-        fake_host = host_manager.HostState('host1#_pool0')
-        self.assertIsNone(fake_host.free_capacity_gb)
-
-        fake_host.update_from_share_capability(share_capability)
-        # Backend level stats remain uninitialized
-        self.assertEqual(fake_host.total_capacity_gb, 0)
-        self.assertIsNone(fake_host.free_capacity_gb)
-        # Pool stats has been updated
-        self.assertEqual(fake_host.pools['_pool0'].total_capacity_gb,
-                         'infinite')
-        self.assertEqual(fake_host.pools['_pool0'].free_capacity_gb,
-                         'infinite')
-
     def test_update_from_share_unknown_capability(self):
         share_capability = {
-            'total_capacity_gb': 'infinite',
+            'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',
             'reserved_percentage': 0,
             'timestamp': None
@@ -660,7 +642,7 @@ class HostStateTestCase(test.TestCase):
         self.assertIsNone(fake_host.free_capacity_gb)
         # Pool stats has been updated
         self.assertEqual(fake_host.pools['_pool0'].total_capacity_gb,
-                         'infinite')
+                         'unknown')
         self.assertEqual(fake_host.pools['_pool0'].free_capacity_gb,
                          'unknown')
 
@@ -681,25 +663,9 @@ class HostStateTestCase(test.TestCase):
         self.assertEqual(fake_host.free_capacity_gb,
                          free_capacity - share_size)
 
-    def test_consume_from_share_infinite_capability(self):
-        share_capability = {
-            'total_capacity_gb': 'infinite',
-            'free_capacity_gb': 'infinite',
-            'reserved_percentage': 0,
-            'timestamp': None
-        }
-        fake_host = host_manager.PoolState('host1', share_capability, '_pool0')
-        share_size = 1000
-        fake_share = {'id': 'foo', 'size': share_size}
-
-        fake_host.update_from_share_capability(share_capability)
-        fake_host.consume_from_share(fake_share)
-        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
-        self.assertEqual(fake_host.free_capacity_gb, 'infinite')
-
     def test_consume_from_share_unknown_capability(self):
         share_capability = {
-            'total_capacity_gb': 'infinite',
+            'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',
             'reserved_percentage': 0,
             'timestamp': None
@@ -710,8 +676,15 @@ class HostStateTestCase(test.TestCase):
 
         fake_host.update_from_share_capability(share_capability)
         fake_host.consume_from_share(fake_share)
-        self.assertEqual(fake_host.total_capacity_gb, 'infinite')
+        self.assertEqual(fake_host.total_capacity_gb, 'unknown')
         self.assertEqual(fake_host.free_capacity_gb, 'unknown')
+
+    def test_consume_from_share_invalid_capacity(self):
+        fake_host = host_manager.PoolState('host1', {}, '_pool0')
+        fake_host.free_capacity_gb = 'invalid_foo_string'
+
+        self.assertRaises(exception.InvalidCapacity,
+                          fake_host.consume_from_share, 'fake')
 
     def test_repr(self):
 

@@ -55,10 +55,12 @@ class CapacityWeigher(weights.BaseHostWeigher):
         reserved = float(host_state.reserved_percentage) / 100
         free_space = host_state.free_capacity_gb
         total_space = host_state.total_capacity_gb
-        if {'unknown', 'infinite'}.intersection({total_space, free_space}):
-            # (zhiteng) 'infinite' and 'unknown' are treated the same
-            # here, for sorting purpose.
-            free = float('inf')
+        if 'unknown' in (total_space, free_space):
+            # NOTE(u_glide): "unknown" capacity always sorts to the bottom
+            if CONF.capacity_weight_multiplier > 0:
+                free = float('-inf')
+            else:
+                free = float('inf')
         else:
             total = float(total_space)
             if host_state.thin_provisioning:
@@ -73,3 +75,26 @@ class CapacityWeigher(weights.BaseHostWeigher):
                 # taking into account the reserved space.
                 free = math.floor(free_space - total * reserved)
         return free
+
+    def weigh_objects(self, weighed_obj_list, weight_properties):
+        weights = super(CapacityWeigher, self).weigh_objects(weighed_obj_list,
+                                                             weight_properties)
+        # NOTE(u_glide): Replace -inf with (minimum - 1) and
+        # inf with (maximum + 1) to avoid errors in
+        # manila.openstack.common.scheduler.base_weight.normalize() method
+        if self.minval == float('-inf'):
+            self.minval = self.maxval
+            for val in weights:
+                if float('-inf') < val < self.minval:
+                    self.minval = val
+            self.minval -= 1
+            return [self.minval if w == float('-inf') else w for w in weights]
+        elif self.maxval == float('inf'):
+            self.maxval = self.minval
+            for val in weights:
+                if self.maxval < val < float('inf'):
+                    self.maxval = val
+            self.maxval += 1
+            return [self.maxval if w == float('inf') else w for w in weights]
+        else:
+            return weights

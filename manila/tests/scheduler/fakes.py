@@ -67,6 +67,8 @@ SHARE_SERVICES_WITH_POOLS = [
     # service on host5 is disabled
     dict(id=5, host='host5@EEE', topic='share', disabled=True,
          availability_zone='zone4', updated_at=timeutils.utcnow()),
+    dict(id=5, host='host6@FFF', topic='share', disabled=True,
+         availability_zone='zone5', updated_at=timeutils.utcnow()),
 ]
 
 SHARE_SERVICE_STATES_WITH_POOLS = {
@@ -139,6 +141,23 @@ SHARE_SERVICE_STATES_WITH_POOLS = {
                                   provisioned_capacity_gb=100,
                                   max_over_subscription_ratio=1.0,
                                   thin_provisioning=False)]),
+    'host6@FFF': dict(share_backend_name='FFF',
+                      timestamp=None, reserved_percentage=0,
+                      driver_handles_share_servers=False,
+                      pools=[dict(pool_name='pool6a',
+                                  total_capacity_gb='unknown',
+                                  free_capacity_gb='unknown',
+                                  reserved_percentage=0,
+                                  provisioned_capacity_gb=100,
+                                  max_over_subscription_ratio=1.0,
+                                  thin_provisioning=False),
+                             dict(pool_name='pool6b',
+                                  total_capacity_gb='unknown',
+                                  free_capacity_gb='unknown',
+                                  reserved_percentage=0,
+                                  provisioned_capacity_gb=100,
+                                  max_over_subscription_ratio=1.0,
+                                  thin_provisioning=False)]),
 }
 
 
@@ -156,8 +175,6 @@ class FakeHostManager(host_manager.HostManager):
             'host1': {'total_capacity_gb': 1024,
                       'free_capacity_gb': 1024,
                       'allocated_capacity_gb': 0,
-                      'provisioned_capacity_gb': 0,
-                      'max_over_subscription_ratio': 1.0,
                       'thin_provisioning': False,
                       'reserved_percentage': 10,
                       'timestamp': None},
@@ -193,6 +210,12 @@ class FakeHostManager(host_manager.HostManager):
                       'thin_provisioning': True,
                       'reserved_percentage': 5,
                       'timestamp': None},
+            'host6': {'total_capacity_gb': 'unknown',
+                      'free_capacity_gb': 'unknown',
+                      'allocated_capacity_gb': 1548,
+                      'thin_provisioning': False,
+                      'reserved_percentage': 5,
+                      'timestamp': None},
         }
 
 
@@ -215,6 +238,8 @@ def mock_host_manager_db_calls(mock_obj, disabled=None):
              availability_zone='zone3', updated_at=timeutils.utcnow()),
         dict(id=5, host='host5', topic='share', disabled=False,
              availability_zone='zone3', updated_at=timeutils.utcnow()),
+        dict(id=6, host='host6', topic='share', disabled=False,
+             availability_zone='zone4', updated_at=timeutils.utcnow()),
     ]
     if disabled is None:
         mock_obj.return_value = services

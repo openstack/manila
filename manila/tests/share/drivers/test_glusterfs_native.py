@@ -1313,8 +1313,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'storage_protocol': 'glusterfs',
             'reserved_percentage': 0,
             'QoS_support': False,
-            'total_capacity_gb': 'infinite',
-            'free_capacity_gb': 'infinite',
+            'total_capacity_gb': 'unknown',
+            'free_capacity_gb': 'unknown',
             'pools': None,
             'snapshot_support': True,
         }
