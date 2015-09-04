@@ -48,6 +48,8 @@ class ShareDriverWithExecuteMixin(driver.ShareDriver, driver.ExecuteMixin):
 
 @ddt.ddt
 class ShareDriverTestCase(test.TestCase):
+    _SNAPSHOT_METHOD_NAMES = ["create_snapshot", "delete_snapshot",
+                              "create_share_from_snapshot"]
 
     def setUp(self):
         super(ShareDriverTestCase, self).setUp()
@@ -243,6 +245,42 @@ class ShareDriverTestCase(test.TestCase):
         self.assertEqual(
             True, child_class_instance._stats["snapshot_support"])
         self.assertTrue(child_class_instance.configuration.safe_get.called)
+
+    @ddt.data(
+        ([], [], False),
+        (_SNAPSHOT_METHOD_NAMES, [], True),
+        (_SNAPSHOT_METHOD_NAMES, _SNAPSHOT_METHOD_NAMES, True),
+        (_SNAPSHOT_METHOD_NAMES[0:1], _SNAPSHOT_METHOD_NAMES[1:],
+            True),
+        ([], _SNAPSHOT_METHOD_NAMES, True),
+        (_SNAPSHOT_METHOD_NAMES[0:1], _SNAPSHOT_METHOD_NAMES[1:2],
+            False),
+    )
+    @ddt.unpack
+    def test_check_redefined_driver_methods(self, common_drv_meth_names,
+                                            child_drv_meth_names,
+                                            expected_result):
+        # This test covers the case of drivers inheriting other drivers or
+        # common classes.
+
+        driver.CONF.set_default('driver_handles_share_servers', True)
+
+        common_drv_methods, child_drv_methods = [
+            {method_name: lambda *args, **kwargs: None
+             for method_name in method_names}
+            for method_names in (common_drv_meth_names,
+                                 child_drv_meth_names)]
+
+        common_drv = type(
+            "NotRedefinedCommon", (driver.ShareDriver, ), common_drv_methods)
+        child_drv_instance = type("NotRedefined", (common_drv, ),
+                                  child_drv_methods)(True)
+
+        has_redefined_methods = (
+            child_drv_instance._has_redefined_driver_methods(
+                self._SNAPSHOT_METHOD_NAMES))
+
+        self.assertEqual(expected_result, has_redefined_methods)
 
     @ddt.data(
         (),
