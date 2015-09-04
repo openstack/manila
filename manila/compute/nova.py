@@ -168,7 +168,7 @@ class API(base.Base):
                       block_device_mapping=None,
                       block_device_mapping_v2=None, nics=None,
                       availability_zone=None, instance_count=1,
-                      admin_pass=None):
+                      admin_pass=None, meta=None):
         return _untranslate_server_summary_view(
             novaclient(context).servers.create(
                 name, image, flavor, userdata=user_data,
@@ -176,7 +176,8 @@ class API(base.Base):
                 block_device_mapping=block_device_mapping,
                 block_device_mapping_v2=block_device_mapping_v2,
                 nics=nics, availability_zone=availability_zone,
-                min_count=instance_count, admin_pass=admin_pass)
+                min_count=instance_count, admin_pass=admin_pass,
+                meta=meta)
         )
 
     def server_delete(self, context, instance):
