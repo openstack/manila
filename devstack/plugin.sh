@@ -453,13 +453,20 @@ function create_default_share_type {
     manila \
         --debug \
         --os-auth-url $KEYSTONE_AUTH_URI/v2.0 \
-        --os-tenant-name $OS_PROJECT_NAME \
+        --os-tenant-name ${OS_PROJECT_NAME:-$OS_TENANT_NAME} \
         --os-username $OS_USERNAME \
         --os-password $OS_PASSWORD \
         --os-region-name $OS_REGION_NAME \
         type-create $MANILA_DEFAULT_SHARE_TYPE $driver_handles_share_servers
     if [[ $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS ]]; then
-        manila type-key $MANILA_DEFAULT_SHARE_TYPE set $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS
+        manila \
+            --debug \
+            --os-auth-url $KEYSTONE_AUTH_URI/v2.0 \
+            --os-tenant-name ${OS_PROJECT_NAME:-$OS_TENANT_NAME} \
+            --os-username $OS_USERNAME \
+            --os-password $OS_PASSWORD \
+            --os-region-name $OS_REGION_NAME \
+            type-key $MANILA_DEFAULT_SHARE_TYPE set $MANILA_DEFAULT_SHARE_TYPE_EXTRA_SPECS
     fi
 }
 
