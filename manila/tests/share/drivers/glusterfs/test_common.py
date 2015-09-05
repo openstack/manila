@@ -32,7 +32,7 @@ fake_gluster_manager_attrs = {
     'export': '127.0.0.1:/testvol',
     'host': '127.0.0.1',
     'qualified': 'testuser@127.0.0.1:/testvol',
-    'remote_user': 'testuser',
+    'user': 'testuser',
     'volume': 'testvol',
     'path_to_private_key': '/fakepath/to/privatekey',
     'remote_server_password': 'fakepassword',
@@ -64,8 +64,8 @@ class GlusterManagerTestCase(test.TestCase):
                 fake_path_to_private_key, fake_remote_server_password)
 
     def test_gluster_manager_init(self):
-        self.assertEqual(fake_gluster_manager_attrs['remote_user'],
-                         self._gluster_manager.remote_user)
+        self.assertEqual(fake_gluster_manager_attrs['user'],
+                         self._gluster_manager.user)
         self.assertEqual(fake_gluster_manager_attrs['host'],
                          self._gluster_manager.host)
         self.assertEqual(fake_gluster_manager_attrs['volume'],
@@ -85,30 +85,48 @@ class GlusterManagerTestCase(test.TestCase):
     def test_gluster_manager_init_has_vol(self, has_volume):
         test_gluster_manager = common.GlusterManager(
             'testuser@127.0.0.1:/testvol', self.fake_execf,
-            has_volume=has_volume)
+            requires={'volume': has_volume})
         self.assertEqual('testvol', test_gluster_manager.volume)
 
     @ddt.data(None, False)
     def test_gluster_manager_init_no_vol(self, has_volume):
         test_gluster_manager = common.GlusterManager(
-            'testuser@127.0.0.1', self.fake_execf, has_volume=has_volume)
+            'testuser@127.0.0.1', self.fake_execf,
+            requires={'volume': has_volume})
         self.assertIsNone(test_gluster_manager.volume)
 
     def test_gluster_manager_init_has_shouldnt_have_vol(self):
         self.assertRaises(exception.GlusterfsException,
                           common.GlusterManager,
                           'testuser@127.0.0.1:/testvol',
-                          self.fake_execf, has_volume=False)
+                          self.fake_execf, requires={'volume': False})
 
     def test_gluster_manager_hasnt_should_have_vol(self):
         self.assertRaises(exception.GlusterfsException,
                           common.GlusterManager, 'testuser@127.0.0.1',
-                          self.fake_execf, has_volume=True)
+                          self.fake_execf, requires={'volume': True})
 
     def test_gluster_manager_invalid(self):
         self.assertRaises(exception.GlusterfsException,
                           common.GlusterManager, '127.0.0.1:vol',
                           'self.fake_execf')
+
+    def test_gluster_manager_getattr(self):
+        self.assertEqual('testvol', self._gluster_manager.volume)
+
+    def test_gluster_manager_getattr_called(self):
+        class FakeGlusterManager(common.GlusterManager):
+            pass
+
+        _gluster_manager = FakeGlusterManager('127.0.0.1:/testvol',
+                                              self.fake_execf)
+        FakeGlusterManager.__getattr__ = mock.Mock()
+        _gluster_manager.volume
+        _gluster_manager.__getattr__.assert_called_once_with('volume')
+
+    def test_gluster_manager_getattr_noattr(self):
+        self.assertRaises(AttributeError, getattr, self._gluster_manager,
+                          'fakeprop')
 
     def test_gluster_manager_make_gluster_call_local(self):
         fake_obj = mock.Mock()
@@ -135,7 +153,7 @@ class GlusterManagerTestCase(test.TestCase):
             gluster_manager.make_gluster_call(fake_execute)(*fake_args,
                                                             **fake_kwargs)
             common.ganesha_utils.SSHExecutor.assert_called_with(
-                gluster_manager.host, 22, None, gluster_manager.remote_user,
+                gluster_manager.host, 22, None, gluster_manager.user,
                 password=gluster_manager.remote_server_password,
                 privatekey=gluster_manager.path_to_private_key)
         fake_obj.assert_called_once_with(
@@ -151,15 +169,20 @@ class GlusterManagerTestCase(test.TestCase):
         self._gluster_manager.gluster_call.assert_called_once_with(
             *args)
 
-    def test_get_gluster_vol_option_failing_volinfo(self):
+    @ddt.data({'inner_excp': RuntimeError, 'outer_excp': RuntimeError},
+              {'inner_excp': exception.ProcessExecutionError,
+               'outer_excp': exception.GlusterfsException})
+    @ddt.unpack
+    def test_get_gluster_vol_option_failing_volinfo(self, inner_excp,
+                                                    outer_excp):
 
         def raise_exception(*ignore_args, **ignore_kwargs):
-            raise RuntimeError('fake error')
+            raise inner_excp('fake error')
 
         args = ('--xml', 'volume', 'info', self._gluster_manager.volume)
         self.mock_object(self._gluster_manager, 'gluster_call',
                          mock.Mock(side_effect=raise_exception))
-        self.assertRaises(RuntimeError,
+        self.assertRaises(outer_excp,
                           self._gluster_manager.get_gluster_vol_option,
                           NFS_EXPORT_DIR)
         self._gluster_manager.gluster_call.assert_called_once_with(

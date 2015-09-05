@@ -132,7 +132,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         glusterfs_servers = {}
         for srvaddr in self.configuration.glusterfs_servers:
             glusterfs_servers[srvaddr] = self._glustermanager(
-                srvaddr, has_volume=False)
+                srvaddr, requires={'volume': False})
         self.glusterfs_servers = glusterfs_servers
         self.glusterfs_versions = {}
 
@@ -222,14 +222,14 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 LOG.error(msg)
                 raise
 
-    def _glustermanager(self, gluster_address, has_volume=True):
+    def _glustermanager(self, gluster_address, requires={'volume': True}):
         """Create GlusterManager object for gluster_address."""
 
         return common.GlusterManager(
             gluster_address, self._execute,
             self.configuration.glusterfs_native_path_to_private_key,
             self.configuration.glusterfs_native_server_password,
-            has_volume=has_volume)
+            requires=requires)
 
     def _fetch_gluster_volumes(self):
         """Do a 'gluster volume list | grep <volume pattern>'.
@@ -248,7 +248,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 out, err = gluster_mgr.gluster_call('volume', 'list')
             except exception.ProcessExecutionError as exc:
                 msgdict = {'err': exc.stderr, 'hostinfo': ''}
-                if gluster_mgr.remote_user:
+                if gluster_mgr.user:
                     msgdict['hostinfo'] = ' on host %s' % gluster_mgr.host
                 LOG.error(_LE("Error retrieving volume list%(hostinfo)s: "
                               "%(err)s") % msgdict)
@@ -464,7 +464,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # GlusterFS does not allow unlink(2) of the two directories. So do not
         # delete the paths of the two directories, but delete their contents
         # along with the rest of the contents of the volume.
-        srvaddr = gluster_mgr.management_address
+        srvaddr = gluster_mgr.host_access
         if common.GlusterManager.numreduct(self.glusterfs_versions[srvaddr]
                                            ) < (3, 7):
             cmd = ['find', tmpdir, '-mindepth', '1', '-delete']
@@ -598,7 +598,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         # Snapshot clone feature in GlusterFS server essential to support this
         # API is available in GlusterFS server versions 3.7 and higher. So do
         # a version check.
-        vers = self.glusterfs_versions[old_gmgr.management_address]
+        vers = self.glusterfs_versions[old_gmgr.host_access]
         minvers = (3, 7)
         if common.GlusterManager.numreduct(vers) < minvers:
             minvers_str = '.'.join(six.text_type(c) for c in minvers)
@@ -630,7 +630,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
         # Construct the volume address/export location of the new
         # volume/share.
-        export_location = ':/'.join([old_gmgr.management_address, volume])
+        export_location = ':/'.join([old_gmgr.host_access, volume])
 
         # Configure the GlusterFS volume to be used as share.
         # 1. The clone of the snapshot, the new volume, retains the authorized
@@ -695,7 +695,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             operrstr = outxml.find('opErrstr').text
 
         if opret == -1:
-            vers = self.glusterfs_versions[gluster_mgr.management_address]
+            vers = self.glusterfs_versions[gluster_mgr.host_access]
             if common.GlusterManager.numreduct(vers) > (3, 6):
                 # This logic has not yet been implemented in GlusterFS 3.6
                 if operrno == 0:

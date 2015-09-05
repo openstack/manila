@@ -90,9 +90,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             status=constants.STATUS_AVAILABLE)
         gmgr = common.GlusterManager
         self.gmgr1 = gmgr(self.glusterfs_server1, self._execute, None, None,
-                          has_volume=False)
+                          requires={'volume': False})
         self.gmgr2 = gmgr(self.glusterfs_server2, self._execute, None, None,
-                          has_volume=False)
+                          requires={'volume': False})
         self.glusterfs_volumes_dict = (
             {'root@host1:/manila-share-1-1G': {'size': 1},
              'root@host2:/manila-share-2-2G': {'size': 2}})
@@ -123,10 +123,11 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.addCleanup(fake_utils.fake_execute_set_repliers, [])
         self.addCleanup(fake_utils.fake_execute_clear_log)
 
-    @ddt.data({"test_kwargs": {}, "has_volume": True},
-              {"test_kwargs": {'has_volume': False}, "has_volume": False})
+    @ddt.data({"test_kwargs": {}, "requires": {"volume": True}},
+              {"test_kwargs": {'requires': {'volume': False}},
+               "requires": {"volume": False}})
     @ddt.unpack
-    def test_glustermanager(self, test_kwargs, has_volume):
+    def test_glustermanager(self, test_kwargs, requires):
         fake_obj = mock.Mock()
         self.mock_object(common, 'GlusterManager',
                          mock.Mock(return_value=fake_obj))
@@ -136,7 +137,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             self.glusterfs_target1, self._execute,
             self._driver.configuration.glusterfs_native_path_to_private_key,
             self._driver.configuration.glusterfs_native_server_password,
-            has_volume=has_volume)
+            requires=requires)
         self.assertEqual(fake_obj, ret)
 
     def test_compile_volume_pattern(self):

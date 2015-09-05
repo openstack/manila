@@ -37,7 +37,7 @@ fake_gluster_manager_attrs = {
     'export': '127.0.0.1:/testvol',
     'host': '127.0.0.1',
     'qualified': 'testuser@127.0.0.1:/testvol',
-    'remote_user': 'testuser',
+    'user': 'testuser',
     'volume': 'testvol',
     'path_to_private_key': '/fakepath/to/privatekey',
     'remote_server_password': 'fakepassword',
@@ -98,7 +98,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         common.GlusterManager.assert_called_once_with(
             self._driver.configuration.glusterfs_target, self._execute,
             self._driver.configuration.glusterfs_path_to_private_key,
-            self._driver.configuration.glusterfs_server_password)
+            self._driver.configuration.glusterfs_server_password,
+            requires={'volume': True})
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
         self._driver.gluster_manager.gluster_call.assert_called_once_with(
             *args)
@@ -142,7 +143,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         common.GlusterManager.assert_called_once_with(
             self._driver.configuration.glusterfs_target, self._execute,
             self._driver.configuration.glusterfs_path_to_private_key,
-            self._driver.configuration.glusterfs_server_password)
+            self._driver.configuration.glusterfs_server_password,
+            requires={'volume': True})
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
         self._driver.gluster_manager.gluster_call.assert_called_once_with(
             *args)
@@ -172,7 +174,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         common.GlusterManager.assert_called_once_with(
             self._driver.configuration.glusterfs_target, self._execute,
             self._driver.configuration.glusterfs_path_to_private_key,
-            self._driver.configuration.glusterfs_server_password)
+            self._driver.configuration.glusterfs_server_password,
+            requires={'volume': True})
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
         self._driver.gluster_manager.gluster_call.assert_called_once_with(
             *args)

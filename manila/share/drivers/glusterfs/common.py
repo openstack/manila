@@ -36,48 +36,80 @@ class GlusterManager(object):
 
     scheme = re.compile('\A(?:(?P<user>[^:@/]+)@)?'
                         '(?P<host>[^:@/]+)'
-                        '(?::/(?P<vol>.+))?')
+                        '(?::/(?P<volume>[^/]+)(?P<path>/.*)?)?\Z')
 
-    def __init__(self, address, execf, path_to_private_key=None,
-                 remote_server_password=None, has_volume=True):
-        """Initialize a GlusterManager instance.
-
-        :param address: the Gluster URI (in [<user>@]<host>:/<vol> format).
-        :param execf: executor function for management commands.
-        :param path_to_private_key: path to private ssh key of remote server.
-        :param remote_server_password: ssh password for remote server.
-        :param has_volume: instruction to uri parser regarding how to deal
-                           with the optional volume part (True: require its
-                           presence, False: require its absence, None: don't
-                           require anything about volume).
-        """
-        m = self.scheme.search(address)
-        if m:
-            self.volume = m.group('vol')
-            if (has_volume is True and not self.volume) or (
-               has_volume is False and self.volume):
-                m = None
+    @classmethod
+    def parse(cls, address):
+        """Parse address string into component dict."""
+        m = cls.scheme.search(address)
         if not m:
             raise exception.GlusterfsException(
                 _('Invalid gluster address %s.') % address)
-        self.remote_user = m.group('user')
-        self.host = m.group('host')
-        self.management_address = '@'.join(
-            filter(None, (self.remote_user, self.host)))
-        self.qualified = address
-        if self.volume:
-            self.export = ':/'.join([self.host, self.volume])
-        else:
-            self.export = None
+        return m.groupdict()
+
+    def __getattr__(self, attr):
+        if attr in self.components:
+            return self.components[attr]
+        raise AttributeError("'%(typ)s' object has no attribute '%(attr)s'" %
+                             {'typ': type(self).__name__, 'attr': attr})
+
+    def __init__(self, address, execf=None, path_to_private_key=None,
+                 remote_server_password=None, requires={}):
+        """Initialize a GlusterManager instance.
+
+        :param address: the Gluster URI (either string of
+                        [<user>@]<host>[:/<volume>[/<path>]] format or
+                        component dict with "user", "host", "volume",
+                        "path" keys).
+        :param execf: executor function for management commands.
+        :param path_to_private_key: path to private ssh key of remote server.
+        :param remote_server_password: ssh password for remote server.
+        :param requires: a dict mapping some of the component names to
+                         either True or False; having it specified,
+                         respectively, the presence or absence of the
+                         given component in the uri will be enforced.
+        """
+
+        self.components = (address if isinstance(address, dict) else
+                           self.parse(address))
+        for k, v in six.iteritems(requires):
+            if v is None:
+                continue
+            if (self.components.get(k) is not None) != v:
+                raise exception.GlusterfsException(
+                    _('Invalid gluster address %s.') % address)
+
         self.path_to_private_key = path_to_private_key
         self.remote_server_password = remote_server_password
-        self.gluster_call = self.make_gluster_call(execf)
+        if execf:
+            self.gluster_call = self.make_gluster_call(execf)
+
+    @property
+    def host_access(self):
+        return '@'.join(filter(None, (self.user, self.host)))
+
+    def _build_uri(self, base):
+        u = base
+        for sep, comp in ((':/', 'volume'), ('', 'path')):
+            if self.components[comp] is None:
+                break
+            u = sep.join((u, self.components[comp]))
+        return u
+
+    @property
+    def qualified(self):
+        return self._build_uri(self.host_access)
+
+    @property
+    def export(self):
+        if self.volume:
+            return self._build_uri(self.host)
 
     def make_gluster_call(self, execf):
         """Execute a Gluster command locally or remotely."""
-        if self.remote_user:
+        if self.user:
             gluster_execf = ganesha_utils.SSHExecutor(
-                self.host, 22, None, self.remote_user,
+                self.host, 22, None, self.user,
                 password=self.remote_server_password,
                 privatekey=self.path_to_private_key)
         else:
