@@ -1665,6 +1665,12 @@ def share_snapshot_instance_update(context, instance_id, values):
     session = get_session()
     instance_ref = share_snapshot_instance_get(context, instance_id,
                                                session=session)
+
+    # NOTE(u_glide): Ignore updates to custom properties
+    for extra_key in models.ShareSnapshotInstance._extra_keys:
+        if extra_key in values:
+            values.pop(extra_key)
+
     instance_ref.update(values)
     instance_ref.save(session=session)
     return instance_ref

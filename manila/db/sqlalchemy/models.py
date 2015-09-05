@@ -543,6 +543,15 @@ class ShareSnapshot(BASE, ManilaBase):
 class ShareSnapshotInstance(BASE, ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshot_instances'
+    _extra_keys = ['name', 'share_id', 'share_name']
+
+    @property
+    def name(self):
+        return CONF.share_snapshot_name_template % self.id
+
+    @property
+    def share_name(self):
+        return CONF.share_name_template % self.share_instance_id
 
     @property
     def share_id(self):

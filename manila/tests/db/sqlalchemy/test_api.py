@@ -233,6 +233,20 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
         self.assertEqual(1, len(actual_result.instances))
         self.assertSubDictMatch(values, actual_result.to_dict())
 
+    def test_get_instance(self):
+        snapshot = db_utils.create_snapshot(with_share=True)
+
+        instance = db_api.share_snapshot_instance_get(
+            self.ctxt, snapshot.instance['id'], with_share_data=True)
+        instance_dict = instance.to_dict()
+
+        self.assertTrue(hasattr(instance, 'name'))
+        self.assertTrue(hasattr(instance, 'share_name'))
+        self.assertTrue(hasattr(instance, 'share_id'))
+        self.assertIn('name', instance_dict)
+        self.assertIn('share_name', instance_dict)
+        self.assertIn('share_id', instance_dict)
+
 
 class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
 
