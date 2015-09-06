@@ -331,6 +331,17 @@ class RestHelper(object):
 
         self._assert_rest_result(result, 'Start CIFS service error.')
 
+    def _find_pool_type(self, poolinfo):
+        root = self._read_xml()
+        for pool_type in ('Thin', 'Thick'):
+            pool_name_list = root.findtext(('Filesystem/%s_StoragePool'
+                                            % pool_type))
+            pool_name_list = pool_name_list.split(";")
+            for pool_name in pool_name_list:
+                pool_name = pool_name.strip().strip('\n')
+                if poolinfo['name'] == pool_name:
+                    poolinfo['type'] = pool_type
+
     def _find_pool_info(self, pool_name, result):
         if pool_name is None:
             return
@@ -344,6 +355,7 @@ class RestHelper(object):
                 poolinfo['CAPACITY'] = item['USERFREECAPACITY']
                 poolinfo['TOTALCAPACITY'] = item['USERTOTALCAPACITY']
                 poolinfo['CONSUMEDCAPACITY'] = item['USERCONSUMEDCAPACITY']
+                self._find_pool_type(poolinfo)
                 break
 
         return poolinfo
