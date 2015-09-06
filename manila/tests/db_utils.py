@@ -29,6 +29,45 @@ def _create_db_row(method, default_values, custom_values):
     return method(context.get_admin_context(), default_values)
 
 
+def create_consistency_group(**kwargs):
+    """Create a consistency group object."""
+    cg = {
+        'share_network_id': None,
+        'share_server_id': None,
+        'user_id': 'fake',
+        'project_id': 'fake',
+        'status': constants.STATUS_CREATING,
+        'host': 'fake_host'
+    }
+    return _create_db_row(db.consistency_group_create, cg, kwargs)
+
+
+def create_cgsnapshot(cg_id, **kwargs):
+    """Create a cgsnapshot object."""
+    snapshot = {
+        'consistency_group_id': cg_id,
+        'user_id': 'fake',
+        'project_id': 'fake',
+        'status': constants.STATUS_CREATING,
+    }
+    return _create_db_row(db.cgsnapshot_create, snapshot, kwargs)
+
+
+def create_cgsnapshot_member(cgsnapshot_id, **kwargs):
+    """Create a cgsnapshot member object."""
+    member = {
+        'share_proto': "NFS",
+        'size': 0,
+        'share_id': None,
+        'share_instance_id': None,
+        'user_id': 'fake',
+        'project_id': 'fake',
+        'status': 'creating',
+        'cgsnapshot_id': cgsnapshot_id,
+    }
+    return _create_db_row(db.cgsnapshot_member_create, member, kwargs)
+
+
 def create_share(**kwargs):
     """Create a share object."""
     share = {

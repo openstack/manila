@@ -21,6 +21,7 @@
 import copy
 import datetime
 import sys
+import uuid
 import warnings
 
 # NOTE(uglide): Required to override default oslo_db Query class
@@ -1260,6 +1261,23 @@ def share_instances_get_all_by_share(context, share_id):
     return result
 
 
+@require_context
+def share_instances_get_all_by_consistency_group_id(context, cg_id):
+    """Returns list of share instances that belong to given cg."""
+    result = (
+        model_query(context, models.Share).filter(
+            models.Share.consistency_group_id == cg_id,
+        ).all()
+    )
+    instances = []
+    for share in result:
+        instance = share.instance
+        instance.set_share_data(share)
+        instances.append(instance)
+
+    return instances
+
+
 ################
 
 
@@ -1353,7 +1371,8 @@ def share_get(context, share_id, session=None):
 
 @require_context
 def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
-                                filters=None, is_public=False, sort_key=None,
+                                consistency_group_id=None, filters=None,
+                                is_public=False, sort_key=None,
                                 sort_dir=None):
     """Returns sorted list of shares that satisfies filters.
 
@@ -1388,6 +1407,10 @@ def _share_get_all_with_filters(context, project_id=None, share_server_id=None,
     if share_server_id:
         query = query.filter(
             models.ShareInstance.share_server_id == share_server_id)
+
+    if consistency_group_id:
+        query = query.filter(
+            models.Share.consistency_group_id == consistency_group_id)
 
     # Apply filters
     if not filters:
@@ -1446,6 +1469,18 @@ def share_get_all_by_project(context, project_id, filters=None,
     query = _share_get_all_with_filters(
         context, project_id=project_id, filters=filters, is_public=is_public,
         sort_key=sort_key, sort_dir=sort_dir,
+    )
+    return query
+
+
+@require_context
+def share_get_all_by_consistency_group_id(context, cg_id,
+                                          filters=None, sort_key=None,
+                                          sort_dir=None):
+    """Returns list of shares with given CG ID."""
+    query = _share_get_all_with_filters(
+        context, consistency_group_id=cg_id,
+        filters=filters, sort_key=sort_key, sort_dir=sort_dir,
     )
     return query
 
@@ -2364,6 +2399,7 @@ def share_server_get_all_unused_deletable(context, host, updated_before):
     )
     result = _server_get_query(context)\
         .filter_by(host=host)\
+        .filter(~models.ShareServer.consistency_groups.any())\
         .filter(~models.ShareServer.share_instances.any())\
         .filter(models.ShareServer.status.in_(valid_server_status))\
         .filter(models.ShareServer.updated_at < updated_before).all()
@@ -2732,9 +2768,15 @@ def share_type_destroy(context, id):
     session = get_session()
     with session.begin():
         _share_type_get(context, id, session)
-        results = model_query(context, models.Share, session=session). \
-            filter_by(share_type_id=id).all()
-        if results:
+        results = model_query(context, models.Share, session=session,
+                              read_deleted="no").\
+            filter_by(share_type_id=id).count()
+        cg_count = model_query(context,
+                               models.ConsistencyGroupShareTypeMapping,
+                               read_deleted="no",
+                               session=session).\
+            filter_by(share_type_id=id).count()
+        if results or cg_count:
             LOG.error(_LE('ShareType %s deletion failed, ShareType in use.'),
                       id)
             raise exception.ShareTypeInUse(share_type_id=id)
@@ -2939,3 +2981,318 @@ def availability_zone_get_all(context):
                        read_deleted="no").filter(
         models.AvailabilityZone.id.in_(enabled_services)
     ).all()
+
+
+####################
+
+
+def _consistency_group_get(context, consistency_group_id, session=None):
+    session = session or get_session()
+    result = model_query(context, models.ConsistencyGroup,
+                         session=session,
+                         project_only=True,
+                         read_deleted='no').\
+        filter_by(id=consistency_group_id).\
+        options(joinedload('share_types')).\
+        first()
+
+    if not result:
+        raise exception.ConsistencyGroupNotFound(
+            consistency_group_id=consistency_group_id)
+
+    return result
+
+
+@require_context
+def consistency_group_get(context, consistency_group_id, session=None):
+    return _consistency_group_get(context, consistency_group_id,
+                                  session=session)
+
+
+def _consistency_group_get_all_query(context, session=None):
+    session = session or get_session()
+    return model_query(context, models.ConsistencyGroup, session=session,
+                       read_deleted='no')
+
+
+@require_admin_context
+def consistency_group_get_all(context, detailed=True):
+    query = _consistency_group_get_all_query(context)
+    if detailed:
+        return query.options(joinedload('share_types')).all()
+    else:
+        query = query.with_entities(models.ConsistencyGroup.id,
+                                    models.ConsistencyGroup.name)
+        values = []
+        for item in query.all():
+            id, name = item
+            values.append({"id": id, "name": name})
+        return values
+
+
+@require_admin_context
+def consistency_group_get_all_by_host(context, host, detailed=True):
+    query = _consistency_group_get_all_query(context).filter_by(host=host)
+    if detailed:
+        return query.options(joinedload('share_types')).all()
+    else:
+        query = query.with_entities(models.ConsistencyGroup.id,
+                                    models.ConsistencyGroup.name)
+        values = []
+        for item in query.all():
+            id, name = item
+            values.append({"id": id, "name": name})
+        return values
+
+
+@require_context
+def consistency_group_get_all_by_project(context, project_id, detailed=True):
+    authorize_project_context(context, project_id)
+    query = _consistency_group_get_all_query(context).filter_by(
+        project_id=project_id)
+    if detailed:
+        return query.options(joinedload('share_types')).all()
+    else:
+        query = query.with_entities(models.ConsistencyGroup.id,
+                                    models.ConsistencyGroup.name)
+        values = []
+        for item in query.all():
+            id, name = item
+            values.append({"id": id, "name": name})
+        return values
+
+
+@require_context
+def consistency_group_create(context, values):
+    consistency_group = models.ConsistencyGroup()
+    if not values.get('id'):
+        values['id'] = six.text_type(uuid.uuid4())
+
+    mappings = []
+    for item in values.get('share_types') or []:
+        mapping = models.ConsistencyGroupShareTypeMapping()
+        mapping['id'] = six.text_type(uuid.uuid4())
+        mapping['share_type_id'] = item
+        mapping['consistency_group_id'] = values['id']
+        mappings.append(mapping)
+
+    values['share_types'] = mappings
+
+    session = get_session()
+    with session.begin():
+        consistency_group.update(values)
+        session.add(consistency_group)
+
+        return _consistency_group_get(context, values['id'], session=session)
+
+
+@require_context
+def consistency_group_update(context, consistency_group_id, values):
+    session = get_session()
+    with session.begin():
+        cg_ref = _consistency_group_get(context, consistency_group_id,
+                                        session=session)
+
+        cg_ref.update(values)
+        cg_ref.save(session=session)
+        return cg_ref
+
+
+@require_admin_context
+def consistency_group_destroy(context, consistency_group_id):
+    session = get_session()
+    with session.begin():
+        cg_ref = _consistency_group_get(context, consistency_group_id,
+                                        session=session)
+        cg_ref.soft_delete(session)
+
+        session.query(models.ConsistencyGroupShareTypeMapping).\
+            filter_by(consistency_group_id=cg_ref['id']).soft_delete()
+
+
+@require_context
+def count_shares_in_consistency_group(context, consistency_group_id,
+                                      session=None):
+    session = session or get_session()
+    return model_query(
+        context, models.Share, session=session,
+        project_only=True, read_deleted="no").\
+        filter_by(consistency_group_id=consistency_group_id).\
+        count()
+
+
+@require_context
+def count_cgsnapshots_in_consistency_group(context, consistency_group_id,
+                                           session=None):
+    session = session or get_session()
+    return model_query(
+        context, models.CGSnapshot, session=session,
+        project_only=True, read_deleted="no").\
+        filter_by(consistency_group_id=consistency_group_id).\
+        count()
+
+
+@require_context
+def count_consistency_groups_in_share_network(context, share_network_id,
+                                              session=None):
+    session = session or get_session()
+    return model_query(
+        context, models.ConsistencyGroup, session=session,
+        project_only=True, read_deleted="no").\
+        filter_by(share_network_id=share_network_id).\
+        count()
+
+
+@require_context
+def count_cgsnapshot_members_in_share(context, share_id, session=None):
+    session = session or get_session()
+    return model_query(
+        context, models.CGSnapshotMember, session=session,
+        project_only=True, read_deleted="no").\
+        filter_by(share_id=share_id).\
+        count()
+
+
+@require_context
+def _cgsnapshot_get(context, cgsnapshot_id, session=None):
+    session = session or get_session()
+    result = model_query(context, models.CGSnapshot, session=session,
+                         project_only=True, read_deleted='no').\
+        options(joinedload('cgsnapshot_members')).\
+        options(joinedload('consistency_group')).\
+        filter_by(id=cgsnapshot_id).\
+        first()
+
+    if not result:
+        raise exception.CGSnapshotNotFound(cgsnapshot_id=cgsnapshot_id)
+
+    return result
+
+
+def _cgsnapshot_get_all_query(context, session=None):
+    session = session or get_session()
+    return model_query(context, models.CGSnapshot, session=session,
+                       reade_deleted='no').\
+        options(joinedload('cgsnapshot_members')).\
+        options(joinedload('consistency_group'))
+
+
+@require_context
+def cgsnapshot_get(context, cgsnapshot_id, session=None):
+    session = session or get_session()
+    return _cgsnapshot_get(context, cgsnapshot_id, session=session)
+
+
+@require_admin_context
+def cgsnapshot_get_all(context, detailed=True):
+    query = _cgsnapshot_get_all_query(context)
+    if detailed:
+        return query.all()
+    else:
+        query = query.with_entities(models.CGSnapshot.id,
+                                    models.CGSnapshot.name)
+        values = []
+        for item in query.all():
+            id, name = item
+            values.append({"id": id, "name": name})
+        return values
+
+
+@require_context
+def cgsnapshot_get_all_by_project(context, project_id, detailed=True):
+    authorize_project_context(context, project_id)
+    query = _cgsnapshot_get_all_query(context).filter_by(
+        project_id=project_id)
+    if detailed:
+        return query.all()
+    else:
+        query = query.with_entities(models.CGSnapshot.id,
+                                    models.CGSnapshot.name)
+        values = []
+        for item in query.all():
+            id, name = item
+            values.append({"id": id, "name": name})
+        return values
+
+
+@require_context
+def cgsnapshot_create(context, values):
+    cgsnapshot = models.CGSnapshot()
+    if not values.get('id'):
+        values['id'] = six.text_type(uuid.uuid4())
+
+    session = get_session()
+    with session.begin():
+        cgsnapshot.update(values)
+        session.add(cgsnapshot)
+
+        return _cgsnapshot_get(context, values['id'], session=session)
+
+
+@require_context
+def cgsnapshot_update(context, cgsnapshot_id, values):
+    session = get_session()
+    with session.begin():
+        cg_ref = _cgsnapshot_get(context, cgsnapshot_id, session=session)
+
+        cg_ref.update(values)
+        cg_ref.save(session=session)
+        return cg_ref
+
+
+@require_admin_context
+def cgsnapshot_destroy(context, cgsnapshot_id):
+    session = get_session()
+    with session.begin():
+        cgsnap_ref = _cgsnapshot_get(context, cgsnapshot_id, session=session)
+        cgsnap_ref.soft_delete(session)
+
+        session.query(models.CGSnapshotMember).\
+            filter_by(cgsnapshot_id=cgsnapshot_id).soft_delete()
+
+
+@require_context
+def cgsnapshot_members_get_all(context, cgsnapshot_id, session=None):
+    session = session or get_session()
+    query = model_query(context, models.CGSnapshotMember,
+                        session=session, read_deleted='no').filter_by(
+        cgsnapshot_id=cgsnapshot_id)
+    return query.all()
+
+
+@require_context
+def cgsnapshot_member_get(context, member_id, session=None):
+    result = model_query(context, models.CGSnapshotMember, session=session,
+                         project_only=True, read_deleted='no').\
+        filter_by(id=member_id).\
+        first()
+
+    if not result:
+        raise exception.CGSnapshotMemberNotFound(member_id=member_id)
+
+    return result
+
+
+@require_context
+def cgsnapshot_member_create(context, values):
+    member = models.CGSnapshotMember()
+    if not values.get('id'):
+        values['id'] = six.text_type(uuid.uuid4())
+
+    session = get_session()
+    with session.begin():
+        member.update(values)
+        session.add(member)
+
+        return cgsnapshot_member_get(context, values['id'], session=session)
+
+
+@require_context
+def cgsnapshot_member_update(context, member_id, values):
+    session = get_session()
+    with session.begin():
+        member = cgsnapshot_member_get(context, member_id, session=session)
+        member.update(values)
+        session.add(member)
+
+        return cgsnapshot_member_get(context, member_id, session=session)
