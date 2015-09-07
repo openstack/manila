@@ -1431,7 +1431,7 @@ class ShareManager(manager.SchedulerDependentManager):
         share_network_id = group_ref.get('share_network_id', None)
         share_server = None
 
-        if parent_share_server_id:
+        if parent_share_server_id and self.driver.driver_handles_share_servers:
             share_server = self.db.share_server_get(context,
                                                     parent_share_server_id)
             share_network_id = share_server['share_network_id']
