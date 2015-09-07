@@ -2631,6 +2631,67 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('snapshot-delete', snapshot_delete_args)])
 
+    def test_create_cg_snapshot(self):
+
+        mock_start_cg_snapshot = self.mock_object(
+            self.client, '_start_cg_snapshot',
+            mock.Mock(return_value=fake.CG_SNAPSHOT_ID))
+        mock_commit_cg_snapshot = self.mock_object(
+            self.client, '_commit_cg_snapshot')
+
+        self.client.create_cg_snapshot([fake.SHARE_NAME, fake.SHARE_NAME_2],
+                                       fake.SNAPSHOT_NAME)
+
+        mock_start_cg_snapshot.assert_called_once_with(
+            [fake.SHARE_NAME, fake.SHARE_NAME_2], fake.SNAPSHOT_NAME)
+        mock_commit_cg_snapshot.assert_called_once_with(fake.CG_SNAPSHOT_ID)
+
+    def test_create_cg_snapshot_no_id(self):
+
+        mock_start_cg_snapshot = self.mock_object(
+            self.client, '_start_cg_snapshot', mock.Mock(return_value=None))
+        mock_commit_cg_snapshot = self.mock_object(
+            self.client, '_commit_cg_snapshot')
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.create_cg_snapshot,
+                          [fake.SHARE_NAME, fake.SHARE_NAME_2],
+                          fake.SNAPSHOT_NAME)
+
+        mock_start_cg_snapshot.assert_called_once_with(
+            [fake.SHARE_NAME, fake.SHARE_NAME_2], fake.SNAPSHOT_NAME)
+        self.assertFalse(mock_commit_cg_snapshot.called)
+
+    def test_start_cg_snapshot(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client._start_cg_snapshot([fake.SHARE_NAME, fake.SHARE_NAME_2],
+                                       fake.SNAPSHOT_NAME)
+
+        cg_start_args = {
+            'snapshot': fake.SNAPSHOT_NAME,
+            'timeout': 'relaxed',
+            'volumes': [
+                {'volume-name': fake.SHARE_NAME},
+                {'volume-name': fake.SHARE_NAME_2},
+            ],
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('cg-start', cg_start_args)])
+
+    def test_commit_cg_snapshot(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client._commit_cg_snapshot(fake.CG_SNAPSHOT_ID)
+
+        cg_commit_args = {'cg-id': fake.CG_SNAPSHOT_ID}
+
+        self.client.send_request.assert_has_calls([
+            mock.call('cg-commit', cg_commit_args)])
+
     def test_create_cifs_share(self):
 
         self.mock_object(self.client, 'send_request')

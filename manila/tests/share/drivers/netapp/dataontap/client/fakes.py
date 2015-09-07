@@ -36,7 +36,9 @@ SHARE_AGGREGATE_RAID_TYPES = ('raid4', 'raid_dp')
 SHARE_AGGREGATE_DISK_TYPE = 'FCAL'
 SHARE_NAME = 'fake_share'
 SHARE_SIZE = '1000000000'
+SHARE_NAME_2 = 'fake_share_2'
 SNAPSHOT_NAME = 'fake_snapshot'
+CG_SNAPSHOT_ID = 'fake_cg_id'
 PARENT_SHARE_NAME = 'fake_parent_share'
 PARENT_SNAPSHOT_NAME = 'fake_parent_snapshot'
 MAX_FILES = 5000
@@ -82,6 +84,10 @@ NO_RECORDS_RESPONSE = etree.XML("""
   <results status="passed">
     <num-records>0</num-records>
   </results>
+""")
+
+PASSED_RESPONSE = etree.XML("""
+  <results status="passed" />
 """)
 
 VSERVER_GET_ITER_RESPONSE = etree.XML("""
@@ -1169,6 +1175,18 @@ SNAPSHOT_GET_ITER_OTHER_ERROR_RESPONSE = etree.XML("""
     </volume-errors>
   </results>
 """ % {'volume': SHARE_NAME, 'vserver': VSERVER_NAME})
+
+SNAPSHOT_MULTIDELETE_ERROR_RESPONSE = etree.XML("""
+  <results status="passed">
+    <volume-errors>
+      <volume-error>
+        <errno>13021</errno>
+        <name>%(volume)s</name>
+        <reason>No such snapshot.</reason>
+      </volume-error>
+    </volume-errors>
+  </results>
+""" % {'volume': SHARE_NAME})
 
 NFS_EXPORT_RULES = ('10.10.10.10', '10.10.10.20')
 

@@ -171,16 +171,18 @@ class NetAppCmodeFileStorageLibrary(object):
         housekeeping_periodic_task.start(
             interval=self.HOUSEKEEPING_INTERVAL_SECONDS, initial_delay=0)
 
-    @na_utils.trace
     def _get_valid_share_name(self, share_id):
         """Get share name according to share name template."""
         return self.configuration.netapp_volume_name_template % {
             'share_id': share_id.replace('-', '_')}
 
-    @na_utils.trace
     def _get_valid_snapshot_name(self, snapshot_id):
         """Get snapshot name according to snapshot name template."""
         return 'share_snapshot_' + snapshot_id.replace('-', '_')
+
+    def _get_valid_cg_snapshot_name(self, snapshot_id):
+        """Get snapshot name according to snapshot name template."""
+        return 'share_cg_snapshot_' + snapshot_id.replace('-', '_')
 
     @na_utils.trace
     def _get_aggregate_space(self):
@@ -203,6 +205,7 @@ class NetAppCmodeFileStorageLibrary(object):
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': 0.0,
             'free_capacity_gb': 0.0,
+            'consistency_group_support': 'host',
             'pools': self._get_pools(),
         }
         return data
@@ -503,12 +506,13 @@ class NetAppCmodeFileStorageLibrary(object):
                 raise exception.NetAppException(msg % msg_args)
 
     @na_utils.trace
-    def _allocate_container_from_snapshot(self, share, snapshot,
-                                          vserver_client):
+    def _allocate_container_from_snapshot(
+            self, share, snapshot, vserver_client,
+            snapshot_name_func=_get_valid_snapshot_name):
         """Clones existing share."""
         share_name = self._get_valid_share_name(share['id'])
         parent_share_name = self._get_valid_share_name(snapshot['share_id'])
-        parent_snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
+        parent_snapshot_name = snapshot_name_func(self, snapshot['id'])
 
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
         vserver_client.create_volume_clone(share_name, parent_share_name,
@@ -746,6 +750,148 @@ class NetAppCmodeFileStorageLibrary(object):
             msg = _('Volume %(volume)s must not have junctioned volumes.')
             msg_args = {'volume': volume['name']}
             raise exception.ManageInvalidShare(reason=msg % msg_args)
+
+    @na_utils.trace
+    def create_consistency_group(self, context, cg_dict, share_server=None):
+        """Creates a consistency group.
+
+        cDOT has no persistent CG object, so apart from validating the
+        share_server info is passed correctly, this method has nothing to do.
+        """
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+
+    @na_utils.trace
+    def create_consistency_group_from_cgsnapshot(
+            self, context, cg_dict, cgsnapshot_dict, share_server=None):
+        """Creates a consistency group from an existing CG snapshot."""
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+
+        # Ensure there is something to do
+        if not cgsnapshot_dict['cgsnapshot_members']:
+            return None, None
+
+        clone_list = self._collate_cg_snapshot_info(cg_dict, cgsnapshot_dict)
+        share_update_list = []
+
+        LOG.debug('Creating consistency group from CG snapshot %s.',
+                  cgsnapshot_dict['id'])
+
+        for clone in clone_list:
+
+            self._allocate_container_from_snapshot(
+                clone['share'], clone['snapshot'], vserver_client,
+                NetAppCmodeFileStorageLibrary._get_valid_cg_snapshot_name)
+
+            export_locations = self._create_export(clone['share'],
+                                                   vserver,
+                                                   vserver_client)
+            share_update_list.append({
+                'id': clone['share']['id'],
+                'export_locations': export_locations,
+            })
+
+        return None, share_update_list
+
+    def _collate_cg_snapshot_info(self, cg_dict, cgsnapshot_dict):
+        """Collate the data for a clone of a CG snapshot.
+
+        Given two data structures, a CG snapshot (cgsnapshot_dict) and a new
+        CG to be cloned from the snapshot (cg_dict), match up both structures
+        into a list of dicts (share & snapshot) suitable for use by existing
+        driver methods that clone individual share snapshots.
+        """
+
+        clone_list = list()
+
+        for share in cg_dict['shares']:
+
+            clone_info = {'share': share}
+
+            for cgsnapshot_member in cgsnapshot_dict['cgsnapshot_members']:
+                if (share['source_cgsnapshot_member_id'] ==
+                        cgsnapshot_member['id']):
+                    clone_info['snapshot'] = {
+                        'share_id': cgsnapshot_member['share_id'],
+                        'id': cgsnapshot_member['cgsnapshot_id']
+                    }
+                    break
+
+            else:
+                msg = _("Invalid data supplied for creating consistency group "
+                        "from CG snapshot %s.") % cgsnapshot_dict['id']
+                raise exception.InvalidConsistencyGroup(reason=msg)
+
+            clone_list.append(clone_info)
+
+        return clone_list
+
+    @na_utils.trace
+    def delete_consistency_group(self, context, cg_dict, share_server=None):
+        """Deletes a consistency group.
+
+        cDOT has no persistent CG object, so apart from validating the
+        share_server info is passed correctly, this method has nothing to do.
+        """
+        try:
+            vserver, vserver_client = self._get_vserver(
+                share_server=share_server)
+        except (exception.InvalidInput,
+                exception.VserverNotSpecified,
+                exception.VserverNotFound) as error:
+            LOG.warning(_LW("Could not determine share server for consistency "
+                            "group being deleted: %(cg)s. Deletion of CG "
+                            "record will proceed anyway. Error: %(error)s"),
+                        {'cg': cg_dict['id'], 'error': error})
+
+    @na_utils.trace
+    def create_cgsnapshot(self, context, snap_dict, share_server=None):
+        """Creates a consistency group snapshot."""
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+
+        share_names = [self._get_valid_share_name(member['share_id'])
+                       for member in snap_dict.get('cgsnapshot_members', [])]
+        snapshot_name = self._get_valid_cg_snapshot_name(snap_dict['id'])
+
+        if share_names:
+            LOG.debug('Creating CG snapshot %s.', snapshot_name)
+            vserver_client.create_cg_snapshot(share_names, snapshot_name)
+
+        return None, None
+
+    @na_utils.trace
+    def delete_cgsnapshot(self, context, snap_dict, share_server=None):
+        """Deletes a consistency group snapshot."""
+        try:
+            vserver, vserver_client = self._get_vserver(
+                share_server=share_server)
+        except (exception.InvalidInput,
+                exception.VserverNotSpecified,
+                exception.VserverNotFound) as error:
+            LOG.warning(_LW("Could not determine share server for CG snapshot "
+                            "being deleted: %(snap)s. Deletion of CG snapshot "
+                            "record will proceed anyway. Error: %(error)s"),
+                        {'snap': snap_dict['id'], 'error': error})
+            return None, None
+
+        share_names = [self._get_valid_share_name(member['share_id'])
+                       for member in snap_dict.get('cgsnapshot_members', [])]
+        snapshot_name = self._get_valid_cg_snapshot_name(snap_dict['id'])
+
+        for share_name in share_names:
+            try:
+                self._handle_busy_snapshot(vserver_client, share_name,
+                                           snapshot_name)
+            except exception.SnapshotNotFound:
+                LOG.info(_LI("Snapshot %(snap)s does not exist for share "
+                             "%(share)s."),
+                         {'snap': snapshot_name, 'share': share_name})
+                continue
+
+            LOG.debug("Deleting snapshot %(snap)s for share %(share)s.",
+                      {'snap': snapshot_name, 'share': share_name})
+            vserver_client.delete_snapshot(share_name, snapshot_name)
+
+        return None, None
 
     @na_utils.trace
     def extend_share(self, share, new_size, share_server=None):
