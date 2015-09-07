@@ -151,4 +151,11 @@ ShareGroup = [
     cfg.StrOpt("client_vm_flavor_ref",
                default="100",
                help="Flavor used for client vm in scenario tests."),
+    cfg.IntOpt("migration_timeout",
+               default=1200,
+               help="Time to wait for share migration before "
+                    "timing out (seconds)."),
+    cfg.BoolOpt("migration_enabled",
+                default=True,
+                help="Enable or disable migration tests."),
 ]

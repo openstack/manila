@@ -116,7 +116,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         return sn
 
     def _allow_access(self, share_id, client=None,
-                      access_type="ip", access_to="0.0.0.0"):
+                      access_type="ip", access_to="0.0.0.0", cleanup=True):
         """Allow share access
 
         :param share_id: id of the share
@@ -128,8 +128,8 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         client = client or self.shares_client
         access = client.create_access_rule(share_id, access_type, access_to)
         client.wait_for_access_rule_status(share_id, access['id'], "active")
-        self.addCleanup(client.delete_access_rule,
-                        share_id, access['id'])
+        if cleanup:
+            self.addCleanup(client.delete_access_rule, share_id, access['id'])
         return access
 
     def _create_router_interface(self, subnet_id, client=None,
@@ -182,3 +182,9 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
             raise
 
         return linux_client
+
+    def _migrate_share(self, share_id, dest_host, client=None):
+        client = client or self.shares_client
+        client.migrate_share(share_id, dest_host)
+        share = client.wait_for_migration_completed(share_id, dest_host)
+        return share

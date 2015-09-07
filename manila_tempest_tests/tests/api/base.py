@@ -304,6 +304,13 @@ class BaseSharesTest(test.BaseTestCase):
         return share
 
     @classmethod
+    def migrate_share(cls, share_id, dest_host, client=None):
+        client = client or cls.shares_client
+        client.migrate_share(share_id, dest_host)
+        share = client.wait_for_migration_completed(share_id, dest_host)
+        return share
+
+    @classmethod
     def create_share(cls, *args, **kwargs):
         """Create one share and wait for available state. Retry if allowed."""
         result = cls.create_shares([{"args": args, "kwargs": kwargs}])

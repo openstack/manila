@@ -116,6 +116,11 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         data = ssh_client.exec_command("sudo cat /mnt/t1")
         return data.rstrip()
 
+    def migrate_share(self, share_id, dest_host):
+        share = self._migrate_share(share_id, dest_host,
+                                    self.shares_admin_client)
+        return share
+
     def create_share_network(self):
         self.net = self._create_network(namestart="manila-share")
         self.subnet = self._create_subnet(network=self.net,
@@ -132,7 +137,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.share = self._create_share(share_protocol=self.protocol,
                                         share_network_id=share_net_id)
 
-    def allow_access_ip(self, share_id, ip=None, instance=None):
+    def allow_access_ip(self, share_id, ip=None, instance=None, cleanup=True):
         if instance and not ip:
             try:
                 net_addresses = instance['addresses']
@@ -144,7 +149,8 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                               "Falling back to default")
         if not ip:
             ip = '0.0.0.0/0'
-        self._allow_access(share_id, access_type='ip', access_to=ip)
+        self._allow_access(share_id, access_type='ip', access_to=ip,
+                           cleanup=cleanup)
 
     @test.services('compute', 'network')
     def test_mount_share_one_vm(self):
@@ -186,6 +192,84 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                         ssh_client_inst2)
         data = self.read_data(ssh_client_inst2)
         self.assertEqual(test_data, data)
+
+    @test.services('compute', 'network')
+    def test_migration_files(self):
+
+        if self.protocol == "CIFS":
+            raise self.skipException("Test for CIFS protocol not supported "
+                                     "at this moment. Skipping.")
+
+        if not CONF.share.migration_enabled:
+            raise self.skipException("Migration tests disabled. Skipping.")
+
+        pools = self.shares_admin_client.list_pools()['pools']
+
+        if len(pools) < 2:
+            raise self.skipException("At least two different running "
+                                     "manila-share services are needed to "
+                                     "run migration tests. Skipping.")
+
+        self.security_group = self._create_security_group()
+        self.create_share_network()
+        self.create_share(self.share_net['id'])
+        share = self.shares_client.get_share(self.share['id'])
+
+        dest_pool = next((x for x in pools if x['name'] != share['host']),
+                         None)
+
+        self.assertIsNotNone(dest_pool)
+
+        dest_pool = dest_pool['name']
+
+        old_export_location = share['export_locations'][0]
+
+        instance1 = self.boot_instance(self.net)
+        self.allow_access_ip(self.share['id'], instance=instance1,
+                             cleanup=False)
+        ssh_client = self.init_ssh(instance1)
+        first_location = self.share['export_locations'][0]
+        self.mount_share(first_location, ssh_client)
+
+        ssh_client.exec_command("mkdir -p /mnt/f1")
+        ssh_client.exec_command("mkdir -p /mnt/f2")
+        ssh_client.exec_command("mkdir -p /mnt/f3")
+        ssh_client.exec_command("mkdir -p /mnt/f4")
+        ssh_client.exec_command("mkdir -p /mnt/f1/ff1")
+        ssh_client.exec_command("sleep 1")
+        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f1/1m1.bin bs=1M"
+                                " count=1")
+        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f2/1m2.bin bs=1M"
+                                " count=1")
+        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f3/1m3.bin bs=1M"
+                                " count=1")
+        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f4/1m4.bin bs=1M"
+                                " count=1")
+        ssh_client.exec_command("dd if=/dev/zero of=/mnt/f1/ff1/1m5.bin bs=1M"
+                                " count=1")
+        ssh_client.exec_command("chmod -R 555 /mnt/f3")
+        ssh_client.exec_command("chmod -R 777 /mnt/f4")
+
+        self.umount_share(ssh_client)
+
+        share = self.migrate_share(share['id'], dest_pool)
+
+        self.assertEqual(dest_pool, share['host'])
+        self.assertNotEqual(old_export_location, share['export_locations'][0])
+        self.assertEqual('migration_success', share['task_state'])
+
+        second_location = share['export_locations'][0]
+        self.mount_share(second_location, ssh_client)
+
+        output = ssh_client.exec_command("ls -lRA --ignore=lost+found /mnt")
+
+        self.umount_share(ssh_client)
+
+        self.assertTrue('1m1.bin' in output)
+        self.assertTrue('1m2.bin' in output)
+        self.assertTrue('1m3.bin' in output)
+        self.assertTrue('1m4.bin' in output)
+        self.assertTrue('1m5.bin' in output)
 
 
 class TestShareBasicOpsNFS(ShareBasicOpsBase):

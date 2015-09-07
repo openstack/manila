@@ -47,9 +47,23 @@ class SharesClient(rest_client.RestClient):
         self.build_interval = CONF.share.build_interval
         self.build_timeout = CONF.share.build_timeout
         self.API_MICROVERSIONS_HEADER = 'x-openstack-manila-api-version'
+        self.API_MICROVERSIONS_EXPERIMENTAL_HEADER = (
+            'x-openstack-manila-api-experimental')
 
     def _get_version_dict(self, version):
         return {self.API_MICROVERSIONS_HEADER: version}
+
+    def migrate_share(self, share_id, host):
+        post_body = {
+            'os-migrate_share': {
+                'host': host,
+            }
+        }
+        body = json.dumps(post_body)
+        headers = self._get_version_dict('1.6')
+        headers[self.API_MICROVERSIONS_EXPERIMENTAL_HEADER] = 'true'
+        return self.post('shares/%s/action' % share_id, body,
+                         headers=headers, extra_headers=True)
 
     def send_microversion_request(self, version=None):
         """Prepare and send the HTTP GET Request to the base URL.
@@ -262,6 +276,30 @@ class SharesClient(rest_client.RestClient):
         resp, body = self.delete("snapshots/%s" % snap_id)
         self.expected_success(202, resp.status)
         return body
+
+    def wait_for_migration_completed(self, share_id, dest_host):
+        """Waits for a share to migrate to a certain host."""
+        share = self.get_share(share_id)
+        migration_timeout = CONF.share.migration_timeout
+        start = int(time.time())
+        while share['task_state'] != 'migration_success':
+            time.sleep(self.build_interval)
+            share = self.get_share(share_id)
+            if share['task_state'] == 'migration_success':
+                return share
+            elif share['task_state'] == 'migration_error':
+                raise share_exceptions.ShareMigrationException(
+                    share_id=share['id'], src=share['host'], dest=dest_host)
+            elif int(time.time()) - start >= migration_timeout:
+                message = ('Share %(share_id)s failed to migrate from '
+                           'host %(src)s to host %(dest)s within the required '
+                           'time %(timeout)s.' % {
+                               'src': share['host'],
+                               'dest': dest_host,
+                               'share_id': share['id'],
+                               'timeout': self.build_timeout
+                           })
+                raise exceptions.TimeoutException(message)
 
     def wait_for_share_status(self, share_id, status):
         """Waits for a share to reach a given status."""

@@ -542,6 +542,16 @@ function update_tempest {
     fi
 }
 
+function install_libraries {
+    if [ "$MANILA_MULTI_BACKEND" = "True" ]; then
+        if is_ubuntu; then
+            install_package nfs-common
+        else
+            install_package nfs-utils
+        fi
+    fi
+}
+
 # Main dispatcher
 if [[ "$1" == "stack" && "$2" == "install" ]]; then
     echo_summary "Installing Manila"
@@ -552,6 +562,8 @@ elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
     configure_manila
     echo_summary "Initializing Manila"
     init_manila
+    echo_summary "Installing extra libraries"
+    install_libraries
 elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     echo_summary "Creating Manila entities for auth service"
     create_manila_accounts

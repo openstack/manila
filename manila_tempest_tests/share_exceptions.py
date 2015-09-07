@@ -48,5 +48,10 @@ class InvalidResource(exceptions.TempestException):
     message = "Provided invalid resource: %(message)s"
 
 
+class ShareMigrationException(exceptions.TempestException):
+    message = ("Share %(share_id)s failed to migrate from "
+               "host %(src)s to host %(dest)s.")
+
+
 class ResourceReleaseFailed(exceptions.TempestException):
     message = "Failed to release resource '%(res_type)s' with id '%(res_id)s'."
