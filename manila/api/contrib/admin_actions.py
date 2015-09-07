@@ -20,6 +20,7 @@ from webob import exc
 from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila.common import constants
+import manila.consistency_group.api as cg_api
 from manila import db
 from manila import exception
 from manila import share
@@ -42,8 +43,9 @@ class AdminController(wsgi.Controller):
 
     def __init__(self, *args, **kwargs):
         super(AdminController, self).__init__(*args, **kwargs)
-        self.resource_name = self.collection.rstrip('s')
+        self.resource_name = self.collection.rstrip('s').replace('-', '_')
         self.share_api = share.API()
+        self.cg_api = cg_api.API()
 
     def _update(self, *args, **kwargs):
         raise NotImplementedError()
@@ -143,18 +145,80 @@ class SnapshotAdminController(AdminController):
         return self.share_api.delete_snapshot(*args, **kwargs)
 
 
+class CGAdminController(AdminController):
+    """AdminController for Consistency Groups."""
+
+    collection = 'consistency-groups'
+
+    def __init__(self, *args, **kwargs):
+        super(CGAdminController, self).__init__(*args, **kwargs)
+        self.cg_api = cg_api.API()
+
+    def _update(self, *args, **kwargs):
+        db.consistency_group_update(*args, **kwargs)
+
+    def _get(self, *args, **kwargs):
+        return self.cg_api.get(*args, **kwargs)
+
+    def _delete(self, context, resource, force=True):
+        db.consistency_group_destroy(context.elevated(), resource['id'])
+
+    @wsgi.action('os-reset_status')
+    @wsgi.response(202)
+    @wsgi.Controller.api_version('1.5', experimental=True)
+    def cg_reset_status(self, req, id, body):
+        super(CGAdminController, self)._reset_status(req, id, body)
+
+    @wsgi.action('os-force_delete')
+    @wsgi.response(202)
+    @wsgi.Controller.api_version('1.5', experimental=True)
+    def cg_force_delete(self, req, id, body):
+        super(CGAdminController, self)._force_delete(req, id, body)
+
+
+class CGSnapshotAdminController(AdminController):
+    """AdminController for CGSnapshots."""
+
+    collection = 'cgsnapshots'
+
+    def __init__(self, *args, **kwargs):
+        super(CGSnapshotAdminController, self).__init__(*args, **kwargs)
+        self.cg_api = cg_api.API()
+
+    def _update(self, *args, **kwargs):
+        db.cgsnapshot_update(*args, **kwargs)
+
+    def _get(self, *args, **kwargs):
+        return self.cg_api.get_cgsnapshot(*args, **kwargs)
+
+    def _delete(self, context, resource, force=True):
+        db.cgsnapshot_destroy(context.elevated(), resource['id'])
+
+    @wsgi.action('os-reset_status')
+    @wsgi.response(202)
+    @wsgi.Controller.api_version('1.5', experimental=True)
+    def cgsnapshot_reset_status(self, req, id, body):
+        super(CGSnapshotAdminController, self)._reset_status(req, id, body)
+
+    @wsgi.action('os-force_delete')
+    @wsgi.response(202)
+    @wsgi.Controller.api_version('1.5', experimental=True)
+    def cgsnapshot_force_delete(self, req, id, body):
+        super(CGSnapshotAdminController, self)._force_delete(req, id, body)
+
+
 class Admin_actions(extensions.ExtensionDescriptor):
     """Enable admin actions."""
 
     name = "AdminActions"
     alias = "os-admin-actions"
-    updated = "2015-08-03T00:00:00+00:00"
+    updated = "2015-09-01T00:00:00+00:00"
 
     def get_controller_extensions(self):
         exts = []
-        controllers = (ShareAdminController, SnapshotAdminController,
-                       ShareInstancesAdminController)
-        for class_ in controllers:
+        for class_ in (ShareAdminController, SnapshotAdminController,
+                       ShareInstancesAdminController,
+                       CGAdminController, CGSnapshotAdminController):
             controller = class_()
             extension = extensions.ControllerExtension(
                 self, class_.collection, controller)

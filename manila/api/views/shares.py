@@ -20,6 +20,7 @@ class ViewBuilder(common.ViewBuilder):
     """Model a server API response as a python dictionary."""
 
     _collection_name = 'shares'
+    _detail_version_modifiers = ["add_consistency_group_fields"]
 
     def summary_list(self, request, shares):
         """Show a list of shares without many details."""
@@ -76,9 +77,19 @@ class ViewBuilder(common.ViewBuilder):
             'is_public': share.get('is_public'),
             'export_locations': export_locations,
         }
+
+        self.update_versioned_resource_dict(request, share_dict, share)
+
         if context.is_admin:
             share_dict['share_server_id'] = share.get('share_server_id')
         return {'share': share_dict}
+
+    @common.ViewBuilder.versioned_method("1.5")
+    def add_consistency_group_fields(self, share_dict, share):
+        share_dict['consistency_group_id'] = share.get(
+            'consistency_group_id')
+        share_dict['source_cgsnapshot_member_id'] = share.get(
+            'source_cgsnapshot_member_id')
 
     def _list_view(self, func, request, shares):
         """Provide a view for a list of shares."""

@@ -22,6 +22,8 @@ import six
 from six.moves.urllib import parse
 import webob
 
+from manila.api.openstack import api_version_request as api_version
+from manila.api.openstack import versioned_method
 from manila.i18n import _
 
 api_common_opts = [
@@ -201,6 +203,7 @@ class ViewBuilder(object):
     """Model API responses as dictionaries."""
 
     _collection_name = None
+    _detail_version_modifiers = []
 
     def _get_links(self, request, identifier):
         return [{"rel": "self",
@@ -261,6 +264,43 @@ class ViewBuilder(object):
         prefix_parts = list(parse.urlsplit(prefix))
         url_parts[0:2] = prefix_parts[0:2]
         return parse.urlunsplit(url_parts)
+
+    def update_versioned_resource_dict(self, request, resource_dict, resource):
+        """Updates teh given resource dict for the given request version.
+
+        This method calls every method, that is applicable to the request
+        version, in _detail_version_modifiers.
+        """
+        for method_name in self._detail_version_modifiers:
+            method = getattr(self, method_name)
+            if request.api_version_request.matches_versioned_method(method):
+                method.func(self, resource_dict, resource)
+
+    @classmethod
+    def versioned_method(cls, min_ver, max_ver=None, experimental=False):
+        """Decorator for versioning API methods.
+
+        :param min_ver: string representing minimum version
+        :param max_ver: optional string representing maximum version
+        :param experimental: flag indicating an API is experimental and is
+                             subject to change or removal at any time
+        """
+
+        def decorator(f):
+            obj_min_ver = api_version.APIVersionRequest(min_ver)
+            if max_ver:
+                obj_max_ver = api_version.APIVersionRequest(max_ver)
+            else:
+                obj_max_ver = api_version.APIVersionRequest()
+
+            # Add to list of versioned methods registered
+            func_name = f.__name__
+            new_func = versioned_method.VersionedMethod(
+                func_name, obj_min_ver, obj_max_ver, experimental, f)
+
+            return new_func
+
+        return decorator
 
 
 def remove_invalid_options(context, search_options, allowed_search_options):

@@ -40,6 +40,10 @@
     "share_extension:snapshot_admin_actions:reset_status": "rule:admin_api",
     "share_extension:share_instance_admin_actions:force_delete": "rule:admin_api",
     "share_extension:share_instance_admin_actions:reset_status": "rule:admin_api",
+    "share_extension:consistency_group_admin_actions:force_delete": "rule:admin_api",
+    "share_extension:consistency_group_admin_actions:reset_status": "rule:admin_api",
+    "share_extension:cgsnapshot_admin_actions:force_delete": "rule:admin_api",
+    "share_extension:cgsnapshot_admin_actions:reset_status": "rule:admin_api",
 
     "share_extension:services": "rule:admin_api",
     "share_extension:availability_zones": "",
@@ -78,5 +82,16 @@
     "share_network:get_all_share_networks": "rule:admin_api",
 
     "scheduler_stats:pools:index": "rule:admin_api",
-    "scheduler_stats:pools:detail": "rule:admin_api"
+    "scheduler_stats:pools:detail": "rule:admin_api",
+
+    "consistency_group:create" : "rule:default",
+    "consistency_group:delete": "rule:default",
+    "consistency_group:update": "rule:default",
+    "consistency_group:get": "rule:default",
+    "consistency_group:get_all": "rule:default",
+
+    "consistency_group:create_cgsnapshot" : "rule:default",
+    "consistency_group:delete_cgsnapshot": "rule:default",
+    "consistency_group:get_cgsnapshot": "rule:default",
+    "consistency_group:get_all_cgsnapshots": "rule:default"
 }

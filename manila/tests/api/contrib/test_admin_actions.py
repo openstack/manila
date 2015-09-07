@@ -19,6 +19,7 @@ from oslo_serialization import jsonutils
 import six
 import webob
 
+from manila.api.openstack import wsgi
 from manila.common import constants
 from manila import context
 from manila import db
@@ -95,6 +96,27 @@ class AdminActionsTest(test.TestCase):
             '/v1/fake/share_instances/%s/action' % instance['id'])
         return instance, req
 
+    def _setup_cg_data(self, cg=None):
+        if cg is None:
+            cg = db_utils.create_consistency_group(
+                status=constants.STATUS_AVAILABLE)
+        req = webob.Request.blank('/v1/fake/consistency-groups/%s/action' %
+                                  cg['id'])
+        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '1.5'
+        req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
+
+        return cg, req
+
+    def _setup_cgsnapshot_data(self, cgsnapshot=None):
+        if cgsnapshot is None:
+            cgsnapshot = db_utils.create_cgsnapshot(
+                'fake_id', status=constants.STATUS_AVAILABLE)
+        req = webob.Request.blank('/v1/fake/cgsnapshots/%s/action' %
+                                  cgsnapshot['id'])
+        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '1.5'
+        req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
+        return cgsnapshot, req
+
     def _reset_status(self, ctxt, model, req, db_access_method,
                       valid_code, valid_status=None, body=None):
         if body is None:
@@ -147,6 +169,26 @@ class AdminActionsTest(test.TestCase):
         instance, req = self._setup_share_instance_data()
 
         self._reset_status(ctxt, instance, req, db.share_instance_get,
+                           valid_code, valid_status)
+
+    @ddt.data(*fixture_reset_status_with_different_roles)
+    @ddt.unpack
+    def test_consistency_groups_reset_status_with_different_roles(
+            self, role, valid_code, valid_status):
+        ctxt = self._get_context(role)
+        cg, req = self._setup_cg_data()
+
+        self._reset_status(ctxt, cg, req, db.consistency_group_get,
+                           valid_code, valid_status)
+
+    @ddt.data(*fixture_reset_status_with_different_roles)
+    @ddt.unpack
+    def test_cgsnapshot_reset_status_with_different_roles(
+            self, role, valid_code, valid_status):
+        ctxt = self._get_context(role)
+        cgsnap, req = self._setup_cgsnapshot_data()
+
+        self._reset_status(ctxt, cgsnap, req, db.cgsnapshot_get,
                            valid_code, valid_status)
 
     @ddt.data(*fixture_invalid_reset_status_body)
@@ -244,3 +286,23 @@ class AdminActionsTest(test.TestCase):
         ctxt = self._get_context('admin')
 
         self._force_delete(ctxt, instance, req, db.share_instance_get, 404)
+
+    @ddt.data(*fixture_force_delete_with_different_roles)
+    @ddt.unpack
+    def test_consistency_group_force_delete_with_different_roles(self, role,
+                                                                 resp_code):
+        cg, req = self._setup_cg_data()
+        ctxt = self._get_context(role)
+
+        self._force_delete(ctxt, cg, req, db.consistency_group_get,
+                           resp_code)
+
+    @ddt.data(*fixture_force_delete_with_different_roles)
+    @ddt.unpack
+    def test_cgsnapshot_force_delete_with_different_roles(self, role,
+                                                          resp_code):
+        cgsnap, req = self._setup_cgsnapshot_data()
+        ctxt = self._get_context(role)
+
+        self._force_delete(ctxt, cgsnap, req, db.cgsnapshot_get,
+                           resp_code)

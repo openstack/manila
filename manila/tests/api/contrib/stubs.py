@@ -44,7 +44,16 @@ def stub_share(id, **kwargs):
         'snapshot_support': True,
     }
     share.update(kwargs)
-    return share
+
+    # NOTE(ameade): We must wrap the dictionary in an class in order to stub
+    # object attributes.
+    class wrapper(dict):
+        pass
+    fake_share = wrapper()
+    fake_share.instance = {'id': "fake_instance_id"}
+    fake_share.update(share)
+
+    return fake_share
 
 
 def stub_snapshot(id, **kwargs):
@@ -124,3 +133,23 @@ def stub_snapshot_delete(self, context, *args, **param):
 def stub_snapshot_get_all_by_project(self, context, search_opts=None,
                                      sort_key=None, sort_dir=None):
     return [stub_snapshot_get(self, context, 2)]
+
+
+def stub_cgsnapshot_member(id, **kwargs):
+    member = {
+        'id': id,
+        'share_id': 'fakeshareid',
+        'share_instance_id': 'fakeshareinstanceid',
+        'share_proto': 'fakesnapproto',
+        'share_type_id': 'fake_share_type_id',
+        'export_location': 'fakesnaplocation',
+        'user_id': 'fakesnapuser',
+        'project_id': 'fakesnapproject',
+        'host': 'fakesnaphost',
+        'share_size': 1,
+        'size': 1,
+        'status': 'fakesnapstatus',
+        'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+    }
+    member.update(kwargs)
+    return member

@@ -127,6 +127,19 @@ class ShareApiTest(test.TestCase):
         expected = self._get_expected_share_detailed_response(self.share)
         self.assertEqual(expected, res_dict)
 
+    def test_share_create_with_consistency_group(self):
+        self.mock_object(share_api.API, 'create', self.create_mock)
+
+        body = {"share": copy.deepcopy(self.share)}
+        req = fakes.HTTPRequest.blank('/shares', version="1.5")
+        res_dict = self.controller.create(req, body)
+
+        expected = self._get_expected_share_detailed_response(self.share)
+
+        expected['share']['consistency_group_id'] = None
+        expected['share']['source_cgsnapshot_member_id'] = None
+        self.assertEqual(expected, res_dict)
+
     def test_share_create_with_valid_default_share_type(self):
         self.mock_object(share_types, 'get_share_type_by_name',
                          mock.Mock(return_value=self.vt))
@@ -337,6 +350,14 @@ class ShareApiTest(test.TestCase):
         expected = self._get_expected_share_detailed_response()
         self.assertEqual(expected, res_dict)
 
+    def test_share_show_with_consistency_group(self):
+        req = fakes.HTTPRequest.blank('/shares/1', version='1.5')
+        res_dict = self.controller.show(req, '1')
+        expected = self._get_expected_share_detailed_response()
+        expected['share']['consistency_group_id'] = None
+        expected['share']['source_cgsnapshot_member_id'] = None
+        self.assertEqual(expected, res_dict)
+
     def test_share_show_admin(self):
         req = fakes.HTTPRequest.blank('/shares/1', use_admin_context=True)
         res_dict = self.controller.show(req, '1')
@@ -356,6 +377,35 @@ class ShareApiTest(test.TestCase):
         resp = self.controller.delete(req, 1)
         self.assertEqual(resp.status_int, 202)
 
+    def test_share_delete_in_consistency_group_param_not_provided(self):
+        fake_share = stubs.stub_share('fake_share',
+                                      consistency_group_id='fake_cg_id')
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=fake_share))
+        req = fakes.HTTPRequest.blank('/shares/1')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.delete, req, 1)
+
+    def test_share_delete_in_consistency_group(self):
+        fake_share = stubs.stub_share('fake_share',
+                                      consistency_group_id='fake_cg_id')
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=fake_share))
+        req = fakes.HTTPRequest.blank(
+            '/shares/1?consistency_group_id=fake_cg_id')
+        resp = self.controller.delete(req, 1)
+        self.assertEqual(resp.status_int, 202)
+
+    def test_share_delete_in_consistency_group_wrong_id(self):
+        fake_share = stubs.stub_share('fake_share',
+                                      consistency_group_id='fake_cg_id')
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=fake_share))
+        req = fakes.HTTPRequest.blank(
+            '/shares/1?consistency_group_id=not_fake_cg_id')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.delete, req, 1)
+
     def test_share_update(self):
         shr = self.share
         body = {"share": shr}
@@ -367,6 +417,15 @@ class ShareApiTest(test.TestCase):
                          res_dict['share']["description"])
         self.assertEqual(shr['is_public'],
                          res_dict['share']['is_public'])
+
+    def test_share_update_with_consistency_group(self):
+        shr = self.share
+        body = {"share": shr}
+
+        req = fakes.HTTPRequest.blank('/share/1', version="1.5")
+        res_dict = self.controller.update(req, 1, body)
+        self.assertIsNone(res_dict['share']["consistency_group_id"])
+        self.assertIsNone(res_dict['share']["source_cgsnapshot_member_id"])
 
     def test_share_not_updates_size(self):
         req = fakes.HTTPRequest.blank('/share/1')
@@ -583,6 +642,53 @@ class ShareApiTest(test.TestCase):
                     'share_type': '1',
                     'volume_type': '1',
                     'is_public': False,
+                    'links': [
+                        {
+                            'href': 'http://localhost/v1/fake/shares/1',
+                            'rel': 'self'
+                        },
+                        {
+                            'href': 'http://localhost/fake/shares/1',
+                            'rel': 'bookmark'
+                        }
+                    ],
+                }
+            ]
+        }
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(res_dict['shares'][0]['volume_type'],
+                         res_dict['shares'][0]['share_type'])
+
+    def test_share_list_detail_with_consistency_group(self):
+        self.mock_object(share_api.API, 'get_all',
+                         stubs.stub_share_get_all_by_project)
+        env = {'QUERY_STRING': 'name=Share+Test+Name'}
+        req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
+                                      version="1.5")
+        res_dict = self.controller.detail(req)
+        expected = {
+            'shares': [
+                {
+                    'status': 'fakestatus',
+                    'description': 'displaydesc',
+                    'export_location': 'fake_location',
+                    'export_locations': ['fake_location', 'fake_location2'],
+                    'availability_zone': 'fakeaz',
+                    'name': 'displayname',
+                    'share_proto': 'FAKEPROTO',
+                    'metadata': {},
+                    'project_id': 'fakeproject',
+                    'host': 'fakehost',
+                    'id': '1',
+                    'snapshot_id': '2',
+                    'share_network_id': None,
+                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'size': 1,
+                    'share_type': '1',
+                    'volume_type': '1',
+                    'is_public': False,
+                    'consistency_group_id': None,
+                    'source_cgsnapshot_member_id': None,
                     'links': [
                         {
                             'href': 'http://localhost/v1/fake/shares/1',

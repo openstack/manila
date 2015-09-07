@@ -40,6 +40,74 @@ from manila import utils
 CONF = cfg.CONF
 
 
+def fake_share(id, **kwargs):
+    share = {
+        'id': id,
+        'size': 1,
+        'user_id': 'fakeuser',
+        'project_id': 'fakeproject',
+        'snapshot_id': None,
+        'share_network_id': None,
+        'share_type_id': None,
+        'availability_zone': 'fakeaz',
+        'status': 'fakestatus',
+        'display_name': 'fakename',
+        'metadata': None,
+        'display_description': 'fakedesc',
+        'share_proto': 'nfs',
+        'export_location': 'fake_location',
+        'host': 'fakehost',
+        'is_public': False,
+        'consistency_group_id': None,
+        'scheduled_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+        'launched_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+        'terminated_at': datetime.datetime(1, 1, 1, 1, 1, 1)
+    }
+    share.update(kwargs)
+    return share
+
+
+def fake_snapshot(id, **kwargs):
+    snapshot = {
+        'id': id,
+        'share_size': 1,
+        'size': 1,
+        'user_id': 'fakeuser',
+        'project_id': 'fakeproject',
+        'share_id': None,
+        'availability_zone': 'fakeaz',
+        'status': 'fakestatus',
+        'display_name': 'fakename',
+        'display_description': 'fakedesc',
+        'share_proto': 'nfs',
+        'progress': 'fakeprogress99%',
+        'scheduled_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+        'launched_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+        'terminated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+        'share': {'host': 'fake_source_host'},
+    }
+    snapshot.update(kwargs)
+    return snapshot
+
+
+def fake_access(id, **kwargs):
+    access = {
+        'id': id,
+        'share_id': 'fakeshareid',
+        'access_type': 'fakeacctype',
+        'access_to': 'fakeaccto',
+        'access_level': 'rw',
+        'state': 'fakeactive',
+        'STATE_NEW': 'fakenew',
+        'STATE_ACTIVE': 'fakeactive',
+        'STATE_DELETING': 'fakedeleting',
+        'STATE_DELETED': 'fakedeleted',
+        'STATE_ERROR': 'fakeerror',
+    }
+    access.update(kwargs)
+    return access
+
+
 _FAKE_LIST_OF_ALL_SHARES = [
     {
         'name': 'foo',
@@ -883,7 +951,8 @@ class ShareAPITestCase(test.TestCase):
         self.api.create_instance.assert_called_once_with(
             self.context, share, share_network_id=share['share_network_id'],
             host=valid_host,
-            availability_zone=snapshot['share']['availability_zone'])
+            availability_zone=snapshot['share']['availability_zone'],
+            consistency_group=None, cgsnapshot_member=None)
         share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'create')
         quota.QUOTAS.reserve.assert_called_once_with(
@@ -957,7 +1026,18 @@ class ShareAPITestCase(test.TestCase):
             utils.IsAMatcher(context.RequestContext), share['id'])
 
     def test_delete_wrong_status(self):
-        share = db_utils.create_share()
+        share = fake_share('fakeid')
+        self.mock_object(db_api, 'share_get', mock.Mock(return_value=share))
+        self.assertRaises(exception.InvalidShare, self.api.delete,
+                          self.context, share)
+
+    @mock.patch.object(db_api, 'count_cgsnapshot_members_in_share',
+                       mock.Mock(return_value=2))
+    def test_delete_dependent_cgsnapshot_members(self):
+        share_server_id = 'fake-ss-id'
+        share = self._setup_delete_mocks(constants.STATUS_AVAILABLE,
+                                         share_server_id)
+
         self.assertRaises(exception.InvalidShare, self.api.delete,
                           self.context, share)
 
