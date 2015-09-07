@@ -493,11 +493,13 @@ class ServiceInstanceManagerTestCase(test.TestCase):
              public_port_id='fake_public_port_id'),
     )
     def test_set_up_service_instance(self, update_data):
-        fake_network_info = dict(foo='bar', server_id='fake_server_id')
+        fake_network_info = dict(foo='bar', server_id='fake_server_id',
+                                 service_ip='fake_ip')
         fake_server = dict(
             id='fake', ip='1.2.3.4', public_address='1.2.3.4', pk_path=None,
             subnet_id='fake-subnet-id', router_id='fake-router-id',
-            username=self._manager.get_config_option('service_instance_user'))
+            username=self._manager.get_config_option('service_instance_user'),
+            service_ip='fake_ip')
         fake_server.update(update_data)
         expected_details = fake_server.copy()
         expected_details.pop('pk_path')
@@ -517,11 +519,13 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertEqual(expected_details, result)
 
     def test_set_up_service_instance_not_available(self):
-        fake_network_info = dict(foo='bar', server_id='fake_server_id')
+        fake_network_info = dict(foo='bar', server_id='fake_server_id',
+                                 service_ip='fake_ip')
         fake_server = dict(
             id='fake', ip='1.2.3.4', public_address='1.2.3.4', pk_path=None,
             subnet_id='fake-subnet-id', router_id='fake-router-id',
-            username=self._manager.get_config_option('service_instance_user'))
+            username=self._manager.get_config_option('service_instance_user'),
+            service_ip='fake_ip')
         expected_details = fake_server.copy()
         expected_details.pop('pk_path')
         expected_details['instance_id'] = expected_details.pop('id')
@@ -948,7 +952,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         key_data = 'fake_key_name', 'fake_key_path'
         instance_name = 'fake_instance_name'
         network_info = dict()
-        network_data = dict(nics=['fake_nic1', 'fake_nic2'])
+        network_data = dict(nics=['fake_nic1', 'fake_nic2'],
+                            service_ip='fake_ip')
         if helper_type == service_instance.NEUTRON_NAME:
             network_data['router'] = dict(id='fake_router_id')
         server_get = dict(
@@ -987,7 +992,8 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             subnet_id=network_data.get('subnet_id'),
             instance_id=server_get['id'],
             ip=ip_address,
-            networks=server_get['networks'])
+            networks=server_get['networks'],
+            service_ip='fake_ip')
         if helper_type == service_instance.NEUTRON_NAME:
             expected['router_id'] = network_data['router']['id']
             expected['public_port_id'] = 'fake_public_port'
@@ -1640,9 +1646,11 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             instance, '_get_cidr_for_subnet', mock.Mock(return_value=cidr))
         self.mock_object(
             instance, '_get_service_subnet', mock.Mock(return_value=None))
+        self.mock_object(
+            instance, '_get_service_ip', mock.Mock(return_value='fake_ip'))
         expected = dict(
             ip_address=self.public_port['fixed_ips'][0]['ip_address'],
-            public_port=self.public_port,
+            public_port=self.public_port, service_ip='fake_ip',
             service_port=self.service_port, service_subnet=service_subnet,
             ports=[self.service_port, self.public_port],
             nics=[{'port-id': self.service_port['id']},
@@ -1657,6 +1665,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         instance._get_cidr_for_subnet.assert_called_once_with()
         self.assertTrue(service_instance.neutron.API.subnet_create.called)
         self.assertTrue(service_instance.neutron.API.create_port.called)
+        self.assertTrue(instance._get_service_ip.called)
 
     @ddt.data(None, exception.NetworkException(code=400))
     def test_setup_network_using_router_success(self, return_obj):
@@ -1693,10 +1702,12 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             instance, '_get_cidr_for_subnet', mock.Mock(return_value=cidr))
         self.mock_object(
             instance, '_get_service_subnet', mock.Mock(return_value=None))
+        self.mock_object(
+            instance, '_get_service_ip', mock.Mock(return_value='fake_ip'))
         expected = dict(
             ip_address=self.service_port['fixed_ips'][0]['ip_address'],
             service_port=self.service_port, service_subnet=service_subnet,
-            ports=[self.service_port], router=router,
+            ports=[self.service_port], router=router, service_ip='fake_ip',
             nics=[{'port-id': self.service_port['id']}])
 
         result = instance.setup_network(network_info)
@@ -1712,6 +1723,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
             network_info['neutron_net_id'], network_info['neutron_subnet_id'])
         service_instance.neutron.API.router_add_interface.\
             assert_called_once_with(router['id'], service_subnet['id'])
+        self.assertTrue(instance._get_service_ip.called)
 
     def test_setup_network_using_router_addon_of_interface_failed(self):
         network_info = dict(
@@ -1795,6 +1807,36 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         service_instance.neutron.API.delete_port.assert_has_calls([
             mock.call(self.service_port['id'])])
 
+    def test__get_service_ip(self):
+        fake_division_mask = fake_get_config_option(
+            'service_network_division_mask')
+        fake_subnet = fake_network.FakeSubnet(
+            cidr='10.254.0.0/%s' % fake_division_mask)
+        fake_port = fake_network.FakePort(fixed_ips=[
+            {'subnet_id': fake_subnet['id'], 'ip_address': '10.254.0.2'}],
+            mac_address='fake_mac_address')
+
+        instance = self._init_neutron_network_plugin()
+        result = instance._get_service_ip(fake_port, fake_subnet['id'])
+
+        # result should be equal to fake_port.fixed_ips[0]['ip_address']
+        self.assertEqual(fake_port.fixed_ips[0]['ip_address'], result)
+
+    def test__get_service_ip_exception(self):
+
+        fake_division_mask = fake_get_config_option(
+            'service_network_division_mask')
+        fake_subnet = fake_network.FakeSubnet(
+            cidr='10.254.0.0/%s' % fake_division_mask)
+        fake_port = fake_network.FakePort(fixed_ips=[
+            {'subnet_id': 'another_fake_id', 'ip_address': '10.254.0.2'}],
+            mac_address='fake_mac_address')
+
+        instance = self._init_neutron_network_plugin()
+        self.assertRaises(
+            exception.ServiceIPNotFound,
+            instance._get_service_ip, fake_port, fake_subnet['id'])
+
     def test__get_cidr_for_subnet_success(self):
         expected = (
             fake_get_config_option('service_network_cidr').split('/')[0] +
@@ -1852,7 +1894,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         self.mock_object(service_instance.ip_lib, 'IPDevice',
                          mock.Mock(return_value=device_mock))
 
-        instance.setup_connectivity_with_service_instances()
+        result = instance.setup_connectivity_with_service_instances()
 
         instance._get_service_port.assert_called_once_with()
         instance.vif_driver.get_device_name.assert_called_once_with(fake_port)
@@ -1867,6 +1909,9 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         device_mock.route.pullup_route.assert_called_once_with(interface_name)
         instance._remove_outdated_interfaces.assert_called_once_with(
             device_mock)
+
+        # result should be equal to fake_port
+        self.assertEqual(fake_port, result)
 
     def test__get_set_of_device_cidrs(self):
         device = fake_network.FakeDevice('foo')
@@ -2136,13 +2181,15 @@ class NovaNetworkHelperTestCase(test.TestCase):
 
     def test_setup_network(self):
         network_info = dict(nova_net_id='fake_nova_net_id')
-        network = dict(label='fake_network', id='fake_network_id')
+        network = dict(label='fake_network', id='fake_network_id',
+                       gateway='fake_gateway_ip')
         instance = service_instance.NovaNetworkHelper(self.fake_manager)
         self.mock_object(instance.compute_api, 'network_get',
                          mock.Mock(return_value=network))
         expected = dict(
             nova_net_id=network_info['nova_net_id'],
-            nics=[{'net-id': network['id']}])
+            nics=[{'net-id': network['id']}],
+            service_ip='fake_gateway_ip')
 
         result = instance.setup_network(network_info)
 

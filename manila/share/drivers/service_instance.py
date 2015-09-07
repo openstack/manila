@@ -419,6 +419,7 @@ class ServiceInstanceManager(object):
             'password': self.get_config_option('service_instance_password'),
             'username': self.get_config_option('service_instance_user'),
             'public_address': server['public_address'],
+            'service_ip': server['service_ip'],
         }
         if server.get('router_id'):
             instance_details['router_id'] = server['router_id']
@@ -561,6 +562,8 @@ class ServiceInstanceManager(object):
         for pair in [('router', 'router_id'), ('service_subnet', 'subnet_id')]:
             if pair[0] in network_data and 'id' in network_data[pair[0]]:
                 service_instance[pair[1]] = network_data[pair[0]]['id']
+
+        service_instance['service_ip'] = network_data.get('service_ip')
 
         return service_instance
 
@@ -829,7 +832,9 @@ class NeutronNetworkHelper(BaseNetworkhelper):
             network_data['ports'].append(network_data['public_port'])
 
         try:
-            self.setup_connectivity_with_service_instances()
+            port = self.setup_connectivity_with_service_instances()
+            service_ip = self._get_service_ip(
+                port, network_data['service_subnet']['id'])
         except Exception as e:
             for port in network_data['ports']:
                 self.neutron_api.delete_port(port['id'])
@@ -840,8 +845,16 @@ class NeutronNetworkHelper(BaseNetworkhelper):
         public_ip = network_data.get(
             'public_port', network_data['service_port'])
         network_data['ip_address'] = public_ip['fixed_ips'][0]['ip_address']
+        network_data['service_ip'] = service_ip
 
         return network_data
+
+    def _get_service_ip(self, port, subnet_id):
+        for fixed_ips in port['fixed_ips']:
+            if subnet_id == fixed_ips['subnet_id']:
+                return fixed_ips['ip_address']
+        msg = _("Service IP not found for Share Server.")
+        raise exception.ServiceIPNotFound(reason=msg)
 
     def _get_cidr_for_subnet(self):
         """Returns not used cidr for service subnet creating."""
@@ -882,6 +895,8 @@ class NeutronNetworkHelper(BaseNetworkhelper):
 
         # here we are checking for garbage devices from removed service port
         self._remove_outdated_interfaces(device)
+
+        return port
 
     @utils.synchronized(
         "service_instance_remove_outdated_interfaces", external=True)
@@ -1016,6 +1031,7 @@ class NovaNetworkHelper(BaseNetworkhelper):
     def setup_network(self, network_info):
         net = self._get_nova_network(network_info['nova_net_id'])
         network_info['nics'] = [{'net-id': net['id']}]
+        network_info['service_ip'] = net['gateway']
         return network_info
 
     def get_network_name(self, network_info):

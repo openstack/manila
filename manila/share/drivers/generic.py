@@ -196,6 +196,16 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 "No protocol helpers selected for Generic Driver. "
                 "Please specify using config option 'share_helpers'.")
 
+    def _get_access_rule_for_data_copy(self, context, share, share_server):
+        if not self.driver_handles_share_servers:
+            service_ip = self.configuration.safe_get(
+                'migration_data_copy_node_ip')
+        else:
+            service_ip = share_server['backend_details']['service_ip']
+        return {'access_type': 'ip',
+                'access_level': 'rw',
+                'access_to': service_ip}
+
     @ensure_server
     def create_share(self, context, share, share_server=None):
         """Creates share."""
