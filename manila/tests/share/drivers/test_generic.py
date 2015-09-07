@@ -1627,6 +1627,24 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self.assertEqual(result, actual_result)
 
+    @ddt.data({'consistency_group': {'share_server_id': 'fake'},
+               'result': {'id': 'fake'}},
+              {'consistency_group': None, 'result': {'id': 'fake'}},
+              {'consistency_group': {'share_server_id': 'test'},
+               'result': {'id': 'test'}})
+    @ddt.unpack
+    def tests_choose_share_server_compatible_with_share_and_cg(
+            self, consistency_group, result):
+        share_servers = [{'id': 'fake'}, {'id': 'test'}]
+        fake_share = "fake"
+
+        actual_result = self._driver.choose_share_server_compatible_with_share(
+            self._context, share_servers, fake_share,
+            consistency_group=consistency_group
+        )
+
+        self.assertEqual(result, actual_result)
+
 
 @generic.ensure_server
 def fake(driver_instance, context, share_server=None):

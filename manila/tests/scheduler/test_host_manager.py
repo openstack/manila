@@ -195,6 +195,7 @@ class HostManagerTestCase(test.TestCase):
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
                         'snapshot_support': True,
+                        'consistency_group_support': False,
                     },
                 }, {
                     'name': 'host2@back1#BBB',
@@ -215,6 +216,7 @@ class HostManagerTestCase(test.TestCase):
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
                         'snapshot_support': True,
+                        'consistency_group_support': False,
                     },
                 }, {
                     'name': 'host2@back2#CCC',
@@ -235,6 +237,7 @@ class HostManagerTestCase(test.TestCase):
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
                         'snapshot_support': True,
+                        'consistency_group_support': False,
                     },
                 },
             ]
@@ -277,6 +280,7 @@ class HostManagerTestCase(test.TestCase):
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
                         'snapshot_support': True,
+                        'consistency_group_support': False,
                     },
                 }, {
                     'name': 'host2@BBB#pool2',
@@ -298,6 +302,7 @@ class HostManagerTestCase(test.TestCase):
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
                         'snapshot_support': True,
+                        'consistency_group_support': False,
                     },
                 }, {
                     'name': 'host3@CCC#pool3',
@@ -319,6 +324,7 @@ class HostManagerTestCase(test.TestCase):
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
                         'snapshot_support': True,
+                        'consistency_group_support': 'pool',
                     },
                 }, {
                     'name': 'host4@DDD#pool4a',
@@ -340,6 +346,7 @@ class HostManagerTestCase(test.TestCase):
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
                         'snapshot_support': True,
+                        'consistency_group_support': 'host',
                     },
                 }, {
                     'name': 'host4@DDD#pool4b',
@@ -361,6 +368,7 @@ class HostManagerTestCase(test.TestCase):
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
                         'snapshot_support': True,
+                        'consistency_group_support': 'host',
                     },
                 },
             ]
@@ -415,6 +423,7 @@ class HostManagerTestCase(test.TestCase):
                         'provisioned_capacity_gb': 312,
                         'max_over_subscription_ratio': 1.0,
                         'thin_provisioning': False,
+                        'consistency_group_support': False,
                     },
                 }, {
                     'name': 'host2@back1#BBB',
@@ -435,6 +444,7 @@ class HostManagerTestCase(test.TestCase):
                         'provisioned_capacity_gb': 400,
                         'max_over_subscription_ratio': 2.0,
                         'thin_provisioning': True,
+                        'consistency_group_support': False,
                     },
                 },
             ]
@@ -480,7 +490,8 @@ class HostManagerTestCase(test.TestCase):
                         'max_over_subscription_ratio': 2.0,
                         'thin_provisioning': True,
                         'vendor_name': None,
-                        'storage_protocol': None
+                        'storage_protocol': None,
+                        'consistency_group_support': False,
                     },
                 },
             ]

@@ -25,7 +25,7 @@ from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LE
+from manila.i18n import _LE, _LI
 from manila.scheduler import driver
 from manila.scheduler import scheduler_options
 from manila.share import share_types
@@ -145,6 +145,18 @@ class FilterScheduler(driver.Scheduler):
 
         config_options = self._get_configuration_options()
 
+        # NOTE(ameade): If a consistency group is specified, pass the
+        # consistency group support level to the ConsistencyGroupFilter
+        # (host, pool, or False)
+        cg_support = None
+        cg = request_spec.get('consistency_group')
+        if cg:
+            temp_hosts = self.host_manager.get_all_host_states_share(elevated)
+            cg_host = next((host for host in temp_hosts
+                            if host.host == cg.get('host')), None)
+            if cg_host:
+                cg_support = cg_host.consistency_group_support
+
         if filter_properties is None:
             filter_properties = {}
         self._populate_retry_share(filter_properties, resource_properties)
@@ -153,7 +165,9 @@ class FilterScheduler(driver.Scheduler):
                                   'request_spec': request_spec,
                                   'config_options': config_options,
                                   'share_type': share_type,
-                                  'resource_type': resource_type
+                                  'resource_type': resource_type,
+                                  'cg_support': cg_support,
+                                  'consistency_group': cg,
                                   })
 
         self.populate_filter_properties_share(request_spec, filter_properties)
@@ -254,3 +268,119 @@ class FilterScheduler(driver.Scheduler):
         )
         filter_properties['user_id'] = shr.get('user_id')
         filter_properties['metadata'] = shr.get('metadata')
+
+    def schedule_create_consistency_group(self, context, group_id,
+                                          request_spec,
+                                          filter_properties):
+
+        LOG.info(_LI("Scheduling consistency group %s") % group_id)
+
+        host = self._get_best_host_for_consistency_group(
+            context,
+            request_spec)
+
+        if not host:
+            msg = _("No hosts available for consistency group %s") % group_id
+            raise exception.NoValidHost(reason=msg)
+
+        msg = _LI("Chose host %(host)s for create_consistency_group %(cg_id)s")
+        LOG.info(msg % {'host': host, 'cg_id': group_id})
+
+        updated_group = driver.cg_update_db(context, group_id, host)
+
+        self.share_rpcapi.create_consistency_group(context,
+                                                   updated_group, host)
+
+    def _get_weighted_hosts_for_share_type(self, context, request_spec,
+                                           share_type):
+        config_options = self._get_configuration_options()
+        # NOTE(ameade): Find our local list of acceptable hosts by
+        # filtering and weighing our options. We virtually consume
+        # resources on it so subsequent selections can adjust accordingly.
+
+        # NOTE(ameade): Remember, we are using an iterator here. So only
+        # traverse this list once.
+        all_hosts = self.host_manager.get_all_host_states_share(context)
+
+        if not all_hosts:
+            return []
+
+        share_type['extra_specs'] = share_type.get('extra_specs', {})
+
+        if share_type['extra_specs']:
+            for spec_name in share_types.get_undeletable_extra_specs():
+                extra_spec = share_type['extra_specs'].get(spec_name)
+
+                if extra_spec is not None:
+                    share_type['extra_specs'][spec_name] = (
+                        "<is> %s" % extra_spec)
+        # Only allow pools that support consistency groups
+        share_type['extra_specs']['consistency_group_support'] = (
+            "<or> host <or> pool")
+
+        filter_properties = {
+            'context': context,
+            'request_spec': request_spec,
+            'config_options': config_options,
+            'share_type': share_type,
+            'resource_type': share_type,
+            'size': 0,
+        }
+        # Filter local hosts based on requirements ...
+        hosts = self.host_manager.get_filtered_hosts(all_hosts,
+                                                     filter_properties)
+
+        if not hosts:
+            return []
+
+        LOG.debug("Filtered %s" % hosts)
+
+        # weighted_host = WeightedHost() ... the best host for the job.
+        weighed_hosts = self.host_manager.get_weighed_hosts(
+            hosts,
+            filter_properties)
+        if not weighed_hosts:
+            return []
+
+        return weighed_hosts
+
+    def _get_weighted_candidates_cg(self, context, request_spec):
+        """Finds hosts that support the consistency group.
+
+        Returns a list of hosts that meet the required specs,
+        ordered by their fitness.
+        """
+        elevated = context.elevated()
+
+        shr_types = request_spec.get("share_types", None)
+
+        weighed_hosts = []
+
+        for iteration_count, share_type in enumerate(shr_types):
+            temp_weighed_hosts = self._get_weighted_hosts_for_share_type(
+                elevated, request_spec, share_type)
+
+            # NOTE(ameade): Take the intersection of hosts so we have one that
+            # can support all share types of the CG
+            if iteration_count == 0:
+                weighed_hosts = temp_weighed_hosts
+            else:
+                new_weighed_hosts = []
+                for host1 in weighed_hosts:
+                    for host2 in temp_weighed_hosts:
+                        if host1.obj.host == host2.obj.host:
+                            new_weighed_hosts.append(host1)
+                weighed_hosts = new_weighed_hosts
+                if not weighed_hosts:
+                    return []
+
+        return weighed_hosts
+
+    def _get_best_host_for_consistency_group(self, context, request_spec):
+        weighed_hosts = self._get_weighted_candidates_cg(
+            context,
+            request_spec)
+
+        if not weighed_hosts:
+            return None
+        return weighed_hosts[0].obj.host

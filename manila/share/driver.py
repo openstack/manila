@@ -344,7 +344,8 @@ class ShareDriver(object):
             self.network_api.deallocate_network(context, share_server_id)
 
     def choose_share_server_compatible_with_share(self, context, share_servers,
-                                                  share, snapshot=None):
+                                                  share, snapshot=None,
+                                                  consistency_group=None):
         """Method that allows driver to choose share server for provided share.
 
         If compatible share-server is not found, method should return None.
@@ -353,8 +354,22 @@ class ShareDriver(object):
         :param share_servers: list with share-server models
         :param share:  share model
         :param snapshot: snapshot model
+        :param consistency_group: ConsistencyGroup model with shares
         :returns: share-server or None
         """
+        # If creating in a consistency group, use its share server
+        if consistency_group:
+            for share_server in share_servers:
+                if (consistency_group.get('share_server_id') ==
+                        share_server['id']):
+                    return share_server
+            return None
+
+        return share_servers[0] if share_servers else None
+
+    def choose_share_server_compatible_with_cg(self, context, share_servers,
+                                               cg_ref, cgsnapshot=None):
+
         return share_servers[0] if share_servers else None
 
     def setup_server(self, *args, **kwargs):
@@ -511,6 +526,234 @@ class ShareDriver(object):
         :param share_server: ShareServer class instance.
         """
         return []
+
+    def create_consistency_group(self, context, cg_dict, share_server=None):
+        """Create a consistency group.
+
+        :param context:
+        :param cg_dict: The consistency group details
+            EXAMPLE:
+            {
+            'status': 'creating',
+            'project_id': '13c0be6290934bd98596cfa004650049',
+            'user_id': 'a0314a441ca842019b0952224aa39192',
+            'description': None,
+            'deleted': 'False',
+            'created_at': datetime.datetime(2015, 8, 10, 15, 14, 6),
+            'updated_at': None,
+            'source_cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+            'host': 'openstack2@cmodeSSVMNFS',
+            'deleted_at': None,
+            'share_types': [<models.ConsistencyGroupShareTypeMapping>],
+            'id': 'eda52174-0442-476d-9694-a58327466c14',
+            'name': None
+            }
+        :returns: (cg_model_update, share_update_list)
+            cg_model_update - a dict containing any values to be updated
+            for the CG in the database. This value may be None.
+
+        """
+        raise NotImplementedError()
+
+    def create_consistency_group_from_cgsnapshot(self, context, cg_dict,
+                                                 cgsnapshot_dict,
+                                                 share_server=None):
+        """Create a consistency group from a cgsnapshot.
+
+        :param context:
+        :param cg_dict: The consistency group details
+            EXAMPLE:
+            .. code::
+
+                {
+                'status': 'creating',
+                'project_id': '13c0be6290934bd98596cfa004650049',
+                'user_id': 'a0314a441ca842019b0952224aa39192',
+                'description': None,
+                'deleted': 'False',
+                'created_at': datetime.datetime(2015, 8, 10, 15, 14, 6),
+                'updated_at': None,
+                'source_cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                'host': 'openstack2@cmodeSSVMNFS',
+                'deleted_at': None,
+                'shares': [<models.Share>], # The new shares being created
+                'share_types': [<models.ConsistencyGroupShareTypeMapping>],
+                'id': 'eda52174-0442-476d-9694-a58327466c14',
+                'name': None
+                }
+        :param cgsnapshot_dict: The cgsnapshot details
+            EXAMPLE:
+            .. code::
+
+                {
+                'status': 'available',
+                'project_id': '13c0be6290934bd98596cfa004650049',
+                'user_id': 'a0314a441ca842019b0952224aa39192',
+                'description': None,
+                'deleted': '0',
+                'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                'consistency_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+                'cgsnapshot_members': [
+                    {
+                     'status': 'available',
+                     'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
+                     'user_id': 'a0314a441ca842019b0952224aa39192',
+                     'deleted': 'False',
+                     'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                     'share': <models.Share>,
+                     'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                     'share_proto': 'NFS',
+                     'project_id': '13c0be6290934bd98596cfa004650049',
+                     'cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                     'deleted_at': None,
+                     'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+                     'size': 1
+                    }
+                ],
+                'deleted_at': None,
+                'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                'name': None
+                }
+        :return: (cg_model_update, share_update_list)
+            cg_model_update - a dict containing any values to be updated
+            for the CG in the database. This value may be None.
+
+            share_update_list - a list of dictionaries containing dicts for
+            every share created in the CG. Any share dicts should at a minimum
+            contain the 'id' key and 'export_locations'. Export locations
+            should be in the same format as returned by a share_create. This
+            list may be empty or None.
+            EXAMPLE:
+            .. code::
+
+                [{'id': 'uuid', 'export_locations': ['export_path']}]
+        """
+        raise NotImplementedError()
+
+    def delete_consistency_group(self, context, cg_dict, share_server=None):
+        """Delete a consistency group
+
+        :param context: The request context
+        :param cg_dict: The consistency group details
+            EXAMPLE:
+            .. code::
+
+                {
+                'status': 'creating',
+                'project_id': '13c0be6290934bd98596cfa004650049',
+                'user_id': 'a0314a441ca842019b0952224aa39192',
+                'description': None,
+                'deleted': 'False',
+                'created_at': datetime.datetime(2015, 8, 10, 15, 14, 6),
+                'updated_at': None,
+                'source_cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                'host': 'openstack2@cmodeSSVMNFS',
+                'deleted_at': None,
+                'shares': [<models.Share>], # The new shares being created
+                'share_types': [<models.ConsistencyGroupShareTypeMapping>],
+                'id': 'eda52174-0442-476d-9694-a58327466c14',
+                'name': None
+                }
+        :return: cg_model_update
+            cg_model_update - a dict containing any values to be updated
+            for the CG in the database. This value may be None.
+        """
+        raise NotImplementedError()
+
+    def create_cgsnapshot(self, context, snap_dict, share_server=None):
+        """Create a consistency group snapshot.
+
+        :param context:
+        :param snap_dict: The cgsnapshot details
+            EXAMPLE:
+            .. code::
+
+                {
+                'status': 'available',
+                'project_id': '13c0be6290934bd98596cfa004650049',
+                'user_id': 'a0314a441ca842019b0952224aa39192',
+                'description': None,
+                'deleted': '0',
+                'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                'consistency_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+                'cgsnapshot_members': [
+                    {
+                     'status': 'available',
+                     'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
+                     'user_id': 'a0314a441ca842019b0952224aa39192',
+                     'deleted': 'False',
+                     'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                     'share': <models.Share>,
+                     'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                     'share_proto': 'NFS',
+                     'project_id': '13c0be6290934bd98596cfa004650049',
+                     'cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                     'deleted_at': None,
+                     'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+                     'size': 1
+                    }
+                ],
+                'deleted_at': None,
+                'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                'name': None
+                }
+        :return: (cgsnapshot_update, member_update_list)
+            cgsnapshot_update - a dict containing any values to be updated
+            for the CGSnapshot in the database. This value may be None.
+
+            member_update_list -  a list of dictionaries containing for every
+            member of the cgsnapshot. Each dict should contains values to be
+            updated for teh CGSnapshotMember in the database. This list may be
+            empty or None.
+        """
+        raise NotImplementedError()
+
+    def delete_cgsnapshot(self, context, snap_dict, share_server=None):
+        """Delete a consistency group snapshot
+
+        :param context:
+        :param snap_dict: The cgsnapshot details
+            EXAMPLE:
+            .. code::
+
+                {
+                'status': 'available',
+                'project_id': '13c0be6290934bd98596cfa004650049',
+                'user_id': 'a0314a441ca842019b0952224aa39192',
+                'description': None,
+                'deleted': '0',
+                'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                'consistency_group_id': '4b04fdc3-00b9-4909-ba1a-06e9b3f88b67',
+                'cgsnapshot_members': [
+                    {
+                     'status': 'available',
+                     'share_type_id': '1a9ed31e-ee70-483d-93ba-89690e028d7f',
+                     'share_id': 'e14b5174-e534-4f35-bc4f-fe81c1575d6f',
+                     'user_id': 'a0314a441ca842019b0952224aa39192',
+                     'deleted': 'False',
+                     'created_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                     'share': <models.Share>,
+                     'updated_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+                     'share_proto': 'NFS',
+                     'project_id': '13c0be6290934bd98596cfa004650049',
+                     'cgsnapshot_id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                     'deleted_at': None,
+                     'id': '6813e06b-a8f5-4784-b17d-f3e91afa370e',
+                     'size': 1
+                    }
+                ],
+                'deleted_at': None,
+                'id': 'f6aa3b59-57eb-421e-965c-4e182538e36a',
+                'name': None
+                }
+        :return: (cgsnapshot_update, member_update_list)
+            cgsnapshot_update - a dict containing any values to be updated
+            for the CGSnapshot in the database. This value may be None.
+        """
+        raise NotImplementedError()
 
     def get_periodic_hook_data(self, context, share_instances):
         """Dedicated for update/extend of data for existing share instances.
