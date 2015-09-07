@@ -139,6 +139,11 @@ ShareGroup = [
                 help="Defines whether to run tests that use share snapshots "
                      "or not. Disable this feature if used driver doesn't "
                      "support it."),
+    cfg.BoolOpt("run_consistency_group_tests",
+                default=True,
+                help="Defines whether to run consistency group tests or not. "
+                     "Disable this feature if used driver doesn't support "
+                     "it."),
     cfg.StrOpt("image_with_share_tools",
                default="manila-service-image",
                help="Image name for vm booting with nfs/smb clients tool."),
