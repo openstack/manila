@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest.api.share import base
-from tempest import config_share as config
+from tempest import config
 from tempest import test
+
+from manila_tempest_tests.tests.api import base
 
 CONF = config.CONF
 
