@@ -59,10 +59,11 @@ class HP3ParMediator(object):
         1.0.00 - Begin Liberty development (post-Kilo)
         1.0.01 - Report thin/dedup/hp_flash_cache capabilities
         1.0.02 - Add share server/share network support
+        1.0.03 - Use hp3par prefix for share types and capabilities
 
     """
 
-    VERSION = "1.0.02"
+    VERSION = "1.0.03"
 
     def __init__(self, **kwargs):
 
@@ -282,7 +283,7 @@ class HP3ParMediator(object):
     def _get_nfs_options(extra_specs, readonly):
         """Validate the NFS extra_specs and return the options to use."""
 
-        nfs_options = extra_specs.get('hpe3par:nfs_options')
+        nfs_options = extra_specs.get('hp3par:nfs_options')
         if nfs_options:
             options = nfs_options.split(',')
         else:
@@ -303,7 +304,7 @@ class HP3ParMediator(object):
         ]
 
         if invalid_options:
-            raise exception.InvalidInput(_('Invalid hpe3par:nfs_options in '
+            raise exception.InvalidInput(_('Invalid hp3par:nfs_options in '
                                            'extra-specs. The following '
                                            'options are not allowed: %s') %
                                          invalid_options)
@@ -333,7 +334,7 @@ class HP3ParMediator(object):
                 smb_opts = (ACCESS_BASED_ENUM, CONTINUOUS_AVAIL, CACHE)
 
             for smb_opt in smb_opts:
-                opt_value = extra_specs.get('hpe3par:smb_%s' % smb_opt)
+                opt_value = extra_specs.get('hp3par:smb_%s' % smb_opt)
                 if opt_value:
                     opt_key = SMB_EXTRA_SPECS_MAP[smb_opt]
                     createfshare_kwargs[opt_key] = opt_value
