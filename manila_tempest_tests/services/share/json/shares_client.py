@@ -358,7 +358,7 @@ class SharesClient(rest_client.RestClient):
             body = self.get_snapshot(snapshot_id)
             snapshot_status = body['status']
             if 'error' in snapshot_status:
-                raise exceptions.\
+                raise share_exceptions.\
                     SnapshotBuildErrorException(snapshot_id=snapshot_id)
 
             if int(time.time()) - start >= self.build_timeout:

@@ -16,6 +16,7 @@
 Handles all requests to Nova.
 """
 
+from novaclient import api_versions
 from novaclient import exceptions as nova_exception
 from novaclient import service_catalog
 from novaclient import utils
@@ -60,6 +61,9 @@ nova_opts = [
     cfg.StrOpt('nova_admin_auth_url',
                default='http://localhost:5000/v2.0',
                help='Identity service URL.'),
+    cfg.StrOpt('nova_api_microversion',
+               default='2.10',
+               help='Version of Nova API to be used.'),
 ]
 
 CONF = cfg.CONF
@@ -70,10 +74,12 @@ LOG = log.getLogger(__name__)
 
 def novaclient(context):
     if context.is_admin and context.project_id is None:
+        api_version = api_versions.APIVersion(CONF.nova_api_microversion)
         c = nova_client.Client(CONF.nova_admin_username,
                                CONF.nova_admin_password,
                                CONF.nova_admin_tenant_name,
-                               CONF.nova_admin_auth_url)
+                               CONF.nova_admin_auth_url,
+                               api_version=api_version)
         c.authenticate()
         return c
     compat_catalog = {

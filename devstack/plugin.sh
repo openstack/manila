@@ -331,7 +331,7 @@ function configure_manila_ui {
 
 
 function create_manila_service_keypair {
-    openstack keypair create $MANILA_SERVICE_KEYPAIR_NAME --public-key $MANILA_PATH_TO_PUBLIC_KEY
+    nova keypair-add $MANILA_SERVICE_KEYPAIR_NAME --pub-key $MANILA_PATH_TO_PUBLIC_KEY
 }
 
 
