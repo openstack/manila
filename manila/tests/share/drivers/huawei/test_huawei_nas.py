@@ -359,7 +359,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     filesystem(method, data, self.fs_status_flag))
                 self.delete_flag = True
 
-            if url == "cachepartition":
+            if url == "/cachepartition":
                 if self.partition_exist:
                     data = """{"error":{"code":0},
                     "data":[{"ID":"7",
@@ -369,7 +369,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "data":[{"ID":"7",
                     "NAME":"test_partition_name_fail"}]}"""
 
-            if url == "SMARTCACHEPARTITION":
+            if url == "/SMARTCACHEPARTITION":
                 if self.cache_exist:
                     data = """{"error":{"code":0},
                     "data":[{"ID":"8",
@@ -379,11 +379,11 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "data":[{"ID":"8",
                     "NAME":"test_cache_name_fail"}]}"""
 
-            if url == "filesystem/associate/cachepartition":
+            if url == "/filesystem/associate/cachepartition":
                 data = """{"error":{"code":0}}"""
                 self.add_fs_to_partition_flag = True
 
-            if url == "SMARTCACHEPARTITION/CREATE_ASSOCIATE":
+            if url == "/SMARTCACHEPARTITION/CREATE_ASSOCIATE":
                 data = """{"error":{"code":0}}"""
                 self.add_fs_to_cache_flag = True
         else:
@@ -621,7 +621,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'capabilities:huawei_smartpartition': '<is> True',
             'huawei_smartpartition:partitionname': 'test_partition_name',
             'capabilities:thin_provisioning': '<is> True',
-            'test:test:test': 'test'
+            'test:test:test': 'test',
         }
 
         fake_share_type_id = 'fooid-2'

@@ -85,7 +85,8 @@ class HuaweiNasDriver(driver.ShareDriver):
         backend_driver = HUAWEI_UNIFIED_DRIVER_REGISTRY.get(product)
         if backend_driver is None:
             raise exception.InvalidInput(
-                reason=_('Storage %s is not supported.') % product)
+                reason=_('Product %s is not supported. Product '
+                         'must be set to V3.') % product)
 
         return backend_driver
 
