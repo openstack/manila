@@ -44,7 +44,7 @@ class CapacityWeigherTestCase(test.TestCase):
             hosts,
             weight_properties)[index]
 
-    @mock.patch('manila.db.sqlalchemy.api.service_get_all_by_topic')
+    @mock.patch('manila.db.api.IMPL.service_get_all_by_topic')
     def _get_all_hosts(self, _mock_service_get_all_by_topic, disabled=False):
         ctxt = context.get_admin_context()
         fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic,

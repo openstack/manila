@@ -41,10 +41,24 @@ class PoolWeigherTestCase(test.TestCase):
             {'id': 'fake_server_id3'},
             {'id': 'fake_server_id4'},
         ]
+        services = [
+            dict(id=1, host='host1@AAA', topic='share', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=2, host='host2@BBB', topic='share', disabled=False,
+                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+            dict(id=3, host='host3@CCC', topic='share', disabled=False,
+                 availability_zone='zone2', updated_at=timeutils.utcnow()),
+            dict(id=4, host='host@DDD', topic='share', disabled=False,
+                 availability_zone='zone3', updated_at=timeutils.utcnow()),
+            dict(id=5, host='host5@EEE', topic='share', disabled=False,
+                 availability_zone='zone3', updated_at=timeutils.utcnow()),
+        ]
         self.host_manager.service_states = (
             fakes.SHARE_SERVICE_STATES_WITH_POOLS)
         self.mock_object(db_api, 'share_server_get_all_by_host',
                          mock.Mock(return_value=share_servers))
+        self.mock_object(db_api.IMPL, 'service_get_all_by_topic',
+                         mock.Mock(return_value=services))
 
     def _get_weighed_host(self, hosts, weight_properties=None):
         if weight_properties is None:
@@ -58,24 +72,10 @@ class PoolWeigherTestCase(test.TestCase):
             hosts,
             weight_properties)[0]
 
-    @mock.patch('manila.db.sqlalchemy.api.service_get_all_by_topic')
-    def _get_all_hosts(self, _mock_service_get_all_by_topic):
+    def _get_all_hosts(self):
         ctxt = context.get_admin_context()
-        _mock_service_get_all_by_topic.return_value = [
-            dict(id=1, host='host1@AAA', topic='share', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
-            dict(id=2, host='host2@BBB', topic='share', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
-            dict(id=3, host='host3@CCC', topic='share', disabled=False,
-                 availability_zone='zone2', updated_at=timeutils.utcnow()),
-            dict(id=4, host='host@DDD', topic='share', disabled=False,
-                 availability_zone='zone3', updated_at=timeutils.utcnow()),
-            dict(id=5, host='host5@EEE', topic='share', disabled=False,
-                 availability_zone='zone3', updated_at=timeutils.utcnow()),
-        ]
-
         host_states = self.host_manager.get_all_host_states_share(ctxt)
-        _mock_service_get_all_by_topic.assert_called_once_with(
+        db_api.IMPL.service_get_all_by_topic.assert_called_once_with(
             ctxt, CONF.share_topic)
         return host_states
 
