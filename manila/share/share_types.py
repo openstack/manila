@@ -203,6 +203,10 @@ def get_undeletable_extra_specs():
     return constants.ExtraSpecs.UNDELETABLE
 
 
+def get_tenant_visible_extra_specs():
+    return constants.ExtraSpecs.TENANT_VISIBLE
+
+
 def get_boolean_extra_specs():
     return constants.ExtraSpecs.BOOLEAN
 

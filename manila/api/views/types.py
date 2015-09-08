@@ -14,6 +14,7 @@
 # under the License.
 
 from manila.api import common
+from manila.share import share_types
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -22,11 +23,22 @@ class ViewBuilder(common.ViewBuilder):
 
     def show(self, request, share_type, brief=False):
         """Trim away extraneous share type attributes."""
+
+        extra_specs = share_type.get('extra_specs', {})
+        required_extra_specs = share_type.get('required_extra_specs', {})
+
+        # Remove non-tenant-visible extra specs in a non-admin context
+        if not request.environ['manila.context'].is_admin:
+            extra_spec_names = share_types.get_tenant_visible_extra_specs()
+            extra_specs = self._filter_extra_specs(extra_specs,
+                                                   extra_spec_names)
+            required_extra_specs = self._filter_extra_specs(
+                required_extra_specs, extra_spec_names)
+
         trimmed = dict(id=share_type.get('id'),
                        name=share_type.get('name'),
-                       extra_specs=share_type.get('extra_specs'),
-                       required_extra_specs=share_type.get(
-                           'required_extra_specs'))
+                       extra_specs=extra_specs,
+                       required_extra_specs=required_extra_specs)
         if brief:
             return trimmed
         else:
@@ -38,3 +50,7 @@ class ViewBuilder(common.ViewBuilder):
                             for share_type in share_types]
         return dict(volume_types=share_types_list,
                     share_types=share_types_list)
+
+    def _filter_extra_specs(self, extra_specs, valid_keys):
+        return {key: value for key, value in extra_specs.items()
+                if key in valid_keys}

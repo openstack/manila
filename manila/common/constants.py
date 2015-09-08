@@ -118,6 +118,10 @@ class ExtraSpecs(object):
         DRIVER_HANDLES_SHARE_SERVERS,
         SNAPSHOT_SUPPORT,
     )
+    # NOTE(cknight): Some extra specs are necessary parts of the Manila API and
+    # should be visible to non-admin users.  This list matches the UNDELETABLE
+    # list today, but that may not always remain true.
+    TENANT_VISIBLE = UNDELETABLE
     BOOLEAN = (
         DRIVER_HANDLES_SHARE_SERVERS,
         SNAPSHOT_SUPPORT,

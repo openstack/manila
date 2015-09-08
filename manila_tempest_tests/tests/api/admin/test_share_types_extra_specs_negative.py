@@ -67,6 +67,18 @@ class ExtraSpecsAdminNegativeTest(base.BaseSharesAdminTest):
             st["share_type"]["id"])
 
     @test.attr(type=["gate", "smoke", ])
+    def test_try_read_extra_specs_on_share_type_with_user(self):
+        st = self._create_share_type()
+        share_type = self.member_shares_client.get_share_type(
+            st['share_type']['id'])
+        # Verify a non-admin can only read the required extra-specs
+        expected_keys = ['driver_handles_share_servers', 'snapshot_support']
+        actual_keys = share_type['share_type']['extra_specs'].keys()
+        self.assertEqual(sorted(expected_keys), sorted(actual_keys),
+                         'Incorrect extra specs visible to non-admin user; '
+                         'expected %s, got %s' % (expected_keys, actual_keys))
+
+    @test.attr(type=["gate", "smoke", ])
     def test_try_update_extra_spec_with_user(self):
         st = self._create_share_type()
         self.assertRaises(
