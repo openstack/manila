@@ -21,6 +21,7 @@ class ViewBuilder(common.ViewBuilder):
 
     _collection_name = 'shares'
     _detail_version_modifiers = [
+        "add_snapshot_support_field",
         "add_consistency_group_fields",
         "add_task_state_field",
         "modify_share_type_field",
@@ -87,6 +88,10 @@ class ViewBuilder(common.ViewBuilder):
         if context.is_admin:
             share_dict['share_server_id'] = share.get('share_server_id')
         return {'share': share_dict}
+
+    @common.ViewBuilder.versioned_method("2.2")
+    def add_snapshot_support_field(self, share_dict, share):
+        share_dict['snapshot_support'] = share.get('snapshot_support')
 
     @common.ViewBuilder.versioned_method("2.4")
     def add_consistency_group_fields(self, share_dict, share):

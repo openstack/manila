@@ -288,7 +288,7 @@ class BaseSharesTest(test.BaseTestCase):
                       share_network_id=None, share_type_id=None,
                       consistency_group_id=None, client=None,
                       cleanup_in_class=True, is_public=False, **kwargs):
-        client = client or cls.shares_client
+        client = client or cls.shares_v2_client
         description = description or "Tempest's share"
         share_network_id = share_network_id or client.share_network_id or None
         metadata = metadata or {}
@@ -358,7 +358,7 @@ class BaseSharesTest(test.BaseTestCase):
                     "Expected only 'args' and 'kwargs' keys. "
                     "Provided %s" % list(d))
             d["kwargs"]["client"] = d["kwargs"].get(
-                "client", cls.shares_client)
+                "client", cls.shares_v2_client)
             d["share"] = cls._create_share(*d["args"], **d["kwargs"])
             d["cnt"] = 0
             d["available"] = False

@@ -212,10 +212,7 @@ class ShareController(wsgi.Controller):
     @wsgi.Controller.api_version("1.0", "2.3")  # noqa
     def create(self, req, body):  # pylint: disable=E0102
         # Remove consistency group attributes
-        share = body.get('share', {})
-        if 'consistency_group_id' in share:
-            del body['share']['consistency_group_id']
-
+        body.get('share', {}).pop('consistency_group_id', None)
         share = self._create(req, body)
         return share
 

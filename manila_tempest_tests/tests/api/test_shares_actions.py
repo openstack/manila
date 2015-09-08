@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
 from tempest import config  # noqa
 from tempest import test  # noqa
 from tempest_lib.common.utils import data_utils  # noqa
@@ -71,32 +72,43 @@ class SharesActionsTest(base.BaseSharesTest):
                 snapshot_id=cls.snap['id'],
             ))
 
-    @test.attr(type=["gate", ])
-    def test_get_share(self):
+    def _get_share(self, version):
 
         # get share
-        share = self.shares_client.get_share(self.shares[0]['id'])
+        share = self.shares_v2_client.get_share(
+            self.shares[0]['id'], version=six.text_type(version))
 
         # verify keys
         expected_keys = ["status", "description", "links", "availability_zone",
                          "created_at", "export_location", "share_proto",
                          "name", "snapshot_id", "id", "size"]
-        actual_keys = share.keys()
+        if version > 2.1:
+            expected_keys.append("snapshot_support")
+        actual_keys = list(share.keys())
         [self.assertIn(key, actual_keys) for key in expected_keys]
 
         # verify values
         msg = "Expected name: '%s', actual name: '%s'" % (self.share_name,
                                                           share["name"])
-        self.assertEqual(self.share_name, str(share["name"]), msg)
+        self.assertEqual(self.share_name, six.text_type(share["name"]), msg)
 
         msg = "Expected description: '%s', "\
               "actual description: '%s'" % (self.share_desc,
                                             share["description"])
-        self.assertEqual(self.share_desc, str(share["description"]), msg)
+        self.assertEqual(
+            self.share_desc, six.text_type(share["description"]), msg)
 
         msg = "Expected size: '%s', actual size: '%s'" % (self.share_size,
                                                           share["size"])
         self.assertEqual(self.share_size, int(share["size"]), msg)
+
+    @test.attr(type=["gate", ])
+    def test_get_share_no_snapshot_support_key(self):
+        self._get_share(2.1)
+
+    @test.attr(type=["gate", ])
+    def test_get_share_with_snapshot_support_key(self):
+        self._get_share(2.2)
 
     @test.attr(type=["gate", ])
     def test_list_shares(self):
@@ -114,11 +126,11 @@ class SharesActionsTest(base.BaseSharesTest):
             msg = "expected id lists %s times in share list" % (len(gen))
             self.assertEqual(1, len(gen), msg)
 
-    @test.attr(type=["gate", ])
-    def test_list_shares_with_detail(self):
+    def _list_shares_with_detail(self, version):
 
         # list shares
-        shares = self.shares_client.list_shares_with_detail()
+        shares = self.shares_v2_client.list_shares_with_detail(
+            version=six.text_type(version))
 
         # verify keys
         keys = [
@@ -126,6 +138,8 @@ class SharesActionsTest(base.BaseSharesTest):
             "created_at", "export_location", "share_proto", "host",
             "name", "snapshot_id", "id", "size", "project_id",
         ]
+        if version > 2.1:
+            keys.append("snapshot_support")
         [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
 
         # our shares in list and have no duplicates
@@ -133,6 +147,14 @@ class SharesActionsTest(base.BaseSharesTest):
             gen = [sid["id"] for sid in shares if sid["id"] in share["id"]]
             msg = "expected id lists %s times in share list" % (len(gen))
             self.assertEqual(1, len(gen), msg)
+
+    @test.attr(type=["gate", ])
+    def test_list_shares_with_detail_without_snapshot_support_key(self):
+        self._list_shares_with_detail(2.1)
+
+    @test.attr(type=["gate", ])
+    def test_list_shares_with_detail_and_snapshot_support_key(self):
+        self._list_shares_with_detail(2.2)
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_metadata(self):

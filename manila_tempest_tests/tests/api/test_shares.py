@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
 from tempest import config  # noqa
 from tempest import test  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
@@ -35,17 +36,19 @@ class SharesNFSTest(base.BaseSharesTest):
             raise cls.skipException(message)
         cls.share = cls.create_share(cls.protocol)
 
-    @test.attr(type=["gate", ])
-    def test_create_delete_share(self):
+    def _create_delete_share(self, version):
 
         # create share
-        share = self.create_share(self.protocol)
+        share = self.create_share(
+            self.protocol, version=six.text_type(version))
         detailed_elements = {'name', 'id', 'availability_zone',
                              'description', 'export_location', 'project_id',
                              'host', 'created_at', 'share_proto', 'metadata',
                              'size', 'snapshot_id', 'share_network_id',
                              'status', 'share_type', 'volume_type', 'links',
                              'is_public'}
+        if version > 2.2:
+            detailed_elements.add('snapshot_support')
         self.assertTrue(detailed_elements.issubset(share.keys()),
                         'At least one expected element missing from share '
                         'response. Expected %(expected)s, got %(actual)s.' % {
@@ -59,6 +62,14 @@ class SharesNFSTest(base.BaseSharesTest):
         self.assertRaises(lib_exc.NotFound,
                           self.shares_client.get_share,
                           share['id'])
+
+    @test.attr(type=["gate", ])
+    def test_create_delete_share_without_snapshot_support_feature(self):
+        self._create_delete_share(2.1)
+
+    @test.attr(type=["gate", ])
+    def test_create_delete_share_with_snapshot_support_feature(self):
+        self._create_delete_share(2.2)
 
     @test.attr(type=["gate", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
