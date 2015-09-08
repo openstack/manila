@@ -393,6 +393,15 @@ AGGREGATE_CAPACITIES = {
     }
 }
 
+AGGREGATE_CAPACITIES_VSERVER_CREDS = {
+    AGGREGATES[0]: {
+        'available': 1181116007,  # 1.1 GB
+    },
+    AGGREGATES[1]: {
+        'available': 2147483648,  # 2.0 GB
+    }
+}
+
 SSC_INFO = {
     AGGREGATES[0]: {
         'netapp_raid_type': 'raid4',
@@ -418,6 +427,27 @@ POOLS = [
      'total_capacity_gb': 6.0,
      'free_capacity_gb': 2.0,
      'allocated_capacity_gb': 4.0,
+     'QoS_support': 'False',
+     'reserved_percentage': 0,
+     'netapp_raid_type': 'raid_dp',
+     'netapp_disk_type': 'SSD'
+     },
+]
+
+POOLS_VSERVER_CREDS = [
+    {'pool_name': AGGREGATES[0],
+     'total_capacity_gb': 'unknown',
+     'free_capacity_gb': 1.1,
+     'allocated_capacity_gb': 0.0,
+     'QoS_support': 'False',
+     'reserved_percentage': 0,
+     'netapp_raid_type': 'raid4',
+     'netapp_disk_type': 'FCAL'
+     },
+    {'pool_name': AGGREGATES[1],
+     'total_capacity_gb': 'unknown',
+     'free_capacity_gb': 2.0,
+     'allocated_capacity_gb': 0.0,
      'QoS_support': 'False',
      'reserved_percentage': 0,
      'netapp_raid_type': 'raid_dp',
