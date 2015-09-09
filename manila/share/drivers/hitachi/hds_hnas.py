@@ -15,17 +15,13 @@
 
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils import strutils
 import six
 
-from manila.common import constants as const
 from manila import exception
 from manila.i18n import _
-from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.share import driver
 from manila.share.drivers.hitachi import ssh
-from manila.share import share_types
 
 LOG = log.getLogger(__name__)
 
@@ -379,22 +375,6 @@ class HDSHNASDriver(driver.ShareDriver):
         :returns: Returns a dict with size of share managed
         and its location (your path in file-system).
         """
-        if self.driver_handles_share_servers:
-            msg = (_("DHSS = %s") % self.driver_handles_share_servers)
-            LOG.error(_LE("Operation 'manage' for shares is supported only "
-                          "when driver does not handle share servers."))
-            raise exception.InvalidDriverMode(driver_mode=msg)
-
-        driver_mode = share_types.get_share_type_extra_specs(
-            share['share_type_id'],
-            const.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS)
-
-        if strutils.bool_from_string(driver_mode):
-            msg = _("%(mode)s != False.") % {
-                'mode': const.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
-            }
-            raise exception.ManageExistingShareTypeMismatch(reason=msg)
-
         share_id = self._get_hnas_share_id(share['id'])
 
         LOG.info(_LI("Share %(shr_path)s will be managed with ID %(shr_id)s."),

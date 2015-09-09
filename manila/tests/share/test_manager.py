@@ -33,6 +33,7 @@ from manila.share import drivers_private_data
 from manila.share import manager
 from manila.share import migration
 from manila.share import rpcapi
+from manila.share import share_types
 from manila import test
 from manila.tests import db_utils
 from manila.tests import utils as test_utils
@@ -833,12 +834,33 @@ class ShareManagerTestCase(test.TestCase):
     def test_manage_share_invalid_driver(self):
         self.mock_object(self.share_manager, 'driver', mock.Mock())
         self.share_manager.driver.driver_handles_share_servers = True
+        self.mock_object(share_types,
+                         'get_share_type_extra_specs',
+                         mock.Mock(return_value='False'))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         share = db_utils.create_share()
         share_id = share['id']
 
         self.assertRaises(
-            exception.InvalidShare,
+            exception.InvalidDriverMode,
+            self.share_manager.manage_share, self.context, share_id, {})
+
+        self.share_manager.db.share_update.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share_id,
+            {'status': constants.STATUS_MANAGE_ERROR, 'size': 1})
+
+    def test_manage_share_invalid_share_type(self):
+        self.mock_object(self.share_manager, 'driver', mock.Mock())
+        self.share_manager.driver.driver_handles_share_servers = False
+        self.mock_object(share_types,
+                         'get_share_type_extra_specs',
+                         mock.Mock(return_value='True'))
+        self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
+        share = db_utils.create_share()
+        share_id = share['id']
+
+        self.assertRaises(
+            exception.ManageExistingShareTypeMismatch,
             self.share_manager.manage_share, self.context, share_id, {})
 
         self.share_manager.db.share_update.assert_called_once_with(
@@ -849,9 +871,12 @@ class ShareManagerTestCase(test.TestCase):
         CustomException = type('CustomException', (Exception,), dict())
         self.mock_object(self.share_manager, 'driver', mock.Mock())
         self.share_manager.driver.driver_handles_share_servers = False
-        self.mock_object(
-            self.share_manager.driver,
-            "manage_existing", mock.Mock(side_effect=CustomException))
+        self.mock_object(self.share_manager.driver,
+                         'manage_existing',
+                         mock.Mock(side_effect=CustomException))
+        self.mock_object(share_types,
+                         'get_share_type_extra_specs',
+                         mock.Mock(return_value='False'))
         self.mock_object(self.share_manager.db, 'share_update', mock.Mock())
         share = db_utils.create_share()
         share_id = share['id']
@@ -872,6 +897,9 @@ class ShareManagerTestCase(test.TestCase):
     def test_manage_share_invalid_size(self):
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = False
+        self.mock_object(share_types,
+                         'get_share_type_extra_specs',
+                         mock.Mock(return_value='False'))
         self.mock_object(self.share_manager.driver,
                          "manage_existing",
                          mock.Mock(return_value=None))
@@ -894,6 +922,9 @@ class ShareManagerTestCase(test.TestCase):
     def test_manage_share_quota_error(self):
         self.mock_object(self.share_manager, 'driver')
         self.share_manager.driver.driver_handles_share_servers = False
+        self.mock_object(share_types,
+                         'get_share_type_extra_specs',
+                         mock.Mock(return_value='False'))
         self.mock_object(self.share_manager.driver,
                          "manage_existing",
                          mock.Mock(return_value={'size': 3}))
@@ -934,6 +965,9 @@ class ShareManagerTestCase(test.TestCase):
             mock.Mock(side_effect=(
                 self.share_manager.db.share_export_locations_update)))
         self.share_manager.driver.driver_handles_share_servers = False
+        self.mock_object(share_types,
+                         'get_share_type_extra_specs',
+                         mock.Mock(return_value='False'))
         self.mock_object(self.share_manager.driver,
                          "manage_existing",
                          mock.Mock(return_value=driver_data))

@@ -1483,33 +1483,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.share_nfs,
                           self.driver_options)
 
-    def test_manage_existing_share_type_mismatch(self):
-        fake_extra_specs = {
-            'driver_handles_share_servers': 'True',
-        }
-        fake_share_type_id = 'fake_id'
-        fake_type_mismatch_extra = {
-            'test_with_extra': {
-                'created_at': 'fake_time',
-                'deleted': '0',
-                'deleted_at': None,
-                'extra_specs': fake_extra_specs,
-                'required_extra_specs': {},
-                'id': fake_share_type_id,
-                'name': 'test_with_extra',
-                'updated_at': None
-            }
-        }
-        share_type = fake_type_mismatch_extra['test_with_extra']
-        self.mock_object(db,
-                         'share_type_get',
-                         mock.Mock(return_value=share_type))
-        self.driver.plugin.helper.login()
-        self.assertRaises(exception.ManageExistingShareTypeMismatch,
-                          self.driver.manage_existing,
-                          self.share_nfs,
-                          self.driver_options)
-
     def test_get_pool_success(self):
         self.driver.plugin.helper.login()
         pool_name = self.driver.get_pool(self.share_nfs_host_not_exist)

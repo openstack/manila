@@ -16,7 +16,6 @@
 import time
 
 from oslo_log import log
-from oslo_utils import strutils
 from oslo_utils import units
 
 from manila.common import constants as common_constants
@@ -29,7 +28,6 @@ from manila.share.drivers.huawei import constants
 from manila.share.drivers.huawei import huawei_utils
 from manila.share.drivers.huawei.v3 import helper
 from manila.share.drivers.huawei.v3 import smartx
-from manila.share import share_types
 from manila.share import utils as share_utils
 
 
@@ -495,16 +493,6 @@ class V3StorageConnection(driver.HuaweiBase):
 
     def manage_existing(self, share, driver_options):
         """Manage existing share."""
-        driver_mode = share_types.get_share_type_extra_specs(
-            share['share_type_id'],
-            common_constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS)
-
-        if strutils.bool_from_string(driver_mode):
-            msg = _("%(mode)s != False") % {
-                'mode':
-                common_constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
-            }
-            raise exception.ManageExistingShareTypeMismatch(reason=msg)
 
         share_proto = share['share_proto']
         share_name = share['name']
