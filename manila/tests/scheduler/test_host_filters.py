@@ -98,7 +98,8 @@ class HostFiltersTestCase(test.TestCase):
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
     @ddt.data(
-        {'free_capacity': 'unknown', 'total_capacity': 'unknown'})
+        {'free_capacity': 'unknown', 'total_capacity': 'unknown'},
+        {'free_capacity': 200, 'total_capacity': 'unknown'})
     @ddt.unpack
     def test_capacity_filter_passes_total(self, free_capacity,
                                           total_capacity):
@@ -114,15 +115,20 @@ class HostFiltersTestCase(test.TestCase):
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @ddt.data('unknown', 0)
-    def test_capacity_filter_fails_total(self, total):
+    @ddt.data(
+        {'free': 200, 'total': 'unknown', 'reserved': 5},
+        {'free': 50, 'total': 'unknown', 'reserved': 0},
+        {'free': 200, 'total': 0, 'reserved': 0})
+    @ddt.unpack
+    def test_capacity_filter_fails_total(self, free, total, reserved):
         self._stub_service_is_up(True)
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': total,
-                                    'reserved_percentage': 5,
+                                   {'free_capacity_gb': free,
+                                    'total_capacity_gb': total,
+                                    'reserved_percentage': reserved,
                                     'updated_at': None,
                                     'service': service})
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
