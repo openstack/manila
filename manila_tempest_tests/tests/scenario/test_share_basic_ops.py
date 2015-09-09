@@ -118,7 +118,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
     def migrate_share(self, share_id, dest_host):
         share = self._migrate_share(share_id, dest_host,
-                                    self.shares_admin_client)
+                                    self.shares_admin_v2_client)
         return share
 
     def create_share_network(self):
@@ -200,15 +200,15 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
             raise self.skipException("Test for CIFS protocol not supported "
                                      "at this moment. Skipping.")
 
-        if not CONF.share.migration_enabled:
+        if not CONF.share.run_migration_tests:
             raise self.skipException("Migration tests disabled. Skipping.")
 
         pools = self.shares_admin_client.list_pools()['pools']
 
         if len(pools) < 2:
-            raise self.skipException("At least two different running "
-                                     "manila-share services are needed to "
-                                     "run migration tests. Skipping.")
+            raise self.skipException("At least two different pool entries "
+                                     "are needed to run migration tests. "
+                                     "Skipping.")
 
         self.security_group = self._create_security_group()
         self.create_share_network()
@@ -219,6 +219,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                          None)
 
         self.assertIsNotNone(dest_pool)
+        self.assertIsNotNone(dest_pool.get('name'))
 
         dest_pool = dest_pool['name']
 

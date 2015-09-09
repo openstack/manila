@@ -359,6 +359,7 @@ function create_service_share_servers {
             iniset $MANILA_CONF $BE service_instance_name_or_id $vm_id
             iniset $MANILA_CONF $BE service_net_name_or_ip private
             iniset $MANILA_CONF $BE tenant_net_name_or_ip private
+            iniset $MANILA_CONF $BE migration_data_copy_node_ip $PUBLIC_NETWORK_GATEWAY
         fi
     done
 }
@@ -553,11 +554,13 @@ function update_tempest {
 }
 
 function install_libraries {
-    if [ "$MANILA_MULTI_BACKEND" = "True" ]; then
-        if is_ubuntu; then
-            install_package nfs-common
-        else
-            install_package nfs-utils
+    if [ $(trueorfalse False MANILA_MULTI_BACKEND) == True ]; then
+        if [ $(trueorfalse True RUN_MANILA_MIGRATION_TESTS) == True ]; then
+            if is_ubuntu; then
+                install_package nfs-common
+            else
+                install_package nfs-utils
+            fi
         fi
     fi
 }
