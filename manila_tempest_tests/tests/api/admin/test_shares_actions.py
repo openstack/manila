@@ -165,6 +165,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         filters = {
             "extra_specs": {'storage_protocol': CONF.share.storage_protocol}
         }
+        share_type_list = self.shares_client.list_share_types()["share_types"]
 
         # list shares
         shares = self.shares_client.list_shares_with_detail(params=filters)
@@ -175,12 +176,10 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         for share in self.shares:
             self.assertTrue(share["id"] in shares_ids)
         for share in shares:
-            st_list = self.shares_client.list_share_types()
             # find its name or id, get id
-            sts = st_list["share_types"]
             st_id = None
-            for st in sts:
-                if share["share_type"] in [st["id"], st["name"]]:
+            for st in share_type_list:
+                if share["share_type"] in (st["id"], st["name"]):
                     st_id = st["id"]
                     break
             if st_id is None:
