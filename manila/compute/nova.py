@@ -16,13 +16,10 @@
 Handles all requests to Nova.
 """
 
-from novaclient import api_versions
+from novaclient import client as nova_client
 from novaclient import exceptions as nova_exception
 from novaclient import service_catalog
 from novaclient import utils
-from novaclient.v2 import client as nova_client
-from novaclient.v2.contrib import assisted_volume_snapshots
-from novaclient.v2 import servers as nova_servers
 from oslo_config import cfg
 from oslo_log import log
 import six
@@ -74,14 +71,16 @@ LOG = log.getLogger(__name__)
 
 def novaclient(context):
     if context.is_admin and context.project_id is None:
-        api_version = api_versions.APIVersion(CONF.nova_api_microversion)
-        c = nova_client.Client(CONF.nova_admin_username,
-                               CONF.nova_admin_password,
-                               CONF.nova_admin_tenant_name,
-                               CONF.nova_admin_auth_url,
-                               api_version=api_version)
+        c = nova_client.Client(
+            CONF.nova_api_microversion,
+            CONF.nova_admin_username,
+            CONF.nova_admin_password,
+            CONF.nova_admin_tenant_name,
+            CONF.nova_admin_auth_url,
+        )
         c.authenticate()
         return c
+
     compat_catalog = {
         'access': {'serviceCatalog': context.service_catalog or []}
     }
@@ -106,15 +105,13 @@ def novaclient(context):
 
     LOG.debug('Novaclient connection created using URL: %s', url)
 
-    extensions = [assisted_volume_snapshots]
-
     c = nova_client.Client(context.user_id,
                            context.auth_token,
                            context.project_id,
                            auth_url=url,
                            insecure=CONF.nova_api_insecure,
                            cacert=CONF.nova_ca_certificates_file,
-                           extensions=extensions)
+                           extensions=[])
     # noauth extracts user_id:project_id from auth_token
     c.client.auth_token = context.auth_token or '%s:%s' % (context.user_id,
                                                            context.project_id)
@@ -235,9 +232,7 @@ class API(base.Base):
 
     @translate_server_exception
     def server_reboot(self, context, instance_id, soft_reboot=False):
-        hardness = nova_servers.REBOOT_HARD
-        if soft_reboot:
-            hardness = nova_servers.REBOOT_SOFT
+        hardness = 'SOFT' if soft_reboot else 'HARD'
         novaclient(context).servers.reboot(instance_id, hardness)
 
     @translate_server_exception
