@@ -161,6 +161,48 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertEqual('host5#_pool0', weighed_host.obj.host)
         self.assertTrue(_mock_service_get_all_by_topic.called)
 
+    def _setup_dedupe_fakes(self, extra_specs):
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project', is_admin=True)
+
+        share_type = {'name': 'foo', 'extra_specs': extra_specs}
+        request_spec = {
+            'share_type': share_type,
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {'project_id': 1, 'size': 1},
+        }
+
+        return sched, fake_context, request_spec
+
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test__schedule_share_with_default_dedupe_value(
+            self, _mock_service_get_all_by_topic):
+        sched, fake_context, request_spec = self._setup_dedupe_fakes(
+            {'capabilities:dedupe': '<is> False'})
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+
+        weighed_host = sched._schedule_share(fake_context, request_spec, {})
+
+        self.assertIsNotNone(weighed_host)
+        self.assertIsNotNone(weighed_host.obj)
+        self.assertTrue(hasattr(weighed_host.obj, 'dedupe'))
+        self.assertFalse(weighed_host.obj.dedupe)
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
+    @ddt.data('True', '<is> True')
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test__schedule_share_with_default_dedupe_value_fail(
+            self, capability, _mock_service_get_all_by_topic):
+        sched, fake_context, request_spec = self._setup_dedupe_fakes(
+            {'capabilities:dedupe': capability})
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+
+        weighed_host = sched._schedule_share(fake_context, request_spec, {})
+
+        self.assertIsNone(weighed_host)
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
     def test_schedule_share_type_is_none(self):
         sched = fakes.FakeFilterScheduler()
         request_spec = {
