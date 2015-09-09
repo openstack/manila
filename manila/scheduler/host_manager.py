@@ -125,6 +125,7 @@ class HostState(object):
         self.driver_handles_share_servers = False
         self.snapshot_support = True
         self.consistency_group_support = False
+        self.dedupe = False
 
         # PoolState for all pools
         self.pools = {}
@@ -284,6 +285,9 @@ class HostState(object):
             pool_cap['consistency_group_support'] = \
                 self.consistency_group_support
 
+        if not pool_cap.get('dedupe'):
+            pool_cap['dedupe'] = False
+
     def update_backend(self, capability):
         self.share_backend_name = capability.get('share_backend_name')
         self.vendor_name = capability.get('vendor_name')
@@ -353,6 +357,8 @@ class PoolState(HostState):
                 CONF.max_over_subscription_ratio)
             self.thin_provisioning = capability.get(
                 'thin_provisioning', False)
+            self.dedupe = capability.get(
+                'dedupe', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
