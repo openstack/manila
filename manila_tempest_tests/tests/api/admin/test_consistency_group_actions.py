@@ -45,13 +45,19 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
             share_type_ids=[cls.share_type['id'], cls.share_type2['id']])
 
     @test.attr(type=["gate", ])
-    def test_create_cg_from_cgsnapshot_with_multiple_share_types(self):
+    def test_create_cg_from_cgsnapshot_with_multiple_share_types_v2_4(self):
         # Create cgsnapshot
         cgsnapshot = self.create_cgsnapshot_wait_for_active(
-            self.consistency_group["id"], cleanup_in_class=False)
+            self.consistency_group["id"],
+            cleanup_in_class=False,
+            version='2.4',
+        )
 
         new_consistency_group = self.create_consistency_group(
-            cleanup_in_class=False, source_cgsnapshot_id=cgsnapshot['id'])
+            cleanup_in_class=False,
+            source_cgsnapshot_id=cgsnapshot['id'],
+            version='2.4',
+        )
 
         # Verify share_types are the same
         expected_types = sorted(self.consistency_group['share_types'])
@@ -61,7 +67,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
                              expected_types, actual_types))
 
     @test.attr(type=["gate", ])
-    def test_create_cg_from_multi_typed_populated_cgsnapshot(self):
+    def test_create_cg_from_multi_typed_populated_cgsnapshot_v2_4(self):
         share_name = data_utils.rand_name("tempest-share-name")
         share_desc = data_utils.rand_name("tempest-share-description")
         share_size = 1
@@ -71,7 +77,9 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
             description=share_desc,
             size=share_size,
             consistency_group_id=self.consistency_group['id'],
-            share_type_id=self.share_type['id']
+            share_type_id=self.share_type['id'],
+            client=self.shares_v2_client,
+            version='2.4',
         )
 
         share_name2 = data_utils.rand_name("tempest-share-name")
@@ -83,11 +91,16 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
             description=share_desc2,
             size=share_size2,
             consistency_group_id=self.consistency_group['id'],
-            share_type_id=self.share_type2['id']
+            share_type_id=self.share_type2['id'],
+            client=self.shares_v2_client,
+            version='2.4',
         )
 
-        cg_shares = self.shares_client.list_shares(detailed=True, params={
-            'consistency_group_id': self.consistency_group['id']})
+        cg_shares = self.shares_v2_client.list_shares(
+            detailed=True,
+            params={'consistency_group_id': self.consistency_group['id']},
+            version='2.4',
+        )
 
         cg_share_ids = [s['id'] for s in cg_shares]
         for share_id in [share['id'], share2['id']]:
@@ -101,10 +114,13 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
             self.consistency_group["id"],
             name=cgsnap_name,
             description=cgsnap_desc,
-            cleanup_in_class=False)
+            cleanup_in_class=False,
+            version='2.4',
+        )
 
-        self.create_consistency_group(
-            cleanup_in_class=False, source_cgsnapshot_id=cgsnapshot['id'])
+        self.create_consistency_group(cleanup_in_class=False,
+                                      source_cgsnapshot_id=cgsnapshot['id'],
+                                      version='2.4')
 
         # TODO(akerr): Skip until bug 1483886 is resolved
         # Verify that the new shares correspond to correct share types

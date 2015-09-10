@@ -46,7 +46,8 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
             name=cls.share_name,
             description=cls.share_desc,
             size=cls.share_size,
-            consistency_group_id=cls.consistency_group['id']
+            consistency_group_id=cls.consistency_group['id'],
+            client=cls.shares_v2_client
         )
         # Create a cgsnapshot of the consistency group
         cls.cgsnap_name = data_utils.rand_name("tempest-cgsnap-name")
@@ -57,149 +58,174 @@ class ConsistencyGroupsNegativeTest(base.BaseSharesTest):
             description=cls.cgsnap_desc)
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cg_with_invalid_source_cgsnapshot_id_value(
+    def test_create_cg_with_invalid_source_cgsnapshot_id_value_v2_4(
             self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_consistency_group,
                           source_cgsnapshot_id='foobar',
-                          cleanup_in_class=False)
+                          cleanup_in_class=False,
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cg_with_nonexistent_source_cgsnapshot_id_value(self):
+    def test_create_cg_with_nonexistent_source_cgsnapshot_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_consistency_group,
                           source_cgsnapshot_id=self.share['id'],
-                          cleanup_in_class=False)
+                          cleanup_in_class=False,
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cg_with_invalid_share_network_id_value(
-            self):
+    def test_create_cg_with_invalid_share_network_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_consistency_group,
                           share_network_id='foobar',
-                          cleanup_in_class=False)
+                          cleanup_in_class=False,
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cg_with_nonexistent_share_network_id_value(self):
+    def test_create_cg_with_nonexistent_share_network_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_consistency_group,
                           share_network_id=self.share['id'],
-                          cleanup_in_class=False)
+                          cleanup_in_class=False,
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cg_with_invalid_share_type_id_value(
-            self):
+    def test_create_cg_with_invalid_share_type_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_consistency_group,
                           share_type_ids=['foobar'],
-                          cleanup_in_class=False)
+                          cleanup_in_class=False,
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cg_with_nonexistent_share_type_id_value(self):
+    def test_create_cg_with_nonexistent_share_type_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_consistency_group,
                           share_type_ids=[self.share['id']],
-                          cleanup_in_class=False)
+                          cleanup_in_class=False,
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cgsnapshot_with_invalid_cg_id_value(
-            self):
+    def test_create_cgsnapshot_with_invalid_cg_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_cgsnapshot_wait_for_active,
                           'foobar',
-                          cleanup_in_class=False)
+                          cleanup_in_class=False,
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_create_cgsnapshot_with_nonexistent_cg_id_value(self):
+    def test_create_cgsnapshot_with_nonexistent_cg_id_value_v2_4(self):
         self.assertRaises(lib_exc.BadRequest,
                           self.create_cgsnapshot_wait_for_active,
                           self.share['id'],
-                          cleanup_in_class=False)
+                          cleanup_in_class=False,
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_get_cg_with_wrong_id(self):
+    def test_get_cg_with_wrong_id_v2_4(self):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.get_consistency_group,
-                          "wrong_consistency_group_id")
+                          self.shares_v2_client.get_consistency_group,
+                          "wrong_consistency_group_id",
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_get_cg_without_passing_cg_id(self):
+    def test_get_cg_without_passing_cg_id_v2_4(self):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.get_consistency_group, '')
+                          self.shares_v2_client.get_consistency_group,
+                          '',
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_update_cg_with_wrong_id(self):
+    def test_update_cg_with_wrong_id_v2_4(self):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.update_consistency_group,
+                          self.shares_v2_client.update_consistency_group,
                           'wrong_consistency_group_id',
                           name='new_name',
-                          description='new_description')
+                          description='new_description',
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_delete_cg_with_wrong_id(self):
+    def test_delete_cg_with_wrong_id_v2_4(self):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.delete_consistency_group,
-                          "wrong_consistency_group_id")
+                          self.shares_v2_client.delete_consistency_group,
+                          "wrong_consistency_group_id",
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_delete_cg_without_passing_cg_id(self):
+    def test_delete_cg_without_passing_cg_id_v2_4(self):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.delete_consistency_group, '')
+                          self.shares_v2_client.delete_consistency_group,
+                          '',
+                          version='2.4')
 
     @test.attr(type=["negative", "gate", ])
-    def test_delete_cg_in_use_by_cgsnapshot(self):
+    def test_delete_cg_in_use_by_cgsnapshot_v2_4(self):
         # Attempt delete of share type
         self.assertRaises(lib_exc.Conflict,
-                          self.shares_client.delete_consistency_group,
-                          self.consistency_group['id'])
+                          self.shares_v2_client.delete_consistency_group,
+                          self.consistency_group['id'],
+                          version='2.4')
 
     @test.attr(type=["negative", "gate", ])
-    def test_delete_share_in_use_by_cgsnapshot(self):
+    def test_delete_share_in_use_by_cgsnapshot_v2_4(self):
         # Attempt delete of share type
         params = {'consistency_group_id': self.share['consistency_group_id']}
         self.assertRaises(lib_exc.Forbidden,
-                          self.shares_client.delete_share,
+                          self.shares_v2_client.delete_share,
                           self.share['id'],
-                          params=params)
+                          params=params,
+                          version='2.4')
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_delete_cg_containing_a_share(self):
+    def test_delete_cg_containing_a_share_v2_4(self):
         self.assertRaises(lib_exc.Conflict,
-                          self.shares_client.delete_consistency_group,
-                          self.consistency_group['id'])
+                          self.shares_v2_client.delete_consistency_group,
+                          self.consistency_group['id'],
+                          version='2.4')
         # Verify consistency group is not put into error state from conflict
-        cg = self.shares_client.get_consistency_group(
-            self.consistency_group['id'])
+        cg = self.shares_v2_client.get_consistency_group(
+            self.consistency_group['id'], version='2.4')
         self.assertEqual('available', cg['status'])
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_filter_shares_on_invalid_cg_id(self):
-        shares = self.shares_client.list_shares(detailed=True, params={
-            'consistency_group_id': 'foobar'})
+    def test_filter_shares_on_invalid_cg_id_v2_4(self):
+        shares = self.shares_v2_client.list_shares(
+            detailed=True,
+            params={'consistency_group_id': 'foobar'},
+            version='2.4'
+        )
 
-        self.assertEqual(0, len(shares), 'Incorrect number of shares '
-                                         'returned. Expected 0, got %s.' %
-                         len(shares))
-
-    @test.attr(type=["negative", "smoke", "gate", ])
-    def test_filter_shares_on_nonexistent_cg_id(self):
-        shares = self.shares_client.list_shares(detailed=True, params={
-            'consistency_group_id': self.share['id']})
-
-        self.assertEqual(0, len(shares), 'Incorrect number of shares '
-                                         'returned. Expected 0, got %s.' %
-                         len(shares))
+        self.assertEqual(0, len(shares),
+                         'Incorrect number of shares returned. Expected 0, '
+                         'got %s.' % len(shares))
 
     @test.attr(type=["negative", "smoke", "gate", ])
-    def test_filter_shares_on_empty_cg_id(self):
+    def test_filter_shares_on_nonexistent_cg_id_v2_4(self):
+        shares = self.shares_v2_client.list_shares(
+            detailed=True,
+            params={'consistency_group_id': self.share['id']},
+            version='2.4'
+        )
+
+        self.assertEqual(0, len(shares),
+                         'Incorrect number of shares returned. Expected 0, '
+                         'got %s.' % len(shares))
+
+    @test.attr(type=["negative", "smoke", "gate", ])
+    def test_filter_shares_on_empty_cg_id_v2_4(self):
         consistency_group = self.create_consistency_group(
             name='tempest_cg',
             description='tempest_cg_desc',
             cleanup_in_class=False,
+            version='2.4',
         )
-        shares = self.shares_client.list_shares(detailed=True, params={
-            'consistency_group_id': consistency_group['id']})
+        shares = self.shares_v2_client.list_shares(
+            detailed=True,
+            params={'consistency_group_id': consistency_group['id']},
+            version='2.4',
+        )
 
-        self.assertEqual(0, len(shares), 'Incorrect number of shares '
-                                         'returned. Expected 0, got %s.' %
-                         len(shares))
+        self.assertEqual(0, len(shares),
+                         'Incorrect number of shares returned. Expected 0, '
+                         'got %s.' % len(shares))

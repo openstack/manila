@@ -31,11 +31,12 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
         super(AdminActionsNegativeTest, cls).resource_setup()
         cls.sh = cls.create_share()
         cls.sh_instance = (
-            cls.shares_client.get_instances_of_share(cls.sh["id"])[0]
+            cls.shares_v2_client.get_instances_of_share(cls.sh["id"])[0]
         )
         if CONF.share.run_snapshot_tests:
             cls.sn = cls.create_snapshot_wait_for_active(cls.sh["id"])
         cls.member_shares_client = clients.Manager().shares_client
+        cls.member_shares_v2_client = clients.Manager().shares_v2_client
 
     @test.attr(type=["gate", "negative", ])
     def test_reset_nonexistent_share_state(self):
@@ -149,19 +150,19 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
     def test_try_get_share_instance_with_member(self):
         # If a non-admin tries to get instance, it should be unauthorized
         self.assertRaises(lib_exc.Forbidden,
-                          self.member_shares_client.get_share_instance,
+                          self.member_shares_v2_client.get_share_instance,
                           self.sh_instance["id"])
 
     @test.attr(type=["gate", "negative", ])
     def test_try_list_share_instance_with_member(self):
         # If a non-admin tries to list instances, it should be unauthorized
         self.assertRaises(lib_exc.Forbidden,
-                          self.member_shares_client.list_share_instances)
+                          self.member_shares_v2_client.list_share_instances)
 
     @test.attr(type=["gate", "negative", ])
     def test_try_get_instances_of_share_with_member(self):
         # If a non-admin tries to list instances of given share, it should be
         # unauthorized
         self.assertRaises(lib_exc.Forbidden,
-                          self.member_shares_client.get_instances_of_share,
+                          self.member_shares_v2_client.get_instances_of_share,
                           self.sh['id'])

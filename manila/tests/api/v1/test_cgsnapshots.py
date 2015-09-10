@@ -36,7 +36,7 @@ class CGSnapshotApiTest(test.TestCase):
     def setUp(self):
         super(CGSnapshotApiTest, self).setUp()
         self.controller = cgs.CGSnapshotController()
-        self.api_version = '1.5'
+        self.api_version = '2.4'
         self.request = fakes.HTTPRequest.blank('/consistency-groups',
                                                version=self.api_version,
                                                experimental=True)

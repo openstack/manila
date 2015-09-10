@@ -40,7 +40,7 @@ class CGApiTest(test.TestCase):
         super(CGApiTest, self).setUp()
         self.controller = cgs.CGController()
         self.fake_share_type = {'id': six.text_type(uuid.uuid4())}
-        self.api_version = '1.5'
+        self.api_version = '2.4'
         self.request = fakes.HTTPRequest.blank('/consistency-groups',
                                                version=self.api_version,
                                                experimental=True)

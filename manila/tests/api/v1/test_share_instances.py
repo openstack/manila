@@ -34,7 +34,7 @@ class ShareInstancesApiTest(test.TestCase):
     def _get_request(self, uri, context=None):
         if context is None:
             context = self.context
-        req = fakes.HTTPRequest.blank('/shares', version="1.4")
+        req = fakes.HTTPRequest.blank('/shares', version="2.3")
         req.environ['manila.context'] = context
         return req
 

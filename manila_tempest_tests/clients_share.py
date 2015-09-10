@@ -17,12 +17,16 @@ from tempest import clients
 from tempest.common import cred_provider
 
 from manila_tempest_tests.services.share.json import shares_client
+from manila_tempest_tests.services.share.v2.json import shares_client \
+    as shares_v2_client
 
 
 class Manager(clients.Manager):
     def __init__(self, credentials=None, service=None):
         super(Manager, self).__init__(credentials, service)
         self.shares_client = shares_client.SharesClient(self.auth_provider)
+        self.shares_v2_client = shares_v2_client.SharesV2Client(
+            self.auth_provider)
 
 
 class AltManager(Manager):

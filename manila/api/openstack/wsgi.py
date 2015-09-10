@@ -51,6 +51,8 @@ VER_METHOD_ATTR = 'versioned_methods'
 API_VERSION_REQUEST_HEADER = 'X-OpenStack-Manila-API-Version'
 EXPERIMENTAL_API_REQUEST_HEADER = 'X-OpenStack-Manila-API-Experimental'
 
+V1_SCRIPT_NAME = '/v1'
+
 
 class Request(webob.Request):
     """Add some OpenStack API-specific logic to the base webob.Request."""
@@ -207,30 +209,40 @@ class Request(webob.Request):
         return content_type
 
     def set_api_version_request(self):
-        """Set API version request based on the request header information."""
-        if API_VERSION_REQUEST_HEADER in self.headers:
-            hdr_string = self.headers[API_VERSION_REQUEST_HEADER]
-            # 'latest' is a special keyword which is equivalent to requesting
-            # the maximum version of the API supported
-            if hdr_string == 'latest':
-                self.api_version_request = api_version.max_api_version()
+        """Set API version request based on the request header information.
+
+        Microversions starts with /v2, so if a client sends a /v1 URL, then
+        ignore the headers and request 1.0 APIs.
+        """
+
+        if not self.script_name:
+            self.api_version_request = api_version.APIVersionRequest()
+        elif self.script_name == V1_SCRIPT_NAME:
+            self.api_version_request = api_version.APIVersionRequest('1.0')
+        else:
+            if API_VERSION_REQUEST_HEADER in self.headers:
+                hdr_string = self.headers[API_VERSION_REQUEST_HEADER]
+                # 'latest' is a special keyword which is equivalent to
+                # requesting the maximum version of the API supported
+                if hdr_string == 'latest':
+                    self.api_version_request = api_version.max_api_version()
+                else:
+                    self.api_version_request = api_version.APIVersionRequest(
+                        hdr_string)
+
+                    # Check that the version requested is within the global
+                    # minimum/maximum of supported API versions
+                    if not self.api_version_request.matches(
+                            api_version.min_api_version(),
+                            api_version.max_api_version()):
+                        raise exception.InvalidGlobalAPIVersion(
+                            req_ver=self.api_version_request.get_string(),
+                            min_ver=api_version.min_api_version().get_string(),
+                            max_ver=api_version.max_api_version().get_string())
+
             else:
                 self.api_version_request = api_version.APIVersionRequest(
-                    hdr_string)
-
-                # Check that the version requested is within the global
-                # minimum/maximum of supported API versions
-                if not self.api_version_request.matches(
-                        api_version.min_api_version(),
-                        api_version.max_api_version()):
-                    raise exception.InvalidGlobalAPIVersion(
-                        req_ver=self.api_version_request.get_string(),
-                        min_ver=api_version.min_api_version().get_string(),
-                        max_ver=api_version.max_api_version().get_string())
-
-        else:
-            self.api_version_request = api_version.APIVersionRequest(
-                api_version.DEFAULT_API_VERSION)
+                    api_version.DEFAULT_API_VERSION)
 
         # Check if experimental API was requested
         if EXPERIMENTAL_API_REQUEST_HEADER in self.headers:

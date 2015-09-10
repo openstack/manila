@@ -37,7 +37,7 @@ class MigrationTest(base.BaseSharesAdminTest):
             raise cls.skipException(message)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_migration_empty(self):
+    def test_migration_empty_v2_5(self):
 
         if not CONF.share.migration_enabled:
             raise self.skipException("Migration tests disabled. Skipping.")
@@ -60,7 +60,7 @@ class MigrationTest(base.BaseSharesAdminTest):
 
         old_export_location = share['export_locations'][0]
 
-        share = self.migrate_share(share['id'], dest_pool)
+        share = self.migrate_share(share['id'], dest_pool, version='2.5')
 
         self.assertEqual(dest_pool, share['host'])
         self.assertNotEqual(old_export_location, share['export_locations'][0])

@@ -142,7 +142,7 @@ class ShareApiTest(test.TestCase):
         self.mock_object(share_api.API, 'create', self.create_mock)
 
         body = {"share": copy.deepcopy(self.share)}
-        req = fakes.HTTPRequest.blank('/shares', version="1.5")
+        req = fakes.HTTPRequest.blank('/shares', version="2.4")
         res_dict = self.controller.create(req, body)
 
         expected = self._get_expected_share_detailed_response(self.share)
@@ -213,7 +213,7 @@ class ShareApiTest(test.TestCase):
                                       use_admin_context=True)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request = api_version.APIVersionRequest('1.6')
+        req.api_version_request = api_version.APIVersionRequest('2.5')
         req.api_version_request.experimental = True
         body = {'os-migrate_share': {'host': 'fake_host'}}
         self.mock_object(share_api.API, 'migrate_share')
@@ -224,7 +224,7 @@ class ShareApiTest(test.TestCase):
                                       use_admin_context=True)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request = api_version.APIVersionRequest('1.6')
+        req.api_version_request = api_version.APIVersionRequest('2.5')
         req.api_version_request.experimental = True
         body = {'os-migrate_share': {'host': 'fake_host'}}
         self.mock_object(share_api.API, 'migrate_share')
@@ -240,7 +240,7 @@ class ShareApiTest(test.TestCase):
                                       use_admin_context=True)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request = api_version.APIVersionRequest('1.6')
+        req.api_version_request = api_version.APIVersionRequest('2.5')
         req.api_version_request.experimental = True
         body = {'os-migrate_share': {}}
         self.mock_object(share_api.API, 'migrate_share')
@@ -254,7 +254,7 @@ class ShareApiTest(test.TestCase):
                                       use_admin_context=True)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request = api_version.APIVersionRequest('1.6')
+        req.api_version_request = api_version.APIVersionRequest('2.5')
         req.api_version_request.experimental = True
         body = {'os-migrate_share': {'host': 'fake_host',
                                      'force_host_copy': 'fake'}}
@@ -418,7 +418,7 @@ class ShareApiTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_share_show_with_consistency_group(self):
-        req = fakes.HTTPRequest.blank('/shares/1', version='1.5')
+        req = fakes.HTTPRequest.blank('/shares/1', version='2.4')
         res_dict = self.controller.show(req, '1')
         expected = self._get_expected_share_detailed_response()
         expected['share']['consistency_group_id'] = None
@@ -489,7 +489,7 @@ class ShareApiTest(test.TestCase):
         shr = self.share
         body = {"share": shr}
 
-        req = fakes.HTTPRequest.blank('/share/1', version="1.5")
+        req = fakes.HTTPRequest.blank('/share/1', version="2.4")
         res_dict = self.controller.update(req, 1, body)
         self.assertIsNone(res_dict['share']["consistency_group_id"])
         self.assertIsNone(res_dict['share']["source_cgsnapshot_member_id"])
@@ -732,7 +732,7 @@ class ShareApiTest(test.TestCase):
                          stubs.stub_share_get_all_by_project)
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
         req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
-                                      version="1.5")
+                                      version="2.4")
         res_dict = self.controller.detail(req)
         expected = {
             'shares': [
