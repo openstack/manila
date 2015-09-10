@@ -21,7 +21,9 @@ from oslo_utils import units
 
 from manila.common import constants as common_constants
 from manila import exception
-from manila.i18n import _, _LI, _LW
+from manila.i18n import _
+from manila.i18n import _LI
+from manila.i18n import _LW
 from manila.share.drivers.huawei import base as driver
 from manila.share.drivers.huawei import constants
 from manila.share.drivers.huawei import huawei_utils
@@ -114,7 +116,7 @@ class V3StorageConnection(driver.HuaweiBase):
         share_name = share['name']
 
         # The unit is in sectors.
-        size = new_size * units.Mi * 2
+        size = int(new_size) * units.Mi * 2
         share_url_type = self.helper._get_share_url_type(share_proto)
 
         share = self.helper._get_share_by_name(share_name, share_url_type)
@@ -144,7 +146,7 @@ class V3StorageConnection(driver.HuaweiBase):
         share_name = share['name']
 
         # The unit is in sectors.
-        size = new_size * units.Mi * 2
+        size = int(new_size) * units.Mi * 2
         share_url_type = self.helper._get_share_url_type(share_proto)
 
         share = self.helper._get_share_by_name(share_name, share_url_type)
@@ -199,7 +201,7 @@ class V3StorageConnection(driver.HuaweiBase):
 
         if not share:
             err_msg = _('Can not create snapshot,'
-                        ' because share_id is not provided.')
+                        ' because share id is not provided.')
             LOG.error(err_msg)
             raise exception.InvalidInput(reason=err_msg)
 
@@ -324,7 +326,7 @@ class V3StorageConnection(driver.HuaweiBase):
     def _init_filesys_para(self, share, poolinfo, extra_specs):
         """Init basic filesystem parameters."""
         name = share['name']
-        size = share['size'] * units.Mi * 2
+        size = int(share['size']) * units.Mi * 2
         fileparam = {
             "NAME": name.replace("-", "_"),
             "DESCRIPTION": "",
@@ -599,21 +601,21 @@ class V3StorageConnection(driver.HuaweiBase):
 
         if product != "V3":
             err_msg = (_(
-                '_check_conf_file: Config file invalid. '
+                'check_conf_file: Config file invalid. '
                 'Product must be set to V3.'))
             LOG.error(err_msg)
             raise exception.InvalidInput(err_msg)
 
         if not (resturl and username and pwd):
             err_msg = (_(
-                '_check_conf_file: Config file invalid. RestURL,'
+                'check_conf_file: Config file invalid. RestURL,'
                 ' UserName and UserPassword must be set.'))
             LOG.error(err_msg)
             raise exception.InvalidInput(err_msg)
 
         if not pool_node:
             err_msg = (_(
-                '_check_conf_file: Config file invalid. '
+                'check_conf_file: Config file invalid. '
                 'StoragePool must be set.'))
             LOG.error(err_msg)
             raise exception.InvalidInput(err_msg)
