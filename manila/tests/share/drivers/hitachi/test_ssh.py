@@ -386,6 +386,24 @@ HNAS_RESULT_job_running = """
 block special devices, 25 character devices
 """
 
+HNAS_RESULT_df = """
+  ID          Label  EVS      Size            Used  Snapshots  Deduped  \
+          Avail  Thin  ThinSize  ThinAvail              FS Type
+----  -------------  ---  --------  --------------  ---------  -------  \
+-------------  ----  --------  ---------  -------------------
+1051  FS-ManilaDev1    3  70.00 GB  10.00 GB (75%)   0 B (0%)       NA  \
+18.3 GB (25%)    No                       4 KB,WFS-2,128 DSBs
+"""
+
+HNAS_RESULT_df_tb = """
+  ID          Label  EVS      Size            Used  Snapshots  Deduped  \
+          Avail  Thin  ThinSize  ThinAvail              FS Type
+----  -------------  ---  --------  --------------  ---------  -------  \
+-------------  ----  --------  ---------  -------------------
+1051  FS-ManilaDev1    3.00  7.00 TB  2 TB (75%)   0 B (0%)       NA  \
+18.3 GB (25%)    No                       4 KB,WFS-2,128 DSBs
+"""
+
 
 class HNASSSHTestCase(test.TestCase):
     def setUp(self):
@@ -427,37 +445,44 @@ class HNASSSHTestCase(test.TestCase):
         }
 
     def test_get_stats(self):
-        fake_list_command = ['quota', 'list', 'file_system', 'vol3']
+        fake_list_command = ['df', '-a', '-f', 'file_system']
+        expected_debug_calls = [
+            ('Total space in file system: %(total)s GB.', {'total': 7168.0}),
+            ('Used space in the file system: %(used)s GB.', {'used': 2048.0}),
+            ('Available space in the file system: %(space)s GB.',
+             {'space': 5120.0})
+        ]
+
         self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fslimits, ""),
-                                                (HNAS_RESULT_vvol_list, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_vvol_list, "")]))
+                         mock.Mock(return_value=(HNAS_RESULT_df_tb, "")))
 
         total, free = self._driver.get_stats()
 
         ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-        self.assertTrue(self.mock_log.debug.called)
-        self.assertEqual(100, total)
-        self.assertEqual(85, free)
+        self.mock_log.debug.assert_has_calls([mock.call(*a) for a in
+                                              expected_debug_calls])
+        self.assertEqual(7168.0, total)
+        self.assertEqual(5120.0, free)
 
     def test_get_stats_terabytes(self):
-        fake_list_command = ['quota', 'list', 'file_system', 'vol3']
+        fake_list_command = ['df', '-a', '-f', 'file_system']
+        expected_debug_calls = [
+            ('Total space in file system: %(total)s GB.', {'total': 7168.0}),
+            ('Used space in the file system: %(used)s GB.', {'used': 2048.0}),
+            ('Available space in the file system: %(space)s GB.',
+             {'space': 5120.0})
+        ]
+
         self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fslimits_tb, ""),
-                                                (HNAS_RESULT_vvol_list, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_quota_tb, ""),
-                                                (HNAS_RESULT_quota, "")]))
+                         mock.Mock(return_value=(HNAS_RESULT_df_tb, "")))
 
         total, free = self._driver.get_stats()
 
         ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-        self.assertTrue(self.mock_log.debug.called)
-        self.assertEqual(1500, total)
-        self.assertEqual(466, free)
+        self.mock_log.debug.assert_has_calls([mock.call(*a) for a in
+                                              expected_debug_calls])
+        self.assertEqual(7168.0, total)
+        self.assertEqual(5120.0, free)
 
     def test_allow_access(self):
         fake_mod_command = ['nfs-export', 'mod', '-c',
@@ -841,9 +866,7 @@ class HNASSSHTestCase(test.TestCase):
                                                 (HNAS_RESULT_vvol, ""),
                                                 (HNAS_RESULT_quota, ""),
                                                 (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_fslimits, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
+                                                (HNAS_RESULT_df, ""),
                                                 (HNAS_RESULT_empty, "")]))
 
         self._driver.extend_share(self.vvol['id'],
@@ -855,18 +878,14 @@ class HNASSSHTestCase(test.TestCase):
         ssh.HNASSSHBackend._execute.assert_called_with(fake_quota_mod_command)
 
     def test_extend_share_no_space(self):
-        fake_list_command = ['quota', 'list', 'file_system', 'vol3']
+        fake_list_command = ['df', '-a', '-f', 'file_system']
         self.mock_object(ssh.HNASSSHBackend, '_execute',
                          mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
                                                 (HNAS_RESULT_fs, ""),
                                                 (HNAS_RESULT_vvol, ""),
                                                 (HNAS_RESULT_quota, ""),
                                                 (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_fslimits, ""),
-                                                (HNAS_RESULT_vvol_list, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_quota, "")]))
+                                                (HNAS_RESULT_df, "")]))
 
         # Tests when try to create a share bigger than available free space
         self.assertRaises(exception.HNASBackendException,
@@ -884,13 +903,13 @@ class HNASSSHTestCase(test.TestCase):
                                                 (HNAS_RESULT_vvol, ""),
                                                 (HNAS_RESULT_quota, ""),
                                                 (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_quota, "")]))
+                                                (HNAS_RESULT_quota_tb, "")]))
 
         output = self._driver.manage_existing(self.vvol, self.vvol['id'])
 
         self.assertEqual({'export_locations':
                           ['172.24.44.1:/shares/vvol_test'],
-                          'size': 5.0}, output)
+                          'size': 1024.0}, output)
         ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
 
     def test_manage_existing_share_without_size(self):
