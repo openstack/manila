@@ -20,13 +20,17 @@ Manila shares are directly mapped to Quobyte volumes. The access to the
 shares is provided by the Quobyte NFS proxy (a Ganesha NFS server).
 """
 
+import math
+
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import units
 
 import manila.common.constants
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
+from manila.i18n import _LI
 from manila.i18n import _LW
 from manila.share import driver
 from manila.share.drivers.quobyte import jsonrpc
@@ -92,13 +96,32 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
                 _('Could not connect to API: %s') % exc)
 
     def _update_share_stats(self):
+        total_gb, free_gb = self._get_capacities()
+
         data = dict(
             storage_protocol='NFS',
             vendor_name='Quobyte',
             share_backend_name=self.backend_name,
-            driver_version=self.DRIVER_VERSION)
-        # TODO(kaisers): Extend by total_capacity and free_capacity
+            driver_version=self.DRIVER_VERSION,
+            total_capacity_gb=total_gb,
+            free_capacity_gb=free_gb,
+            reserved_percentage=self.configuration.reserved_share_percentage)
         super(QuobyteShareDriver, self)._update_share_stats(data)
+
+    def _get_capacities(self):
+        result = self.rpc.call('getSystemStatistics', {})
+
+        total = float(result['statistics']['total_logical_capacity'])
+        used = float(result['statistics']['total_logical_usage'])
+        LOG.info(_LI('Read capacity of %(cap)s bytes and '
+                     'usage of %(use)s bytes from backend. '),
+                 {'cap': total, 'use': used})
+        free = total - used
+        # floor numbers to nine digits (bytes)
+        total = math.floor((total / units.Gi) * units.G) / units.G
+        free = math.floor((free / units.Gi) * units.G) / units.G
+
+        return total, free
 
     def check_for_setup_error(self):
         pass
