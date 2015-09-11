@@ -237,7 +237,7 @@ class DbCommands(object):
     @args('version', nargs='?', default=None,
           help='Version to stamp version table with')
     def stamp(self, version=None):
-        """Stamp the revision table with the given version."""
+        """Stamp the version table with the given version."""
         return migration.stamp(version)
 
 
