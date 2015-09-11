@@ -227,10 +227,19 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         share_path = '/' + share['name']
         snapshot_path = self._get_snapshot_path(snapshot)
 
-        cmd = [self._hdfs_bin, 'dfs', '-cp', '-r',
-               snapshot_path, share_path]
         try:
-            self._hdfs_execute(*cmd)
+            # check if the directory is empty
+            (out, __) = self._hdfs_execute(
+                self._hdfs_bin, 'dfs', '-ls', snapshot_path)
+            # only copy files when the snapshot directory is not empty
+            if out:
+                copy_path = snapshot_path + "/*"
+
+                cmd = [self._hdfs_bin, 'dfs', '-cp',
+                       copy_path, share_path]
+
+                self._hdfs_execute(*cmd)
+
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to create share %(sharename)s from '
                      'snapshot %(snapshotname)s. Error: %(excmsg)s.') %
