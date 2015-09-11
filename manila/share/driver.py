@@ -762,15 +762,9 @@ class ShareDriver(object):
         """Returns boolean as a result of methods presence and redefinition."""
         if not isinstance(methods, (set, list, tuple)):
             methods = (methods, )
-        parent = super(self.__class__, self)
-        for method in methods:
-            # NOTE(vponomaryov): criteria:
-            # - If parent does not have such attr, then was called method of
-            #   this class which has no implementation.
-            # - If parent's method is equal to child's method then child did
-            #   not redefine it and has no implementation.
-            if (not hasattr(parent, method) or
-                    getattr(self, method) == getattr(parent, method)):
+        for method_name in methods:
+            method = getattr(type(self), method_name, None)
+            if (not method or method == getattr(ShareDriver, method_name)):
                 return False
         return True
 

@@ -110,12 +110,6 @@ class HuaweiNasDriver(driver.ShareDriver):
         LOG.debug("Shrink a share.")
         self.plugin.shrink_share(share, new_size, share_server)
 
-    def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
-        """Is called to create share from snapshot."""
-        LOG.debug("Create share from snapshot.")
-        raise NotImplementedError()
-
     def delete_share(self, context, share, share_server=None):
         """Delete a share."""
         LOG.debug("Delete a share.")
