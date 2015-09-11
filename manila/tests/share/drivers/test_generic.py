@@ -1309,12 +1309,6 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertEqual(True, result['driver_handles_share_servers'])
         self.assertEqual('Open Source', result['vendor_name'])
 
-    def test_manage_invalid_driver_mode(self):
-        CONF.set_default('driver_handles_share_servers', True)
-
-        self.assertRaises(exception.InvalidDriverMode,
-                          self._driver.manage_existing, 'fake', {})
-
     def _setup_manage_mocks(self,
                             get_share_type_extra_specs='False',
                             is_device_mounted=True,
@@ -1339,18 +1333,6 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self.assertRaises(exception.InvalidShare,
                           self._driver.manage_existing, share, {})
-
-    def test_manage_share_type_mismatch(self):
-        share = {'share_proto': 'NFS', 'share_type_id': 'fake'}
-        self._setup_manage_mocks(get_share_type_extra_specs='True')
-
-        self.assertRaises(exception.ManageExistingShareTypeMismatch,
-                          self._driver.manage_existing, share, {})
-
-        share_types.get_share_type_extra_specs.assert_called_once_with(
-            share['share_type_id'],
-            const.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
-        )
 
     def test_manage_not_mounted_share(self):
         share = get_fake_manage_share()

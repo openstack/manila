@@ -24,7 +24,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import importutils
-from oslo_utils import strutils
 from oslo_utils import units
 import retrying
 import six
@@ -39,7 +38,6 @@ from manila.i18n import _LI
 from manila.i18n import _LW
 from manila.share import driver
 from manila.share.drivers import service_instance
-from manila.share import share_types
 from manila import utils
 from manila import volume
 
@@ -831,22 +829,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         :param driver_options: Empty dict or dict with 'volume_id' option.
         :return: dict with share size, example: {'size': 1}
         """
-        if self.driver_handles_share_servers:
-            msg = _('Operation "manage" for shares is supported only when '
-                    'driver does not handle share servers.')
-            raise exception.InvalidDriverMode(msg)
-
         helper = self._get_helper(share)
-        driver_mode = share_types.get_share_type_extra_specs(
-            share['share_type_id'],
-            const.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS)
-
-        if strutils.bool_from_string(driver_mode):
-            msg = _("%(mode)s != False") % {
-                'mode': const.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
-            }
-            raise exception.ManageExistingShareTypeMismatch(reason=msg)
-
         share_server = self.service_instance_manager.get_common_server()
         server_details = share_server['backend_details']
 

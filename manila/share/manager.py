@@ -28,6 +28,7 @@ from oslo_serialization import jsonutils
 from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 import six
 
@@ -44,6 +45,7 @@ import manila.share.configuration
 from manila.share import drivers_private_data
 from manila.share import migration
 from manila.share import rpcapi as share_rpcapi
+from manila.share import share_types
 from manila.share import utils as share_utils
 from manila import utils
 
@@ -783,7 +785,17 @@ class ShareManager(manager.SchedulerDependentManager):
             if self.driver.driver_handles_share_servers:
                 msg = _("Manage share is not supported for "
                         "driver_handles_share_servers=True mode.")
-                raise exception.InvalidShare(reason=msg)
+                raise exception.InvalidDriverMode(driver_mode=msg)
+
+            driver_mode = share_types.get_share_type_extra_specs(
+                share_instance['share_type_id'],
+                constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS)
+
+            if strutils.bool_from_string(driver_mode):
+                msg = _("%(mode)s != False") % {
+                    'mode': constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
+                }
+                raise exception.ManageExistingShareTypeMismatch(reason=msg)
 
             share_update = (
                 self.driver.manage_existing(share_instance, driver_options)

@@ -100,7 +100,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
         # Add managed share to cleanup queue
         self.method_resources.insert(
-            0, {'type': 'share_type', 'id': share['id'],
+            0, {'type': 'share', 'id': share['id'],
                 'client': self.shares_client})
 
         # Wait for success
@@ -137,7 +137,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
             # Add managed share to cleanup queue
             self.method_resources.insert(
-                0, {'type': 'share_type', 'id': share['id'],
+                0, {'type': 'share', 'id': share['id'],
                     'client': self.shares_client})
 
             # Wait for success

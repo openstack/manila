@@ -327,29 +327,6 @@ class HDSHNASTestCase(test.TestCase):
 
         CONF._unset_defaults_and_overrides()
 
-    def test_manage_share_type_dhss_true(self):
-        driver_op = 'fake'
-
-        self.mock_object(share_types, 'get_share_type_extra_specs',
-                         mock.Mock(return_value='True'))
-
-        self.assertRaises(exception.ManageExistingShareTypeMismatch,
-                          self._driver.manage_existing,
-                          self.share, driver_op)
-        share_types.get_share_type_extra_specs.assert_called_once_with(
-            self.share['share_type_id'], self.const_dhss)
-
-    def test_manage_conf_dhss_true(self):
-        driver_op = 'fake'
-
-        CONF.set_default('driver_handles_share_servers', True)
-        self.mock_object(share_types, 'get_share_type_extra_specs',
-                         mock.Mock(return_value='True'))
-
-        self.assertRaises(exception.InvalidDriverMode,
-                          self._driver.manage_existing,
-                          self.share, driver_op)
-
     def test_manage_invalid_host(self):
         driver_op = 'fake'
         self.share_invalid_host = {
@@ -369,8 +346,6 @@ class HDSHNASTestCase(test.TestCase):
         self.assertRaises(exception.ShareBackendException,
                           self._driver.manage_existing,
                           self.share_invalid_host, driver_op)
-        share_types.get_share_type_extra_specs.assert_called_once_with(
-            self.share_invalid_host['share_type_id'], self.const_dhss)
 
     def test_manage_invalid_path(self):
         driver_op = 'fake'
@@ -391,8 +366,6 @@ class HDSHNASTestCase(test.TestCase):
         self.assertRaises(exception.ShareBackendException,
                           self._driver.manage_existing,
                           self.share_invalid_path, driver_op)
-        share_types.get_share_type_extra_specs.assert_called_once_with(
-            self.share_invalid_path['share_type_id'], self.const_dhss)
 
     def test_manage_invalid_evs_ip(self):
         driver_op = 'fake'
@@ -413,8 +386,6 @@ class HDSHNASTestCase(test.TestCase):
         self.assertRaises(exception.ShareBackendException,
                           self._driver.manage_existing,
                           self.share_invalid_ip, driver_op)
-        share_types.get_share_type_extra_specs.assert_called_once_with(
-            self.share_invalid_ip['share_type_id'], self.const_dhss)
 
     def test_unmanage(self):
         self._driver.unmanage(self.share)
