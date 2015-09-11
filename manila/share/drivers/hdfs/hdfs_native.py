@@ -159,6 +159,25 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
+    def _set_share_size(self, share, size=None):
+        share_dir = '/' + share['name']
+
+        if not size:
+            sizestr = six.text_type(share['size']) + 'g'
+        else:
+            sizestr = six.text_type(size) + 'g'
+
+        try:
+            self._hdfs_execute(self._hdfs_bin, 'dfsadmin',
+                               '-setSpaceQuota', sizestr, share_dir)
+        except exception.ProcessExecutionError as e:
+            msg = (_('Failed to set space quota for the '
+                     'share %(sharename)s. Error: %(excmsg)s.') %
+                   {'sharename': share['name'],
+                    'excmsg': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.HDFSException(msg)
+
     def _create_share(self, share):
         """Creates a share."""
         if share['share_proto'].lower() != 'hdfs':
@@ -167,7 +186,6 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             raise exception.HDFSException(msg)
 
         share_dir = '/' + share['name']
-        sizestr = six.text_type(share['size']) + 'g'
 
         try:
             self._hdfs_execute(self._hdfs_bin, 'dfs',
@@ -180,16 +198,8 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             LOG.error(msg)
             raise exception.HDFSException(msg)
 
-        try:
-            self._hdfs_execute(self._hdfs_bin, 'dfsadmin',
-                               '-setSpaceQuota', sizestr, share_dir)
-        except exception.ProcessExecutionError as e:
-            msg = (_('Failed to set space quota for the '
-                     'share %(sharename)s. Error: %(excmsg)s.') %
-                   {'sharename': share['name'],
-                    'excmsg': six.text_type(e)})
-            LOG.error(msg)
-            raise exception.HDFSException(msg)
+        # set share size
+        self._set_share_size(share)
 
         try:
             self._hdfs_execute(self._hdfs_bin, 'dfsadmin',
@@ -359,6 +369,10 @@ class HDFSNativeShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                     'excmsg': six.text_type(e)})
             LOG.error(msg)
             raise exception.HDFSException(msg)
+
+    def extend_share(self, share, new_size, share_server=None):
+        """Extend share storage."""
+        self._set_share_size(share, new_size)
 
     def _check_hdfs_state(self):
         try:

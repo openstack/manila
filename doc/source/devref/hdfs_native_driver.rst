@@ -49,6 +49,7 @@ Supported Operations
 - Create snapshot
 - Delete snapshot
 - Create share from snapshot
+- Extend share
 
 Requirements
 ------------
