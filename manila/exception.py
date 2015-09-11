@@ -632,10 +632,6 @@ class SSHException(ManilaException):
     message = _("Exception in SSH protocol negotiation or logic.")
 
 
-class SopAPIError(Invalid):
-    message = _("%(err)s")
-
-
 class HDFSException(ManilaException):
     message = _("HDFS exception occurred!")
 
