@@ -83,7 +83,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         # Check that backwards compatibility didn't break
         vts = st_list["volume_types"]
         self.assertEqual(len(sts), len(vts))
-        for i in xrange(len(sts)):
+        for i in range(len(sts)):
             self.assertDictMatch(sts[i], vts[i])
 
     @test.attr(type=["gate", "smoke", ])
