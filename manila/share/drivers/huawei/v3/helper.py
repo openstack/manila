@@ -612,10 +612,6 @@ class RestHelper(object):
         share_path = "/" + share_name.replace("-", "_") + "/"
         return share_path
 
-    def _get_share_name_by_id(self, share_id):
-        share_name = "share_" + share_id
-        return share_name
-
     def _get_share_name_by_export_location(self, export_location, share_proto):
         export_location_split = None
         share_name = None

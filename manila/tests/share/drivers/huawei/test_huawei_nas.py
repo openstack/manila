@@ -563,6 +563,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'display_name': 'snapshot',
             'name': 'fake_snapshot_name',
             'size': 1,
+            'share_name': 'share_fake_uuid',
             'share': {
                 'share_name': 'share_fake_uuid',
                 'share_id': 'fake_uuid',
@@ -576,6 +577,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'display_name': 'snapshot',
             'name': 'fake_snapshot_name',
             'size': 1,
+            'share_name': 'share_fake_uuid',
             'share': {
                 'share_name': 'share_fake_uuid',
                 'share_id': 'fake_uuid',

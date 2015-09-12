@@ -192,10 +192,9 @@ class V3StorageConnection(driver.HuaweiBase):
         snap_name = snapshot['id']
         share_proto = snapshot['share']['share_proto']
 
-        share_name = self.helper._get_share_name_by_id(
-            snapshot['share']['share_id'])
         share_url_type = self.helper._get_share_url_type(share_proto)
-        share = self.helper._get_share_by_name(share_name, share_url_type)
+        share = self.helper._get_share_by_name(snapshot['share_name'],
+                                               share_url_type)
 
         if not share:
             err_msg = _('Can not create snapshot,'
@@ -214,9 +213,7 @@ class V3StorageConnection(driver.HuaweiBase):
         LOG.debug("Delete a snapshot.")
         snap_name = snapshot['id']
 
-        share_name = self.helper._get_share_name_by_id(
-            snapshot['share']['share_id'])
-        sharefsid = self.helper._get_fsid_by_name(share_name)
+        sharefsid = self.helper._get_fsid_by_name(snapshot['share_name'])
 
         if sharefsid is None:
             LOG.warning(_LW('Delete snapshot share id %s fs has been '
