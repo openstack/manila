@@ -21,7 +21,7 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
-class MigrationTest(base.BaseSharesAdminTest):
+class MigrationNFSTest(base.BaseSharesAdminTest):
     """Tests Share Migration.
 
     Tests migration in multi-backend environment.
@@ -31,23 +31,23 @@ class MigrationTest(base.BaseSharesAdminTest):
 
     @classmethod
     def resource_setup(cls):
-        super(MigrationTest, cls).resource_setup()
+        super(MigrationNFSTest, cls).resource_setup()
         if cls.protocol not in CONF.share.enable_protocols:
             message = "%s tests are disabled" % cls.protocol
             raise cls.skipException(message)
+        if not CONF.share.run_migration_tests:
+            raise cls.skipException("Migration tests disabled. Skipping.")
 
-    @test.attr(type=["gate", "smoke", ])
+    @test.attr(type=["gate", ])
     def test_migration_empty_v2_5(self):
-
-        if not CONF.share.migration_enabled:
-            raise self.skipException("Migration tests disabled. Skipping.")
 
         pools = self.shares_client.list_pools()['pools']
 
         if len(pools) < 2:
-            raise self.skipException("At least two different running "
-                                     "manila-share services are needed to "
-                                     "run migration tests. Skipping.")
+            raise self.skipException("At least two different pool entries "
+                                     "are needed to run migration tests. "
+                                     "Skipping.")
+
         share = self.create_share(self.protocol)
         share = self.shares_client.get_share(share['id'])
 
@@ -55,6 +55,7 @@ class MigrationTest(base.BaseSharesAdminTest):
                          None)
 
         self.assertIsNotNone(dest_pool)
+        self.assertIsNotNone(dest_pool.get('name'))
 
         dest_pool = dest_pool['name']
 

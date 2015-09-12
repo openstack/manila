@@ -39,6 +39,8 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         # Manila clients
         cls.shares_client = clients_share.Manager().shares_client
         cls.shares_admin_client = clients_share.AdminManager().shares_client
+        cls.shares_admin_v2_client = (
+            clients_share.AdminManager().shares_v2_client)
 
     def _create_share(self, share_protocol=None, size=1, name=None,
                       snapshot_id=None, description=None, metadata=None,
@@ -184,7 +186,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         return linux_client
 
     def _migrate_share(self, share_id, dest_host, client=None):
-        client = client or self.shares_client
+        client = client or self.shares_admin_v2_client
         client.migrate_share(share_id, dest_host)
         share = client.wait_for_migration_completed(share_id, dest_host)
         return share

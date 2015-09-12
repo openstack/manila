@@ -144,6 +144,9 @@ ShareGroup = [
                 help="Defines whether to run consistency group tests or not. "
                      "Disable this feature if used driver doesn't support "
                      "it."),
+    cfg.BoolOpt("run_migration_tests",
+                default=False,
+                help="Enable or disable migration tests."),
     cfg.StrOpt("image_with_share_tools",
                default="manila-service-image",
                help="Image name for vm booting with nfs/smb clients tool."),
@@ -160,7 +163,4 @@ ShareGroup = [
                default=1200,
                help="Time to wait for share migration before "
                     "timing out (seconds)."),
-    cfg.BoolOpt("migration_enabled",
-                default=True,
-                help="Enable or disable migration tests."),
 ]

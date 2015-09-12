@@ -27,6 +27,8 @@ if [[ "$1" =~ "multibackend" ]]; then
     # if arg $1 has "multibackend", then we assume multibackend installation
     iniset $BASE/new/tempest/etc/tempest.conf share multi_backend True
 
+    iniset $BASE/new/tempest/etc/tempest.conf share run_migration_tests $(trueorfalse True RUN_MANILA_MIGRATION_TESTS)
+
     # Set share backends names, they are defined within pre_test_hook
     export BACKENDS_NAMES="LONDON,PARIS"
 else
