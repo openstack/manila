@@ -65,9 +65,21 @@ NETMASK = '255.255.255.0'
 NET_ALLOCATION_ID = 'fake_allocation_id'
 LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
 LIF_NAME = LIF_NAME_TEMPLATE % {'net_allocation_id': NET_ALLOCATION_ID}
-IPSPACE = 'fake_ipspace'
+IPSPACE_NAME = 'fake_ipspace'
 BROADCAST_DOMAIN = 'fake_domain'
 MTU = 9000
+
+IPSPACES = [{
+    'uuid': 'fake_uuid',
+    'ipspace': IPSPACE_NAME,
+    'id': 'fake_id',
+    'broadcast-domains': ['OpenStack'],
+    'ports': [NODE_NAME + ':' + VLAN_PORT],
+    'vservers': [
+        IPSPACE_NAME,
+        VSERVER_NAME,
+    ]
+}]
 
 EMS_MESSAGE = {
     'computer-name': 'fake_host',
@@ -112,6 +124,18 @@ VSERVER_GET_ROOT_VOLUME_NAME_RESPONSE = etree.XML("""
     <num-records>1</num-records>
   </results>
 """ % {'root_volume': ROOT_VOLUME_NAME, 'fake_vserver': VSERVER_NAME})
+
+VSERVER_GET_IPSPACE_NAME_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <vserver-info>
+        <ipspace>%(ipspace)s</ipspace>
+        <vserver-name>%(fake_vserver)s</vserver-name>
+      </vserver-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'ipspace': IPSPACE_NAME, 'fake_vserver': VSERVER_NAME})
 
 VSERVER_GET_RESPONSE = etree.XML("""
   <results status="passed">
@@ -447,6 +471,7 @@ NET_PORT_GET_ITER_BROADCAST_DOMAIN_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
       <net-port-info>
+        <ipspace>%(ipspace)s</ipspace>
         <broadcast-domain>%(domain)s</broadcast-domain>
         <node>%(node)s</node>
         <port>%(port)s</port>
@@ -454,19 +479,25 @@ NET_PORT_GET_ITER_BROADCAST_DOMAIN_RESPONSE = etree.XML("""
     </attributes-list>
     <num-records>1</num-records>
   </results>
-""" % {'domain': BROADCAST_DOMAIN, 'node': NODE_NAME, 'port': PORT})
+""" % {
+    'domain': BROADCAST_DOMAIN,
+    'node': NODE_NAME,
+    'port': PORT,
+    'ipspace': IPSPACE_NAME,
+})
 
 NET_PORT_GET_ITER_BROADCAST_DOMAIN_MISSING_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
       <net-port-info>
+        <ipspace>%(ipspace)s</ipspace>
         <node>%(node)s</node>
         <port>%(port)s</port>
       </net-port-info>
     </attributes-list>
     <num-records>1</num-records>
   </results>
-""" % {'node': NODE_NAME, 'port': PORT})
+""" % {'node': NODE_NAME, 'port': PORT, 'ipspace': IPSPACE_NAME})
 
 NET_PORT_BROADCAST_DOMAIN_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
@@ -478,7 +509,35 @@ NET_PORT_BROADCAST_DOMAIN_GET_ITER_RESPONSE = etree.XML("""
     </attributes-list>
     <num-records>1</num-records>
   </results>
-""" % {'domain': BROADCAST_DOMAIN, 'ipspace': IPSPACE})
+""" % {'domain': BROADCAST_DOMAIN, 'ipspace': IPSPACE_NAME})
+
+NET_IPSPACES_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <net-ipspaces-info>
+        <broadcast-domains>
+          <broadcast-domain-name>OpenStack</broadcast-domain-name>
+        </broadcast-domains>
+        <id>fake_id</id>
+        <ipspace>%(ipspace)s</ipspace>
+        <ports>
+          <net-qualified-port-name>%(node)s:%(port)s</net-qualified-port-name>
+        </ports>
+        <uuid>fake_uuid</uuid>
+        <vservers>
+          <vserver-name>%(ipspace)s</vserver-name>
+          <vserver-name>%(vserver)s</vserver-name>
+        </vservers>
+      </net-ipspaces-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'ipspace': IPSPACE_NAME,
+    'node': NODE_NAME,
+    'port': VLAN_PORT,
+    'vserver': VSERVER_NAME
+})
 
 NET_INTERFACE_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">

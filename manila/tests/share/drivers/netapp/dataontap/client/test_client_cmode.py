@@ -140,7 +140,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.assertFalse(result)
 
-    def test_create_vserver(self):
+    def test_create_vserver_no_ipspace(self):
 
         self.mock_object(self.client, 'send_request')
 
@@ -160,11 +160,51 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.create_vserver(fake.VSERVER_NAME,
                                    fake.ROOT_VOLUME_AGGREGATE_NAME,
                                    fake.ROOT_VOLUME_NAME,
-                                   fake.SHARE_AGGREGATE_NAMES)
+                                   fake.SHARE_AGGREGATE_NAMES,
+                                   None)
 
         self.client.send_request.assert_has_calls([
             mock.call('vserver-create', vserver_create_args),
             mock.call('vserver-modify', vserver_modify_args)])
+
+    def test_create_vserver_with_ipspace(self):
+
+        self.client.features.add_feature('IPSPACES')
+        self.mock_object(self.client, 'send_request')
+
+        vserver_create_args = {
+            'vserver-name': fake.VSERVER_NAME,
+            'root-volume-security-style': 'unix',
+            'root-volume-aggregate': fake.ROOT_VOLUME_AGGREGATE_NAME,
+            'root-volume': fake.ROOT_VOLUME_NAME,
+            'name-server-switch': {'nsswitch': 'file'},
+            'ipspace': fake.IPSPACE_NAME,
+        }
+        vserver_modify_args = {
+            'aggr-list': [{'aggr-name': aggr_name} for aggr_name
+                          in fake.SHARE_AGGREGATE_NAMES],
+            'vserver-name': fake.VSERVER_NAME
+        }
+
+        self.client.create_vserver(fake.VSERVER_NAME,
+                                   fake.ROOT_VOLUME_AGGREGATE_NAME,
+                                   fake.ROOT_VOLUME_NAME,
+                                   fake.SHARE_AGGREGATE_NAMES,
+                                   fake.IPSPACE_NAME)
+
+        self.client.send_request.assert_has_calls([
+            mock.call('vserver-create', vserver_create_args),
+            mock.call('vserver-modify', vserver_modify_args)])
+
+    def test_create_vserver_ipspaces_not_supported(self):
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.create_vserver,
+                          fake.VSERVER_NAME,
+                          fake.ROOT_VOLUME_AGGREGATE_NAME,
+                          fake.ROOT_VOLUME_NAME,
+                          fake.SHARE_AGGREGATE_NAMES,
+                          fake.IPSPACE_NAME)
 
     def test_get_vserver_root_volume_name(self):
 
@@ -187,8 +227,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
     def test_get_vserver_root_volume_name_not_found(self):
 
-        api_response = netapp_api.NaElement(
-            fake.NO_RECORDS_RESPONSE)
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
         self.mock_object(self.client,
                          'send_request',
                          mock.Mock(return_value=api_response))
@@ -196,6 +235,96 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.assertRaises(exception.NetAppException,
                           self.client.get_vserver_root_volume_name,
                           fake.VSERVER_NAME)
+
+    def test_get_vserver_ipspace(self):
+
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(
+            fake.VSERVER_GET_IPSPACE_NAME_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_vserver_ipspace(fake.VSERVER_NAME)
+
+        vserver_get_iter_args = {
+            'query': {
+                'vserver-info': {
+                    'vserver-name': fake.VSERVER_NAME,
+                },
+            },
+            'desired-attributes': {
+                'vserver-info': {
+                    'ipspace': None,
+                },
+            },
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('vserver-get-iter', vserver_get_iter_args)])
+        self.assertEqual(fake.IPSPACE_NAME, result)
+
+    def test_get_vserver_ipspace_not_supported(self):
+
+        result = self.client.get_vserver_ipspace(fake.IPSPACE_NAME)
+
+        self.assertIsNone(result)
+
+    def test_get_vserver_ipspace_not_found(self):
+
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertRaises(exception.NetAppException,
+                          self.client.get_vserver_ipspace,
+                          fake.IPSPACE_NAME)
+
+    def test_ipspace_has_data_vservers(self):
+
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(fake.VSERVER_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.ipspace_has_data_vservers(fake.IPSPACE_NAME)
+
+        vserver_get_iter_args = {
+            'query': {
+                'vserver-info': {
+                    'ipspace': fake.IPSPACE_NAME,
+                    'vserver-type': 'data'
+                },
+            },
+            'desired-attributes': {
+                'vserver-info': {
+                    'vserver-name': None,
+                },
+            },
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('vserver-get-iter', vserver_get_iter_args)])
+        self.assertTrue(result)
+
+    def test_ipspace_has_data_vservers_not_supported(self):
+
+        result = self.client.ipspace_has_data_vservers(fake.IPSPACE_NAME)
+
+        self.assertFalse(result)
+
+    def test_ipspace_has_data_vservers_not_found(self):
+
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.ipspace_has_data_vservers(fake.IPSPACE_NAME)
+
+        self.assertFalse(result)
 
     def test_list_vservers(self):
 
@@ -615,7 +744,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
                                              fake.NODE_NAME, fake.PORT,
                                              fake.VSERVER_NAME,
                                              fake.NET_ALLOCATION_ID,
-                                             fake.LIF_NAME_TEMPLATE)
+                                             fake.LIF_NAME_TEMPLATE,
+                                             fake.IPSPACE_NAME)
 
         if use_vlans:
             self.client._create_vlan.assert_called_with(
@@ -625,7 +755,8 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         if broadcast_domains_supported:
             self.client._ensure_broadcast_domain_for_port.assert_called_with(
-                fake.NODE_NAME, fake.VLAN_PORT if use_vlans else fake.PORT)
+                fake.NODE_NAME, fake.VLAN_PORT if use_vlans else fake.PORT,
+                ipspace=fake.IPSPACE_NAME)
         else:
             self.assertFalse(
                 self.client._ensure_broadcast_domain_for_port.called)
@@ -678,54 +809,15 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.PORT,
                           fake.VLAN)
 
-    def test_ensure_broadcast_domain_for_port_has_domain(self):
+    def test_ensure_broadcast_domain_for_port_domain_match(self):
 
+        port_info = {
+            'ipspace': fake.IPSPACE_NAME,
+            'broadcast-domain': fake.BROADCAST_DOMAIN,
+        }
         self.mock_object(self.client,
                          '_get_broadcast_domain_for_port',
-                         mock.Mock(return_value=fake.BROADCAST_DOMAIN))
-        self.mock_object(self.client, '_broadcast_domain_exists')
-        self.mock_object(self.client, '_create_broadcast_domain')
-        self.mock_object(self.client, '_add_port_to_broadcast_domain')
-
-        self.client._ensure_broadcast_domain_for_port(fake.NODE_NAME,
-                                                      fake.PORT)
-
-        self.client._get_broadcast_domain_for_port.assert_has_calls([
-            mock.call(fake.NODE_NAME, fake.PORT)])
-        self.assertFalse(self.client._broadcast_domain_exists.called)
-        self.assertFalse(self.client._create_broadcast_domain.called)
-        self.assertFalse(self.client._add_port_to_broadcast_domain.called)
-
-    def test_ensure_broadcast_domain_for_port_domain_not_found(self):
-
-        self.mock_object(self.client,
-                         '_get_broadcast_domain_for_port',
-                         mock.Mock(return_value=None))
-        self.mock_object(self.client,
-                         '_broadcast_domain_exists',
-                         mock.Mock(return_value=False))
-        self.mock_object(self.client, '_create_broadcast_domain')
-        self.mock_object(self.client, '_add_port_to_broadcast_domain')
-
-        self.client._ensure_broadcast_domain_for_port(
-            fake.NODE_NAME, fake.PORT, domain=fake.BROADCAST_DOMAIN,
-            ipspace=fake.IPSPACE)
-
-        self.client._get_broadcast_domain_for_port.assert_has_calls([
-            mock.call(fake.NODE_NAME, fake.PORT)])
-        self.client._broadcast_domain_exists.assert_has_calls([
-            mock.call(fake.BROADCAST_DOMAIN, fake.IPSPACE)])
-        self.client._create_broadcast_domain.assert_has_calls([
-            mock.call(fake.BROADCAST_DOMAIN, fake.IPSPACE)])
-        self.client._add_port_to_broadcast_domain.assert_has_calls([
-            mock.call(fake.NODE_NAME, fake.PORT, fake.BROADCAST_DOMAIN,
-                      fake.IPSPACE)])
-
-    def test_ensure_broadcast_domain_for_port_domain_found(self):
-
-        self.mock_object(self.client,
-                         '_get_broadcast_domain_for_port',
-                         mock.Mock(return_value=None))
+                         mock.Mock(return_value=port_info))
         self.mock_object(self.client,
                          '_broadcast_domain_exists',
                          mock.Mock(return_value=True))
@@ -734,16 +826,76 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client._ensure_broadcast_domain_for_port(
             fake.NODE_NAME, fake.PORT, domain=fake.BROADCAST_DOMAIN,
-            ipspace=fake.IPSPACE)
+            ipspace=fake.IPSPACE_NAME)
 
         self.client._get_broadcast_domain_for_port.assert_has_calls([
             mock.call(fake.NODE_NAME, fake.PORT)])
+        self.assertFalse(self.client._broadcast_domain_exists.called)
+        self.assertFalse(self.client._create_broadcast_domain.called)
+        self.assertFalse(self.client._add_port_to_broadcast_domain.called)
+
+    def test_ensure_broadcast_domain_for_port_other_domain(self):
+
+        port_info = {
+            'ipspace': fake.IPSPACE_NAME,
+            'broadcast-domain': 'other_domain',
+        }
+        self.mock_object(self.client,
+                         '_get_broadcast_domain_for_port',
+                         mock.Mock(return_value=port_info))
+        self.mock_object(self.client,
+                         '_broadcast_domain_exists',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.client, '_create_broadcast_domain')
+        self.mock_object(self.client, '_remove_port_from_broadcast_domain')
+        self.mock_object(self.client, '_add_port_to_broadcast_domain')
+
+        self.client._ensure_broadcast_domain_for_port(
+            fake.NODE_NAME, fake.PORT, domain=fake.BROADCAST_DOMAIN,
+            ipspace=fake.IPSPACE_NAME)
+
+        self.client._get_broadcast_domain_for_port.assert_has_calls([
+            mock.call(fake.NODE_NAME, fake.PORT)])
+        self.client._remove_port_from_broadcast_domain.assert_has_calls([
+            mock.call(fake.NODE_NAME, fake.PORT, 'other_domain',
+                      fake.IPSPACE_NAME)])
         self.client._broadcast_domain_exists.assert_has_calls([
-            mock.call(fake.BROADCAST_DOMAIN, fake.IPSPACE)])
+            mock.call(fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME)])
         self.assertFalse(self.client._create_broadcast_domain.called)
         self.client._add_port_to_broadcast_domain.assert_has_calls([
             mock.call(fake.NODE_NAME, fake.PORT, fake.BROADCAST_DOMAIN,
-                      fake.IPSPACE)])
+                      fake.IPSPACE_NAME)])
+
+    def test_ensure_broadcast_domain_for_port_no_domain(self):
+
+        port_info = {
+            'ipspace': fake.IPSPACE_NAME,
+            'broadcast-domain': None,
+        }
+        self.mock_object(self.client,
+                         '_get_broadcast_domain_for_port',
+                         mock.Mock(return_value=port_info))
+        self.mock_object(self.client,
+                         '_broadcast_domain_exists',
+                         mock.Mock(return_value=False))
+        self.mock_object(self.client, '_create_broadcast_domain')
+        self.mock_object(self.client, '_remove_port_from_broadcast_domain')
+        self.mock_object(self.client, '_add_port_to_broadcast_domain')
+
+        self.client._ensure_broadcast_domain_for_port(
+            fake.NODE_NAME, fake.PORT, domain=fake.BROADCAST_DOMAIN,
+            ipspace=fake.IPSPACE_NAME)
+
+        self.client._get_broadcast_domain_for_port.assert_has_calls([
+            mock.call(fake.NODE_NAME, fake.PORT)])
+        self.assertFalse(self.client._remove_port_from_broadcast_domain.called)
+        self.client._broadcast_domain_exists.assert_has_calls([
+            mock.call(fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME)])
+        self.client._create_broadcast_domain.assert_has_calls([
+            mock.call(fake.BROADCAST_DOMAIN, fake.IPSPACE_NAME)])
+        self.client._add_port_to_broadcast_domain.assert_has_calls([
+            mock.call(fake.NODE_NAME, fake.PORT, fake.BROADCAST_DOMAIN,
+                      fake.IPSPACE_NAME)])
 
     def test_get_broadcast_domain_for_port(self):
 
@@ -763,15 +915,20 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'desired-attributes': {
                 'net-port-info': {
                     'broadcast-domain': None,
+                    'ipspace': None,
                 },
             },
         }
         result = self.client._get_broadcast_domain_for_port(fake.NODE_NAME,
                                                             fake.PORT)
 
+        expected = {
+            'broadcast-domain': fake.BROADCAST_DOMAIN,
+            'ipspace': fake.IPSPACE_NAME,
+        }
         self.client.send_request.assert_has_calls([
             mock.call('net-port-get-iter', net_port_get_iter_args)])
-        self.assertEqual(fake.BROADCAST_DOMAIN, result)
+        self.assertEqual(expected, result)
 
     def test_get_broadcast_domain_for_port_port_not_found(self):
 
@@ -797,7 +954,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
         result = self.client._get_broadcast_domain_for_port(fake.NODE_NAME,
                                                             fake.PORT)
 
-        self.assertIsNone(result)
+        expected = {
+            'broadcast-domain': None,
+            'ipspace': fake.IPSPACE_NAME,
+        }
+        self.assertEqual(expected, result)
 
     def test_broadcast_domain_exists(self):
 
@@ -808,12 +969,12 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
 
         result = self.client._broadcast_domain_exists(fake.BROADCAST_DOMAIN,
-                                                      fake.IPSPACE)
+                                                      fake.IPSPACE_NAME)
 
         net_port_broadcast_domain_get_iter_args = {
             'query': {
                 'net-port-broadcast-domain-info': {
-                    'ipspace': fake.IPSPACE,
+                    'ipspace': fake.IPSPACE_NAME,
                     'broadcast-domain': fake.BROADCAST_DOMAIN,
                 },
             },
@@ -835,7 +996,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
                          mock.Mock(return_value=api_response))
 
         result = self.client._broadcast_domain_exists(fake.BROADCAST_DOMAIN,
-                                                      fake.IPSPACE)
+                                                      fake.IPSPACE_NAME)
 
         self.assertFalse(result)
 
@@ -844,11 +1005,11 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(self.client, 'send_request')
 
         result = self.client._create_broadcast_domain(fake.BROADCAST_DOMAIN,
-                                                      fake.IPSPACE,
+                                                      fake.IPSPACE_NAME,
                                                       mtu=fake.MTU)
 
         net_port_broadcast_domain_create_args = {
-            'ipspace': fake.IPSPACE,
+            'ipspace': fake.IPSPACE_NAME,
             'broadcast-domain': fake.BROADCAST_DOMAIN,
             'mtu': fake.MTU,
         }
@@ -857,12 +1018,55 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call('net-port-broadcast-domain-create',
                       net_port_broadcast_domain_create_args)])
 
+    def test_delete_broadcast_domain(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client._delete_broadcast_domain(fake.BROADCAST_DOMAIN,
+                                                      fake.IPSPACE_NAME)
+
+        net_port_broadcast_domain_delete_args = {
+            'ipspace': fake.IPSPACE_NAME,
+            'broadcast-domain': fake.BROADCAST_DOMAIN,
+        }
+        self.assertIsNone(result)
+        self.client.send_request.assert_has_calls([
+            mock.call('net-port-broadcast-domain-destroy',
+                      net_port_broadcast_domain_delete_args)])
+
+    def test_delete_broadcast_domains_for_ipspace_not_found(self):
+
+        self.mock_object(self.client,
+                         'get_ipspaces',
+                         mock.Mock(return_value=[]))
+        self.mock_object(self.client, '_delete_broadcast_domain')
+
+        self.client._delete_broadcast_domains_for_ipspace(fake.IPSPACE_NAME)
+
+        self.client.get_ipspaces.assert_called_once_with(
+            ipspace_name=fake.IPSPACE_NAME)
+        self.assertFalse(self.client._delete_broadcast_domain.called)
+
+    def test_delete_broadcast_domains_for_ipspace(self):
+
+        self.mock_object(self.client,
+                         'get_ipspaces',
+                         mock.Mock(return_value=fake.IPSPACES))
+        self.mock_object(self.client, '_delete_broadcast_domain')
+
+        self.client._delete_broadcast_domains_for_ipspace(fake.IPSPACE_NAME)
+
+        self.client.get_ipspaces.assert_called_once_with(
+            ipspace_name=fake.IPSPACE_NAME)
+        self.client._delete_broadcast_domain.assert_called_once_with(
+            fake.IPSPACES[0]['broadcast-domains'][0], fake.IPSPACE_NAME)
+
     def test_add_port_to_broadcast_domain(self):
 
         self.mock_object(self.client, 'send_request')
 
         add_port_to_broadcast_domain_args = {
-            'ipspace': fake.IPSPACE,
+            'ipspace': fake.IPSPACE_NAME,
             'broadcast-domain': fake.BROADCAST_DOMAIN,
             'ports': {
                 'net-qualified-port-name': ':'.join([fake.NODE_NAME,
@@ -871,7 +1075,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
         }
         result = self.client._add_port_to_broadcast_domain(
             fake.NODE_NAME, fake.VLAN_PORT, fake.BROADCAST_DOMAIN,
-            fake.IPSPACE)
+            fake.IPSPACE_NAME)
 
         self.assertIsNone(result)
         self.client.send_request.assert_has_calls([
@@ -886,7 +1090,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         result = self.client._add_port_to_broadcast_domain(
             fake.NODE_NAME, fake.VLAN_PORT, fake.BROADCAST_DOMAIN,
-            fake.IPSPACE)
+            fake.IPSPACE_NAME)
 
         self.assertIsNone(result)
 
@@ -899,7 +1103,28 @@ class NetAppClientCmodeTestCase(test.TestCase):
                           fake.NODE_NAME,
                           fake.VLAN_PORT,
                           fake.BROADCAST_DOMAIN,
-                          fake.IPSPACE)
+                          fake.IPSPACE_NAME)
+
+    def test_remove_port_from_broadcast_domain(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client._remove_port_from_broadcast_domain(
+            fake.NODE_NAME, fake.VLAN_PORT, fake.BROADCAST_DOMAIN,
+            fake.IPSPACE_NAME)
+
+        net_port_broadcast_domain_remove_ports_args = {
+            'ipspace': fake.IPSPACE_NAME,
+            'broadcast-domain': fake.BROADCAST_DOMAIN,
+            'ports': {
+                'net-qualified-port-name': ':'.join([fake.NODE_NAME,
+                                                     fake.VLAN_PORT])
+            }
+        }
+        self.assertIsNone(result)
+        self.client.send_request.assert_has_calls([
+            mock.call('net-port-broadcast-domain-remove-ports',
+                      net_port_broadcast_domain_remove_ports_args)])
 
     def test_network_interface_exists(self):
 
@@ -1058,6 +1283,128 @@ class NetAppClientCmodeTestCase(test.TestCase):
 
         self.client.send_request.assert_has_calls([
             mock.call('net-interface-delete', net_interface_delete_args)])
+
+    def test_get_ipspaces(self):
+
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(
+            fake.NET_IPSPACES_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_ipspaces(ipspace_name=fake.IPSPACE_NAME,
+                                          max_records=500)
+
+        net_ipspaces_get_iter_args = {
+            'max-records': 500,
+            'query': {
+                'net-ipspaces-info': {
+                    'ipspace': fake.IPSPACE_NAME,
+                },
+            },
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('net-ipspaces-get-iter', net_ipspaces_get_iter_args)])
+        self.assertEqual(fake.IPSPACES, result)
+
+    def test_get_ipspaces_not_found(self):
+
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_ipspaces()
+
+        net_ipspaces_get_iter_args = {'max-records': 1000}
+        self.client.send_request.assert_has_calls([
+            mock.call('net-ipspaces-get-iter', net_ipspaces_get_iter_args)])
+        self.assertEqual([], result)
+
+    def test_get_ipspaces_not_supported(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        result = self.client.get_ipspaces()
+
+        self.assertFalse(self.client.send_request.called)
+        self.assertEqual([], result)
+
+    @ddt.data((fake.NET_IPSPACES_GET_ITER_RESPONSE, True),
+              (fake.NO_RECORDS_RESPONSE, False))
+    @ddt.unpack
+    def test_ipspace_exists(self, api_response, expected):
+
+        self.client.features.add_feature('IPSPACES')
+        api_response = netapp_api.NaElement(api_response)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.ipspace_exists(fake.IPSPACE_NAME)
+
+        net_ipspaces_get_iter_args = {
+            'query': {
+                'net-ipspaces-info': {
+                    'ipspace': fake.IPSPACE_NAME,
+                },
+            },
+            'desired-attributes': {
+                'net-ipspaces-info': {
+                    'ipspace': None,
+                },
+            },
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('net-ipspaces-get-iter', net_ipspaces_get_iter_args)])
+        self.assertEqual(expected, result)
+
+    def test_ipspace_exists_not_supported(self):
+
+        result = self.client.ipspace_exists(fake.IPSPACE_NAME)
+
+        self.assertFalse(result)
+
+    def test_create_ipspace(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_ipspace(fake.IPSPACE_NAME)
+
+        net_ipspaces_create_args = {'ipspace': fake.IPSPACE_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('net-ipspaces-create', net_ipspaces_create_args)])
+
+    def test_delete_ipspace(self):
+
+        mock_delete_broadcast_domains_for_ipspace = self.mock_object(
+            self.client, '_delete_broadcast_domains_for_ipspace')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_ipspace(fake.IPSPACE_NAME)
+
+        net_ipspaces_destroy_args = {'ipspace': fake.IPSPACE_NAME}
+        mock_delete_broadcast_domains_for_ipspace.assert_called_once_with(
+            fake.IPSPACE_NAME)
+        self.client.send_request.assert_has_calls([
+            mock.call('net-ipspaces-destroy', net_ipspaces_destroy_args)])
+
+    def test_add_vserver_to_ipspace(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.add_vserver_to_ipspace(fake.IPSPACE_NAME,
+                                           fake.VSERVER_NAME)
+
+        net_ipspaces_assign_vserver_args = {
+            'ipspace': fake.IPSPACE_NAME,
+            'vserver': fake.VSERVER_NAME
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('net-ipspaces-assign-vserver',
+                      net_ipspaces_assign_vserver_args)])
 
     def test_get_node_for_aggregate(self):
 
