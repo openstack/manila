@@ -101,7 +101,6 @@ class ShareApiTest(test.TestCase):
             'snapshot_id': '2',
             'share_network_id': None,
             'status': 'fakestatus',
-            'task_state': None,
             'share_type': '1',
             'volume_type': '1',
             'is_public': False,
@@ -691,17 +690,11 @@ class ShareApiTest(test.TestCase):
     def test_share_list_detail_with_search_opts_by_admin(self):
         self._share_list_detail_with_search_opts(use_admin_context=True)
 
-    def test_share_list_detail(self):
-        self.mock_object(share_api.API, 'get_all',
-                         stubs.stub_share_get_all_by_project)
-        env = {'QUERY_STRING': 'name=Share+Test+Name'}
-        req = fakes.HTTPRequest.blank('/shares/detail', environ=env)
-        res_dict = self.controller.detail(req)
-        expected = {
+    def _list_detail_common_expected(self):
+        return {
             'shares': [
                 {
                     'status': 'fakestatus',
-                    'task_state': None,
                     'description': 'displaydesc',
                     'export_location': 'fake_location',
                     'export_locations': ['fake_location', 'fake_location2'],
@@ -732,57 +725,39 @@ class ShareApiTest(test.TestCase):
                 }
             ]
         }
+
+    def _list_detail_test_common(self, req, expected):
+        self.mock_object(share_api.API, 'get_all',
+                         stubs.stub_share_get_all_by_project)
+        res_dict = self.controller.detail(req)
         self.assertEqual(expected, res_dict)
         self.assertEqual(res_dict['shares'][0]['volume_type'],
                          res_dict['shares'][0]['share_type'])
 
+    def test_share_list_detail(self):
+        env = {'QUERY_STRING': 'name=Share+Test+Name'}
+        req = fakes.HTTPRequest.blank('/shares/detail', environ=env)
+        expected = self._list_detail_common_expected()
+        self._list_detail_test_common(req, expected)
+
     def test_share_list_detail_with_consistency_group(self):
-        self.mock_object(share_api.API, 'get_all',
-                         stubs.stub_share_get_all_by_project)
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
         req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
                                       version="2.4")
-        res_dict = self.controller.detail(req)
-        expected = {
-            'shares': [
-                {
-                    'status': 'fakestatus',
-                    'task_state': None,
-                    'description': 'displaydesc',
-                    'export_location': 'fake_location',
-                    'export_locations': ['fake_location', 'fake_location2'],
-                    'availability_zone': 'fakeaz',
-                    'name': 'displayname',
-                    'share_proto': 'FAKEPROTO',
-                    'metadata': {},
-                    'project_id': 'fakeproject',
-                    'host': 'fakehost',
-                    'id': '1',
-                    'snapshot_id': '2',
-                    'share_network_id': None,
-                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                    'size': 1,
-                    'share_type': '1',
-                    'volume_type': '1',
-                    'is_public': False,
-                    'consistency_group_id': None,
-                    'source_cgsnapshot_member_id': None,
-                    'links': [
-                        {
-                            'href': 'http://localhost/v1/fake/shares/1',
-                            'rel': 'self'
-                        },
-                        {
-                            'href': 'http://localhost/fake/shares/1',
-                            'rel': 'bookmark'
-                        }
-                    ],
-                }
-            ]
-        }
-        self.assertEqual(expected, res_dict)
-        self.assertEqual(res_dict['shares'][0]['volume_type'],
-                         res_dict['shares'][0]['share_type'])
+        expected = self._list_detail_common_expected()
+        expected['shares'][0]['consistency_group_id'] = None
+        expected['shares'][0]['source_cgsnapshot_member_id'] = None
+        self._list_detail_test_common(req, expected)
+
+    def test_share_list_detail_with_task_state(self):
+        env = {'QUERY_STRING': 'name=Share+Test+Name'}
+        req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
+                                      version="2.5", experimental=True)
+        expected = self._list_detail_common_expected()
+        expected['shares'][0]['consistency_group_id'] = None
+        expected['shares'][0]['source_cgsnapshot_member_id'] = None
+        expected['shares'][0]['task_state'] = None
+        self._list_detail_test_common(req, expected)
 
     def test_remove_invalid_options(self):
         ctx = context.RequestContext('fakeuser', 'fakeproject', is_admin=False)

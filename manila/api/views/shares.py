@@ -22,6 +22,7 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = 'shares'
     _detail_version_modifiers = [
         "add_consistency_group_fields",
+        "add_task_state_field",
         "modify_share_type_field",
     ]
 
@@ -65,7 +66,6 @@ class ViewBuilder(common.ViewBuilder):
             'availability_zone': share.get('availability_zone'),
             'created_at': share.get('created_at'),
             'status': share.get('status'),
-            'task_state': share.get('task_state'),
             'name': share.get('display_name'),
             'description': share.get('display_description'),
             'project_id': share.get('project_id'),
@@ -94,6 +94,10 @@ class ViewBuilder(common.ViewBuilder):
             'consistency_group_id')
         share_dict['source_cgsnapshot_member_id'] = share.get(
             'source_cgsnapshot_member_id')
+
+    @common.ViewBuilder.versioned_method("2.5", None, True)
+    def add_task_state_field(self, share_dict, share):
+        share_dict['task_state'] = share.get('task_state')
 
     @common.ViewBuilder.versioned_method("2.6")
     def modify_share_type_field(self, share_dict, share):
