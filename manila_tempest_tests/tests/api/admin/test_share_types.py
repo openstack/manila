@@ -107,10 +107,14 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         self.shares_client.wait_for_share_status(share["id"], "available")
 
         # Verify share info
-        get = self.shares_client.get_share(share["id"])
+        get = self.shares_v2_client.get_share(share["id"], version="2.5")
         self.assertEqual(share_name, get["name"])
         self.assertEqual(share["id"], get["id"])
         self.assertEqual(shr_type_name, get["share_type"])
+
+        get = self.shares_v2_client.get_share(share["id"], version="2.6")
+        self.assertEqual(st_create["share_type"]["id"], get["share_type"])
+        self.assertEqual(shr_type_name, get["share_type_name"])
 
     def test_private_share_type_access(self):
         name = data_utils.rand_name("tempest-manila")
