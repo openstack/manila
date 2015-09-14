@@ -62,16 +62,15 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                       image=self.image_ref, flavor=self.flavor_ref,
                       ssh_user=self.ssh_user))
 
-    def boot_instance(self, network):
+    def boot_instance(self):
         self.keypair = self.create_keypair()
         security_groups = [{'name': self.security_group['name']}]
         create_kwargs = {
-            'networks': [
-                {'uuid': network['id']},
-            ],
             'key_name': self.keypair['name'],
             'security_groups': security_groups,
         }
+        if CONF.share.multitenancy_enabled:
+            create_kwargs['networks'] = [{'uuid': self.net['id']}, ]
         instance = self.create_server(image=self.image_ref,
                                       create_kwargs=create_kwargs,
                                       flavor=self.flavor_ref)
@@ -133,9 +132,25 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
             neutron_subnet_id=self.subnet['id'],
             name=data_utils.rand_name("sn-name"))
 
-    def create_share(self, share_net_id):
-        self.share = self._create_share(share_protocol=self.protocol,
-                                        share_network_id=share_net_id)
+    def _get_share_type(self):
+        if CONF.share.default_share_type_name:
+            return self.shares_client.get_share_type(
+                CONF.share.default_share_type_name)['share_type']
+        return self._create_share_type(
+            data_utils.rand_name("share_type"),
+            extra_specs={
+                'driver_handles_share_servers': CONF.share.multitenancy_enabled
+            },)['share_type']
+
+    def create_share(self):
+        kwargs = {
+            'share_protocol': self.protocol,
+            'share_type_id': self._get_share_type()['id'],
+        }
+        if CONF.share.multitenancy_enabled:
+            self.create_share_network()
+            kwargs.update({'share_network_id': self.share_net['id']})
+        self.share = self._create_share(**kwargs)
 
     def allow_access_ip(self, share_id, ip=None, instance=None, cleanup=True):
         if instance and not ip:
@@ -155,9 +170,8 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
     @test.services('compute', 'network')
     def test_mount_share_one_vm(self):
         self.security_group = self._create_security_group()
-        self.create_share_network()
-        self.create_share(self.share_net['id'])
-        instance = self.boot_instance(self.net)
+        self.create_share()
+        instance = self.boot_instance()
         self.allow_access_ip(self.share['id'], instance=instance)
         ssh_client = self.init_ssh(instance)
         for location in self.share['export_locations']:
@@ -170,11 +184,10 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         """Boots two vms and writes/reads data on it."""
         test_data = "Some test data to write"
         self.security_group = self._create_security_group()
-        self.create_share_network()
-        self.create_share(self.share_net['id'])
+        self.create_share()
 
         # boot first VM and write data
-        instance1 = self.boot_instance(self.net)
+        instance1 = self.boot_instance()
         self.allow_access_ip(self.share['id'], instance=instance1)
         ssh_client_inst1 = self.init_ssh(instance1)
         first_location = self.share['export_locations'][0]
@@ -184,7 +197,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.write_data(test_data, ssh_client_inst1)
 
         # boot second VM and read
-        instance2 = self.boot_instance(self.net)
+        instance2 = self.boot_instance()
         self.allow_access_ip(self.share['id'], instance=instance2)
         ssh_client_inst2 = self.init_ssh(instance2)
         self.mount_share(first_location, ssh_client_inst2)
@@ -211,8 +224,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
                                      "Skipping.")
 
         self.security_group = self._create_security_group()
-        self.create_share_network()
-        self.create_share(self.share_net['id'])
+        self.create_share()
         share = self.shares_client.get_share(self.share['id'])
 
         dest_pool = next((x for x in pools if x['name'] != share['host']),
@@ -225,7 +237,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         old_export_location = share['export_locations'][0]
 
-        instance1 = self.boot_instance(self.net)
+        instance1 = self.boot_instance()
         self.allow_access_ip(self.share['id'], instance=instance1,
                              cleanup=False)
         ssh_client = self.init_ssh(instance1)
