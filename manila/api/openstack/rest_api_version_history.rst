@@ -56,3 +56,8 @@ user documentation.
 2.5
 ---
   Share Migration admin API.
+
+2.6
+---
+  Return share_type UUID instead of name in Share API and add share_type_name
+  field.

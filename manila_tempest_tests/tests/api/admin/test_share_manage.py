@@ -107,12 +107,15 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
         self.shares_client.wait_for_share_status(share['id'], 'available')
 
         # Verify data of managed share
-        get = self.shares_client.get_share(share['id'])
+        get = self.shares_v2_client.get_share(share['id'], version="2.5")
         self.assertEqual(name, get['name'])
         self.assertEqual(description, get['description'])
         self.assertEqual(self.share1['host'], get['host'])
         self.assertEqual(self.share1['share_proto'], get['share_proto'])
         self.assertEqual(self.st['share_type']['name'], get['share_type'])
+
+        get = self.shares_v2_client.get_share(share['id'], version="2.6")
+        self.assertEqual(self.st['share_type']['id'], get['share_type'])
 
         # Delete share
         self.shares_client.delete_share(share['id'])

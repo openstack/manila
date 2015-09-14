@@ -425,6 +425,15 @@ class ShareApiTest(test.TestCase):
         expected['share']['source_cgsnapshot_member_id'] = None
         self.assertEqual(expected, res_dict)
 
+    def test_share_show_with_share_type_name(self):
+        req = fakes.HTTPRequest.blank('/shares/1', version='2.6')
+        res_dict = self.controller.show(req, '1')
+        expected = self._get_expected_share_detailed_response()
+        expected['share']['consistency_group_id'] = None
+        expected['share']['source_cgsnapshot_member_id'] = None
+        expected['share']['share_type_name'] = None
+        self.assertEqual(expected, res_dict)
+
     def test_share_show_admin(self):
         req = fakes.HTTPRequest.blank('/shares/1', use_admin_context=True)
         res_dict = self.controller.show(req, '1')
