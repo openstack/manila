@@ -783,55 +783,41 @@ class Export(object):
 class JobStatus(object):
     def __init__(self, data):
         if data:
-            split_data = data.replace(",", "").split()
+            lines = data.split("\n")
 
-            self.job_id = split_data[4]
-            self.pysical_node = split_data[14]
-            self.evs = split_data[17]
-            self.volume_number = split_data[21]
-            self.fs_id = split_data[26]
-            self.fs_name = split_data[31]
-            self.source_path = split_data[35]
-            self.creation_time = split_data[39] + " " + split_data[40]
-            self.destination_path = split_data[44]
-            self.ensure_destination_path_exists = split_data[50]
+            self.job_id = lines[0].split()[3]
+            self.physical_node = lines[2].split()[3]
+            self.evs = lines[3].split()[2]
+            self.volume_number = lines[4].split()[3]
+            self.fs_id = lines[5].split()[4]
+            self.fs_name = lines[6].split()[4]
+            self.source_path = lines[7].split()[3]
+            self.creation_time = " ".join(lines[8].split()[3:5])
+            self.destination_path = lines[9].split()[3]
+            self.ensure_path_exists = lines[10].split()[5]
+            self.job_state = " ".join(lines[12].split()[3:])
+            self.job_started = " ".join(lines[14].split()[2:4])
+            self.job_ended = " ".join(lines[15].split()[2:4])
+            self.job_status = lines[16].split()[2]
 
-            if split_data[55] == 'failed':
-                self.job_state = " ".join(split_data[54:56])
+            error_details_line = lines[17].split()
+            if len(error_details_line) > 3:
+                self.error_details = " ".join(error_details_line[3:])
             else:
-                self.job_state = " ".join(split_data[54:57])
+                self.error_details = None
 
-            for i in range(55, len(split_data)):
-                if split_data[i] == "Started":
-                    self.job_started = " ".join(split_data[i + 2:i + 4])
-                elif split_data[i] == "Ended":
-                    self.job_ended = " ".join(split_data[i + 2:i + 4])
-                elif split_data[i] == "Status":
-                    self.job_status = split_data[i + 2]
-                elif " ".join(split_data[i:i + 2]) == "Error details":
-                    self.error_details = \
-                        split_data[i + 2] if split_data[i + 2] != ":" else ""
-                elif " ".join(split_data[i:i + 2]) == "Directories processed":
-                    self.directories_processed = split_data[i + 3]
-                elif " ".join(split_data[i:i + 2]) == "Files processed":
-                    self.files_processed = split_data[i + 3]
-                elif " ".join(split_data[i:i + 3]) == "Data bytes processed":
-                    self.data_bytes_processed = split_data[i + 4]
-                elif " ".join(split_data[i:i + 3]) == "Source directories " \
-                                                      "missing":
-                    self.directories_missing = split_data[i + 4]
-                elif " ".join(split_data[i:i + 3]) == "Source files missing":
-                    self.files_missing = split_data[i + 4]
-                elif " ".join(split_data[i:i + 3]) == "Source files skipped":
-                    self.files_skipped = split_data[i + 4]
-                elif split_data[i] == "symlinks":
-                    self.symlinks_skipped = split_data[i - 1]
-                elif " ".join(split_data[i:i + 2]) == "hard links":
-                    self.hard_links_skipped = split_data[i - 1]
-                elif " ".join(split_data[i:i + 3]) == "block special devices":
-                    self.block_special_devices_skipped = split_data[i - 1]
-                elif " ".join(split_data[i:i + 2]) == "character devices":
-                    self.character_devices_skipped = split_data[i - 1]
+            self.directories_processed = lines[18].split()[3]
+            self.files_processed = lines[19].split()[3]
+            self.data_bytes_processed = lines[20].split()[4]
+            self.directories_missing = lines[21].split()[4]
+            self.files_missing = lines[22].split()[4]
+            self.files_skipped = lines[23].split()[4]
+
+            skipping_details_line = lines[24].split()
+            if len(skipping_details_line) > 3:
+                self.skipping_details = " ".join(skipping_details_line[3:])
+            else:
+                self.skipping_details = None
 
 
 class JobSubmit(object):
