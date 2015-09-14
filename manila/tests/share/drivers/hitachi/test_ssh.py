@@ -295,9 +295,7 @@ vol3
   usage  bytes : 5 GB (5368709120 B)  files: 2
   last modified: 2015-07-28 20:23:05.672404600+00:00"""
 
-HNAS_RESULT_tree_job_status_fail = """
-tree-clone-job-status: Job id = d933100a-b5f6-11d0-91d9-836896aada5d
-   JOB ID : d933100a-b5f6-11d0-91d9-836896aada5d
+HNAS_RESULT_tree_job_status_fail = """JOB ID : d933100a-b5f6-11d0-91d9-836896aada5d
       Job request
         Physical node                  : 1
         EVS                            : 1
@@ -310,7 +308,6 @@ tree-clone-job-status: Job id = d933100a-b5f6-11d0-91d9-836896aada5d
         Ensure destination path exists : true
 
       Job state                        : Job failed
-
       Job info
         Started                        : 2013-09-05 23:16:48-07:00
         Ended                          : 2013-09-05 23:17:02-07:00
@@ -328,9 +325,7 @@ tree-clone-job-status: Job id = d933100a-b5f6-11d0-91d9-836896aada5d
 HNAS_RESULT_job = """tree-operation-job-submit: Request submitted successfully.
 tree-operation-job-submit: Job id = d933100a-b5f6-11d0-91d9-836896aada5d """
 
-HNAS_RESULT_job_completed = """
-   tree-clone-job-status: Job id = ab4211b8-aac8-11ce-91af-39e0822ea368
-   JOB ID : ab4211b8-aac8-11ce-91af-39e0822ea368
+HNAS_RESULT_job_completed = """JOB ID : ab4211b8-aac8-11ce-91af-39e0822ea368
       Job request
         Physical node                  : 1
         EVS                            : 1
@@ -341,6 +336,7 @@ HNAS_RESULT_job_completed = """
         Creation time                  : 2013-09-05 23:16:48-07:00
         Destination path               : "/clone/bar"
         Ensure destination path exists : true
+
       Job state                        : Job was completed
       Job info
         Started                        : 2013-09-05 23:16:48-07:00
@@ -357,9 +353,7 @@ HNAS_RESULT_job_completed = """
 block special devices, 25 character devices
 """
 
-HNAS_RESULT_job_running = """
-   tree-clone-job-status: Job id = ab4211b8-aac8-11ce-91af-39e0822ea368
-   JOB ID : ab4211b8-aac8-11ce-91af-39e0822ea368
+HNAS_RESULT_job_running = """JOB ID : ab4211b8-aac8-11ce-91af-39e0822ea368
       Job request
         Physical node                  : 1
         EVS                            : 1
@@ -370,6 +364,7 @@ HNAS_RESULT_job_running = """
         Creation time                  : 2013-09-05 23:16:48-07:00
         Destination path               : "/clone/bar"
         Ensure destination path exists : true
+
       Job state                        : Job is running
       Job info
         Started                        : 2013-09-05 23:16:48-07:00
