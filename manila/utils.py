@@ -22,6 +22,7 @@ import errno
 import inspect
 import os
 import pyclbr
+import random
 import re
 import shutil
 import socket
@@ -540,23 +541,25 @@ class ComparableMixin(object):
         return self._compare(other, lambda s, o: s != o)
 
 
-def retry(exception, interval=1, retries=10, backoff_rate=2):
+def retry(exception, interval=1, retries=10, backoff_rate=2,
+          wait_random=False):
     """A wrapper around retrying library.
 
-        This decorator allows to log and to check 'retries' input param.
-        Time interval between retries is calculated in the following way:
-        interval * backoff_rate ^ previous_attempt_number
+    This decorator allows to log and to check 'retries' input param.
+    Time interval between retries is calculated in the following way:
+    interval * backoff_rate ^ previous_attempt_number
 
-        :param exception: expected exception type. When wrapped function
-                          raises an exception of this type,the function
-                          execution is retried.
-        :param interval: param 'interval' is used to calculate time interval
-                         between retries:
+    :param exception: expected exception type. When wrapped function
+                      raises an exception of this type, the function
+                      execution is retried.
+    :param interval: param 'interval' is used to calculate time interval
+                     between retries:
+                     interval * backoff_rate ^ previous_attempt_number
+    :param retries: number of retries.
+    :param backoff_rate: param 'backoff_rate' is used to calculate time
+                         interval between retries:
                          interval * backoff_rate ^ previous_attempt_number
-        :param retries: number of retries
-        :param backoff_rate: param 'backoff_rate' is used to calculate time
-                             interval between retries:
-                             interval * backoff_rate ^ previous_attempt_number
+    :param wait_random: boolean value to enable retry with random wait timer.
 
     """
     def _retry_on_exception(e):
@@ -565,8 +568,14 @@ def retry(exception, interval=1, retries=10, backoff_rate=2):
     def _backoff_sleep(previous_attempt_number, delay_since_first_attempt_ms):
         exp = backoff_rate ** previous_attempt_number
         wait_for = max(0, interval * exp)
-        LOG.debug("Sleeping for %s seconds", wait_for)
-        return wait_for * 1000.0
+
+        if wait_random:
+            wait_val = random.randrange(interval * 1000.0, wait_for * 1000.0)
+        else:
+            wait_val = wait_for * 1000.0
+
+        LOG.debug("Sleeping for %s seconds.", (wait_val / 1000.0))
+        return wait_val
 
     def _print_stop(previous_attempt_number, delay_since_first_attempt_ms):
         delay_since_first_attempt = delay_since_first_attempt_ms / 1000.0

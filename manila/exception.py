@@ -655,6 +655,10 @@ class HNASBackendException(ManilaException):
     message = _("HNAS Backend Exception: %(msg)s")
 
 
+class HNASConnException(ManilaException):
+    message = _("HNAS Connection Exception: %(msg)s")
+
+
 # ConsistencyGroup
 class ConsistencyGroupNotFound(NotFound):
     message = _("ConsistencyGroup %(consistency_group_id)s could not be "
