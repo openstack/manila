@@ -862,7 +862,7 @@ disks     = d7
 
     @staticmethod
     def resp_get_nfs_share_by_path_absence(mover_name):
-        return '%(mover_name) :\n error' % mover_name
+        return '%s :\n error' % mover_name
 
     @staticmethod
     def req_delete_nfs_share(path, mover_name):

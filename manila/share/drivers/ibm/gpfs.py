@@ -346,7 +346,7 @@ class GPFSShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             self._gpfs_execute('chmod', '777', sharepath)
         except exception.ProcessExecutionError as e:
             msg = (_('Failed to set permissions for share %(sharename)s. '
-                     'Error: %(excmsg).') %
+                     'Error: %(excmsg)s.') %
                    {'sharename': sharename, 'excmsg': e})
             LOG.error(msg)
             raise exception.GPFSException(msg)
