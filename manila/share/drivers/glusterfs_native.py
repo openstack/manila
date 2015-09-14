@@ -63,7 +63,7 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
     GLUSTERFS_VERSION_MIN = (3, 6)
 
     supported_layouts = ('layout_volume.GlusterfsVolumeMappedLayout',)
-    supported_protocls = ('GLUSTERFS',)
+    supported_protocols = ('GLUSTERFS',)
 
     def __init__(self, *args, **kwargs):
         super(GlusterfsNativeShareDriver, self).__init__(

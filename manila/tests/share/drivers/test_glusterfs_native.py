@@ -94,6 +94,10 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.addCleanup(fake_utils.fake_execute_set_repliers, [])
         self.addCleanup(fake_utils.fake_execute_clear_log)
 
+    def test_supported_protocols(self):
+        self.assertEqual(('GLUSTERFS', ),
+                         self._driver.supported_protocols)
+
     def test_setup_via_manager(self):
         gmgr = mock.Mock()
         gmgr.gluster_call = mock.Mock()
