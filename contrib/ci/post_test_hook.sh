@@ -108,7 +108,7 @@ elif [[ "$JOB_NAME" =~ "no-share-servers"  ]]; then
     MANILA_TEMPEST_CONCURRENCY=8
 fi
 
-# check if tempest plugin was installed corretly
+# check if tempest plugin was installed correctly
 echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.test_plugins"))' | python
 
 echo "Running tempest manila test suites"
