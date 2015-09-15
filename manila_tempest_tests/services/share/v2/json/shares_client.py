@@ -220,8 +220,15 @@ class SharesV2Client(shares_client.SharesClient):
         """Get detailed list of shares w/o filters."""
         return self.list_shares(detailed=True, params=params, version=version)
 
-    def get_share(self, share_id, version=LATEST_MICROVERSION):
-        resp, body = self.get("shares/%s" % share_id, version=version)
+    def get_share(self, share_id, version=LATEST_MICROVERSION,
+                  experimental=False):
+        headers = None
+        extra_headers = False
+        if experimental:
+            headers = EXPERIMENTAL
+            extra_headers = True
+        resp, body = self.get("shares/%s" % share_id, version=version,
+                              headers=headers, extra_headers=extra_headers)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
@@ -493,12 +500,12 @@ class SharesV2Client(shares_client.SharesClient):
 
     def wait_for_migration_completed(self, share_id, dest_host):
         """Waits for a share to migrate to a certain host."""
-        share = self.get_share(share_id)
+        share = self.get_share(share_id, "2.5", True)
         migration_timeout = CONF.share.migration_timeout
         start = int(time.time())
         while share['task_state'] != 'migration_success':
             time.sleep(self.build_interval)
-            share = self.get_share(share_id)
+            share = self.get_share(share_id, "2.5", True)
             if share['task_state'] == 'migration_success':
                 return share
             elif share['task_state'] == 'migration_error':
