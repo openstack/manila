@@ -687,7 +687,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         share = new_share()
         snapshot = {
             'id': 'fake_snap_id',
-            'share': new_share(export_location=glusterfs_target)
+            'share_instance': new_share(export_location=glusterfs_target)
         }
         volume = ''.join(['manila-', share['id']])
         new_export_location = ':/'.join([glusterfs_server, volume])
@@ -721,7 +721,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
                 ('snapshot', 'clone', volume, 'fake_snap_id_xyz'))
         old_gmgr.gluster_call.assert_has_calls([mock.call(*a) for a in args])
         self._layout._share_manager.assert_called_once_with(
-            snapshot['share'])
+            snapshot['share_instance'])
         self._layout._glustermanager.assert_called_once_with(
             gmgr.parse(new_export_location))
         self._layout.driver._setup_via_manager.assert_called_once_with(
@@ -760,7 +760,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
 
         snapshot = {
             'id': 'fake_snap_id',
-            'share': new_share(export_location=glusterfs_target)
+            'share_instance': new_share(export_location=glusterfs_target)
         }
         self.assertRaises(exception.GlusterfsException,
                           self._layout.create_share_from_snapshot,
@@ -773,7 +773,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
                 ('snapshot', 'clone', volume, 'fake_snap_id_xyz'))
         old_gmgr.gluster_call.assert_has_calls([mock.call(*a) for a in args])
         self._layout._share_manager.assert_called_once_with(
-            snapshot['share'])
+            snapshot['share_instance'])
         self.assertFalse(new_gmgr.get_gluster_vol_option.called)
         self.assertFalse(new_gmgr.gluster_call.called)
         self.assertNotIn(new_export_location,
@@ -810,7 +810,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
 
         snapshot = {
             'id': 'fake_snap_id',
-            'share': new_share(export_location=glusterfs_target)
+            'share_instance': new_share(export_location=glusterfs_target)
         }
         self.assertRaises(exception.GlusterfsException,
                           self._layout.create_share_from_snapshot,
@@ -820,7 +820,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
             self._layout._find_actual_backend_snapshot_name.called)
         self.assertFalse(old_gmgr.gluster_call.called)
         self._layout._share_manager.assert_called_once_with(
-            snapshot['share'])
+            snapshot['share_instance'])
         self.assertFalse(self._layout._glustermanager.called)
         self.assertFalse(new_gmgr.get_gluster_vol_option.called)
         self.assertFalse(new_gmgr.gluster_call.called)
