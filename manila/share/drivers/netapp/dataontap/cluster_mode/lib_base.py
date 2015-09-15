@@ -193,6 +193,14 @@ class NetAppCmodeFileStorageLibrary(object):
             return self._client.get_vserver_aggregate_capacities(aggregates)
 
     @na_utils.trace
+    def _get_aggregate_node(self, aggregate_name):
+        """Get home node for the specified aggregate, or None."""
+        if self._have_cluster_creds:
+            return self._client.get_node_for_aggregate(aggregate_name)
+        else:
+            return None
+
+    @na_utils.trace
     def get_share_stats(self):
         """Retrieve stats info from Data ONTAP backend."""
 
@@ -571,10 +579,23 @@ class NetAppCmodeFileStorageLibrary(object):
             msg_args = {'vserver': vserver, 'proto': share['share_proto']}
             raise exception.NetAppException(msg % msg_args)
 
+        interfaces = self._sort_lifs_by_aggregate_locality(share, interfaces)
+
         export_addresses = [interface['address'] for interface in interfaces]
         export_locations = helper.create_share(
             share, share_name, export_addresses)
         return export_locations
+
+    @na_utils.trace
+    def _sort_lifs_by_aggregate_locality(self, share, interfaces):
+        """Sort LIFs by placing aggregate-local LIFs first."""
+        aggregate_name = share_utils.extract_host(share['host'], level='pool')
+        home_node = self._get_aggregate_node(aggregate_name)
+        if not home_node:
+            return interfaces
+
+        return sorted(interfaces,
+                      key=lambda intf: intf.get('home-node') != home_node)
 
     @na_utils.trace
     def _remove_export(self, share, vserver_client):

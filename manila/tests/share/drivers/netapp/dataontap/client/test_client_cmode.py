@@ -1063,6 +1063,69 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('net-interface-delete', net_interface_delete_args)])
 
+    def test_get_node_for_aggregate(self):
+
+        api_response = netapp_api.NaElement(
+            fake.AGGR_GET_NODE_RESPONSE).get_child_by_name(
+            'attributes-list').get_children()
+        self.mock_object(self.client,
+                         '_get_aggregates',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_node_for_aggregate(fake.SHARE_AGGREGATE_NAME)
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-ownership-attributes': {
+                    'home-name': None,
+                },
+            },
+        }
+
+        self.client._get_aggregates.assert_has_calls([
+            mock.call(
+                aggregate_names=[fake.SHARE_AGGREGATE_NAME],
+                desired_attributes=desired_attributes)])
+
+        self.assertEqual(fake.NODE_NAME, result)
+
+    def test_get_node_for_aggregate_none_requested(self):
+
+        result = self.client.get_node_for_aggregate(None)
+
+        self.assertIsNone(result)
+
+    def test_get_node_for_aggregate_api_not_found(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error(
+                             netapp_api.EAPINOTFOUND)))
+
+        result = self.client.get_node_for_aggregate(fake.SHARE_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+
+    def test_get_node_for_aggregate_api_error(self):
+
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.get_node_for_aggregate,
+                          fake.SHARE_AGGREGATE_NAME)
+
+    def test_get_node_for_aggregate_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_node_for_aggregate(fake.SHARE_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+
     def test_get_cluster_aggregate_capacities(self):
 
         api_response = netapp_api.NaElement(

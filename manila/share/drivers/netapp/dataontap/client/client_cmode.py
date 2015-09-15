@@ -600,6 +600,42 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('net-interface-delete', api_args)
 
     @na_utils.trace
+    def get_node_for_aggregate(self, aggregate_name):
+        """Get home node for the specified aggregate.
+
+        This API could return None, most notably if it was sent
+        to a Vserver LIF, so the caller must be able to handle that case.
+        """
+
+        if not aggregate_name:
+            return None
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-ownership-attributes': {
+                    'home-name': None,
+                },
+            },
+        }
+
+        try:
+            aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
+                                         desired_attributes=desired_attributes)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_error.EAPINOTFOUND:
+                return None
+            else:
+                raise e
+
+        if len(aggrs) < 1:
+            return None
+
+        aggr_ownership_attrs = aggrs[0].get_child_by_name(
+            'aggr-ownership-attributes') or netapp_api.NaElement('none')
+        return aggr_ownership_attrs.get_child_content('home-name')
+
+    @na_utils.trace
     def get_cluster_aggregate_capacities(self, aggregate_names):
         """Calculates capacity of one or more aggregates.
 
