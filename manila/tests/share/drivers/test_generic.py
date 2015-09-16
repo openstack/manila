@@ -839,6 +839,14 @@ class GenericShareDriverTestCase(test.TestCase):
             mock.ANY, fake_volume['id'])
 
     @mock.patch('time.sleep')
+    def test_wait_for_available_volume_error_extending(self, mock_sleep):
+        fake_volume = {'status': 'error_extending', 'id': 'fake'}
+        self.assertRaises(exception.ManilaException,
+                          self._driver._wait_for_available_volume,
+                          fake_volume, 5, 'error', 'timeout')
+        self.assertFalse(mock_sleep.called)
+
+    @mock.patch('time.sleep')
     def test_wait_for_extending_volume(self, mock_sleep):
         initial_size = 1
         expected_size = 2

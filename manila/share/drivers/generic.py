@@ -522,7 +522,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                    volume_size=volume['size']))
                 else:
                     break
-            elif volume['status'] == const.STATUS_ERROR:
+            elif 'error' in volume['status'].lower():
                 raise exception.ManilaException(msg_error)
             time.sleep(1)
             volume = self.volume_api.get(self.admin_context, volume['id'])
