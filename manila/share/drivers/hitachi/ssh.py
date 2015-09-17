@@ -48,24 +48,26 @@ class HNASSSHBackend(object):
     def get_stats(self):
         """Get the stats from file-system.
 
-        The available space is calculated by total space - SUM(quotas).
         :returns:
-        total_fs_space = Total size from filesystem in config file.
+        fs_capacity.size = Total size from filesystem.
         available_space = Free space currently on filesystem.
         """
-        total_fs_space = self._get_filesystem_capacity()
-        total_quota = 0
-        share_list = self._get_vvol_list()
+        command = ['df', '-a', '-f', self.fs_name]
+        output, err = self._execute(command)
 
-        for item in share_list:
-            share_quota = self._get_share_quota(item)
-            if share_quota is not None:
-                total_quota += share_quota
-        available_space = total_fs_space - total_quota
-        LOG.debug("Available space in the file system: %(space)s.",
+        line = output.split('\n')
+        fs_capacity = Capacity(line[3])
+
+        available_space = fs_capacity.size - fs_capacity.used
+
+        LOG.debug("Total space in file system: %(total)s GB.",
+                  {'total': fs_capacity.size})
+        LOG.debug("Used space in the file system: %(used)s GB.",
+                  {'used': fs_capacity.used})
+        LOG.debug("Available space in the file system: %(space)s GB.",
                   {'space': available_space})
 
-        return total_fs_space, available_space
+        return fs_capacity.size, available_space
 
     def allow_access(self, share_id, host, share_proto, permission='rw'):
         """Allow access to the share.
@@ -674,38 +676,6 @@ class HNASSSHBackend(object):
                 # Returns None if the quota is unset
                 return None
 
-    def _get_vvol_list(self):
-        command = ['virtual-volume', 'list', self.fs_name]
-        output, err = self._execute(command)
-
-        vvol_list = []
-        items = output.split('\n')
-
-        for i in range(0, len(items) - 1):
-            if ":" not in items[i]:
-                vvol_list.append(items[i])
-
-        return vvol_list
-
-    def _get_filesystem_capacity(self):
-        command = ['filesystem-limits', self.fs_name]
-        output, err = self._execute(command)
-
-        items = output.split('\n')
-
-        for i in range(0, len(items) - 1):
-            if 'Current capacity' in items[i]:
-                fs_capacity = items[i].split(' ')
-
-                # Gets the index of the file system capacity (EX: 20GiB)
-                index = [i for i, string in enumerate(fs_capacity)
-                         if 'GiB' in string]
-
-                fs_capacity = fs_capacity[index[0]]
-                fs_capacity = fs_capacity.split('GiB')[0]
-
-                return int(fs_capacity)
-
     @mutils.synchronized("hds_hnas_select_fs", external=True)
     def _locked_selectfs(self, op, path):
         if op == 'create':
@@ -827,3 +797,20 @@ class JobSubmit(object):
 
             self.request_status = " ".join(split_data[1:4])
             self.job_id = split_data[8]
+
+
+class Capacity(object):
+    def __init__(self, data):
+        if data:
+            items = data.split()
+            self.id = items[0]
+            self.label = items[1]
+            self.evs = items[2]
+            self.size = float(items[3])
+            self.size_measure = items[4]
+            if self.size_measure == 'TB':
+                self.size = self.size * units.Ki
+            self.used = float(items[5])
+            self.used_measure = items[6]
+            if self.used_measure == 'TB':
+                self.used = self.used * units.Ki
