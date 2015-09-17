@@ -140,14 +140,6 @@ ganesha_opts = [
     cfg.StrOpt('ganesha_config_path',
                default='$ganesha_config_dir/ganesha.conf',
                help='Path to main Ganesha config file.'),
-    cfg.StrOpt('ganesha_nfs_export_options',
-               default='maxread = 65536, prefread = 65536',
-               help='Options to use when exporting a share using ganesha '
-                    'NFS server. Note that these defaults can be overridden '
-                    'when a share is created by passing metadata with key '
-                    'name export_options.  Also note the complete set of '
-                    'default ganesha export options is specified in '
-                    'ganesha_utils. (GPFS only.)'),
     cfg.StrOpt('ganesha_service_name',
                default='ganesha.nfsd',
                help='Name of the ganesha nfs service.'),
