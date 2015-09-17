@@ -27,6 +27,10 @@
     "share:update_share_metadata": "rule:default",
     "share:migrate": "rule:admin_api",
 
+    "share_type:index": "rule:default",
+    "share_type:show": "rule:default",
+    "share_type:default": "rule:default",
+
     "share_instance:index": "rule:admin_api",
     "share_instance:show": "rule:admin_api",
 

@@ -22,6 +22,7 @@ from manila.api.v1 import share_types as types
 from manila.api.views import types as views_types
 from manila.common import constants
 from manila import exception
+from manila import policy
 from manila.share import share_types
 from manila import test
 from manila.tests.api import fakes
@@ -75,12 +76,17 @@ class ShareTypesApiTest(test.TestCase):
     def setUp(self):
         super(ShareTypesApiTest, self).setUp()
         self.controller = types.ShareTypesController()
+        self.mock_object(policy, 'check_policy',
+                         mock.Mock(return_value=True))
 
-    def test_share_types_index(self):
+    @ddt.data(True, False)
+    def test_share_types_index(self, admin):
         self.mock_object(share_types, 'get_all_types',
                          return_share_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/types')
+        req = fakes.HTTPRequest.blank('/v2/fake/types',
+                                      use_admin_context=admin)
+
         res_dict = self.controller.index(req)
 
         self.assertEqual(3, len(res_dict['share_types']))
@@ -89,11 +95,16 @@ class ShareTypesApiTest(test.TestCase):
         actual_names = map(lambda e: e['name'], res_dict['share_types'])
         self.assertEqual(set(actual_names), set(expected_names))
         for entry in res_dict['share_types']:
-            self.assertEqual('value1', entry['extra_specs']['key1'])
+            if admin:
+                self.assertEqual('value1', entry['extra_specs'].get('key1'))
+            else:
+                self.assertIsNone(entry['extra_specs'].get('key1'))
             self.assertTrue('required_extra_specs' in entry)
             required_extra_spec = entry['required_extra_specs'].get(
                 constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS, '')
             self.assertEqual('true', required_extra_spec)
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'], types.RESOURCE_NAME, 'index')
 
     def test_share_types_index_no_data(self):
         self.mock_object(share_types, 'get_all_types',
@@ -103,6 +114,8 @@ class ShareTypesApiTest(test.TestCase):
         res_dict = self.controller.index(req)
 
         self.assertEqual(0, len(res_dict['share_types']))
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'], types.RESOURCE_NAME, 'index')
 
     def test_share_types_show(self):
         self.mock_object(share_types, 'get_share_type',
@@ -114,6 +127,8 @@ class ShareTypesApiTest(test.TestCase):
         self.assertEqual(2, len(res_dict))
         self.assertEqual('1', res_dict['share_type']['id'])
         self.assertEqual('share_type_1', res_dict['share_type']['name'])
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'], types.RESOURCE_NAME, 'show')
 
     def test_share_types_show_not_found(self):
         self.mock_object(share_types, 'get_share_type',
@@ -122,6 +137,8 @@ class ShareTypesApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
                           req, '777')
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'], types.RESOURCE_NAME, 'show')
 
     def test_share_types_default(self):
         self.mock_object(share_types, 'get_default_share_type',
@@ -133,6 +150,8 @@ class ShareTypesApiTest(test.TestCase):
         self.assertEqual(2, len(res_dict))
         self.assertEqual('1', res_dict['share_type']['id'])
         self.assertEqual('share_type_1', res_dict['share_type']['name'])
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'], types.RESOURCE_NAME, 'default')
 
     def test_share_types_default_not_found(self):
         self.mock_object(share_types, 'get_default_share_type',
@@ -141,6 +160,8 @@ class ShareTypesApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/default')
 
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.default, req)
+        policy.check_policy.assert_called_once_with(
+            req.environ['manila.context'], types.RESOURCE_NAME, 'default')
 
     def test_view_builder_show(self):
         view_builder = views_types.ViewBuilder()

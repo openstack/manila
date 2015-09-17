@@ -22,7 +22,10 @@ from manila.api.openstack import wsgi
 from manila.api.views import types as views_types
 from manila import exception
 from manila.i18n import _
+from manila import policy
 from manila.share import share_types
+
+RESOURCE_NAME = 'share_type'
 
 
 class ShareTypesController(wsgi.Controller):
@@ -32,6 +35,9 @@ class ShareTypesController(wsgi.Controller):
 
     def index(self, req):
         """Returns the list of share types."""
+        context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'index')
+
         limited_types = self._get_share_types(req)
         req.cache_db_share_types(limited_types)
         return self._view_builder.index(req, limited_types)
@@ -39,6 +45,7 @@ class ShareTypesController(wsgi.Controller):
     def show(self, req, id):
         """Return a single share type item."""
         context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'show')
 
         try:
             share_type = share_types.get_share_type(context, id)
@@ -53,6 +60,7 @@ class ShareTypesController(wsgi.Controller):
     def default(self, req):
         """Return default volume type."""
         context = req.environ['manila.context']
+        policy.check_policy(context, RESOURCE_NAME, 'default')
 
         try:
             share_type = share_types.get_default_share_type(context)
