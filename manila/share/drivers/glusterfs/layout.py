@@ -65,7 +65,7 @@ class GlusterfsShareDriverBase(driver.ShareDriver):
 
         self.layout = importutils.import_object(
             '.'.join((self.LAYOUT_PREFIX, layout_name)),
-            self, configuration=self.configuration)
+            self, **kwargs)
         # we determine snapshot support in our own scope, as
         # 1) the calculation based on parent method
         #    redefinition does not work for us, as actual
@@ -78,17 +78,21 @@ class GlusterfsShareDriverBase(driver.ShareDriver):
                                                 '_snapshots_are_supported',
                                                 False)
 
-    def _setup_via_manager(self, gluster_mgr, gluster_mgr_parent=None):
+    def _setup_via_manager(self, share_mgr, share_mgr_parent=None):
         """Callback for layout's `create_share` and `create_share_from_snapshot`
 
-        :param gluster_mgr: GlusterManager instance
-               representing the GlusterFS resource that backs
-               the share created in `create_share` or
-               `create_share_from_snapshot`.
-        :param gluster_mgr_parent: GlusterManager instance
+        :param share_mgr: a {'share': <share>, 'manager': <gmgr>}
+               dict where <share> is the share created
+               in `create_share` or `create_share_from_snapshot`
+               and <gmgr> is a GlusterManager instance
                representing the GlusterFS resource
-               that backs the share the snapshot of which
-               was used in `create_share_from_snapshot`.
+               allocated for it.
+        :param gluster_mgr_parent: a {'share': <share>, 'manager': <gmgr>}
+               dict where <share> is the original share of the snapshot
+               used in `create_share_from_snapshot` and <gmgr> is a
+               GlusterManager instance representing the GlusterFS
+               resource allocated for it.
+        :returns: export location for share_mgr['share'].
         """
 
     def allow_access(self, context, share, access, share_server=None):

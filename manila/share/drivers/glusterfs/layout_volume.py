@@ -106,6 +106,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             # format check for srvaddr
             self._glustermanager(srvaddr, False)
         self.glusterfs_versions = {}
+        self.private_storage = kwargs.get('private_storage')
 
     def _compile_volume_pattern(self):
         """Compile a RegexObject from the config specified regex template.
@@ -191,7 +192,8 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
 
     def _share_manager(self, share):
         """Return GlusterManager object representing share's backend."""
-        return self._glustermanager(share['export_location'])
+        return self._glustermanager(self.private_storage.get(
+            share['id'], 'volume'))
 
     def _fetch_gluster_volumes(self):
         """Do a 'gluster volume list | grep <volume pattern>'.
@@ -325,7 +327,6 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         # Within a host's volumes, choose alphabetically first,
         # to make it predictable.
         vol = sorted(chosen_hostmap[chosen_host])[0]
-        self.driver._setup_via_manager(self._glustermanager(vol))
         self.gluster_used_vols.add(vol)
         return vol
 
@@ -389,20 +390,24 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         GlusterFS volume for use as a share.
         """
         try:
-            export_location = self._pop_gluster_vol(share['size'])
+            vol = self._pop_gluster_vol(share['size'])
         except exception.GlusterfsException:
             msg = (_LE("Error creating share %(share_id)s"),
                    {'share_id': share['id']})
             LOG.error(msg)
             raise
 
+        export = self.driver._setup_via_manager(
+            {'share': share, 'manager': self._glustermanager(vol)})
+        self.private_storage.update(share['id'], {'volume': vol})
+
         # TODO(deepakcs): Enable quota and set it to the share size.
 
         # For native protocol, the export_location should be of the form:
         # server:/volname
         LOG.info(_LI("export_location sent back from create_share: %s"),
-                 (export_location,))
-        return export_location
+                 export)
+        return export
 
     def delete_share(self, context, share, share_server=None):
         """Delete a share on the GlusterFS volume.
@@ -420,6 +425,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             LOG.error(msg)
             raise
 
+        self.private_storage.delete(share['id'])
         # TODO(deepakcs): Disable quota.
 
     @staticmethod
@@ -484,9 +490,12 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         comp_vol = old_gmgr.components.copy()
         comp_vol.update({'volume': volume})
         gmgr = self._glustermanager(comp_vol)
-        self.driver._setup_via_manager(gmgr, old_gmgr)
+        export = self.driver._setup_via_manager(
+            {'share': share, 'manager': gmgr},
+            {'share': snapshot['share_instance'], 'manager': old_gmgr})
         self.gluster_used_vols.add(gmgr.qualified)
-        return gmgr.qualified
+        self.private_storage.update(share['id'], {'volume': gmgr.qualified})
+        return export
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""

@@ -14,6 +14,7 @@
 #    under the License.
 
 import copy
+import socket
 
 import ddt
 import mock
@@ -85,13 +86,21 @@ class GlusterfsShareDriverTestCase(test.TestCase):
     def test_setup_via_manager(self, has_parent):
         gmgr = mock.Mock()
         gmgr.gluster_call = mock.Mock()
-        gmgr_parent = mock.Mock() if has_parent else None
+        share_mgr_parent = mock.Mock() if has_parent else None
+        nfs_helper = mock.Mock()
+        nfs_helper.get_export = mock.Mock(return_value='host:/vol')
+        self._driver.nfs_helper = mock.Mock(return_value=nfs_helper)
 
-        self._driver._setup_via_manager(
-            gmgr, gluster_manager_parent=gmgr_parent)
+        ret = self._driver._setup_via_manager(
+            {'manager': gmgr, 'share': self.share},
+            share_manager_parent=share_mgr_parent)
 
         gmgr.gluster_call.assert_called_once_with(
             'volume', 'set', gmgr.volume, 'nfs.export-volumes', 'off')
+        self._driver.nfs_helper.assert_called_once_with(
+            self._execute, self.fake_conf, gluster_manager=gmgr)
+        nfs_helper.get_export.assert_called_once_with(self.share)
+        self.assertEqual('host:/vol', ret)
 
     @ddt.data(exception.ProcessExecutionError, RuntimeError)
     def test_setup_via_manager_exception(self, _exception):
@@ -102,7 +111,8 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertRaises(
             {exception.ProcessExecutionError:
              exception.GlusterfsException}.get(
-                _exception, _exception), self._driver._setup_via_manager, gmgr)
+                _exception, _exception), self._driver._setup_via_manager,
+            {'manager': gmgr, 'share': self.share})
 
     def test_check_for_setup_error(self):
         self._driver.check_for_setup_error()
@@ -159,6 +169,11 @@ class GlusterNFSHelperTestCase(test.TestCase):
         self.fake_conf = config.Configuration(None)
         self._helper = glusterfs.GlusterNFSHelper(
             self._execute, self.fake_conf, gluster_manager=gluster_manager)
+
+    def test_get_export(self):
+        ret = self._helper.get_export(mock.Mock())
+
+        self.assertEqual(fake_gluster_manager_attrs['export'], ret)
 
     def test_get_export_dir_dict(self):
         output_str = '/foo(10.0.0.1|10.0.0.2),/bar(10.0.0.1)'
@@ -359,6 +374,7 @@ class GaneshaNFSHelperTestCase(test.TestCase):
                          mock.Mock(return_value=self._root_execute))
         self.mock_object(glusterfs.ganesha.GaneshaNASHelper, '__init__',
                          mock.Mock())
+        socket.gethostname = mock.Mock(return_value='example.com')
         self._helper = glusterfs.GaneshaNFSHelper(
             self._execute, self.fake_conf,
             gluster_manager=self.gluster_manager)
@@ -367,9 +383,15 @@ class GaneshaNFSHelperTestCase(test.TestCase):
     def test_init_local_ganesha_server(self):
         glusterfs.ganesha_utils.RootExecutor.assert_called_once_with(
             self._execute)
+        socket.gethostname.assert_has_calls([mock.call()])
         glusterfs.ganesha.GaneshaNASHelper.__init__.assert_has_calls(
             [mock.call(self._root_execute, self.fake_conf,
-                       tag='GLUSTER-Ganesha-localhost')])
+                       tag='GLUSTER-Ganesha-example.com')])
+
+    def test_get_export(self):
+        ret = self._helper.get_export(self.share)
+
+        self.assertEqual('example.com:/fakename', ret)
 
     def test_init_remote_ganesha_server(self):
         ssh_execute = mock.Mock(return_value=('', ''))

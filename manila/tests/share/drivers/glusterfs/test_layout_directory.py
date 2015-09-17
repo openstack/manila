@@ -232,20 +232,32 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             self.assertRaises(exception.GlusterfsException,
                               self._layout._update_share_stats)
 
-    def test_create_share(self):
+    @ddt.data((), (None,))
+    def test_create_share(self, extra_args):
         exec_cmd1 = 'mkdir %s' % fake_local_share_path
         expected_exec = [exec_cmd1, ]
         expected_ret = 'testuser@127.0.0.1:/testvol/fakename'
         self.mock_object(
             self._layout, '_get_local_share_path',
             mock.Mock(return_value=fake_local_share_path))
+        gmgr = mock.Mock()
+        self.mock_object(
+            self._layout, '_glustermanager', mock.Mock(return_value=gmgr))
+        self.mock_object(
+            self._layout.driver, '_setup_via_manager',
+            mock.Mock(return_value=expected_ret))
 
-        ret = self._layout.create_share(self._context, self.share)
+        ret = self._layout.create_share(self._context, self.share, *extra_args)
 
         self._layout._get_local_share_path.called_once_with(self.share)
         self._layout.gluster_manager.gluster_call.assert_called_once_with(
             'volume', 'quota', 'testvol', 'limit-usage', '/fakename', '1GB')
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
+        self._layout._glustermanager.assert_called_once_with(
+            {'user': 'testuser', 'host': '127.0.0.1',
+             'volume': 'testvol', 'path': '/fakename'})
+        self._layout.driver._setup_via_manager.assert_called_once_with(
+            {'share': self.share, 'manager': gmgr})
         self.assertEqual(expected_ret, ret)
 
     def test_create_share_unable_to_create_share(self):
@@ -270,21 +282,6 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             fake_local_share_path, self.share['name'])
         layout_directory.LOG.error.assert_called_once_with(
             mock.ANY, mock.ANY)
-
-    def test_create_share_can_be_called_with_extra_arg_share_server(self):
-        self._layout._get_local_share_path = mock.Mock()
-        with mock.patch.object(os.path, 'join', return_value=None):
-
-            share_server = None
-            ret = self._layout.create_share(self._context, self.share,
-                                            share_server)
-
-            self.assertIsNone(ret)
-            self._layout._get_local_share_path.called_once_with(self.share)
-            self._layout._get_local_share_path.assert_called_once_with(
-                self.share)
-            os.path.join.assert_called_once_with(
-                self._layout.gluster_manager.qualified, self.share['name'])
 
     def test_cleanup_create_share_local_share_path_exists(self):
         expected_exec = ['rm -rf %s' % fake_local_share_path]

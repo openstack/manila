@@ -102,10 +102,13 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         gmgr = mock.Mock()
         gmgr.gluster_call = mock.Mock()
         gmgr.volume = 'fakevol'
+        gmgr.export = 'fakehost:/fakevol'
         gmgr.get_gluster_vol_option = mock.Mock(
             return_value='glusterfs-server-name,some-other-name')
+        share = mock.Mock()
 
-        self._driver._setup_via_manager(gmgr)
+        ret = self._driver._setup_via_manager({'manager': gmgr,
+                                               'share': share})
 
         gmgr.get_gluster_vol_option.assert_called_once_with('auth.ssl-allow')
         args = (
@@ -115,16 +118,22 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             ('volume', 'stop', 'fakevol', '--mode=script'),
             ('volume', 'start', 'fakevol'))
         gmgr.gluster_call.assert_has_calls([mock.call(*a) for a in args])
+        self.assertEqual(ret, gmgr.export)
 
     def test_setup_via_manager_with_parent(self):
         gmgr = mock.Mock()
         gmgr.gluster_call = mock.Mock()
         gmgr.volume = 'fakevol'
+        gmgr.export = 'fakehost:/fakevol'
         gmgr_parent = mock.Mock()
         gmgr_parent.get_gluster_vol_option = mock.Mock(
             return_value='glusterfs-server-name,some-other-name')
+        share = mock.Mock()
+        share_parent = mock.Mock()
 
-        self._driver._setup_via_manager(gmgr, gmgr_parent)
+        ret = self._driver._setup_via_manager(
+            {'manager': gmgr, 'share': share},
+            {'manager': gmgr_parent, 'share': share_parent})
 
         gmgr_parent.get_gluster_vol_option.assert_called_once_with(
             'auth.ssl-allow')
@@ -136,27 +145,33 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             ('volume', 'set', 'fakevol', 'server.ssl', 'on'),
             ('volume', 'start', 'fakevol'))
         gmgr.gluster_call.assert_has_calls([mock.call(*a) for a in args])
+        self.assertEqual(ret, gmgr.export)
 
     @ddt.data(True, False)
     def test_setup_via_manager_no_option_data(self, has_parent):
+        share = mock.Mock()
         gmgr = mock.Mock()
         if has_parent:
+            share_parent = mock.Mock()
             gmgr_parent = mock.Mock()
+            share_mgr_parent = {'share': share_parent, 'manager': gmgr_parent}
             gmgr_queried = gmgr_parent
         else:
-            gmgr_parent = None
+            share_mgr_parent = None
             gmgr_queried = gmgr
         gmgr_queried.get_gluster_vol_option = mock.Mock(return_value='')
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver._setup_via_manager,
-                          gmgr, gluster_mgr_parent=gmgr_parent)
+                          {'share': share, 'manager': gmgr},
+                          share_mgr_parent=share_mgr_parent)
 
         gmgr_queried.get_gluster_vol_option.assert_called_once_with(
             'auth.ssl-allow')
 
     @ddt.data(exception.ProcessExecutionError, RuntimeError)
     def test_setup_via_manager_exception(self, _exception):
+        share = mock.Mock()
         gmgr = mock.Mock()
         gmgr.gluster_call = mock.Mock(side_effect=_exception)
         gmgr.get_gluster_vol_option = mock.Mock()
@@ -164,7 +179,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         self.assertRaises(
             {exception.ProcessExecutionError:
              exception.GlusterfsException}.get(
-                _exception, _exception), self._driver._setup_via_manager, gmgr)
+                _exception, _exception), self._driver._setup_via_manager,
+            {'share': share, 'manager': gmgr})
 
     def test_snapshots_are_supported(self):
         self.assertTrue(self._driver.snapshots_are_supported)
