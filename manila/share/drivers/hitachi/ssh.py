@@ -666,12 +666,16 @@ class HNASSSHBackend(object):
                     'No quotas matching' not in items[i]):
                 if 'Limit' in items[i] and 'Hard' in items[i]:
                     quota = float(items[i].split(' ')[12])
-
-                    # If the quota is 1 or more TB, converts to GB
-                    if items[i].split(' ')[13] == 'TB':
-                        return quota * units.Ki
-
-                    return quota
+                    size_unit = items[i].split(' ')[13]
+                    if size_unit in ('TB', 'GB'):
+                        # If the quota is 1 or more TB, converts to GB
+                        if size_unit == 'TB':
+                            return quota * units.Ki
+                        return quota
+                    else:
+                        msg = (_("Share %s does not support quota values "
+                                 "below 1GB.") % share_id)
+                        raise exception.HNASBackendException(msg=msg)
             else:
                 # Returns None if the quota is unset
                 return None
