@@ -47,7 +47,11 @@ class HuaweiNasDriver(driver.ShareDriver):
 
         1.0 - Initial version.
         1.1 - Add shrink share.
-        1.2 - Add manage share.
+              Add extend share.
+              Add manage share.
+              Add share level(ro).
+              Add smartx capabilities.
+              Support multi pools in one backend.
     """
 
     def __init__(self, *args, **kwargs):
