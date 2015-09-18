@@ -164,6 +164,9 @@ class ShareApiTest(test.TestCase):
         expected = self._get_expected_share_detailed_response(self.share)
         expected['share']['consistency_group_id'] = None
         expected['share']['source_cgsnapshot_member_id'] = None
+        if (api_version.APIVersionRequest(microversion) >=
+                api_version.APIVersionRequest('2.5')):
+            expected['share']['task_state'] = None
         self.assertEqual(expected, res_dict)
 
     def test_share_create_with_valid_default_share_type(self):
@@ -457,6 +460,7 @@ class ShareApiTest(test.TestCase):
         expected['share']['consistency_group_id'] = None
         expected['share']['source_cgsnapshot_member_id'] = None
         expected['share']['share_type_name'] = None
+        expected['share']['task_state'] = None
         self.assertEqual(expected, res_dict)
 
     def test_share_show_admin(self):
@@ -783,7 +787,7 @@ class ShareApiTest(test.TestCase):
     def test_share_list_detail_with_task_state(self):
         env = {'QUERY_STRING': 'name=Share+Test+Name'}
         req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
-                                      version="2.5", experimental=True)
+                                      version="2.5")
         expected = self._list_detail_common_expected()
         expected['shares'][0]['consistency_group_id'] = None
         expected['shares'][0]['source_cgsnapshot_member_id'] = None

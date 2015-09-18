@@ -100,7 +100,7 @@ class ViewBuilder(common.ViewBuilder):
         share_dict['source_cgsnapshot_member_id'] = share.get(
             'source_cgsnapshot_member_id')
 
-    @common.ViewBuilder.versioned_method("2.5", None, True)
+    @common.ViewBuilder.versioned_method("2.5")
     def add_task_state_field(self, share_dict, share):
         share_dict['task_state'] = share.get('task_state')
 
