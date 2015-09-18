@@ -47,6 +47,8 @@ fake_gluster_manager_attrs = {
 fake_share_name = 'fakename'
 NFS_EXPORT_DIR = 'nfs.export-dir'
 NFS_EXPORT_VOL = 'nfs.export-volumes'
+NFS_RPC_AUTH_ALLOW = 'nfs.rpc-auth-allow'
+NFS_RPC_AUTH_REJECT = 'nfs.rpc-auth-reject'
 
 
 @ddt.ddt
@@ -68,7 +70,6 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self._driver = glusterfs.GlusterfsShareDriver(
             execute=self._execute,
             configuration=self.fake_conf)
-        self._helper_nfs = mock.Mock()
         self.share = fake_share.fake_share(share_proto='NFS')
 
     def test_do_setup(self):
@@ -101,6 +102,31 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             self._execute, self.fake_conf, gluster_manager=gmgr)
         nfs_helper.get_export.assert_called_once_with(self.share)
         self.assertEqual('host:/vol', ret)
+
+    @ddt.data({'helpercls': None, 'path': '/fakepath'},
+              {'helpercls': None, 'path': None},
+              {'helpercls': glusterfs.GlusterNFSHelper, 'path': '/fakepath'},
+              {'helpercls': glusterfs.GlusterNFSHelper, 'path': None})
+    @ddt.unpack
+    def test_setup_via_manager_path(self, helpercls, path):
+        gmgr = mock.Mock()
+        gmgr.gluster_call = mock.Mock()
+        gmgr.path = path
+        if not helpercls:
+            helper = mock.Mock()
+            helper.get_export = mock.Mock(return_value='host:/vol')
+            helpercls = mock.Mock(return_value=helper)
+        self._driver.nfs_helper = helpercls
+
+        self._driver._setup_via_manager(
+            {'manager': gmgr, 'share': self.share})
+
+        if helpercls == glusterfs.GlusterNFSHelper and not path:
+            args = (NFS_RPC_AUTH_REJECT, '*')
+        else:
+            args = (NFS_EXPORT_VOL, 'off')
+        gmgr.gluster_call.assert_called_once_with(
+            'volume', 'set', gmgr.volume, *args)
 
     @ddt.data(exception.ProcessExecutionError, RuntimeError)
     def test_setup_via_manager_exception(self, _exception):
@@ -136,6 +162,17 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         ret = self._driver._get_helper()
         self.assertIsInstance(ret, self._driver.nfs_helper)
 
+    @ddt.data({'path': '/fakepath', 'helper': glusterfs.GlusterNFSHelper},
+              {'path': None, 'helper': glusterfs.GlusterNFSVolHelper})
+    @ddt.unpack
+    def test_get_helper_vol(self, path, helper):
+        self._driver.nfs_helper = glusterfs.GlusterNFSHelper
+
+        gmgr = mock.Mock(path=path)
+        ret = self._driver._get_helper(gmgr)
+
+        self.assertIsInstance(ret, helper)
+
     @ddt.data({'op': 'allow', 'kwargs': {}},
               {'op': 'allow', 'kwargs': {'share_server': None}},
               {'op': 'deny', 'kwargs': {}},
@@ -157,7 +194,6 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertIsNone(ret)
 
 
-@ddt.ddt
 class GlusterNFSHelperTestCase(test.TestCase):
     """Tests GlusterNFSHelper."""
 
@@ -305,16 +341,13 @@ class GlusterNFSHelperTestCase(test.TestCase):
             'volume', 'set', self._helper.gluster_manager.volume,
             NFS_EXPORT_DIR, export_str)
 
-    @ddt.data({'share_key': 'fakename', 'gmgr_path': '/fakename'},
-              {'share_key': '', 'gmgr_path': None})
-    @ddt.unpack
-    def test_allow_access_with_share_having_access(self, share_key, gmgr_path):
+    def test_allow_access_with_share_having_access(self):
         access = fake_share.fake_access()
         share = fake_share.fake_share()
-        export_dir_dict = {share_key: ['10.0.0.1']}
+        export_dir_dict = {'fakename': ['10.0.0.1']}
         self.mock_object(self._helper, '_get_export_dir_dict',
                          mock.Mock(return_value=export_dir_dict))
-        self._helper.gluster_manager.path = gmgr_path
+        self._helper.gluster_manager.path = '/fakename'
 
         self._helper.allow_access(None, share, access)
 
@@ -334,28 +367,208 @@ class GlusterNFSHelperTestCase(test.TestCase):
         self._helper._get_export_dir_dict.assert_called_once_with()
         self.assertFalse(self._helper.gluster_manager.gluster_call.called)
 
-    @ddt.data({'share_key': 'fakename', 'gmgr_path': '/fakename'},
-              {'share_key': '', 'gmgr_path': None})
-    @ddt.unpack
-    def test_deny_access_with_share_having_access(self, share_key, gmgr_path):
+    def test_deny_access_with_share_having_access(self):
         access = fake_share.fake_access()
         share = fake_share.fake_share()
         export_dir_dict = {
             'example.com': ['10.0.0.1'],
-            share_key: ['10.0.0.1'],
+            'fakename': ['10.0.0.1'],
         }
         export_str = '/example.com(10.0.0.1)'
         args = ('volume', 'set', self._helper.gluster_manager.volume,
                 NFS_EXPORT_DIR, export_str)
         self.mock_object(self._helper, '_get_export_dir_dict',
                          mock.Mock(return_value=export_dir_dict))
-        self._helper.gluster_manager.path = gmgr_path
+        self._helper.gluster_manager.path = '/fakename'
 
         self._helper.deny_access(None, share, access)
 
         self._helper._get_export_dir_dict.assert_called_once_with()
         self._helper.gluster_manager.gluster_call.assert_called_once_with(
             *args)
+
+
+@ddt.ddt
+class GlusterNFSVolHelperTestCase(test.TestCase):
+    """Tests GlusterNFSVolHelper."""
+
+    def setUp(self):
+        super(GlusterNFSVolHelperTestCase, self).setUp()
+        fake_utils.stub_out_utils_execute(self)
+        gluster_manager = mock.Mock(**fake_gluster_manager_attrs)
+        self._execute = mock.Mock(return_value=('', ''))
+        self.fake_conf = config.Configuration(None)
+        self._helper = glusterfs.GlusterNFSVolHelper(
+            self._execute, self.fake_conf, gluster_manager=gluster_manager)
+
+    def test_get_vol_exports(self):
+        output_str = '10.0.0.1,10.0.0.2'
+        self.mock_object(self._helper.gluster_manager,
+                         'get_gluster_vol_option',
+                         mock.Mock(return_value=output_str))
+
+        ret = self._helper._get_vol_exports()
+
+        self.assertEqual(['10.0.0.1', '10.0.0.2'], ret)
+        (self._helper.gluster_manager.get_gluster_vol_option.
+         assert_called_once_with(NFS_RPC_AUTH_ALLOW))
+
+    def test_manage_access_bad_access_type(self):
+        cbk = None
+        access = {'access_type': 'bad', 'access_to': None}
+        self.assertRaises(exception.InvalidShareAccess,
+                          self._helper._manage_access,
+                          access['access_type'], access['access_to'], cbk)
+
+    def test_manage_access_noop(self):
+        cbk = mock.Mock(return_value=True)
+        access = fake_share.fake_access()
+        export_list = mock.Mock()
+        self.mock_object(self._helper, '_get_vol_exports',
+                         mock.Mock(return_value=export_list))
+
+        ret = self._helper._manage_access(access['access_type'],
+                                          access['access_to'], cbk)
+
+        self._helper._get_vol_exports.assert_called_once_with()
+        cbk.assert_called_once_with(export_list, access['access_to'])
+        self.assertIsNone(ret)
+
+    def test_manage_access_adding_entry(self):
+
+        def cbk(li, v):
+            li.append(v)
+
+        access = fake_share.fake_access()
+        export_list = ['10.0.0.2']
+        self.mock_object(self._helper, '_get_vol_exports',
+                         mock.Mock(return_value=export_list))
+
+        ret = self._helper._manage_access(access['access_type'],
+                                          access['access_to'], cbk)
+
+        self.assertIsNone(ret)
+        self._helper._get_vol_exports.assert_called_once_with()
+        export_str = '10.0.0.2,10.0.0.1'
+        argseq = (('volume', 'set', self._helper.gluster_manager.volume,
+                   NFS_RPC_AUTH_ALLOW, export_str),
+                  ('volume', 'reset', self._helper.gluster_manager.volume,
+                   NFS_RPC_AUTH_REJECT))
+        self.assertEqual(
+            [mock.call(*a) for a in argseq],
+            self._helper.gluster_manager.gluster_call.call_args_list)
+
+    def test_manage_access_adding_entry_cmd_fail(self):
+
+        def cbk(li, v):
+            li.append(v)
+
+        def raise_exception(*args, **kwargs):
+            raise exception.ProcessExecutionError()
+
+        access = fake_share.fake_access()
+        export_list = ['10.0.0.2']
+        self.mock_object(self._helper, '_get_vol_exports',
+                         mock.Mock(return_value=export_list))
+        self.mock_object(self._helper.gluster_manager, 'gluster_call',
+                         mock.Mock(side_effect=raise_exception))
+
+        self.assertRaises(exception.ProcessExecutionError,
+                          self._helper._manage_access,
+                          access['access_type'],
+                          access['access_to'], cbk)
+
+        self._helper._get_vol_exports.assert_called_once_with()
+        export_str = '10.0.0.2,10.0.0.1'
+        args = ('volume', 'set', self._helper.gluster_manager.volume,
+                NFS_RPC_AUTH_ALLOW, export_str)
+        self._helper.gluster_manager.gluster_call.assert_called_once_with(
+            *args)
+
+    def test_manage_access_removing_last_entry(self):
+
+        def cbk(li, v):
+            li.remove(v)
+
+        access = fake_share.fake_access()
+        export_list = ['10.0.0.1']
+        self.mock_object(self._helper, '_get_vol_exports',
+                         mock.Mock(return_value=export_list))
+
+        ret = self._helper._manage_access(access['access_type'],
+                                          access['access_to'], cbk)
+
+        self.assertIsNone(ret)
+        self._helper._get_vol_exports.assert_called_once_with()
+        argseq = (('volume', 'reset', self._helper.gluster_manager.volume,
+                   NFS_RPC_AUTH_ALLOW),
+                  ('volume', 'set', self._helper.gluster_manager.volume,
+                   NFS_RPC_AUTH_REJECT, '*'))
+        self.assertEqual(
+            [mock.call(*a) for a in argseq],
+            self._helper.gluster_manager.gluster_call.call_args_list)
+
+    def test_allow_access_with_share_having_noaccess(self):
+        access = fake_share.fake_access()
+        share = fake_share.fake_share()
+        export_list = ['10.0.0.2']
+        self.mock_object(self._helper, '_get_vol_exports',
+                         mock.Mock(return_value=export_list))
+
+        self._helper.allow_access(None, share, access)
+
+        self._helper._get_vol_exports.assert_called_once_with()
+        export_str = '10.0.0.2,10.0.0.1'
+        argseq = (('volume', 'set', self._helper.gluster_manager.volume,
+                   NFS_RPC_AUTH_ALLOW, export_str),
+                  ('volume', 'reset', self._helper.gluster_manager.volume,
+                   NFS_RPC_AUTH_REJECT))
+        self.assertEqual(
+            [mock.call(*a) for a in argseq],
+            self._helper.gluster_manager.gluster_call.call_args_list)
+
+    def test_allow_access_with_share_having_access(self):
+        access = fake_share.fake_access()
+        share = fake_share.fake_share()
+        export_list = ['10.0.0.1']
+        self.mock_object(self._helper, '_get_vol_exports',
+                         mock.Mock(return_value=export_list))
+
+        self._helper.allow_access(None, share, access)
+
+        self._helper._get_vol_exports.assert_called_once_with()
+        self.assertFalse(self._helper.gluster_manager.gluster_call.called)
+
+    def test_deny_access_with_share_having_noaccess(self):
+        access = fake_share.fake_access()
+        share = fake_share.fake_share()
+        export_list = []
+        self.mock_object(self._helper, '_get_vol_exports',
+                         mock.Mock(return_value=export_list))
+
+        self._helper.deny_access(None, share, access)
+
+        self._helper._get_vol_exports.assert_called_once_with()
+        self.assertFalse(self._helper.gluster_manager.gluster_call.called)
+
+    def test_deny_access_with_share_having_access(self):
+        access = fake_share.fake_access()
+        share = fake_share.fake_share()
+        export_list = ['10.0.0.1', '10.0.0.2']
+        self.mock_object(self._helper, '_get_vol_exports',
+                         mock.Mock(return_value=export_list))
+
+        self._helper.deny_access(None, share, access)
+
+        self._helper._get_vol_exports.assert_called_once_with()
+        export_str = '10.0.0.2'
+        argseq = (('volume', 'set', self._helper.gluster_manager.volume,
+                   NFS_RPC_AUTH_ALLOW, export_str),
+                  ('volume', 'reset', self._helper.gluster_manager.volume,
+                   NFS_RPC_AUTH_REJECT))
+        self.assertEqual(
+            [mock.call(*a) for a in argseq],
+            self._helper.gluster_manager.gluster_call.call_args_list)
 
 
 class GaneshaNFSHelperTestCase(test.TestCase):
