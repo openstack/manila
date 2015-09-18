@@ -96,9 +96,9 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
 
         CONF.set_default('glusterfs_servers',
                          [self.glusterfs_server1, self.glusterfs_server2])
-        CONF.set_default('glusterfs_native_server_password',
+        CONF.set_default('glusterfs_server_password',
                          'fake_password')
-        CONF.set_default('glusterfs_native_path_to_private_key',
+        CONF.set_default('glusterfs_path_to_private_key',
                          '/fakepath/to/privatekey')
         CONF.set_default('glusterfs_volume_pattern',
                          'manila-share-\d+-#{size}G$')
@@ -141,8 +141,8 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
 
         common.GlusterManager.assert_called_once_with(
             self.glusterfs_target1, self._execute,
-            self._layout.configuration.glusterfs_native_path_to_private_key,
-            self._layout.configuration.glusterfs_native_server_password,
+            self._layout.configuration.glusterfs_path_to_private_key,
+            self._layout.configuration.glusterfs_server_password,
             requires=requires)
         self.assertEqual(fake_obj, ret)
 

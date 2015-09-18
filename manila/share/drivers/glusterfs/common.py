@@ -19,6 +19,7 @@
 import re
 import xml.etree.cElementTree as etree
 
+from oslo_config import cfg
 from oslo_log import log
 import six
 
@@ -29,6 +30,26 @@ from manila.i18n import _LW
 from manila.share.drivers.ganesha import utils as ganesha_utils
 
 LOG = log.getLogger(__name__)
+
+
+glusterfs_common_opts = [
+    cfg.StrOpt('glusterfs_server_password',
+               default=None,
+               secret=True,
+               deprecated_name='glusterfs_native_server_password',
+               help='Remote GlusterFS server node\'s login password. '
+                    'This is not required if '
+                    '\'glusterfs_path_to_private_key\' is '
+                    'configured.'),
+    cfg.StrOpt('glusterfs_path_to_private_key',
+               default=None,
+               deprecated_name='glusterfs_native_path_to_private_key',
+               help='Path of Manila host\'s private SSH key file.'),
+]
+
+
+CONF = cfg.CONF
+CONF.register_opts(glusterfs_common_opts)
 
 
 class GlusterManager(object):

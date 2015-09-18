@@ -47,16 +47,6 @@ glusterfs_volume_mapped_opts = [
                      'shares. Each GlusterFS server should be of the form '
                      '[remoteuser@]<volserver>, and they are assumed to '
                      'belong to distinct Gluster clusters.'),
-    cfg.StrOpt('glusterfs_native_server_password',
-               default=None,
-               secret=True,
-               help='Remote GlusterFS server node\'s login password. '
-                    'This is not required if '
-                    '\'glusterfs_native_path_to_private_key\' is '
-                    'configured.'),
-    cfg.StrOpt('glusterfs_native_path_to_private_key',
-               default=None,
-               help='Path of Manila host\'s private SSH key file.'),
     cfg.StrOpt('glusterfs_volume_pattern',
                default=None,
                help='Regular expression template used to filter '
@@ -97,6 +87,8 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         super(GlusterfsVolumeMappedLayout, self).__init__(
             driver, *args, **kwargs)
         self.gluster_used_vols = set()
+        self.configuration.append_config_values(
+            common.glusterfs_common_opts)
         self.configuration.append_config_values(
             glusterfs_volume_mapped_opts)
         self.gluster_nosnap_vols_dict = {}
@@ -186,8 +178,8 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
 
         return common.GlusterManager(
             gluster_address, self.driver._execute,
-            self.configuration.glusterfs_native_path_to_private_key,
-            self.configuration.glusterfs_native_server_password,
+            self.configuration.glusterfs_path_to_private_key,
+            self.configuration.glusterfs_server_password,
             requires={'volume': req_volume})
 
     def _share_manager(self, share):

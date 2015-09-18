@@ -54,6 +54,7 @@ import manila.share.drivers.emc.driver
 import manila.share.drivers.emc.plugins.isilon.isilon
 import manila.share.drivers.generic
 import manila.share.drivers.glusterfs
+import manila.share.drivers.glusterfs.common
 import manila.share.drivers.glusterfs.layout
 import manila.share.drivers.glusterfs.layout_directory
 import manila.share.drivers.glusterfs.layout_volume
@@ -112,6 +113,7 @@ _global_opt_lists = [
     manila.share.drivers_private_data.private_data_opts,
     manila.share.drivers.emc.driver.EMC_NAS_OPTS,
     manila.share.drivers.generic.share_opts,
+    manila.share.drivers.glusterfs.common.glusterfs_common_opts,
     manila.share.drivers.glusterfs.GlusterfsManilaShare_opts,
     manila.share.drivers.glusterfs.layout.glusterfs_share_layout_opts,
     manila.share.drivers.glusterfs.layout_directory.
