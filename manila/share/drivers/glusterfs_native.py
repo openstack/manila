@@ -72,8 +72,11 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
         self.backend_name = self.configuration.safe_get(
             'share_backend_name') or 'GlusterFS-Native'
 
-    def _setup_via_manager(self, gluster_mgr, gluster_mgr_parent=None):
+    def _setup_via_manager(self, share_mgr, share_mgr_parent=None):
         # Enable gluster volumes for SSL access only.
+
+        gluster_mgr = share_mgr['manager']
+        gluster_mgr_parent = (share_mgr_parent or {}).get('manager', None)
 
         ssl_allow_opt = (gluster_mgr_parent if gluster_mgr_parent else
                          gluster_mgr).get_gluster_vol_option(
@@ -135,6 +138,8 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
                         'option': option, 'value': value, 'error': exc.stderr})
                 LOG.error(msg)
                 raise exception.GlusterfsException(msg)
+
+        return gluster_mgr.export
 
     @utils.synchronized("glusterfs_native_access", external=False)
     def _allow_access_via_manager(self, gluster_mgr, context, share, access,

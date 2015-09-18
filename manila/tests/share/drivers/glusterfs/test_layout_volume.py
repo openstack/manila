@@ -114,11 +114,14 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
                          mock.Mock(return_value='/tmp/tmpKGHKJ'))
         self.mock_object(common.GlusterManager, 'make_gluster_call')
 
+        self.fake_private_storage = mock.Mock()
+
         with mock.patch.object(layout_volume.GlusterfsVolumeMappedLayout,
                                '_glustermanager',
                                side_effect=[self.gmgr1, self.gmgr2]):
             self._layout = layout_volume.GlusterfsVolumeMappedLayout(
-                self.fake_driver, configuration=self.fake_conf)
+                self.fake_driver, configuration=self.fake_conf,
+                private_storage=self.fake_private_storage)
         self._layout.glusterfs_versions = {self.glusterfs_server1: ('3', '6'),
                                            self.glusterfs_server2: ('3', '7')}
         self.addCleanup(fake_utils.fake_execute_set_repliers, [])
@@ -275,12 +278,15 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
     def test_share_manager(self):
         self.mock_object(self._layout, '_glustermanager',
                          mock.Mock(return_value=self.gmgr1))
+        self.mock_object(self._layout.private_storage,
+                         'get', mock.Mock(return_value='host1:/gv1'))
 
         ret = self._layout._share_manager(self.share1)
 
+        self._layout.private_storage.get.assert_called_once_with(
+            self.share1['id'], 'volume')
+        self._layout._glustermanager.assert_called_once_with('host1:/gv1')
         self.assertEqual(self.gmgr1, ret)
-        self._layout._glustermanager.assert_called_once_with(
-            self.share1['export_location'])
 
     def test_ensure_share(self):
         share = self.share1
@@ -329,11 +335,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self.assertEqual(expected, result)
         self.assertIn(result, used_vols)
         self._layout._fetch_gluster_volumes.assert_called_once_with()
-        self.assertEqual(
-            [mock.call(result), mock.call(result)],
-            self._layout._glustermanager.call_args_list
-        )
-        self.fake_driver._setup_via_manager.assert_called_once_with(gmgr1)
+        self._layout._glustermanager.assert_called_once_with(result)
 
     @ddt.data({"voldict": {"share2G": {"size": 2}},
                "used_vols": set(), "size": 3},
@@ -471,12 +473,20 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
     def test_create_share(self):
         self._layout._pop_gluster_vol = mock.Mock(
             return_value=self.glusterfs_target1)
+        self.mock_object(self._layout, '_glustermanager',
+                         mock.Mock(return_value=self.gmgr1))
+        self.mock_object(self.fake_driver, '_setup_via_manager',
+                         mock.Mock(return_value='host1:/gv1'))
 
         share = new_share()
         exp_locn = self._layout.create_share(self._context, share)
 
-        self.assertEqual(exp_locn, self.glusterfs_target1)
         self._layout._pop_gluster_vol.assert_called_once_with(share['size'])
+        self.fake_driver._setup_via_manager.assert_called_once_with(
+            {'manager': self.gmgr1, 'share': share})
+        self._layout.private_storage.update.assert_called_once_with(
+            share['id'], {'volume': self.glusterfs_target1})
+        self.assertEqual('host1:/gv1', exp_locn)
 
     def test_create_share_error(self):
         self._layout._pop_gluster_vol = mock.Mock(
@@ -503,6 +513,8 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self._layout._wipe_gluster_vol.assert_called_once_with(gmgr1)
         self._layout._push_gluster_vol.assert_called_once_with(
             self.glusterfs_target1)
+        self._layout.private_storage.delete.assert_called_once_with(
+            self.share1['id'])
 
     def test_delete_share_error(self):
         self._layout._wipe_gluster_vol = mock.Mock()
@@ -612,10 +624,14 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
     @ddt.unpack
     def test_create_snapshot_no_snap_cached(self, vers_minor, exctype):
         self._layout.gluster_nosnap_vols_dict = {
-            self.share1['export_location']: 'fake error'}
+            self.glusterfs_target1: 'fake error'}
         self._layout.glusterfs_versions = {
             self.glusterfs_server1: ('3', vers_minor)}
         self._layout.gluster_used_vols = set([self.glusterfs_target1])
+        gmgr = common.GlusterManager
+        gmgr1 = gmgr(self.glusterfs_target1, self._execute, None, None)
+        self.mock_object(self._layout, '_share_manager',
+                         mock.Mock(return_value=gmgr1))
 
         snapshot = {
             'id': 'fake_snap_id',
@@ -690,10 +706,10 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
             'share_instance': new_share(export_location=glusterfs_target)
         }
         volume = ''.join(['manila-', share['id']])
-        new_export_location = ':/'.join([glusterfs_server, volume])
+        new_vol_addr = ':/'.join([glusterfs_server, volume])
         gmgr = common.GlusterManager
         old_gmgr = gmgr(glusterfs_target, self._execute, None, None)
-        new_gmgr = gmgr(new_export_location, self._execute, None, None)
+        new_gmgr = gmgr(new_vol_addr, self._execute, None, None)
         self._layout.gluster_used_vols = set([glusterfs_target])
         self._layout.glusterfs_versions = {glusterfs_server: ('3', '7')}
         self.mock_object(old_gmgr, 'gluster_call',
@@ -710,6 +726,8 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
                          mock.Mock(return_value=old_gmgr))
         self.mock_object(self._layout, '_glustermanager',
                          mock.Mock(return_value=new_gmgr))
+        self.mock_object(self.fake_driver, '_setup_via_manager',
+                         mock.Mock(return_value='host1:/gv1'))
 
         ret = self._layout.create_share_from_snapshot(
             self._context, share, snapshot, None)
@@ -723,23 +741,26 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self._layout._share_manager.assert_called_once_with(
             snapshot['share_instance'])
         self._layout._glustermanager.assert_called_once_with(
-            gmgr.parse(new_export_location))
+            gmgr.parse(new_vol_addr))
         self._layout.driver._setup_via_manager.assert_called_once_with(
-            new_gmgr, old_gmgr)
+            {'manager': new_gmgr, 'share': share},
+            {'manager': old_gmgr, 'share': snapshot['share_instance']})
+        self._layout.private_storage.update.assert_called_once_with(
+            share['id'], {'volume': new_vol_addr})
         self.assertIn(
-            new_export_location,
+            new_vol_addr,
             self._layout.gluster_used_vols)
-        self.assertEqual(new_export_location, ret)
+        self.assertEqual('host1:/gv1', ret)
 
     def test_create_share_from_snapshot_error_old_gmr_gluster_calls(self):
         glusterfs_target = 'root@host1:/gv1'
         glusterfs_server = 'root@host1'
         share = new_share()
         volume = ''.join(['manila-', share['id']])
-        new_export_location = ':/'.join([glusterfs_server, volume])
+        new_vol_addr = ':/'.join([glusterfs_server, volume])
         gmgr = common.GlusterManager
         old_gmgr = gmgr(glusterfs_target, self._execute, None, None)
-        new_gmgr = gmgr(new_export_location, self._execute, None, None)
+        new_gmgr = gmgr(new_vol_addr, self._execute, None, None)
         self._layout.gluster_used_vols_dict = {glusterfs_target: old_gmgr}
         self._layout.glusterfs_versions = {glusterfs_server: ('3', '7')}
         self.mock_object(
@@ -776,7 +797,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
             snapshot['share_instance'])
         self.assertFalse(new_gmgr.get_gluster_vol_option.called)
         self.assertFalse(new_gmgr.gluster_call.called)
-        self.assertNotIn(new_export_location,
+        self.assertNotIn(new_vol_addr,
                          self._layout.glusterfs_versions.keys())
 
     def test_create_share_from_snapshot_error_unsupported_gluster_version(
@@ -785,10 +806,10 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         glusterfs_server = 'root@host1'
         share = new_share()
         volume = ''.join(['manila-', share['id']])
-        new_export_location = ':/'.join([glusterfs_server, volume])
+        new_vol_addr = ':/'.join([glusterfs_server, volume])
         gmgr = common.GlusterManager
         old_gmgr = gmgr(glusterfs_target, self._execute, None, None)
-        new_gmgr = gmgr(new_export_location, self._execute, None, None)
+        new_gmgr = gmgr(new_vol_addr, self._execute, None, None)
         self._layout.gluster_used_vols_dict = {glusterfs_target: old_gmgr}
         self._layout.glusterfs_versions = {glusterfs_server: ('3', '6')}
         self.mock_object(
@@ -824,7 +845,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self.assertFalse(self._layout._glustermanager.called)
         self.assertFalse(new_gmgr.get_gluster_vol_option.called)
         self.assertFalse(new_gmgr.gluster_call.called)
-        self.assertNotIn(new_export_location,
+        self.assertNotIn(new_vol_addr,
                          self._layout.glusterfs_versions.keys())
 
     def test_delete_snapshot(self):

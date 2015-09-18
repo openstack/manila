@@ -161,8 +161,12 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
             LOG.error(_LE('Unable to create share %s'), share['name'])
             raise exception.GlusterfsException(exc)
 
-        export_location = os.path.join(self.gluster_manager.qualified,
-                                       share['name'])
+        comp_share = self.gluster_manager.components.copy()
+        comp_share['path'] = '/' + share['name']
+        export_location = self.driver._setup_via_manager(
+            {'share': share,
+             'manager': self._glustermanager(comp_share)})
+
         return export_location
 
     def _cleanup_create_share(self, share_path, share_name):

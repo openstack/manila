@@ -25,6 +25,7 @@ TODO(rraja): support SMB protocol.
 """
 
 import re
+import socket
 import sys
 
 from oslo_config import cfg
@@ -91,7 +92,8 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         self._get_helper()
         super(GlusterfsShareDriver, self).do_setup(context)
 
-    def _setup_via_manager(self, gluster_manager, gluster_manager_parent=None):
+    def _setup_via_manager(self, share_manager, share_manager_parent=None):
+        gluster_manager = share_manager['manager']
         # exporting the whole volume must be prohibited
         # to not to defeat access control
         args = ('volume', 'set', gluster_manager.volume, NFS_EXPORT_VOL,
@@ -103,6 +105,9 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
                           "exporting the entire volume: %s"), exc.stderr)
             raise exception.GlusterfsException("gluster %s failed" %
                                                ' '.join(args))
+        return self.nfs_helper(self._execute, self.configuration,
+                               gluster_manager=gluster_manager).get_export(
+            share_manager['share'])
 
     def check_for_setup_error(self):
         pass
@@ -145,6 +150,9 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
         self.gluster_manager = kwargs.pop('gluster_manager')
         super(GlusterNFSHelper, self).__init__(execute, config_object,
                                                **kwargs)
+
+    def get_export(self, share):
+        return self.gluster_manager.export
 
     def _get_export_dir_dict(self):
         """Get the export entries of shares in the GlusterFS volume."""
@@ -252,12 +260,15 @@ class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
                 privatekey=config_object.glusterfs_path_to_private_key)
         else:
             execute = ganesha_utils.RootExecutor(execute)
-        ganesha_host = config_object.glusterfs_ganesha_server_ip
-        if not ganesha_host:
-            ganesha_host = 'localhost'
-        kwargs['tag'] = '-'.join(('GLUSTER', 'Ganesha', ganesha_host))
+        self.ganesha_host = config_object.glusterfs_ganesha_server_ip
+        if not self.ganesha_host:
+            self.ganesha_host = socket.gethostname()
+        kwargs['tag'] = '-'.join(('GLUSTER', 'Ganesha', self.ganesha_host))
         super(GaneshaNFSHelper, self).__init__(execute, config_object,
                                                **kwargs)
+
+    def get_export(self, share):
+        return ':/'.join((self.ganesha_host, share['name']))
 
     def init_helper(self):
         @utils.synchronized(self.tag)
