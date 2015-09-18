@@ -50,9 +50,9 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
 
         # Build search opts from data and get pools again with filter
         search_opts = {
-            'host': pool.get('host'),
-            'backend': pool.get('backend'),
-            'pool': pool.get('pool'),
+            'host': self._wrap_regex_for_exact_match(pool.get('host')),
+            'backend': self._wrap_regex_for_exact_match(pool.get('backend')),
+            'pool': self._wrap_regex_for_exact_match(pool.get('pool')),
         }
         pool_response = self.shares_client.list_pools(
             search_opts=search_opts)
@@ -63,7 +63,7 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
 
         # Match the key values, not the timestamp.
         for k, v in search_opts.items():
-            self.assertEqual(v, filtered_pool_list[0][k])
+            self.assertEqual(v[1:-1], filtered_pool_list[0][k])
 
     @test.attr(type=["gate", "smoke", ])
     def test_pool_list_with_filters_negative(self):
@@ -108,9 +108,9 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
 
         # Build search opts from data and get pools again with filter
         search_opts = {
-            'host': pool.get('host'),
-            'backend': pool.get('backend'),
-            'pool': pool.get('pool'),
+            'host': self._wrap_regex_for_exact_match(pool.get('host')),
+            'backend': self._wrap_regex_for_exact_match(pool.get('backend')),
+            'pool': self._wrap_regex_for_exact_match(pool.get('pool')),
         }
         pool_response = self.shares_client.list_pools(
             detail=True, search_opts=search_opts)
@@ -121,7 +121,7 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
 
         # Match the key values, not the timestamp.
         for k, v in search_opts.items():
-            self.assertEqual(v, filtered_pool_list[0][k])
+            self.assertEqual(v[1:-1], filtered_pool_list[0][k])
 
     @test.attr(type=["gate", "smoke", ])
     def test_pool_list_detail_with_filters_negative(self):
@@ -138,3 +138,6 @@ class SchedulerStatsAdminTest(base.BaseSharesAdminTest):
 
         # Ensure we got no pools
         self.assertEmpty(pool_list)
+
+    def _wrap_regex_for_exact_match(self, regex):
+        return '^%s$' % regex
