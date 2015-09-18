@@ -380,16 +380,8 @@ class HNASSSHBackend(object):
 
         # Before copying everything to new vvol, we need to create it,
         # because we only can transform an empty directory into a vvol.
-        quota = self._get_share_quota(snapshot['share_id'])
-        LOG.debug("Share size: %(quota)s.", {'quota': six.text_type(quota)})
 
-        if quota is None:
-            msg = (_("The original share %s does not have a quota limit, "
-                     "please set it before creating a new "
-                     "share.") % share['id'])
-            raise exception.HNASBackendException(msg=msg)
-
-        self._vvol_create(share['id'], quota)
+        self._vvol_create(share['id'], share['size'])
 
         try:
             # Copy the directory to new vvol
