@@ -1091,8 +1091,7 @@ class HNASSSHTestCase(test.TestCase):
                                '/shares/vvol_test']
         # Tests when successfully creates a share from snapshot
         self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_fs, ""),
+                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
                                                 (HNAS_RESULT_empty, ""),
                                                 (HNAS_RESULT_empty, ""),
                                                 (HNAS_RESULT_job, ""),
@@ -1105,17 +1104,6 @@ class HNASSSHTestCase(test.TestCase):
         self.assertTrue(self.mock_log.debug.called)
         ssh.HNASSSHBackend._execute.assert_called_with(fake_export_command)
 
-    def test_create_share_from_snapshot_quota_unset(self):
-        # Tests when quota is unset
-        fake_quota_command = ['quota', 'list', 'file_system', 'vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(return_value=(HNAS_RESULT_quota_err, "")))
-
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.create_share_from_snapshot,
-                          self.vvol, self.snapshot)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_quota_command)
-
     def test_create_share_from_empty_snapshot(self):
         msg = 'Cannot find any clonable files in the source directory'
         fake_export_command = ['nfs-export', 'add', '-S', 'disable', '-c',
@@ -1124,8 +1112,7 @@ class HNASSSHTestCase(test.TestCase):
 
         # Tests when successfully creates a share from snapshot
         self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_fs, ""),
+                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
                                                 (HNAS_RESULT_empty, ""),
                                                 (HNAS_RESULT_empty, ""),
                                                 (putils.ProcessExecutionError
@@ -1147,8 +1134,7 @@ class HNASSSHTestCase(test.TestCase):
                                '/shares/vvol_test']
 
         self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_fs, ""),
+                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
                                                 (HNAS_RESULT_empty, ""),
                                                 (HNAS_RESULT_empty, ""),
                                                 (putils.ProcessExecutionError
