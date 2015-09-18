@@ -122,6 +122,22 @@ Generate Events : Disabled
 Global id       : 28a3c9f8-ae05-11d0-9025-836896aada5d
 Last modified   : 2015-06-23 22:37:17.363660800+00:00  """
 
+HNAS_RESULT_quota_mb = """Type            : Explicit
+Target          : ViVol: vvol_test
+Usage           : 0 B
+  Limit         : 500 MB (Hard)
+  Warning       : Unset
+  Critical      : Unset
+  Reset         : 5% (51.2 MB)
+File Count      : 1
+  Limit         : Unset
+  Warning       : Unset
+  Critical      : Unset
+  Reset         : 5% (0)
+Generate Events : Disabled
+Global id       : 28a3c9f8-ae05-11d0-9025-836896aada5d
+Last modified   : 2015-06-23 22:37:17.363660800+00:00  """
+
 HNAS_RESULT_quota_unset = """Type            : Explicit
 Target          : ViVol: vvol_test
 Usage           : 0 B
@@ -916,6 +932,21 @@ class HNASSSHTestCase(test.TestCase):
                                                 (HNAS_RESULT_quota, ""),
                                                 (HNAS_RESULT_export, ""),
                                                 (HNAS_RESULT_quota_err, "")]))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver.manage_existing,
+                          self.vvol, self.vvol['id'])
+        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
+
+    def test_manage_existing_share_invalid_size(self):
+        fake_list_command = ['quota', 'list', 'file_system', 'vvol_test']
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
+                                                (HNAS_RESULT_fs, ""),
+                                                (HNAS_RESULT_vvol, ""),
+                                                (HNAS_RESULT_quota, ""),
+                                                (HNAS_RESULT_export, ""),
+                                                (HNAS_RESULT_quota_mb, "")]))
 
         self.assertRaises(exception.HNASBackendException,
                           self._driver.manage_existing,
