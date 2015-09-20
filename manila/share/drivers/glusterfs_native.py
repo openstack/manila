@@ -98,20 +98,26 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
 
         gluster_actions = []
         if gluster_mgr_parent:
-            # The clone of the snapshot, the new volume, retains the authorized
-            # access list of the snapshotted volume/share, which includes
-            # identities of the backend servers and Manila clients. So only
-            # retain the identities of the GlusterFS servers volume in the
-            # authorized access list of the new volume. The identities of
-            # GlusterFS are easy to figure as they're pre-fixed by
-            # "glusterfs-server".
-            #
+            # The clone of the snapshot, a new volume, retains the authorized
+            # access list of the snapshotted volume/share, which includes TLS
+            # identities of the backend servers, Manila hosts and clients.
+            # Retain the identities of the GlusterFS servers and Manila host,
+            # and exclude those of the clients in the authorized access list of
+            # the new volume. The TLS identities of GlusterFS servers are
+            # determined as those that are prefixed by 'glusterfs-server'.
+            # And the TLS identity of the Manila host is identified as the
+            # one that has 'manila-host' as the prefix.
             # Wrt. GlusterFS' parsing of auth.ssl-allow, please see code from
             # https://github.com/gluster/glusterfs/blob/v3.6.2/
             # xlators/protocol/auth/login/src/login.c#L80
             # until end of gf_auth() function
             old_access_list = re.split('[ ,]', ssl_allow_opt)
-            regex = re.compile('\Aglusterfs-server*')
+            glusterfs_server_CN_pattern = '\Aglusterfs-server'
+            manila_host_CN_pattern = '\Amanila-host'
+            regex = re.compile(
+                '%(pattern1)s|%(pattern2)s' % {
+                    'pattern1': glusterfs_server_CN_pattern,
+                    'pattern2': manila_host_CN_pattern})
             access_to = ','.join(filter(regex.match, old_access_list))
             gluster_actions.append(('set', AUTH_SSL_ALLOW, access_to))
 

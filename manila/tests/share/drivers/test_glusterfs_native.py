@@ -127,7 +127,8 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
         gmgr.export = 'fakehost:/fakevol'
         gmgr_parent = mock.Mock()
         gmgr_parent.get_gluster_vol_option = mock.Mock(
-            return_value='glusterfs-server-name,some-other-name')
+            return_value=(
+                'glusterfs-server-name,some-other-name,manila-host.com'))
         share = mock.Mock()
         share_parent = mock.Mock()
 
@@ -139,7 +140,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'auth.ssl-allow')
         args = (
             ('volume', 'set', 'fakevol', 'auth.ssl-allow',
-             'glusterfs-server-name'),
+             'glusterfs-server-name,manila-host.com'),
             ('volume', 'set', 'fakevol', 'nfs.export-volumes', 'off'),
             ('volume', 'set', 'fakevol', 'client.ssl', 'on'),
             ('volume', 'set', 'fakevol', 'server.ssl', 'on'),
