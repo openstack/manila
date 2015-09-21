@@ -65,6 +65,8 @@ CONF.register_opts(GlusterfsManilaShare_opts)
 
 NFS_EXPORT_DIR = 'nfs.export-dir'
 NFS_EXPORT_VOL = 'nfs.export-volumes'
+NFS_RPC_AUTH_ALLOW = 'nfs.rpc-auth-allow'
+NFS_RPC_AUTH_REJECT = 'nfs.rpc-auth-reject'
 
 
 class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
@@ -94,10 +96,14 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def _setup_via_manager(self, share_manager, share_manager_parent=None):
         gluster_manager = share_manager['manager']
-        # exporting the whole volume must be prohibited
-        # to not to defeat access control
-        args = ('volume', 'set', gluster_manager.volume, NFS_EXPORT_VOL,
-                'off')
+        # TODO(csaba): This should be refactored into proper dispatch to helper
+        if self.nfs_helper == GlusterNFSHelper and not gluster_manager.path:
+            setting = [NFS_RPC_AUTH_REJECT, '*']
+        else:
+            # gluster-nfs export of the whole volume must be prohibited
+            # to not to defeat access control
+            setting = [NFS_EXPORT_VOL, 'off']
+        args = ['volume', 'set', gluster_manager.volume] + setting
         try:
             gluster_manager.gluster_call(*args)
         except exception.ProcessExecutionError as exc:
@@ -127,8 +133,12 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
 
     def _get_helper(self, gluster_mgr=None):
         """Choose a protocol specific helper class."""
-        helper = self.nfs_helper(self._execute, self.configuration,
-                                 gluster_manager=gluster_mgr)
+        helper_class = self.nfs_helper
+        if (self.nfs_helper == GlusterNFSHelper and gluster_mgr and
+                not gluster_mgr.path):
+            helper_class = GlusterNFSVolHelper
+        helper = helper_class(self._execute, self.configuration,
+                              gluster_manager=gluster_mgr)
         helper.init_helper()
         return helper
 
@@ -226,8 +236,6 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
                 return True
             ddict[edir].append(host)
         path = self.gluster_manager.path
-        if not path:
-            path = "/"
         self._manage_access(path[1:], access['access_type'],
                             access['access_to'], cbk)
 
@@ -240,10 +248,81 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
             if not ddict[edir]:
                 ddict.pop(edir)
         path = self.gluster_manager.path
-        if not path:
-            path = "/"
         self._manage_access(path[1:], access['access_type'],
                             access['access_to'], cbk)
+
+
+class GlusterNFSVolHelper(GlusterNFSHelper):
+    """Manage shares with Gluster-NFS server, volume mapped variant."""
+
+    def __init__(self, execute, config_object, **kwargs):
+        self.gluster_manager = kwargs.pop('gluster_manager')
+        super(GlusterNFSHelper, self).__init__(execute, config_object,
+                                               **kwargs)
+
+    def _get_vol_exports(self):
+        export_vol = self.gluster_manager.get_gluster_vol_option(
+            NFS_RPC_AUTH_ALLOW)
+        return export_vol.split(',')
+
+    def _manage_access(self, access_type, access_to, cbk):
+        """Manage share access with cbk.
+
+        Adjust the exports of the Gluster-NFS server using cbk.
+
+        :param access_type: type of access allowed in Manila
+        :type access_type: string
+        :param access_to: ip of the guest whose share access is managed
+        :type access_to: string
+        :param cbk: callback to adjust the exports of NFS server
+
+        Following is the description of cbk(explist, host).
+
+        :param explist: list of hosts that have access to the share
+        :type explist: list
+        :param host: ip address derived from the access object
+        :type host: string
+        :returns: bool (cbk leaves ddict intact) or None (cbk modifies ddict)
+        """
+
+        if access_type != 'ip':
+            raise exception.InvalidShareAccess('only ip access type allowed')
+        export_vol_list = self._get_vol_exports()
+        if cbk(export_vol_list, access_to):
+            return
+
+        if export_vol_list:
+            argseq = (('volume', 'set', self.gluster_manager.volume,
+                       NFS_RPC_AUTH_ALLOW, ','.join(export_vol_list)),
+                      ('volume', 'reset', self.gluster_manager.volume,
+                       NFS_RPC_AUTH_REJECT))
+        else:
+            argseq = (('volume', 'reset', self.gluster_manager.volume,
+                       NFS_RPC_AUTH_ALLOW),
+                      ('volume', 'set', self.gluster_manager.volume,
+                       NFS_RPC_AUTH_REJECT, '*'))
+        try:
+            for args in argseq:
+                self.gluster_manager.gluster_call(*args)
+        except exception.ProcessExecutionError as exc:
+            LOG.error(_LE("Error in gluster volume set: %s"), exc.stderr)
+            raise
+
+    def allow_access(self, base, share, access):
+        """Allow access to a share."""
+        def cbk(explist, host):
+            if host in explist:
+                return True
+            explist.append(host)
+        self._manage_access(access['access_type'], access['access_to'], cbk)
+
+    def deny_access(self, base, share, access):
+        """Deny access to a share."""
+        def cbk(explist, host):
+            if host not in explist:
+                return True
+            explist.remove(host)
+        self._manage_access(access['access_type'], access['access_to'], cbk)
 
 
 class GaneshaNFSHelper(ganesha.GaneshaNASHelper):
