@@ -155,7 +155,7 @@ class ShareSnapshotsController(wsgi.Controller):
             msg = _("Snapshot cannot be created from share '%s', because "
                     "share back end does not support it.") % share_id
             LOG.error(msg)
-            raise exc.HTTPUnprocessableEntity(msg)
+            raise exc.HTTPUnprocessableEntity(explanation=msg)
 
         LOG.info(_LI("Create snapshot from share %s"),
                  share_id, context=context)
