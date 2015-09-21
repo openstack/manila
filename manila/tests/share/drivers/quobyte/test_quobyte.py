@@ -258,10 +258,8 @@ class QuobyteShareDriverTestCase(test.TestCase):
         capval = 42115548133
         useval = 19695128917
         self._driver.rpc.call = mock.Mock(
-            return_value={'statistics': {'total_logical_capacity':
-                                         six.text_type(capval),
-                                         'total_logical_usage':
-                                         six.text_type(useval)}})
+            return_value={'total_logical_capacity': six.text_type(capval),
+                          'total_logical_usage': six.text_type(useval)})
 
         self.assertEqual((39.223160718, 20.880642548),
                          self._driver._get_capacities())

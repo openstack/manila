@@ -111,8 +111,8 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
     def _get_capacities(self):
         result = self.rpc.call('getSystemStatistics', {})
 
-        total = float(result['statistics']['total_logical_capacity'])
-        used = float(result['statistics']['total_logical_usage'])
+        total = float(result['total_logical_capacity'])
+        used = float(result['total_logical_usage'])
         LOG.info(_LI('Read capacity of %(cap)s bytes and '
                      'usage of %(use)s bytes from backend. '),
                  {'cap': total, 'use': used})
