@@ -30,7 +30,7 @@ git checkout HEAD^
 
 baseline_report=$(mktemp -t manila_coverageXXXXXXX)
 find . -type f -name "*.pyc" -delete && python setup.py testr --coverage --testr-args="$TESTR_ARGS"
-coverage report > $baseline_report
+coverage report --ignore-errors > $baseline_report
 baseline_missing=$(awk 'END { print $3 }' $baseline_report)
 
 # Checkout back and unstash uncommited changes (if any)
@@ -40,7 +40,7 @@ git checkout -
 # Generate and save coverage report
 current_report=$(mktemp -t manila_coverageXXXXXXX)
 find . -type f -name "*.pyc" -delete && python setup.py testr --coverage --testr-args="$TESTR_ARGS"
-coverage report > $current_report
+coverage report --ignore-errors > $current_report
 current_missing=$(awk 'END { print $3 }' $current_report)
 
 # Show coverage details
