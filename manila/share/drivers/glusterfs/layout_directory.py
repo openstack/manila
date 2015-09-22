@@ -38,15 +38,6 @@ glusterfs_directory_mapped_opts = [
                default='$state_path/mnt',
                help='Base directory containing mount points for Gluster '
                     'volumes.'),
-    cfg.StrOpt('glusterfs_server_password',
-               default=None,
-               secret=True,
-               help="Remote GlusterFS server node's login password. "
-                    "This is not required if 'glusterfs_path_to_private_key'"
-                    ' is configured.'),
-    cfg.StrOpt('glusterfs_path_to_private_key',
-               default=None,
-               help='Path of Manila host\'s private SSH key file.'),
 ]
 
 CONF = cfg.CONF
@@ -58,6 +49,8 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
     def __init__(self, driver, *args, **kwargs):
         super(GlusterfsDirectoryMappedLayout, self).__init__(
             driver, *args, **kwargs)
+        self.configuration.append_config_values(
+            common.glusterfs_common_opts)
         self.configuration.append_config_values(
             glusterfs_directory_mapped_opts)
 
