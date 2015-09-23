@@ -194,6 +194,7 @@ class GlusterfsShareDriverTestCase(test.TestCase):
         self.assertIsNone(ret)
 
 
+@ddt.ddt
 class GlusterNFSHelperTestCase(test.TestCase):
     """Tests GlusterNFSHelper."""
 
@@ -211,16 +212,19 @@ class GlusterNFSHelperTestCase(test.TestCase):
 
         self.assertEqual(fake_gluster_manager_attrs['export'], ret)
 
-    def test_get_export_dir_dict(self):
-        output_str = '/foo(10.0.0.1|10.0.0.2),/bar(10.0.0.1)'
+    @ddt.data({'output_str': '/foo(10.0.0.1|10.0.0.2),/bar(10.0.0.1)',
+               'expected': {'foo': ['10.0.0.1', '10.0.0.2'],
+                            'bar': ['10.0.0.1']}},
+              {'output_str': None, 'expected': {}})
+    @ddt.unpack
+    def test_get_export_dir_dict(self, output_str, expected):
         self.mock_object(self._helper.gluster_manager,
                          'get_gluster_vol_option',
                          mock.Mock(return_value=output_str))
 
         ret = self._helper._get_export_dir_dict()
 
-        self.assertEqual(
-            {'foo': ['10.0.0.1', '10.0.0.2'], 'bar': ['10.0.0.1']}, ret)
+        self.assertEqual(expected, ret)
         (self._helper.gluster_manager.get_gluster_vol_option.
          assert_called_once_with(NFS_EXPORT_DIR))
 
@@ -401,15 +405,18 @@ class GlusterNFSVolHelperTestCase(test.TestCase):
         self._helper = glusterfs.GlusterNFSVolHelper(
             self._execute, self.fake_conf, gluster_manager=gluster_manager)
 
-    def test_get_vol_exports(self):
-        output_str = '10.0.0.1,10.0.0.2'
+    @ddt.data({'output_str': '10.0.0.1,10.0.0.2',
+               'expected': ['10.0.0.1', '10.0.0.2']},
+              {'output_str': None, 'expected': []})
+    @ddt.unpack
+    def test_get_vol_exports(self, output_str, expected):
         self.mock_object(self._helper.gluster_manager,
                          'get_gluster_vol_option',
                          mock.Mock(return_value=output_str))
 
         ret = self._helper._get_vol_exports()
 
-        self.assertEqual(['10.0.0.1', '10.0.0.2'], ret)
+        self.assertEqual(expected, ret)
         (self._helper.gluster_manager.get_gluster_vol_option.
          assert_called_once_with(NFS_RPC_AUTH_ALLOW))
 
