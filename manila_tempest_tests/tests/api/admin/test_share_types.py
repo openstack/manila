@@ -93,7 +93,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
         share_name = data_utils.rand_name("share")
         shr_type_name = data_utils.rand_name("share-type")
         extra_specs = self.add_required_extra_specs_to_dict({
-            "storage_protocol": CONF.share.storage_protocol,
+            "storage_protocol": CONF.share.capability_storage_protocol,
         })
 
         # Create share type
