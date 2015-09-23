@@ -83,7 +83,7 @@ if [[ -z "$MULTITENANCY_ENABLED" ]]; then
     elif [[ $WITH_SHARE_SERVER_HANDLING_MODES -ge 1 ]]; then
         iniset $BASE/new/tempest/etc/tempest.conf share multitenancy_enabled True
     else
-        echo 'Should never get here. If get, then error occured.'
+        echo 'Should never get here unless an error occurred.'
         exit 1
     fi
 else
