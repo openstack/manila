@@ -274,19 +274,19 @@ class HostState(object):
         if not pool_cap.get('storage_protocol'):
             pool_cap['storage_protocol'] = self.storage_protocol
 
-        if not pool_cap.get('driver_handles_share_servers'):
-            pool_cap['driver_handles_share_servers'] = \
-                self.driver_handles_share_servers
+        if 'driver_handles_share_servers' not in pool_cap:
+            pool_cap['driver_handles_share_servers'] = (
+                self.driver_handles_share_servers)
 
-        if not pool_cap.get('snapshot_support'):
-            pool_cap['snapshot_support'] = True
+        if 'snapshot_support' not in pool_cap:
+            pool_cap['snapshot_support'] = self.snapshot_support
 
         if not pool_cap.get('consistency_group_support'):
             pool_cap['consistency_group_support'] = \
                 self.consistency_group_support
 
-        if not pool_cap.get('dedupe'):
-            pool_cap['dedupe'] = False
+        if 'dedupe' not in pool_cap:
+            pool_cap['dedupe'] = self.dedupe
 
     def update_backend(self, capability):
         self.share_backend_name = capability.get('share_backend_name')
