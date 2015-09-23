@@ -520,10 +520,12 @@ class BaseSharesTest(test.BaseTestCase):
 
     @staticmethod
     def add_required_extra_specs_to_dict(extra_specs=None):
-        value = six.text_type(CONF.share.multitenancy_enabled)
+        dhss = six.text_type(CONF.share.multitenancy_enabled)
+        snapshot_support = six.text_type(
+            CONF.share.capability_snapshot_support)
         required = {
-            "driver_handles_share_servers": value,
-            "snapshot_support": 'True',
+            "driver_handles_share_servers": dhss,
+            "snapshot_support": snapshot_support,
         }
         if extra_specs:
             required.update(extra_specs)
