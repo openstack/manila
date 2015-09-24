@@ -21,7 +21,6 @@ import platform
 
 from oslo_concurrency import processutils as putils
 from oslo_log import log
-from oslo_utils import importutils
 import six
 
 from manila import exception
@@ -101,14 +100,6 @@ def convert_to_list(value):
         return list(value)
     else:
         return [value]
-
-
-def check_netapp_lib():
-    if not importutils.try_import('netapp_lib'):
-        msg = ('You have not installed the NetApp API Library for OpenStack. '
-               'Please install it using "sudo pip install netapp-lib" and '
-               'restart this service!')
-        raise exception.NetAppException(msg)
 
 
 class OpenStackInfo(object):

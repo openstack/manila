@@ -24,11 +24,10 @@ from oslo_log import log
 import six
 
 from manila import exception
+from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_base
 from manila.share.drivers.netapp.dataontap.client import client_cmode
 from manila import test
-from manila.tests.share.drivers.netapp.dataontap.client import fake_api \
-    as netapp_api
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
 
 
@@ -53,9 +52,6 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.mock_object(client_base.NetAppBaseClient,
                          'get_ontapi_version',
                          mock.Mock(return_value=(1, 20)))
-
-        # Inject fake netapp_lib module classes.
-        netapp_api.mock_netapp_lib([client_base, client_cmode])
 
         self.client = client_cmode.NetAppCmodeClient(**fake.CONNECTION_INFO)
         self.client.connection = mock.MagicMock()

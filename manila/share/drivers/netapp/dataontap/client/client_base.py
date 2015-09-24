@@ -15,14 +15,10 @@
 
 from oslo_log import log
 from oslo_utils import excutils
-from oslo_utils import importutils
 
 from manila.i18n import _LE
+from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp import utils as na_utils
-
-netapp_lib = importutils.try_import('netapp_lib')
-if netapp_lib:
-    from netapp_lib.api.zapi import zapi as netapp_api
 
 
 LOG = log.getLogger(__name__)
