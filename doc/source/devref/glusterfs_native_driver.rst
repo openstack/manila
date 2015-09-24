@@ -36,7 +36,8 @@ share service should exist.
 Supported shared filesystems
 ----------------------------
 
-- GlusterFS (access by TLS Certificates (``cert`` access type))
+- GlusterFS (share protocol: ``glusterfs``,
+  access by TLS certificates (``cert`` access type))
 
 Multi-tenancy model
 -------------------
@@ -47,12 +48,13 @@ multi-tenancy is supported using tenant specific TLS certificates.
 Supported Operations
 --------------------
 
-- Create GlusterFS Share
-- Delete GlusterFS Share
-- Allow GlusterFS Share access (rw)
-- Deny GlusterFS Share access
-- Create GlusterFS Snapshot
-- Delete GlusterFS Snapshot
+- Create share
+- Delete share
+- Allow share access (rw)
+- Deny share access
+- Create snapshot
+- Delete snapshot
+- Create share from snapshot
 
 Requirements
 ------------
@@ -62,6 +64,7 @@ Requirements
   host.
 - Establish network connection between the Manila host and the storage backend.
 
+.. _gluster_native_manila_conf:
 
 Manila driver configuration setting
 -----------------------------------
@@ -96,6 +99,27 @@ The following configuration parameters are optional:
 - `glusterfs_path_to_private_key` = <path to Manila host's private key file>
 - `glusterfs_server_password` = <password of remote GlusterFS server machine>
 
+Host and backend configuration
+------------------------------
+
+- SSL/TLS should be enabled on the I/O path for GlusterFS servers and
+  volumes involved (ie. ones specified in ``glusterfs_servers``),
+  as described in http://www.gluster.org/community/documentation/index.php/SSL.
+  (Enabling SSL/TLS for the management path is also possible but not
+  recommended currently.)
+- The Manila host should be also configured for GlusterFS SSL/TLS (ie.
+  `/etc/ssl/glusterfs.{pem,key,ca}` files has to be deployed as the above
+  document specifies).
+- There is a further requirement for the CA-s used: the set of CA-s involved
+  should be consensual, ie. `/etc/ssl/glusterfs.ca` should be identical
+  across all the servers and the Manila host.
+- There is a further requirement for the common names (CN-s) of the
+  certificates used: the certificates of the servers should have a common
+  name starting with `glusterfs-server`, and the certificate of the host
+  should have common name starting with `manila-host`.
+- To support snapshots, bricks that consist the GlusterFS volumes used
+  by Manila should be thinly provisioned LVM ones (cf.
+  https://gluster.readthedocs.org/en/latest/Administrator%20Guide/Managing%20Snapshots/).
 
 Known Restrictions
 ------------------
@@ -111,7 +135,6 @@ Known Restrictions
   Manila picks volumes *at least* as big as the requested one.)
 - Certificate setup (aka trust setup) between instance and storage backend is
   out of band of Manila.
-- Support for 'create_share_from_snapshot' is planned for Liberty release.
 - For Manila to use GlusterFS volumes, the name of the trashcan directory in
   GlusterFS volumes must not be changed from the default.
 
