@@ -20,20 +20,15 @@ import hashlib
 import time
 
 from oslo_log import log
-from oslo_utils import importutils
 from oslo_utils import strutils
 from oslo_utils import units
 import six
 
 from manila import exception
 from manila.i18n import _, _LE, _LW
+from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_base
 from manila.share.drivers.netapp import utils as na_utils
-
-netapp_lib = importutils.try_import('netapp_lib')
-if netapp_lib:
-    from netapp_lib.api.zapi import errors as netapp_error
-    from netapp_lib.api.zapi import zapi as netapp_api
 
 
 LOG = log.getLogger(__name__)
@@ -217,7 +212,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             try:
                 vserver_client.offline_volume(root_volume_name)
             except netapp_api.NaApiError as e:
-                if e.code == netapp_error.EVOLUMEOFFLINE:
+                if e.code == netapp_api.EVOLUMEOFFLINE:
                     LOG.error(_LE("Volume %s is already offline."),
                               root_volume_name)
                 else:
@@ -246,7 +241,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 try:
                     vserver_client.send_request('cifs-server-delete', api_args)
                 except netapp_api.NaApiError as e:
-                    if e.code == netapp_error.EOBJECTNOTFOUND:
+                    if e.code == netapp_api.EOBJECTNOTFOUND:
                         LOG.error(_LE('CIFS server does not exist for '
                                       'Vserver %s.'), vserver_name)
                     else:
@@ -408,7 +403,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             }
             self.send_request('net-vlan-create', api_args)
         except netapp_api.NaApiError as e:
-            if e.code == netapp_error.EDUPLICATEENTRY:
+            if e.code == netapp_api.EDUPLICATEENTRY:
                 LOG.debug('VLAN %(vlan)s already exists on port %(port)s',
                           {'vlan': vlan, 'port': port})
             else:
@@ -501,7 +496,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             }
             self.send_request('net-port-broadcast-domain-add-ports', api_args)
         except netapp_api.NaApiError as e:
-            if e.code == (netapp_error.
+            if e.code == (netapp_api.
                           E_VIFMGR_PORT_ALREADY_ASSIGNED_TO_BROADCAST_DOMAIN):
                 LOG.debug('Port %(port)s already exists in broadcast domain '
                           '%(domain)s', {'port': port, 'domain': domain})
@@ -623,7 +618,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
                                          desired_attributes=desired_attributes)
         except netapp_api.NaApiError as e:
-            if e.code == netapp_error.EAPINOTFOUND:
+            if e.code == netapp_api.EAPINOTFOUND:
                 return None
             else:
                 raise e
@@ -861,7 +856,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         try:
             self.send_request('kerberos-realm-create', api_args)
         except netapp_api.NaApiError as e:
-            if e.code == netapp_error.EDUPLICATEENTRY:
+            if e.code == netapp_api.EDUPLICATEENTRY:
                 LOG.debug('Kerberos realm config already exists.')
             else:
                 msg = _('Failed to create Kerberos realm. %s')
@@ -911,7 +906,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         try:
             self.send_request('net-dns-create', api_args)
         except netapp_api.NaApiError as e:
-            if e.code == netapp_error.EDUPLICATEENTRY:
+            if e.code == netapp_api.EDUPLICATEENTRY:
                 LOG.error(_LE("DNS exists for Vserver."))
             else:
                 msg = _("Failed to configure DNS. %s")
@@ -1389,7 +1384,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         try:
             self.send_request('volume-offline', {'name': volume_name})
         except netapp_api.NaApiError as e:
-            if e.code == netapp_error.EVOLUMEOFFLINE:
+            if e.code == netapp_api.EVOLUMEOFFLINE:
                 return
             raise
 
@@ -1403,7 +1398,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         try:
             self.send_request('volume-unmount', api_args)
         except netapp_api.NaApiError as e:
-            if e.code == netapp_error.EVOL_NOT_MOUNTED:
+            if e.code == netapp_api.EVOL_NOT_MOUNTED:
                 return
             raise
 
@@ -1430,7 +1425,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 LOG.debug('Volume %s unmounted.', volume_name)
                 return
             except netapp_api.NaApiError as e:
-                if e.code == netapp_error.EAPIERROR and 'job ID' in e.message:
+                if e.code == netapp_api.EAPIERROR and 'job ID' in e.message:
                     msg = _LW('Could not unmount volume %(volume)s due to '
                               'ongoing volume operation: %(exception)s')
                     msg_args = {'volume': volume_name, 'exception': e}
@@ -1494,7 +1489,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'code': error_code,
                 'reason': error_reason
             }
-            if error_code == netapp_error.ESNAPSHOTNOTALLOWED:
+            if error_code == netapp_api.ESNAPSHOTNOTALLOWED:
                 raise exception.SnapshotUnavailable(msg % msg_args)
             else:
                 raise exception.NetAppException(msg % msg_args)
@@ -1674,7 +1669,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             try:
                 self.send_request('export-rule-destroy', api_args)
             except netapp_api.NaApiError as e:
-                if e.code != netapp_error.EOBJECTNOTFOUND:
+                if e.code != netapp_api.EOBJECTNOTFOUND:
                     raise
 
     @na_utils.trace
@@ -1744,7 +1739,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         try:
             self.send_request('export-policy-create', api_args)
         except netapp_api.NaApiError as e:
-            if e.code != netapp_error.EDUPLICATEENTRY:
+            if e.code != netapp_api.EDUPLICATEENTRY:
                 raise
 
     @na_utils.trace
@@ -1763,7 +1758,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         try:
             self.send_request('export-policy-destroy', api_args)
         except netapp_api.NaApiError as e:
-            if e.code == netapp_error.EOBJECTNOTFOUND:
+            if e.code == netapp_api.EOBJECTNOTFOUND:
                 return
             raise
 
@@ -1932,7 +1927,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             # API succeeded, so definitely a cluster management LIF
             return True
         except netapp_api.NaApiError as e:
-            if e.code == netapp_error.EAPINOTFOUND:
+            if e.code == netapp_api.EAPINOTFOUND:
                 LOG.debug('Not connected to cluster management LIF.')
                 return False
             else:
