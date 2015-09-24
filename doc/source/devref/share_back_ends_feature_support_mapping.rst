@@ -20,12 +20,11 @@ Manila share features support mapping
 Here we provide information on support of different share features by different
 share drivers.
 
-Column values contain OpenStack release letter when feature either was added
-to the driver or planned to be added.
-Column value "?" means that this field requires update with up-to-date
+Column values contain the OpenStack release letter when a feature was added
+to the driver.
+Column value "?" means that this field requires an update with current
 information.
-Column value "-" means that this feature is not supported. No plans for adding
-its support or no possibility to add it in general.
+Column value "-" means that this feature is not currently supported.
 
 
 Mapping of share drivers and share features support
@@ -48,7 +47,7 @@ Mapping of share drivers and share features support
 +----------------------------------------+-----------------------------+-----------------------+--------------+--------------+------------------------+----------------------------+
 |                  HDFS                  |               ?             |           ?           |       ?      |       ?      |            ?           |              ?             |
 +----------------------------------------+-----------------------------+-----------------------+--------------+--------------+------------------------+----------------------------+
-|              Hitachi HNAS              |        DHSS = False (L)     |           L           |       L      |       M      |            L           |              L             |
+|              Hitachi HNAS              |        DHSS = False (L)     |           L           |       L      |      \-      |            L           |              L             |
 +----------------------------------------+-----------------------------+-----------------------+--------------+--------------+------------------------+----------------------------+
 |                HP 3PAR                 |               ?             |           ?           |       ?      |       ?      |            ?           |              ?             |
 +----------------------------------------+-----------------------------+-----------------------+--------------+--------------+------------------------+----------------------------+
