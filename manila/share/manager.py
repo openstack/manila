@@ -221,6 +221,16 @@ class ShareManager(manager.SchedulerDependentManager):
                                                                   self.host)
         LOG.debug("Re-exporting %s shares", len(share_instances))
         for share_instance in share_instances:
+            share_ref = self.db.share_get(ctxt, share_instance['share_id'])
+            if share_ref.is_busy:
+                LOG.info(
+                    _LI("Share instance %(id)s: skipping export, "
+                        "because it is busy with an active task: %(task)s."),
+                    {'id': share_instance['id'],
+                     'task': share_ref['task_state']},
+                )
+                continue
+
             if share_instance['status'] != constants.STATUS_AVAILABLE:
                 LOG.info(
                     _LI("Share instance %(id)s: skipping export, "
@@ -543,7 +553,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         self.db.share_update(
             ctxt, share_ref['id'],
-            {'task_state': constants.STATUS_TASK_STATE_MIGRATION_MIGRATING})
+            {'task_state': constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS})
 
         if not force_host_copy:
             try:
@@ -659,11 +669,11 @@ class ShareManager(manager.SchedulerDependentManager):
             helper.revert_access_rules(readonly_support, saved_rules)
             raise
 
+        helper.revert_access_rules(readonly_support, saved_rules)
+
         self.db.share_update(
             context, share['id'],
             {'task_state': constants.STATUS_TASK_STATE_MIGRATION_COMPLETING})
-
-        helper.revert_access_rules(readonly_support, saved_rules)
 
         self.db.share_instance_update(context, new_share_instance['id'],
                                       {'status': constants.STATUS_AVAILABLE})

@@ -202,6 +202,13 @@ class Share(BASE, ManilaBase):
             return self.instance.export_location
 
     @property
+    def is_busy(self):
+        # Make sure share is not busy, i.e., not part of a migration
+        if self.task_state in constants.BUSY_TASK_STATES:
+            return True
+        return False
+
+    @property
     def export_locations(self):
         # TODO(u_glide): Return a map with lists of locations per AZ when
         # replication functionality will be implemented.

@@ -365,12 +365,7 @@ class API(base.Base):
     def unmanage(self, context, share):
         policy.check_policy(context, 'share', 'unmanage')
 
-        # Make sure share is not part of a migration
-        if share['task_state'] in constants.BUSY_TASK_STATES:
-            msg = _("Share %s is busy as part of an active "
-                    "task.") % share['id']
-            LOG.error(msg)
-            raise exception.InvalidShare(reason=msg)
+        self._check_is_share_busy(share)
 
         update_data = {'status': constants.STATUS_UNMANAGING,
                        'terminated_at': timeutils.utcnow()}
@@ -412,14 +407,7 @@ class API(base.Base):
                    cgsnapshot_members_count)
             raise exception.InvalidShare(reason=msg)
 
-        # Make sure share is not part of a migration
-        if share['task_state'] not in (
-                None, constants.STATUS_TASK_STATE_MIGRATION_ERROR,
-                constants.STATUS_TASK_STATE_MIGRATION_SUCCESS):
-            msg = _("Share %s is busy as part of an active "
-                    "task.") % share['id']
-            LOG.error(msg)
-            raise exception.InvalidShare(reason=msg)
+        self._check_is_share_busy(share)
 
         try:
             reservations = QUOTAS.reserve(context,
@@ -497,6 +485,8 @@ class API(base.Base):
 
         size = share['size']
 
+        self._check_is_share_busy(share)
+
         try:
             reservations = QUOTAS.reserve(
                 context, snapshots=1, snapshot_gigabytes=size)
@@ -563,15 +553,9 @@ class API(base.Base):
                     'but current status is: %(instance_status)s.') % {
                 'instance_id': share_instance['id'],
                 'instance_status': share_instance['status']}
-            LOG.error(msg)
             raise exception.InvalidShare(reason=msg)
 
-        # Make sure share is not part of a migration
-        if share['task_state'] in constants.BUSY_TASK_STATES:
-            msg = _("Share %s is busy as part of an active "
-                    "task.") % share['id']
-            LOG.error(msg)
-            raise exception.InvalidShare(reason=msg)
+        self._check_is_share_busy(share)
 
         # Make sure the destination host is different than the current one
         if host == share_instance['host']:
@@ -579,14 +563,12 @@ class API(base.Base):
                     'than the current host %(src_host)s.') % {
                 'dest_host': host,
                 'src_host': share_instance['host']}
-            LOG.error(msg)
             raise exception.InvalidHost(reason=msg)
 
         # We only handle shares without snapshots for now
         snaps = self.db.share_snapshot_get_all_for_share(context, share['id'])
         if snaps:
             msg = _("Share %s must not have snapshots.") % share['id']
-            LOG.error(msg)
             raise exception.InvalidShare(reason=msg)
 
         # Make sure the host is in the list of available hosts
@@ -886,6 +868,16 @@ class API(base.Base):
         """Delete the given metadata item from a share."""
         self.db.share_metadata_delete(context, share['id'], key)
 
+    def _check_is_share_busy(self, share):
+        """Raises an exception if share is busy with an active task."""
+        if share.is_busy:
+            msg = _("Share %(share_id)s is busy as part of an active "
+                    "task: %(task)s.") % {
+                'share_id': share['id'],
+                'task': share['task_state']
+            }
+            raise exception.ShareBusyException(reason=msg)
+
     def _check_metadata_properties(self, context, metadata=None):
         if not metadata:
             metadata = {}
@@ -947,6 +939,8 @@ class API(base.Base):
                     "%(status)s.") % msg_params
             raise exception.InvalidShare(reason=msg)
 
+        self._check_is_share_busy(share)
+
         size_increase = int(new_size) - share['size']
         if size_increase <= 0:
             msg = (_("New size for extend must be greater "
@@ -1000,6 +994,8 @@ class API(base.Base):
                     "to shrink, but current status is: "
                     "%(status)s.") % msg_params
             raise exception.InvalidShare(reason=msg)
+
+        self._check_is_share_busy(share)
 
         size_decrease = int(share['size']) - int(new_size)
         if size_decrease <= 0 or new_size <= 0:

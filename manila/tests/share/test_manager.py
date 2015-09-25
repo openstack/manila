@@ -168,6 +168,11 @@ class ShareManagerTestCase(test.TestCase):
             db_utils.create_share(id='fake_id_3',
                                   status=constants.STATUS_AVAILABLE,
                                   display_name='fake_name_3').instance,
+            db_utils.create_share(
+                id='fake_id_4',
+                status=constants.STATUS_AVAILABLE,
+                task_state=constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS,
+                display_name='fake_name_4').instance,
         ]
         if not setup_access_rules:
             return instances
@@ -195,7 +200,8 @@ class ShareManagerTestCase(test.TestCase):
                          'share_instances_get_all_by_host',
                          mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
-                         mock.Mock(side_effect=[instances[0], instances[2]]))
+                         mock.Mock(side_effect=[instances[0], instances[2],
+                                                instances[3]]))
         self.mock_object(self.share_manager.db,
                          'share_export_locations_update')
         self.mock_object(self.share_manager.driver, 'ensure_share',
@@ -267,7 +273,8 @@ class ShareManagerTestCase(test.TestCase):
                          'share_instances_get_all_by_host',
                          mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
-                         mock.Mock(side_effect=[instances[0], instances[2]]))
+                         mock.Mock(side_effect=[instances[0], instances[2],
+                                                instances[3]]))
         self.mock_object(self.share_manager.driver, 'ensure_share',
                          mock.Mock(side_effect=raise_exception))
         self.mock_object(self.share_manager, '_ensure_share_instance_has_pool')
@@ -304,7 +311,12 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.publish_service_capabilities.\
             assert_called_once_with(
                 utils.IsAMatcher(context.RequestContext))
-        manager.LOG.info.assert_called_once_with(
+        manager.LOG.info.assert_any_call(
+            mock.ANY,
+            {'task': constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS,
+             'id': instances[3]['id']},
+        )
+        manager.LOG.info.assert_any_call(
             mock.ANY,
             {'id': instances[1]['id'], 'status': instances[1]['status']},
         )
@@ -319,7 +331,8 @@ class ShareManagerTestCase(test.TestCase):
                          'share_instances_get_all_by_host',
                          mock.Mock(return_value=instances))
         self.mock_object(self.share_manager.db, 'share_instance_get',
-                         mock.Mock(side_effect=[instances[0], instances[2]]))
+                         mock.Mock(side_effect=[instances[0], instances[2],
+                                                instances[3]]))
         self.mock_object(self.share_manager.driver, 'ensure_share',
                          mock.Mock(return_value=None))
         self.mock_object(self.share_manager, '_ensure_share_instance_has_pool')
@@ -361,7 +374,12 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.publish_service_capabilities.\
             assert_called_once_with(
                 utils.IsAMatcher(context.RequestContext))
-        manager.LOG.info.assert_called_once_with(
+        manager.LOG.info.assert_any_call(
+            mock.ANY,
+            {'task': constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS,
+             'id': instances[3]['id']},
+        )
+        manager.LOG.info.assert_any_call(
             mock.ANY,
             {'id': instances[1]['id'], 'status': instances[1]['status']},
         )
@@ -2417,7 +2435,7 @@ class ShareManagerTestCase(test.TestCase):
         share_id = share['id']
         host = 'fake-host'
         status_migrating = {
-            'task_state': constants.STATUS_TASK_STATE_MIGRATION_MIGRATING
+            'task_state': constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS
         }
         status_success = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_SUCCESS
@@ -2463,7 +2481,7 @@ class ShareManagerTestCase(test.TestCase):
         share_id = share['id']
         host = 'fake-host'
         status_migrating = {
-            'task_state': constants.STATUS_TASK_STATE_MIGRATION_MIGRATING
+            'task_state': constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS
         }
         status_success = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_SUCCESS
@@ -2504,7 +2522,7 @@ class ShareManagerTestCase(test.TestCase):
         share_id = share['id']
         host = 'fake-host'
         status_migrating = {
-            'task_state': constants.STATUS_TASK_STATE_MIGRATION_MIGRATING
+            'task_state': constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS
         }
         status_success = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_SUCCESS
@@ -2549,7 +2567,7 @@ class ShareManagerTestCase(test.TestCase):
         share_id = share['id']
         host = 'fake-host'
         status_migrating = {
-            'task_state': constants.STATUS_TASK_STATE_MIGRATION_MIGRATING
+            'task_state': constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS
         }
         status_error = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_ERROR
@@ -2597,7 +2615,7 @@ class ShareManagerTestCase(test.TestCase):
         share_id = share['id']
         host = 'fake-host'
         status_migrating = {
-            'task_state': constants.STATUS_TASK_STATE_MIGRATION_MIGRATING
+            'task_state': constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS
         }
         status_error = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_ERROR
@@ -2637,7 +2655,7 @@ class ShareManagerTestCase(test.TestCase):
         share_id = share['id']
         host = 'fake-host'
         status_migrating = {
-            'task_state': constants.STATUS_TASK_STATE_MIGRATION_MIGRATING
+            'task_state': constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS
         }
         status_success = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_SUCCESS
