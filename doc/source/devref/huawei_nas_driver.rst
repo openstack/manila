@@ -76,8 +76,8 @@ storage systems, the driver configuration file is as follows:
             <UserPassword>xxxxxxxxx</UserPassword>
         </Storage>
         <Filesystem>
-            <AllocType>Thin</AllocType>
-            <StoragePool>xxxxxxxxx</StoragePool>
+            <Thin_StoragePool>xxxxxxxxx</Thin_StoragePool>
+            <Thick_StoragePool>xxxxxxxx</Thick_StoragePool>
             <WaitInterval>3</WaitInterval>
             <Timeout>60</Timeout>
         </Filesystem>
@@ -90,9 +90,8 @@ storage systems, the driver configuration file is as follows:
   failed to connect, driver will retry another automatically.
 - `UserName` is a user name of an administrator.
 - `UserPassword` is a password of an administrator.
-- `AllocType` is a type of file system space allocation. Valid values are
-  Thick or Thin.
-- `StoragePool` is a name of a storage pool to be used.
+- `Thin_StoragePool` is a name of a Thin storage pool to be used.
+- `Thick_StoragePool` is a name of a Thick storage pool to be used.
 - `WaitInterval` is the interval time of querying the file system status.
 - `Timeout` is the timeout period for wating command execution of a device to
   complete.
