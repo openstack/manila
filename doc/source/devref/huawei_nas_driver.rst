@@ -93,7 +93,7 @@ storage systems, the driver configuration file is as follows:
 - `Thin_StoragePool` is a name of a Thin storage pool to be used.
 - `Thick_StoragePool` is a name of a Thick storage pool to be used.
 - `WaitInterval` is the interval time of querying the file system status.
-- `Timeout` is the timeout period for wating command execution of a device to
+- `Timeout` is the timeout period for waiting command execution of a device to
   complete.
 
 Backend Configuration
