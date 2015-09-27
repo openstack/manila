@@ -48,6 +48,8 @@ class NetAppCmodeFileStorageLibrary(object):
     SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
     HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
 
+    SUPPORTED_PROTOCOLS = ('nfs', 'cifs')
+
     # Maps NetApp qualified extra specs keys to corresponding backend API
     # client library argument keywords.  When we expose more backend
     # capabilities here, we will add them to this map.
@@ -77,7 +79,6 @@ class NetAppCmodeFileStorageLibrary(object):
         self.configuration.append_config_values(
             na_opts.netapp_provisioning_opts)
 
-        self._helpers = None
         self._licenses = []
         self._client = None
         self._clients = {}
@@ -94,7 +95,6 @@ class NetAppCmodeFileStorageLibrary(object):
     def do_setup(self, context):
         self._client = self._get_api_client()
         self._have_cluster_creds = self._client.check_for_cluster_credentials()
-        self._setup_helpers()
 
     @na_utils.trace
     def check_for_setup_error(self):
@@ -297,23 +297,20 @@ class NetAppCmodeFileStorageLibrary(object):
         raise NotImplementedError()
 
     @na_utils.trace
-    def _setup_helpers(self):
-        """Initializes protocol-specific NAS drivers."""
-        self._helpers = {'CIFS': cifs_cmode.NetAppCmodeCIFSHelper(),
-                         'NFS': nfs_cmode.NetAppCmodeNFSHelper()}
-
-    @na_utils.trace
     def _get_helper(self, share):
         """Returns driver which implements share protocol."""
-        share_protocol = share['share_proto']
+        share_protocol = share['share_proto'].lower()
+
+        if share_protocol not in self.SUPPORTED_PROTOCOLS:
+            err_msg = _("Invalid NAS protocol supplied: %s.") % share_protocol
+            raise exception.NetAppException(err_msg)
+
         self._check_license_for_protocol(share_protocol)
 
-        for protocol in self._helpers.keys():
-            if share_protocol.upper().startswith(protocol):
-                return self._helpers[protocol]
-
-        err_msg = _("Invalid NAS protocol supplied: %s. ") % share_protocol
-        raise exception.NetAppException(err_msg)
+        if share_protocol == 'nfs':
+            return nfs_cmode.NetAppCmodeNFSHelper()
+        elif share_protocol == 'cifs':
+            return cifs_cmode.NetAppCmodeCIFSHelper()
 
     @na_utils.trace
     def _check_license_for_protocol(self, share_protocol):
