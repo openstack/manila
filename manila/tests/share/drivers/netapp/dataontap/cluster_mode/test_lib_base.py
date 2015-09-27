@@ -78,14 +78,12 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertEqual(fake.DRIVER_NAME, self.library.driver_name)
         self.assertEqual(1, na_utils.validate_driver_instantiation.call_count)
         self.assertEqual(1, na_utils.setup_tracing.call_count)
-        self.assertIsNone(self.library._helpers)
         self.assertListEqual([], self.library._licenses)
         self.assertDictEqual({}, self.library._clients)
         self.assertDictEqual({}, self.library._ssc_stats)
         self.assertIsNotNone(self.library._app_version)
 
     def test_do_setup(self):
-        mock_setup_helpers = self.mock_object(self.library, '_setup_helpers')
         mock_get_api_client = self.mock_object(self.library, '_get_api_client')
 
         self.library.do_setup(self.context)
@@ -93,7 +91,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         mock_get_api_client.assert_called_once_with()
         self.library._client.check_for_cluster_credentials.\
             assert_called_once_with()
-        mock_setup_helpers.assert_called_once_with()
 
     def test_check_for_setup_error(self):
 
@@ -396,41 +393,26 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.assertRaises(NotImplementedError,
                           self.library._find_matching_aggregates)
 
-    def test_setup_helpers(self):
+    @ddt.data(('NFS', nfs_cmode.NetAppCmodeNFSHelper),
+              ('nfs', nfs_cmode.NetAppCmodeNFSHelper),
+              ('CIFS', cifs_cmode.NetAppCmodeCIFSHelper),
+              ('cifs', cifs_cmode.NetAppCmodeCIFSHelper))
+    @ddt.unpack
+    def test_get_helper(self, protocol, helper_type):
 
-        self.mock_object(cifs_cmode,
-                         'NetAppCmodeCIFSHelper',
-                         mock.Mock(return_value='fake_cifs_helper'))
-        self.mock_object(nfs_cmode,
-                         'NetAppCmodeNFSHelper',
-                         mock.Mock(return_value='fake_nfs_helper'))
-        self.library._helpers = None
-
-        self.library._setup_helpers()
-
-        self.assertDictEqual({'CIFS': 'fake_cifs_helper',
-                              'NFS': 'fake_nfs_helper'},
-                             self.library._helpers)
-
-    def test_get_helper(self):
-
-        self.library._helpers = {'CIFS': 'fake_cifs_helper',
-                                 'NFS': 'fake_nfs_helper'}
-        self.library._licenses = fake.LICENSES
         fake_share = fake.SHARE.copy()
-        fake_share['share_proto'] = 'NFS'
+        fake_share['share_proto'] = protocol
         mock_check_license_for_protocol = self.mock_object(
             self.library, '_check_license_for_protocol')
 
         result = self.library._get_helper(fake_share)
 
-        mock_check_license_for_protocol.assert_called_once_with('NFS')
-        self.assertEqual('fake_nfs_helper', result)
+        mock_check_license_for_protocol.assert_called_once_with(
+            protocol.lower())
+        self.assertTrue(type(result) == helper_type)
 
     def test_get_helper_invalid_protocol(self):
 
-        self.library._helpers = {'CIFS': 'fake_cifs_helper',
-                                 'NFS': 'fake_nfs_helper'}
         fake_share = fake.SHARE.copy()
         fake_share['share_proto'] = 'iSCSI'
         self.mock_object(self.library, '_check_license_for_protocol')
@@ -462,8 +444,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_licenses',
                          mock.Mock(return_value=['base', 'nfs']))
-        self.library._helpers = {'CIFS': 'fake_cifs_helper',
-                                 'NFS': 'fake_nfs_helper'}
         self.library._licenses = ['base']
 
         result = self.library._check_license_for_protocol('NFS')
@@ -477,8 +457,6 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library,
                          '_get_licenses',
                          mock.Mock(return_value=['base']))
-        self.library._helpers = {'CIFS': 'fake_cifs_helper',
-                                 'NFS': 'fake_nfs_helper'}
         self.library._licenses = ['base']
 
         self.assertRaises(exception.NetAppException,
