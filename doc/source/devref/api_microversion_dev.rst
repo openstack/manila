@@ -15,8 +15,8 @@ is a monotonically increasing semantic version number starting from
 
 If a user makes a request without specifying a version, they will get
 the ``DEFAULT_API_VERSION`` as defined in
-``manila/api/openstack/wsgi.py``.  This value is currently ``1.0`` and
-is expected to remain so for quite a long time.
+``manila/api/openstack/api_version_request.py``. This value is currently ``2.0``
+and is expected to remain so for quite a long time.
 
 The Nova project was the first to implement microversions. For full
 details please read Nova's `Kilo spec for microversions
