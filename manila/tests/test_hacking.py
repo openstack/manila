@@ -58,43 +58,43 @@ class HackingTestCase(test.TestCase):
     """
 
     def test_no_translate_debug_logs(self):
-        self.assertEqual(len(list(checks.no_translate_debug_logs(
-            "LOG.debug(_('foo'))", "manila/scheduler/foo.py"))), 1)
+        self.assertEqual(1, len(list(checks.no_translate_debug_logs(
+            "LOG.debug(_('foo'))", "manila/scheduler/foo.py"))))
 
-        self.assertEqual(len(list(checks.no_translate_debug_logs(
-            "LOG.debug('foo')", "manila/scheduler/foo.py"))), 0)
+        self.assertEqual(0, len(list(checks.no_translate_debug_logs(
+            "LOG.debug('foo')", "manila/scheduler/foo.py"))))
 
-        self.assertEqual(len(list(checks.no_translate_debug_logs(
-            "LOG.info(_('foo'))", "manila/scheduler/foo.py"))), 0)
+        self.assertEqual(0, len(list(checks.no_translate_debug_logs(
+            "LOG.info(_('foo'))", "manila/scheduler/foo.py"))))
 
     def test_check_explicit_underscore_import(self):
-        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+        self.assertEqual(1, len(list(checks.check_explicit_underscore_import(
             "LOG.info(_('My info message'))",
-            "cinder/tests/other_files.py"))), 1)
-        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "cinder/tests/other_files.py"))))
+        self.assertEqual(1, len(list(checks.check_explicit_underscore_import(
             "msg = _('My message')",
-            "cinder/tests/other_files.py"))), 1)
-        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "cinder/tests/other_files.py"))))
+        self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "from cinder.i18n import _",
-            "cinder/tests/other_files.py"))), 0)
-        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "cinder/tests/other_files.py"))))
+        self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "LOG.info(_('My info message'))",
-            "cinder/tests/other_files.py"))), 0)
-        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "cinder/tests/other_files.py"))))
+        self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "msg = _('My message')",
-            "cinder/tests/other_files.py"))), 0)
-        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "cinder/tests/other_files.py"))))
+        self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "from cinder.i18n import _, _LW",
-            "cinder/tests/other_files2.py"))), 0)
-        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "cinder/tests/other_files2.py"))))
+        self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "msg = _('My message')",
-            "cinder/tests/other_files2.py"))), 0)
-        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "cinder/tests/other_files2.py"))))
+        self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "_ = translations.ugettext",
-            "cinder/tests/other_files3.py"))), 0)
-        self.assertEqual(len(list(checks.check_explicit_underscore_import(
+            "cinder/tests/other_files3.py"))))
+        self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "msg = _('My message')",
-            "cinder/tests/other_files3.py"))), 0)
+            "cinder/tests/other_files3.py"))))
 
     # We are patching pep8 so that only the check under test is actually
     # installed.

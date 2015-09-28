@@ -217,13 +217,13 @@ class GenericUtilsTestCase(test.TestCase):
                 self.reload_called = False
 
                 def test_reload(reloaded_data):
-                    self.assertEqual(reloaded_data, fake_contents)
+                    self.assertEqual(fake_contents, reloaded_data)
                     self.reload_called = True
 
                 data = utils.read_cached_file("/this/is/a/fake",
                                               cache_data,
                                               reload_func=test_reload)
-                self.assertEqual(data, fake_contents)
+                self.assertEqual(fake_contents, data)
                 self.assertTrue(self.reload_called)
                 fake_file.read.assert_called_once_with()
                 fake_context_manager.__enter__.assert_any_call()
@@ -238,7 +238,7 @@ class GenericUtilsTestCase(test.TestCase):
 
         self.mock_object(utils, 'execute', fake_execute)
         contents = utils.read_file_as_root('good')
-        self.assertEqual(contents, 'fakecontents')
+        self.assertEqual('fakecontents', contents)
         self.assertRaises(exception.FileNotFound,
                           utils.read_file_as_root, 'bad')
 
@@ -250,8 +250,8 @@ class GenericUtilsTestCase(test.TestCase):
 
         with tempfile.NamedTemporaryFile() as f:
             with utils.temporary_chown(f.name, owner_uid=2):
-                self.assertEqual(fake_execute.uid, 2)
-            self.assertEqual(fake_execute.uid, os.getuid())
+                self.assertEqual(2, fake_execute.uid)
+            self.assertEqual(os.getuid(), fake_execute.uid)
 
     def test_service_is_up(self):
         fts_func = datetime.datetime.fromtimestamp
@@ -375,14 +375,14 @@ class MonkeyPatchTestCase(test.TestCase):
         exampleA = example_a.ExampleClassA()
         exampleA.example_method()
         ret_a = exampleA.example_method_add(3, 5)
-        self.assertEqual(ret_a, 8)
+        self.assertEqual(8, ret_a)
 
         self.assertEqual('Example function', example_b.example_function_b())
         exampleB = example_b.ExampleClassB()
         exampleB.example_method()
         ret_b = exampleB.example_method_add(3, 5)
 
-        self.assertEqual(ret_b, 8)
+        self.assertEqual(8, ret_b)
         package_a = self.example_package + 'example_a.'
         self.assertTrue(package_a + 'example_function_a'
                         in manila.tests.monkey_patch_example.CALLED_FUNCTION)
