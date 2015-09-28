@@ -692,9 +692,10 @@ class ShareManager(manager.SchedulerDependentManager):
         if share_network_id and not self.driver.driver_handles_share_servers:
             self.db.share_instance_update(
                 context, share_instance_id, {'status': constants.STATUS_ERROR})
-            raise exception.ManilaException(
-                "Driver does not expect share-network to be provided "
-                "with current configuration.")
+            raise exception.ManilaException(_(
+                "Creation of share instance %s failed: driver does not expect "
+                "share-network to be provided with current "
+                "configuration.") % share_instance_id)
 
         if snapshot_id is not None:
             snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
@@ -719,8 +720,9 @@ class ShareManager(manager.SchedulerDependentManager):
                 )
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Failed to get share server"
-                                  " for share instance creation."))
+                    error = _LE("Creation of share instance %s failed: "
+                                "failed to get share server.")
+                    LOG.error(error, share_instance_id)
                     self.db.share_instance_update(
                         context, share_instance_id,
                         {'status': constants.STATUS_ERROR}
@@ -767,7 +769,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     {'status': constants.STATUS_ERROR}
                 )
         else:
-            LOG.info(_LI("Share instance created successfully."))
+            LOG.info(_LI("Share instance %s created successfully."),
+                     share_instance_id)
             self.db.share_instance_update(
                 context, share_instance_id,
                 {'status': constants.STATUS_AVAILABLE,
@@ -1065,6 +1068,13 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_instance_access_update_state(
                     context, access_mapping['id'], access_mapping.STATE_ERROR)
 
+        LOG.info(_LI("'%(access_to)s' has been successfully allowed "
+                     "'%(access_level)s' access on share instance "
+                     "%(share_instance_id)s."),
+                 {'access_to': access_ref['access_to'],
+                  'access_level': access_ref['access_level'],
+                  'share_instance_id': share_instance_id})
+
     @add_hooks
     def deny_access(self, context, share_instance_id, access_id):
         """Deny access to some share."""
@@ -1073,6 +1083,11 @@ class ShareManager(manager.SchedulerDependentManager):
             context, share_instance_id, with_share_data=True)
         share_server = self._get_share_server(context, share_instance)
         self._deny_access(context, access_ref, share_instance, share_server)
+
+        LOG.info(_LI("'(access_to)s' has been successfully denied access to "
+                     "share instance %(share_instance_id)s."),
+                 {'access_to': access_ref['access_to'],
+                  'share_instance_id': share_instance_id})
 
     def _deny_access(self, context, access_ref, share_instance, share_server):
         access_mapping = self.db.share_instance_access_get(

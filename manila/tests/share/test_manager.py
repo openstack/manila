@@ -516,11 +516,11 @@ class ShareManagerTestCase(test.TestCase):
             mock.Mock(return_value=share_instance))
         self.mock_object(self.share_manager.db, 'share_instance_update')
 
-        self.assertRaises(
+        self.assertRaisesRegex(
             exception.ManilaException,
+            '.*%s.*' % share_instance['id'],
             self.share_manager.create_share_instance, self.context,
             share_instance['id'])
-
         self.share_manager.db.share_instance_get.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             share_instance['id'],
@@ -543,6 +543,7 @@ class ShareManagerTestCase(test.TestCase):
                 share_network_id=share_network['id'],
                 host='fake_host')
 
+        self.mock_object(manager.LOG, 'info')
         self.share_manager.driver.create_share = mock.Mock(
             return_value='fake_location')
         self.share_manager._setup_server = fake_setup_server
@@ -550,6 +551,7 @@ class ShareManagerTestCase(test.TestCase):
                                                  share.instance['id'])
         self.assertEqual(share_id, db.share_get(context.get_admin_context(),
                          share_id).id)
+        manager.LOG.info.assert_called_with(mock.ANY, share.instance['id'])
 
     def test_create_share_instance_with_share_network_server_fail(self):
         fake_share = db_utils.create_share(share_network_id='fake_sn_id',
@@ -564,6 +566,7 @@ class ShareManagerTestCase(test.TestCase):
                          mock.Mock(return_value=fake_share.instance))
         self.mock_object(db, 'share_instance_get',
                          mock.Mock(return_value=fake_share.instance))
+        self.mock_object(manager.LOG, 'error')
 
         def raise_share_server_not_found(*args, **kwargs):
             raise exception.ShareServerNotFound(
@@ -601,9 +604,13 @@ class ShareManagerTestCase(test.TestCase):
         ])
         self.share_manager._setup_server.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), fake_server)
+        manager.LOG.error.assert_called_with(mock.ANY,
+                                             fake_share.instance['id'])
 
     def test_create_share_instance_with_share_network_not_found(self):
         """Test creation fails if share network not found."""
+
+        self.mock_object(manager.LOG, 'error')
 
         share = db_utils.create_share(share_network_id='fake-net-id')
         share_id = share['id']
@@ -613,6 +620,7 @@ class ShareManagerTestCase(test.TestCase):
             self.context,
             share.instance['id']
         )
+        manager.LOG.error.assert_called_with(mock.ANY, share.instance['id'])
         shr = db.share_get(self.context, share_id)
         self.assertEqual(shr['status'], constants.STATUS_ERROR)
 
@@ -625,6 +633,7 @@ class ShareManagerTestCase(test.TestCase):
 
         share_id = share['id']
 
+        self.mock_object(manager.LOG, 'info')
         driver_mock = mock.Mock()
         driver_mock.create_share.return_value = "fake_location"
         driver_mock.choose_share_server_compatible_with_share.return_value = (
@@ -642,6 +651,7 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(shr['share_server_id'], share_srv['id'])
         self.assertTrue(len(shr['export_location']) > 0)
         self.assertEqual(1, len(shr['export_locations']))
+        manager.LOG.info.assert_called_with(mock.ANY, share.instance['id'])
 
     @ddt.data('export_location', 'export_locations')
     def test_create_share_instance_with_error_in_driver(self, details_key):
@@ -1243,6 +1253,8 @@ class ShareManagerTestCase(test.TestCase):
 
     def test_allow_deny_access(self):
         """Test access rules to share can be created and deleted."""
+        self.mock_object(manager.LOG, 'info')
+
         share = db_utils.create_share()
         share_id = share['id']
         access = db_utils.create_access(share_id=share_id)
@@ -1252,8 +1264,17 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual('active', db.share_access_get(self.context,
                                                        access_id).state)
 
+        exp_args = {'access_level': access['access_level'],
+                    'share_instance_id': share.instance['id'],
+                    'access_to': access['access_to']}
+        manager.LOG.info.assert_called_with(mock.ANY, exp_args)
+        manager.LOG.info.reset_mock()
+
         self.share_manager.deny_access(self.context, share.instance['id'],
                                        access_id)
+        exp_args = {'share_instance_id': share.instance['id'],
+                    'access_to': access['access_to']}
+        manager.LOG.info.assert_called_with(mock.ANY, exp_args)
 
     def test_allow_deny_access_error(self):
         """Test access rules to share can be created and deleted with error."""
