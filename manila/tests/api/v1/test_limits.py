@@ -264,7 +264,7 @@ class LimitMiddlewareTest(BaseLimitTestSuite):
 
         request = webob.Request.blank("/")
         response = request.get_response(self.app)
-        self.assertEqual(response.status_int, 413)
+        self.assertEqual(413, response.status_int)
 
         self.assertTrue('Retry-After' in response.headers)
         retry_after = int(response.headers['Retry-After'])
@@ -273,7 +273,7 @@ class LimitMiddlewareTest(BaseLimitTestSuite):
         body = jsonutils.loads(response.body)
         expected = "Only 1 GET request(s) can be made to * every minute."
         value = body["overLimitFault"]["details"].strip()
-        self.assertEqual(value, expected)
+        self.assertEqual(expected, value)
 
 
 class LimitTest(BaseLimitTestSuite):
@@ -349,28 +349,28 @@ class ParseLimitsTest(BaseLimitTestSuite):
             assert False, six.text_types(e)
 
         # Make sure the number of returned limits are correct
-        self.assertEqual(len(l), 4)
+        self.assertEqual(4, len(l))
 
         # Check all the verbs...
         expected = ['GET', 'PUT', 'POST', 'SAY']
-        self.assertEqual([t.verb for t in l], expected)
+        self.assertEqual(expected, [t.verb for t in l])
 
         # ...the URIs...
         expected = ['*', '/foo*', '/bar*', '/derp*']
-        self.assertEqual([t.uri for t in l], expected)
+        self.assertEqual(expected, [t.uri for t in l])
 
         # ...the regexes...
         expected = ['.*', '/foo.*', '/bar.*', '/derp.*']
-        self.assertEqual([t.regex for t in l], expected)
+        self.assertEqual(expected, [t.regex for t in l])
 
         # ...the values...
         expected = [20, 10, 5, 1]
-        self.assertEqual([t.value for t in l], expected)
+        self.assertEqual(expected, [t.value for t in l])
 
         # ...and the units...
         expected = [limits.PER_MINUTE, limits.PER_HOUR,
                     limits.PER_SECOND, limits.PER_DAY]
-        self.assertEqual([t.unit for t in l], expected)
+        self.assertEqual(expected, [t.unit for t in l])
 
 
 class LimiterTest(BaseLimitTestSuite):
@@ -399,7 +399,7 @@ class LimiterTest(BaseLimitTestSuite):
         didn"t set.
         """
         delay = self.limiter.check_for_delay("GET", "/anything")
-        self.assertEqual(delay, (None, None))
+        self.assertEqual((None, None), delay)
 
     def test_no_delay_PUT(self):
         """Test no delay on single call.
@@ -407,7 +407,7 @@ class LimiterTest(BaseLimitTestSuite):
         Simple test to ensure no delay on a single call for a known limit.
         """
         delay = self.limiter.check_for_delay("PUT", "/anything")
-        self.assertEqual(delay, (None, None))
+        self.assertEqual((None, None), delay)
 
     def test_delay_PUT(self):
         """Ensure 11th PUT will be delayed.
@@ -489,7 +489,7 @@ class LimiterTest(BaseLimitTestSuite):
 
     def test_user_limit(self):
         """Test user-specific limits."""
-        self.assertEqual(self.limiter.levels['user3'], [])
+        self.assertEqual([], self.limiter.levels['user3'])
 
     def test_multiple_users(self):
         """Tests involving multiple users."""
@@ -553,17 +553,17 @@ class WsgiLimiterTest(BaseLimitTestSuite):
         response = request.get_response(self.app)
 
         if "X-Wait-Seconds" in response.headers:
-            self.assertEqual(response.status_int, 403)
+            self.assertEqual(403, response.status_int)
             return response.headers["X-Wait-Seconds"]
 
-        self.assertEqual(response.status_int, 204)
+        self.assertEqual(204, response.status_int)
 
     def test_invalid_methods(self):
         """Only POSTs should work."""
         for method in ["GET", "PUT", "DELETE", "HEAD", "OPTIONS"]:
             request = webob.Request.blank("/", method=method)
             response = request.get_response(self.app)
-            self.assertEqual(response.status_int, 405)
+            self.assertEqual(405, response.status_int)
 
     def test_good_url(self):
         delay = self._request("GET", "/something")
@@ -578,7 +578,7 @@ class WsgiLimiterTest(BaseLimitTestSuite):
         self.assertIsNone(delay)
 
         delay = self._request("GET", "/delayed")
-        self.assertEqual(delay, '60.00')
+        self.assertEqual('60.00', delay)
 
     def test_response_to_delays_usernames(self):
         delay = self._request("GET", "/delayed", "user1")
@@ -588,10 +588,10 @@ class WsgiLimiterTest(BaseLimitTestSuite):
         self.assertIsNone(delay)
 
         delay = self._request("GET", "/delayed", "user1")
-        self.assertEqual(delay, '60.00')
+        self.assertEqual('60.00', delay)
 
         delay = self._request("GET", "/delayed", "user2")
-        self.assertEqual(delay, '60.00')
+        self.assertEqual('60.00', delay)
 
 
 class FakeHttplibSocket(object):
@@ -703,19 +703,19 @@ class WsgiLimiterProxyTest(BaseLimitTestSuite):
     def test_200(self):
         """Successful request test."""
         delay = self.proxy.check_for_delay("GET", "/anything")
-        self.assertEqual(delay, (None, None))
+        self.assertEqual((None, None), delay)
 
     def test_403(self):
         """Forbidden request test."""
         delay = self.proxy.check_for_delay("GET", "/delayed")
-        self.assertEqual(delay, (None, None))
+        self.assertEqual((None, None), delay)
         delay, error = self.proxy.check_for_delay("GET", "/delayed")
         error = error.strip()
 
         expected = ("60.00", six.b("403 Forbidden\n\nOnly 1 GET request(s) "
                                    "can be made to /delayed every minute."))
 
-        self.assertEqual((delay, error), expected)
+        self.assertEqual(expected, (delay, error))
 
     def tearDown(self):
         # restore original HTTPConnection object

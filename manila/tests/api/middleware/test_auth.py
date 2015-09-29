@@ -37,23 +37,23 @@ class TestManilaKeystoneContextMiddleware(test.TestCase):
 
     def test_no_user_or_user_id(self):
         response = self.request.get_response(self.middleware)
-        self.assertEqual(response.status, '401 Unauthorized')
+        self.assertEqual('401 Unauthorized', response.status)
 
     def test_user_only(self):
         self.request.headers['X_USER_ID'] = 'testuserid'
         response = self.request.get_response(self.middleware)
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(self.context.user_id, 'testuserid')
+        self.assertEqual('200 OK', response.status)
+        self.assertEqual('testuserid', self.context.user_id)
 
     def test_user_id_only(self):
         self.request.headers['X_USER'] = 'testuser'
         response = self.request.get_response(self.middleware)
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(self.context.user_id, 'testuser')
+        self.assertEqual('200 OK', response.status)
+        self.assertEqual('testuser', self.context.user_id)
 
     def test_user_id_trumps_user(self):
         self.request.headers['X_USER_ID'] = 'testuserid'
         self.request.headers['X_USER'] = 'testuser'
         response = self.request.get_response(self.middleware)
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(self.context.user_id, 'testuserid')
+        self.assertEqual('200 OK', response.status)
+        self.assertEqual('testuserid', self.context.user_id)

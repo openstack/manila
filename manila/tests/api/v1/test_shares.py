@@ -224,8 +224,8 @@ class ShareApiTest(test.TestCase):
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
-        self.assertEqual(create_mock.call_args[1]['share_network_id'],
-                         "fakenetid")
+        self.assertEqual("fakenetid",
+                         create_mock.call_args[1]['share_network_id'])
 
     def test_migrate_share(self):
         share = db_utils.create_share()
@@ -342,8 +342,8 @@ class ShareApiTest(test.TestCase):
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
         self.assertEqual(expected, res_dict)
-        self.assertEqual(create_mock.call_args[1]['share_network_id'],
-                         parent_share_net)
+        self.assertEqual(parent_share_net,
+                         create_mock.call_args[1]['share_network_id'])
 
     def test_share_create_from_snapshot_with_share_net_equals_parent(self):
         parent_share_net = 444
@@ -377,9 +377,9 @@ class ShareApiTest(test.TestCase):
         res_dict = self.controller.create(req, body)
         expected = self._get_expected_share_detailed_response(shr)
         expected['share'].pop('snapshot_support')
-        self.assertEqual(res_dict, expected)
-        self.assertEqual(create_mock.call_args[1]['share_network_id'],
-                         parent_share_net)
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(parent_share_net,
+                         create_mock.call_args[1]['share_network_id'])
 
     def test_share_create_from_snapshot_invalid_share_net(self):
         self.mock_object(share_api.API, 'create')
@@ -483,7 +483,7 @@ class ShareApiTest(test.TestCase):
     def test_share_delete(self):
         req = fakes.HTTPRequest.blank('/shares/1')
         resp = self.controller.delete(req, 1)
-        self.assertEqual(resp.status_int, 202)
+        self.assertEqual(202, resp.status_int)
 
     def test_share_delete_in_consistency_group_param_not_provided(self):
         fake_share = stubs.stub_share('fake_share',
@@ -502,7 +502,7 @@ class ShareApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/shares/1?consistency_group_id=fake_cg_id')
         resp = self.controller.delete(req, 1)
-        self.assertEqual(resp.status_int, 202)
+        self.assertEqual(202, resp.status_int)
 
     def test_share_delete_in_consistency_group_wrong_id(self):
         fake_share = stubs.stub_share('fake_share',
@@ -636,7 +636,7 @@ class ShareApiTest(test.TestCase):
                 }
             ]
         }
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
 
     def _share_list_detail_with_search_opts(self, use_admin_context):
         search_opts = {
@@ -800,7 +800,7 @@ class ShareApiTest(test.TestCase):
         expected_opts = {'a': 'a', 'c': 'c'}
         allowed_opts = ['a', 'c']
         common.remove_invalid_options(ctx, search_opts, allowed_opts)
-        self.assertEqual(search_opts, expected_opts)
+        self.assertEqual(expected_opts, search_opts)
 
     def test_remove_invalid_options_admin(self):
         ctx = context.RequestContext('fakeuser', 'fakeproject', is_admin=True)
@@ -808,4 +808,4 @@ class ShareApiTest(test.TestCase):
         expected_opts = {'a': 'a', 'b': 'b', 'c': 'c', 'd': 'd'}
         allowed_opts = ['a', 'c']
         common.remove_invalid_options(ctx, search_opts, allowed_opts)
-        self.assertEqual(search_opts, expected_opts)
+        self.assertEqual(expected_opts, search_opts)

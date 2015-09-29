@@ -58,7 +58,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         names = [str(x['name']) for x in data['extensions']
                  if str(x['name']) in self.ext_list]
         names.sort()
-        self.assertEqual(names, self.ext_list)
+        self.assertEqual(self.ext_list, names)
 
         # Ensure all the timestamps are valid according to iso8601
         for ext in data['extensions']:
@@ -68,18 +68,19 @@ class ExtensionControllerTest(ExtensionTestCase):
         (fox_ext, ) = [
             x for x in data['extensions'] if x['alias'] == 'FOXNSOX']
         self.assertEqual(
-            fox_ext, {'name': 'Fox In Socks',
-                      'updated': '2011-01-22T13:25:27-06:00',
-                      'description': 'The Fox In Socks Extension.',
-                      'alias': 'FOXNSOX',
-                      'links': []}, )
+            {'name': 'Fox In Socks',
+             'updated': '2011-01-22T13:25:27-06:00',
+             'description': 'The Fox In Socks Extension.',
+             'alias': 'FOXNSOX',
+             'links': []},
+            fox_ext)
 
         for ext in data['extensions']:
             url = '/fake/extensions/%s' % ext['alias']
             request = webob.Request.blank(url)
             response = request.get_response(app)
             output = jsonutils.loads(response.body)
-            self.assertEqual(output['extension']['alias'], ext['alias'])
+            self.assertEqual(ext['alias'], output['extension']['alias'])
 
     def test_get_extension_json(self):
         app = router.APIRouter()
@@ -89,12 +90,12 @@ class ExtensionControllerTest(ExtensionTestCase):
 
         data = jsonutils.loads(response.body)
         self.assertEqual(
-            data['extension'],
             {"name": "Fox In Socks",
              "updated": "2011-01-22T13:25:27-06:00",
              "description": "The Fox In Socks Extension.",
              "alias": "FOXNSOX",
-             "links": []})
+             "links": []},
+            data['extension'])
 
     def test_get_non_existing_extension_json(self):
         app = router.APIRouter()

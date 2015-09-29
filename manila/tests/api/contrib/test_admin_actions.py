@@ -129,7 +129,7 @@ class AdminActionsTest(test.TestCase):
         resp = req.get_response(app())
 
         # validate response code and model status
-        self.assertEqual(resp.status_int, valid_code)
+        self.assertEqual(valid_code, resp.status_int)
 
         if valid_code == 404:
             self.assertRaises(exception.NotFound,
@@ -138,7 +138,7 @@ class AdminActionsTest(test.TestCase):
                               model['id'])
         else:
             actual_model = db_access_method(ctxt, model['id'])
-            self.assertEqual(actual_model['status'], valid_status)
+            self.assertEqual(valid_status, actual_model['status'])
 
     @ddt.data(*fixture_reset_status_with_different_roles)
     @ddt.unpack
@@ -233,7 +233,7 @@ class AdminActionsTest(test.TestCase):
         resp = req.get_response(app())
 
         # validate response
-        self.assertEqual(resp.status_int, valid_code)
+        self.assertEqual(valid_code, resp.status_int)
 
         if valid_code == 202 and check_model_in_db:
             self.assertRaises(exception.NotFound,

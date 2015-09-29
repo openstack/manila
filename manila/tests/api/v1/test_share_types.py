@@ -93,7 +93,7 @@ class ShareTypesApiTest(test.TestCase):
 
         expected_names = ['share_type_1', 'share_type_2', 'share_type_3']
         actual_names = map(lambda e: e['name'], res_dict['share_types'])
-        self.assertEqual(set(actual_names), set(expected_names))
+        self.assertEqual(set(expected_names), set(actual_names))
         for entry in res_dict['share_types']:
             if admin:
                 self.assertEqual('value1', entry['extra_specs'].get('key1'))

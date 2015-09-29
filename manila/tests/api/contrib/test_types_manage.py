@@ -102,22 +102,22 @@ class ShareTypesManageApiTest(test.TestCase):
 
     def test_share_types_delete(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         self.controller._delete(req, 1)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
     def test_share_types_delete_not_found(self):
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller._delete,
                           req, '777')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
     def test_share_types_with_volumes_destroy(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         self.controller._delete(req, 1)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
     @ddt.data(make_create_body("share_type_1"),
               make_create_body(spec_driver_handles_share_servers="false"),
