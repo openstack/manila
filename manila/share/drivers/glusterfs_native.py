@@ -126,12 +126,6 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
         ):
             gluster_actions.append(('set', option, value))
 
-        if not gluster_mgr_parent:
-            # TODO(deepakcs) Remove this once ssl options can be
-            # set dynamically.
-            gluster_actions.append(('stop', '--mode=script'))
-        gluster_actions.append(('start',))
-
         for action in gluster_actions:
             try:
                 gluster_mgr.gluster_call(
@@ -144,6 +138,11 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
                         'option': option, 'value': value, 'error': exc.stderr})
                 LOG.error(msg)
                 raise exception.GlusterfsException(msg)
+
+        if not gluster_mgr_parent:
+            # TODO(deepakcs) Remove this once ssl options can be
+            # set dynamically.
+            common._restart_gluster_vol(gluster_mgr)
 
         return gluster_mgr.export
 
