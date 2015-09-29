@@ -24,14 +24,19 @@ import math
 import socket
 import time
 
+from oslo_config import cfg
 from oslo_log import log
 from oslo_service import loopingcall
+from oslo_utils import timeutils
 from oslo_utils import units
 import six
 
+from manila.common import constants
 from manila import exception
 from manila.i18n import _, _LE, _LI, _LW
+from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.client import client_cmode
+from manila.share.drivers.netapp.dataontap.cluster_mode import data_motion
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila.share.drivers.netapp import options as na_opts
@@ -40,6 +45,7 @@ from manila.share import share_types
 from manila.share import utils as share_utils
 
 LOG = log.getLogger(__name__)
+CONF = cfg.CONF
 
 
 class NetAppCmodeFileStorageLibrary(object):
@@ -84,6 +90,8 @@ class NetAppCmodeFileStorageLibrary(object):
         self.configuration.append_config_values(na_opts.netapp_cluster_opts)
         self.configuration.append_config_values(
             na_opts.netapp_provisioning_opts)
+        self.configuration.append_config_values(
+            na_opts.netapp_replication_opts)
 
         self._licenses = []
         self._client = None
@@ -177,16 +185,16 @@ class NetAppCmodeFileStorageLibrary(object):
         housekeeping_periodic_task.start(
             interval=self.HOUSEKEEPING_INTERVAL_SECONDS, initial_delay=0)
 
-    def _get_valid_share_name(self, share_id):
+    def _get_backend_share_name(self, share_id):
         """Get share name according to share name template."""
         return self.configuration.netapp_volume_name_template % {
             'share_id': share_id.replace('-', '_')}
 
-    def _get_valid_snapshot_name(self, snapshot_id):
+    def _get_backend_snapshot_name(self, snapshot_id):
         """Get snapshot name according to snapshot name template."""
         return 'share_snapshot_' + snapshot_id.replace('-', '_')
 
-    def _get_valid_cg_snapshot_name(self, snapshot_id):
+    def _get_backend_cg_snapshot_name(self, snapshot_id):
         """Get snapshot name according to snapshot name template."""
         return 'share_cg_snapshot_' + snapshot_id.replace('-', '_')
 
@@ -222,6 +230,12 @@ class NetAppCmodeFileStorageLibrary(object):
             'consistency_group_support': 'host',
             'pools': self._get_pools(),
         }
+
+        if (self.configuration.replication_domain and
+                not self.configuration.driver_handles_share_servers):
+            data['replication_type'] = 'dr'
+            data['replication_domain'] = self.configuration.replication_domain
+
         return data
 
     @na_utils.trace
@@ -345,7 +359,7 @@ class NetAppCmodeFileStorageLibrary(object):
         if pool:
             return pool
 
-        share_name = self._get_valid_share_name(share['id'])
+        share_name = self._get_backend_share_name(share['id'])
         return self._client.get_aggregate_for_volume(share_name)
 
     @na_utils.trace
@@ -366,9 +380,9 @@ class NetAppCmodeFileStorageLibrary(object):
                                    vserver_client)
 
     @na_utils.trace
-    def _allocate_container(self, share, vserver_client):
+    def _allocate_container(self, share, vserver_client, replica=False):
         """Create new share on aggregate."""
-        share_name = self._get_valid_share_name(share['id'])
+        share_name = self._get_backend_share_name(share['id'])
 
         # Get Data ONTAP aggregate name as pool name.
         pool_name = share_utils.extract_host(share['host'], level='pool')
@@ -380,6 +394,10 @@ class NetAppCmodeFileStorageLibrary(object):
         extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
         self._check_extra_specs_validity(share, extra_specs)
         provisioning_options = self._get_provisioning_options(extra_specs)
+        if replica:
+            # If this volume is intended to be a replication destination,
+            # create it as the 'data-protection' type
+            provisioning_options['volume_type'] = 'dp'
 
         LOG.debug('Creating share %(share)s on pool %(pool)s with '
                   'provisioning options %(options)s',
@@ -541,10 +559,10 @@ class NetAppCmodeFileStorageLibrary(object):
     @na_utils.trace
     def _allocate_container_from_snapshot(
             self, share, snapshot, vserver_client,
-            snapshot_name_func=_get_valid_snapshot_name):
+            snapshot_name_func=_get_backend_snapshot_name):
         """Clones existing share."""
-        share_name = self._get_valid_share_name(share['id'])
-        parent_share_name = self._get_valid_share_name(snapshot['share_id'])
+        share_name = self._get_backend_share_name(share['id'])
+        parent_share_name = self._get_backend_share_name(snapshot['share_id'])
         parent_snapshot_name = snapshot_name_func(self, snapshot['id'])
 
         LOG.debug('Creating share from snapshot %s', snapshot['id'])
@@ -571,7 +589,7 @@ class NetAppCmodeFileStorageLibrary(object):
                         {'share': share['id'], 'error': error})
             return
 
-        share_name = self._get_valid_share_name(share['id'])
+        share_name = self._get_backend_share_name(share['id'])
         if self._share_exists(share_name, vserver_client):
             self._remove_export(share, vserver_client)
             self._deallocate_container(share_name, vserver_client)
@@ -590,7 +608,7 @@ class NetAppCmodeFileStorageLibrary(object):
         """Creates NAS storage."""
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
-        share_name = self._get_valid_share_name(share['id'])
+        share_name = self._get_backend_share_name(share['id'])
 
         interfaces = vserver_client.get_network_interfaces(
             protocols=[share['share_proto']])
@@ -683,7 +701,7 @@ class NetAppCmodeFileStorageLibrary(object):
         """Deletes NAS storage."""
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
-        share_name = self._get_valid_share_name(share['id'])
+        share_name = self._get_backend_share_name(share['id'])
         target = helper.get_target(share)
         # Share may be in error state, so there's no share and target.
         if target:
@@ -693,8 +711,8 @@ class NetAppCmodeFileStorageLibrary(object):
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot of a share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
-        share_name = self._get_valid_share_name(snapshot['share_id'])
-        snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
+        share_name = self._get_backend_share_name(snapshot['share_id'])
+        snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
         LOG.debug('Creating snapshot %s', snapshot_name)
         vserver_client.create_snapshot(share_name, snapshot_name)
 
@@ -713,8 +731,8 @@ class NetAppCmodeFileStorageLibrary(object):
                         {'snap': snapshot['id'], 'error': error})
             return
 
-        share_name = self._get_valid_share_name(snapshot['share_id'])
-        snapshot_name = self._get_valid_snapshot_name(snapshot['id'])
+        share_name = self._get_backend_share_name(snapshot['share_id'])
+        snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
 
         try:
             self._handle_busy_snapshot(vserver_client, share_name,
@@ -785,7 +803,7 @@ class NetAppCmodeFileStorageLibrary(object):
             msg_args = {'export': share['export_location']}
             raise exception.ManageInvalidShare(reason=msg % msg_args)
 
-        share_name = self._get_valid_share_name(share['id'])
+        share_name = self._get_backend_share_name(share['id'])
         aggregate_name = share_utils.extract_host(share['host'], level='pool')
 
         # Get existing volume info
@@ -886,7 +904,7 @@ class NetAppCmodeFileStorageLibrary(object):
 
             self._allocate_container_from_snapshot(
                 clone['share'], clone['snapshot'], vserver_client,
-                NetAppCmodeFileStorageLibrary._get_valid_cg_snapshot_name)
+                NetAppCmodeFileStorageLibrary._get_backend_cg_snapshot_name)
 
             export_locations = self._create_export(clone['share'],
                                                    share_server,
@@ -955,9 +973,9 @@ class NetAppCmodeFileStorageLibrary(object):
         """Creates a consistency group snapshot."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
 
-        share_names = [self._get_valid_share_name(member['share_id'])
+        share_names = [self._get_backend_share_name(member['share_id'])
                        for member in snap_dict.get('cgsnapshot_members', [])]
-        snapshot_name = self._get_valid_cg_snapshot_name(snap_dict['id'])
+        snapshot_name = self._get_backend_cg_snapshot_name(snap_dict['id'])
 
         if share_names:
             LOG.debug('Creating CG snapshot %s.', snapshot_name)
@@ -980,9 +998,9 @@ class NetAppCmodeFileStorageLibrary(object):
                         {'snap': snap_dict['id'], 'error': error})
             return None, None
 
-        share_names = [self._get_valid_share_name(member['share_id'])
+        share_names = [self._get_backend_share_name(member['share_id'])
                        for member in snap_dict.get('cgsnapshot_members', [])]
-        snapshot_name = self._get_valid_cg_snapshot_name(snap_dict['id'])
+        snapshot_name = self._get_backend_cg_snapshot_name(snap_dict['id'])
 
         for share_name in share_names:
             try:
@@ -1004,7 +1022,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def extend_share(self, share, new_size, share_server=None):
         """Extends size of existing share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
-        share_name = self._get_valid_share_name(share['id'])
+        share_name = self._get_backend_share_name(share['id'])
         LOG.debug('Extending share %(name)s to %(size)s GB.',
                   {'name': share_name, 'size': new_size})
         vserver_client.set_volume_size(share_name, new_size)
@@ -1013,7 +1031,7 @@ class NetAppCmodeFileStorageLibrary(object):
     def shrink_share(self, share, new_size, share_server=None):
         """Shrinks size of existing share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
-        share_name = self._get_valid_share_name(share['id'])
+        share_name = self._get_backend_share_name(share['id'])
         LOG.debug('Shrinking share %(name)s to %(size)s GB.',
                   {'name': share_name, 'size': new_size})
         vserver_client.set_volume_size(share_name, new_size)
@@ -1022,6 +1040,12 @@ class NetAppCmodeFileStorageLibrary(object):
     def update_access(self, context, share, access_rules, add_rules=None,
                       delete_rules=None, share_server=None):
         """Updates access rules for a share."""
+        # NOTE(ameade): We do not need to add export rules to a non-active
+        # replica as it will fail.
+        replica_state = share.get('replica_state')
+        if (replica_state is not None and
+                replica_state != constants.REPLICA_STATE_ACTIVE):
+            return
         try:
             vserver, vserver_client = self._get_vserver(
                 share_server=share_server)
@@ -1034,7 +1058,7 @@ class NetAppCmodeFileStorageLibrary(object):
                         {'share': share['id'], 'error': error})
             return
 
-        share_name = self._get_valid_share_name(share['id'])
+        share_name = self._get_backend_share_name(share['id'])
         if self._share_exists(share_name, vserver_client):
             helper = self._get_helper(share)
             helper.set_client(vserver_client)
@@ -1096,3 +1120,237 @@ class NetAppCmodeFileStorageLibrary(object):
         disk_types = self._client.get_aggregate_disk_types(aggregate_names)
         for aggregate_name, disk_type in disk_types.items():
             ssc_stats[aggregate_name]['netapp_disk_type'] = disk_type
+
+    def _find_active_replica(self, replica_list):
+        # NOTE(ameade): Find current active replica. There can only be one
+        # active replica (SnapMirror source volume) at a time in cDOT.
+        for r in replica_list:
+            if r['replica_state'] == constants.REPLICA_STATE_ACTIVE:
+                return r
+
+    def create_replica(self, context, replica_list, new_replica,
+                       access_rules=None, share_server=None):
+        """Creates the new replica on this backend and sets up SnapMirror."""
+        active_replica = self._find_active_replica(replica_list)
+        dm_session = data_motion.DataMotionSession()
+
+        # 1. Create the destination share
+        dest_backend = share_utils.extract_host(new_replica['host'],
+                                                level='backend_name')
+
+        vserver = (dm_session.get_vserver_from_share(new_replica) or
+                   self.configuration.netapp_vserver)
+
+        vserver_client = data_motion.get_client_for_backend(
+            dest_backend, vserver_name=vserver)
+
+        self._allocate_container(new_replica, vserver_client, replica=True)
+
+        # 2. Setup SnapMirror
+        dm_session.create_snapmirror(active_replica, new_replica)
+
+        model_update = {
+            'export_locations': [],
+            'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC,
+            'access_rules_status': constants.STATUS_ACTIVE,
+        }
+
+        return model_update
+
+    def delete_replica(self, context, replica_list, replica,
+                       share_server=None):
+        """Removes the replica on this backend and destroys SnapMirror."""
+        dm_session = data_motion.DataMotionSession()
+        # 1. Remove SnapMirror
+        dest_backend = share_utils.extract_host(replica['host'],
+                                                level='backend_name')
+        vserver = (dm_session.get_vserver_from_share(replica) or
+                   self.configuration.netapp_vserver)
+
+        # Ensure that all potential snapmirror relationships and their metadata
+        # involving the replica are destroyed.
+        for other_replica in replica_list:
+            dm_session.delete_snapmirror(other_replica, replica)
+            dm_session.delete_snapmirror(replica, other_replica)
+
+        # 2. Delete share
+        vserver_client = data_motion.get_client_for_backend(
+            dest_backend, vserver_name=vserver)
+        share_name = self._get_backend_share_name(replica['id'])
+        self._deallocate_container(share_name, vserver_client)
+
+    def update_replica_state(self, context, replica_list, replica,
+                             access_rules, share_server=None):
+        """Returns the status of the given replica on this backend."""
+        active_replica = self._find_active_replica(replica_list)
+
+        share_name = self._get_backend_share_name(replica['id'])
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        dm_session = data_motion.DataMotionSession()
+        try:
+            snapmirrors = dm_session.get_snapmirrors(active_replica, replica)
+        except netapp_api.NaApiError:
+            LOG.exception(_LE("Could not get snapmirrors for replica %s."),
+                          replica['id'])
+            return constants.STATUS_ERROR
+
+        if not snapmirrors:
+            if replica['status'] != constants.STATUS_CREATING:
+                try:
+                    dm_session.create_snapmirror(active_replica, replica)
+                except netapp_api.NaApiError:
+                    LOG.exception(_LE("Could not create snapmirror for "
+                                      "replica %s."), replica['id'])
+                    return constants.STATUS_ERROR
+            return constants.REPLICA_STATE_OUT_OF_SYNC
+
+        snapmirror = snapmirrors[0]
+
+        if (snapmirror.get('mirror-state') != 'snapmirrored' and
+                snapmirror.get('relationship-status') == 'transferring'):
+            return constants.REPLICA_STATE_OUT_OF_SYNC
+
+        if snapmirror.get('mirror-state') != 'snapmirrored':
+            try:
+                vserver_client.resume_snapmirror(snapmirror['source-vserver'],
+                                                 snapmirror['source-volume'],
+                                                 vserver,
+                                                 share_name)
+                vserver_client.resync_snapmirror(snapmirror['source-vserver'],
+                                                 snapmirror['source-volume'],
+                                                 vserver,
+                                                 share_name)
+                return constants.REPLICA_STATE_OUT_OF_SYNC
+            except netapp_api.NaApiError:
+                LOG.exception(_LE("Could not resync snapmirror."))
+                return constants.STATUS_ERROR
+
+        last_update_timestamp = float(
+            snapmirror.get('last-transfer-end-timestamp', 0))
+        # TODO(ameade): Have a configurable RPO for replicas, for now it is
+        # one hour.
+        if (last_update_timestamp and
+            (timeutils.is_older_than(
+                timeutils.iso8601_from_timestamp(last_update_timestamp),
+                3600))):
+            return constants.REPLICA_STATE_OUT_OF_SYNC
+
+        return constants.REPLICA_STATE_IN_SYNC
+
+    def promote_replica(self, context, replica_list, replica, access_rules,
+                        share_server=None):
+        """Switch SnapMirror relationships and allow r/w ops on replica.
+
+        Creates a DataMotion session and switches the direction of the
+        SnapMirror relationship between the currently 'active' instance (
+        SnapMirror source volume) and the replica. Also attempts setting up
+        SnapMirror relationships between the other replicas and the new
+        SnapMirror source volume ('active' instance).
+        :param context: Request Context
+        :param replica_list: List of replicas, including the 'active' instance
+        :param replica: Replica to promote to SnapMirror source
+        :param access_rules: Access rules to apply to the replica
+        :param share_server: ShareServer class instance of replica
+        :return: Updated replica_list
+        """
+        orig_active_replica = self._find_active_replica(replica_list)
+
+        dm_session = data_motion.DataMotionSession()
+
+        new_replica_list = []
+
+        # Setup the new active replica
+        new_active_replica = (
+            self._convert_destination_replica_to_independent(
+                context, dm_session, orig_active_replica, replica,
+                access_rules, share_server=share_server))
+        new_replica_list.append(new_active_replica)
+
+        # Change the source replica for all destinations to the new
+        # active replica.
+        for r in replica_list:
+            if r['id'] != replica['id']:
+                r = self._safe_change_replica_source(dm_session, r,
+                                                     orig_active_replica,
+                                                     replica,
+                                                     replica_list)
+                new_replica_list.append(r)
+
+        return new_replica_list
+
+    def _convert_destination_replica_to_independent(
+            self, context, dm_session, orig_active_replica, replica,
+            access_rules, share_server=None):
+        """Breaks SnapMirror and allows r/w ops on the destination replica.
+
+        For promotion, the existing SnapMirror relationship must be broken
+        and access rules have to be granted to the broken off replica to
+        use it as an independent share.
+        :param context: Request Context
+        :param dm_session: Data motion object for SnapMirror operations
+        :param orig_active_replica: Original SnapMirror source
+        :param replica: Replica to promote to SnapMirror source
+        :param access_rules: Access rules to apply to the replica
+        :param share_server: ShareServer class instance of replica
+        :return: Updated replica
+        """
+        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        share_name = self._get_backend_share_name(replica['id'])
+
+        try:
+            # 1. Start an update to try to get a last minute transfer before we
+            # quiesce and break
+            dm_session.update_snapmirror(orig_active_replica, replica)
+        except netapp_api.NaApiError:
+            # Ignore any errors since the current source replica may be
+            # unreachable
+            pass
+        # 2. Break SnapMirror
+        dm_session.break_snapmirror(orig_active_replica, replica)
+
+        # 3. Setup access rules
+        new_active_replica = copy.deepcopy(replica)
+        helper = self._get_helper(replica)
+        helper.set_client(vserver_client)
+        try:
+            helper.update_access(replica, share_name, access_rules)
+        except Exception:
+            new_active_replica['access_rules_status'] = (
+                constants.STATUS_OUT_OF_SYNC)
+        else:
+            new_active_replica['access_rules_status'] = constants.STATUS_ACTIVE
+
+        new_active_replica['export_locations'] = self._create_export(
+            new_active_replica, share_server, vserver, vserver_client)
+        new_active_replica['replica_state'] = constants.REPLICA_STATE_ACTIVE
+        return new_active_replica
+
+    def _safe_change_replica_source(self, dm_session, replica,
+                                    orig_source_replica,
+                                    new_source_replica, replica_list):
+        """Attempts to change the SnapMirror source to new source.
+
+        If the attempt fails, 'replica_state' is set to 'error'.
+        :param dm_session: Data motion object for SnapMirror operations
+        :param replica: Replica that requires a change of source
+        :param orig_source_replica: Original SnapMirror source volume
+        :param new_source_replica: New SnapMirror source volume
+        :return: Updated replica
+        """
+        try:
+            dm_session.change_snapmirror_source(replica,
+                                                orig_source_replica,
+                                                new_source_replica,
+                                                replica_list)
+        except Exception:
+            replica['replica_state'] = constants.STATUS_ERROR
+            replica['export_locations'] = []
+            msg = _LE("Failed to change replica (%s) to a SnapMirror "
+                      "destination."), replica['id']
+            LOG.exception(msg)
+            return replica
+
+        replica['replica_state'] = constants.REPLICA_STATE_OUT_OF_SYNC
+        replica['export_locations'] = []
+
+        return replica

@@ -47,9 +47,34 @@ class NetAppBaseClient(object):
         minor = result.get_child_content('minor-version')
         return major, minor
 
+    @na_utils.trace
+    def get_system_version(self):
+        """Gets the current Data ONTAP version."""
+
+        result = self.send_request('system-get-version')
+
+        version_tuple = result.get_child_by_name(
+            'version-tuple') or netapp_api.NaElement('none')
+        system_version_tuple = version_tuple.get_child_by_name(
+            'system-version-tuple') or netapp_api.NaElement('none')
+
+        version = {}
+        version['version'] = result.get_child_content('version')
+        version['version-tuple'] = (
+            system_version_tuple.get_child_content('generation'),
+            system_version_tuple.get_child_content('major'),
+            system_version_tuple.get_child_content('minor'))
+
+        return version
+
     def _init_features(self):
         """Set up the repository of available Data ONTAP features."""
         self.features = Features()
+
+    def _strip_xml_namespace(self, string):
+        if string.startswith('{') and '}' in string:
+            return string.split('}', 1)[1]
+        return string
 
     def send_request(self, api_name, api_args=None, enable_tunneling=True):
         """Sends request to Ontapi."""

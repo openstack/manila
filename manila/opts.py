@@ -130,6 +130,7 @@ _global_opt_lists = [
     manila.share.drivers.netapp.options.netapp_transport_opts,
     manila.share.drivers.netapp.options.netapp_basicauth_opts,
     manila.share.drivers.netapp.options.netapp_provisioning_opts,
+    manila.share.drivers.netapp.options.netapp_replication_opts,
     manila.share.drivers.quobyte.quobyte.quobyte_manila_share_opts,
     manila.share.drivers.service_instance.common_opts,
     manila.share.drivers.service_instance.no_share_servers_handling_mode_opts,

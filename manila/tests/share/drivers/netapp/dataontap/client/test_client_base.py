@@ -23,6 +23,7 @@ from manila import test
 from manila.tests.share.drivers.netapp.dataontap.client import fakes as fake
 
 
+@ddt.ddt
 class NetAppBaseClientTestCase(test.TestCase):
 
     def setUp(self):
@@ -57,11 +58,28 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.assertEqual(1, major)
         self.assertEqual(20, minor)
 
+    def test_get_system_version(self):
+        version_response = netapp_api.NaElement(
+            fake.SYSTEM_GET_VERSION_RESPONSE)
+        self.connection.invoke_successfully.return_value = version_response
+
+        result = self.client.get_system_version()
+
+        self.assertEqual(fake.VERSION, result['version'])
+        self.assertEqual(('8', '2', '1'), result['version-tuple'])
+
     def test_init_features(self):
 
         self.client._init_features()
 
         self.assertSetEqual(set(), self.client.features.defined_features)
+
+    @ddt.data('tag_name', '{http://www.netapp.com/filer/admin}tag_name')
+    def test_strip_xml_namespace(self, element):
+
+        result = self.client._strip_xml_namespace(element)
+
+        self.assertEqual('tag_name', result)
 
     def test_send_request(self):
 
