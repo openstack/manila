@@ -816,9 +816,12 @@ class API(base.Base):
             raise exception.InvalidShare(reason=msg)
 
         # Then check state of the access rule
-        if access['state'] == constants.STATUS_ERROR:
+        if (access['state'] == constants.STATUS_ERROR and not
+                self.db.share_instance_access_get_all(ctx, access['id'])):
             self.db.share_access_delete(ctx, access["id"])
-        elif access['state'] == constants.STATUS_ACTIVE:
+
+        elif access['state'] in [constants.STATUS_ACTIVE,
+                                 constants.STATUS_ERROR]:
             for share_instance in share.instances:
                 try:
                     self.deny_access_to_instance(ctx, share_instance, access)
