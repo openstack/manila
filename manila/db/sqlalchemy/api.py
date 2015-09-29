@@ -1600,7 +1600,10 @@ def share_access_get_all_for_share(context, share_id):
                                    {'share_id': share_id}).all()
 
 
-def _share_instance_access_get_all(context, access_id, session):
+@require_context
+def share_instance_access_get_all(context, access_id, session=None):
+    if not session:
+        session = get_session()
     return _share_instance_access_query(context, session, access_id).all()
 
 
@@ -1619,7 +1622,7 @@ def share_access_delete(context, access_id):
     session = get_session()
 
     with session.begin():
-        mappings = _share_instance_access_get_all(context, access_id, session)
+        mappings = share_instance_access_get_all(context, access_id, session)
 
         if len(mappings) > 0:
             msg = (_("Access rule %s has mappings"
@@ -1654,7 +1657,7 @@ def share_instance_access_delete(context, mapping_id):
         mapping.soft_delete(session, update_status=True,
                             status_field_name='state')
 
-        other_mappings = _share_instance_access_get_all(
+        other_mappings = share_instance_access_get_all(
             context, mapping['access_id'], session)
 
         # NOTE(u_glide): Remove access rule if all mappings were removed.
