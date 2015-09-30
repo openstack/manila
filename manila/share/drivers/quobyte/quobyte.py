@@ -191,19 +191,6 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
             volume_uuid=volume_uuid,
             remove_export=True))
 
-    def create_snapshot(self, context, snapshot, share_server=None):
-        """Is called to create snapshot."""
-        raise NotImplementedError()
-
-    def create_share_from_snapshot(self, context, share, snapshot,
-                                   share_server=None):
-        """Is called to create share from snapshot."""
-        raise NotImplementedError()
-
-    def delete_snapshot(self, context, snapshot, share_server=None):
-        """TBD: Is called to remove snapshot."""
-        raise NotImplementedError()
-
     def ensure_share(self, context, share, share_server=None):
         """Invoked to ensure that share is exported."""
 
