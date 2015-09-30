@@ -1242,18 +1242,32 @@ class ShareAPITestCase(test.TestCase):
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         values = {
             'share_id': share['id'],
-            'access_type': 'fakeacctype',
-            'access_to': 'fakeaccto',
+            'access_type': 'fake_access_type',
+            'access_to': 'fake_access_to',
             'access_level': level,
         }
+        fake_access_expected = copy.deepcopy(values)
+        fake_access_expected.update({
+            'id': 'fake_access_id',
+            'state': 'fake_state',
+        })
+        fake_access = copy.deepcopy(fake_access_expected)
+        fake_access.update({
+            'deleted': 'fake_deleted',
+            'deleted_at': 'fake_deleted_at',
+            'instance_mappings': ['foo', 'bar'],
+        })
         self.mock_object(db_api, 'share_access_create',
-                         mock.Mock(return_value='fakeacc'))
-        access = self.api.allow_access(self.context, share,
-                                       'fakeacctype', 'fakeaccto',
-                                       level)
-        self.assertEqual(access, 'fakeacc')
+                         mock.Mock(return_value=fake_access))
+
+        access = self.api.allow_access(
+            self.context, share, fake_access['access_type'],
+            fake_access['access_to'], level)
+
+        self.assertEqual(fake_access_expected, access)
         self.share_rpcapi.allow_access.assert_called_once_with(
-            self.context, utils.IsAMatcher(models.ShareInstance), 'fakeacc')
+            self.context, utils.IsAMatcher(models.ShareInstance),
+            fake_access)
         db_api.share_access_create.assert_called_once_with(
             self.context, values)
         share_api.policy.check_policy.assert_called_with(
