@@ -65,3 +65,8 @@ class ShareMigrationException(exceptions.TempestException):
 
 class ResourceReleaseFailed(exceptions.TempestException):
     message = "Failed to release resource '%(res_type)s' with id '%(res_id)s'."
+
+
+class ShareReplicationTypeException(exceptions.TempestException):
+    message = ("Option backend_replication_type is set to incorrect value: "
+               "%(replication_type)s")

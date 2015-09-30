@@ -156,6 +156,11 @@ ShareGroup = [
                 help="Defines whether to run consistency group tests or not. "
                      "Disable this feature if used driver doesn't support "
                      "it."),
+    cfg.BoolOpt("run_replication_tests",
+                default=False,
+                help="Defines whether to run replication tests or not. "
+                     "Enable this feature if the driver is configured "
+                     "for replication."),
     cfg.BoolOpt("run_migration_tests",
                 default=False,
                 help="Enable or disable migration tests."),
@@ -188,4 +193,8 @@ ShareGroup = [
                     "timing out (seconds)."),
     cfg.StrOpt("default_share_type_name",
                help="Default share type name to use in tempest tests."),
+    cfg.StrOpt("backend_replication_type",
+               default='none',
+               choices=['none', 'writable', 'readable', 'dr'],
+               help="Specify the replication type supported by the backend."),
 ]
