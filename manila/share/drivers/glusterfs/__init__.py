@@ -270,7 +270,7 @@ class GlusterNFSVolHelper(GlusterNFSHelper):
     def _get_vol_exports(self):
         export_vol = self.gluster_manager.get_gluster_vol_option(
             NFS_RPC_AUTH_ALLOW)
-        return export_vol.split(',')
+        return export_vol.split(',') if export_vol else []
 
     def _manage_access(self, access_type, access_to, cbk):
         """Manage share access with cbk.
