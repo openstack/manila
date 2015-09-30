@@ -428,6 +428,11 @@ def share_access_get_all_for_share(context, share_id):
     return IMPL.share_access_get_all_for_share(context, share_id)
 
 
+def share_instance_access_get_all(context, access_id, session=None):
+    """Get access rules to all share instances."""
+    return IMPL.share_instance_access_get_all(context, access_id, session=None)
+
+
 def share_access_get_all_by_type_and_access(context, share_id, access_type,
                                             access):
     """Returns share access by given type and access."""
