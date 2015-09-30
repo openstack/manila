@@ -187,6 +187,9 @@ function configure_manila {
 
     iniset $MANILA_CONF DEFAULT lvm_share_volume_group $SHARE_GROUP
 
+    # Set the replica_state_update_interval
+    iniset $MANILA_CONF DEFAULT replica_state_update_interval $MANILA_REPLICA_STATE_UPDATE_INTERVAL
+
     if is_service_enabled neutron; then
         configure_auth_token_middleware $MANILA_CONF neutron $MANILA_AUTH_CACHE_DIR neutron
     fi

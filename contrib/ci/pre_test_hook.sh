@@ -77,6 +77,10 @@ elif [[ "$DRIVER" == "lvm" ]]; then
 elif [[ "$DRIVER" == "zfsonlinux" ]]; then
     echo "SHARE_DRIVER=manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" >> $localrc_path
     echo "RUN_MANILA_REPLICATION_TESTS=True" >> $localrc_path
+    # Set the replica_state_update_interval to 60 seconds to make
+    # replication tests run faster. The default is 300, which is greater than
+    # the build timeout for ZFS on the gate.
+    echo "MANILA_REPLICA_STATE_UPDATE_INTERVAL=60" >> $localrc_path
     echo "MANILA_ZFSONLINUX_USE_SSH=True" >> $localrc_path
 fi
 

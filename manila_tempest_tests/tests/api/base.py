@@ -468,7 +468,7 @@ class BaseSharesTest(test.BaseTestCase):
                                         description=None, force=False,
                                         client=None, cleanup_in_class=True):
         if client is None:
-            client = cls.shares_client
+            client = cls.shares_v2_client
         if description is None:
             description = "Tempest's snapshot"
         snapshot = client.create_snapshot(share_id, name, description, force)
@@ -521,6 +521,16 @@ class BaseSharesTest(test.BaseTestCase):
                  service['state'] == 'up']
         return zones
 
+    def get_pools_for_replication_domain(self):
+        # Get the list of pools for the replication domain
+        pools = self.admin_client.list_pools(detail=True)['pools']
+        instance_host = self.shares[0]['host']
+        host_pool = [p for p in pools if p['name'] == instance_host][0]
+        rep_domain = host_pool['capabilities']['replication_domain']
+        pools_in_rep_domain = [p for p in pools if p['capabilities'][
+            'replication_domain'] == rep_domain]
+        return rep_domain, pools_in_rep_domain
+
     @classmethod
     def create_share_replica(cls, share_id, availability_zone, client=None,
                              cleanup_in_class=False, cleanup=True):
@@ -545,8 +555,11 @@ class BaseSharesTest(test.BaseTestCase):
     @classmethod
     def delete_share_replica(cls, replica_id, client=None):
         client = client or cls.shares_v2_client
-        client.delete_share_replica(replica_id)
-        client.wait_for_resource_deletion(replica_id=replica_id)
+        try:
+            client.delete_share_replica(replica_id)
+            client.wait_for_resource_deletion(replica_id=replica_id)
+        except exceptions.NotFound:
+            pass
 
     @classmethod
     def promote_share_replica(cls, replica_id, client=None):
@@ -635,6 +648,19 @@ class BaseSharesTest(test.BaseTestCase):
                 ic["deleted"] = True
 
     @classmethod
+    def clear_share_replicas(cls, share_id, client=None):
+        client = client or cls.shares_v2_client
+        share_replicas = client.list_share_replicas(
+            share_id=share_id)
+
+        for replica in share_replicas:
+            try:
+                cls.delete_share_replica(replica['id'])
+            except exceptions.BadRequest:
+                # Ignore the exception due to deletion of last active replica
+                pass
+
+    @classmethod
     def clear_resources(cls, resources=None):
         """Deletes resources, that were created in test suites.
 
@@ -658,6 +684,7 @@ class BaseSharesTest(test.BaseTestCase):
                 client = res["client"]
                 with handle_cleanup_exceptions():
                     if res["type"] is "share":
+                        cls.clear_share_replicas(res_id)
                         cg_id = res.get('consistency_group_id')
                         if cg_id:
                             params = {'consistency_group_id': cg_id}
