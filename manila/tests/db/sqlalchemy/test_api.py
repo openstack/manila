@@ -324,6 +324,20 @@ class ConsistencyGroupDatabaseAPITestCase(test.TestCase):
         self.assertEqual(expected_cg['id'], cg['id'])
         self.assertEqual(expected_cg['name'], cg['name'])
 
+    def test_consistency_group_get_all_by_share_server(self):
+        fake_server = 123
+        expected_cg = db_utils.create_consistency_group(
+            share_server_id=fake_server)
+        db_utils.create_consistency_group()
+
+        cgs = db_api.consistency_group_get_all_by_share_server(self.ctxt,
+                                                               fake_server)
+
+        self.assertEqual(1, len(cgs))
+        cg = cgs[0]
+        self.assertEqual(expected_cg['id'], cg['id'])
+        self.assertEqual(expected_cg['name'], cg['name'])
+
     def test_consistency_group_get_all_by_project_with_details(self):
         fake_project = 'fake_project'
         expected_cg = db_utils.create_consistency_group(

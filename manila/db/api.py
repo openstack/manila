@@ -908,6 +908,12 @@ def consistency_group_create(context, values):
     return IMPL.consistency_group_create(context, values)
 
 
+def consistency_group_get_all_by_share_server(context, share_server_id):
+    """Get all consistency groups associated with a share server."""
+    return IMPL.consistency_group_get_all_by_share_server(context,
+                                                          share_server_id)
+
+
 def consistency_group_get_all_by_project(context, project_id, detailed=True):
     """Get all consistency groups belonging to a project."""
     return IMPL.consistency_group_get_all_by_project(context, project_id,
