@@ -41,7 +41,7 @@ class ManagerTestCase(test.TestCase):
         self.assertTrue(hasattr(fake_manager, 'init_host'))
         self.assertTrue(hasattr(fake_manager, 'service_version'))
         self.assertTrue(hasattr(fake_manager, 'service_config'))
-        self.assertEqual(fake_manager.host, self.host)
+        self.assertEqual(self.host, fake_manager.host)
         importutils.import_module.assert_called_once_with(self.db_driver)
 
     @ddt.data(True, False)
@@ -84,8 +84,8 @@ class SchedulerDependentManagerTestCase(test.TestCase):
                                 'update_service_capabilities'))
         self.assertTrue(hasattr(self.sched_manager,
                                 '_publish_service_capabilities'))
-        self.assertEqual(self.sched_manager.host, self.host)
-        self.assertEqual(self.sched_manager.service_name, self.service_name)
+        self.assertEqual(self.host, self.sched_manager.host)
+        self.assertEqual(self.service_name, self.sched_manager.service_name)
         importutils.import_module.assert_called_once_with(self.db_driver)
 
     @ddt.data(None, {}, [], '')
@@ -118,5 +118,4 @@ class SchedulerDependentManagerTestCase(test.TestCase):
     @ddt.data(None, '', [], {}, {'foo': 'bar'})
     def test_update_service_capabilities(self, capabilities):
         self.sched_manager.update_service_capabilities(capabilities)
-
         self.assertEqual(capabilities, self.sched_manager.last_capabilities)

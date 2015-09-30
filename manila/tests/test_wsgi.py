@@ -254,7 +254,7 @@ class ExceptionTest(test.TestCase):
                     'The server has either erred or is incapable '
                     'of performing the requested operation.')
         self.assertIn(expected, six.text_type(resp.body), resp.body)
-        self.assertEqual(resp.status_int, 500, resp.body)
+        self.assertEqual(500, resp.status_int, resp.body)
 
     def test_safe_exceptions_are_described_in_faults(self):
         self._do_test_exception_safety_reflected_in_faults(True)
@@ -270,12 +270,12 @@ class ExceptionTest(test.TestCase):
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
         self.assertIn(msg, six.text_type(resp.body), resp.body)
-        self.assertEqual(resp.status_int, exception_type.code, resp.body)
+        self.assertEqual(exception_type.code, resp.status_int, resp.body)
 
         if hasattr(exception_type, 'headers'):
             for (key, value) in six.iteritems(exception_type.headers):
                 self.assertTrue(key in resp.headers)
-                self.assertEqual(resp.headers[key], value)
+                self.assertEqual(value, resp.headers[key])
 
     def test_quota_error_mapping(self):
         self._do_test_exception_mapping(exception.QuotaError, 'too many used')
