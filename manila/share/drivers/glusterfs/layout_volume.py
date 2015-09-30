@@ -485,6 +485,17 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         export = self.driver._setup_via_manager(
             {'share': share, 'manager': gmgr},
             {'share': snapshot['share_instance'], 'manager': old_gmgr})
+
+        try:
+            gmgr.gluster_call(
+                'volume', 'start', gmgr.volume)
+        except exception.ProcessExecutionError as exc:
+            msg = (_("Error starting gluster volume. "
+                     "Volume: %(volname)s, Error: %(error)s") %
+                   {'volname': gmgr.volume, 'error': exc.stderr})
+            LOG.error(msg)
+            raise exception.GlusterfsException(msg)
+
         self.gluster_used_vols.add(gmgr.qualified)
         self.private_storage.update(share['id'], {'volume': gmgr.qualified})
         return export
