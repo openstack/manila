@@ -15,6 +15,7 @@
 
 import copy
 import inspect
+import random
 import traceback
 
 from oslo_concurrency import lockutils
@@ -31,6 +32,18 @@ from manila_tempest_tests import share_exceptions
 
 CONF = config.CONF
 LOG = log.getLogger(__name__)
+
+
+def rand_ip():
+    """This uses the TEST-NET-3 range of reserved IP addresses.
+
+    Using this range, which are reserved solely for use in
+    documentation and example source code, should avoid any potential
+    conflicts in real-world testing.
+    """
+    TEST_NET_3 = '203.0.113.'
+    final_octet = six.text_type(random.randint(0, 255))
+    return TEST_NET_3 + final_octet
 
 
 class handle_cleanup_exceptions(object):
@@ -612,8 +625,8 @@ class BaseSharesTest(test.BaseTestCase):
         data = {
             "name": data_utils.rand_name("ss-name"),
             "description": data_utils.rand_name("ss-desc"),
-            "dns_ip": data_utils.rand_name("ss-dns_ip"),
-            "server": data_utils.rand_name("ss-server"),
+            "dns_ip": rand_ip(),
+            "server": rand_ip(),
             "domain": data_utils.rand_name("ss-domain"),
             "user": data_utils.rand_name("ss-user"),
             "password": data_utils.rand_name("ss-password"),
