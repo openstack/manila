@@ -166,11 +166,11 @@ class ManilaCmdManageTestCase(test.TestCase):
     def test_list(self, print_mock):
         serv_1 = {
             'host': 'fake_host1',
-            'availability_zone': 'avail_zone1',
+            'availability_zone': {'name': 'avail_zone1'},
         }
         serv_2 = {
             'host': 'fake_host2',
-            'availability_zone': 'avail_zone2',
+            'availability_zone': {'name': 'avail_zone2'},
         }
         self.mock_object(db, 'service_get_all',
                          mock.Mock(return_value=[serv_1, serv_2]))
@@ -188,11 +188,11 @@ class ManilaCmdManageTestCase(test.TestCase):
     def test_list_zone_is_none(self, print_mock):
         serv_1 = {
             'host': 'fake_host1',
-            'availability_zone': 'avail_zone1',
+            'availability_zone': {'name': 'avail_zone1'},
         }
         serv_2 = {
             'host': 'fake_host2',
-            'availability_zone': 'avail_zone2',
+            'availability_zone': {'name': 'avail_zone2'},
         }
         self.mock_object(db, 'service_get_all',
                          mock.Mock(return_value=[serv_1, serv_2]))
@@ -292,7 +292,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         get_admin_context.return_value = ctxt
         service = {'binary': 'manila-binary',
                    'host': 'fake-host.fake-domain',
-                   'availability_zone': 'fake-zone',
+                   'availability_zone': {'name': 'fake-zone'},
                    'updated_at': '2014-06-30 11:22:33',
                    'disabled': False}
         service_get_all.return_value = [service]
@@ -307,7 +307,7 @@ class ManilaCmdManageTestCase(test.TestCase):
                                      'Updated At')
             service_format = format % (service['binary'],
                                        service['host'].partition('.')[0],
-                                       service['availability_zone'],
+                                       service['availability_zone']['name'],
                                        'enabled',
                                        ':-)',
                                        service['updated_at'])
