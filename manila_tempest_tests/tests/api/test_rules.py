@@ -30,7 +30,10 @@ def _create_delete_ro_access_rule(self):
     """
     rule = self.shares_client.create_access_rule(
         self.share["id"], self.access_type, self.access_to, 'ro')
+
     self.assertEqual('ro', rule['access_level'])
+    for key in ('deleted', 'deleted_at', 'instance_mappings'):
+        self.assertNotIn(key, rule.keys())
     self.shares_client.wait_for_access_rule_status(
         self.share["id"], rule["id"], "active")
     self.shares_client.delete_access_rule(self.share["id"], rule["id"])
@@ -61,7 +64,10 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         # create rule
         rule = self.shares_client.create_access_rule(
             self.share["id"], self.access_type, access_to)
+
         self.assertEqual('rw', rule['access_level'])
+        for key in ('deleted', 'deleted_at', 'instance_mappings'):
+            self.assertNotIn(key, rule.keys())
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
@@ -79,6 +85,9 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         # create rule
         rule = self.shares_client.create_access_rule(
             self.share["id"], self.access_type, access_to)
+
+        for key in ('deleted', 'deleted_at', 'instance_mappings'):
+            self.assertNotIn(key, rule.keys())
         self.assertEqual('rw', rule['access_level'])
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
@@ -128,7 +137,10 @@ class ShareUserRulesForNFSTest(base.BaseSharesTest):
         # create rule
         rule = self.shares_client.create_access_rule(
             self.share["id"], self.access_type, self.access_to)
+
         self.assertEqual('rw', rule['access_level'])
+        for key in ('deleted', 'deleted_at', 'instance_mappings'):
+            self.assertNotIn(key, rule.keys())
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
@@ -179,7 +191,10 @@ class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
         # create rule
         rule = self.shares_client.create_access_rule(
             self.share["id"], self.access_type, self.access_to)
+
         self.assertEqual('rw', rule['access_level'])
+        for key in ('deleted', 'deleted_at', 'instance_mappings'):
+            self.assertNotIn(key, rule.keys())
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
@@ -193,7 +208,10 @@ class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
     def test_create_delete_cert_ro_access_rule(self):
         rule = self.shares_client.create_access_rule(
             self.share["id"], 'cert', 'client2.com', 'ro')
+
         self.assertEqual('ro', rule['access_level'])
+        for key in ('deleted', 'deleted_at', 'instance_mappings'):
+            self.assertNotIn(key, rule.keys())
         self.shares_client.wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
         self.shares_client.delete_access_rule(self.share["id"], rule["id"])
@@ -249,8 +267,10 @@ class ShareRulesTest(base.BaseSharesTest):
         rules = self.shares_client.list_access_rules(self.share["id"])
 
         # verify keys
-        keys = ["state", "id", "access_type", "access_to", "access_level"]
-        [self.assertIn(key, r.keys()) for r in rules for key in keys]
+        for key in ("state", "id", "access_type", "access_to", "access_level"):
+            [self.assertIn(key, r.keys()) for r in rules]
+        for key in ('deleted', 'deleted_at', 'instance_mappings'):
+            [self.assertNotIn(key, r.keys()) for r in rules]
 
         # verify values
         self.assertEqual("active", rules[0]["state"])

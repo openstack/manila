@@ -792,7 +792,14 @@ class API(base.Base):
 
         for share_instance in share.instances:
             self.allow_access_to_instance(ctx, share_instance, access)
-        return access
+        return {
+            'id': access['id'],
+            'share_id': access['share_id'],
+            'access_type': access['access_type'],
+            'access_to': access['access_to'],
+            'access_level': access['access_level'],
+            'state': access['state'],
+        }
 
     def allow_access_to_instance(self, context, share_instance, access):
         policy.check_policy(context, 'share', 'allow_access')
