@@ -79,9 +79,18 @@ ShareGroup = [
     cfg.ListOpt("enable_ro_access_level_for_protocols",
                 default=["nfs", ],
                 help="List of protocols to run tests with ro access level."),
-    cfg.StrOpt("storage_protocol",
+
+    # Capabilities
+    cfg.StrOpt("capability_storage_protocol",
+               deprecated_name="storage_protocol",
                default="NFS_CIFS",
                help="Backend protocol to target when creating volume types."),
+    cfg.BoolOpt("capability_snapshot_support",
+                help="Defines extra spec that satisfies specific back end "
+                     "capability called 'snapshot_support' and will be used "
+                     "for setting up custom share type. Defaults to value of "
+                     "other config option 'run_snapshot_tests'."),
+
     cfg.StrOpt("share_network_id",
                default="",
                help="Some backend drivers requires share network "
@@ -124,6 +133,8 @@ ShareGroup = [
                 help="Defines whether to run manage/unmanage tests or not. "
                      "These test may leave orphaned resources, so be careful "
                      "enabling this opt."),
+
+    # Switching ON/OFF test suites filtered by features
     cfg.BoolOpt("run_extend_tests",
                 default=True,
                 help="Defines whether to run share extend tests or not. "
@@ -147,6 +158,7 @@ ShareGroup = [
     cfg.BoolOpt("run_migration_tests",
                 default=False,
                 help="Enable or disable migration tests."),
+
     cfg.StrOpt("image_with_share_tools",
                default="manila-service-image",
                help="Image name for vm booting with nfs/smb clients tool."),

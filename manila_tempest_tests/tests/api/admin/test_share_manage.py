@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
 from tempest import config  # noqa
 from tempest import test  # noqa
 from tempest_lib.common.utils import data_utils  # noqa
@@ -48,12 +49,16 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
         cls.st_name = data_utils.rand_name("manage-st-name")
         cls.st_name_invalid = data_utils.rand_name("manage-st-name-invalid")
         cls.extra_specs = {
-            'storage_protocol': CONF.share.storage_protocol,
-            'driver_handles_share_servers': False
+            'storage_protocol': CONF.share.capability_storage_protocol,
+            'driver_handles_share_servers': False,
+            'snapshot_support': six.text_type(
+                CONF.share.capability_snapshot_support),
         }
         cls.extra_specs_invalid = {
-            'storage_protocol': CONF.share.storage_protocol,
-            'driver_handles_share_servers': True
+            'storage_protocol': CONF.share.capability_storage_protocol,
+            'driver_handles_share_servers': True,
+            'snapshot_support': six.text_type(
+                CONF.share.capability_snapshot_support),
         }
 
         cls.st = cls.create_share_type(
