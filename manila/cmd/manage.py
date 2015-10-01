@@ -189,14 +189,15 @@ class HostCommands(object):
         ctxt = context.get_admin_context()
         services = db.service_get_all(ctxt)
         if zone:
-            services = [s for s in services if s['availability_zone'] == zone]
+            services = [
+                s for s in services if s['availability_zone']['name'] == zone]
         hosts = []
         for srv in services:
             if not [h for h in hosts if h['host'] == srv['host']]:
                 hosts.append(srv)
 
         for h in hosts:
-            print("%-25s\t%-15s" % (h['host'], h['availability_zone']))
+            print("%-25s\t%-15s" % (h['host'], h['availability_zone']['name']))
 
 
 class DbCommands(object):
@@ -332,9 +333,14 @@ class ServiceCommands(object):
             status = 'enabled'
             if svc['disabled']:
                 status = 'disabled'
-            print(print_format % (svc['binary'], svc['host'].partition('.')[0],
-                                  svc['availability_zone'], status, art,
-                                  svc['updated_at']))
+            print(print_format % (
+                svc['binary'],
+                svc['host'].partition('.')[0],
+                svc['availability_zone']['name'],
+                status,
+                art,
+                svc['updated_at'],
+            ))
 
 
 CATEGORIES = {
