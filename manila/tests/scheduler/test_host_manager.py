@@ -194,7 +194,7 @@ class HostManagerTestCase(test.TestCase):
                         'vendor_name': None,
                         'storage_protocol': None,
                         'driver_handles_share_servers': False,
-                        'snapshot_support': True,
+                        'snapshot_support': False,
                         'consistency_group_support': False,
                         'dedupe': False,
                     },
@@ -420,7 +420,7 @@ class HostManagerTestCase(test.TestCase):
                     'capabilities': {
                         'timestamp': None,
                         'driver_handles_share_servers': False,
-                        'snapshot_support': True,
+                        'snapshot_support': False,
                         'share_backend_name': 'AAA',
                         'free_capacity_gb': 200,
                         'driver_version': None,
