@@ -207,8 +207,15 @@ class ShareManager(manager.SchedulerDependentManager):
         """Initialization for a standalone service."""
 
         ctxt = context.get_admin_context()
-        self.driver.do_setup(ctxt)
-        self.driver.check_for_setup_error()
+        try:
+            self.driver.do_setup(ctxt)
+            self.driver.check_for_setup_error()
+        except Exception:
+            LOG.exception(_LE("Failed to initialize driver %s"),
+                          self.driver.__class__.__name__)
+            # we don't want to continue since we failed
+            # to initialize the driver correctly.
+            return
 
         share_instances = self.db.share_instances_get_all_by_host(ctxt,
                                                                   self.host)

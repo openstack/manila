@@ -137,6 +137,26 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.check_for_setup_error.\
             assert_called_once_with()
 
+    def test_init_host_with_driver_do_setup_fail(self):
+        self.mock_object(self.share_manager.driver, 'do_setup',
+                         mock.Mock(side_effect=Exception()))
+        self.mock_object(manager.LOG, 'exception')
+
+        self.share_manager.init_host()
+
+        manager.LOG.exception.assert_called_with(
+            mock.ANY, self.share_manager.driver.__class__.__name__)
+
+    def test_init_host_with_driver_check_for_setup_error_fail(self):
+        self.mock_object(self.share_manager.driver, 'check_for_setup_error',
+                         mock.Mock(side_effect=Exception()))
+        self.mock_object(manager.LOG, 'exception')
+
+        self.share_manager.init_host()
+
+        manager.LOG.exception.assert_called_with(
+            mock.ANY, self.share_manager.driver.__class__.__name__)
+
     def _setup_init_mocks(self, setup_access_rules=True):
         instances = [
             db_utils.create_share(id='fake_id_1',
