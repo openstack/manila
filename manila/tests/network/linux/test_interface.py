@@ -215,7 +215,7 @@ class TestBridgeInterfaceDriver(TestBase):
                     'tap0',
                     'aa:bb:cc:dd:ee:ff')
             self.ip_dev.assert_has_calls([])
-            self.assertEqual(log.call_count, 1)
+            self.assertEqual(1, log.call_count)
 
     def test_unplug_no_device(self):
         self.device_exists.return_value = False
@@ -224,7 +224,7 @@ class TestBridgeInterfaceDriver(TestBase):
             br = interface.BridgeInterfaceDriver()
             br.unplug('tap0')
             [mock.call(), mock.call('tap0'), mock.call().link.delete()]
-            self.assertEqual(log.error.call_count, 1)
+            self.assertEqual(1, log.error.call_count)
 
     def test_unplug(self):
         self.device_exists.return_value = True

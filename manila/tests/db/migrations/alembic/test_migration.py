@@ -190,7 +190,7 @@ class TestManilaMigrationsMySQL(ManilaMigrationsCheckers,
             text(noninnodb_query),
             database=self.engine.url.database
         ).scalar()
-        self.assertEqual(count, 0, "%d non InnoDB tables created" % count)
+        self.assertEqual(0, count, "%d non InnoDB tables created" % count)
 
 
 class TestManilaMigrationsPostgreSQL(

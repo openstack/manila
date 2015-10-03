@@ -102,7 +102,7 @@ class NovaApiTestCase(test.TestCase):
     def test_server_create(self):
         result = self.api.server_create(self.ctx, 'server_name', 'fake_image',
                                         'fake_flavor', None, None, None)
-        self.assertEqual(result['id'], 'created_id')
+        self.assertEqual('created_id', result['id'])
 
     def test_server_delete(self):
         self.mock_object(self.novaclient.servers, 'delete')
@@ -202,9 +202,9 @@ class NovaApiTestCase(test.TestCase):
         self.mock_object(cinder, 'cinderclient',
                          mock.Mock(return_value=self.novaclient))
         result = self.api.instance_volumes_list(self.ctx, 'instance_id')
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0].id, 'id1')
-        self.assertEqual(result[1].id, 'id2')
+        self.assertEqual(2, len(result))
+        self.assertEqual('id1', result[0].id)
+        self.assertEqual('id2', result[1].id)
 
     def test_server_update(self):
         self.mock_object(self.novaclient.servers, 'update')

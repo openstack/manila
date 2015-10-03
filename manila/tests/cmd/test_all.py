@@ -46,8 +46,8 @@ class ManilaCmdAllTestCase(test.TestCase):
         self.fake_log = log.getLogger.return_value
 
     def _common_checks(self):
-        self.assertEqual(CONF.project, 'manila')
-        self.assertEqual(CONF.version, version.version_string())
+        self.assertEqual('manila', CONF.project)
+        self.assertEqual(version.version_string(), CONF.version)
         log.setup.assert_called_once_with(CONF, "manila")
         log.register_options.assert_called_once_with(CONF)
         log.getLogger.assert_called_once_with('manila.all')

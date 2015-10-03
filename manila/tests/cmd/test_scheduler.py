@@ -35,8 +35,8 @@ class ManilaCmdSchedulerTestCase(test.TestCase):
 
         manila_scheduler.main()
 
-        self.assertEqual(CONF.project, 'manila')
-        self.assertEqual(CONF.version, version.version_string())
+        self.assertEqual('manila', CONF.project)
+        self.assertEqual(version.version_string(), CONF.version)
         manila_scheduler.log.setup.assert_called_once_with(CONF, "manila")
         manila_scheduler.log.register_options.assert_called_once_with(CONF)
         manila_scheduler.utils.monkey_patch.assert_called_once_with()

@@ -132,19 +132,19 @@ class NeutronApiTest(test.TestCase):
         port = self.neutron_api.create_port(**port_args)
 
         # Verify results
-        self.assertEqual(port['tenant_id'], port_args['tenant_id'])
-        self.assertEqual(port['network_id'], port_args['network_id'])
-        self.assertEqual(port['binding:host_id'], port_args['host_id'])
-        self.assertEqual(port['fixed_ips'][0]['subnet_id'],
-                         port_args['subnet_id'])
-        self.assertEqual(port['fixed_ips'][0]['ip_address'],
-                         port_args['fixed_ip'])
-        self.assertEqual(port['device_owner'], port_args['device_owner'])
-        self.assertEqual(port['device_id'], port_args['device_id'])
-        self.assertEqual(port['mac_address'], port_args['mac_address'])
-        self.assertEqual(port['security_groups'],
-                         port_args['security_group_ids'])
-        self.assertEqual(port['extra_dhcp_opts'], port_args['dhcp_opts'])
+        self.assertEqual(port_args['tenant_id'], port['tenant_id'])
+        self.assertEqual(port_args['network_id'], port['network_id'])
+        self.assertEqual(port_args['host_id'], port['binding:host_id'])
+        self.assertEqual(port_args['subnet_id'],
+                         port['fixed_ips'][0]['subnet_id'])
+        self.assertEqual(port_args['fixed_ip'],
+                         port['fixed_ips'][0]['ip_address'])
+        self.assertEqual(port_args['device_owner'], port['device_owner'])
+        self.assertEqual(port_args['device_id'], port['device_id'])
+        self.assertEqual(port_args['mac_address'], port['mac_address'])
+        self.assertEqual(port_args['security_group_ids'],
+                         port['security_groups'])
+        self.assertEqual(port_args['dhcp_opts'], port['extra_dhcp_opts'])
         self.neutron_api._has_port_binding_extension.assert_called_once_with()
         self.assertTrue(clientv20.Client.called)
 
@@ -158,9 +158,9 @@ class NeutronApiTest(test.TestCase):
         port = self.neutron_api.create_port(**port_args)
 
         # Verify results
-        self.assertEqual(port['tenant_id'], port_args['tenant_id'])
-        self.assertEqual(port['network_id'],
-                         port_args['network_id'])
+        self.assertEqual(port_args['tenant_id'], port['tenant_id'])
+        self.assertEqual(port_args['network_id'],
+                         port['network_id'])
         self.neutron_api._has_port_binding_extension.assert_called_once_with()
         self.assertTrue(clientv20.Client.called)
 

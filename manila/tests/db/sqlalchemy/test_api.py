@@ -47,7 +47,7 @@ security_service_dict = {
 class BaseDatabaseAPITestCase(test.TestCase):
     def _check_fields(self, expected, actual):
         for key in expected:
-            self.assertEqual(actual[key], expected[key])
+            self.assertEqual(expected[key], actual[key])
 
 
 @ddt.ddt
@@ -728,8 +728,8 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                              self.share_nw_dict)
 
         self._check_fields(expected=self.share_nw_dict, actual=result)
-        self.assertEqual(len(result['share_instances']), 0)
-        self.assertEqual(len(result['security_services']), 0)
+        self.assertEqual(0, len(result['share_instances']))
+        self.assertEqual(0, len(result['security_services']))
 
     def test_create_two_networks_in_different_tenants(self):
         share_nw_dict2 = self.share_nw_dict.copy()
@@ -767,8 +767,8 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                           self.share_nw_dict['id'])
 
         self._check_fields(expected=self.share_nw_dict, actual=result)
-        self.assertEqual(len(result['share_instances']), 0)
-        self.assertEqual(len(result['security_services']), 0)
+        self.assertEqual(0, len(result['share_instances']))
+        self.assertEqual(0, len(result['security_services']))
 
     @ddt.data([{'id': 'fake share id1'}],
               [{'id': 'fake share id1'}, {'id': 'fake share id2'}],)
@@ -784,7 +784,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         result = db_api.share_network_get(self.fake_context,
                                           self.share_nw_dict['id'])
 
-        self.assertEqual(len(result['share_instances']), len(shares))
+        self.assertEqual(len(shares), len(result['share_instances']))
         for index, share_instance in enumerate(share_instances):
             self.assertEqual(
                 share_instance['share_network_id'],
@@ -806,8 +806,9 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         result = db_api.share_network_get(self.fake_context,
                                           self.share_nw_dict['id'])
 
-        self.assertEqual(len(result['security_services']),
-                         len(security_services))
+        self.assertEqual(len(security_services),
+                         len(result['security_services']))
+
         for index, service in enumerate(security_services):
             self._check_fields(expected=service,
                                actual=result['security_services'][index])
@@ -843,7 +844,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         result_get = db_api.share_network_get(self.fake_context,
                                               self.share_nw_dict['id'])
 
-        self.assertEqual(result_update['name'], new_name)
+        self.assertEqual(new_name, result_update['name'])
         self._check_fields(expected=dict(six.iteritems(result_update)),
                            actual=dict(six.iteritems(result_get)))
 
@@ -869,7 +870,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
 
         result = db_api.share_network_get_all(self.fake_context)
 
-        self.assertEqual(len(result), len(share_networks))
+        self.assertEqual(len(share_networks), len(result))
         for index, net in enumerate(share_networks):
             self._check_fields(expected=net, actual=result[index])
 
@@ -885,7 +886,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
             self.fake_context,
             share_nw_dict2['project_id'])
 
-        self.assertEqual(len(result), 1)
+        self.assertEqual(1, len(result))
         self._check_fields(expected=share_nw_dict2, actual=result[0])
 
     def test_add_security_service(self):
@@ -973,7 +974,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
 
         share_nw_ref = db_api.share_network_get(self.fake_context,
                                                 self.share_nw_dict['id'])
-        self.assertEqual(len(share_nw_ref['security_services']), 0)
+        self.assertEqual(0, len(share_nw_ref['security_services']))
 
     def test_remove_security_service_not_found_01(self):
         security_service_id = 'unknown security service'
@@ -1024,7 +1025,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         result = db_api.share_network_get(self.fake_context,
                                           self.share_nw_dict['id'])
 
-        self.assertEqual(len(result['security_services']), 0)
+        self.assertEqual(0, len(result['security_services']))
 
     def test_shares_relation(self):
         share_dict = {'id': 'fake share id1'}
@@ -1035,7 +1036,7 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
         result = db_api.share_network_get(self.fake_context,
                                           self.share_nw_dict['id'])
 
-        self.assertEqual(len(result['share_instances']), 0)
+        self.assertEqual(0, len(result['share_instances']))
 
 
 @ddt.ddt
@@ -1051,7 +1052,7 @@ class SecurityServiceDatabaseAPITestCase(BaseDatabaseAPITestCase):
 
     def _check_expected_fields(self, result, expected):
         for key in expected:
-            self.assertEqual(result[key], expected[key])
+            self.assertEqual(expected[key], result[key])
 
     def test_create(self):
         result = db_api.security_service_create(self.fake_context,
@@ -1135,7 +1136,7 @@ class SecurityServiceDatabaseAPITestCase(BaseDatabaseAPITestCase):
     def test_get_all_no_records(self):
         result = db_api.security_service_get_all(self.fake_context)
 
-        self.assertEqual(len(result), 0)
+        self.assertEqual(0, len(result))
 
     @ddt.data(1, 2)
     def test_get_all(self, records_count):
@@ -1150,7 +1151,7 @@ class SecurityServiceDatabaseAPITestCase(BaseDatabaseAPITestCase):
 
         result = db_api.security_service_get_all(self.fake_context)
 
-        self.assertEqual(len(result), len(services))
+        self.assertEqual(len(services), len(result))
         for index, service in enumerate(services):
             self._check_fields(expected=service, actual=result[index])
 
@@ -1165,7 +1166,7 @@ class SecurityServiceDatabaseAPITestCase(BaseDatabaseAPITestCase):
 
         result = db_api.security_service_get_all(self.fake_context)
 
-        self.assertEqual(len(result), 2)
+        self.assertEqual(2, len(result))
 
     def test_get_all_by_project(self):
         dict1 = security_service_dict
@@ -1181,14 +1182,14 @@ class SecurityServiceDatabaseAPITestCase(BaseDatabaseAPITestCase):
             self.fake_context,
             dict1['project_id'])
 
-        self.assertEqual(len(result1), 1)
+        self.assertEqual(1, len(result1))
         self._check_expected_fields(result1[0], dict1)
 
         result2 = db_api.security_service_get_all_by_project(
             self.fake_context,
             dict2['project_id'])
 
-        self.assertEqual(len(result2), 1)
+        self.assertEqual(1, len(result2))
         self._check_expected_fields(result2[0], dict2)
 
 
@@ -1204,9 +1205,9 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         expected = db_utils.create_share_server()
         server = db_api.share_server_get(self.ctxt, expected['id'])
         self.assertEqual(expected['id'], server['id'])
-        self.assertEqual(server.share_network_id, expected.share_network_id)
-        self.assertEqual(server.host, expected.host)
-        self.assertEqual(server.status, expected.status)
+        self.assertEqual(expected.share_network_id, server.share_network_id)
+        self.assertEqual(expected.host, server.host)
+        self.assertEqual(expected.status, server.status)
 
     def test_get_not_found(self):
         fake_id = 'FAKE_UUID'
@@ -1224,8 +1225,8 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         server = db_utils.create_share_server()
         num_records = len(db_api.share_server_get_all(self.ctxt))
         db_api.share_server_delete(self.ctxt, server['id'])
-        self.assertEqual(len(db_api.share_server_get_all(self.ctxt)),
-                         num_records - 1)
+        self.assertEqual(num_records - 1,
+                         len(db_api.share_server_get_all(self.ctxt)))
 
     def test_delete_not_found(self):
         fake_id = 'FAKE_UUID'
@@ -1243,10 +1244,10 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         updated_server = db_api.share_server_update(self.ctxt, server['id'],
                                                     update)
         self.assertEqual(server['id'], updated_server['id'])
-        self.assertEqual(updated_server.share_network_id,
-                         update['share_network_id'])
-        self.assertEqual(updated_server.host, update['host'])
-        self.assertEqual(updated_server.status, update['status'])
+        self.assertEqual(update['share_network_id'],
+                         updated_server.share_network_id)
+        self.assertEqual(update['host'], updated_server.host)
+        self.assertEqual(update['status'], updated_server.status)
 
     def test_update_not_found(self):
         fake_id = 'FAKE_UUID'
@@ -1278,7 +1279,7 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
             self.ctxt,
             host='host1',
             share_net_id='1')
-        self.assertEqual(servers[0]['id'], valid['id'])
+        self.assertEqual(valid['id'], servers[0]['id'])
 
     def test_get_all_by_host_and_share_net_not_found(self):
         self.assertRaises(
@@ -1304,18 +1305,18 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
             'status': constants.STATUS_ACTIVE,
         }
         servers = db_api.share_server_get_all(self.ctxt)
-        self.assertEqual(len(servers), 0)
+        self.assertEqual(0, len(servers))
 
         to_delete = db_utils.create_share_server(**srv1)
         db_utils.create_share_server(**srv2)
         db_utils.create_share_server(**srv3)
 
         servers = db_api.share_server_get_all(self.ctxt)
-        self.assertEqual(len(servers), 3)
+        self.assertEqual(3, len(servers))
 
         db_api.share_server_delete(self.ctxt, to_delete['id'])
         servers = db_api.share_server_get_all(self.ctxt)
-        self.assertEqual(len(servers), 2)
+        self.assertEqual(2, len(servers))
 
     def test_backend_details_set(self):
         details = {
@@ -1351,10 +1352,10 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
         db_api.share_server_backend_details_set(self.ctxt, srv_id, details)
         server = db_api.share_server_get(self.ctxt, srv_id)
         self.assertEqual(srv_id, server['id'])
-        self.assertEqual(server.share_network_id, values['share_network_id'])
-        self.assertEqual(server.host, values['host'])
-        self.assertEqual(server.status, values['status'])
-        self.assertDictMatch(details, server['backend_details'])
+        self.assertEqual(values['share_network_id'], server.share_network_id)
+        self.assertEqual(values['host'], server.host)
+        self.assertEqual(values['status'], server.status)
+        self.assertDictMatch(server['backend_details'], details)
         self.assertTrue('backend_details' in server.to_dict())
 
     def test_delete_with_details(self):
@@ -1365,8 +1366,8 @@ class ShareServerDatabaseAPITestCase(test.TestCase):
 
         num_records = len(db_api.share_server_get_all(self.ctxt))
         db_api.share_server_delete(self.ctxt, server['id'])
-        self.assertEqual(len(db_api.share_server_get_all(self.ctxt)),
-                         num_records - 1)
+        self.assertEqual(num_records - 1,
+                         len(db_api.share_server_get_all(self.ctxt)))
 
 
 class ServiceDatabaseAPITestCase(test.TestCase):

@@ -279,7 +279,7 @@ class ManilaCmdManageTestCase(test.TestCase):
     def test_get_log_commands_syslog_no_log_file(self, path_exists, open):
         path_exists.return_value = False
         exit = self.assertRaises(SystemExit, self.get_log_cmds.syslog)
-        self.assertEqual(exit.code, 1)
+        self.assertEqual(1, exit.code)
         path_exists.assert_any_call('/var/log/syslog')
         path_exists.assert_any_call('/var/log/messages')
 
@@ -332,7 +332,7 @@ class ManilaCmdManageTestCase(test.TestCase):
         exit = self.assertRaises(SystemExit, manila_manage.main)
 
         self.assertTrue(register_cli_opt.called)
-        self.assertEqual(exit.code, 2)
+        self.assertEqual(2, exit.code)
 
     @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
     @mock.patch('oslo_log.log.register_options')
@@ -353,7 +353,7 @@ class ManilaCmdManageTestCase(test.TestCase):
             sys.argv[1:], project='manila',
             version=version.version_string())
         self.assertFalse(log_setup.called)
-        self.assertEqual(exit.code, 2)
+        self.assertEqual(2, exit.code)
 
     @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
     @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
