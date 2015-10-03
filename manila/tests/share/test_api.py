@@ -298,7 +298,7 @@ class ShareAPITestCase(test.TestCase):
             ctx, sort_dir='desc', sort_key='created_at',
             project_id='fake_pid_1', filters={}, is_public=False
         )
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[0])
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[0], shares)
 
     def test_get_all_admin_filter_by_all_tenants(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_1', is_admin=True)
@@ -309,7 +309,7 @@ class ShareAPITestCase(test.TestCase):
             ctx, 'share', 'get_all')
         db_api.share_get_all.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at', filters={})
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES)
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES, shares)
 
     def test_get_all_non_admin_filter_by_share_server(self):
 
@@ -351,7 +351,7 @@ class ShareAPITestCase(test.TestCase):
         )
         db_api.share_get_all_by_project.assert_has_calls([])
         db_api.share_get_all.assert_has_calls([])
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[2:])
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[2:], shares)
 
     def test_get_all_admin_filter_by_name(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
@@ -365,7 +365,7 @@ class ShareAPITestCase(test.TestCase):
             ctx, sort_dir='desc', sort_key='created_at',
             project_id='fake_pid_2', filters={}, is_public=False
         )
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1::2])
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[1::2], shares)
 
     def test_get_all_admin_filter_by_name_and_all_tenants(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
@@ -377,7 +377,7 @@ class ShareAPITestCase(test.TestCase):
         ])
         db_api.share_get_all.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at', filters={})
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[::2])
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[::2], shares)
 
     def test_get_all_admin_filter_by_status(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
@@ -391,7 +391,7 @@ class ShareAPITestCase(test.TestCase):
             ctx, sort_dir='desc', sort_key='created_at',
             project_id='fake_pid_2', filters={}, is_public=False
         )
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[2::4])
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[2::4], shares)
 
     def test_get_all_admin_filter_by_status_and_all_tenants(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=True)
@@ -404,7 +404,7 @@ class ShareAPITestCase(test.TestCase):
         ])
         db_api.share_get_all.assert_called_once_with(
             ctx, sort_dir='desc', sort_key='created_at', filters={})
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1::2])
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[1::2], shares)
 
     def test_get_all_non_admin_filter_by_all_tenants(self):
         # Expected share list only by project of non-admin user
@@ -419,7 +419,7 @@ class ShareAPITestCase(test.TestCase):
             ctx, sort_dir='desc', sort_key='created_at',
             project_id='fake_pid_2', filters={}, is_public=False
         )
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1:])
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[1:], shares)
 
     def test_get_all_non_admin_with_name_and_status_filters(self):
         ctx = context.RequestContext('fake_uid', 'fake_pid_2', is_admin=False)
@@ -436,12 +436,12 @@ class ShareAPITestCase(test.TestCase):
         )
 
         # two items expected, one filtered
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[1::2])
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[1::2], shares)
 
         # one item expected, two filtered
         shares = self.api.get_all(
             ctx, {'name': 'foo', 'status': constants.STATUS_AVAILABLE})
-        self.assertEqual(shares, _FAKE_LIST_OF_ALL_SHARES[2::4])
+        self.assertEqual(_FAKE_LIST_OF_ALL_SHARES[2::4], shares)
         share_api.policy.check_policy.assert_has_calls([
             mock.call(ctx, 'share', 'get_all'),
             mock.call(ctx, 'share', 'get_all'),
@@ -996,7 +996,7 @@ class ShareAPITestCase(test.TestCase):
         with mock.patch.object(db_api, 'share_snapshot_get',
                                mock.Mock(return_value=fake_get_snap)):
             rule = self.api.get_snapshot(self.context, 'fakeid')
-            self.assertEqual(rule, fake_get_snap)
+            self.assertEqual(fake_get_snap, rule)
             share_api.policy.check_policy.assert_called_once_with(
                 self.context, 'share', 'get_snapshot')
             db_api.share_snapshot_get.assert_called_once_with(
@@ -1145,7 +1145,7 @@ class ShareAPITestCase(test.TestCase):
         with mock.patch.object(db_api, 'share_get',
                                mock.Mock(return_value=share)):
             result = self.api.get(self.context, 'fakeid')
-            self.assertEqual(result, share)
+            self.assertEqual(share, result)
             share_api.policy.check_policy.assert_called_once_with(
                 self.context, 'share', 'get', share)
             db_api.share_get.assert_called_once_with(
@@ -1422,7 +1422,7 @@ class ShareAPITestCase(test.TestCase):
         with mock.patch.object(db_api, 'share_access_get',
                                mock.Mock(return_value='fake')):
             rule = self.api.access_get(self.context, 'fakeid')
-            self.assertEqual(rule, 'fake')
+            self.assertEqual('fake', rule)
             share_api.policy.check_policy.assert_called_once_with(
                 self.context, 'share', 'access_get')
             db_api.share_access_get.assert_called_once_with(

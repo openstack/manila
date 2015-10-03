@@ -40,7 +40,7 @@ class DriverPrivateDataTestCase(test.TestCase):
     def test_custom_storage_driver(self):
         private_data = pd.DriverPrivateData(storage=self.fake_storage)
 
-        self.assertEqual(private_data._storage, self.fake_storage)
+        self.assertEqual(self.fake_storage, private_data._storage)
 
     def test_invalid_parameters(self):
         self.assertRaises(ValueError, pd.DriverPrivateData)

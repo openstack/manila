@@ -113,7 +113,7 @@ class ShareRpcAPITestCase(test.TestCase):
 
         def _fake_prepare_method(*args, **kwds):
             for kwd in kwds:
-                self.assertEqual(kwds[kwd], target[kwd])
+                self.assertEqual(target[kwd], kwds[kwd])
             return self.rpcapi.client
 
         def _fake_rpc_method(*args, **kwargs):
@@ -127,13 +127,13 @@ class ShareRpcAPITestCase(test.TestCase):
 
         retval = getattr(self.rpcapi, method)(self.ctxt, **kwargs)
 
-        self.assertEqual(retval, expected_retval)
+        self.assertEqual(expected_retval, retval)
         expected_args = [self.ctxt, method]
         for arg, expected_arg in zip(self.fake_args, expected_args):
-            self.assertEqual(arg, expected_arg)
+            self.assertEqual(expected_arg, arg)
 
         for kwarg, value in six.iteritems(self.fake_kwargs):
-            self.assertEqual(value, expected_msg[kwarg])
+            self.assertEqual(expected_msg[kwarg], value)
 
     def test_create_share_instance(self):
         self._test_share_api('create_share_instance',

@@ -247,7 +247,7 @@ class GenericShareDriverTestCase(test.TestCase):
             self._driver._ssh_exec,
             self.fake_conf
         )
-        self.assertEqual(len(self._driver._helpers), 1)
+        self.assertEqual(1, len(self._driver._helpers))
 
     def test_setup_helpers_no_helpers(self):
         self._driver._helpers = {}
@@ -292,7 +292,7 @@ class GenericShareDriverTestCase(test.TestCase):
         result = self._driver.create_share(
             self._context, self.share, share_server=self.server)
 
-        self.assertEqual(result, 'fakelocation')
+        self.assertEqual('fakelocation', result)
         self._driver._allocate_container.assert_called_once_with(
             self._driver.admin_context, self.share)
         self._driver._attach_volume.assert_called_once_with(
@@ -422,18 +422,18 @@ class GenericShareDriverTestCase(test.TestCase):
         self._driver._unmount_device(self.share, self.server)
 
         self.assertEqual(1, time.sleep.call_count)
-        self.assertEqual(self._driver._get_mount_path.mock_calls,
-                         [mock.call(self.share) for i in moves.range(2)])
-        self.assertEqual(self._driver._is_device_mounted.mock_calls,
-                         [mock.call(mount_path,
-                                    self.server) for i in moves.range(2)])
+        self.assertEqual([mock.call(self.share) for i in moves.range(2)],
+                         self._driver._get_mount_path.mock_calls)
+        self.assertEqual([mock.call(mount_path,
+                                    self.server) for i in moves.range(2)],
+                         self._driver._is_device_mounted.mock_calls)
         self._driver._sync_mount_temp_and_perm_files.assert_called_once_with(
             self.server)
         self.assertEqual(
-            self._driver._ssh_exec.mock_calls,
             [mock.call(self.server, ['sudo umount', mount_path,
                                      '&& sudo rmdir', mount_path])
-             for i in moves.range(2)]
+             for i in moves.range(2)],
+            self._driver._ssh_exec.mock_calls,
         )
 
     def test_unmount_device_not_present(self):
@@ -464,7 +464,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
-        self.assertEqual(result, True)
+        self.assertTrue(result)
 
     def test_is_device_mounted_true_no_volume_provided(self):
         mount_path = '/fake/mount/path'
@@ -476,7 +476,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
-        self.assertEqual(result, True)
+        self.assertTrue(result)
 
     def test_is_device_mounted_false(self):
         mount_path = '/fake/mount/path'
@@ -491,7 +491,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
-        self.assertEqual(result, False)
+        self.assertEqual(False, result)
 
     def test_is_device_mounted_false_no_volume_provided(self):
         mount_path = '/fake/mount/path'
@@ -505,7 +505,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
-        self.assertEqual(result, False)
+        self.assertEqual(False, result)
 
     def test_sync_mount_temp_and_perm_files(self):
         self.mock_object(self._driver, '_ssh_exec')
@@ -549,8 +549,8 @@ class GenericShareDriverTestCase(test.TestCase):
 
     def test_get_mount_path(self):
         result = self._driver._get_mount_path(self.share)
-        self.assertEqual(result, os.path.join(CONF.share_mount_path,
-                                              self.share['name']))
+        self.assertEqual(os.path.join(CONF.share_mount_path,
+                                      self.share['name']), result)
 
     def test_attach_volume_not_attached(self):
         available_volume = fake_volume.FakeVolume()
@@ -567,7 +567,7 @@ class GenericShareDriverTestCase(test.TestCase):
                                     available_volume['id'])
         self._driver.volume_api.get.assert_called_once_with(
             self._context, attached_volume['id'])
-        self.assertEqual(result, attached_volume)
+        self.assertEqual(attached_volume, result)
 
     def test_attach_volume_attached_correct(self):
         fake_server = fake_compute.FakeServer()
@@ -578,7 +578,7 @@ class GenericShareDriverTestCase(test.TestCase):
         result = self._driver._attach_volume(self._context, self.share,
                                              fake_server, attached_volume)
 
-        self.assertEqual(result, attached_volume)
+        self.assertEqual(attached_volume, result)
 
     def test_attach_volume_attached_incorrect(self):
         fake_server = fake_compute.FakeServer()
@@ -620,7 +620,7 @@ class GenericShareDriverTestCase(test.TestCase):
         result = self._driver._attach_volume(self._context, self.share,
                                              fake_server, attached_volume)
 
-        self.assertEqual(result, in_use_volume)
+        self.assertEqual(in_use_volume, result)
         self.assertEqual(
             2, self._driver.compute_api.instance_volume_attach.call_count)
 
@@ -642,7 +642,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self.mock_object(self._driver.volume_api, 'get_all',
                          mock.Mock(return_value=[volume]))
         result = self._driver._get_volume(self._context, self.share['id'])
-        self.assertEqual(result, volume)
+        self.assertEqual(volume, result)
         self._driver.volume_api.get_all.assert_called_once_with(
             self._context, {'all_tenants': True, 'name': volume['name']})
 
@@ -655,7 +655,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         result = self._driver._get_volume(self._context, self.share['id'])
 
-        self.assertEqual(result, volume)
+        self.assertEqual(volume, result)
         self._driver.volume_api.get.assert_called_once_with(
             self._context, volume['id'])
         self.fake_private_storage.get.assert_called_once_with(
@@ -693,7 +693,7 @@ class GenericShareDriverTestCase(test.TestCase):
                          mock.Mock(return_value=[volume_snapshot]))
         result = self._driver._get_volume_snapshot(self._context,
                                                    self.snapshot['id'])
-        self.assertEqual(result, volume_snapshot)
+        self.assertEqual(volume_snapshot, result)
         self._driver.volume_api.get_all_snapshots.assert_called_once_with(
             self._context, {'name': volume_snapshot['name']})
 
@@ -705,7 +705,7 @@ class GenericShareDriverTestCase(test.TestCase):
                          mock.Mock(return_value=volume_snapshot['id']))
         result = self._driver._get_volume_snapshot(self._context,
                                                    self.snapshot['id'])
-        self.assertEqual(result, volume_snapshot)
+        self.assertEqual(volume_snapshot, result)
         self._driver.volume_api.get_snapshot.assert_called_once_with(
             self._context, volume_snapshot['id'])
         self.fake_private_storage.get.assert_called_once_with(
@@ -784,7 +784,7 @@ class GenericShareDriverTestCase(test.TestCase):
                          mock.Mock(return_value=fake_vol))
 
         result = self._driver._allocate_container(self._context, self.share)
-        self.assertEqual(result, fake_vol)
+        self.assertEqual(fake_vol, result)
         self._driver.volume_api.create.assert_called_once_with(
             self._context,
             self.share['size'],
@@ -805,7 +805,7 @@ class GenericShareDriverTestCase(test.TestCase):
         result = self._driver._allocate_container(self._context,
                                                   self.share,
                                                   self.snapshot)
-        self.assertEqual(result, fake_vol)
+        self.assertEqual(fake_vol, result)
         self._driver.volume_api.create.assert_called_once_with(
             self._context,
             self.share['size'],
@@ -933,7 +933,7 @@ class GenericShareDriverTestCase(test.TestCase):
             self.snapshot,
             share_server=self.server)
 
-        self.assertEqual(result, 'fakelocation')
+        self.assertEqual('fakelocation', result)
         self._driver._allocate_container.assert_called_once_with(
             self._driver.admin_context, self.share, self.snapshot)
         self._driver._attach_volume.assert_called_once_with(
@@ -2028,7 +2028,7 @@ class NFSHelperTestCase(test.TestCase):
         expected_location = ':'.join([self.server['public_address'],
                                       os.path.join(CONF.share_mount_path,
                                                    self.share_name)])
-        self.assertEqual(ret, expected_location)
+        self.assertEqual(expected_location, ret)
 
     @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
     def test_allow_access(self, data):
@@ -2179,7 +2179,7 @@ class CIFSHelperTestCase(test.TestCase):
         ret = self._helper.create_export(self.server_details, self.share_name)
         expected_location = '\\\\%s\\%s' % (
             self.server_details['public_address'], self.share_name)
-        self.assertEqual(ret, expected_location)
+        self.assertEqual(expected_location, ret)
         share_path = os.path.join(
             self._helper.configuration.share_mount_path,
             self.share_name)
@@ -2203,7 +2203,7 @@ class CIFSHelperTestCase(test.TestCase):
                                          recreate=True)
         expected_location = '\\\\%s\\%s' % (
             self.server_details['public_address'], self.share_name)
-        self.assertEqual(ret, expected_location)
+        self.assertEqual(expected_location, ret)
         share_path = os.path.join(
             self._helper.configuration.share_mount_path,
             self.share_name)
