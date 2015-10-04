@@ -340,7 +340,7 @@ class ShareSnapshotApiTest(test.TestCase):
                 },
             ]
         }
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
 
     def test_snapshot_updates_description(self):
         snp = self.snp_example
@@ -348,7 +348,7 @@ class ShareSnapshotApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/snapshot/1')
         res_dict = self.controller.update(req, 1, body)
-        self.assertEqual(res_dict['snapshot']["name"], snp["display_name"])
+        self.assertEqual(snp["display_name"], res_dict['snapshot']["name"])
 
     def test_snapshot_updates_display_descr(self):
         snp = self.snp_example
@@ -357,8 +357,8 @@ class ShareSnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/snapshot/1')
         res_dict = self.controller.update(req, 1, body)
 
-        self.assertEqual(res_dict['snapshot']["description"],
-                         snp["display_description"])
+        self.assertEqual(snp["display_description"],
+                         res_dict['snapshot']["description"])
 
     def test_share_not_updates_size(self):
         snp = self.snp_example
@@ -367,4 +367,4 @@ class ShareSnapshotApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/snapshot/1')
         res_dict = self.controller.update(req, 1, body)
 
-        self.assertNotEqual(res_dict['snapshot']["size"], snp["size"])
+        self.assertNotEqual(snp["size"], res_dict['snapshot']["size"])
