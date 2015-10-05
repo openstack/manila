@@ -47,27 +47,27 @@ class LimiterTest(test.TestCase):
     def test_limiter_offset_zero(self):
         """Test offset key works with 0."""
         req = webob.Request.blank('/?offset=0')
-        self.assertEqual(common.limited(self.tiny, req), self.tiny)
-        self.assertEqual(common.limited(self.small, req), self.small)
-        self.assertEqual(common.limited(self.medium, req), self.medium)
-        self.assertEqual(common.limited(self.large, req), self.large[:1000])
+        self.assertEqual(self.tiny, common.limited(self.tiny, req))
+        self.assertEqual(self.small, common.limited(self.small, req))
+        self.assertEqual(self.medium, common.limited(self.medium, req))
+        self.assertEqual(self.large[:1000], common.limited(self.large, req))
 
     def test_limiter_offset_medium(self):
         """Test offset key works with a medium sized number."""
         req = webob.Request.blank('/?offset=10')
-        self.assertEqual(common.limited(self.tiny, req), [])
-        self.assertEqual(common.limited(self.small, req), self.small[10:])
-        self.assertEqual(common.limited(self.medium, req), self.medium[10:])
-        self.assertEqual(common.limited(self.large, req), self.large[10:1010])
+        self.assertEqual([], common.limited(self.tiny, req))
+        self.assertEqual(self.small[10:], common.limited(self.small, req))
+        self.assertEqual(self.medium[10:], common.limited(self.medium, req))
+        self.assertEqual(self.large[10:1010], common.limited(self.large, req))
 
     def test_limiter_offset_over_max(self):
         """Test offset key works with a number over 1000 (max_limit)."""
         req = webob.Request.blank('/?offset=1001')
-        self.assertEqual(common.limited(self.tiny, req), [])
-        self.assertEqual(common.limited(self.small, req), [])
-        self.assertEqual(common.limited(self.medium, req), [])
+        self.assertEqual([], common.limited(self.tiny, req))
+        self.assertEqual([], common.limited(self.small, req))
+        self.assertEqual([], common.limited(self.medium, req))
         self.assertEqual(
-            common.limited(self.large, req), self.large[1001:2001])
+            self.large[1001:2001], common.limited(self.large, req))
 
     def test_limiter_offset_blank(self):
         """Test offset key works with a blank offset."""
@@ -84,61 +84,61 @@ class LimiterTest(test.TestCase):
     def test_limiter_nothing(self):
         """Test request with no offset or limit."""
         req = webob.Request.blank('/')
-        self.assertEqual(common.limited(self.tiny, req), self.tiny)
-        self.assertEqual(common.limited(self.small, req), self.small)
-        self.assertEqual(common.limited(self.medium, req), self.medium)
-        self.assertEqual(common.limited(self.large, req), self.large[:1000])
+        self.assertEqual(self.tiny, common.limited(self.tiny, req))
+        self.assertEqual(self.small, common.limited(self.small, req))
+        self.assertEqual(self.medium, common.limited(self.medium, req))
+        self.assertEqual(self.large[:1000], common.limited(self.large, req))
 
     def test_limiter_limit_zero(self):
         """Test limit of zero."""
         req = webob.Request.blank('/?limit=0')
-        self.assertEqual(common.limited(self.tiny, req), self.tiny)
-        self.assertEqual(common.limited(self.small, req), self.small)
-        self.assertEqual(common.limited(self.medium, req), self.medium)
-        self.assertEqual(common.limited(self.large, req), self.large[:1000])
+        self.assertEqual(self.tiny, common.limited(self.tiny, req))
+        self.assertEqual(self.small, common.limited(self.small, req))
+        self.assertEqual(self.medium, common.limited(self.medium, req))
+        self.assertEqual(self.large[:1000], common.limited(self.large, req))
 
     def test_limiter_limit_medium(self):
         """Test limit of 10."""
         req = webob.Request.blank('/?limit=10')
-        self.assertEqual(common.limited(self.tiny, req), self.tiny)
-        self.assertEqual(common.limited(self.small, req), self.small)
-        self.assertEqual(common.limited(self.medium, req), self.medium[:10])
-        self.assertEqual(common.limited(self.large, req), self.large[:10])
+        self.assertEqual(self.tiny, common.limited(self.tiny, req))
+        self.assertEqual(self.small, common.limited(self.small, req))
+        self.assertEqual(self.medium[:10], common.limited(self.medium, req))
+        self.assertEqual(self.large[:10], common.limited(self.large, req))
 
     def test_limiter_limit_over_max(self):
         """Test limit of 3000."""
         req = webob.Request.blank('/?limit=3000')
-        self.assertEqual(common.limited(self.tiny, req), self.tiny)
-        self.assertEqual(common.limited(self.small, req), self.small)
-        self.assertEqual(common.limited(self.medium, req), self.medium)
-        self.assertEqual(common.limited(self.large, req), self.large[:1000])
+        self.assertEqual(self.tiny, common.limited(self.tiny, req))
+        self.assertEqual(self.small, common.limited(self.small, req))
+        self.assertEqual(self.medium, common.limited(self.medium, req))
+        self.assertEqual(self.large[:1000], common.limited(self.large, req))
 
     def test_limiter_limit_and_offset(self):
         """Test request with both limit and offset."""
         items = list(range(2000))
         req = webob.Request.blank('/?offset=1&limit=3')
-        self.assertEqual(common.limited(items, req), items[1:4])
+        self.assertEqual(items[1:4], common.limited(items, req))
         req = webob.Request.blank('/?offset=3&limit=0')
-        self.assertEqual(common.limited(items, req), items[3:1003])
+        self.assertEqual(items[3:1003], common.limited(items, req))
         req = webob.Request.blank('/?offset=3&limit=1500')
-        self.assertEqual(common.limited(items, req), items[3:1003])
+        self.assertEqual(items[3:1003], common.limited(items, req))
         req = webob.Request.blank('/?offset=3000&limit=10')
-        self.assertEqual(common.limited(items, req), [])
+        self.assertEqual([], common.limited(items, req))
 
     def test_limiter_custom_max_limit(self):
         """Test a max_limit other than 1000."""
         items = list(range(2000))
         req = webob.Request.blank('/?offset=1&limit=3')
         self.assertEqual(
-            common.limited(items, req, max_limit=2000), items[1:4])
+            items[1:4], common.limited(items, req, max_limit=2000))
         req = webob.Request.blank('/?offset=3&limit=0')
         self.assertEqual(
-            common.limited(items, req, max_limit=2000), items[3:])
+            items[3:], common.limited(items, req, max_limit=2000))
         req = webob.Request.blank('/?offset=3&limit=2500')
         self.assertEqual(
-            common.limited(items, req, max_limit=2000), items[3:])
+            items[3:], common.limited(items, req, max_limit=2000))
         req = webob.Request.blank('/?offset=3000&limit=10')
-        self.assertEqual(common.limited(items, req, max_limit=2000), [])
+        self.assertEqual([], common.limited(items, req, max_limit=2000))
 
     def test_limiter_negative_limit(self):
         """Test a negative limit."""
@@ -163,19 +163,19 @@ class PaginationParamsTest(test.TestCase):
     def test_no_params(self):
         """Test no params."""
         req = webob.Request.blank('/')
-        self.assertEqual(common.get_pagination_params(req), {})
+        self.assertEqual({}, common.get_pagination_params(req))
 
     def test_valid_marker(self):
         """Test valid marker param."""
         req = webob.Request.blank(
             '/?marker=263abb28-1de6-412f-b00b-f0ee0c4333c2')
-        self.assertEqual(common.get_pagination_params(req),
-                         {'marker': '263abb28-1de6-412f-b00b-f0ee0c4333c2'})
+        self.assertEqual({'marker': '263abb28-1de6-412f-b00b-f0ee0c4333c2'},
+                         common.get_pagination_params(req))
 
     def test_valid_limit(self):
         """Test valid limit param."""
         req = webob.Request.blank('/?limit=10')
-        self.assertEqual(common.get_pagination_params(req), {'limit': 10})
+        self.assertEqual({'limit': 10}, common.get_pagination_params(req))
 
     def test_invalid_limit(self):
         """Test invalid limit param."""
@@ -187,8 +187,8 @@ class PaginationParamsTest(test.TestCase):
         """Test valid limit and marker parameters."""
         marker = '263abb28-1de6-412f-b00b-f0ee0c4333c2'
         req = webob.Request.blank('/?limit=20&marker=%s' % marker)
-        self.assertEqual(common.get_pagination_params(req),
-                         {'marker': marker, 'limit': 20})
+        self.assertEqual({'marker': marker, 'limit': 20},
+                         common.get_pagination_params(req))
 
 
 class MiscFunctionsTest(test.TestCase):
@@ -197,31 +197,31 @@ class MiscFunctionsTest(test.TestCase):
         fixture = 'http://www.testsite.com/v1/images'
         expected = 'http://www.testsite.com/images'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href(self):
         fixture = 'http://www.testsite.com/v1.1/images'
         expected = 'http://www.testsite.com/images'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_2(self):
         fixture = 'http://www.testsite.com/v1.1/'
         expected = 'http://www.testsite.com/'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_3(self):
         fixture = 'http://www.testsite.com/v10.10'
         expected = 'http://www.testsite.com'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_4(self):
         fixture = 'http://www.testsite.com/v1.1/images/v10.5'
         expected = 'http://www.testsite.com/images/v10.5'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_bad_request(self):
         fixture = 'http://www.testsite.com/1.1/images'

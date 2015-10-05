@@ -74,7 +74,7 @@ class ShareActionsTest(test.TestCase):
         expected = {'access': {'fake': 'fake'}}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
         res = self.controller._allow_access(req, id, body)
-        self.assertEqual(res, expected)
+        self.assertEqual(expected, res)
 
     @ddt.data(
         {'access_type': 'error_type', 'access_to': '127.0.0.1'},
@@ -108,7 +108,7 @@ class ShareActionsTest(test.TestCase):
         body = {"os-deny_access": {"access_id": 'fake_acces_id'}}
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
         res = self.controller._deny_access(req, id, body)
-        self.assertEqual(res.status_int, 202)
+        self.assertEqual(202, res.status_int)
 
     def test_deny_access_not_found(self):
         def _stub_deny_access(*args, **kwargs):
@@ -140,7 +140,7 @@ class ShareActionsTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
         res_dict = self.controller._access_list(req, id, body)
         expected = _fake_access_get_all()
-        self.assertEqual(res_dict['access_list'], expected)
+        self.assertEqual(expected, res_dict['access_list'])
 
     def test_extend(self):
         id = 'fake_share_id'

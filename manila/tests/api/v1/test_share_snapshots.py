@@ -127,7 +127,7 @@ class ShareSnapshotApiTest(test.TestCase):
                          stubs.stub_snapshot_delete)
         req = fakes.HTTPRequest.blank('/snapshots/200')
         resp = self.controller.delete(req, 200)
-        self.assertEqual(resp.status_int, 202)
+        self.assertEqual(202, resp.status_int)
 
     def test_snapshot_delete_nofound(self):
         self.mock_object(share_api.API, 'get_snapshot',
@@ -164,7 +164,7 @@ class ShareSnapshotApiTest(test.TestCase):
                 ],
             }
         }
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
 
     def test_snapshot_show_nofound(self):
         self.mock_object(share_api.API, 'get_snapshot',
@@ -198,7 +198,7 @@ class ShareSnapshotApiTest(test.TestCase):
                 }
             ]
         }
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
 
     def _snapshot_list_summary_with_search_opts(self, use_admin_context):
         search_opts = {

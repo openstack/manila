@@ -52,7 +52,7 @@ class TestFaults(test.TestCase):
             }
             actual = jsonutils.loads(response.body)
 
-            self.assertEqual(response.content_type, "application/json")
+            self.assertEqual("application/json", response.content_type)
             self.assertEqual(expected, actual)
 
     def test_413_fault_json(self):
@@ -77,7 +77,7 @@ class TestFaults(test.TestCase):
             }
             actual = jsonutils.loads(response.body)
 
-            self.assertEqual(response.content_type, "application/json")
+            self.assertEqual("application/json", response.content_type)
             self.assertEqual(expected, actual)
 
     def test_raise(self):
@@ -88,8 +88,8 @@ class TestFaults(test.TestCase):
 
         req = webob.Request.blank('/.json')
         resp = req.get_response(raiser)
-        self.assertEqual(resp.content_type, "application/json")
-        self.assertEqual(resp.status_int, 404)
+        self.assertEqual("application/json", resp.content_type)
+        self.assertEqual(404, resp.status_int)
         self.assertTrue(six.b('whut?') in resp.body)
 
     def test_raise_403(self):
@@ -100,12 +100,12 @@ class TestFaults(test.TestCase):
 
         req = webob.Request.blank('/.json')
         resp = req.get_response(raiser)
-        self.assertEqual(resp.content_type, "application/json")
-        self.assertEqual(resp.status_int, 403)
+        self.assertEqual("application/json", resp.content_type)
+        self.assertEqual(403, resp.status_int)
         self.assertTrue(six.b('resizeNotAllowed') not in resp.body)
         self.assertTrue(six.b('forbidden') in resp.body)
 
     def test_fault_has_status_int(self):
         """Ensure the status_int is set correctly on faults."""
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
-        self.assertEqual(fault.status_int, 400)
+        self.assertEqual(400, fault.status_int)

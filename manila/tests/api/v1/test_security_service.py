@@ -92,8 +92,8 @@ class ShareApiTest(test.TestCase):
         res_dict = self.controller.show(req, '1')
         expected = self.ss_active_directory.copy()
         expected.update()
-        self.assertEqual(res_dict,
-                         {'security_service': self.ss_active_directory})
+        self.assertEqual({'security_service': self.ss_active_directory},
+                         res_dict)
 
     def test_security_service_show_not_found(self):
         db.security_service_get = mock.Mock(side_effect=exception.NotFound)
@@ -112,7 +112,7 @@ class ShareApiTest(test.TestCase):
         res_dict = self.controller.create(
             req, {"security_service": sec_service})
         expected = self.ss_active_directory.copy()
-        self.assertEqual(res_dict, {'security_service': expected})
+        self.assertEqual({'security_service': expected}, res_dict)
 
     def test_security_service_create_invalid_types(self):
         sec_service = self.ss_active_directory.copy()
@@ -138,7 +138,7 @@ class ShareApiTest(test.TestCase):
         resp = self.controller.delete(req, 1)
         db.security_service_delete.assert_called_once_with(
             req.environ['manila.context'], 1)
-        self.assertEqual(resp.status_int, 202)
+        self.assertEqual(202, resp.status_int)
 
     def test_security_service_delete_not_found(self):
         db.security_service_get = mock.Mock(side_effect=exception.NotFound)
@@ -171,7 +171,7 @@ class ShareApiTest(test.TestCase):
         body = {"security_service": {"name": "new"}}
         req = fakes.HTTPRequest.blank('/security_service/1')
         res_dict = self.controller.update(req, 1, body)['security_service']
-        self.assertEqual(res_dict['name'], updated['name'])
+        self.assertEqual(updated['name'], res_dict['name'])
         db.share_network_get_all_by_security_service.assert_called_once_with(
             req.environ['manila.context'], 1)
         self.assertEqual(2, security_service.policy.check_policy.call_count)
@@ -195,7 +195,7 @@ class ShareApiTest(test.TestCase):
         body = {"security_service": {"description": "new"}}
         req = fakes.HTTPRequest.blank('/security_service/1')
         res_dict = self.controller.update(req, 1, body)['security_service']
-        self.assertEqual(res_dict['description'], updated['description'])
+        self.assertEqual(updated['description'], res_dict['description'])
         db.share_network_get_all_by_security_service.assert_called_once_with(
             req.environ['manila.context'], 1)
         self.assertEqual(2, security_service.policy.check_policy.call_count)
@@ -251,8 +251,8 @@ class ShareApiTest(test.TestCase):
         }
         req = fakes.HTTPRequest.blank('/security_services/1')
         res_dict = self.controller.update(req, 1, body)['security_service']
-        self.assertEqual(res_dict['description'], updated['description'])
-        self.assertEqual(res_dict['name'], updated['name'])
+        self.assertEqual(updated['description'], res_dict['description'])
+        self.assertEqual(updated['name'], res_dict['name'])
         db.security_service_get.assert_called_once_with(
             req.environ['manila.context'], 1)
         db.share_network_get_all_by_security_service.assert_called_once_with(

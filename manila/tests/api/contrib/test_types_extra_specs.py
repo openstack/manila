@@ -133,10 +133,10 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.mock_object(manila.db, 'share_type_extra_specs_delete',
                          delete_share_type_extra_specs)
 
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank(self.api_path + '/key5')
         self.controller.delete(req, 1, 'key5')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
 
     def test_delete_not_found(self):
         self.mock_object(manila.db, 'share_type_extra_specs_delete',
@@ -166,12 +166,12 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.mock_object(
             manila.db, 'share_type_extra_specs_update_or_create',
             mock.Mock(return_value=return_create_share_type_extra_specs))
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank(self.api_path)
 
         res_dict = self.controller.create(req, 1, body)
 
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
         for k, v in data.items():
             self.assertIn(k, res_dict['extra_specs'])
             self.assertEqual(v, res_dict['extra_specs'][k])
@@ -185,7 +185,7 @@ class ShareTypesExtraSpecsTest(test.TestCase):
             mock.Mock(return_value=return_create_share_type_extra_specs))
         too_small_key = ""
         body = {"extra_specs": {too_small_key: "value"}}
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank(self.api_path)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -200,7 +200,7 @@ class ShareTypesExtraSpecsTest(test.TestCase):
             mock.Mock(return_value=return_create_share_type_extra_specs))
         too_big_key = "k" * 256
         body = {"extra_specs": {too_big_key: "value"}}
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank(self.api_path)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -215,7 +215,7 @@ class ShareTypesExtraSpecsTest(test.TestCase):
             mock.Mock(return_value=return_create_share_type_extra_specs))
         too_small_value = ""
         body = {"extra_specs": {"key": too_small_value}}
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank(self.api_path)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -230,7 +230,7 @@ class ShareTypesExtraSpecsTest(test.TestCase):
             mock.Mock(return_value=return_create_share_type_extra_specs))
         too_big_value = "v" * 256
         body = {"extra_specs": {"key": too_big_value}}
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank(self.api_path)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -251,11 +251,11 @@ class ShareTypesExtraSpecsTest(test.TestCase):
 
         body = get_extra_specs_dict({"other_alphanum.-_:": "value1"})
 
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
 
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.create(req, 1, body)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
         self.assertEqual(mock_return_value['key1'],
                          res_dict['extra_specs']['other_alphanum.-_:'])
         manila.db.share_type_extra_specs_update_or_create.\
@@ -278,12 +278,12 @@ class ShareTypesExtraSpecsTest(test.TestCase):
             "other3_alphanum.-_:": "value3"
         })
 
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank(self.api_path)
 
         res_dict = self.controller.create(req, 1, body)
 
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
         self.assertEqual(mock_return_value['key1'],
                          res_dict['extra_specs']['other_alphanum.-_:'])
         self.assertEqual(mock_return_value['key2'],
@@ -299,15 +299,15 @@ class ShareTypesExtraSpecsTest(test.TestCase):
             manila.db, 'share_type_extra_specs_update_or_create',
             mock.Mock(return_value=return_create_share_type_extra_specs))
         body = {DRIVER_HANDLES_SHARE_SERVERS: True}
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
         req = fakes.HTTPRequest.blank(
             self.api_path + '/' + DRIVER_HANDLES_SHARE_SERVERS)
 
         res_dict = self.controller.update(
             req, 1, DRIVER_HANDLES_SHARE_SERVERS, body)
 
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
-        self.assertEqual(True, res_dict[DRIVER_HANDLES_SHARE_SERVERS])
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertTrue(res_dict[DRIVER_HANDLES_SHARE_SERVERS])
         manila.db.share_type_extra_specs_update_or_create.\
             assert_called_once_with(
                 req.environ['manila.context'], 1, body)

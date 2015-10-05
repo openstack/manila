@@ -196,7 +196,7 @@ class ServicesTest(test.TestCase):
     def test_services_list(self):
         req = FakeRequest()
         res_dict = self.controller.index(req)
-        self.assertEqual(res_dict, fake_response_service_list)
+        self.assertEqual(fake_response_service_list, res_dict)
 
     def test_services_list_with_host(self):
         req = FakeRequestWithHost()
@@ -206,7 +206,7 @@ class ServicesTest(test.TestCase):
             fake_response_service_list['services'][0],
             fake_response_service_list['services'][1],
         ]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_binary(self):
         req = FakeRequestWithBinary()
@@ -216,7 +216,7 @@ class ServicesTest(test.TestCase):
             fake_response_service_list['services'][3],
         ]}
 
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_zone(self):
         req = FakeRequestWithZone()
@@ -225,7 +225,7 @@ class ServicesTest(test.TestCase):
             fake_response_service_list['services'][0],
             fake_response_service_list['services'][1],
         ]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_status(self):
         req = FakeRequestWithStatus()
@@ -233,7 +233,7 @@ class ServicesTest(test.TestCase):
         response = {'services': [
             fake_response_service_list['services'][2],
         ]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_state(self):
         req = FakeRequestWithState()
@@ -242,22 +242,22 @@ class ServicesTest(test.TestCase):
             fake_response_service_list['services'][0],
             fake_response_service_list['services'][1],
         ]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_host_binary(self):
         req = FakeRequestWithHostBinary()
         res_dict = self.controller.index(req)
         response = {'services': [fake_response_service_list['services'][1], ]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_enable(self):
         body = {'host': 'host1', 'binary': 'manila-share'}
         req = fakes.HTTPRequest.blank('/v1/fake/os-services/enable')
         res_dict = self.controller.update(req, "enable", body)
-        self.assertEqual(res_dict['disabled'], False)
+        self.assertEqual(False, res_dict['disabled'])
 
     def test_services_disable(self):
         req = fakes.HTTPRequest.blank('/v1/fake/os-services/disable')
         body = {'host': 'host1', 'binary': 'manila-share'}
         res_dict = self.controller.update(req, "disable", body)
-        self.assertEqual(res_dict['disabled'], True)
+        self.assertTrue(res_dict['disabled'])
