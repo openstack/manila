@@ -19,6 +19,7 @@
 
 import contextlib
 import errno
+import functools
 import inspect
 import os
 import pyclbr
@@ -600,3 +601,14 @@ def retry(exception, interval=1, retries=10, backoff_rate=2,
         return _wrapper
 
     return _decorator
+
+
+def require_driver_initialized(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        # we can't do anything if the driver didn't init
+        if not self.driver.initialized:
+            driver_name = self.driver.__class__.__name__
+            raise exception.DriverNotInitialized(driver=driver_name)
+        return func(self, *args, **kwargs)
+    return wrapper

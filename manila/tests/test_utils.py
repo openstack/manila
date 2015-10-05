@@ -798,3 +798,34 @@ class TestRetryDecorator(test.TestCase):
 
             self.assertRaises(ValueError, raise_unexpected_error)
             self.assertFalse(mock_sleep.called)
+
+
+@ddt.ddt
+class RequireDriverInitializedTestCase(test.TestCase):
+
+    @ddt.data(True, False)
+    def test_require_driver_initialized(self, initialized):
+
+        class FakeDriver(object):
+            @property
+            def initialized(self):
+                return initialized
+
+        class FakeException(Exception):
+            pass
+
+        class FakeManager(object):
+            driver = FakeDriver()
+
+            @utils.require_driver_initialized
+            def call_me(self):
+                raise FakeException(
+                    "Should be raised only if manager.driver.initialized "
+                    "('%s') is equal to 'True'." % initialized)
+
+        if initialized:
+            expected_exception = FakeException
+        else:
+            expected_exception = exception.DriverNotInitialized
+
+        self.assertRaises(expected_exception, FakeManager().call_me)
