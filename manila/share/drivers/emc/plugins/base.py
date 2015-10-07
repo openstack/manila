@@ -30,38 +30,34 @@ class StorageConnection(object):
         self.driver_handles_share_servers = None
 
     @abc.abstractmethod
-    def create_share(self, emc_share_driver, context, share, share_server):
+    def create_share(self, context, share, share_server):
         """Is called to create share."""
 
     @abc.abstractmethod
-    def create_snapshot(self, emc_share_driver, context,
-                        snapshot, share_server):
+    def create_snapshot(self, context, snapshot, share_server):
         """Is called to create snapshot."""
 
     @abc.abstractmethod
-    def delete_share(self, emc_share_driver, context, share, share_server):
+    def delete_share(self, context, share, share_server):
         """Is called to remove share."""
 
     @abc.abstractmethod
-    def delete_snapshot(self, emc_share_driver, context,
-                        snapshot, share_server):
+    def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
 
     @abc.abstractmethod
-    def ensure_share(self, emc_share_driver, context, share, share_server):
+    def ensure_share(self, context, share, share_server):
         """Invoked to ensure that share is exported."""
 
     @abc.abstractmethod
-    def allow_access(self, emc_share_driver, context, share,
-                     access, share_server):
+    def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
 
     @abc.abstractmethod
-    def deny_access(self, emc_share_driver, context, share,
-                    access, share_server):
+    def deny_access(self, context, share, access, share_server):
         """Deny access to the share."""
 
-    def raise_connect_error(self, emc_share_driver):
+    def raise_connect_error(self):
         """Check for setup error."""
         pass
 

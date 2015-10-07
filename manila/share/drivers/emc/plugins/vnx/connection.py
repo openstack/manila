@@ -50,8 +50,7 @@ class VNXStorageConnection(driver.StorageConnection):
         self._filesystems = {}
         self.driver_handles_share_servers = True
 
-    def create_share(self, emc_share_driver, context, share,
-                     share_server=None):
+    def create_share(self, context, share, share_server=None):
         """Is called to create share."""
         share_name = share['name']
         size = share['size'] * units.Ki
@@ -150,8 +149,8 @@ class VNXStorageConnection(driver.StorageConnection):
                 % {'nfs_if': share_server['backend_details']['nfs_if'],
                    'share_name': share_name})
 
-    def create_share_from_snapshot(self, emc_share_driver, context,
-                                   share, snapshot, share_server=None):
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
         """Is called to create share from snapshot."""
         share_name = share['name']
         vdm_ref = self.share_server_validation(share_server)
@@ -171,8 +170,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
         return location
 
-    def create_snapshot(self, emc_share_driver, context, snapshot,
-                        share_server=None):
+    def create_snapshot(self, context, snapshot, share_server=None):
         """Create snapshot from share."""
 
         ckpt_name = snapshot['name']
@@ -189,8 +187,7 @@ class VNXStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.EMCVnxXMLAPIError(err=message)
 
-    def delete_share(self, emc_share_driver, context, share,
-                     share_server=None):
+    def delete_share(self, context, share, share_server=None):
         """Is called to remove share."""
         if share_server is None:
             LOG.warn(_LW("Driver does not support share deletion without "
@@ -314,8 +311,7 @@ class VNXStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.EMCVnxXMLAPIError(err=message)
 
-    def delete_snapshot(self, emc_share_driver, context, snapshot,
-                        share_server=None):
+    def delete_snapshot(self, context, snapshot, share_server=None):
         """Remove share's snapshot."""
 
         ckpt_name = snapshot['name']
@@ -337,14 +333,11 @@ class VNXStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.EMCVnxXMLAPIError(err=message)
 
-    def ensure_share(self, emc_share_driver,
-                     context, share,
-                     share_server=None):
+    def ensure_share(self, context, share, share_server=None):
         """Invoked to ensure that share is exported."""
         pass
 
-    def allow_access(self, emc_share_driver, context, share, access,
-                     share_server=None):
+    def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
         access_level = access['access_level']
         if access_level not in const.ACCESS_LEVELS:
@@ -407,8 +400,7 @@ class VNXStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.EMCVnxXMLAPIError(err=message)
 
-    def deny_access(self, emc_share_driver, context, share, access,
-                    share_server=None):
+    def deny_access(self, context, share, access, share_server=None):
         """Deny access to the share."""
         if share['share_proto'] == 'NFS':
             self._nfs_deny_access(share, access, share_server)
@@ -468,7 +460,7 @@ class VNXStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.EMCVnxXMLAPIError(err=message)
 
-    def check_for_setup_error(self, emc_share_driver):
+    def check_for_setup_error(self):
         """Check for setup error."""
         pass
 
@@ -500,11 +492,11 @@ class VNXStorageConnection(driver.StorageConnection):
         stats_dict['free_capacity_gb'] = (
             int(pool['total_size']) - int(pool['used_size']))
 
-    def get_network_allocations_number(self, emc_share_driver):
+    def get_network_allocations_number(self):
         """Returns number of network allocations for creating VIFs."""
         return constants.IP_ALLOCATIONS
 
-    def setup_server(self, emc_share_driver, network_info, metadata=None):
+    def setup_server(self, network_info, metadata=None):
         """Set up and configures share server with given network parameters."""
         # Only support single security service with type 'active_directory'
         interface_info = []
@@ -675,8 +667,7 @@ class VNXStorageConnection(driver.StorageConnection):
         self._NASCmd_helper.enable_nfs_service(vdmRef['name'],
                                                interface['name'])
 
-    def teardown_server(self, emc_share_driver, server_details,
-                        security_services=None):
+    def teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
         if not server_details:
             LOG.debug('Server details are empty.')
