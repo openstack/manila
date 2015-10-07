@@ -210,7 +210,7 @@ class WindowsSMBDriverTestCase(test.TestCase):
             mock.sentinel.mount_path,
             mock.sentinel.server)
 
-        self.assertEqual(share_size, fake_size_gb)
+        self.assertEqual(fake_size_gb, share_size)
 
     def test_get_consumed_space(self):
         fake_size_gb = 2

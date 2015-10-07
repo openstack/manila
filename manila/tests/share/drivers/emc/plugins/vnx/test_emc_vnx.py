@@ -1347,7 +1347,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         ssh_calls = [mock.call(TD.create_nfs_export(vdm_name, '/fakename'))]
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
         helper.SSHConnector.run_ssh.assert_has_calls(ssh_calls)
-        self.assertEqual(location, '192.168.1.1:/%s' % share['name'],
+        self.assertEqual('192.168.1.1:/%s' % share['name'], location,
                          "NFS export path is incorrect")
 
     @ddt.data(fake_share.fake_share(),
@@ -1489,7 +1489,7 @@ class EMCShareDriverVNXTestCase(test.TestCase):
         ]
         helper.XMLAPIConnector.request.assert_has_calls(expected_calls)
         helper.SSHConnector.run_ssh.assert_has_calls(ssh_calls)
-        self.assertEqual(location, '\\\\192.168.1.2\\%s' % share['name'],
+        self.assertEqual('\\\\192.168.1.2\\%s' % share['name'], location,
                          "CIFS export path is incorrect")
 
     def test_delete_cifs_share_default(self):

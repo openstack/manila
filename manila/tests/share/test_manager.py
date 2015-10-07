@@ -395,8 +395,8 @@ class ShareManagerTestCase(test.TestCase):
                          share_id).id)
 
         shr = db.share_get(self.context, share_id)
-        self.assertEqual(shr['status'], constants.STATUS_AVAILABLE)
-        self.assertEqual(shr['share_server_id'], server['id'])
+        self.assertEqual(constants.STATUS_AVAILABLE, shr['status'])
+        self.assertEqual(server['id'], shr['share_server_id'])
 
     def test_create_share_instance_from_snapshot_with_server_not_found(self):
         """Test creation from snapshot fails if server not found."""
@@ -415,7 +415,7 @@ class ShareManagerTestCase(test.TestCase):
                           )
 
         shr = db.share_get(self.context, share_id)
-        self.assertEqual(shr['status'], constants.STATUS_ERROR)
+        self.assertEqual(constants.STATUS_ERROR, shr['status'])
 
     def test_create_share_instance_from_snapshot(self):
         """Test share can be created from snapshot."""
@@ -430,7 +430,7 @@ class ShareManagerTestCase(test.TestCase):
                          share_id).id)
 
         shr = db.share_get(self.context, share_id)
-        self.assertEqual(shr['status'], constants.STATUS_AVAILABLE)
+        self.assertEqual(constants.STATUS_AVAILABLE, shr['status'])
         self.assertTrue(len(shr['export_location']) > 0)
         self.assertEqual(2, len(shr['export_locations']))
 
@@ -456,7 +456,7 @@ class ShareManagerTestCase(test.TestCase):
                                                snapshot_id).share_id)
 
         snap = db.share_snapshot_get(self.context, snapshot_id)
-        self.assertEqual(snap['status'], constants.STATUS_AVAILABLE)
+        self.assertEqual(constants.STATUS_AVAILABLE, snap['status'])
 
         self.share_manager.delete_snapshot(self.context, snapshot_id)
         self.assertRaises(exception.NotFound,
@@ -485,7 +485,7 @@ class ShareManagerTestCase(test.TestCase):
                           self.context, share_id, snapshot_id)
 
         snap = db.share_snapshot_get(self.context, snapshot_id)
-        self.assertEqual(snap['status'], constants.STATUS_ERROR)
+        self.assertEqual(constants.STATUS_ERROR, snap['status'])
 
         self.assertRaises(exception.NotFound,
                           self.share_manager.delete_snapshot,
@@ -517,7 +517,7 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.delete_snapshot(self.context, snapshot_id)
 
         snap = db.share_snapshot_get(self.context, snapshot_id)
-        self.assertEqual(snap['status'], constants.STATUS_AVAILABLE)
+        self.assertEqual(constants.STATUS_AVAILABLE, snap['status'])
         self.share_manager.driver.delete_snapshot.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             utils.IsAMatcher(models.ShareSnapshotInstance),
@@ -642,7 +642,7 @@ class ShareManagerTestCase(test.TestCase):
         )
         manager.LOG.error.assert_called_with(mock.ANY, share.instance['id'])
         shr = db.share_get(self.context, share_id)
-        self.assertEqual(shr['status'], constants.STATUS_ERROR)
+        self.assertEqual(constants.STATUS_ERROR, shr['status'])
 
     def test_create_share_instance_with_share_network_server_exists(self):
         """Test share can be created with existing share server."""
@@ -715,8 +715,8 @@ class ShareManagerTestCase(test.TestCase):
         self.assertEqual(share_id, db.share_get(context.get_admin_context(),
                          share_id).id)
         shr = db.share_get(self.context, share_id)
-        self.assertEqual(shr['status'], constants.STATUS_AVAILABLE)
-        self.assertEqual(shr['share_server_id'], 'fake_srv_id')
+        self.assertEqual(constants.STATUS_AVAILABLE, shr['status'])
+        self.assertEqual('fake_srv_id', shr['share_server_id'])
         db.share_server_create.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext), mock.ANY)
         self.share_manager._setup_server.assert_called_once_with(
@@ -741,14 +741,14 @@ class ShareManagerTestCase(test.TestCase):
                           share.instance['id'])
 
         shr = db.share_get(self.context, share_id)
-        self.assertEqual(shr['status'], constants.STATUS_ERROR)
+        self.assertEqual(constants.STATUS_ERROR, shr['status'])
         self.assertRaises(exception.NotFound,
                           self.share_manager.delete_share_instance,
                           self.context,
                           share.instance['id'])
 
         shr = db.share_get(self.context, share_id)
-        self.assertEqual(shr['status'], constants.STATUS_ERROR_DELETING)
+        self.assertEqual(constants.STATUS_ERROR_DELETING, shr['status'])
         self.share_manager.driver.create_share.assert_called_once_with(
             utils.IsAMatcher(context.RequestContext),
             utils.IsAMatcher(models.ShareInstance),
@@ -1322,7 +1322,7 @@ class ShareManagerTestCase(test.TestCase):
                           access_id)
 
         acs = db.share_access_get(self.context, access_id)
-        self.assertEqual(acs['state'], constants.STATUS_ERROR)
+        self.assertEqual(constants.STATUS_ERROR, acs['state'])
 
         self.assertRaises(exception.NotFound,
                           self.share_manager.deny_access,
@@ -1331,7 +1331,7 @@ class ShareManagerTestCase(test.TestCase):
                           access_id)
 
         acs = db.share_access_get(self.context, access_id)
-        self.assertEqual(acs['state'], constants.STATUS_ERROR)
+        self.assertEqual(constants.STATUS_ERROR, acs['state'])
 
     def test_setup_server(self):
         # Setup required test data
