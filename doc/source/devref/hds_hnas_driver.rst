@@ -58,11 +58,12 @@ The driver configuration can be summarized in the following steps:
 | 2) Install and configure an OpenStack environment with default Manila
  parameters and services. Refer to OpenStack Manila configuration reference;
 | 3) Configure HNAS parameters on manila.conf;
-| 4) Configure the network;
+| 4) Prepare the network;
 | 5) Configure/create share type;
-| 6) Restart the services.
+| 6) Restart the services;
+| 7) Configure the network.
 
-In the following sections we cover steps 3, 4, 5 and 6. Steps 1 and 2 are not
+In the following sections we cover steps 3, 4, 5, 6 and 7. Steps 1 and 2 are not
 in the scope of this document.
 
 Step 3 - HNAS Parameters Configuration
@@ -77,6 +78,8 @@ section of */etc/manila/manila.conf*:
 |          **Option**        |                                          **Description**                                            |
 +----------------------------+-----------+-----------------------------------------------------------------------------------------+
 |   enabled_share_backends   | Name of the section on manila.conf used to specify a backend. E.g. *enabled_share_backends = hnas1* |
++----------------------------+-----------------------------------------------------------------------------------------------------+
+|   enabled_share_protocols  | Specify a list of protocols to be allowed for share creation. For Hitachi driver this must be: *NFS*|
 +----------------------------+-----------------------------------------------------------------------------------------------------+
 
 The following parameters need to be configured in the [backend] section of */etc/manila/manila.conf*:
@@ -97,14 +100,15 @@ The following parameters need to be configured in the [backend] section of */etc
 | hds_hnas_ip                   | HNAS management interface IP for communication between Manila node and HNAS.                        |
 +-------------------------------+-----------------------------------------------------------------------------------------------------+
 | hds_hnas_password             | This field is used to provide password credential to HNAS.                                          |
-|                               | Either one of hds_hnas_password or hds_hnas_ssh_private_key must be set.                            |
+|                               | Either hds_hnas_password or hds_hnas_ssh_private_key must be set.                                   |
 +-------------------------------+-----------------------------------------------------------------------------------------------------+
 | hds_hnas_ssh_private_key      | Set this parameter with RSA/DSA private key path to allow the driver to connect into HNAS.          |
 +-------------------------------+-----------------------------------------------------------------------------------------------------+
 | hds_hnas_evs_id               | ID or Label from EVS which this backend is assigned to (ID and Label can be                         |
 |                               | listed by CLI “evs list” or EVS Management in HNAS Interface).                                      |
 +-------------------------------+-----------------------------------------------------------------------------------------------------+
-| hds_hnas_evs_ip               | EVS IP for mounting shares (can be listed by CLI “evs list” or EVS Management in HNAS Interface).   |
+| hds_hnas_evs_ip               | EVS IP for mounting shares (this can be listed by CLI “evs list” or EVS Management in HNAS          |
+|                               | Interface).                                                                                         |
 +-------------------------------+-----------------------------------------------------------------------------------------------------+
 | hds_hnas_file_system_name     | Name of the file system in HNAS, located in the specified EVS.                                      |
 +-------------------------------+-----------------------------------------------------------------------------------------------------+
@@ -119,8 +123,12 @@ The following parameters need to be configured in the [backend] section of */etc
 
 Below is an example of a valid configuration of HNAS driver:
 
-| ``[hds1]``
-| ``share_backend_name = HDS1``
+| ``[DEFAULT]``
+| ``enabled_share_backends = hitachi1``
+| ``enabled_share_protocols = NFS``
+
+| ``[hitachi1]``
+| ``share_backend_name = HITACHI1``
 | ``share_driver = manila.share.drivers.hitachi.hds_hnas.HDSHNASDriver``
 | ``driver_handles_share_servers = False``
 | ``hds_hnas_ip = 172.24.44.15``
@@ -130,8 +138,8 @@ Below is an example of a valid configuration of HNAS driver:
 | ``hds_hnas_evs_ip = 10.0.1.20``
 | ``hds_hnas_file_system_name = FS-Manila``
 
-Step 4 - Network Configuration
-******************************
+Step 4 - Prepare the Network
+****************************
 
 In the driver mode used by HNAS Driver (DHSS = False), the driver does not
 handle network configuration, it is up to the administrator to configure it.
@@ -162,27 +170,29 @@ Run in **Neutron Node**:
 | ``$ sudo ifconfig eth1 up``
 
 Edit */etc/neutron/plugins/ml2/ml2_conf.ini* (default directory), change the
-following settings as follows:
+following settings as follows in their respective tags:
 
+| ``[ml2]``
 | ``type_drivers = flat,vlan,vxlan,gre``
 | ``mechanism_drivers = openvswitch``
+
+| ``[ml2_type_flat]``
 | ``flat_networks = physnet1,physnet2``
+
+| ``[ml2_type_vlan]``
 | ``network_vlan_ranges = physnet1:1000:1500,physnet2:2000:2500``
+
+| ``[ovs]``
 | ``bridge_mappings = physnet1:br-ex,physnet2:br-eth1``
 
-You may have to repeat the last line above in the following file located in the
-Compute Node: */etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini*.
+You may have to repeat the last line above in another file in the Compute Node,
+if it exists is located in: */etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini*.
 
-Run in **Neutron Controller**:
-
-``$ neutron net-create --tenant-id demo hnas_network --provider:
-physical_network=physnet2 --provider:network_type=flat``
-
-Finally, create a route in HNAS to the tenant network. Please make sure
+Create a route in HNAS to the tenant network. Please make sure
 multi-tenancy is enabled and routes are configured per EVS. Use the command
 “route-net-add” in HNAS console, where the network parameter should be the
 tenant's private network, while the gateway parameter should be the FLAT
-network gateway and the "console-context --evs" parameter should be the ID of
+network gateway and the “console-context --evs” parameter should be the ID of
 EVS in use, such as in the following example:
 
 ``$ console-context --evs 3 route-net-add --gateway 192.168.1.1 10.0.0.0/24``
@@ -195,7 +205,7 @@ extra-spec. This ensures that the share will be created on a backend that
 supports the requested driver_handles_share_servers capability. For the Hitachi
 HNAS Manila driver, this must be set to False.
 
-``$ manila type-create hds False``
+``$ manila type-create hitachi False``
 
 Step 6 - Restart the services
 *****************************
@@ -203,18 +213,45 @@ Step 6 - Restart the services
 Restart all manila services (manila-share, manila-scheduler and manila-api) and
 neutron services (neutron-\*). This step is specific to your environment.
 If you are running in devstack for example, you have to log into screen
-(screen -r), stop the process (Ctrl^C) and run it again. If you are running it
-in a distro like RHEL or SUSE, a service command (e.g. service manila-api
-restart) is used to restart the service.
+(*screen -r*), stop the process (Ctrl^C) and run it again. If you are running it
+in a distro like RHEL or SUSE, a service command (e.g. *service manila-api
+restart*) is used to restart the service.
+
+Step 7 - Configure the Network
+******************************
+
+In Neutron Controller it is necessary to create a network, a subnet and to add
+this subnet interface to a router:
+
+Create a network to the given tenant (demo), providing the DEMO_ID (this can be
+fetched using *keystone tenant-list*), a name for the network, the name of the
+physical network over which the virtual network is implemented and the type of
+the physical mechanism by which the virtual network is implemented:
+
+| ``$ neutron net-create --tenant-id <DEMO_ID> hnas_network``
+| ``--provider:physical_network=physnet2 --provider:network_type=flat``
+
+Create a subnet to same tenant (demo), providing the DEMO_ID (this can be fetched
+using *keystone tenant-list*), the gateway IP of this subnet, a name for the
+subnet, the network ID created on previously step (this can be fetched using
+*neutron net-list*) and CIDR of subnet:
+
+| ``$ neutron subnet-create --tenant-id <DEMO_ID> --gateway <GATEWAY>``
+| ``--name hnas_subnet <NETWORK_ID> <SUBNET_CIDR>``
+
+Finally, add the subnet interface to a router, providing the router ID and
+subnet ID created on previously step (can be fetched using *neutron subnet-list*):
+
+| ``$ neutron router-interface-add <ROUTER_ID> <SUBNET_ID>``
 
 Manage and Unmanage Shares
 ''''''''''''''''''''''''''
 Manila has the ability to manage and unmanage shares. If there is a share in
 the storage and it is not in OpenStack, you can manage that share and use it
 as a Manila Share. HNAS drivers use virtual-volumes (V-VOL) to create shares.
-Only V-VOL shares can be used by the driver. If the NFS export is a ordinary
+Only V-VOL shares can be used by the driver. If the NFS export is an ordinary
 FS export, it is not possible to use it in Manila. The unmanage operation
-only unlink the share from Manila. All data is preserved.
+only unlinks the share from Manila. All data is preserved.
 
 | To **manage** shares use:
 | ``$ manila manage [--name <name>] [--description <description>]``
@@ -223,19 +260,19 @@ only unlink the share from Manila. All data is preserved.
 
 Where:
 
-+------------------+---------------------------------------------------------+
-|  Parameter       | Description                                             |
-+==================+=========================================================+
-|                  | Manila host, backend and share name. e.g.               |
-|  service_host    | ubuntu\@hds1#HDS1. The available hosts can be           |
-|                  | listed with the command: manila pool-list (admin only). |
-+------------------+---------------------+-----------------------------------+
-|  protocol        | NFS, it is the only supported protocol in this driver   |
-|                  | version.                                                |
-+------------------+---------------------------------------------------------+
-|  export_path     | The export path of the share.                           |
-|                  | e.g. *172.24.44.31:/shares/some_share_id*               |
-+------------------+---------------------------------------------------------+
++------------------+----------------------------------------------------------+
+|  Parameter       | Description                                              |
++==================+==========================================================+
+|                  | Manila host, backend and share name. e.g.                |
+|  service_host    | ubuntu\@hitachi1#HITACHI1. The available hosts can be    |
+|                  | listed with the command: *manila pool-list* (admin only).|
++------------------+---------------------+------------------------------------+
+|  protocol        | NFS, it is the only supported protocol in this driver    |
+|                  | version.                                                 |
++------------------+----------------------------------------------------------+
+|  export_path     | The export path of the share.                            |
+|                  | e.g. *172.24.44.31:/shares/some_share_id*                |
++------------------+----------------------------------------------------------+
 
 
 | To **unmanage** a share use:
@@ -253,12 +290,21 @@ Where:
 Additional Notes:
 *****************
 
-| - HNAS has some restrictions about the number of EVS, filesystems,
+| - HNAS has some restrictions about the number of EVSs, filesystems,
  virtual-volumes and simultaneous SSC connections. Check the manual
  specification for your system.
 | - Shares and snapshots are thin provisioned. It is reported to Manila only the
  real used space in HNAS. Also, a snapshot does not initially take any space in
  HNAS, it only stores the difference between the share and the snapshot, so it
  grows when share data is changed.
-| - Admins should manage the tenant’s quota (manila quota-update) to control the
+| - Admins should manage the tenant’s quota (*manila quota-update*) to control the
  backend usage.
+
+The :mod:`manila.share.drivers.hitachi.hds_hnas` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: manila.share.drivers.hitachi.hds_hnas
+   :noindex:
+   :members:
+   :undoc-members:
+   :show-inheritance:
