@@ -224,14 +224,58 @@ class GenericShareDriverTestCase(test.TestCase):
         self.mock_error_log = self.mock_object(generic.LOG, 'error')
         self.mock_exception_log = self.mock_object(generic.LOG, 'exception')
 
-    def test_do_setup(self):
+    @ddt.data(True, False)
+    def test_do_setup_with_dhss(self, dhss):
+        CONF.set_default('driver_handles_share_servers', dhss)
+        fake_server = {'id': 'fake_server_id'}
         self.mock_object(volume, 'API')
         self.mock_object(compute, 'API')
         self.mock_object(self._driver, '_setup_helpers')
+        self.mock_object(
+            self._driver,
+            '_is_share_server_active', mock.Mock(return_value=True))
+        self.mock_object(
+            self._driver.service_instance_manager,
+            'get_common_server', mock.Mock(return_value=fake_server))
+
         self._driver.do_setup(self._context)
+
         volume.API.assert_called_once_with()
         compute.API.assert_called_once_with()
         self._driver._setup_helpers.assert_called_once_with()
+        if not dhss:
+            self._driver.service_instance_manager.get_common_server.\
+                assert_called_once_with()
+            self._driver._is_share_server_active.assert_called_once_with(
+                self._context, fake_server)
+        else:
+            self.assertFalse(
+                self._driver.service_instance_manager.get_common_server.called)
+            self.assertFalse(self._driver._is_share_server_active.called)
+
+    def test_do_setup_dhss_false_server_not_active(self):
+        CONF.set_default('driver_handles_share_servers', False)
+        fake_server = {'id': 'fake_server_id'}
+        self.mock_object(volume, 'API')
+        self.mock_object(compute, 'API')
+        self.mock_object(self._driver, '_setup_helpers')
+        self.mock_object(
+            self._driver,
+            '_is_share_server_active', mock.Mock(return_value=False))
+        self.mock_object(
+            self._driver.service_instance_manager,
+            'get_common_server', mock.Mock(return_value=fake_server))
+
+        self.assertRaises(
+            exception.ManilaException, self._driver.do_setup, self._context)
+
+        volume.API.assert_called_once_with()
+        compute.API.assert_called_once_with()
+        self._driver._setup_helpers.assert_called_once_with()
+        self._driver.service_instance_manager.get_common_server.\
+            assert_called_once_with()
+        self._driver._is_share_server_active.assert_called_once_with(
+            self._context, fake_server)
 
     def test_setup_helpers(self):
         self._driver._helpers = {}

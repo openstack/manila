@@ -169,7 +169,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
-        pass
 
     def do_setup(self, context):
         """Any initialization the generic driver does while starting."""
@@ -177,6 +176,12 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self.compute_api = compute.API()
         self.volume_api = volume.API()
         self._setup_helpers()
+        if not self.driver_handles_share_servers:
+            # Verify availability of common server
+            share_server = self.service_instance_manager.get_common_server()
+            if not self._is_share_server_active(context, share_server):
+                raise exception.ManilaException(
+                    _("Service VM is not available. %s") % share_server)
 
     def _setup_helpers(self):
         """Initializes protocol-specific NAS drivers."""
