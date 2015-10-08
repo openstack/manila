@@ -91,7 +91,7 @@ class HP3ParMediator(object):
         if self.no_client():
             msg = _('You must install hp3parclient before using the 3PAR '
                     'driver.')
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.HP3ParInvalidClient(message=msg)
 
         self.client_version = hp3parclient.version_tuple
@@ -101,7 +101,7 @@ class HP3ParMediator(object):
                    {'found': '.'.join(map(six.text_type, self.client_version)),
                     'minimum': '.'.join(map(six.text_type,
                                             MIN_CLIENT_VERSION))})
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.HP3ParInvalidClient(message=msg)
 
         try:
@@ -200,12 +200,12 @@ class HP3ParMediator(object):
         except Exception as e:
             msg = (_('Failed to get capacity for fpg %(fpg)s: %(e)s') %
                    {'fpg': fpg, 'e': six.text_type(e)})
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
         if result['total'] != 1:
             msg = (_('Failed to get capacity for fpg %s.') % fpg)
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
         member = result['members'][0]
@@ -229,7 +229,7 @@ class HP3ParMediator(object):
         if provisioning_type not in (THIN, FULL, DEDUPE):
             msg = (_('Unexpected provisioning type for FPG %(fpg)s: '
                      '%(ptype)s.') % {'fpg': fpg, 'ptype': provisioning_type})
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
         dedupe = provisioning_type == DEDUPE
@@ -259,7 +259,7 @@ class HP3ParMediator(object):
         if protocol not in ['smb', 'nfs']:
             message = (_('Invalid protocol. Expected nfs or smb. Got %s.') %
                        protocol)
-            LOG.exception(message)
+            LOG.error(message)
             raise exception.InvalidInput(message)
         return protocol
 
@@ -460,7 +460,7 @@ class HP3ParMediator(object):
             msg = (_('Failed to get fshare %(share_name)s after creating it. '
                      'Expected to get 1 fshare.  Got %(total)s.') %
                    {'share_name': share_name, 'total': result['total']})
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg)
 
         if protocol == 'nfs':
@@ -492,7 +492,7 @@ class HP3ParMediator(object):
                        'fpg': fpg,
                        'vfs': vfs,
                        'tag': snapshot_tag})
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg)
 
         fstore = snapshot['fstoreName']
@@ -594,7 +594,7 @@ class HP3ParMediator(object):
             msg = (_('Failed to create snapshot for FPG/VFS/fshare '
                      '%(fpg)s/%(vfs)s/%(fshare)s: Failed to find fshare.') %
                    {'fpg': fpg, 'vfs': vfs, 'fshare': orig_share_id})
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg)
 
         sharedir = fshare.get('shareDir')
@@ -603,7 +603,7 @@ class HP3ParMediator(object):
                      '%(fpg)s/%(vfs)s/%(fshare)s: Share is a read-only '
                      'share of an existing snapshot.') %
                    {'fpg': fpg, 'vfs': vfs, 'fshare': orig_share_id})
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg)
 
         fstore = fshare.get('fstoreName')
@@ -702,13 +702,13 @@ class HP3ParMediator(object):
         if access_type not in ('ip', 'user'):
             msg = (_("Invalid access type.  Expected 'ip' or 'user'.  "
                      "Actual '%s'.") % access_type)
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.InvalidInput(msg)
 
         if protocol == 'nfs' and access_type != 'ip':
             msg = (_("Invalid NFS access type.  HP 3PAR NFS supports 'ip'. "
                      "Actual '%s'.") % access_type)
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.HP3ParInvalid(msg)
 
         return protocol
@@ -892,7 +892,7 @@ class HP3ParMediator(object):
                      'FPG/VFS/IP/subnet/VLAN '
                      '%(fspool)s/%(vfs)s/'
                      '%(address)s/%(prefixLen)s/%(vlanTag)s.') % fsip)
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
 
     def remove_fsip(self, ip, fpg, vfs):
@@ -920,5 +920,5 @@ class HP3ParMediator(object):
         if self.fsip_exists(fsip):
             msg = (_('Failed to remove FSIP for FPG/VFS/IP '
                      '%(fspool)s/%(vfs)s/%(address)s.') % fsip)
-            LOG.exception(msg)
+            LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)

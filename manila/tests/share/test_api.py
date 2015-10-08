@@ -1517,8 +1517,8 @@ class ShareAPITestCase(test.TestCase):
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                       size=100)
         new_size = 123
-        usages = {'gigabytes': {'reserved': 'fake', 'in_use': 'fake'}}
-        quotas = {'gigabytes': 'fake'}
+        usages = {'gigabytes': {'reserved': 11, 'in_use': 12}}
+        quotas = {'gigabytes': 13}
         exc = exception.OverQuota(usages=usages, quotas=quotas, overs=new_size)
         self.mock_object(quota.QUOTAS, 'reserve', mock.Mock(side_effect=exc))
 
