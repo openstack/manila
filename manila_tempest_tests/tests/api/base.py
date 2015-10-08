@@ -713,9 +713,14 @@ class BaseSharesAdminTest(BaseSharesTest):
 
     @classmethod
     def resource_setup(cls):
-        cls.username = CONF.identity.admin_username
-        cls.password = CONF.identity.admin_password
-        cls.tenant_name = CONF.identity.admin_tenant_name
+        if hasattr(CONF.identity, 'admin_username'):
+            cls.username = CONF.identity.admin_username
+            cls.password = CONF.identity.admin_password
+            cls.tenant_name = CONF.identity.admin_tenant_name
+        else:
+            cls.username = CONF.auth.admin_username
+            cls.password = CONF.auth.admin_password
+            cls.tenant_name = CONF.auth.admin_tenant_name
         cls.verify_nonempty(cls.username, cls.password, cls.tenant_name)
         cls.os = clients.AdminManager()
         admin_share_network_id = CONF.share.admin_share_network_id
