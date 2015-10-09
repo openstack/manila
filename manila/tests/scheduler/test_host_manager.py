@@ -77,7 +77,7 @@ class HostManagerTestCase(test.TestCase):
         for x in info['got_fprops']:
             self.assertEqual(info['expected_fprops'], x)
         self.assertEqual(set(info['expected_objs']), set(info['got_objs']))
-        self.assertEqual(set(result), set(info['got_objs']))
+        self.assertEqual(set(info['got_objs']), set(result))
 
     def test_get_filtered_hosts(self):
         fake_properties = {'moo': 1, 'cow': 2}

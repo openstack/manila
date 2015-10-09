@@ -216,7 +216,7 @@ class SchedulerTestCase(test.TestCase):
             with mock.patch.object(utils, 'service_is_up',
                                    mock.Mock(side_effect=fake_service_is_up)):
                 result = self.driver.hosts_up(self.context, self.topic)
-                self.assertEqual(result, ['host2'])
+                self.assertEqual(['host2'], result)
                 db.service_get_all_by_topic.assert_called_once_with(
                     self.context, self.topic)
 
