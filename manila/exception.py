@@ -672,3 +672,7 @@ class InvalidConsistencyGroup(Invalid):
 
 class InvalidCGSnapshot(Invalid):
     message = _("Invalid CGSnapshot: %(reason)s")
+
+
+class DriverNotInitialized(ManilaException):
+    message = _("Share driver '%(driver)s' not initialized.")

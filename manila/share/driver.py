@@ -221,6 +221,7 @@ class ShareDriver(object):
         """
         super(ShareDriver, self).__init__()
         self.configuration = kwargs.get('configuration', None)
+        self.initialized = False
         self._stats = {}
 
         self.pools = []

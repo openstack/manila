@@ -53,6 +53,7 @@ class ShareManagerTestCase(test.TestCase):
         self.mock_object(self.share_manager.driver, 'do_setup')
         self.mock_object(self.share_manager.driver, 'check_for_setup_error')
         self.context = context.get_admin_context()
+        self.share_manager.driver.initialized = True
 
     def test_share_manager_instance(self):
         fake_service_name = "fake_service"
@@ -129,6 +130,7 @@ class ShareManagerTestCase(test.TestCase):
 
         self.share_manager.init_host()
 
+        self.assertTrue(self.share_manager.driver.initialized)
         self.share_manager.db.share_instances_get_all_by_host.\
             assert_called_once_with(utils.IsAMatcher(context.RequestContext),
                                     self.share_manager.host)
@@ -137,25 +139,53 @@ class ShareManagerTestCase(test.TestCase):
         self.share_manager.driver.check_for_setup_error.\
             assert_called_once_with()
 
-    def test_init_host_with_driver_do_setup_fail(self):
+    @ddt.data(
+        "migrate_share",
+        "create_share_instance",
+        "manage_share",
+        "unmanage_share",
+        "delete_share_instance",
+        "delete_free_share_servers",
+        "create_snapshot",
+        "delete_snapshot",
+        "allow_access",
+        "deny_access",
+        "_report_driver_status",
+        "_execute_periodic_hook",
+        "publish_service_capabilities",
+        "delete_share_server",
+        "extend_share",
+        "shrink_share",
+        "create_consistency_group",
+        "delete_consistency_group",
+        "create_cgsnapshot",
+        "delete_cgsnapshot",
+    )
+    def test_call_driver_when_its_init_failed(self, method_name):
         self.mock_object(self.share_manager.driver, 'do_setup',
                          mock.Mock(side_effect=Exception()))
-        self.mock_object(manager.LOG, 'exception')
-
         self.share_manager.init_host()
 
-        manager.LOG.exception.assert_called_with(
-            mock.ANY, self.share_manager.driver.__class__.__name__)
+        self.assertRaises(
+            exception.DriverNotInitialized,
+            getattr(self.share_manager, method_name),
+            'foo', 'bar', 'quuz'
+        )
 
-    def test_init_host_with_driver_check_for_setup_error_fail(self):
-        self.mock_object(self.share_manager.driver, 'check_for_setup_error',
+    @ddt.data("do_setup", "check_for_setup_error")
+    def test_init_host_with_driver_failure(self, method_name):
+        self.mock_object(self.share_manager.driver, method_name,
                          mock.Mock(side_effect=Exception()))
         self.mock_object(manager.LOG, 'exception')
+        self.share_manager.driver.initialized = False
 
         self.share_manager.init_host()
 
-        manager.LOG.exception.assert_called_with(
-            mock.ANY, self.share_manager.driver.__class__.__name__)
+        manager.LOG.exception.assert_called_once_with(
+            mock.ANY, {'name': self.share_manager.driver.__class__.__name__,
+                       'host': self.share_manager.host,
+                       'exc': mock.ANY})
+        self.assertFalse(self.share_manager.driver.initialized)
 
     def _setup_init_mocks(self, setup_access_rules=True):
         instances = [
@@ -1686,6 +1716,7 @@ class ShareManagerTestCase(test.TestCase):
         data = dict(DEFAULT=dict(automatic_share_server_cleanup=False))
         with test_utils.create_temp_config_with_opts(data):
             share_manager = manager.ShareManager()
+            share_manager.driver.initialized = True
             share_manager.delete_free_share_servers(self.context)
             self.assertFalse(db.share_server_get_all_unused_deletable.called)
 
@@ -1697,6 +1728,7 @@ class ShareManagerTestCase(test.TestCase):
         data = dict(DEFAULT=dict(driver_handles_share_servers=False))
         with test_utils.create_temp_config_with_opts(data):
             share_manager = manager.ShareManager()
+            share_manager.driver.initialized = True
             share_manager.delete_free_share_servers(self.context)
             self.assertFalse(db.share_server_get_all_unused_deletable.called)
             self.assertFalse(share_manager.delete_share_server.called)
