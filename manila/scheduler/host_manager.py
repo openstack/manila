@@ -126,6 +126,7 @@ class HostState(object):
         self.snapshot_support = True
         self.consistency_group_support = False
         self.dedupe = False
+        self.compression = False
 
         # PoolState for all pools
         self.pools = {}
@@ -288,6 +289,9 @@ class HostState(object):
         if 'dedupe' not in pool_cap:
             pool_cap['dedupe'] = self.dedupe
 
+        if 'compression' not in pool_cap:
+            pool_cap['compression'] = self.compression
+
     def update_backend(self, capability):
         self.share_backend_name = capability.get('share_backend_name')
         self.vendor_name = capability.get('vendor_name')
@@ -359,6 +363,8 @@ class PoolState(HostState):
                 'thin_provisioning', False)
             self.dedupe = capability.get(
                 'dedupe', False)
+            self.compression = capability.get(
+                'compression', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
