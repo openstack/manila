@@ -17,11 +17,8 @@
 
 import os.path
 
-import mock
 from oslo_config import cfg
 from oslo_policy import policy as common_policy
-import six
-from six.moves.urllib import request as urlrequest
 
 from manila import context
 from manila import exception
@@ -106,28 +103,6 @@ class PolicyTestCase(test.TestCase):
     def test_enforce_good_action(self):
         action = "example:allowed"
         policy.enforce(self.context, action, self.target)
-
-    def test_enforce_http_true(self):
-
-        def fakeurlopen(url, post_data):
-            return six.StringIO("True")
-
-        action = "example:get_http"
-        target = {}
-        with mock.patch.object(urlrequest, 'urlopen', fakeurlopen):
-            result = policy.enforce(self.context, action, target)
-        self.assertTrue(result)
-
-    def test_enforce_http_false(self):
-
-        def fakeurlopen(url, post_data):
-            return six.StringIO("False")
-
-        action = "example:get_http"
-        target = {}
-        with mock.patch.object(urlrequest, 'urlopen', fakeurlopen):
-            self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
-                              self.context, action, target)
 
     def test_templatized_enforcement(self):
         target_mine = {'project_id': 'fake'}
