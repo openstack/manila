@@ -48,7 +48,7 @@ ProcessExecutionError = processutils.ProcessExecutionError
 
 
 class ConvertedException(webob.exc.WSGIHTTPException):
-    def __init__(self, code=0, title="", explanation=""):
+    def __init__(self, code=400, title="", explanation=""):
         self.code = code
         self.title = title
         self.explanation = explanation
