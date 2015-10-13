@@ -718,3 +718,12 @@ class ShareMountException(ManilaException):
 
 class ShareCopyDataException(ManilaException):
     message = _("Failed to copy data: %(reason)s")
+
+
+# Replication
+class ReplicationException(ManilaException):
+    message = _("Unable to perform a replication action: %(reason)s.")
+
+
+class ShareReplicaNotFound(NotFound):
+    message = _("Share Replica %(replica_id)s could not be found.")

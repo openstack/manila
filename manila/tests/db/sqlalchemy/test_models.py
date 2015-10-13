@@ -76,6 +76,55 @@ class ShareTestCase(test.TestCase):
 
         self.assertEqual(constants.STATUS_CREATING, share.instance['status'])
 
+    @ddt.data(constants.STATUS_AVAILABLE, constants.STATUS_ERROR,
+              constants.STATUS_CREATING)
+    def test_share_instance_replication_change(self, status):
+
+        instance_list = [
+            db_utils.create_share_instance(
+                status=constants.STATUS_REPLICATION_CHANGE,
+                share_id='fake_id'),
+            db_utils.create_share_instance(
+                status=status, share_id='fake_id'),
+            db_utils.create_share_instance(
+                status=constants.STATUS_ERROR_DELETING, share_id='fake_id')
+        ]
+
+        share1 = db_utils.create_share(instances=instance_list)
+        share2 = db_utils.create_share(instances=list(reversed(instance_list)))
+
+        self.assertEqual(
+            constants.STATUS_REPLICATION_CHANGE, share1.instance['status'])
+        self.assertEqual(
+            constants.STATUS_REPLICATION_CHANGE, share2.instance['status'])
+
+    def test_share_instance_prefer_active_instance(self):
+
+        instance_list = [
+            db_utils.create_share_instance(
+                status=constants.STATUS_AVAILABLE,
+                share_id='fake_id',
+                replica_state=constants.REPLICA_STATE_IN_SYNC),
+            db_utils.create_share_instance(
+                status=constants.STATUS_CREATING,
+                share_id='fake_id',
+                replica_state=constants.REPLICA_STATE_OUT_OF_SYNC),
+            db_utils.create_share_instance(
+                status=constants.STATUS_ERROR, share_id='fake_id',
+                replica_state=constants.REPLICA_STATE_ACTIVE),
+            db_utils.create_share_instance(
+                status=constants.STATUS_MANAGING, share_id='fake_id',
+                replica_state=constants.REPLICA_STATE_ACTIVE),
+        ]
+
+        share1 = db_utils.create_share(instances=instance_list)
+        share2 = db_utils.create_share(instances=list(reversed(instance_list)))
+
+        self.assertEqual(
+            constants.STATUS_ERROR, share1.instance['status'])
+        self.assertEqual(
+            constants.STATUS_ERROR, share2.instance['status'])
+
     def test_access_rules_status_no_instances(self):
         share = db_utils.create_share(instances=[])
 

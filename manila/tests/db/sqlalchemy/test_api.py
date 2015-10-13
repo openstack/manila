@@ -217,6 +217,344 @@ class ShareDatabaseAPITestCase(test.TestCase):
         self.assertEqual(2, len(actual_result))
         self.assertEqual(shares[0]['id'], actual_result[1]['id'])
 
+    @ddt.data(None, 'writable')
+    def test_share_get_has_replicas_field(self, replication_type):
+        share = db_utils.create_share(replication_type=replication_type)
+
+        db_share = db_api.share_get(self.ctxt, share['id'])
+
+        self.assertTrue('has_replicas' in db_share)
+
+    @ddt.data({'with_share_data': False, 'with_share_server': False},
+              {'with_share_data': False, 'with_share_server': True},
+              {'with_share_data': True, 'with_share_server': False},
+              {'with_share_data': True, 'with_share_server': True})
+    @ddt.unpack
+    def test_share_replicas_get_all(self, with_share_data,
+                                    with_share_server):
+        share_server = db_utils.create_share_server()
+        share_1 = db_utils.create_share()
+        share_2 = db_utils.create_share()
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_ACTIVE,
+            share_id=share_1['id'],
+            share_server_id=share_server['id'])
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_IN_SYNC,
+            share_id=share_1['id'],
+            share_server_id=share_server['id'])
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC,
+            share_id=share_2['id'],
+            share_server_id=share_server['id'])
+        db_utils.create_share_replica(share_id=share_2['id'])
+        expected_ss_keys = {
+            'backend_details', 'host', 'id',
+            'share_network_id', 'status',
+        }
+        expected_share_keys = {
+            'project_id', 'share_type_id', 'display_name',
+            'name', 'share_proto', 'is_public',
+            'source_cgsnapshot_member_id',
+        }
+        session = db_api.get_session()
+
+        with session.begin():
+            share_replicas = db_api.share_replicas_get_all(
+                self.ctxt, with_share_server=with_share_server,
+                with_share_data=with_share_data, session=session)
+
+            self.assertEqual(3, len(share_replicas))
+            for replica in share_replicas:
+                if with_share_server:
+                    self.assertTrue(expected_ss_keys.issubset(
+                        replica['share_server'].keys()))
+                else:
+                    self.assertFalse('share_server' in replica.keys())
+                    self.assertEqual(
+                        with_share_data,
+                        expected_share_keys.issubset(replica.keys()))
+
+    @ddt.data({'with_share_data': False, 'with_share_server': False},
+              {'with_share_data': False, 'with_share_server': True},
+              {'with_share_data': True, 'with_share_server': False},
+              {'with_share_data': True, 'with_share_server': True})
+    @ddt.unpack
+    def test_share_replicas_get_all_by_share(self, with_share_data,
+                                             with_share_server):
+        share_server = db_utils.create_share_server()
+        share = db_utils.create_share()
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_ACTIVE,
+            share_id=share['id'],
+            share_server_id=share_server['id'])
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_IN_SYNC,
+            share_id=share['id'],
+            share_server_id=share_server['id'])
+        db_utils.create_share_replica(
+            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC,
+            share_id=share['id'],
+            share_server_id=share_server['id'])
+        expected_ss_keys = {
+            'backend_details', 'host', 'id',
+            'share_network_id', 'status',
+        }
+        expected_share_keys = {
+            'project_id', 'share_type_id', 'display_name',
+            'name', 'share_proto', 'is_public',
+            'source_cgsnapshot_member_id',
+        }
+        session = db_api.get_session()
+
+        with session.begin():
+            share_replicas = db_api.share_replicas_get_all_by_share(
+                self.ctxt, share['id'],
+                with_share_server=with_share_server,
+                with_share_data=with_share_data, session=session)
+
+            self.assertEqual(3, len(share_replicas))
+            for replica in share_replicas:
+                if with_share_server:
+                    self.assertTrue(expected_ss_keys.issubset(
+                        replica['share_server'].keys()))
+                else:
+                    self.assertFalse('share_server' in replica.keys())
+                self.assertEqual(with_share_data,
+                                 expected_share_keys.issubset(replica.keys()))
+
+    def test_share_replicas_get_available_active_replica(self):
+        share_server = db_utils.create_share_server()
+        share_1 = db_utils.create_share()
+        share_2 = db_utils.create_share()
+        share_3 = db_utils.create_share()
+        db_utils.create_share_replica(
+            id='Replica1',
+            share_id=share_1['id'],
+            status=constants.STATUS_AVAILABLE,
+            replica_state=constants.REPLICA_STATE_ACTIVE,
+            share_server_id=share_server['id'])
+        db_utils.create_share_replica(
+            id='Replica2',
+            status=constants.STATUS_AVAILABLE,
+            share_id=share_1['id'],
+            replica_state=constants.REPLICA_STATE_ACTIVE,
+            share_server_id=share_server['id'])
+        db_utils.create_share_replica(
+            id='Replica3',
+            status=constants.STATUS_AVAILABLE,
+            share_id=share_2['id'],
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        db_utils.create_share_replica(
+            id='Replica4',
+            status=constants.STATUS_ERROR,
+            share_id=share_2['id'],
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        db_utils.create_share_replica(
+            id='Replica5',
+            status=constants.STATUS_AVAILABLE,
+            share_id=share_2['id'],
+            replica_state=constants.REPLICA_STATE_IN_SYNC)
+        db_utils.create_share_replica(
+            id='Replica6',
+            share_id=share_3['id'],
+            status=constants.STATUS_AVAILABLE,
+            replica_state=constants.REPLICA_STATE_IN_SYNC)
+        session = db_api.get_session()
+        expected_ss_keys = {
+            'backend_details', 'host', 'id',
+            'share_network_id', 'status',
+        }
+        expected_share_keys = {
+            'project_id', 'share_type_id', 'display_name',
+            'name', 'share_proto', 'is_public',
+            'source_cgsnapshot_member_id',
+        }
+
+        with session.begin():
+            replica_share_1 = (
+                db_api.share_replicas_get_available_active_replica(
+                    self.ctxt, share_1['id'], with_share_server=True,
+                    session=session)
+            )
+            replica_share_2 = (
+                db_api.share_replicas_get_available_active_replica(
+                    self.ctxt, share_2['id'], with_share_data=True,
+                    session=session)
+            )
+            replica_share_3 = (
+                db_api.share_replicas_get_available_active_replica(
+                    self.ctxt, share_3['id'], session=session)
+            )
+
+            self.assertIn(replica_share_1.get('id'), ['Replica1', 'Replica2'])
+            self.assertTrue(expected_ss_keys.issubset(
+                replica_share_1['share_server'].keys()))
+            self.assertFalse(
+                expected_share_keys.issubset(replica_share_1.keys()))
+            self.assertEqual(replica_share_2.get('id'), 'Replica3')
+            self.assertFalse(replica_share_2['share_server'])
+            self.assertTrue(
+                expected_share_keys.issubset(replica_share_2.keys()))
+            self.assertIsNone(replica_share_3)
+
+    def test_share_replicas_get_active_replicas_by_share(self):
+        db_utils.create_share_replica(
+            id='Replica1',
+            share_id='FAKE_SHARE_ID1',
+            status=constants.STATUS_AVAILABLE,
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        db_utils.create_share_replica(
+            id='Replica2',
+            status=constants.STATUS_AVAILABLE,
+            share_id='FAKE_SHARE_ID1',
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        db_utils.create_share_replica(
+            id='Replica3',
+            status=constants.STATUS_AVAILABLE,
+            share_id='FAKE_SHARE_ID2',
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        db_utils.create_share_replica(
+            id='Replica4',
+            status=constants.STATUS_ERROR,
+            share_id='FAKE_SHARE_ID2',
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        db_utils.create_share_replica(
+            id='Replica5',
+            status=constants.STATUS_AVAILABLE,
+            share_id='FAKE_SHARE_ID2',
+            replica_state=constants.REPLICA_STATE_IN_SYNC)
+        db_utils.create_share_replica(
+            id='Replica6',
+            share_id='FAKE_SHARE_ID3',
+            status=constants.STATUS_AVAILABLE,
+            replica_state=constants.REPLICA_STATE_IN_SYNC)
+
+        def get_active_replica_ids(share_id):
+            active_replicas = (
+                db_api.share_replicas_get_active_replicas_by_share(
+                    self.ctxt, share_id)
+            )
+            return [r['id'] for r in active_replicas]
+
+        active_ids_shr1 = get_active_replica_ids('FAKE_SHARE_ID1')
+        active_ids_shr2 = get_active_replica_ids('FAKE_SHARE_ID2')
+        active_ids_shr3 = get_active_replica_ids('FAKE_SHARE_ID3')
+
+        self.assertEqual(active_ids_shr1, ['Replica1', 'Replica2'])
+        self.assertEqual(active_ids_shr2, ['Replica3', 'Replica4'])
+        self.assertEqual([], active_ids_shr3)
+
+    def test_share_replica_get_exception(self):
+        replica = db_utils.create_share_replica(share_id='FAKE_SHARE_ID')
+
+        self.assertRaises(exception.ShareReplicaNotFound,
+                          db_api.share_replica_get,
+                          self.ctxt, replica['id'])
+
+    def test_share_replica_get_without_share_data(self):
+        share = db_utils.create_share()
+        replica = db_utils.create_share_replica(
+            share_id=share['id'],
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        expected_extra_keys = {
+            'project_id', 'share_type_id', 'display_name',
+            'name', 'share_proto', 'is_public',
+            'source_cgsnapshot_member_id',
+        }
+
+        share_replica = db_api.share_replica_get(self.ctxt, replica['id'])
+
+        self.assertIsNotNone(share_replica['replica_state'])
+        self.assertEqual(share['id'], share_replica['share_id'])
+        self.assertFalse(expected_extra_keys.issubset(share_replica.keys()))
+
+    def test_share_replica_get_with_share_data(self):
+        share = db_utils.create_share()
+        replica = db_utils.create_share_replica(
+            share_id=share['id'],
+            replica_state=constants.REPLICA_STATE_ACTIVE)
+        expected_extra_keys = {
+            'project_id', 'share_type_id', 'display_name',
+            'name', 'share_proto', 'is_public',
+            'source_cgsnapshot_member_id',
+        }
+
+        share_replica = db_api.share_replica_get(
+            self.ctxt, replica['id'], with_share_data=True)
+
+        self.assertIsNotNone(share_replica['replica_state'])
+        self.assertEqual(share['id'], share_replica['share_id'])
+        self.assertTrue(expected_extra_keys.issubset(share_replica.keys()))
+
+    def test_share_replica_get_with_share_server(self):
+        session = db_api.get_session()
+        share_server = db_utils.create_share_server()
+        share = db_utils.create_share()
+        replica = db_utils.create_share_replica(
+            share_id=share['id'],
+            replica_state=constants.REPLICA_STATE_ACTIVE,
+            share_server_id=share_server['id']
+        )
+        expected_extra_keys = {
+            'backend_details', 'host', 'id',
+            'share_network_id', 'status',
+        }
+        with session.begin():
+            share_replica = db_api.share_replica_get(
+                self.ctxt, replica['id'], with_share_server=True,
+                session=session)
+
+            self.assertIsNotNone(share_replica['replica_state'])
+            self.assertEqual(
+                share_server['id'], share_replica['share_server_id'])
+            self.assertTrue(expected_extra_keys.issubset(
+                share_replica['share_server'].keys()))
+
+    def test_share_replica_update(self):
+        share = db_utils.create_share()
+        replica = db_utils.create_share_replica(
+            share_id=share['id'], replica_state=constants.REPLICA_STATE_ACTIVE)
+
+        updated_replica = db_api.share_replica_update(
+            self.ctxt, replica['id'],
+            {'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC})
+
+        self.assertEqual(constants.REPLICA_STATE_OUT_OF_SYNC,
+                         updated_replica['replica_state'])
+
+    def test_share_replica_delete(self):
+        share = db_utils.create_share()
+        share = db_api.share_get(self.ctxt, share['id'])
+        replica = db_utils.create_share_replica(
+            share_id=share['id'], replica_state=constants.REPLICA_STATE_ACTIVE)
+
+        self.assertEqual(1, len(
+            db_api.share_replicas_get_all_by_share(self.ctxt, share['id'])))
+
+        db_api.share_replica_delete(self.ctxt, replica['id'])
+
+        self.assertEqual(
+            [], db_api.share_replicas_get_all_by_share(self.ctxt, share['id']))
+
+    def test_share_instance_access_copy(self):
+        share = db_utils.create_share()
+        rules = []
+        for i in range(0, 5):
+            rules.append(db_utils.create_access(share_id=share['id']))
+
+        instance = db_utils.create_share_instance(share_id=share['id'])
+
+        share_access_rules = db_api.share_instance_access_copy(
+            self.ctxt, share['id'], instance['id'])
+        share_access_rule_ids = [a['id'] for a in share_access_rules]
+
+        self.assertEqual(5, len(share_access_rules))
+        for rule_id in share_access_rule_ids:
+            self.assertIsNotNone(
+                db_api.share_instance_access_get(
+                    self.ctxt, rule_id, instance['id']))
+
 
 @ddt.ddt
 class ConsistencyGroupDatabaseAPITestCase(test.TestCase):

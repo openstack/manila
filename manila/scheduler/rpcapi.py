@@ -36,15 +36,16 @@ class SchedulerAPI(object):
             Replace create_share() - > create_share_instance()
         1.3 - Add create_consistency_group method
         1.4 - Add migrate_share_to_host method
+        1.5 - Add create_share_replica
     """
 
-    RPC_API_VERSION = '1.4'
+    RPC_API_VERSION = '1.5'
 
     def __init__(self):
         super(SchedulerAPI, self).__init__()
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.4')
+        self.client = rpc.get_client(target, version_cap='1.5')
 
     def create_share_instance(self, ctxt, request_spec=None,
                               filter_properties=None):
@@ -98,3 +99,14 @@ class SchedulerAPI(object):
                           force_host_copy=force_host_copy,
                           request_spec=request_spec_p,
                           filter_properties=filter_properties)
+
+    def create_share_replica(self, ctxt, request_spec=None,
+                             filter_properties=None):
+        request_spec_p = jsonutils.to_primitive(request_spec)
+        cctxt = self.client.prepare(version='1.5')
+        return cctxt.cast(
+            ctxt,
+            'create_share_replica',
+            request_spec=request_spec_p,
+            filter_properties=filter_properties,
+        )

@@ -209,10 +209,16 @@ class Share(BASE, ManilaBase):
 
     @property
     def export_locations(self):
-        # TODO(u_glide): Return a map with lists of locations per AZ when
-        # replication functionality will be implemented.
+        # TODO(gouthamr): Return AZ specific export locations for replicated
+        # shares.
+        # NOTE(gouthamr): For a replicated share, export locations of the
+        # 'active' instances are chosen, if 'available'.
         all_export_locations = []
-        for instance in self.instances:
+        select_instances = list(filter(
+            lambda x: x['replica_state'] == constants.REPLICA_STATE_ACTIVE,
+            self.instances)) or self.instances
+
+        for instance in select_instances:
             if instance['status'] == constants.STATUS_AVAILABLE:
                 for export_location in instance.export_locations:
                     all_export_locations.append(export_location['path'])
@@ -239,18 +245,45 @@ class Share(BASE, ManilaBase):
         return self.__getattr__('share_server_id')
 
     @property
+    def has_replicas(self):
+        if len(self.instances) > 1:
+            # NOTE(gouthamr): The 'primary' instance of a replicated share
+            # has a 'replica_state' set to 'active'. Only the secondary replica
+            # instances need to be regarded as true 'replicas' by users.
+            replicas = (list(filter(lambda x: x['replica_state'] is not None,
+                                    self.instances)))
+            return len(replicas) > 1
+        return False
+
+    @property
     def instance(self):
-        # NOTE(ganso): We prefer instances with AVAILABLE status,
-        # and we also prefer to show any status other than TRANSITIONAL ones.
+        # NOTE(gouthamr): The order of preference: status 'replication_change',
+        # followed  by 'available' and 'error'. If replicated share and
+        # not undergoing a 'replication_change', only 'active' instances are
+        # preferred.
         result = None
         if len(self.instances) > 0:
-            for instance in self.instances:
-                if instance.status == constants.STATUS_AVAILABLE:
-                    return instance
-                elif instance.status not in constants.TRANSITIONAL_STATUSES:
-                    result = instance
-            if result is None:
-                    result = self.instances[0]
+            order = (constants.STATUS_REPLICATION_CHANGE,
+                     constants.STATUS_AVAILABLE, constants.STATUS_ERROR)
+            other_statuses = (
+                [x['status'] for x in self.instances if
+                 x['status'] not in order and
+                 x['status'] not in constants.TRANSITIONAL_STATUSES]
+            )
+            order = (order + tuple(other_statuses) +
+                     constants.TRANSITIONAL_STATUSES)
+            sorted_instances = sorted(
+                self.instances, key=lambda x: order.index(x['status']))
+
+            select_instances = sorted_instances
+            if (select_instances[0]['status'] !=
+                    constants.STATUS_REPLICATION_CHANGE):
+                select_instances = (
+                    list(filter(lambda x: x['replica_state'] ==
+                                constants.REPLICA_STATE_ACTIVE,
+                                sorted_instances)) or sorted_instances
+                )
+            result = select_instances[0]
         return result
 
     @property
@@ -267,6 +300,7 @@ class Share(BASE, ManilaBase):
     display_description = Column(String(255))
     snapshot_id = Column(String(36))
     snapshot_support = Column(Boolean, default=True)
+    replication_type = Column(String(255), nullable=True)
     share_proto = Column(String(255))
     share_type_id = Column(String(36), ForeignKey('share_types.id'),
                            nullable=True)
@@ -300,7 +334,8 @@ class Share(BASE, ManilaBase):
 class ShareInstance(BASE, ManilaBase):
     __tablename__ = 'share_instances'
 
-    _extra_keys = ['name', 'export_location', 'availability_zone']
+    _extra_keys = ['name', 'export_location', 'availability_zone',
+                   'replica_state']
     _proxified_properties = ('user_id', 'project_id', 'size',
                              'display_name', 'display_description',
                              'snapshot_id', 'share_proto', 'share_type_id',
@@ -345,6 +380,7 @@ class ShareInstance(BASE, ManilaBase):
     scheduled_at = Column(DateTime)
     launched_at = Column(DateTime)
     terminated_at = Column(DateTime)
+    replica_state = Column(String(255), nullable=True)
 
     availability_zone_id = Column(String(36),
                                   ForeignKey('availability_zones.id'),

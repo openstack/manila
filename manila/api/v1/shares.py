@@ -93,6 +93,8 @@ class ShareMixin(object):
             raise exc.HTTPNotFound()
         except exception.InvalidShare as e:
             raise exc.HTTPForbidden(explanation=six.text_type(e))
+        except exception.Conflict as e:
+            raise exc.HTTPConflict(explanation=six.text_type(e))
 
         return webob.Response(status_int=202)
 
@@ -116,7 +118,12 @@ class ShareMixin(object):
         except ValueError:
             raise exc.HTTPBadRequest(
                 explanation=_("Bad value for 'force_host_copy'"))
-        self.share_api.migrate_share(context, share, host, force_host_copy)
+
+        try:
+            self.share_api.migrate_share(context, share, host, force_host_copy)
+        except exception.Conflict as e:
+            raise exc.HTTPConflict(explanation=six.text_type(e))
+
         return webob.Response(status_int=202)
 
     def index(self, req):

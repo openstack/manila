@@ -1294,6 +1294,162 @@ def share_instances_get_all_by_consistency_group_id(context, cg_id):
 
 ################
 
+def _share_replica_get_with_filters(context, share_id=None, replica_id=None,
+                                    replica_state=None, status=None,
+                                    with_share_server=True, session=None):
+
+    query = model_query(context, models.ShareInstance, session=session,
+                        read_deleted="no")
+
+    if share_id is not None:
+        query = query.filter(models.ShareInstance.share_id == share_id)
+
+    if replica_id is not None:
+        query = query.filter(models.ShareInstance.id == replica_id)
+
+    if replica_state is not None:
+        query = query.filter(
+            models.ShareInstance.replica_state == replica_state)
+    else:
+        query = query.filter(models.ShareInstance.replica_state.isnot(None))
+
+    if status is not None:
+        query = query.filter(models.ShareInstance.status == status)
+
+    if with_share_server:
+        query = query.options(joinedload('share_server'))
+
+    return query
+
+
+def _set_replica_share_data(context, replicas, session):
+    if replicas and not isinstance(replicas, list):
+        replicas = [replicas]
+
+    for replica in replicas:
+        parent_share = share_get(context, replica['share_id'], session=session)
+        replica.set_share_data(parent_share)
+
+    return replicas
+
+
+@require_context
+def share_replicas_get_all(context, with_share_data=False,
+                           with_share_server=True, session=None):
+    """Returns replica instances for all available replicated shares."""
+    session = session or get_session()
+
+    result = _share_replica_get_with_filters(
+        context, with_share_server=with_share_server, session=session).all()
+
+    if with_share_data:
+        result = _set_replica_share_data(context, result, session)
+
+    return result
+
+
+@require_context
+def share_replicas_get_all_by_share(context, share_id,
+                                    with_share_data=False,
+                                    with_share_server=False, session=None):
+    """Returns replica instances for a given share."""
+    session = session or get_session()
+
+    result = _share_replica_get_with_filters(
+        context, with_share_server=with_share_server,
+        share_id=share_id, session=session).all()
+
+    if with_share_data:
+        result = _set_replica_share_data(context, result, session)
+
+    return result
+
+
+@require_context
+def share_replicas_get_available_active_replica(context, share_id,
+                                                with_share_data=False,
+                                                with_share_server=False,
+                                                session=None):
+    """Returns an 'active' replica instance that is 'available'."""
+    session = session or get_session()
+
+    result = _share_replica_get_with_filters(
+        context, with_share_server=with_share_server, share_id=share_id,
+        replica_state=constants.REPLICA_STATE_ACTIVE,
+        status=constants.STATUS_AVAILABLE, session=session).first()
+
+    if result and with_share_data:
+        result = _set_replica_share_data(context, result, session)[0]
+
+    return result
+
+
+@require_context
+def share_replicas_get_active_replicas_by_share(context, share_id,
+                                                with_share_data=False,
+                                                with_share_server=False,
+                                                session=None):
+    """Returns all active replicas for a given share."""
+    session = session or get_session()
+
+    result = _share_replica_get_with_filters(
+        context, with_share_server=with_share_server, share_id=share_id,
+        replica_state=constants.REPLICA_STATE_ACTIVE, session=session).all()
+
+    if with_share_data:
+        result = _set_replica_share_data(context, result, session)
+
+    return result
+
+
+@require_context
+def share_replica_get(context, replica_id, with_share_data=False,
+                      with_share_server=False, session=None):
+    """Returns summary of requested replica if available."""
+    session = session or get_session()
+
+    result = _share_replica_get_with_filters(
+        context, with_share_server=with_share_server,
+        replica_id=replica_id, session=session).first()
+
+    if result is None:
+        raise exception.ShareReplicaNotFound(replica_id=replica_id)
+
+    if with_share_data:
+        result = _set_replica_share_data(context, result, session)[0]
+
+    return result
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def share_replica_update(context, share_replica_id, values,
+                         with_share_data=False, session=None):
+    """Updates a share replica with specified values."""
+    session = session or get_session()
+
+    with session.begin():
+        ensure_availability_zone_exists(context, values, session, strict=False)
+        updated_share_replica = _share_instance_update(
+            context, share_replica_id, values, session=session)
+
+        if with_share_data:
+            updated_share_replica = _set_replica_share_data(
+                context, updated_share_replica, session)[0]
+
+    return updated_share_replica
+
+
+@require_context
+def share_replica_delete(context, share_replica_id, session=None):
+    """Deletes a share replica."""
+    session = session or get_session()
+
+    share_instance_delete(context, share_replica_id, session=session)
+
+
+################
+
 
 def _share_get_query(context, session=None):
     if session is None:
@@ -1378,8 +1534,10 @@ def share_update(context, share_id, values):
 @require_context
 def share_get(context, share_id, session=None):
     result = _share_get_query(context, session).filter_by(id=share_id).first()
+
     if result is None:
         raise exception.NotFound()
+
     return result
 
 
@@ -1574,6 +1732,23 @@ def share_access_create(context, values):
     return share_access_get(context, access_ref['id'])
 
 
+def share_instance_access_copy(context, share_id, instance_id, session=None):
+    """Copy access rules from share to share instance."""
+    session = session or get_session()
+
+    share_access_rules = share_access_get_all_for_share(
+        context, share_id, session=session)
+    for access_rule in share_access_rules:
+        values = {
+            'share_instance_id': instance_id,
+            'access_id': access_rule['id'],
+        }
+
+        _share_instance_access_create(values, session)
+
+    return share_access_rules
+
+
 def _share_instance_access_create(values, session):
     access_ref = models.ShareInstanceAccessMapping()
     access_ref.update(ensure_model_dict_has_id(values))
@@ -1608,8 +1783,8 @@ def share_instance_access_get(context, access_id, instance_id):
 
 
 @require_context
-def share_access_get_all_for_share(context, share_id):
-    session = get_session()
+def share_access_get_all_for_share(context, share_id, session=None):
+    session = session or get_session()
     return _share_access_get_query(context, session,
                                    {'share_id': share_id}).all()
 

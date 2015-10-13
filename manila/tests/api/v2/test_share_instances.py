@@ -121,7 +121,19 @@ class ShareInstancesAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.admin_context, self.resource_name, 'show')
 
-    @ddt.data("2.3", "2.8", "2.9")
+    def test_show_with_replica_state(self):
+        test_instance = db_utils.create_share(size=1).instance
+        req = self._get_request('fake', version="2.11")
+        id = test_instance['id']
+
+        actual_result = self.controller.show(req, id)
+
+        self.assertEqual(id, actual_result['share_instance']['id'])
+        self.assertIn("replica_state", actual_result['share_instance'])
+        self.mock_policy_check.assert_called_once_with(
+            self.admin_context, self.resource_name, 'show')
+
+    @ddt.data("2.3", "2.8", "2.9", "2.11")
     def test_get_share_instances(self, version):
         test_share = db_utils.create_share(size=1)
         id = test_share['id']
@@ -147,6 +159,9 @@ class ShareInstancesAPITest(test.TestCase):
                 assert_method = self.assertIn
             assert_method("export_location", instance)
             assert_method("export_locations", instance)
+            if (api_version_request.APIVersionRequest(version) >
+                    api_version_request.APIVersionRequest("2.10")):
+                self.assertIn("replica_state", instance)
         self.mock_policy_check.assert_has_calls([
             get_instances_policy_check_call, share_policy_check_call])
 

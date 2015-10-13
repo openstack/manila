@@ -118,6 +118,13 @@ class ManilaExceptionTestCase(test.TestCase):
         exc2 = exception.ManilaException(exc1)
         self.assertEqual("test message.", exc2.msg)
 
+    def test_replication_exception(self):
+        # Verify response code for exception.ReplicationException
+        reason = "Something bad happened."
+        e = exception.ReplicationException(reason=reason)
+        self.assertEqual(500, e.code)
+        self.assertIn(reason, e.msg)
+
 
 class ManilaExceptionResponseCode400(test.TestCase):
 
@@ -447,6 +454,13 @@ class ManilaExceptionResponseCode404(test.TestCase):
         e = exception.InstanceNotFound(instance_id=instance_id)
         self.assertEqual(404, e.code)
         self.assertIn(instance_id, e.msg)
+
+    def test_share_replica_not_found_exception(self):
+        # Verify response code for exception.ShareReplicaNotFound
+        replica_id = "FAKE_REPLICA_ID"
+        e = exception.ShareReplicaNotFound(replica_id=replica_id)
+        self.assertEqual(404, e.code)
+        self.assertIn(replica_id, e.msg)
 
     def test_storage_resource_not_found(self):
         # verify response code for exception.StorageResourceNotFound

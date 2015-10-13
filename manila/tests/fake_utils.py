@@ -17,6 +17,7 @@
 import re
 
 from eventlet import greenthread
+import mock
 from oslo_log import log
 import six
 
@@ -109,3 +110,10 @@ def stub_out_utils_execute(testcase):
     fake_execute_set_repliers([])
     fake_execute_clear_log()
     testcase.mock_object(utils, 'execute', fake_execute)
+
+
+def get_fake_lock_context():
+    context_manager_mock = mock.Mock()
+    setattr(context_manager_mock, '__enter__', mock.Mock())
+    setattr(context_manager_mock, '__exit__', mock.Mock())
+    return context_manager_mock

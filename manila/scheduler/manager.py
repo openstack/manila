@@ -59,7 +59,7 @@ MAPPING = {
 class SchedulerManager(manager.Manager):
     """Chooses a host to create shares."""
 
-    RPC_API_VERSION = '1.4'
+    RPC_API_VERSION = '1.5'
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
@@ -206,3 +206,21 @@ class SchedulerManager(manager.Manager):
             with excutils.save_and_reraise_exception():
                 self._set_cg_error_state('create_consistency_group',
                                          context, ex, request_spec)
+
+    def create_share_replica(self, context, request_spec=None,
+                             filter_properties=None):
+        try:
+            self.driver.schedule_create_replica(context, request_spec,
+                                                filter_properties)
+        except Exception as ex:
+            with excutils.save_and_reraise_exception():
+
+                msg = _LW("Failed to schedule the new share replica: %s")
+
+                LOG.warning(msg % ex)
+
+                db.share_replica_update(
+                    context,
+                    request_spec.get('share_instance_properties').get('id'),
+                    {'status': constants.STATUS_ERROR,
+                     'replica_state': constants.STATUS_ERROR})

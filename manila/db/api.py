@@ -43,7 +43,6 @@ these objects be simple dictionaries.
 from oslo_config import cfg
 from oslo_db import api as db_api
 
-
 db_opts = [
     cfg.StrOpt('db_backend',
                default='sqlalchemy',
@@ -79,6 +78,8 @@ def authorize_quota_class_context(context, class_name):
 
 
 ###################
+
+
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""
     return IMPL.service_destroy(context, service_id)
@@ -413,6 +414,15 @@ def share_delete(context, share_id):
 def share_access_create(context, values):
     """Allow access to share."""
     return IMPL.share_access_create(context, values)
+
+
+def share_instance_access_copy(context, share_id, instance_id):
+    """Maps the existing access rules for the share to the instance in the DB.
+
+    Adds the instance mapping to the share's access rules and
+    returns the share's access rules.
+    """
+    return IMPL.share_instance_access_copy(context, share_id, instance_id)
 
 
 def share_access_get(context, access_id):
@@ -1028,3 +1038,59 @@ def cgsnapshot_member_update(context, member_id, values):
     Raises NotFound if cgsnapshot member does not exist.
     """
     return IMPL.cgsnapshot_member_update(context, member_id, values)
+
+
+####################
+
+def share_replicas_get_all(context, with_share_server=False,
+                           with_share_data=False):
+    """Returns all share replicas regardless of share."""
+    return IMPL.share_replicas_get_all(
+        context, with_share_server=with_share_server,
+        with_share_data=with_share_data)
+
+
+def share_replicas_get_all_by_share(context, share_id, with_share_server=False,
+                                    with_share_data=False):
+    """Returns all share replicas for a given share."""
+    return IMPL.share_replicas_get_all_by_share(
+        context, share_id, with_share_server=with_share_server,
+        with_share_data=with_share_data)
+
+
+def share_replicas_get_available_active_replica(context, share_id,
+                                                with_share_server=False,
+                                                with_share_data=False):
+    """Returns an active replica for a given share."""
+    return IMPL.share_replicas_get_available_active_replica(
+        context, share_id, with_share_server=with_share_server,
+        with_share_data=with_share_data)
+
+
+def share_replicas_get_active_replicas_by_share(context, share_id,
+                                                with_share_server=False,
+                                                with_share_data=False):
+    """Returns all active replicas for a given share."""
+    return IMPL.share_replicas_get_active_replicas_by_share(
+        context, share_id, with_share_server=with_share_server,
+        with_share_data=with_share_data)
+
+
+def share_replica_get(context, replica_id, with_share_server=False,
+                      with_share_data=False):
+    """Get share replica by id."""
+    return IMPL.share_replica_get(
+        context, replica_id, with_share_server=with_share_server,
+        with_share_data=with_share_data)
+
+
+def share_replica_update(context, share_replica_id, values,
+                         with_share_data=False):
+    """Updates a share replica with given values."""
+    return IMPL.share_replica_update(context, share_replica_id, values,
+                                     with_share_data=with_share_data)
+
+
+def share_replica_delete(context, share_replica_id):
+    """Deletes a share replica."""
+    return IMPL.share_replica_delete(context, share_replica_id)

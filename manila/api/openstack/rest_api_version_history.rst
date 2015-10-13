@@ -78,3 +78,10 @@ user documentation.
 2.10
 ----
   Field 'access_rules_status' was added to shares and share instances.
+
+2.11
+----
+  Share Replication support added. All Share replication APIs are tagged
+  'Experimental'. Share APIs return two new attributes: 'has_replicas' and
+  'replication_type'. Share instance APIs return a new attribute,
+  'replica_state'.

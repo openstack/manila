@@ -97,6 +97,8 @@ class SharesActionsTest(base.BaseSharesTest):
             expected_keys.append("share_type_name")
         if utils.is_microversion_ge(version, '2.10'):
             expected_keys.append("access_rules_status")
+        if utils.is_microversion_ge(version, '2.11'):
+            expected_keys.append("replication_type")
         actual_keys = list(share.keys())
         [self.assertIn(key, actual_keys) for key in expected_keys]
 
@@ -144,6 +146,11 @@ class SharesActionsTest(base.BaseSharesTest):
         self._get_share('2.10')
 
     @test.attr(type=["gate", ])
+    @utils.skip_if_microversion_not_supported('2.11')
+    def test_get_share_with_replication_type_key(self):
+        self._get_share('2.11')
+
+    @test.attr(type=["gate", ])
     def test_list_shares(self):
 
         # list shares
@@ -183,6 +190,8 @@ class SharesActionsTest(base.BaseSharesTest):
             keys.append("share_type_name")
         if utils.is_microversion_ge(version, '2.10'):
             keys.append("access_rules_status")
+        if utils.is_microversion_ge(version, '2.11'):
+            keys.append("replication_type")
 
         [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
 
@@ -219,6 +228,11 @@ class SharesActionsTest(base.BaseSharesTest):
     @utils.skip_if_microversion_not_supported('2.10')
     def test_list_shares_with_detail_with_access_rules_status(self):
         self._list_shares_with_detail('2.10')
+
+    @test.attr(type=["gate", ])
+    @utils.skip_if_microversion_not_supported('2.11')
+    def test_list_shares_with_detail_replication_type_key(self):
+        self._list_shares_with_detail('2.11')
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_metadata(self):

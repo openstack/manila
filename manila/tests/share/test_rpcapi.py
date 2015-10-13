@@ -41,11 +41,16 @@ class ShareRpcAPITestCase(test.TestCase):
         )
         access = db_utils.create_access(share_id=share['id'])
         snapshot = db_utils.create_snapshot(share_id=share['id'])
+        share_replica = db_utils.create_share_replica(
+            id='fake_replica',
+            share_id='fake_share_id',
+        )
         share_server = db_utils.create_share_server()
         cg = {'id': 'fake_cg_id', 'host': 'fake_host'}
         cgsnapshot = {'id': 'fake_cg_id'}
         host = {'host': 'fake_host', 'capabilities': 1}
         self.fake_share = jsonutils.to_primitive(share)
+        self.fake_share_replica = jsonutils.to_primitive(share_replica)
         self.fake_access = jsonutils.to_primitive(access)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
         self.fake_share_server = jsonutils.to_primitive(share_server)
@@ -93,6 +98,9 @@ class ShareRpcAPITestCase(test.TestCase):
         if 'dest_host' in expected_msg:
             del expected_msg['dest_host']
             expected_msg['host'] = self.fake_host
+        if 'share_replica' in expected_msg:
+            share_replica = expected_msg.pop('share_replica', None)
+            expected_msg['share_replica_id'] = share_replica['id']
 
         if 'host' in kwargs:
             host = kwargs['host']
@@ -245,6 +253,23 @@ class ShareRpcAPITestCase(test.TestCase):
                              version='1.6',
                              share_instance=self.fake_share,
                              share_server=self.fake_share_server)
+
+    def test_delete_share_replica(self):
+        self._test_share_api('delete_share_replica',
+                             rpc_method='cast',
+                             version='1.8',
+                             share_replica_id=self.fake_share_replica['id'],
+                             share_id=self.fake_share_replica['share_id'],
+                             force=False,
+                             host='fake_host')
+
+    def test_promote_share_replica(self):
+        self._test_share_api('promote_share_replica',
+                             rpc_method='cast',
+                             version='1.8',
+                             share_replica_id=self.fake_share_replica['id'],
+                             share_id=self.fake_share_replica['share_id'],
+                             host='fake_host')
 
     class Desthost(object):
         host = 'fake_host'

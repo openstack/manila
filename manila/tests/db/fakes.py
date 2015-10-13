@@ -36,6 +36,12 @@ class FakeModel(object):
     def __repr__(self):
         return '<FakeModel: %s>' % self.values
 
+    def get(self, key, default=None):
+        return self.__getattr__(key) or default
+
+    def __contains__(self, key):
+        return self._getattr__(key)
+
 
 def stub_out(stubs, funcs):
     """Set the stubs in mapping in the db api."""

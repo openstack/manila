@@ -699,3 +699,29 @@ class ShareDriverTestCase(test.TestCase):
             'fake_share',
             'fake_access_rules'
         )
+
+    def test_create_replica(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        self.assertRaises(NotImplementedError,
+                          share_driver.create_replica,
+                          'fake_context', 'fake_active_replica',
+                          'fake_new_replica', [])
+
+    def test_delete_replica(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        self.assertRaises(NotImplementedError,
+                          share_driver.delete_replica,
+                          'fake_context', 'fake_active_replica',
+                          'fake_replica')
+
+    def test_promote_replica(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        self.assertRaises(NotImplementedError,
+                          share_driver.promote_replica,
+                          'fake_context', [], 'fake_replica', [])
+
+    def test_update_replica_state(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        self.assertRaises(NotImplementedError,
+                          share_driver.update_replica_state,
+                          'fake_context', [], 'fake_replica')

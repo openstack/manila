@@ -105,6 +105,32 @@ class FilterScheduler(base.Scheduler):
             snapshot_id=snapshot_id
         )
 
+    def schedule_create_replica(self, context, request_spec,
+                                filter_properties):
+        share_replica_id = request_spec['share_instance_properties'].get('id')
+
+        weighed_host = self._schedule_share(
+            context, request_spec, filter_properties)
+
+        if not weighed_host:
+            msg = _('Failed to find a weighted host for scheduling share '
+                    'replica %s.')
+            raise exception.NoValidHost(reason=msg % share_replica_id)
+
+        host = weighed_host.obj.host
+
+        updated_share_replica = base.share_replica_update_db(
+            context, share_replica_id, host)
+        self._post_select_populate_filter_properties(filter_properties,
+                                                     weighed_host.obj)
+
+        # context is not serializable
+        filter_properties.pop('context', None)
+
+        self.share_rpcapi.create_share_replica(
+            context, updated_share_replica, host, request_spec=request_spec,
+            filter_properties=filter_properties)
+
     def _format_filter_properties(self, context, filter_properties,
                                   request_spec):
 

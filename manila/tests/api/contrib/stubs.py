@@ -43,13 +43,20 @@ def stub_share(id, **kwargs):
         'share_server_id': 'fake_share_server_id',
         'is_public': False,
         'snapshot_support': True,
+        'replication_type': None,
+        'has_replicas': False,
     }
     share.update(kwargs)
 
     # NOTE(ameade): We must wrap the dictionary in an class in order to stub
     # object attributes.
     class wrapper(dict):
-        pass
+        def __getattr__(self, item):
+            try:
+                return self[item]
+            except KeyError:
+                raise AttributeError()
+
     fake_share = wrapper()
     fake_share.instance = {'id': "fake_instance_id"}
     fake_share.update(share)

@@ -25,6 +25,7 @@ import webob
 
 from manila.api import common
 from manila.api.openstack import api_version_request as api_version
+from manila.api.v2 import share_replicas
 from manila.api.v2 import shares
 from manila.common import constants
 from manila import context
@@ -203,6 +204,29 @@ class ShareAPITest(test.TestCase):
                           self.controller.create, req, {'share': self.share})
         share_types.get_default_share_type.assert_called_once_with()
 
+    def test_share_create_with_replication(self):
+        self.mock_object(share_api.API, 'create', self.create_mock)
+
+        body = {"share": copy.deepcopy(self.share)}
+        req = fakes.HTTPRequest.blank(
+            '/shares', version=share_replicas.MIN_SUPPORTED_API_VERSION)
+
+        res_dict = self.controller.create(req, body)
+
+        expected = self._get_expected_share_detailed_response(self.share)
+
+        expected['share']['task_state'] = None
+        expected['share']['consistency_group_id'] = None
+        expected['share']['source_cgsnapshot_member_id'] = None
+        expected['share']['replication_type'] = None
+        expected['share']['share_type_name'] = None
+        expected['share']['has_replicas'] = False
+        expected['share']['access_rules_status'] = 'active'
+        expected['share'].pop('export_location')
+        expected['share'].pop('export_locations')
+
+        self.assertEqual(expected, res_dict)
+
     def test_share_create_with_share_net(self):
         shr = {
             "size": 100,
@@ -249,6 +273,22 @@ class ShareAPITest(test.TestCase):
             method = 'migrate_share_legacy'
         self.mock_object(share_api.API, 'migrate_share')
         getattr(self.controller, method)(req, share['id'], body)
+
+    def test_migrate_share_has_replicas(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True)
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request = api_version.APIVersionRequest('2.10')
+        req.api_version_request.experimental = True
+        body = {'migrate_share': {'host': 'fake_host'}}
+        self.mock_object(share_api.API, 'migrate_share',
+                         mock.Mock(side_effect=exception.Conflict(err='err')))
+
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller.migrate_share,
+                          req, share['id'], body)
 
     @ddt.data('2.5', '2.6', '2.7')
     def test_migrate_share_no_share_id(self, version):
@@ -500,10 +540,39 @@ class ShareAPITest(test.TestCase):
                           self.controller.show,
                           req, '1')
 
+    def test_share_show_with_replication_type(self):
+        req = fakes.HTTPRequest.blank(
+            '/shares/1', version=share_replicas.MIN_SUPPORTED_API_VERSION)
+        res_dict = self.controller.show(req, '1')
+
+        expected = self._get_expected_share_detailed_response()
+
+        expected['share']['task_state'] = None
+        expected['share']['consistency_group_id'] = None
+        expected['share']['source_cgsnapshot_member_id'] = None
+        expected['share']['access_rules_status'] = 'active'
+        expected['share']['share_type_name'] = None
+        expected['share']['replication_type'] = None
+        expected['share']['has_replicas'] = False
+        expected['share'].pop('export_location')
+        expected['share'].pop('export_locations')
+
+        self.assertEqual(expected, res_dict)
+
     def test_share_delete(self):
         req = fakes.HTTPRequest.blank('/shares/1')
         resp = self.controller.delete(req, 1)
         self.assertEqual(202, resp.status_int)
+
+    def test_share_delete_has_replicas(self):
+        req = fakes.HTTPRequest.blank('/shares/1')
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=self.share))
+        self.mock_object(share_api.API, 'delete',
+                         mock.Mock(side_effect=exception.Conflict(err='err')))
+
+        self.assertRaises(
+            webob.exc.HTTPConflict, self.controller.delete, req, 1)
 
     def test_share_delete_in_consistency_group_param_not_provided(self):
         fake_share = stubs.stub_share('fake_share',
@@ -826,6 +895,58 @@ class ShareAPITest(test.TestCase):
         expected['shares'][0].pop('export_location')
         expected['shares'][0].pop('export_locations')
         self._list_detail_test_common(req, expected)
+
+    def test_share_list_detail_with_replication_type(self):
+        self.mock_object(share_api.API, 'get_all',
+                         stubs.stub_share_get_all_by_project)
+        env = {'QUERY_STRING': 'name=Share+Test+Name'}
+        req = fakes.HTTPRequest.blank(
+            '/shares/detail', environ=env,
+            version=share_replicas.MIN_SUPPORTED_API_VERSION)
+        res_dict = self.controller.detail(req)
+        expected = {
+            'shares': [
+                {
+                    'status': 'fakestatus',
+                    'description': 'displaydesc',
+                    'availability_zone': 'fakeaz',
+                    'name': 'displayname',
+                    'share_proto': 'FAKEPROTO',
+                    'metadata': {},
+                    'project_id': 'fakeproject',
+                    'access_rules_status': 'active',
+                    'host': 'fakehost',
+                    'id': '1',
+                    'snapshot_id': '2',
+                    'share_network_id': None,
+                    'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                    'size': 1,
+                    'share_type_name': None,
+                    'share_type': '1',
+                    'volume_type': '1',
+                    'is_public': False,
+                    'consistency_group_id': None,
+                    'source_cgsnapshot_member_id': None,
+                    'snapshot_support': True,
+                    'has_replicas': False,
+                    'replication_type': None,
+                    'task_state': None,
+                    'links': [
+                        {
+                            'href': 'http://localhost/v1/fake/shares/1',
+                            'rel': 'self'
+                        },
+                        {
+                            'href': 'http://localhost/fake/shares/1',
+                            'rel': 'bookmark'
+                        }
+                    ],
+                }
+            ]
+        }
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(res_dict['shares'][0]['volume_type'],
+                         res_dict['shares'][0]['share_type'])
 
     def test_remove_invalid_options(self):
         ctx = context.RequestContext('fakeuser', 'fakeproject', is_admin=False)

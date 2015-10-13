@@ -618,6 +618,20 @@ class ShareDriver(object):
         should be added/deleted. Driver can ignore rules in 'access_rules' and
         apply only rules from 'add_rules' and 'delete_rules'.
 
+        Drivers must be mindful of this call for share replicas. When
+        'update_access' is called on one of the replicas, the call is likely
+        propagated to all replicas belonging to the share, especially when
+        individual rules are added or removed. If a particular access rule
+        does not make sense to the driver in the context of a given replica,
+        the driver should be careful to report a correct behavior, and take
+        meaningful action. For example, if R/W access is requested on a
+        replica that is part of a "readable" type replication; R/O access
+        may be added by the driver instead of R/W. Note that raising an
+        exception *will* result in the access_rules_status on the replica,
+        and the share itself being "out_of_sync". Drivers can sync on the
+        valid access rules that are provided on the create_replica and
+        promote_replica calls.
+
         :param context: Current context
         :param share: Share model with share data.
         :param access_rules: All access rules for given share
@@ -1096,3 +1110,290 @@ class ShareDriver(object):
         :return: list of share instances.
         """
         return share_instances
+
+    def create_replica(self, context, active_replica, new_replica,
+                       access_rules, share_server=None):
+        """Replicate the active replica to a new replica on this backend.
+
+        :param context: Current context
+        :param active_replica: A current active replica instance dictionary.
+            EXAMPLE:
+             .. code::
+
+            {
+            'id': 'd487b88d-e428-4230-a465-a800c2cce5f8',
+            'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+            'deleted': False,
+            'host': 'openstack2@cmodeSSVMNFS1',
+            'status': 'available',
+            'scheduled_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'launched_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'terminated_at': None,
+            'replica_state': 'active',
+            'availability_zone_id': 'e2c2db5c-cb2f-4697-9966-c06fb200cb80',
+            'export_locations': [
+                <models.ShareInstanceExportLocations>,
+            ],
+            'access_rules_status': 'in_sync',
+            'share_network_id': '4ccd5318-65f1-11e5-9d70-feff819cdc9f',
+            'share_server_id': '4ce78e7b-0ef6-4730-ac2a-fd2defefbd05',
+            'share_server': <models.ShareServer> or None,
+            }
+        :param new_replica: The share replica dictionary.
+            EXAMPLE:
+             .. code::
+
+            {
+            'id': 'e82ff8b6-65f0-11e5-9d70-feff819cdc9f',
+            'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+            'deleted': False,
+            'host': 'openstack2@cmodeSSVMNFS2',
+            'status': 'available',
+            'scheduled_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'launched_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'terminated_at': None,
+            'replica_state': 'out_of_sync',
+            'availability_zone_id': 'f6e146d0-65f0-11e5-9d70-feff819cdc9f',
+            'export_locations': [
+                models.ShareInstanceExportLocations,
+            ],
+            'access_rules_status': 'out_of_sync',
+            'share_network_id': '4ccd5318-65f1-11e5-9d70-feff819cdc9f',
+            'share_server_id': 'e6155221-ea00-49ef-abf9-9f89b7dd900a',
+            'share_server': <models.ShareServer> or None,
+            }
+        :param access_rules: A list of access rules that other instances of
+        the share already obey. Drivers are expected to apply access rules
+        to the new replica or disregard access rules that don't apply.
+        EXAMPLE:
+             .. code::
+             [ {
+             'id': 'f0875f6f-766b-4865-8b41-cccb4cdf1676',
+             'deleted' = False,
+             'share_id' = 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+             'access_type' = 'ip',
+             'access_to' = '172.16.20.1',
+             'access_level' = 'rw',
+             }]
+        :param share_server: <models.ShareServer> or None,
+        Share server of the replica being created.
+        :return: None or a dictionary containing export_locations,
+        replica_state and access_rules_status. export_locations is a list of
+        paths and replica_state is one of active, in_sync, out_of_sync or
+        error. A backend supporting 'writable' type replication should return
+        'active' as the replica_state. Export locations should be in the
+        same format as returned during the create_share call.
+        EXAMPLE:
+            .. code::
+            {
+                'export_locations': [
+                    {
+                        'path': '172.16.20.22/sample/export/path',
+                         'is_admin_only': False,
+                         'metadata': {'some_key': 'some_value'},
+                    },
+                ],
+                 'replica_state': 'in_sync',
+                 'access_rules_status': 'in_sync',
+            }
+        """
+        raise NotImplementedError()
+
+    def delete_replica(self, context, active_replica, replica,
+                       share_server=None):
+        """Delete a replica. This is called on the destination backend.
+
+        :param context: Current context
+        :param active_replica: A current active replica instance dictionary.
+            EXAMPLE:
+             .. code::
+
+            {
+            'id': 'd487b88d-e428-4230-a465-a800c2cce5f8',
+            'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+            'deleted': False,
+            'host': 'openstack2@cmodeSSVMNFS1',
+            'status': 'available',
+            'scheduled_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'launched_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'terminated_at': None,
+            'replica_state': 'active',
+            'availability_zone_id': 'e2c2db5c-cb2f-4697-9966-c06fb200cb80',
+            'export_locations': [
+                models.ShareInstanceExportLocations,
+            ],
+            'access_rules_status': 'in_sync',
+            'share_network_id': '4ccd5318-65f1-11e5-9d70-feff819cdc9f',
+            'share_server_id': '4ce78e7b-0ef6-4730-ac2a-fd2defefbd05',
+            'share_server': <models.ShareServer> or None,
+            }
+        :param replica: Dictionary of the share replica being deleted.
+            EXAMPLE:
+             .. code::
+
+            {
+            'id': 'e82ff8b6-65f0-11e5-9d70-feff819cdc9f',
+            'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+            'deleted': False,
+            'host': 'openstack2@cmodeSSVMNFS2',
+            'status': 'available',
+            'scheduled_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'launched_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'terminated_at': None,
+            'replica_state': 'in_sync',
+            'availability_zone_id': 'f6e146d0-65f0-11e5-9d70-feff819cdc9f',
+            'export_locations': [
+                models.ShareInstanceExportLocations
+            ],
+            'access_rules_status': 'out_of_sync',
+            'share_network_id': '4ccd5318-65f1-11e5-9d70-feff819cdc9f',
+            'share_server_id': '53099868-65f1-11e5-9d70-feff819cdc9f',
+            'share_server': <models.ShareServer> or None,
+            }
+        :param share_server: <models.ShareServer> or None,
+        Share server of the replica to be deleted.
+        :return: None.
+        """
+        raise NotImplementedError()
+
+    def promote_replica(self, context, replica_list, replica, access_rules,
+                        share_server=None):
+        """Promote a replica to 'active' replica state.
+
+        :param context: Current context
+        :param replica_list: List of all replicas for a particular share.
+        This list also contains the replica to be promoted. The 'active'
+        replica will have its 'replica_state' attr set to 'active'.
+            EXAMPLE:
+             .. code::
+
+            [
+                {
+                'id': 'd487b88d-e428-4230-a465-a800c2cce5f8',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'in_sync',
+                    ...
+                'share_server_id': '4ce78e7b-0ef6-4730-ac2a-fd2defefbd05',
+                'share_server': <models.ShareServer> or None,
+                },
+                {
+                'id': '10e49c3e-aca9-483b-8c2d-1c337b38d6af',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'active',
+                    ...
+                'share_server_id': 'f63629b3-e126-4448-bec2-03f788f76094',
+                'share_server': <models.ShareServer> or None,
+                },
+                {
+                'id': 'e82ff8b6-65f0-11e5-9d70-feff819cdc9f',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'in_sync',
+                    ...
+                'share_server_id': '07574742-67ea-4dfd-9844-9fbd8ada3d87',
+                'share_server': <models.ShareServer> or None,
+                },
+                ...
+            ]
+
+        :param replica: Dictionary of the replica to be promoted.
+            EXAMPLE:
+             .. code::
+
+            {
+            'id': 'e82ff8b6-65f0-11e5-9d70-feff819cdc9f',
+            'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+            'deleted': False,
+            'host': 'openstack2@cmodeSSVMNFS2',
+            'status': 'available',
+            'scheduled_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'launched_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'terminated_at': None,
+            'replica_state': 'in_sync',
+            'availability_zone_id': 'f6e146d0-65f0-11e5-9d70-feff819cdc9f',
+            'export_locations': [
+                models.ShareInstanceExportLocations
+            ],
+            'access_rules_status': 'in_sync',
+            'share_network_id': '4ccd5318-65f1-11e5-9d70-feff819cdc9f',
+            'share_server_id': '07574742-67ea-4dfd-9844-9fbd8ada3d87',
+            'share_server': <models.ShareServer> or None,
+            }
+        :param access_rules: A list of access rules that other instances of
+        the share already obey.
+        EXAMPLE:
+             .. code::
+             [ {
+             'id': 'f0875f6f-766b-4865-8b41-cccb4cdf1676',
+             'deleted' = False,
+             'share_id' = 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+             'access_type' = 'ip',
+             'access_to' = '172.16.20.1',
+             'access_level' = 'rw',
+             }]
+        :param share_server: <models.ShareServer> or None,
+        Share server of the replica to be promoted.
+        :return: updated_replica_list or None
+            The driver can return the updated list as in the request
+            parameter. Changes that will be updated to the Database are:
+            'export_locations', 'access_rules_status' and 'replica_state'.
+        :raises Exception
+            This can be any exception derived from BaseException. This is
+            re-raised by the manager after some necessary cleanup. If the
+            driver raises an exception during promotion, it is assumed
+            that all of the replicas of the share are in an inconsistent
+            state. Recovery is only possible through the periodic update
+            call and/or administrator intervention to correct the 'status'
+            of the affected replicas if they become healthy again.
+        """
+        raise NotImplementedError()
+
+    def update_replica_state(self, context, replica,
+                             access_rules, share_server=None):
+        """Update the replica_state of a replica.
+
+        Drivers should fix replication relationships that were broken if
+        possible inside this method.
+
+        :param context: Current context
+        :param replica: Dictionary of the replica being updated.
+            EXAMPLE:
+             .. code::
+
+            {
+            'id': 'd487b88d-e428-4230-a465-a800c2cce5f8',
+            'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+            'deleted': False,
+            'host': 'openstack2@cmodeSSVMNFS1',
+            'status': 'available',
+            'scheduled_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'launched_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
+            'terminated_at': None,
+            'replica_state': 'active',
+            'availability_zone_id': 'e2c2db5c-cb2f-4697-9966-c06fb200cb80',
+            'export_locations': [
+                models.ShareInstanceExportLocations,
+            ],
+            'access_rules_status': 'in_sync',
+            'share_network_id': '4ccd5318-65f1-11e5-9d70-feff819cdc9f',
+            'share_server_id': '4ce78e7b-0ef6-4730-ac2a-fd2defefbd05',
+            }
+        :param access_rules: A list of access rules that other replicas of
+        the share already obey. The driver could attempt to sync on any
+        un-applied access_rules.
+        EXAMPLE:
+             .. code::
+             [ {
+             'id': 'f0875f6f-766b-4865-8b41-cccb4cdf1676',
+             'deleted' = False,
+             'share_id' = 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+             'access_type' = 'ip',
+             'access_to' = '172.16.20.1',
+             'access_level' = 'rw',
+             }]
+        :param share_server: <models.ShareServer> or None
+        :return: replica_state
+            replica_state - a str value denoting the replica_state that the
+            replica can have. Valid values are 'in_sync' and 'out_of_sync'
+            or None (to leave the current replica_state unchanged).
+        """
+        raise NotImplementedError()

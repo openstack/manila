@@ -46,6 +46,10 @@ class ShareAPI(object):
             get_migration_info()
             get_driver_migration_info()
         1.7 - Update target call API in allow/deny access methods
+        1.8 - Introduce Share Replication:
+            create_share_replica()
+            delete_share_replica()
+            promote_share_replica()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -54,7 +58,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.7')
+        self.client = rpc.get_client(target, version_cap='1.8')
 
     def create_share_instance(self, ctxt, share_instance, host,
                               request_spec, filter_properties,
@@ -200,3 +204,40 @@ class ShareAPI(object):
             ctxt,
             'delete_cgsnapshot',
             cgsnapshot_id=cgsnapshot['id'])
+
+    def create_share_replica(self, ctxt, share_replica, host,
+                             request_spec, filter_properties):
+        new_host = utils.extract_host(host)
+        cctxt = self.client.prepare(server=new_host, version='1.8')
+        request_spec_p = jsonutils.to_primitive(request_spec)
+        cctxt.cast(
+            ctxt,
+            'create_share_replica',
+            share_replica_id=share_replica['id'],
+            request_spec=request_spec_p,
+            filter_properties=filter_properties,
+            share_id=share_replica['share_id'],
+        )
+
+    def delete_share_replica(self, ctxt, share_replica_id, host,
+                             share_id=None, force=False):
+        new_host = utils.extract_host(host)
+        cctxt = self.client.prepare(server=new_host, version='1.8')
+        cctxt.cast(
+            ctxt,
+            'delete_share_replica',
+            share_replica_id=share_replica_id,
+            share_id=share_id,
+            force=force,
+        )
+
+    def promote_share_replica(self, ctxt, share_replica_id, host,
+                              share_id=None):
+        new_host = utils.extract_host(host)
+        cctxt = self.client.prepare(server=new_host, version='1.8')
+        cctxt.cast(
+            ctxt,
+            'promote_share_replica',
+            share_replica_id=share_replica_id,
+            share_id=share_id,
+        )

@@ -110,5 +110,11 @@
     "cgsnapshot:update" : "rule:default",
     "cgsnapshot:delete": "rule:default",
     "cgsnapshot:get_cgsnapshot": "rule:default",
-    "cgsnapshot:get_all": "rule:default"
+    "cgsnapshot:get_all": "rule:default",
+
+    "share_replica:get_all": "rule:default",
+    "share_replica:show": "rule:default",
+    "share_replica:create" : "rule:default",
+    "share_replica:delete": "rule:default",
+    "share_replica:promote": "rule:default"
 }

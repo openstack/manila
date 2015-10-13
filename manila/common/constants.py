@@ -35,6 +35,7 @@ STATUS_SHRINKING_ERROR = 'shrinking_error'
 STATUS_SHRINKING_POSSIBLE_DATA_LOSS_ERROR = (
     'shrinking_possible_data_loss_error'
 )
+STATUS_REPLICATION_CHANGE = 'replication_change'
 STATUS_TASK_STATE_MIGRATION_STARTING = 'migration_starting'
 STATUS_TASK_STATE_MIGRATION_IN_PROGRESS = 'migration_in_progress'
 STATUS_TASK_STATE_MIGRATION_ERROR = 'migration_error'
@@ -104,12 +105,17 @@ TASK_STATE_STATUSES = (
     STATUS_TASK_STATE_MIGRATION_IN_PROGRESS,
 )
 
+REPLICA_STATE_ACTIVE = 'active'
+REPLICA_STATE_IN_SYNC = 'in_sync'
+REPLICA_STATE_OUT_OF_SYNC = 'out_of_sync'
+
 
 class ExtraSpecs(object):
 
     # Extra specs key names
     DRIVER_HANDLES_SHARE_SERVERS = "driver_handles_share_servers"
     SNAPSHOT_SUPPORT = "snapshot_support"
+    REPLICATION_TYPE_SPEC = "replication_type"
 
     # Extra specs containers
     REQUIRED = (
@@ -120,9 +126,8 @@ class ExtraSpecs(object):
         SNAPSHOT_SUPPORT,
     )
     # NOTE(cknight): Some extra specs are necessary parts of the Manila API and
-    # should be visible to non-admin users.  This list matches the UNDELETABLE
-    # list today, but that may not always remain true.
-    TENANT_VISIBLE = UNDELETABLE
+    # should be visible to non-admin users. UNDELETABLE specs are user-visible.
+    TENANT_VISIBLE = UNDELETABLE + (REPLICATION_TYPE_SPEC, )
     BOOLEAN = (
         DRIVER_HANDLES_SHARE_SERVERS,
         SNAPSHOT_SUPPORT,

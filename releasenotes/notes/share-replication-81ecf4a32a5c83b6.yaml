@@ -1,0 +1,4 @@
+---
+features:
+  - Shares can be replicated. Replicas can be added, listed, queried for
+    detail, promoted to be 'active' or removed.

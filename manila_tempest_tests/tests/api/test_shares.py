@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import config  # noqa
-from tempest import test  # noqa
-from tempest_lib import exceptions as lib_exc  # noqa
-import testtools  # noqa
+from tempest import config
+from tempest import test
+from tempest_lib import exceptions as lib_exc
+import testtools
 
 from manila_tempest_tests.tests.api import base
 from manila_tempest_tests import utils
@@ -77,6 +77,12 @@ class SharesNFSTest(base.BaseSharesTest):
                 share['id'], version='2.9')
             detailed_elements.remove('export_location')
             self.assertTrue(detailed_elements.issubset(share_get.keys()), msg)
+
+        # In v 2.11 and beyond, we expect key 'replication_type' in the
+        # share data returned by the share create API.
+        if utils.is_microversion_supported('2.11'):
+            detailed_elements.add('replication_type')
+            self.assertTrue(detailed_elements.issubset(share.keys()), msg)
 
         # Delete share
         self.shares_v2_client.delete_share(share['id'])

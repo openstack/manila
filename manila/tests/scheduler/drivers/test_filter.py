@@ -30,6 +30,7 @@ from manila.tests.scheduler.drivers import test_base
 from manila.tests.scheduler import fakes
 
 SNAPSHOT_SUPPORT = constants.ExtraSpecs.SNAPSHOT_SUPPORT
+REPLICATION_TYPE_SPEC = constants.ExtraSpecs.REPLICATION_TYPE_SPEC
 
 
 @ddt.ddt
@@ -128,6 +129,59 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
             'share_instance_properties': {'project_id': 1, 'size': 1},
         }
 
+        weighed_host = sched._schedule_share(fake_context, request_spec, {})
+
+        self.assertIsNone(weighed_host)
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
+    @ddt.data(
+        *[{'name': 'foo', 'extra_specs': {
+            SNAPSHOT_SUPPORT: 'True', REPLICATION_TYPE_SPEC: v
+        }} for v in ('writable', 'readable', 'dr')]
+    )
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test__schedule_share_with_valid_replication_spec(
+            self, share_type, _mock_service_get_all_by_topic):
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+        request_spec = {
+            'share_type': share_type,
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {'project_id': 1, 'size': 1},
+        }
+        weighed_host = sched._schedule_share(fake_context, request_spec, {})
+
+        self.assertIsNotNone(weighed_host)
+        self.assertIsNotNone(weighed_host.obj)
+        self.assertTrue(hasattr(weighed_host.obj, REPLICATION_TYPE_SPEC))
+        expected_replication_type_support = (
+            share_type.get('extra_specs', {}).get(REPLICATION_TYPE_SPEC))
+        self.assertEqual(
+            expected_replication_type_support,
+            getattr(weighed_host.obj, REPLICATION_TYPE_SPEC))
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
+    @ddt.data(
+        *[{'name': 'foo', 'extra_specs': {
+            SNAPSHOT_SUPPORT: 'True', REPLICATION_TYPE_SPEC: v
+        }} for v in ('None', 'readwrite', 'activesync')]
+    )
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test__schedule_share_with_invalid_replication_type_spec(
+            self, share_type, _mock_service_get_all_by_topic):
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+        request_spec = {
+            'share_type': share_type,
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {'project_id': 1, 'size': 1},
+        }
         weighed_host = sched._schedule_share(fake_context, request_spec, {})
 
         self.assertIsNone(weighed_host)
@@ -450,3 +504,38 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
                           sched.host_passes_filters,
                           ctx, 'host3#_pool0', request_spec, {})
         self.assertTrue(_mock_service_get_topic.called)
+
+    def test_schedule_create_replica_no_host(self):
+        sched = fakes.FakeFilterScheduler()
+        request_spec = fakes.fake_replica_request_spec()
+
+        self.mock_object(self.driver_cls, '_schedule_share',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(exception.NoValidHost,
+                          sched.schedule_create_replica,
+                          self.context, request_spec, {})
+
+    def test_schedule_create_replica(self):
+        sched = fakes.FakeFilterScheduler()
+        request_spec = fakes.fake_replica_request_spec()
+        host = 'fake_host'
+        replica_id = request_spec['share_instance_properties']['id']
+        mock_update_db_call = self.mock_object(
+            base, 'share_replica_update_db',
+            mock.Mock(return_value='replica'))
+        mock_share_rpcapi_call = self.mock_object(
+            sched.share_rpcapi, 'create_share_replica')
+        self.mock_object(
+            self.driver_cls, '_schedule_share',
+            mock.Mock(return_value=fakes.get_fake_host(host_name=host)))
+
+        retval = sched.schedule_create_replica(
+            self.context, fakes.fake_replica_request_spec(), {})
+
+        self.assertIsNone(retval)
+        mock_update_db_call.assert_called_once_with(
+            self.context, replica_id, host)
+        mock_share_rpcapi_call.assert_called_once_with(
+            self.context, 'replica', host, request_spec=request_spec,
+            filter_properties={})

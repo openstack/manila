@@ -89,6 +89,11 @@ share_manager_opts = [
                     'will wait for a share server to go unutilized before '
                     'deleting it.',
                deprecated_group='DEFAULT'),
+    cfg.IntOpt('replica_state_update_interval',
+               default=300,
+               help='This value, specified in seconds, determines how often '
+                    'the share manager will poll for the health '
+                    '(replica_state) of each replica instance.'),
 ]
 
 CONF = cfg.CONF
@@ -105,6 +110,28 @@ MAPPING = {
 }
 
 QUOTAS = quota.QUOTAS
+
+
+def locked_share_replica_operation(operation):
+    """Lock decorator for share replica operations.
+
+    Takes a named lock prior to executing the operation. The lock is named with
+    the id of the share to which the replica belongs.
+
+    Intended use:
+    If a replica operation uses this decorator, it will block actions on
+    all share replicas of the share until the named lock is free. This is
+    used to protect concurrent operations on replicas of the same share e.g.
+    promote ReplicaA while deleting ReplicaB, both belonging to the same share.
+    """
+
+    def wrapped(instance, context, share_replica_id, share_id=None, **kwargs):
+        @utils.synchronized("%s" % share_id, external=True)
+        def locked_operation(*_args, **_kwargs):
+            return operation(*_args, **_kwargs)
+        return locked_operation(instance, context, share_replica_id,
+                                share_id=share_id, **kwargs)
+    return wrapped
 
 
 def add_hooks(f):
@@ -137,7 +164,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.7'
+    RPC_API_VERSION = '1.8'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -812,8 +839,375 @@ class ShareManager(manager.SchedulerDependentManager):
             self.db.share_instance_update(
                 context, share_instance_id,
                 {'status': constants.STATUS_AVAILABLE,
-                 'launched_at': timeutils.utcnow()}
+                 'launched_at': timeutils.utcnow()})
+
+            share = self.db.share_get(context, share_instance['share_id'])
+
+            if share.get('replication_type'):
+                self.db.share_replica_update(
+                    context, share_instance_id,
+                    {'replica_state': constants.REPLICA_STATE_ACTIVE})
+
+    def _update_share_replica_access_rules_state(self, context,
+                                                 share_replica_id, state):
+        """Update the access_rules_status for the share replica."""
+
+        self.db.share_instance_update_access_status(
+            context, share_replica_id, state)
+
+    @add_hooks
+    @utils.require_driver_initialized
+    @locked_share_replica_operation
+    def create_share_replica(self, context, share_replica_id, share_id=None,
+                             request_spec=None, filter_properties=None):
+        """Create a share replica."""
+        context = context.elevated()
+
+        share_replica = self.db.share_replica_get(
+            context, share_replica_id, with_share_data=True,
+            with_share_server=True)
+
+        if not share_replica['availability_zone']:
+            share_replica = self.db.share_replica_update(
+                context, share_replica['id'],
+                {'availability_zone': CONF.storage_availability_zone},
+                with_share_data=True
             )
+
+        current_active_replica = (
+            self.db.share_replicas_get_available_active_replica(
+                context, share_replica['share_id'], with_share_data=True,
+                with_share_server=True))
+
+        if not current_active_replica:
+            self.db.share_replica_update(
+                context, share_replica['id'],
+                {'status': constants.STATUS_ERROR,
+                 'replica_state': constants.STATUS_ERROR})
+            msg = _("An active instance with 'available' status does "
+                    "not exist to add replica to share %s.")
+            raise exception.ReplicationException(
+                reason=msg % share_replica['share_id'])
+
+        # We need the share_network_id in case of
+        # driver_handles_share_server=True
+        share_network_id = share_replica.get('share_network_id', None)
+
+        if (share_network_id and
+                not self.driver.driver_handles_share_servers):
+            self.db.share_replica_update(
+                context, share_replica['id'],
+                {'status': constants.STATUS_ERROR,
+                 'replica_state': constants.STATUS_ERROR})
+            raise exception.InvalidDriverMode(
+                "Driver does not expect share-network to be provided "
+                "with current configuration.")
+
+        if share_network_id:
+            try:
+                share_server, share_replica = (
+                    self._provide_share_server_for_share(
+                        context, share_network_id, share_replica)
+                )
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("Failed to get share server "
+                                  "for share replica creation."))
+                    self.db.share_replica_update(
+                        context, share_replica['id'],
+                        {'status': constants.STATUS_ERROR,
+                         'replica_state': constants.STATUS_ERROR})
+        else:
+            share_server = None
+
+        # Map the existing access rules for the share to
+        # the replica in the DB.
+        share_access_rules = self.db.share_instance_access_copy(
+            context, share_replica['share_id'], share_replica['id'])
+
+        current_active_replica = self._get_share_replica_dict(
+            context, current_active_replica)
+        share_replica = self._get_share_replica_dict(context, share_replica)
+
+        try:
+            replica_ref = self.driver.create_replica(
+                context, current_active_replica, share_replica,
+                share_access_rules, share_server=share_server)
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Share replica %s failed on creation."),
+                          share_replica['id'])
+                self.db.share_replica_update(
+                    context, share_replica['id'],
+                    {'status': constants.STATUS_ERROR,
+                     'replica_state': constants.STATUS_ERROR})
+                self._update_share_replica_access_rules_state(
+                    context, share_replica['id'], constants.STATUS_ERROR)
+
+        if replica_ref.get('export_locations'):
+                if isinstance(replica_ref.get('export_locations'), list):
+                    self.db.share_export_locations_update(
+                        context, share_replica['id'],
+                        replica_ref.get('export_locations'))
+                else:
+                    msg = _LW('Invalid export locations passed to the share '
+                              'manager.')
+                    LOG.warning(msg)
+
+        if replica_ref.get('replica_state'):
+            self.db.share_replica_update(
+                context, share_replica['id'],
+                {'status': constants.STATUS_AVAILABLE,
+                 'replica_state': replica_ref.get('replica_state')})
+
+        if replica_ref.get('access_rules_status'):
+            self._update_share_replica_access_rules_state(
+                context, share_replica['id'],
+                replica_ref.get('access_rules_status'))
+        else:
+            self._update_share_replica_access_rules_state(
+                context, share_replica['id'], constants.STATUS_ACTIVE)
+
+        LOG.info(_LI("Share replica %s created successfully."),
+                 share_replica['id'])
+
+    @add_hooks
+    @utils.require_driver_initialized
+    @locked_share_replica_operation
+    def delete_share_replica(self, context, share_replica_id, share_id=None,
+                             force=False):
+        """Delete a share replica."""
+        context = context.elevated()
+        share_replica = self.db.share_replica_get(
+            context, share_replica_id, with_share_data=True,
+            with_share_server=True)
+
+        # Get the active replica
+        current_active_replica = (
+            self.db.share_replicas_get_available_active_replica(
+                context, share_replica['share_id'],
+                with_share_data=True, with_share_server=True)
+        )
+        share_server = self._get_share_server(context, share_replica)
+
+        current_active_replica = self._get_share_replica_dict(
+            context, current_active_replica)
+        share_replica = self._get_share_replica_dict(context, share_replica)
+
+        try:
+            self.access_helper.update_access_rules(
+                context,
+                share_replica_id,
+                delete_rules="all",
+                share_server=share_server
+            )
+        except Exception:
+            with excutils.save_and_reraise_exception() as exc_context:
+                # Set status to 'error' from 'deleting' since
+                # access_rules_status has been set to 'error'.
+                self.db.share_replica_update(
+                    context, share_replica['id'],
+                    {'status': constants.STATUS_ERROR})
+                if force:
+                    msg = _("The driver was unable to delete access rules "
+                            "for the replica: %s. Will attempt to delete the "
+                            "replica anyway.")
+                    LOG.error(msg % share_replica['id'])
+                    exc_context.reraise = False
+
+        try:
+            self.driver.delete_replica(
+                context, current_active_replica, share_replica,
+                share_server=share_server)
+        except Exception:
+            with excutils.save_and_reraise_exception() as exc_context:
+                if force:
+                    msg = _("The driver was unable to delete the share "
+                            "replica: %s on the backend. Since this "
+                            "operation is forced, the replica will be "
+                            "deleted from Manila's database. A cleanup on "
+                            "the backend may be necessary.")
+                    LOG.error(msg % share_replica['id'])
+                    exc_context.reraise = False
+                else:
+                    self.db.share_replica_update(
+                        context, share_replica['id'],
+                        {'status': constants.STATUS_ERROR_DELETING,
+                         'replica_state': constants.STATUS_ERROR})
+
+        self.db.share_replica_delete(context, share_replica['id'])
+        LOG.info(_LI("Share replica %s deleted successfully."),
+                 share_replica['id'])
+
+    @add_hooks
+    @utils.require_driver_initialized
+    @locked_share_replica_operation
+    def promote_share_replica(self, context, share_replica_id, share_id=None):
+        """Promote a share replica to active state."""
+        context = context.elevated()
+        share_replica = self.db.share_replica_get(
+            context, share_replica_id, with_share_data=True,
+            with_share_server=True)
+        share_server = self._get_share_server(context, share_replica)
+
+        # Get list of all replicas for share
+        replica_list = (
+            self.db.share_replicas_get_all_by_share(
+                context, share_replica['share_id'],
+                with_share_data=True, with_share_server=True)
+        )
+
+        try:
+            old_active_replica = list(filter(
+                lambda r: (
+                    r['replica_state'] == constants.REPLICA_STATE_ACTIVE),
+                replica_list))[0]
+        except IndexError:
+            self.db.share_replica_update(
+                context, share_replica['id'],
+                {'status': constants.STATUS_AVAILABLE})
+            msg = _("Share %(share)s has no replica with 'replica_state' "
+                    "set to %(state)s. Promoting %(replica)s is not "
+                    "possible.")
+            raise exception.ReplicationException(
+                reason=msg % {'share': share_replica['share_id'],
+                              'state': constants.REPLICA_STATE_ACTIVE,
+                              'replica': share_replica['id']})
+
+        access_rules = self.db.share_access_get_all_for_share(
+            context, share_replica['share_id'])
+
+        replica_list = [self._get_share_replica_dict(context, r)
+                        for r in replica_list]
+        share_replica = self._get_share_replica_dict(context, share_replica)
+
+        try:
+            updated_replica_list = (
+                self.driver.promote_replica(
+                    context, replica_list, share_replica, access_rules,
+                    share_server=share_server)
+            )
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                # (NOTE) gouthamr: If the driver throws an exception at
+                # this stage, there is a good chance that the replicas are
+                # somehow altered on the backend. We loop through the
+                # replicas and set their 'status's to 'error' and
+                # leave the 'replica_state' unchanged. This also changes the
+                # 'status' of the replica that failed to promote to 'error' as
+                # before this operation. The backend may choose to update
+                # the actual replica_state during the replica_monitoring
+                # stage.
+                updates = {'status': constants.STATUS_ERROR}
+                for replica_ref in replica_list:
+                    self.db.share_replica_update(
+                        context, replica_ref['id'], updates)
+
+        if not updated_replica_list:
+            self.db.share_replica_update(
+                context, share_replica['id'],
+                {'status': constants.STATUS_AVAILABLE,
+                 'replica_state': constants.REPLICA_STATE_ACTIVE})
+            self.db.share_replica_update(
+                context, old_active_replica['id'],
+                {'replica_state': constants.REPLICA_STATE_OUT_OF_SYNC})
+        else:
+            for updated_replica in updated_replica_list:
+                updated_export_locs = updated_replica.get(
+                    'export_locations')
+                if(updated_export_locs and
+                        isinstance(updated_export_locs, list)):
+                    self.db.share_export_locations_update(
+                        context, updated_replica['id'],
+                        updated_export_locs)
+
+                updated_replica_state = updated_replica.get(
+                    'replica_state')
+                updates = {'replica_state': updated_replica_state}
+                # Change the promoted replica's status from 'available' to
+                # 'replication_change'.
+                if updated_replica['id'] == share_replica['id']:
+                    updates['status'] = constants.STATUS_AVAILABLE
+                if updated_replica_state == constants.STATUS_ERROR:
+                    updates['status'] = constants.STATUS_ERROR
+                self.db.share_replica_update(
+                    context, updated_replica['id'], updates)
+
+                if updated_replica.get('access_rules_status'):
+                    self._update_share_replica_access_rules_state(
+                        context, share_replica['id'],
+                        updated_replica.get('access_rules_status'))
+
+        LOG.info(_LI("Share replica %s: promoted to active state "
+                     "successfully."), share_replica['id'])
+
+    @periodic_task.periodic_task(spacing=CONF.replica_state_update_interval)
+    @utils.require_driver_initialized
+    def periodic_share_replica_update(self, context):
+        LOG.debug("Updating status of share replica instances.")
+        replicas = self.db.share_replicas_get_all(context,
+                                                  with_share_data=True)
+
+        # Filter only non-active replicas belonging to this backend
+        def qualified_replica(r):
+            return (share_utils.extract_host(r['host']) ==
+                    share_utils.extract_host(self.host))
+
+        replicas = list(filter(lambda x: qualified_replica(x), replicas))
+        for replica in replicas:
+            self._share_replica_update(
+                context, replica, share_id=replica['share_id'])
+
+    @locked_share_replica_operation
+    def _share_replica_update(self, context, share_replica, share_id=None):
+        share_server = self._get_share_server(context, share_replica)
+        replica_state = None
+
+        # Re-grab the replica:
+        share_replica = self.db.share_replica_get(
+            context, share_replica['id'], with_share_data=True,
+            with_share_server=True)
+
+        # We don't poll for replicas that are busy in some operation,
+        # or if they are the 'active' instance.
+        if (share_replica['status'] in constants.TRANSITIONAL_STATUSES
+            or share_replica['replica_state'] ==
+                constants.REPLICA_STATE_ACTIVE):
+            return
+
+        access_rules = self.db.share_access_get_all_for_share(
+            context, share_replica['share_id'])
+
+        LOG.debug("Updating status of share share_replica %s: ",
+                  share_replica['id'])
+
+        share_replica = self._get_share_replica_dict(context, share_replica)
+
+        try:
+
+            replica_state = self.driver.update_replica_state(
+                context, share_replica, access_rules, share_server)
+
+        except Exception:
+            # If the replica_state was previously in 'error', it is
+            # possible that the driver throws an exception during its
+            # update. This exception can be ignored.
+            with excutils.save_and_reraise_exception() as exc_context:
+                if (share_replica.get('replica_state') ==
+                        constants.STATUS_ERROR):
+                    exc_context.reraise = False
+
+        if replica_state in (constants.REPLICA_STATE_IN_SYNC,
+                             constants.REPLICA_STATE_OUT_OF_SYNC,
+                             constants.STATUS_ERROR):
+            self.db.share_replica_update(context, share_replica['id'],
+                                         {'replica_state': replica_state})
+        elif replica_state:
+            msg = (_LW("Replica %(id)s cannot be set to %(state)s "
+                       "through update call.") %
+                   {'id': share_replica['id'], 'state': replica_state})
+            LOG.warning(msg)
 
     @add_hooks
     @utils.require_driver_initialized
@@ -1711,3 +2105,38 @@ class ShareManager(manager.SchedulerDependentManager):
 
         LOG.info(_LI("Consistency group snapshot %s: deleted successfully"),
                  cgsnapshot_id)
+
+    def _get_share_replica_dict(self, context, share_replica):
+        # TODO(gouthamr): remove method when the db layer returns primitives
+        share_replica_ref = {
+            'id': share_replica.get('id'),
+            'share_id': share_replica.get('share_id'),
+            'host': share_replica.get('host'),
+            'status': share_replica.get('status'),
+            'replica_state': share_replica.get('replica_state'),
+            'availability_zone_id': share_replica.get('availability_zone_id'),
+            'export_locations': share_replica.get('export_locations'),
+            'share_network_id': share_replica.get('share_network_id'),
+            'share_server_id': share_replica.get('share_server_id'),
+            'deleted': share_replica.get('deleted'),
+            'terminated_at': share_replica.get('terminated_at'),
+            'launched_at': share_replica.get('launched_at'),
+            'scheduled_at': share_replica.get('scheduled_at'),
+            'share_server': self._get_share_server(context, share_replica),
+            'access_rules_status': share_replica.get('access_rules_status'),
+            # Share details
+            'user_id': share_replica.get('user_id'),
+            'project_id': share_replica.get('project_id'),
+            'size': share_replica.get('size'),
+            'display_name': share_replica.get('display_name'),
+            'display_description': share_replica.get('display_description'),
+            'snapshot_id': share_replica.get('snapshot_id'),
+            'share_proto': share_replica.get('share_proto'),
+            'share_type_id': share_replica.get('share_type_id'),
+            'is_public': share_replica.get('is_public'),
+            'consistency_group_id': share_replica.get('consistency_group_id'),
+            'source_cgsnapshot_member_id': share_replica.get(
+                'source_cgsnapshot_member_id'),
+        }
+
+        return share_replica_ref
