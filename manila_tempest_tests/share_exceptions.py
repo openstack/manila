@@ -37,6 +37,11 @@ class SnapshotBuildErrorException(exceptions.TempestException):
     message = "Snapshot %(snapshot_id)s failed to build and is in ERROR status"
 
 
+class SnapshotInstanceBuildErrorException(exceptions.TempestException):
+    message = ("Snapshot instance %(id)s failed to build and is in "
+               "ERROR status.")
+
+
 class CGSnapshotBuildErrorException(exceptions.TempestException):
     message = ("CGSnapshot %(cgsnapshot_id)s failed to build and is in ERROR "
                "status")

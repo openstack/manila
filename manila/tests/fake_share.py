@@ -140,7 +140,7 @@ def fake_snapshot(create_instance=False, **kwargs):
     return db_fakes.FakeModel(snapshot)
 
 
-def fake_snapshot_instance(base_snapshot=None, **kwargs):
+def fake_snapshot_instance(base_snapshot=None, as_primitive=False, **kwargs):
     if base_snapshot is None:
         base_snapshot = fake_snapshot()
     snapshot_instance = {
@@ -151,6 +151,7 @@ def fake_snapshot_instance(base_snapshot=None, **kwargs):
         'provider_location': 'i_live_here_actually',
         'share_name': 'fakename',
         'share_id': 'fakeshareinstanceid',
+        'share_instance': {'share_id': 'fakeshareid', },
         'share_instance_id': 'fakeshareinstanceid',
         'deleted': False,
         'updated_at': datetime.datetime(2016, 3, 21, 0, 5, 58),
@@ -159,7 +160,10 @@ def fake_snapshot_instance(base_snapshot=None, **kwargs):
         'share': fake_share(),
     }
     snapshot_instance.update(kwargs)
-    return db_fakes.FakeModel(snapshot_instance)
+    if as_primitive:
+        return snapshot_instance
+    else:
+        return db_fakes.FakeModel(snapshot_instance)
 
 
 def expected_snapshot(version=None, id='fake_snapshot_id', **kwargs):

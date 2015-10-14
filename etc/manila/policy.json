@@ -61,6 +61,11 @@
     "share_snapshot:force_delete": "rule:admin_api",
     "share_snapshot:reset_status": "rule:admin_api",
 
+    "share_snapshot_instance:detail": "rule:admin_api",
+    "share_snapshot_instance:index": "rule:admin_api",
+    "share_snapshot_instance:show": "rule:admin_api",
+    "share_snapshot_instance:reset_status": "rule:admin_api",
+
     "share_type:index": "rule:default",
     "share_type:show": "rule:default",
     "share_type:default": "rule:default",

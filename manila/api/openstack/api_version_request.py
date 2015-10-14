@@ -69,13 +69,16 @@ REST_API_VERSION_HISTORY = """
     * 2.17 - Added project_id and user_id fields to the JSON response of
              snapshot show/create/manage API.
     * 2.18 - Add gateway to the JSON response of share network show API.
+    * 2.19 - Share snapshot instances admin APIs
+            (list/show/detail/reset-status).
+
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.18"
+_MAX_API_VERSION = "2.19"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 
