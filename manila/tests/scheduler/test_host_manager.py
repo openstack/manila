@@ -197,6 +197,7 @@ class HostManagerTestCase(test.TestCase):
                         'snapshot_support': False,
                         'consistency_group_support': False,
                         'dedupe': False,
+                        'compression': False,
                     },
                 }, {
                     'name': 'host2@back1#BBB',
@@ -219,6 +220,7 @@ class HostManagerTestCase(test.TestCase):
                         'snapshot_support': True,
                         'consistency_group_support': False,
                         'dedupe': False,
+                        'compression': False,
                     },
                 }, {
                     'name': 'host2@back2#CCC',
@@ -241,6 +243,7 @@ class HostManagerTestCase(test.TestCase):
                         'snapshot_support': True,
                         'consistency_group_support': False,
                         'dedupe': False,
+                        'compression': False,
                     },
                 },
             ]
@@ -285,6 +288,7 @@ class HostManagerTestCase(test.TestCase):
                         'snapshot_support': True,
                         'consistency_group_support': False,
                         'dedupe': False,
+                        'compression': False,
                     },
                 }, {
                     'name': 'host2@BBB#pool2',
@@ -308,6 +312,7 @@ class HostManagerTestCase(test.TestCase):
                         'snapshot_support': True,
                         'consistency_group_support': False,
                         'dedupe': False,
+                        'compression': False,
                     },
                 }, {
                     'name': 'host3@CCC#pool3',
@@ -331,6 +336,7 @@ class HostManagerTestCase(test.TestCase):
                         'snapshot_support': True,
                         'consistency_group_support': 'pool',
                         'dedupe': False,
+                        'compression': False,
                     },
                 }, {
                     'name': 'host4@DDD#pool4a',
@@ -354,6 +360,7 @@ class HostManagerTestCase(test.TestCase):
                         'snapshot_support': True,
                         'consistency_group_support': 'host',
                         'dedupe': False,
+                        'compression': False,
                     },
                 }, {
                     'name': 'host4@DDD#pool4b',
@@ -377,6 +384,7 @@ class HostManagerTestCase(test.TestCase):
                         'snapshot_support': True,
                         'consistency_group_support': 'host',
                         'dedupe': False,
+                        'compression': False,
                     },
                 },
             ]
@@ -433,6 +441,7 @@ class HostManagerTestCase(test.TestCase):
                         'thin_provisioning': False,
                         'consistency_group_support': False,
                         'dedupe': False,
+                        'compression': False,
                     },
                 }, {
                     'name': 'host2@back1#BBB',
@@ -455,6 +464,7 @@ class HostManagerTestCase(test.TestCase):
                         'thin_provisioning': True,
                         'consistency_group_support': False,
                         'dedupe': False,
+                        'compression': False,
                     },
                 },
             ]
@@ -503,6 +513,7 @@ class HostManagerTestCase(test.TestCase):
                         'storage_protocol': None,
                         'consistency_group_support': False,
                         'dedupe': False,
+                        'compression': False,
                     },
                 },
             ]
