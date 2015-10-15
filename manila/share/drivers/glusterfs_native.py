@@ -45,7 +45,7 @@ AUTH_SSL_ALLOW = 'auth.ssl-allow'
 CLIENT_SSL = 'client.ssl'
 NFS_EXPORT_VOL = 'nfs.export-volumes'
 SERVER_SSL = 'server.ssl'
-DYNAMIC_AUTH = 'dynamic-auth'
+DYNAMIC_AUTH = 'server.dynamic-auth'
 
 
 class GlusterfsNativeShareDriver(driver.ExecuteMixin,
@@ -245,19 +245,13 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
         try:
             dynauth = gluster_mgr.get_gluster_vol_option(DYNAMIC_AUTH) or 'off'
         except exception.ProcessExecutionError as exc:
-            if exc.exit_code == 1:
-                # dynamic auth is not supported by gluster backend
-                dynauth = 'off'
-            else:
-                # unexpected failure
-                msg = (_("Error in querying gluster volume."
-                         "Volume: %(volname)s, Option: %(option)s, "
-                         "access_to: %(access_to)s, Error: %(error)s") %
-                       {'volname': gluster_mgr.volume,
-                        'option': AUTH_SSL_ALLOW, 'access_to': access_to,
-                        'error': exc.stderr})
-                LOG.error(msg)
-                raise exception.GlusterfsException(msg)
+            msg = (_("Error in querying gluster volume. "
+                     "Volume: %(volname)s, Option: %(option)s, "
+                     "Error: %(error)s") %
+                   {'volname': gluster_mgr.volume,
+                    'option': DYNAMIC_AUTH, 'error': exc.stderr})
+            LOG.error(msg)
+            raise exception.GlusterfsException(msg)
         # TODO(csaba): boolean option processing shoud be done in common
         if dynauth.lower() not in ('on', '1', 'true', 'yes', 'enable'):
             common._restart_gluster_vol(gluster_mgr)
