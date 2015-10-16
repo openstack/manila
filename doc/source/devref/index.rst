@@ -40,6 +40,7 @@ Background Concepts for Manila
    threading
    i18n
    rpc
+   driver_requirements
    pool-aware-manila-scheduler
 
 Other Resources
