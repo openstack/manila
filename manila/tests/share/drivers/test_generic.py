@@ -253,7 +253,11 @@ class GenericShareDriverTestCase(test.TestCase):
                 self._driver.service_instance_manager.get_common_server.called)
             self.assertFalse(self._driver._is_share_server_active.called)
 
-    def test_do_setup_dhss_false_server_not_active(self):
+    @mock.patch('time.sleep')
+    def test_do_setup_dhss_false_server_avail_after_retry(self, mock_sleep):
+        # This tests the scenario in which the common share server cannot be
+        # retrieved during the first attempt, is not active during the second,
+        # becoming active during the third attempt.
         CONF.set_default('driver_handles_share_servers', False)
         fake_server = {'id': 'fake_server_id'}
         self.mock_object(volume, 'API')
@@ -261,21 +265,24 @@ class GenericShareDriverTestCase(test.TestCase):
         self.mock_object(self._driver, '_setup_helpers')
         self.mock_object(
             self._driver,
-            '_is_share_server_active', mock.Mock(return_value=False))
+            '_is_share_server_active', mock.Mock(side_effect=[False, True]))
         self.mock_object(
             self._driver.service_instance_manager,
-            'get_common_server', mock.Mock(return_value=fake_server))
+            'get_common_server',
+            mock.Mock(side_effect=[exception.ManilaException,
+                                   fake_server,
+                                   fake_server]))
 
-        self.assertRaises(
-            exception.ManilaException, self._driver.do_setup, self._context)
+        self._driver.do_setup(self._context)
 
         volume.API.assert_called_once_with()
         compute.API.assert_called_once_with()
         self._driver._setup_helpers.assert_called_once_with()
         self._driver.service_instance_manager.get_common_server.\
-            assert_called_once_with()
-        self._driver._is_share_server_active.assert_called_once_with(
-            self._context, fake_server)
+            assert_has_calls([mock.call()] * 3)
+        self._driver._is_share_server_active.assert_has_calls(
+            [mock.call(self._context, fake_server)] * 2)
+        mock_sleep.assert_has_calls([mock.call(5)] * 2)
 
     def test_setup_helpers(self):
         self._driver._helpers = {}
