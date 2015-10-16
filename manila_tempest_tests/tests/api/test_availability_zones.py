@@ -24,10 +24,13 @@ class AvailabilityZonesTest(base.BaseSharesTest):
         self.assertTrue(len(availability_zones) > 0)
         keys = ("created_at", "updated_at", "name", "id")
         for az in availability_zones:
+            self.assertEqual(len(keys), len(az))
             for key in keys:
                 self.assertIn(key, az)
 
     @test.attr(type=["smoke", "gate"])
-    def test_list_availability_zones_extension(self):
+    def test_list_availability_zones_extension_url(self):
+        # NOTE(vponomaryov): remove this test with removal of availability zone
+        # extension url support.
         azs = self.shares_client.list_availability_zones()
         self._list_availability_zones_assertions(azs)

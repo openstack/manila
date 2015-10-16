@@ -31,6 +31,7 @@ from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
 from manila.i18n import _LI
+from manila import policy
 from manila import wsgi
 
 LOG = log.getLogger(__name__)
@@ -1109,6 +1110,12 @@ class Controller(object):
             return f
 
         return decorator
+
+    def authorize(self, context, action):
+        try:
+            policy.check_policy(context, self.resource_name, action)
+        except exception.PolicyNotAuthorized:
+            raise webob.exc.HTTPForbidden()
 
     @staticmethod
     def is_valid_body(body, entity_name):

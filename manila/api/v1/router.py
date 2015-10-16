@@ -23,6 +23,7 @@ from oslo_log import log
 
 from manila.api import extensions
 import manila.api.openstack
+from manila.api.v1 import availability_zones
 from manila.api.v1 import cgsnapshots
 from manila.api.v1 import consistency_groups
 from manila.api.v1 import limits
@@ -55,6 +56,14 @@ class APIRouter(manila.api.openstack.APIRouter):
                        action='index')
 
         mapper.redirect("", "/")
+
+        self.resources["availability_zones"] = (
+            availability_zones.create_resource())
+        mapper.resource("availability-zone",
+                        # TODO(vponomaryov): rename 'os-availability-zone' to
+                        # 'availability-zones' when API urls rename happens.
+                        "os-availability-zone",
+                        controller=self.resources["availability_zones"])
 
         self.resources['shares'] = shares.create_resource()
         mapper.resource("share", "shares",

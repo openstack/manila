@@ -4,6 +4,8 @@
     "admin_or_owner": "is_admin:True or project_id:%(project_id)s",
     "default": "rule:admin_or_owner",
 
+    "availability_zone:index": "rule:default",
+
     "share:create": "",
     "share:list_by_share_server_id": "rule:admin_api",
     "share:get": "",

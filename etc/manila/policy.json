@@ -5,6 +5,8 @@
 
     "admin_api": "is_admin:True",
 
+    "availability_zone:index": "rule:default",
+
     "share:create": "",
     "share:delete": "rule:default",
     "share:get": "rule:default",
