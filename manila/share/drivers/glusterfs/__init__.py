@@ -32,6 +32,7 @@ from oslo_config import cfg
 from oslo_log import log
 
 from manila import exception
+from manila.i18n import _
 from manila.i18n import _LE
 from manila.share import driver
 from manila.share.drivers import ganesha
