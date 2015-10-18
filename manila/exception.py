@@ -607,6 +607,14 @@ class HP3ParUnexpectedError(ManilaException):
     message = _("%(err)s")
 
 
+class GPFSException(ManilaException):
+    message = _("GPFS exception occurred.")
+
+
+class GPFSGaneshaException(ManilaException):
+    message = _("GPFS Ganesha exception occurred.")
+
+
 class GaneshaCommandFailure(ProcessExecutionError):
     _description = _("Ganesha management command failed.")
 
