@@ -32,9 +32,9 @@ from manila import test
 TEST_LIMITS = [
     limits.Limit("GET", "/delayed", "^/delayed", 1, limits.PER_MINUTE),
     limits.Limit("POST", "*", ".*", 7, limits.PER_MINUTE),
-    limits.Limit("POST", "/volumes", "^/volumes", 3, limits.PER_MINUTE),
+    limits.Limit("POST", "/shares", "^/shares", 3, limits.PER_MINUTE),
     limits.Limit("PUT", "*", "", 10, limits.PER_MINUTE),
-    limits.Limit("PUT", "/volumes", "^/volumes", 5, limits.PER_MINUTE),
+    limits.Limit("PUT", "/shares", "^/shares", 5, limits.PER_MINUTE),
 ]
 NS = {
     'atom': 'http://www.w3.org/2005/Atom',
@@ -52,8 +52,13 @@ class BaseLimitTestSuite(test.TestCase):
         self.absolute_limits = {}
 
         def stub_get_project_quotas(context, project_id, usages=True):
-            return dict((k, dict(limit=v))
-                        for k, v in self.absolute_limits.items())
+            quotas = {}
+            for mapping_key in ('limit', 'in_use'):
+                for k, v in self.absolute_limits.get(mapping_key, {}).items():
+                    if k not in quotas:
+                        quotas[k] = {}
+                    quotas[k].update({mapping_key: v})
+            return quotas
 
         self.mock_object(manila.quota.QUOTAS, "get_project_quotas",
                          stub_get_project_quotas)
@@ -112,9 +117,20 @@ class LimitsControllerTest(BaseLimitTestSuite):
         request = self._get_index_request()
         request = self._populate_limits(request)
         self.absolute_limits = {
-            'gigabytes': 512,
-            'shares': 5,
-            'snapshots': 5
+            'limit': {
+                'shares': 11,
+                'gigabytes': 22,
+                'snapshots': 33,
+                'snapshot_gigabytes': 44,
+                'share_networks': 55,
+            },
+            'in_use': {
+                'shares': 3,
+                'gigabytes': 4,
+                'snapshots': 5,
+                'snapshot_gigabytes': 6,
+                'share_networks': 7,
+            },
         }
         response = request.get_response(self.controller)
         expected = {
@@ -155,10 +171,18 @@ class LimitsControllerTest(BaseLimitTestSuite):
                     },
 
                 ],
-                "absolute": {"maxTotalShareGigabytes": 512,
-                             "maxTotalShares": 5,
-                             "maxTotalShareSnapshots": 5,
-                             },
+                "absolute": {
+                    "totalSharesUsed": 3,
+                    "totalShareGigabytesUsed": 4,
+                    "totalShareSnapshotsUsed": 5,
+                    "totalSnapshotGigabytesUsed": 6,
+                    "totalShareNetworksUsed": 7,
+                    "maxTotalShares": 11,
+                    "maxTotalShareGigabytes": 22,
+                    "maxTotalShareSnapshots": 33,
+                    "maxTotalSnapshotGigabytes": 44,
+                    "maxTotalShareNetworks": 55,
+                },
             },
         }
         body = jsonutils.loads(response.body)
@@ -222,7 +246,10 @@ class LimitsControllerTest(BaseLimitTestSuite):
         self.assertEqual(expected, body['limits']['absolute'])
 
     def test_index_ignores_extra_absolute_limits_json(self):
-        self.absolute_limits = {'unknown_limit': 9001}
+        self.absolute_limits = {
+            'in_use': {'unknown_limit': 9000},
+            'limit': {'unknown_limit': 9001},
+        }
         self._test_index_absolute_limits_json({})
 
 
@@ -450,7 +477,7 @@ class LimiterTest(BaseLimitTestSuite):
         """
         # First 6 requests on PUT /volumes
         expected = [None] * 5 + [12.0]
-        results = list(self._check(6, "PUT", "/volumes"))
+        results = list(self._check(6, "PUT", "/shares"))
         self.assertEqual(expected, results)
 
         # Next 5 request on PUT /anything
@@ -734,47 +761,74 @@ class LimitsViewBuilderTest(test.TestCase):
                              "remaining": 2,
                              "unit": "MINUTE",
                              "resetTime": 1311272226},
-                            {"URI": "*/volumes",
-                             "regex": "^/volumes",
+                            {"URI": "*/shares",
+                             "regex": "^/shares",
                              "value": 50,
                              "verb": "POST",
                              "remaining": 10,
                              "unit": "DAY",
                              "resetTime": 1311272226}]
-        self.absolute_limits = {"shares": 1,
-                                "gigabytes": 5,
-                                "snapshots": 5}
+        self.absolute_limits = {
+            "limit": {
+                "shares": 111,
+                "gigabytes": 222,
+                "snapshots": 333,
+                "snapshot_gigabytes": 444,
+                "share_networks": 555,
+            },
+            "in_use": {
+                "shares": 65,
+                "gigabytes": 76,
+                "snapshots": 87,
+                "snapshot_gigabytes": 98,
+                "share_networks": 107,
+            },
+        }
 
     def test_build_limits(self):
         tdate = "2011-07-21T18:17:06Z"
-        expected_limits = \
-            {"limits": {"rate": [{"uri": "*",
-                                  "regex": ".*",
-                                  "limit": [{"value": 10,
-                                             "verb": "POST",
-                                             "remaining": 2,
-                                             "unit": "MINUTE",
-                                             "next-available": tdate}]},
-                                 {"uri": "*/volumes",
-                                  "regex": "^/volumes",
-                                  "limit": [{"value": 50,
-                                             "verb": "POST",
-                                             "remaining": 10,
-                                             "unit": "DAY",
-                                             "next-available": tdate}]}],
-                        "absolute": {"maxTotalShareGigabytes": 5,
-                                     "maxTotalShares": 1,
-                                     "maxTotalShareSnapshots": 5}}}
+        expected_limits = {
+            "limits": {
+                "rate": [
+                    {"uri": "*",
+                     "regex": ".*",
+                     "limit": [{"value": 10,
+                                "verb": "POST",
+                                "remaining": 2,
+                                "unit": "MINUTE",
+                                "next-available": tdate}]},
+                    {"uri": "*/shares",
+                     "regex": "^/shares",
+                     "limit": [{"value": 50,
+                                "verb": "POST",
+                                "remaining": 10,
+                                "unit": "DAY",
+                                "next-available": tdate}]}
+                ],
+                "absolute": {
+                    "totalSharesUsed": 65,
+                    "totalShareGigabytesUsed": 76,
+                    "totalShareSnapshotsUsed": 87,
+                    "totalSnapshotGigabytesUsed": 98,
+                    "totalShareNetworksUsed": 107,
+                    "maxTotalShares": 111,
+                    "maxTotalShareGigabytes": 222,
+                    "maxTotalShareSnapshots": 333,
+                    "maxTotalSnapshotGigabytes": 444,
+                    "maxTotalShareNetworks": 555,
+                }
+            }
+        }
 
         output = self.view_builder.build(self.rate_limits,
                                          self.absolute_limits)
-        self.assertDictMatch(output, expected_limits)
+        self.assertDictMatch(expected_limits, output)
 
     def test_build_limits_empty_limits(self):
-        expected_limits = {"limits": {"rate": [],
-                           "absolute": {}}}
-
+        expected_limits = {"limits": {"rate": [], "absolute": {}}}
         abs_limits = {}
         rate_limits = []
+
         output = self.view_builder.build(rate_limits, abs_limits)
-        self.assertDictMatch(output, expected_limits)
+
+        self.assertDictMatch(expected_limits, output)

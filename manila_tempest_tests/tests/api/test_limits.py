@@ -35,10 +35,12 @@ class ShareLimitsTest(base.BaseSharesTest):
             "maxTotalShares",
             "maxTotalShareSnapshots",
             "maxTotalShareNetworks",
+            "maxTotalSnapshotGigabytes",
             "totalSharesUsed",
             "totalShareSnapshotsUsed",
             "totalShareNetworksUsed",
             "totalShareGigabytesUsed",
+            "totalSnapshotGigabytesUsed",
         ]
         [self.assertIn(key, limits["absolute"].keys()) for key in abs_keys]
 
@@ -54,7 +56,9 @@ class ShareLimitsTest(base.BaseSharesTest):
         self.assertGreater(int(abs_l["maxTotalShares"]), -2)
         self.assertGreater(int(abs_l["maxTotalShareSnapshots"]), -2)
         self.assertGreater(int(abs_l["maxTotalShareNetworks"]), -2)
+        self.assertGreater(int(abs_l["maxTotalSnapshotGigabytes"]), -2)
         self.assertGreater(int(abs_l["totalSharesUsed"]), -2)
         self.assertGreater(int(abs_l["totalShareSnapshotsUsed"]), -2)
         self.assertGreater(int(abs_l["totalShareNetworksUsed"]), -2)
         self.assertGreater(int(abs_l["totalShareGigabytesUsed"]), -2)
+        self.assertGreater(int(abs_l["totalSnapshotGigabytesUsed"]), -2)

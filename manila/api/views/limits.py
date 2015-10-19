@@ -16,7 +16,6 @@
 import datetime
 
 from oslo_utils import timeutils
-import six
 
 
 class ViewBuilder(object):
@@ -36,24 +35,34 @@ class ViewBuilder(object):
         return output
 
     def _build_absolute_limits(self, absolute_limits):
-        """Builder for absolute limits
+        """Builder for absolute limits.
 
         absolute_limits should be given as a dict of limits.
-        For example: {"ram": 512, "gigabytes": 1024}.
-
+        For example: {"limit": {"shares": 10, "gigabytes": 1024},
+                      "in_use": {"shares": 8, "gigabytes": 256}}.
         """
         limit_names = {
-            "gigabytes": ["maxTotalShareGigabytes"],
-            "snapshot_gigabytes": ["maxTotalSnapshotGigabytes"],
-            "shares": ["maxTotalShares"],
-            "snapshots": ["maxTotalShareSnapshots"],
-            "share_networks": ["maxTotalShareNetworks"],
+            "limit": {
+                "gigabytes": ["maxTotalShareGigabytes"],
+                "snapshot_gigabytes": ["maxTotalSnapshotGigabytes"],
+                "shares": ["maxTotalShares"],
+                "snapshots": ["maxTotalShareSnapshots"],
+                "share_networks": ["maxTotalShareNetworks"],
+            },
+            "in_use": {
+                "shares": ["totalSharesUsed"],
+                "snapshots": ["totalShareSnapshotsUsed"],
+                "share_networks": ["totalShareNetworksUsed"],
+                "gigabytes": ["totalShareGigabytesUsed"],
+                "snapshot_gigabytes": ["totalSnapshotGigabytesUsed"],
+            },
         }
         limits = {}
-        for name, value in six.iteritems(absolute_limits):
-            if name in limit_names and value is not None:
-                for name in limit_names[name]:
-                    limits[name] = value
+        for mapping_key in limit_names.keys():
+            for k, v in absolute_limits.get(mapping_key, {}).items():
+                if k in limit_names.get(mapping_key, []) and v is not None:
+                    for name in limit_names[mapping_key][k]:
+                        limits[name] = v
         return limits
 
     def _build_rate_limits(self, rate_limits):

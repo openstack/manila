@@ -45,15 +45,18 @@ PER_HOUR = 60 * 60
 PER_DAY = 60 * 60 * 24
 
 
-class LimitsController(object):
+class LimitsController(wsgi.Controller):
     """Controller for accessing limits in the OpenStack API."""
 
     def index(self, req):
         """Return all global and rate limit information."""
         context = req.environ['manila.context']
         quotas = QUOTAS.get_project_quotas(context, context.project_id,
-                                           usages=False)
-        abs_limits = dict((k, v['limit']) for k, v in quotas.items())
+                                           usages=True)
+        abs_limits = {'in_use': {}, 'limit': {}}
+        for k, v in quotas.items():
+            abs_limits['limit'][k] = v['limit']
+            abs_limits['in_use'][k] = v['in_use']
         rate_limits = req.environ.get("manila.limits", [])
 
         builder = self._get_view_builder(req)
