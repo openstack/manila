@@ -6,6 +6,13 @@
 
     "availability_zone:index": "rule:default",
 
+    "quota_set:update": "rule:admin_api",
+    "quota_set:show": "rule:default",
+    "quota_set:delete": "rule:admin_api",
+
+    "quota_class_set:show": "rule:default",
+    "quota_class_set:update": "rule:admin_api",
+
     "service:index": "rule:admin_api",
     "service:update": "rule:admin_api",
 

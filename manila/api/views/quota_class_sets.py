@@ -1,4 +1,4 @@
-# Copyright 2013 Rackspace Hosting
+# Copyright (c) 2015 Mirantis inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,16 +13,23 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from manila.api import extensions
+from manila.api import common
 
 
-class Extended_quotas(extensions.ExtensionDescriptor):
-    """Extend quotas.
+class ViewBuilder(common.ViewBuilder):
 
-    Adds ability for admins to delete quota and optionally force the
-    update Quota command.
-    """
+    _collection_name = "quota_class_set"
 
-    name = "ExtendedQuotas"
-    alias = "os-extended-quotas"
-    updated = "2013-06-09T00:00:00+00:00"
+    def detail_list(self, quota_set, quota_class=None):
+        """Detailed view of quota class set."""
+        keys = (
+            'shares',
+            'gigabytes',
+            'snapshots',
+            'snapshot_gigabytes',
+            'share_networks',
+        )
+        view = {key: quota_set.get(key) for key in keys}
+        if quota_class:
+            view['id'] = quota_class
+        return {self._collection_name: view}

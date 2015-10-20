@@ -27,6 +27,8 @@ from manila.api.v1 import availability_zones
 from manila.api.v1 import cgsnapshots
 from manila.api.v1 import consistency_groups
 from manila.api.v1 import limits
+from manila.api.v1 import quota_class_sets
+from manila.api.v1 import quota_sets
 from manila.api.v1 import scheduler_stats
 from manila.api.v1 import security_service
 from manila.api.v1 import services
@@ -74,6 +76,21 @@ class APIRouter(manila.api.openstack.APIRouter):
                         # 'services' when API urls rename happens.
                         "os-services",
                         controller=self.resources["services"])
+
+        self.resources["quota_sets"] = quota_sets.create_resource()
+        mapper.resource("quota-set",
+                        # TODO(vponomaryov): rename 'os-quota-sets' to
+                        # 'quota-sets' when API urls rename happens.
+                        "os-quota-sets",
+                        controller=self.resources["quota_sets"],
+                        member={'defaults': 'GET'})
+
+        self.resources["quota_class_sets"] = quota_class_sets.create_resource()
+        mapper.resource("quota-class-set",
+                        # TODO(vponomaryov): rename 'os-quota-class-sets' to
+                        # 'quota-class-sets' when API urls rename happens.
+                        "os-quota-class-sets",
+                        controller=self.resources["quota_class_sets"])
 
         self.resources["share_manage"] = share_manage.create_resource()
         mapper.resource("share_manage",

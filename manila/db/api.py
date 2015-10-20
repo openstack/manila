@@ -68,6 +68,16 @@ IMPL = db_api.DBAPI.from_config(cfg.CONF, backend_mapping=_BACKEND_MAPPING,
                                 lazy=True)
 
 
+def authorize_project_context(context, project_id):
+    """Ensures a request has permission to access the given project."""
+    return IMPL.authorize_project_context(context, project_id)
+
+
+def authorize_quota_class_context(context, class_name):
+    """Ensures a request has permission to access the given quota class."""
+    return IMPL.authorize_quota_class_context(context, class_name)
+
+
 ###################
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""

@@ -1,4 +1,5 @@
 # Copyright 2012 OpenStack LLC.
+# Copyright (c) 2015 Mirantis inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,67 +16,47 @@
 
 import webob
 
-from manila.api import extensions
+from manila.api.openstack import wsgi
+from manila.api.views import quota_class_sets as quota_class_sets_views
 from manila import db
 from manila import exception
 from manila import quota
 
 QUOTAS = quota.QUOTAS
-authorize = extensions.extension_authorizer('share', 'quota_classes')
 
 
-class QuotaClassSetsController(object):
+class QuotaClassSetsController(wsgi.Controller):
 
-    def _format_quota_set(self, quota_class, quota_set):
-        """Convert the quota object to a result dict."""
-
-        result = dict(id=str(quota_class))
-
-        for resource in QUOTAS.resources:
-            result[resource] = quota_set[resource]
-
-        return dict(quota_class_set=result)
+    resource_name = "quota_class_set"
+    _view_builder_class = quota_class_sets_views.ViewBuilder
 
     def show(self, req, id):
         context = req.environ['manila.context']
-        authorize(context)
+        self.authorize(context, 'show')
         try:
-            db.sqlalchemy.api.authorize_quota_class_context(context, id)
+            db.authorize_quota_class_context(context, id)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
-        return self._format_quota_set(id,
-                                      QUOTAS.get_class_quotas(context, id))
+        return self._view_builder.detail_list(
+            QUOTAS.get_class_quotas(context, id), id)
 
     def update(self, req, id, body):
         context = req.environ['manila.context']
-        authorize(context)
+        self.authorize(context, 'update')
         quota_class = id
-        for key in body['quota_class_set'].keys():
+        for key in body.get(self.resource_name, {}).keys():
             if key in QUOTAS:
-                value = int(body['quota_class_set'][key])
+                value = int(body[self.resource_name][key])
                 try:
                     db.quota_class_update(context, quota_class, key, value)
                 except exception.QuotaClassNotFound:
                     db.quota_class_create(context, quota_class, key, value)
                 except exception.AdminRequired:
                     raise webob.exc.HTTPForbidden()
-        return {'quota_class_set': QUOTAS.get_class_quotas(context,
-                                                           quota_class)}
+        return self._view_builder.detail_list(
+            QUOTAS.get_class_quotas(context, quota_class))
 
 
-class Quota_classes(extensions.ExtensionDescriptor):
-    """Quota classes management support."""
-
-    name = "QuotaClasses"
-    alias = "os-quota-class-sets"
-    updated = "2012-03-12T00:00:00+00:00"
-
-    def get_resources(self):
-        resources = []
-
-        res = extensions.ResourceExtension('os-quota-class-sets',
-                                           QuotaClassSetsController())
-        resources.append(res)
-
-        return resources
+def create_resource():
+    return wsgi.Resource(QuotaClassSetsController())
