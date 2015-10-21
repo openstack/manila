@@ -102,6 +102,7 @@ Share backends
    generic_driver
    glusterfs_driver
    glusterfs_native_driver
+   gpfs_driver
    huawei_nas_driver
    hdfs_native_driver
    hp_3par_driver

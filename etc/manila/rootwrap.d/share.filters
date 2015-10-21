@@ -35,9 +35,48 @@ find: CommandFilter, find, root
 # manila/share/drivers/glusterfs_native.py: 'umount', '%s'
 umount: CommandFilter, umount, root
 
+# GPFS commands
+# manila/share/drivers/ibm/gpfs.py: 'mmgetstate', '-Y'
+mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
+# manila/share/drivers/ibm/gpfs.py: 'mmlsattr', '%s'
+mmlsattr: CommandFilter, /usr/lpp/mmfs/bin/mmlsattr, root
+# manila/share/drivers/ibm/gpfs.py: 'mmcrfileset', '%s', '%s', '--inode-space', 'new'
+mmcrfileset: CommandFilter, /usr/lpp/mmfs/bin/mmcrfileset, root
+# manila/share/drivers/ibm/gpfs.py: 'mmlinkfileset', '%s', '%s', '-J', '%s'
+mmlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmlinkfileset, root
+# manila/share/drivers/ibm/gpfs.py: 'mmsetquota', '-j', '%s', '-h', '%s', '%s'
+mmsetquota: CommandFilter, /usr/lpp/mmfs/bin/mmsetquota, root
+# manila/share/drivers/ibm/gpfs.py: 'mmunlinkfileset', '%s', '%s', '-f'
+mmunlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmunlinkfileset, root
+# manila/share/drivers/ibm/gpfs.py: 'mmdelfileset', '%s', '%s', '-f'
+mmdelfileset: CommandFilter, /usr/lpp/mmfs/bin/mmdelfileset, root
+# manila/share/drivers/ibm/gpfs.py: 'mmcrsnapshot', '%s', '%s', '-j', '%s'
+mmcrsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmcrsnapshot, root
+# manila/share/drivers/ibm/gpfs.py: 'mmdelsnapshot', '%s', '%s', '-j', '%s'
+mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
+# manila/share/drivers/ibm/gpfs.py: 'rsync', '-rp', '%s', '%s'
+rsync: CommandFilter, rsync, root
+# manila/share/drivers/ibm/gpfs.py: 'exportfs'
+exportfs: CommandFilter, exportfs, root
+# manila/share/drivers/ibm/gpfs.py: 'stat', '--format=%F', '%s'
+stat: CommandFilter, stat, root
+# manila/share/drivers/ibm/gpfs.py: 'df', '-P', '-B', '1', '%s'
+df: CommandFilter, df, root
+
 # Ganesha commands
+# manila/share/drivers/ibm/ganesha_utils.py: 'mv', '%s', '%s'
 # manila/share/drivers/ganesha/manager.py: 'mv', '%s', '%s'
 mv: CommandFilter, mv, root
+# manila/share/drivers/ibm/ganesha_utils.py: 'cp', '%s', '%s'
+cp: CommandFilter, cp, root
+# manila/share/drivers/ibm/ganesha_utils.py: 'scp', '-i', '%s', '%s', '%s'
+scp: CommandFilter, scp, root
+# manila/share/drivers/ibm/ganesha_utils.py: 'ssh', '%s', '%s'
+ssh: CommandFilter, ssh, root
+# manila/share/drivers/ibm/ganesha_utils.py: 'chmod', '%s', '%s'
+chmod: CommandFilter, chmod, root
+# manila/share/drivers/ibm/ganesha_utils.py: 'service', '%s', 'restart'
+service: CommandFilter, service, root
 
 # manila/share/drivers/ganesha/manager.py: 'mktemp', '-p', '%s', '-t', '%s'
 mktemp: CommandFilter, mktemp, root
