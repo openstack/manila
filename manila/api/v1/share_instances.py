@@ -19,7 +19,6 @@ from manila.api.openstack import wsgi
 from manila.api.views import share_instance as instance_view
 from manila import db
 from manila import exception
-from manila import policy
 from manila import share
 
 
@@ -33,16 +32,10 @@ class ShareInstancesController(wsgi.Controller):
         self.share_api = share.API()
         super(ShareInstancesController, self).__init__()
 
-    def _authorize(self, context, action):
-        try:
-            policy.check_policy(context, self.resource_name, action)
-        except exception.PolicyNotAuthorized:
-            raise exc.HTTPForbidden()
-
     @wsgi.Controller.api_version("2.3")
     def index(self, req):
         context = req.environ['manila.context']
-        self._authorize(context, 'index')
+        self.authorize(context, 'index')
 
         instances = db.share_instances_get_all(context)
         return self._view_builder.detail_list(req, instances)
@@ -50,7 +43,7 @@ class ShareInstancesController(wsgi.Controller):
     @wsgi.Controller.api_version("2.3")
     def show(self, req, id):
         context = req.environ['manila.context']
-        self._authorize(context, 'show')
+        self.authorize(context, 'show')
 
         try:
             instance = db.share_instance_get(context, id)
@@ -62,7 +55,7 @@ class ShareInstancesController(wsgi.Controller):
     @wsgi.Controller.api_version("2.3")
     def get_share_instances(self, req, share_id):
         context = req.environ['manila.context']
-        self._authorize(context, 'index')
+        self.authorize(context, 'index')
 
         try:
             share = self.share_api.get(context, share_id)
