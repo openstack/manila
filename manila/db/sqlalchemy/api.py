@@ -2653,7 +2653,7 @@ def _share_type_get_query(context, session=None, read_deleted=None,
                         models.ShareTypes,
                         session=session,
                         read_deleted=read_deleted). \
-        options(joinedload('extra_specs')).options(joinedload('shares'))
+        options(joinedload('extra_specs'))
 
     if 'projects' in expected_fields:
         query = query.options(joinedload('projects'))
@@ -2722,7 +2722,6 @@ def _share_type_get(context, id, session=None, inactive=False,
     result = _share_type_get_query(
         context, session, read_deleted, expected_fields). \
         filter_by(id=id). \
-        options(joinedload('shares')). \
         first()
 
     if not result:
@@ -2750,7 +2749,6 @@ def _share_type_get_by_name(context, name, session=None):
     result = model_query(context, models.ShareTypes, session=session).\
         options(joinedload('extra_specs')).\
         filter_by(name=name).\
-        options(joinedload('shares')).\
         first()
 
     if not result:
