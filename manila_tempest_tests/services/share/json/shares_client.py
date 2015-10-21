@@ -751,3 +751,12 @@ class SharesClient(rest_client.RestClient):
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return json.loads(body)
+
+###############
+
+    def list_availability_zones(self):
+        """Get list of availability zones."""
+        uri = 'os-availability-zone'
+        resp, body = self.get(uri)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)

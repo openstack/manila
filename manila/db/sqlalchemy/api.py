@@ -2976,7 +2976,7 @@ def availability_zone_get_all(context):
         models.Service.availability_zone_id,
         session=session,
         read_deleted="no"
-    ).filter_by(disabled=0).distinct()
+    ).filter_by(disabled=False).distinct()
 
     return model_query(context, models.AvailabilityZone, session=session,
                        read_deleted="no").filter(
