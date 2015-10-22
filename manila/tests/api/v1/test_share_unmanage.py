@@ -17,7 +17,7 @@ import ddt
 import mock
 import webob
 
-from manila.api.contrib import share_unmanage
+from manila.api.v1 import share_unmanage
 from manila.common import constants
 from manila import exception
 from manila.share import api as share_api
@@ -140,7 +140,7 @@ class ShareUnmanageTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/share/%s/unmanage' % share_id,
                                       use_admin_context=False)
 
-        self.assertRaises(exception.PolicyNotAuthorized,
+        self.assertRaises(webob.exc.HTTPForbidden,
                           self.controller.unmanage,
                           req,
                           share_id)

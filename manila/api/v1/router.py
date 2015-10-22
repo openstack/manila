@@ -30,11 +30,13 @@ from manila.api.v1 import limits
 from manila.api.v1 import scheduler_stats
 from manila.api.v1 import security_service
 from manila.api.v1 import share_instances
+from manila.api.v1 import share_manage
 from manila.api.v1 import share_metadata
 from manila.api.v1 import share_networks
 from manila.api.v1 import share_servers
 from manila.api.v1 import share_snapshots
 from manila.api.v1 import share_types
+from manila.api.v1 import share_unmanage
 from manila.api.v1 import shares
 from manila.api import versions
 
@@ -64,6 +66,21 @@ class APIRouter(manila.api.openstack.APIRouter):
                         # 'availability-zones' when API urls rename happens.
                         "os-availability-zone",
                         controller=self.resources["availability_zones"])
+
+        self.resources["share_manage"] = share_manage.create_resource()
+        mapper.resource("share_manage",
+                        # TODO(vponomaryov): remove it when it is ported
+                        # to shares controller.
+                        "os-share-manage",
+                        controller=self.resources["share_manage"])
+
+        self.resources["share_unmanage"] = share_unmanage.create_resource()
+        mapper.resource("share_unmanage",
+                        # TODO(vponomaryov): remove it when it is ported
+                        # to shares controller.
+                        "os-share-unmanage",
+                        controller=self.resources["share_unmanage"],
+                        member={'unmanage': 'POST'})
 
         self.resources['shares'] = shares.create_resource()
         mapper.resource("share", "shares",
