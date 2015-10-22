@@ -1,4 +1,5 @@
 # Copyright 2012 IBM Corp.
+# Copyright (c) 2015 Mirantis inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,20 +17,25 @@
 from oslo_log import log
 import webob.exc
 
-from manila.api import extensions
+from manila.api.openstack import wsgi
+from manila.api.views import services as services_views
 from manila import db
-from manila import exception
 from manila import utils
 
 LOG = log.getLogger(__name__)
-authorize = extensions.extension_authorizer('share', 'services')
 
 
-class ServiceController(object):
+class ServiceController(wsgi.Controller):
+    """The Services API controller for the OpenStack API."""
+
+    resource_name = "service"
+    _view_builder_class = services_views.ViewBuilder
+
     def index(self, req):
         """Return a list of all running services."""
+
         context = req.environ['manila.context']
-        authorize(context)
+        self.authorize(context, 'index')
         all_services = db.service_get_all(context)
 
         services = []
@@ -60,48 +66,32 @@ class ServiceController(object):
             if len(services) == 0:
                 break
 
-        return {'services': services}
+        return self._view_builder.detail_list(services)
 
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service."""
         context = req.environ['manila.context']
-        authorize(context)
+        self.authorize(context, 'update')
 
         if id == "enable":
-            disabled = False
+            data = {'disabled': False}
         elif id == "disable":
-            disabled = True
+            data = {'disabled': True}
         else:
-            raise webob.exc.HTTPNotFound("Unknown action")
+            raise webob.exc.HTTPNotFound("Unknown action '%s'" % id)
 
         try:
-            host = body['host']
-            binary = body['binary']
+            data['host'] = body['host']
+            data['binary'] = body['binary']
         except (TypeError, KeyError):
             raise webob.exc.HTTPBadRequest()
 
-        try:
-            svc = db.service_get_by_args(context, host, binary)
-            if not svc:
-                raise webob.exc.HTTPNotFound('Unknown service')
+        svc = db.service_get_by_args(context, data['host'], data['binary'])
+        db.service_update(
+            context, svc['id'], {'disabled': data['disabled']})
 
-            db.service_update(context, svc['id'], {'disabled': disabled})
-        except exception.ServiceNotFound:
-            raise webob.exc.HTTPNotFound("service not found")
-
-        return {'host': host, 'binary': binary, 'disabled': disabled}
+        return self._view_builder.summary(data)
 
 
-class Services(extensions.ExtensionDescriptor):
-    """Services support."""
-
-    name = "Services"
-    alias = "os-services"
-    updated = "2012-10-28T00:00:00-00:00"
-
-    def get_resources(self):
-        resources = []
-        resource = extensions.ResourceExtension('os-services',
-                                                ServiceController())
-        resources.append(resource)
-        return resources
+def create_resource():
+    return wsgi.Resource(ServiceController())

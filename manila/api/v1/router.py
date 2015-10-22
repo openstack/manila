@@ -29,6 +29,7 @@ from manila.api.v1 import consistency_groups
 from manila.api.v1 import limits
 from manila.api.v1 import scheduler_stats
 from manila.api.v1 import security_service
+from manila.api.v1 import services
 from manila.api.v1 import share_instances
 from manila.api.v1 import share_manage
 from manila.api.v1 import share_metadata
@@ -66,6 +67,13 @@ class APIRouter(manila.api.openstack.APIRouter):
                         # 'availability-zones' when API urls rename happens.
                         "os-availability-zone",
                         controller=self.resources["availability_zones"])
+
+        self.resources["services"] = services.create_resource()
+        mapper.resource("service",
+                        # TODO(vponomaryov): rename 'os-services' to
+                        # 'services' when API urls rename happens.
+                        "os-services",
+                        controller=self.resources["services"])
 
         self.resources["share_manage"] = share_manage.create_resource()
         mapper.resource("share_manage",

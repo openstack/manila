@@ -6,6 +6,9 @@
 
     "availability_zone:index": "rule:default",
 
+    "service:index": "rule:admin_api",
+    "service:update": "rule:admin_api",
+
     "share:create": "",
     "share:list_by_share_server_id": "rule:admin_api",
     "share:get": "",

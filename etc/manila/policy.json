@@ -7,6 +7,9 @@
 
     "availability_zone:index": "rule:default",
 
+    "service:index": "rule:admin_api",
+    "service:update": "rule:admin_api",
+
     "share:create": "",
     "share:delete": "rule:default",
     "share:get": "rule:default",
@@ -54,7 +57,6 @@
     "share_extension:cgsnapshot_admin_actions:force_delete": "rule:admin_api",
     "share_extension:cgsnapshot_admin_actions:reset_status": "rule:admin_api",
 
-    "share_extension:services": "rule:admin_api",
     "share_extension:availability_zones": "",
 
     "share_extension:types_manage": "rule:admin_api",
