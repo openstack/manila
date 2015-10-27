@@ -448,6 +448,13 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertEqual(404, e.code)
         self.assertIn(instance_id, e.msg)
 
+    def test_share_resource_not_found(self):
+        # verify response code for exception.ShareNotFound
+        share_id = "fake_share_id"
+        e = exception.ShareResourceNotFound(share_id=share_id)
+        self.assertEqual(500, e.code)
+        self.assertIn(share_id, e.msg)
+
 
 class ManilaExceptionResponseCode413(test.TestCase):
 

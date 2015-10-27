@@ -35,8 +35,8 @@ def fake_rpc_handler(name, *args):
     elif name == 'createVolume':
         return {'volume_uuid': 'voluuid'}
     elif name == 'exportVolume':
-        return {'nfs_server_ip': '10.10.1.1',
-                'nfs_export_path': '/voluuid'}
+        return {'nfs_server_ip': 'fake_location',
+                'nfs_export_path': '/fake_share'}
 
 
 class QuobyteShareDriverTestCase(test.TestCase):
@@ -76,7 +76,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
         result = self._driver.create_share(self._context, self.share)
 
-        self.assertEqual('10.10.1.1:/voluuid', result)
+        self.assertEqual(self.share['export_location'], result)
         self._driver.rpc.call.assert_has_calls([
             mock.call('createVolume', dict(
                 name=self.share['name'],
@@ -281,3 +281,34 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
         self.assertEqual((39.223160718, 20.880642548),
                          self._driver._get_capacities())
+
+    @mock.patch.object(quobyte.QuobyteShareDriver,
+                       "_resolve_volume_name",
+                       return_value="fake_uuid")
+    def test_ensure_share(self, mock_qb_resolve_volname):
+        self._driver.rpc.call = mock.Mock(wraps=fake_rpc_handler)
+
+        result = self._driver.ensure_share(self._context, self.share, None)
+
+        self.assertEqual(self.share["export_location"], result)
+        (mock_qb_resolve_volname.
+         assert_called_once_with(self.share['name'],
+                                 self.share['project_id']))
+        self._driver.rpc.call.assert_has_calls([
+            mock.call('exportVolume', dict(
+                volume_uuid="fake_uuid",
+                protocol='NFS'
+            ))])
+
+    @mock.patch.object(quobyte.QuobyteShareDriver,
+                       "_resolve_volume_name",
+                       return_value=None)
+    def test_ensure_deleted_share(self, mock_qb_resolve_volname):
+        self._driver.rpc.call = mock.Mock(wraps=fake_rpc_handler)
+
+        self.assertRaises(exception.ShareResourceNotFound,
+                          self._driver.ensure_share,
+                          self._context, self.share, None)
+        (mock_qb_resolve_volname.
+         assert_called_once_with(self.share['name'],
+                                 self.share['project_id']))
