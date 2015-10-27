@@ -38,14 +38,37 @@ from manila.share import share_types
 LOG = log.getLogger(__name__)
 
 
-class ShareController(wsgi.Controller):
+class ShareController(wsgi.Controller, wsgi.AdminActionsMixin):
     """The Shares API controller for the OpenStack API."""
 
+    resource_name = 'share'
     _view_builder_class = share_views.ViewBuilder
 
     def __init__(self):
         super(ShareController, self).__init__()
         self.share_api = share.API()
+
+    def _update(self, *args, **kwargs):
+        db.share_update(*args, **kwargs)
+
+    def _get(self, *args, **kwargs):
+        return self.share_api.get(*args, **kwargs)
+
+    def _delete(self, *args, **kwargs):
+        return self.share_api.delete(*args, **kwargs)
+
+    def _migrate(self, *args, **kwargs):
+        return self.share_api.migrate_share(*args, **kwargs)
+
+    @wsgi.action('os-reset_status')
+    @wsgi.response(202)
+    def share_reset_status(self, req, id, body):
+        super(self.__class__, self)._reset_status(req, id, body)
+
+    @wsgi.action('os-force_delete')
+    @wsgi.response(202)
+    def share_force_delete(self, req, id, body):
+        super(self.__class__, self)._force_delete(req, id, body)
 
     def show(self, req, id):
         """Return data about the given share."""

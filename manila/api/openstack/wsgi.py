@@ -27,6 +27,7 @@ import webob.exc
 
 from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import versioned_method
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -1133,6 +1134,66 @@ class Controller(object):
             return False
 
         return True
+
+
+class AdminActionsMixin(object):
+    """Mixin class for API controllers with admin actions."""
+
+    valid_statuses = set([
+        constants.STATUS_CREATING,
+        constants.STATUS_AVAILABLE,
+        constants.STATUS_DELETING,
+        constants.STATUS_ERROR,
+        constants.STATUS_ERROR_DELETING,
+    ])
+
+    def _update(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def _get(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def _delete(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def validate_update(self, body):
+        update = {}
+        try:
+            update['status'] = body['status']
+        except (TypeError, KeyError):
+            raise webob.exc.HTTPBadRequest(explanation="Must specify 'status'")
+        if update['status'] not in self.valid_statuses:
+            expl = _("Invalid state. Valid states: " +
+                     ", ".join(self.valid_statuses) + ".")
+            raise webob.exc.HTTPBadRequest(explanation=expl)
+        return update
+
+    @action('os-reset_status')
+    def _reset_status(self, req, id, body):
+        """Reset status on the resource."""
+        context = req.environ['manila.context']
+        self.authorize(context, 'reset_status')
+        update = self.validate_update(body['os-reset_status'])
+        msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
+        LOG.debug(msg, {'resource': self.resource_name, 'id': id,
+                        'update': update})
+        try:
+            self._update(context, id, update)
+        except exception.NotFound as e:
+            raise webob.exc.HTTPNotFound(six.text_type(e))
+        return webob.Response(status_int=202)
+
+    @action('os-force_delete')
+    def _force_delete(self, req, id, body):
+        """Delete a resource, bypassing the check for status."""
+        context = req.environ['manila.context']
+        self.authorize(context, 'force_delete')
+        try:
+            resource = self._get(context, id)
+        except exception.NotFound as e:
+            raise webob.exc.HTTPNotFound(six.text_type(e))
+        self._delete(context, resource, force=True)
+        return webob.Response(status_int=202)
 
 
 class Fault(webob.exc.HTTPException):

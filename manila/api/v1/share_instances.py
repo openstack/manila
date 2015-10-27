@@ -22,7 +22,7 @@ from manila import exception
 from manila import share
 
 
-class ShareInstancesController(wsgi.Controller):
+class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
     """The share instances API controller for the OpenStack API."""
 
     resource_name = 'share_instance'
@@ -30,7 +30,16 @@ class ShareInstancesController(wsgi.Controller):
 
     def __init__(self):
         self.share_api = share.API()
-        super(ShareInstancesController, self).__init__()
+        super(self.__class__, self).__init__()
+
+    def _get(self, *args, **kwargs):
+        return db.share_instance_get(*args, **kwargs)
+
+    def _update(self, *args, **kwargs):
+        db.share_instance_update(*args, **kwargs)
+
+    def _delete(self, *args, **kwargs):
+        return self.share_api.delete_instance(*args, **kwargs)
 
     @wsgi.Controller.api_version("2.3")
     def index(self, req):
@@ -64,6 +73,18 @@ class ShareInstancesController(wsgi.Controller):
 
         view = instance_view.ViewBuilder()
         return view.detail_list(req, share.instances)
+
+    @wsgi.Controller.api_version('2.3')
+    @wsgi.action('os-reset_status')
+    @wsgi.response(202)
+    def share_instance_reset_status(self, req, id, body):
+        super(self.__class__, self)._reset_status(req, id, body)
+
+    @wsgi.Controller.api_version('2.3')
+    @wsgi.action('os-force_delete')
+    @wsgi.response(202)
+    def share_instance_force_delete(self, req, id, body):
+        super(self.__class__, self)._force_delete(req, id, body)
 
 
 def create_resource():

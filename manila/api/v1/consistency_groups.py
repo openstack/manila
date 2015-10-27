@@ -25,6 +25,7 @@ from manila.api import common
 from manila.api.openstack import wsgi
 import manila.api.views.consistency_groups as cg_views
 import manila.consistency_group.api as cg_api
+from manila import db
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
@@ -33,9 +34,10 @@ from manila.share import share_types
 LOG = log.getLogger(__name__)
 
 
-class CGController(wsgi.Controller):
+class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
     """The Consistency Groups API controller for the OpenStack API."""
 
+    resource_name = 'consistency_group'
     _view_builder_class = cg_views.CGViewBuilder
 
     def __init__(self):
@@ -205,6 +207,27 @@ class CGController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
         return self._view_builder.detail(req, dict(six.iteritems(new_cg)))
+
+    def _update(self, *args, **kwargs):
+        db.consistency_group_update(*args, **kwargs)
+
+    def _get(self, *args, **kwargs):
+        return self.cg_api.get(*args, **kwargs)
+
+    def _delete(self, context, resource, force=True):
+        db.consistency_group_destroy(context.elevated(), resource['id'])
+
+    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.action('os-reset_status')
+    @wsgi.response(202)
+    def cg_reset_status(self, req, id, body):
+        super(self.__class__, self)._reset_status(req, id, body)
+
+    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.action('os-force_delete')
+    @wsgi.response(202)
+    def cg_force_delete(self, req, id, body):
+        super(self.__class__, self)._force_delete(req, id, body)
 
 
 def create_resource():

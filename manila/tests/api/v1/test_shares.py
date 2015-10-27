@@ -19,6 +19,8 @@ import datetime
 import ddt
 import mock
 from oslo_config import cfg
+from oslo_serialization import jsonutils
+import six
 import webob
 
 from manila.api import common
@@ -48,10 +50,11 @@ def app():
 
 
 @ddt.ddt
-class ShareApiTest(test.TestCase):
-    """Share Api Test."""
+class ShareAPITest(test.TestCase):
+    """Share API Test."""
+
     def setUp(self):
-        super(ShareApiTest, self).setUp()
+        super(self.__class__, self).setUp()
         self.controller = shares.ShareController()
         self.mock_object(db, 'availability_zone_get')
         self.mock_object(share_api.API, 'get_all',
@@ -1009,3 +1012,108 @@ class ShareActionsTest(test.TestCase):
                          mock.Mock(side_effect=source('fake')))
 
         self.assertRaises(target, self.controller._shrink, req, id, body)
+
+
+@ddt.ddt
+class ShareAdminActionsAPITest(test.TestCase):
+
+    def setUp(self):
+        super(self.__class__, self).setUp()
+        CONF.set_default("default_share_type", None)
+        self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
+        self.share_api = share_api.API()
+        self.admin_context = context.RequestContext('admin', 'fake', True)
+        self.member_context = context.RequestContext('fake', 'fake')
+
+    def _get_context(self, role):
+        return getattr(self, '%s_context' % role)
+
+    def _setup_share_data(self, share=None):
+        if share is None:
+            share = db_utils.create_share(status=constants.STATUS_AVAILABLE,
+                                          size='1',
+                                          override_defaults=True)
+        req = webob.Request.blank('/v2/fake/shares/%s/action' % share['id'])
+        return share, req
+
+    def _reset_status(self, ctxt, model, req, db_access_method,
+                      valid_code, valid_status=None, body=None):
+        if body is None:
+            body = {'os-reset_status': {'status': constants.STATUS_ERROR}}
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = six.b(jsonutils.dumps(body))
+        req.environ['manila.context'] = ctxt
+
+        resp = req.get_response(fakes.app())
+
+        # validate response code and model status
+        self.assertEqual(valid_code, resp.status_int)
+
+        if valid_code == 404:
+            self.assertRaises(exception.NotFound,
+                              db_access_method,
+                              ctxt,
+                              model['id'])
+        else:
+            actual_model = db_access_method(ctxt, model['id'])
+            self.assertEqual(valid_status, actual_model['status'])
+
+    @ddt.data(*fakes.fixture_invalid_reset_status_body)
+    def test_share_invalid_reset_status_body(self, body):
+        share, req = self._setup_share_data()
+        ctxt = self.admin_context
+
+        self._reset_status(ctxt, share, req, db.share_get, 400,
+                           constants.STATUS_AVAILABLE, body)
+
+    def test_share_reset_status_for_missing(self):
+        fake_share = {'id': 'missing-share-id'}
+        req = webob.Request.blank('/v1/fake/shares/%s/action' %
+                                  fake_share['id'])
+
+        self._reset_status(self.admin_context, fake_share, req,
+                           db.share_snapshot_get, 404)
+
+    def _force_delete(self, ctxt, model, req, db_access_method, valid_code,
+                      check_model_in_db=False):
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
+        req.environ['manila.context'] = ctxt
+
+        resp = req.get_response(fakes.app())
+
+        # validate response
+        self.assertEqual(valid_code, resp.status_int)
+
+        if valid_code == 202 and check_model_in_db:
+            self.assertRaises(exception.NotFound,
+                              db_access_method,
+                              ctxt,
+                              model['id'])
+
+    @ddt.data(*fakes.fixture_reset_status_with_different_roles)
+    @ddt.unpack
+    def test_share_reset_status_with_different_roles(self, role, valid_code,
+                                                     valid_status):
+        share, req = self._setup_share_data()
+        ctxt = self._get_context(role)
+
+        self._reset_status(ctxt, share, req, db.share_get, valid_code,
+                           valid_status)
+
+    @ddt.data(*fakes.fixture_force_delete_with_different_roles)
+    @ddt.unpack
+    def test_share_force_delete_with_different_roles(self, role, resp_code):
+        share, req = self._setup_share_data()
+        ctxt = self._get_context(role)
+
+        self._force_delete(ctxt, share, req, db.share_get, resp_code,
+                           check_model_in_db=True)
+
+    def test_share_force_delete_missing(self):
+        share, req = self._setup_share_data(share={'id': 'fake'})
+        ctxt = self._get_context('admin')
+
+        self._force_delete(ctxt, share, req, db.share_get, 404)

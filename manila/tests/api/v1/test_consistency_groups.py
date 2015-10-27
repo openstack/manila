@@ -17,33 +17,58 @@ import copy
 import datetime
 import uuid
 
+import ddt
 import mock
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 import six
 import webob
 
+from manila.api.openstack import wsgi
 import manila.api.v1.consistency_groups as cgs
 from manila.common import constants
 import manila.consistency_group.api as cg_api
+from manila import context
+from manila import db
 from manila import exception
 from manila.share import share_types
 from manila import test
 from manila.tests.api import fakes
+from manila.tests import db_utils
 
 
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class CGApiTest(test.TestCase):
-    """Share Api Test."""
+    """Consistency Groups API Test suite."""
+
     def setUp(self):
-        super(CGApiTest, self).setUp()
+        super(self.__class__, self).setUp()
         self.controller = cgs.CGController()
         self.fake_share_type = {'id': six.text_type(uuid.uuid4())}
         self.api_version = '2.4'
         self.request = fakes.HTTPRequest.blank('/consistency-groups',
                                                version=self.api_version,
                                                experimental=True)
+        self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
+        self.admin_context = context.RequestContext('admin', 'fake', True)
+        self.member_context = context.RequestContext('fake', 'fake')
+
+    def _get_context(self, role):
+        return getattr(self, '%s_context' % role)
+
+    def _setup_cg_data(self, cg=None):
+        if cg is None:
+            cg = db_utils.create_consistency_group(
+                status=constants.STATUS_AVAILABLE)
+        req = webob.Request.blank('/v2/fake/consistency-groups/%s/action' %
+                                  cg['id'])
+        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '2.4'
+        req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
+
+        return cg, req
 
     def _get_fake_cg(self, **values):
         cg = {
@@ -503,3 +528,46 @@ class CGApiTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
                           req, fake_cg['id'])
+
+    @ddt.data(*fakes.fixture_reset_status_with_different_roles)
+    @ddt.unpack
+    def test_consistency_groups_reset_status_with_different_roles(
+            self, role, valid_code, valid_status):
+        ctxt = self._get_context(role)
+        cg, req = self._setup_cg_data()
+
+        body = {'os-reset_status': {'status': constants.STATUS_ERROR}}
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = six.b(jsonutils.dumps(body))
+        req.environ['manila.context'] = ctxt
+
+        resp = req.get_response(fakes.app())
+
+        # validate response code and model status
+        self.assertEqual(valid_code, resp.status_int)
+
+        if valid_code == 404:
+            self.assertRaises(exception.NotFound,
+                              db.consistency_group_get,
+                              ctxt,
+                              cg['id'])
+        else:
+            actual_model = db.consistency_group_get(ctxt, cg['id'])
+            self.assertEqual(valid_status, actual_model['status'])
+
+    @ddt.data(*fakes.fixture_force_delete_with_different_roles)
+    @ddt.unpack
+    def test_consistency_group_force_delete_with_different_roles(self, role,
+                                                                 resp_code):
+        ctxt = self._get_context(role)
+        cg, req = self._setup_cg_data()
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
+        req.environ['manila.context'] = ctxt
+
+        resp = req.get_response(fakes.app())
+
+        # validate response
+        self.assertEqual(resp_code, resp.status_int)

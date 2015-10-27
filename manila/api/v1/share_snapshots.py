@@ -23,6 +23,7 @@ from webob import exc
 from manila.api import common
 from manila.api.openstack import wsgi
 from manila.api.views import share_snapshots as snapshot_views
+from manila import db
 from manila import exception
 from manila.i18n import _, _LI
 from manila import share
@@ -30,14 +31,34 @@ from manila import share
 LOG = log.getLogger(__name__)
 
 
-class ShareSnapshotsController(wsgi.Controller):
+class ShareSnapshotsController(wsgi.Controller, wsgi.AdminActionsMixin):
     """The Share Snapshots API controller for the OpenStack API."""
 
+    resource_name = 'share_snapshot'
     _view_builder_class = snapshot_views.ViewBuilder
 
     def __init__(self):
         super(ShareSnapshotsController, self).__init__()
         self.share_api = share.API()
+
+    def _update(self, *args, **kwargs):
+        db.share_snapshot_update(*args, **kwargs)
+
+    def _get(self, *args, **kwargs):
+        return self.share_api.get_snapshot(*args, **kwargs)
+
+    def _delete(self, *args, **kwargs):
+        return self.share_api.delete_snapshot(*args, **kwargs)
+
+    @wsgi.action('os-reset_status')
+    @wsgi.response(202)
+    def share_snapshot_reset_status(self, req, id, body):
+        super(self.__class__, self)._reset_status(req, id, body)
+
+    @wsgi.action('os-force_delete')
+    @wsgi.response(202)
+    def share_snapshot_force_delete(self, req, id, body):
+        super(self.__class__, self)._force_delete(req, id, body)
 
     def show(self, req, id):
         """Return data about the given snapshot."""

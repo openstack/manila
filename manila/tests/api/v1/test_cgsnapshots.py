@@ -17,29 +17,39 @@ import copy
 import datetime
 import uuid
 
+import ddt
 import mock
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 import six
 import webob
 
+from manila.api.openstack import wsgi
 import manila.api.v1.cgsnapshots as cgs
 from manila.common import constants
+from manila import context
+from manila import db
 from manila import exception
 from manila import test
 from manila.tests.api import fakes
-
+from manila.tests import db_utils
 
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class CGSnapshotApiTest(test.TestCase):
+
     def setUp(self):
-        super(CGSnapshotApiTest, self).setUp()
+        super(self.__class__, self).setUp()
         self.controller = cgs.CGSnapshotController()
         self.api_version = '2.4'
         self.request = fakes.HTTPRequest.blank('/consistency-groups',
                                                version=self.api_version,
                                                experimental=True)
+        self.admin_context = context.RequestContext('admin', 'fake', True)
+        self.member_context = context.RequestContext('fake', 'fake')
+        self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
 
     def _get_fake_cgsnapshot(self, **values):
         snap = {
@@ -425,3 +435,58 @@ class CGSnapshotApiTest(test.TestCase):
 
         self.assertEqual(1, len(res_dict['cgsnapshot_members']))
         self.assertEqual([expected_member2], res_dict['cgsnapshot_members'])
+
+    def _get_context(self, role):
+        return getattr(self, '%s_context' % role)
+
+    def _setup_cgsnapshot_data(self, cgsnapshot=None):
+        if cgsnapshot is None:
+            cgsnapshot = db_utils.create_cgsnapshot(
+                'fake_id', status=constants.STATUS_AVAILABLE)
+        req = webob.Request.blank('/v2/fake/cgsnapshots/%s/action' %
+                                  cgsnapshot['id'])
+        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '2.4'
+        req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
+        return cgsnapshot, req
+
+    @ddt.data(*fakes.fixture_force_delete_with_different_roles)
+    @ddt.unpack
+    def test_cgsnapshot_force_delete_with_different_roles(self, role,
+                                                          resp_code):
+        cgsnap, req = self._setup_cgsnapshot_data()
+        ctxt = self._get_context(role)
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
+        req.environ['manila.context'] = ctxt
+
+        resp = req.get_response(fakes.app())
+
+        # Validate response
+        self.assertEqual(resp_code, resp.status_int)
+
+    @ddt.data(*fakes.fixture_reset_status_with_different_roles)
+    @ddt.unpack
+    def test_cgsnapshot_reset_status_with_different_roles(
+            self, role, valid_code, valid_status):
+        ctxt = self._get_context(role)
+        cgsnap, req = self._setup_cgsnapshot_data()
+        body = {'os-reset_status': {'status': constants.STATUS_ERROR}}
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.body = six.b(jsonutils.dumps(body))
+        req.environ['manila.context'] = ctxt
+
+        resp = req.get_response(fakes.app())
+
+        # Validate response code and model status
+        self.assertEqual(valid_code, resp.status_int)
+
+        if valid_code == 404:
+            self.assertRaises(exception.NotFound,
+                              db.cgsnapshot_get,
+                              ctxt,
+                              cgsnap['id'])
+        else:
+            actual_model = db.cgsnapshot_get(ctxt, cgsnap['id'])
+            self.assertEqual(valid_status, actual_model['status'])
