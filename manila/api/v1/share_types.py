@@ -1,3 +1,4 @@
+# Copyright (c) 2011 OpenStack Foundation
 # Copyright (c) 2014 NetApp, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,10 +13,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-"""The share type & share types extra specs extension."""
+"""The share type API controller module.."""
 
 from oslo_utils import strutils
+from oslo_utils import uuidutils
 import six
+import webob
 from webob import exc
 
 from manila.api.openstack import wsgi
@@ -23,20 +26,38 @@ from manila.api.views import types as views_types
 from manila import exception
 from manila.i18n import _
 from manila import policy
+from manila import rpc
 from manila.share import share_types
-
-RESOURCE_NAME = 'share_type'
 
 
 class ShareTypesController(wsgi.Controller):
     """The share types API controller for the OpenStack API."""
 
+    resource_name = 'share_type'
     _view_builder_class = views_types.ViewBuilder
+
+    def __getattr__(self, key):
+        if key == 'os-share-type-access':
+            return self._list_project_access
+        return super(self.__class__, self).__getattr__(key)
+
+    def _notify_share_type_error(self, context, method, payload):
+        rpc.get_notifier('shareType').error(context, method, payload)
+
+    def _check_body(self, body, action_name):
+        if not self.is_valid_body(body, action_name):
+            raise webob.exc.HTTPBadRequest()
+        access = body[action_name]
+        project = access.get('project')
+        if not uuidutils.is_uuid_like(project):
+            msg = _("Bad project format: "
+                    "project is not in proper format (%s)") % project
+            raise webob.exc.HTTPBadRequest(explanation=msg)
 
     def index(self, req):
         """Returns the list of share types."""
         context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'index')
+        policy.check_policy(context, self.resource_name, 'index')
 
         limited_types = self._get_share_types(req)
         req.cache_db_share_types(limited_types)
@@ -45,7 +66,7 @@ class ShareTypesController(wsgi.Controller):
     def show(self, req, id):
         """Return a single share type item."""
         context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'show')
+        policy.check_policy(context, self.resource_name, 'show')
 
         try:
             share_type = share_types.get_share_type(context, id)
@@ -60,7 +81,7 @@ class ShareTypesController(wsgi.Controller):
     def default(self, req):
         """Return default volume type."""
         context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'default')
+        policy.check_policy(context, self.resource_name, 'default')
 
         try:
             share_type = share_types.get_default_share_type(context)
@@ -108,6 +129,148 @@ class ShareTypesController(wsgi.Controller):
             except ValueError:
                 msg = _('Invalid is_public filter [%s]') % is_public
                 raise exc.HTTPBadRequest(explanation=msg)
+
+    @wsgi.action("create")
+    def _create(self, req, body):
+        """Creates a new share type."""
+        context = req.environ['manila.context']
+        self.authorize(context, 'create')
+
+        if not self.is_valid_body(body, 'share_type') and \
+                not self.is_valid_body(body, 'volume_type'):
+            raise webob.exc.HTTPBadRequest()
+
+        elif self.is_valid_body(body, 'share_type'):
+            share_type = body['share_type']
+        else:
+            share_type = body['volume_type']
+        name = share_type.get('name', None)
+        specs = share_type.get('extra_specs', {})
+        is_public = share_type.get('os-share-type-access:is_public', True)
+
+        if name is None or name == "" or len(name) > 255:
+            msg = _("Type name is not valid.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        try:
+            required_extra_specs = (
+                share_types.get_valid_required_extra_specs(specs)
+            )
+        except exception.InvalidExtraSpec as e:
+            raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
+
+        try:
+            share_types.create(context, name, specs, is_public)
+            share_type = share_types.get_share_type_by_name(context, name)
+            share_type['required_extra_specs'] = required_extra_specs
+            req.cache_db_share_type(share_type)
+            notifier_info = dict(share_types=share_type)
+            rpc.get_notifier('shareType').info(
+                context, 'share_type.create', notifier_info)
+
+        except exception.ShareTypeExists as err:
+            notifier_err = dict(share_types=share_type,
+                                error_message=six.text_type(err))
+            self._notify_share_type_error(context, 'share_type.create',
+                                          notifier_err)
+
+            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+        except exception.NotFound as err:
+            notifier_err = dict(share_types=share_type,
+                                error_message=six.text_type(err))
+            self._notify_share_type_error(context, 'share_type.create',
+                                          notifier_err)
+            raise webob.exc.HTTPNotFound()
+
+        return self._view_builder.show(req, share_type)
+
+    @wsgi.action("delete")
+    def _delete(self, req, id):
+        """Deletes an existing share type."""
+        context = req.environ['manila.context']
+        self.authorize(context, 'delete')
+
+        try:
+            share_type = share_types.get_share_type(context, id)
+            share_types.destroy(context, share_type['id'])
+            notifier_info = dict(share_types=share_type)
+            rpc.get_notifier('shareType').info(
+                context, 'share_type.delete', notifier_info)
+        except exception.ShareTypeInUse as err:
+            notifier_err = dict(id=id, error_message=six.text_type(err))
+            self._notify_share_type_error(context, 'share_type.delete',
+                                          notifier_err)
+            msg = 'Target share type is still in use.'
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        except exception.NotFound as err:
+            notifier_err = dict(id=id, error_message=six.text_type(err))
+            self._notify_share_type_error(context, 'share_type.delete',
+                                          notifier_err)
+
+            raise webob.exc.HTTPNotFound()
+
+        return webob.Response(status_int=202)
+
+    def _list_project_access(self, req, id):
+        context = req.environ['manila.context']
+        self.authorize(context, 'list_project_access')
+
+        try:
+            share_type = share_types.get_share_type(
+                context, id, expected_fields=['projects'])
+        except exception.ShareTypeNotFound:
+            explanation = _("Share type %s not found.") % id
+            raise webob.exc.HTTPNotFound(explanation=explanation)
+
+        if share_type['is_public']:
+            expl = _("Access list not available for public share types.")
+            raise webob.exc.HTTPNotFound(explanation=expl)
+
+        # TODO(vponomaryov): move to views.
+        rval = []
+        for project_id in share_type['projects']:
+            rval.append(
+                {'share_type_id': share_type['id'], 'project_id': project_id}
+            )
+        return {'share_type_access': rval}
+
+    @wsgi.action('addProjectAccess')
+    def _add_project_access(self, req, id, body):
+        context = req.environ['manila.context']
+        self.authorize(context, 'add_project_access')
+        self._check_body(body, 'addProjectAccess')
+        project = body['addProjectAccess']['project']
+
+        try:
+            share_type = share_types.get_share_type(context, id)
+
+            if share_type['is_public']:
+                msg = _("Project cannot be added to public share_type.")
+                raise webob.exc.HTTPForbidden(explanation=msg)
+
+        except exception.ShareTypeNotFound as err:
+            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+
+        try:
+            share_types.add_share_type_access(context, id, project)
+        except exception.ShareTypeAccessExists as err:
+            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+
+        return webob.Response(status_int=202)
+
+    @wsgi.action('removeProjectAccess')
+    def _remove_project_access(self, req, id, body):
+        context = req.environ['manila.context']
+        self.authorize(context, 'remove_project_access')
+        self._check_body(body, 'removeProjectAccess')
+        project = body['removeProjectAccess']['project']
+
+        try:
+            share_types.remove_share_type_access(context, id, project)
+        except (exception.ShareTypeNotFound,
+                exception.ShareTypeAccessNotFound) as err:
+            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+        return webob.Response(status_int=202)
 
 
 def create_resource():

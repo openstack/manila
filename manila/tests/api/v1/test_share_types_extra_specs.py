@@ -20,7 +20,7 @@ import mock
 from oslo_utils import strutils
 import webob
 
-from manila.api.contrib import types_extra_specs
+from manila.api.v1 import share_types_extra_specs
 from manila.common import constants
 from manila import exception
 from manila import test
@@ -89,7 +89,8 @@ class ShareTypesExtraSpecsTest(test.TestCase):
         self.flags(host='fake')
         self.mock_object(manila.db, 'share_type_get', share_type_get)
         self.api_path = '/v2/fake/os-share-types/1/extra_specs'
-        self.controller = types_extra_specs.ShareTypeExtraSpecsController()
+        self.controller = (
+            share_types_extra_specs.ShareTypeExtraSpecsController())
 
         """to reset notifier drivers left over from other api/contrib tests"""
         self.addCleanup(fake_notifier.reset)

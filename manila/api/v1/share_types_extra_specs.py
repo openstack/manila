@@ -13,13 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""The share types extra specs extension"""
-
 import six
 import webob
 
 from manila.api import common
-from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila import db
 from manila import exception
@@ -27,11 +24,11 @@ from manila.i18n import _
 from manila import rpc
 from manila.share import share_types
 
-authorize = extensions.extension_authorizer('share', 'types_extra_specs')
-
 
 class ShareTypeExtraSpecsController(wsgi.Controller):
     """The share type extra specs API controller for the OpenStack API."""
+
+    resource_name = 'share_types_extra_spec'
 
     def _get_extra_specs(self, context, type_id):
         extra_specs = db.share_type_extra_specs_get(context, type_id)
@@ -77,13 +74,13 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
     def index(self, req, type_id):
         """Returns the list of extra specs for a given share type."""
         context = req.environ['manila.context']
-        authorize(context)
+        self.authorize(context, 'index')
         self._check_type(context, type_id)
         return self._get_extra_specs(context, type_id)
 
     def create(self, req, type_id, body=None):
         context = req.environ['manila.context']
-        authorize(context)
+        self.authorize(context, 'create')
 
         if not self.is_valid_body(body, 'extra_specs'):
             raise webob.exc.HTTPBadRequest()
@@ -100,7 +97,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
 
     def update(self, req, type_id, id, body=None):
         context = req.environ['manila.context']
-        authorize(context)
+        self.authorize(context, 'update')
         if not body:
             expl = _('Request body empty')
             raise webob.exc.HTTPBadRequest(explanation=expl)
@@ -121,7 +118,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
     def show(self, req, type_id, id):
         """Return a single extra spec item."""
         context = req.environ['manila.context']
-        authorize(context)
+        self.authorize(context, 'show')
         self._check_type(context, type_id)
         specs = self._get_extra_specs(context, type_id)
         if id in specs['extra_specs']:
@@ -133,7 +130,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         """Deletes an existing extra spec."""
         context = req.environ['manila.context']
         self._check_type(context, type_id)
-        authorize(context)
+        self.authorize(context, 'delete')
 
         if id in share_types.get_undeletable_extra_specs():
             msg = _("Extra spec '%s' can't be deleted.") % id
@@ -157,21 +154,5 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=expl)
 
 
-class Types_extra_specs(extensions.ExtensionDescriptor):
-    """Type extra specs support."""
-
-    name = "TypesExtraSpecs"
-    alias = "os-types-extra-specs"
-    updated = "2011-08-24T00:00:00+00:00"
-
-    def get_resources(self):
-        resources = []
-        res = extensions.ResourceExtension(
-            'extra_specs',
-            ShareTypeExtraSpecsController(),
-            parent=dict(member_name='type',
-                        collection_name='types')
-        )
-        resources.append(res)
-
-        return resources
+def create_resource():
+    return wsgi.Resource(ShareTypeExtraSpecsController())
