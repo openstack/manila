@@ -399,11 +399,10 @@ class HDSHNASTestCase(test.TestCase):
                          mock.Mock(return_value=[100, 30]))
 
         self._driver._update_share_stats()
-        self.assertEqual(False,
-                         self._driver._stats['driver_handles_share_servers'])
+        self.assertFalse(self._driver._stats['driver_handles_share_servers'])
         self.assertEqual(100, self._driver._stats['total_capacity_gb'])
         self.assertEqual(30, self._driver._stats['free_capacity_gb'])
         self.assertEqual(0, self._driver._stats['reserved_percentage'])
-        self.assertEqual(True, self._driver._stats['snapshot_support'])
+        self.assertTrue(self._driver._stats['snapshot_support'])
         ssh.HNASSSHBackend.get_stats.assert_called_once_with()
         self.assertTrue(self.mock_log.info.called)

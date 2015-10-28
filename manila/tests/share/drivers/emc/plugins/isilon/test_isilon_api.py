@@ -378,7 +378,7 @@ class IsilonApiTest(test.TestCase):
         r = self.isilon_api.create_snapshot(snapshot_name, snapshot_path)
 
         self.assertEqual(1, len(m.request_history))
-        self.assertEqual(True, r)
+        self.assertTrue(r)
         expected_request_body = json.loads(
             '{{"name": "{0}", "path": "{1}"}}'
             .format(snapshot_name, snapshot_path)

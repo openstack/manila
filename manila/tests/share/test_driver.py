@@ -69,7 +69,7 @@ class ShareDriverTestCase(test.TestCase):
         data = {'DEFAULT': {'driver_handles_share_servers': 'True'}}
         with test_utils.create_temp_config_with_opts(data):
             share_driver = driver.ShareDriver([True, False])
-            self.assertEqual(True, share_driver.driver_handles_share_servers)
+            self.assertTrue(share_driver.driver_handles_share_servers)
 
     def _instantiate_share_driver(self, network_config_group,
                                   driver_handles_share_servers):

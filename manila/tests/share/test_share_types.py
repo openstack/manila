@@ -193,14 +193,14 @@ class ShareTypesTestCase(test.TestCase):
         key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
         actual_result = share_types.is_valid_required_extra_spec(key, value)
 
-        self.assertEqual(True, actual_result)
+        self.assertTrue(actual_result)
 
     @ddt.data('invalid', {}, '0000000000')
     def test_validate_required_extra_spec_invalid(self, value):
         key = constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS
         actual_result = share_types.is_valid_required_extra_spec(key, value)
 
-        self.assertEqual(False, actual_result)
+        self.assertFalse(actual_result)
 
     @ddt.data({constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true'},
               {constants.ExtraSpecs.DRIVER_HANDLES_SHARE_SERVERS: 'true',

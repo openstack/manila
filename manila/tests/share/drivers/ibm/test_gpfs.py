@@ -173,7 +173,7 @@ class GPFSShareDriverTestCase(test.TestCase):
         ]
         for key in expected_keys:
             self.assertIn(key, result)
-        self.assertEqual(False, result['driver_handles_share_servers'])
+        self.assertFalse(result['driver_handles_share_servers'])
         self.assertEqual('IBM', result['vendor_name'])
         self._driver._get_available_capacity.assert_called_once_with(
             self._driver.configuration.gpfs_mount_point_base)

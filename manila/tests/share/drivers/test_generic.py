@@ -542,7 +542,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
-        self.assertEqual(False, result)
+        self.assertFalse(result)
 
     def test_is_device_mounted_false_no_volume_provided(self):
         mount_path = '/fake/mount/path'
@@ -556,7 +556,7 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self._driver._ssh_exec.assert_called_once_with(
             self.server, ['sudo', 'mount'])
-        self.assertEqual(False, result)
+        self.assertFalse(result)
 
     def test_sync_mount_temp_and_perm_files(self):
         self.mock_object(self._driver, '_ssh_exec')
@@ -1365,7 +1365,7 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertNotEqual(fake_stats, result)
         for key in expected_keys:
             self.assertIn(key, result)
-        self.assertEqual(True, result['driver_handles_share_servers'])
+        self.assertTrue(result['driver_handles_share_servers'])
         self.assertEqual('Open Source', result['vendor_name'])
 
     def _setup_manage_mocks(self,

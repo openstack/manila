@@ -358,7 +358,7 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
         result = self._driver._check_hdfs_state()
         self._driver._hdfs_execute.assert_called_once_with(
             'fake_hdfs_bin', 'fsck', '/')
-        self.assertEqual(True, result)
+        self.assertTrue(result)
 
     def test__check_hdfs_state_down(self):
         fake_out = "fakeinfo\n...Status: DOWN"
@@ -366,7 +366,7 @@ class HDFSNativeShareDriverTestCase(test.TestCase):
         result = self._driver._check_hdfs_state()
         self._driver._hdfs_execute.assert_called_once_with(
             'fake_hdfs_bin', 'fsck', '/')
-        self.assertEqual(False, result)
+        self.assertFalse(result)
 
     def test__check_hdfs_state_exception(self):
         self._driver._hdfs_execute = mock.Mock(

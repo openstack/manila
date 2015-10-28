@@ -254,7 +254,7 @@ class ServicesTest(test.TestCase):
         body = {'host': 'host1', 'binary': 'manila-share'}
         req = fakes.HTTPRequest.blank('/v1/fake/os-services/enable')
         res_dict = self.controller.update(req, "enable", body)
-        self.assertEqual(False, res_dict['disabled'])
+        self.assertFalse(res_dict['disabled'])
 
     def test_services_disable(self):
         req = fakes.HTTPRequest.blank('/v1/fake/os-services/disable')
