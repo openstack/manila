@@ -61,3 +61,7 @@ user documentation.
 ---
   Return share_type UUID instead of name in Share API and add share_type_name
   field.
+
+2.7
+---
+  Rename old extension-like API URLs to core-API-like.

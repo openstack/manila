@@ -224,17 +224,25 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
     def _delete(self, context, resource, force=True):
         db.consistency_group_destroy(context.elevated(), resource['id'])
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.4', '2.6', experimental=True)
     @wsgi.action('os-reset_status')
-    @wsgi.response(202)
-    def cg_reset_status(self, req, id, body):
-        super(self.__class__, self)._reset_status(req, id, body)
+    def cg_reset_status_legacy(self, req, id, body):
+        return self._reset_status(req, id, body)
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.7', experimental=True)
+    @wsgi.action('reset_status')
+    def cg_reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    @wsgi.Controller.api_version('2.4', '2.6', experimental=True)
     @wsgi.action('os-force_delete')
-    @wsgi.response(202)
+    def cg_force_delete_legacy(self, req, id, body):
+        return self._force_delete(req, id, body)
+
+    @wsgi.Controller.api_version('2.7', experimental=True)
+    @wsgi.action('force_delete')
     def cg_force_delete(self, req, id, body):
-        super(self.__class__, self)._force_delete(req, id, body)
+        return self._force_delete(req, id, body)
 
 
 def create_resource():

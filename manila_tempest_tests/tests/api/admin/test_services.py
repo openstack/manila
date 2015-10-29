@@ -13,11 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import test  # noqa
+import ddt
+from tempest import test
 
 from manila_tempest_tests.tests.api import base
 
 
+@ddt.ddt
 class ServicesAdminTest(base.BaseSharesAdminTest):
 
     def setUp(self):
@@ -25,60 +27,67 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
         self.services = self.shares_client.list_services()
 
     @test.attr(type=["gate", "smoke", ])
-    def test_list_services(self):
-        services = self.shares_client.list_services()
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_list_services(self, client_name):
+        services = getattr(self, client_name).list_services()
         self.assertNotEqual(0, len(services))
 
         for service in services:
             self.assertIsNotNone(service['id'])
 
     @test.attr(type=["gate", "smoke", ])
-    def test_get_services_by_host_name(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_get_services_by_host_name(self, client_name):
         host = self.services[0]["host"]
         params = {"host": host}
-        services = self.shares_client.list_services(params)
+        services = getattr(self, client_name).list_services(params)
         self.assertNotEqual(0, len(services))
         for service in services:
             self.assertEqual(host, service["host"])
 
     @test.attr(type=["gate", "smoke", ])
-    def test_get_services_by_binary_name(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_get_services_by_binary_name(self, client_name):
         binary = self.services[0]["binary"]
         params = {"binary": binary, }
-        services = self.shares_client.list_services(params)
+        services = getattr(self, client_name).list_services(params)
         self.assertNotEqual(0, len(services))
         for service in services:
             self.assertEqual(binary, service["binary"])
 
     @test.attr(type=["gate", "smoke", ])
-    def test_get_services_by_availability_zone(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_get_services_by_availability_zone(self, client_name):
         zone = self.services[0]["zone"]
         params = {"zone": zone, }
-        services = self.shares_client.list_services(params)
+        services = getattr(self, client_name).list_services(params)
         self.assertNotEqual(0, len(services))
         for service in services:
             self.assertEqual(zone, service["zone"])
 
     @test.attr(type=["gate", "smoke", ])
-    def test_get_services_by_status(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_get_services_by_status(self, client_name):
         status = self.services[0]["status"]
         params = {"status": status, }
-        services = self.shares_client.list_services(params)
+        services = getattr(self, client_name).list_services(params)
         self.assertNotEqual(0, len(services))
         for service in services:
             self.assertEqual(status, service["status"])
 
     @test.attr(type=["gate", "smoke", ])
-    def test_get_services_by_state(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_get_services_by_state(self, client_name):
         state = self.services[0]["state"]
         params = {"state": state, }
-        services = self.shares_client.list_services(params)
+        services = getattr(self, client_name).list_services(params)
         self.assertNotEqual(0, len(services))
         for service in services:
             self.assertEqual(state, service["state"])
 
     @test.attr(type=["gate", "smoke", ])
-    def test_get_services_by_all_filters(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_get_services_by_all_filters(self, client_name):
         params = {
             "host": self.services[0]["host"],
             "binary": self.services[0]["binary"],
@@ -86,7 +95,7 @@ class ServicesAdminTest(base.BaseSharesAdminTest):
             "status": self.services[0]["status"],
             "state": self.services[0]["state"],
         }
-        services = self.shares_client.list_services(params)
+        services = getattr(self, client_name).list_services(params)
         self.assertNotEqual(0, len(services))
         for service in services:
             self.assertEqual(params["host"], service["host"])

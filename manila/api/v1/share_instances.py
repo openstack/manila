@@ -41,6 +41,26 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
     def _delete(self, *args, **kwargs):
         return self.share_api.delete_instance(*args, **kwargs)
 
+    @wsgi.Controller.api_version('2.3', '2.6')
+    @wsgi.action('os-reset_status')
+    def instance_reset_status_legacy(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    @wsgi.Controller.api_version('2.7')
+    @wsgi.action('reset_status')
+    def instance_reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    @wsgi.Controller.api_version('2.3', '2.6')
+    @wsgi.action('os-force_delete')
+    def instance_force_delete_legacy(self, req, id, body):
+        return self._force_delete(req, id, body)
+
+    @wsgi.Controller.api_version('2.7')
+    @wsgi.action('force_delete')
+    def instance_force_delete(self, req, id, body):
+        return self._force_delete(req, id, body)
+
     @wsgi.Controller.api_version("2.3")
     @wsgi.Controller.authorize
     def index(self, req):
@@ -73,18 +93,6 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
 
         view = instance_view.ViewBuilder()
         return view.detail_list(req, share.instances)
-
-    @wsgi.Controller.api_version('2.3')
-    @wsgi.action('os-reset_status')
-    @wsgi.response(202)
-    def share_instance_reset_status(self, req, id, body):
-        super(self.__class__, self)._reset_status(req, id, body)
-
-    @wsgi.Controller.api_version('2.3')
-    @wsgi.action('os-force_delete')
-    @wsgi.response(202)
-    def share_instance_force_delete(self, req, id, body):
-        super(self.__class__, self)._force_delete(req, id, body)
 
 
 def create_resource():

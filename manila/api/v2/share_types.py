@@ -37,7 +37,7 @@ class ShareTypesController(wsgi.Controller):
 
     def __getattr__(self, key):
         if key == 'os-share-type-access':
-            return self._list_project_access
+            return self.share_type_access
         return super(self.__class__, self).__getattr__(key)
 
     def _notify_share_type_error(self, context, method, payload):
@@ -143,7 +143,10 @@ class ShareTypesController(wsgi.Controller):
             share_type = body['volume_type']
         name = share_type.get('name', None)
         specs = share_type.get('extra_specs', {})
-        is_public = share_type.get('os-share-type-access:is_public', True)
+        is_public = share_type.get(
+            'os-share-type-access:is_public',
+            share_type.get('share_type_access:is_public', True),
+        )
 
         if name is None or name == "" or len(name) > 255:
             msg = _("Type name is not valid.")
@@ -209,7 +212,7 @@ class ShareTypesController(wsgi.Controller):
         return webob.Response(status_int=202)
 
     @wsgi.Controller.authorize('list_project_access')
-    def _list_project_access(self, req, id):
+    def share_type_access(self, req, id):
         context = req.environ['manila.context']
 
         try:

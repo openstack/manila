@@ -211,17 +211,25 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
     def _delete(self, context, resource, force=True):
         db.cgsnapshot_destroy(context.elevated(), resource['id'])
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.4', '2.6', experimental=True)
     @wsgi.action('os-reset_status')
-    @wsgi.response(202)
-    def cgsnapshot_reset_status(self, req, id, body):
-        super(self.__class__, self)._reset_status(req, id, body)
+    def cgsnapshot_reset_status_legacy(self, req, id, body):
+        return self._reset_status(req, id, body)
 
-    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.api_version('2.7', experimental=True)
+    @wsgi.action('reset_status')
+    def cgsnapshot_reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    @wsgi.Controller.api_version('2.4', '2.6', experimental=True)
     @wsgi.action('os-force_delete')
-    @wsgi.response(202)
+    def cgsnapshot_force_delete_legacy(self, req, id, body):
+        return self._force_delete(req, id, body)
+
+    @wsgi.Controller.api_version('2.7', experimental=True)
+    @wsgi.action('force_delete')
     def cgsnapshot_force_delete(self, req, id, body):
-        super(self.__class__, self)._force_delete(req, id, body)
+        return self._force_delete(req, id, body)
 
 
 def create_resource():

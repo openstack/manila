@@ -15,7 +15,6 @@ import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 import six
-import webob
 from webob import exc as webob_exc
 
 from manila.api.v1 import share_instances
@@ -48,12 +47,13 @@ class ShareInstancesAPITest(test.TestCase):
     def _get_context(self, role):
         return getattr(self, '%s_context' % role)
 
-    def _setup_share_instance_data(self, instance=None):
+    def _setup_share_instance_data(self, instance=None, version='2.7'):
         if instance is None:
             instance = db_utils.create_share(status=constants.STATUS_AVAILABLE,
                                              size='1').instance
-        req = webob.Request.blank(
-            '/v2/fake/share_instances/%s/action' % instance['id'])
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/share_instances/%s/action' % instance['id'],
+            version=version)
         return instance, req
 
     def _get_request(self, uri, context=None):
@@ -139,11 +139,16 @@ class ShareInstancesAPITest(test.TestCase):
                 webob_exc.HTTPForbidden, target_method, req, *args)
 
     def _reset_status(self, ctxt, model, req, db_access_method,
-                      valid_code, valid_status=None, body=None):
+                      valid_code, valid_status=None, body=None, version='2.7'):
+        if float(version) > 2.6:
+            action_name = 'reset_status'
+        else:
+            action_name = 'os-reset_status'
         if body is None:
-            body = {'os-reset_status': {'status': constants.STATUS_ERROR}}
+            body = {action_name: {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
+        req.headers['X-Openstack-Manila-Api-Version'] = version
         req.body = six.b(jsonutils.dumps(body))
         req.environ['manila.context'] = ctxt
 
@@ -167,29 +172,40 @@ class ShareInstancesAPITest(test.TestCase):
     @ddt.unpack
     def test_share_instances_reset_status_with_different_roles(self, role,
                                                                valid_code,
-                                                               valid_status):
+                                                               valid_status,
+                                                               version):
         ctxt = self._get_context(role)
-        instance, req = self._setup_share_instance_data()
-        req.headers['X-Openstack-Manila-Api-Version'] = '2.3'
+        instance, req = self._setup_share_instance_data(version=version)
 
         self._reset_status(ctxt, instance, req, db.share_instance_get,
-                           valid_code, valid_status)
+                           valid_code, valid_status, version=version)
 
-    @ddt.data(*fakes.fixture_invalid_reset_status_body)
-    def test_share_instance_invalid_reset_status_body(self, body):
+    @ddt.data(
+        ({'os-reset_status': {'x-status': 'bad'}}, '2.6'),
+        ({'os-reset_status': {'status': 'invalid'}}, '2.6'),
+        ({'reset_status': {'x-status': 'bad'}}, '2.7'),
+        ({'reset_status': {'status': 'invalid'}}, '2.7'),
+    )
+    @ddt.unpack
+    def test_share_instance_invalid_reset_status_body(self, body, version):
         instance, req = self._setup_share_instance_data()
-        req.headers['X-Openstack-Manila-Api-Version'] = '2.3'
+        req.headers['X-Openstack-Manila-Api-Version'] = version
 
         self._reset_status(self.admin_context, instance, req,
                            db.share_instance_get, 400,
-                           constants.STATUS_AVAILABLE, body)
+                           constants.STATUS_AVAILABLE, body, version=version)
 
     def _force_delete(self, ctxt, model, req, db_access_method, valid_code,
-                      check_model_in_db=False):
+                      check_model_in_db=False, version='2.7'):
+        if float(version) > 2.6:
+            action_name = 'force_delete'
+        else:
+            action_name = 'os-force_delete'
+        body = {action_name: {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.headers['X-Openstack-Manila-Api-Version'] = '2.3'
-        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
+        req.headers['X-Openstack-Manila-Api-Version'] = version
+        req.body = six.b(jsonutils.dumps(body))
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(
@@ -207,12 +223,13 @@ class ShareInstancesAPITest(test.TestCase):
 
     @ddt.data(*fakes.fixture_force_delete_with_different_roles)
     @ddt.unpack
-    def test_instance_force_delete_with_different_roles(self, role, resp_code):
-        instance, req = self._setup_share_instance_data()
+    def test_instance_force_delete_with_different_roles(self, role, resp_code,
+                                                        version):
+        instance, req = self._setup_share_instance_data(version=version)
         ctxt = self._get_context(role)
 
         self._force_delete(ctxt, instance, req, db.share_instance_get,
-                           resp_code)
+                           resp_code, version=version)
 
     def test_instance_force_delete_missing(self):
         instance, req = self._setup_share_instance_data(

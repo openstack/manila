@@ -390,21 +390,26 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
     def _get_context(self, role):
         return getattr(self, '%s_context' % role)
 
-    def _setup_snapshot_data(self, snapshot=None):
+    def _setup_snapshot_data(self, snapshot=None, version='2.7'):
         if snapshot is None:
             share = db_utils.create_share()
             snapshot = db_utils.create_snapshot(
                 status=constants.STATUS_AVAILABLE, share_id=share['id'])
-        req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
-                                  snapshot['id'])
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots/%s/action' %
+                                      snapshot['id'], version=version)
         return snapshot, req
 
     def _reset_status(self, ctxt, model, req, db_access_method,
-                      valid_code, valid_status=None, body=None):
+                      valid_code, valid_status=None, body=None, version='2.7'):
+        if float(version) > 2.6:
+            action_name = 'reset_status'
+        else:
+            action_name = 'os-reset_status'
         if body is None:
-            body = {'os-reset_status': {'status': constants.STATUS_ERROR}}
+            body = {action_name: {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
+        req.headers['X-Openstack-Manila-Api-Version'] = version
         req.body = six.b(jsonutils.dumps(body))
         req.environ['manila.context'] = ctxt
 
@@ -425,25 +430,37 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
     @ddt.data(*fakes.fixture_reset_status_with_different_roles)
     @ddt.unpack
     def test_snapshot_reset_status_with_different_roles(self, role, valid_code,
-                                                        valid_status):
+                                                        valid_status, version):
         ctxt = self._get_context(role)
-        snapshot, req = self._setup_snapshot_data()
+        snapshot, req = self._setup_snapshot_data(version=version)
 
         self._reset_status(ctxt, snapshot, req, db.share_snapshot_get,
-                           valid_code, valid_status)
+                           valid_code, valid_status, version=version)
 
-    @ddt.data(*fakes.fixture_invalid_reset_status_body)
-    def test_snapshot_invalid_reset_status_body(self, body):
-        snapshot, req = self._setup_snapshot_data()
+    @ddt.data(
+        ({'os-reset_status': {'x-status': 'bad'}}, '2.6'),
+        ({'reset_status': {'x-status': 'bad'}}, '2.7'),
+        ({'os-reset_status': {'status': 'invalid'}}, '2.6'),
+        ({'reset_status': {'status': 'invalid'}}, '2.7'),
+    )
+    @ddt.unpack
+    def test_snapshot_invalid_reset_status_body(self, body, version):
+        snapshot, req = self._setup_snapshot_data(version=version)
 
         self._reset_status(self.admin_context, snapshot, req,
                            db.share_snapshot_get, 400,
-                           constants.STATUS_AVAILABLE, body)
+                           constants.STATUS_AVAILABLE, body, version=version)
 
-    def _force_delete(self, ctxt, model, req, db_access_method, valid_code):
+    def _force_delete(self, ctxt, model, req, db_access_method, valid_code,
+                      version='2.7'):
+        if float(version) > 2.6:
+            action_name = 'force_delete'
+        else:
+            action_name = 'os-force_delete'
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
+        req.headers['X-Openstack-Manila-Api-Version'] = version
+        req.body = six.b(jsonutils.dumps({action_name: {}}))
         req.environ['manila.context'] = ctxt
 
         resp = req.get_response(fakes.app())
@@ -453,12 +470,13 @@ class ShareSnapshotAdminActionsAPITest(test.TestCase):
 
     @ddt.data(*fakes.fixture_force_delete_with_different_roles)
     @ddt.unpack
-    def test_snapshot_force_delete_with_different_roles(self, role, resp_code):
+    def test_snapshot_force_delete_with_different_roles(self, role, resp_code,
+                                                        version):
         ctxt = self._get_context(role)
-        snapshot, req = self._setup_snapshot_data()
+        snapshot, req = self._setup_snapshot_data(version=version)
 
         self._force_delete(ctxt, snapshot, req, db.share_snapshot_get,
-                           resp_code)
+                           resp_code, version=version)
 
     def test_snapshot_force_delete_missing(self):
         ctxt = self._get_context('admin')

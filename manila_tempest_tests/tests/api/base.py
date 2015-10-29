@@ -26,6 +26,7 @@ from tempest import config
 from tempest import test
 from tempest_lib.common.utils import data_utils
 from tempest_lib import exceptions
+import testtools
 
 from manila_tempest_tests import clients_share as clients
 from manila_tempest_tests import share_exceptions
@@ -89,6 +90,21 @@ def network_synchronized(f):
     return wrapped_func
 
 
+def is_microversion_supported(microversion):
+    if (float(microversion) > float(CONF.share.max_api_microversion) or
+            float(microversion) < float(CONF.share.min_api_microversion)):
+        return False
+    return True
+
+
+def skip_if_microversion_not_supported(microversion):
+    """Decorator for tests that are microversion-specific."""
+    if not is_microversion_supported(microversion):
+        reason = ("Skipped. Test requires microversion '%s'." % microversion)
+        return testtools.skip(reason)
+    return lambda f: f
+
+
 class BaseSharesTest(test.BaseTestCase):
     """Base test case class for all Manila API tests."""
 
@@ -106,6 +122,11 @@ class BaseSharesTest(test.BaseTestCase):
 
     # Will be cleaned up in tearDown method
     method_isolated_creds = []
+
+    def skip_if_microversion_not_supported(self, microversion):
+        if not is_microversion_supported(microversion):
+            raise self.skipException(
+                "Microversion '%s' is not supported." % microversion)
 
     @classmethod
     def get_client_with_isolated_creds(cls,
@@ -525,7 +546,7 @@ class BaseSharesTest(test.BaseTestCase):
     def create_share_type(cls, name, is_public=True, client=None,
                           cleanup_in_class=True, **kwargs):
         if client is None:
-            client = cls.shares_client
+            client = cls.shares_v2_client
         share_type = client.create_share_type(name, is_public, **kwargs)
         resource = {
             "type": "share_type",
