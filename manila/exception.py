@@ -599,15 +599,15 @@ class EMCVnxInvalidMoverID(ManilaException):
     message = _("Invalid mover or vdm %(id)s.")
 
 
-class HP3ParInvalidClient(Invalid):
+class HPE3ParInvalidClient(Invalid):
     message = _("%(err)s")
 
 
-class HP3ParInvalid(Invalid):
+class HPE3ParInvalid(Invalid):
     message = _("%(err)s")
 
 
-class HP3ParUnexpectedError(ManilaException):
+class HPE3ParUnexpectedError(ManilaException):
     message = _("%(err)s")
 
 

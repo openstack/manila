@@ -1,4 +1,4 @@
-# Copyright 2015 Hewlett Packard Development Company, L.P.
+# Copyright 2015 Hewlett Packard Enterprise Development LP
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,60 +16,60 @@ import sys
 
 import ddt
 import mock
-if 'hp3parclient' not in sys.modules:
-    sys.modules['hp3parclient'] = mock.Mock()
+if 'hpe3parclient' not in sys.modules:
+    sys.modules['hpe3parclient'] = mock.Mock()
 
 from manila import exception
-from manila.share.drivers.hp import hp_3par_mediator as hp3parmediator
+from manila.share.drivers.hpe import hpe_3par_mediator as hpe3parmediator
 from manila import test
-from manila.tests.share.drivers.hp import test_hp_3par_constants as constants
+from manila.tests.share.drivers.hpe import test_hpe_3par_constants as constants
 
 from oslo_utils import units
 import six
 
-CLIENT_VERSION_MIN_OK = hp3parmediator.MIN_CLIENT_VERSION
+CLIENT_VERSION_MIN_OK = hpe3parmediator.MIN_CLIENT_VERSION
 TEST_WSAPI_VERSION_STR = '30201292'
 
 
 @ddt.ddt
-class HP3ParMediatorTestCase(test.TestCase):
+class HPE3ParMediatorTestCase(test.TestCase):
 
     def setUp(self):
-        super(HP3ParMediatorTestCase, self).setUp()
+        super(HPE3ParMediatorTestCase, self).setUp()
 
         # This is the fake client to use.
         self.mock_client = mock.Mock()
 
-        # Take over the hp3parclient module and stub the constructor.
-        hp3parclient = sys.modules['hp3parclient']
-        hp3parclient.version_tuple = CLIENT_VERSION_MIN_OK
+        # Take over the hpe3parclient module and stub the constructor.
+        hpe3parclient = sys.modules['hpe3parclient']
+        hpe3parclient.version_tuple = CLIENT_VERSION_MIN_OK
 
         # Need a fake constructor to return the fake client.
         # This is also be used for constructor error tests.
-        self.mock_object(hp3parclient.file_client, 'HP3ParFilePersonaClient')
+        self.mock_object(hpe3parclient.file_client, 'HPE3ParFilePersonaClient')
         self.mock_client_constructor = (
-            hp3parclient.file_client.HP3ParFilePersonaClient
+            hpe3parclient.file_client.HPE3ParFilePersonaClient
         )
         self.mock_client = self.mock_client_constructor()
 
         # Set the mediator to use in tests.
-        self.mediator = hp3parmediator.HP3ParMediator(
-            hp3par_username=constants.USERNAME,
-            hp3par_password=constants.PASSWORD,
-            hp3par_api_url=constants.API_URL,
-            hp3par_debug=constants.EXPECTED_HP_DEBUG,
-            hp3par_san_ip=constants.EXPECTED_IP_1234,
-            hp3par_san_login=constants.SAN_LOGIN,
-            hp3par_san_password=constants.SAN_PASSWORD,
-            hp3par_san_ssh_port=constants.PORT,
+        self.mediator = hpe3parmediator.HPE3ParMediator(
+            hpe3par_username=constants.USERNAME,
+            hpe3par_password=constants.PASSWORD,
+            hpe3par_api_url=constants.API_URL,
+            hpe3par_debug=constants.EXPECTED_HPE_DEBUG,
+            hpe3par_san_ip=constants.EXPECTED_IP_1234,
+            hpe3par_san_login=constants.SAN_LOGIN,
+            hpe3par_san_password=constants.SAN_PASSWORD,
+            hpe3par_san_ssh_port=constants.PORT,
             ssh_conn_timeout=constants.TIMEOUT)
 
     def test_mediator_no_client(self):
-        """Test missing hp3parclient error."""
+        """Test missing hpe3parclient error."""
 
-        self.mock_object(hp3parmediator.HP3ParMediator, 'no_client', None)
+        self.mock_object(hpe3parmediator.HPE3ParMediator, 'no_client', None)
 
-        self.assertRaises(exception.HP3ParInvalidClient,
+        self.assertRaises(exception.HPE3ParInvalidClient,
                           self.mediator.do_setup)
 
     def test_mediator_setup_client_init_error(self):
@@ -154,7 +154,7 @@ class HP3ParMediatorTestCase(test.TestCase):
                                     port=constants.PORT,
                                     conn_timeout=constants.TIMEOUT),
             mock.call.getWsApiVersion(),
-            mock.call.debug_rest(constants.EXPECTED_HP_DEBUG)
+            mock.call.debug_rest(constants.EXPECTED_HPE_DEBUG)
         ]
         self.mock_client.assert_has_calls(expected_calls)
 
@@ -175,7 +175,7 @@ class HP3ParMediatorTestCase(test.TestCase):
         """Test exception during logout."""
         self.init_mediator()
 
-        mock_log = self.mock_object(hp3parmediator, 'LOG')
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
         fake_exception = constants.FAKE_EXCEPTION
         self.mock_client.http.unauthenticate.side_effect = fake_exception
 
@@ -189,21 +189,21 @@ class HP3ParMediatorTestCase(test.TestCase):
     def test_mediator_client_version_unsupported(self):
         """Try a client with version less than minimum."""
 
-        self.hp3parclient = sys.modules['hp3parclient']
-        self.hp3parclient.version_tuple = (CLIENT_VERSION_MIN_OK[0],
-                                           CLIENT_VERSION_MIN_OK[1],
-                                           CLIENT_VERSION_MIN_OK[2] - 1)
-        self.assertRaises(exception.HP3ParInvalidClient,
+        self.hpe3parclient = sys.modules['hpe3parclient']
+        self.hpe3parclient.version_tuple = (CLIENT_VERSION_MIN_OK[0],
+                                            CLIENT_VERSION_MIN_OK[1],
+                                            CLIENT_VERSION_MIN_OK[2] - 1)
+        self.assertRaises(exception.HPE3ParInvalidClient,
                           self.init_mediator)
 
     def test_mediator_client_version_supported(self):
         """Try a client with a version greater than the minimum."""
 
         # The setup success already tests the min version.  Try version > min.
-        self.hp3parclient = sys.modules['hp3parclient']
-        self.hp3parclient.version_tuple = (CLIENT_VERSION_MIN_OK[0],
-                                           CLIENT_VERSION_MIN_OK[1],
-                                           CLIENT_VERSION_MIN_OK[2] + 1)
+        self.hpe3parclient = sys.modules['hpe3parclient']
+        self.hpe3parclient.version_tuple = (CLIENT_VERSION_MIN_OK[0],
+                                            CLIENT_VERSION_MIN_OK[1],
+                                            CLIENT_VERSION_MIN_OK[2] + 1)
         self.init_mediator()
         expected_calls = [
             mock.call.setSSHOptions(constants.EXPECTED_IP_1234,
@@ -212,7 +212,7 @@ class HP3ParMediatorTestCase(test.TestCase):
                                     port=constants.PORT,
                                     conn_timeout=constants.TIMEOUT),
             mock.call.getWsApiVersion(),
-            mock.call.debug_rest(constants.EXPECTED_HP_DEBUG)
+            mock.call.debug_rest(constants.EXPECTED_HPE_DEBUG)
         ]
         self.mock_client.assert_has_calls(expected_calls)
 
@@ -251,7 +251,7 @@ class HP3ParMediatorTestCase(test.TestCase):
             createfshare_kwargs['clientip'] = '127.0.0.1'
 
             # Options from extra-specs.
-            opt_string = extra_specs.get('hp3par:nfs_options', [])
+            opt_string = extra_specs.get('hpe3par:nfs_options', [])
             opt_list = opt_string.split(',')
             # Options that the mediator adds.
             nfs_options = ['rw', 'no_root_squash', 'insecure']
@@ -282,18 +282,14 @@ class HP3ParMediatorTestCase(test.TestCase):
         else:
             createfshare_kwargs['allowip'] = '127.0.0.1'
 
-            if client_version < hp3parmediator.MIN_SMB_CA_VERSION:
-                smb_opts = (hp3parmediator.ACCESS_BASED_ENUM,
-                            hp3parmediator.CACHE)
-            else:
-                smb_opts = (hp3parmediator.ACCESS_BASED_ENUM,
-                            hp3parmediator.CONTINUOUS_AVAIL,
-                            hp3parmediator.CACHE)
+            smb_opts = (hpe3parmediator.ACCESS_BASED_ENUM,
+                        hpe3parmediator.CONTINUOUS_AVAIL,
+                        hpe3parmediator.CACHE)
 
             for smb_opt in smb_opts:
-                opt_value = extra_specs.get('hp3par:smb_%s' % smb_opt)
+                opt_value = extra_specs.get('hpe3par:smb_%s' % smb_opt)
                 if opt_value:
-                    opt_key = hp3parmediator.SMB_EXTRA_SPECS_MAP[smb_opt]
+                    opt_key = hpe3parmediator.SMB_EXTRA_SPECS_MAP[smb_opt]
                     createfshare_kwargs[opt_key] = opt_value
 
             expected_calls = [
@@ -320,25 +316,19 @@ class HP3ParMediatorTestCase(test.TestCase):
     def _build_smb_extra_specs(**kwargs):
         extra_specs = {'driver_handles_share_servers': False}
         for k, v in kwargs.items():
-            extra_specs['hp3par:smb_%s' % k] = v
+            extra_specs['hpe3par:smb_%s' % k] = v
         return extra_specs
 
-    @ddt.data(((3, 2, 1), None, None, None),
-              ((3, 2, 1), 'true', None, None),
-              ((3, 2, 1), None, 'false', None),
-              ((3, 2, 1), None, 'false', None),
-              ((3, 2, 1), None, None, 'optimized'),
-              ((3, 2, 1), 'true', 'false', 'optimized'),
-              ((3, 2, 2), None, None, None),
-              ((3, 2, 2), 'true', None, None),
-              ((3, 2, 2), None, 'false', None),
-              ((3, 2, 2), None, 'false', None),
-              ((3, 2, 2), None, None, 'optimized'),
-              ((3, 2, 2), 'true', 'false', 'optimized'))
+    @ddt.data(((4, 0, 0), None, None, None),
+              ((4, 0, 0), 'true', None, None),
+              ((4, 0, 0), None, 'false', None),
+              ((4, 0, 0), None, 'false', None),
+              ((4, 0, 0), None, None, 'optimized'),
+              ((4, 0, 0), 'true', 'false', 'optimized'))
     @ddt.unpack
     def test_mediator_create_cifs_share(self, client_version, abe, ca, cache):
-        self.hp3parclient = sys.modules['hp3parclient']
-        self.hp3parclient.version_tuple = client_version
+        self.hpe3parclient = sys.modules['hpe3parclient']
+        self.hpe3parclient.version_tuple = client_version
         self.init_mediator()
 
         self.mock_client.getfshare.return_value = {
@@ -384,7 +374,7 @@ class HP3ParMediatorTestCase(test.TestCase):
     def test_mediator_create_nfs_share_bad_options(self, nfs_options):
         self.init_mediator()
 
-        extra_specs = {'hp3par:nfs_options': nfs_options}
+        extra_specs = {'hpe3par:nfs_options': nfs_options}
 
         self.assertRaises(exception.InvalidInput,
                           self.mediator.create_share,
@@ -411,7 +401,7 @@ class HP3ParMediatorTestCase(test.TestCase):
 
         self.mock_client.getfsquota.return_value = constants.GET_FSQUOTA
 
-        extra_specs = {'hp3par:nfs_options': nfs_options}
+        extra_specs = {'hpe3par:nfs_options': nfs_options}
 
         location = self.mediator.create_share(constants.EXPECTED_PROJECT_ID,
                                               constants.EXPECTED_SHARE_ID,
@@ -424,7 +414,7 @@ class HP3ParMediatorTestCase(test.TestCase):
         self.assertEqual(constants.EXPECTED_SHARE_PATH, location)
 
         expected_calls = self.get_expected_calls_for_create_share(
-            hp3parmediator.MIN_CLIENT_VERSION,
+            hpe3parmediator.MIN_CLIENT_VERSION,
             constants.EXPECTED_FPG,
             constants.EXPECTED_VFS,
             constants.NFS.lower(),
@@ -853,7 +843,7 @@ class HP3ParMediatorTestCase(test.TestCase):
         # startfsnapclean exception (logged, not raised)
         self.mock_client.startfsnapclean.side_effect = Exception(
             'startfsnapclean fail.')
-        mock_log = self.mock_object(hp3parmediator, 'LOG')
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
 
         self.mediator.delete_snapshot(constants.EXPECTED_PROJECT_ID,
                                       constants.EXPECTED_SHARE_ID,
@@ -917,10 +907,11 @@ class HP3ParMediatorTestCase(test.TestCase):
         }
 
         self.mock_client.getVolume.return_value = {
-            'provisioningType': hp3parmediator.DEDUPE}
+            'provisioningType': hpe3parmediator.DEDUPE}
 
         expected_result = {
             'free_capacity_gb': expected_free,
+            'hpe3par_flash_cache': False,
             'hp3par_flash_cache': False,
             'dedupe': True,
             'thin_provisioning': True,
@@ -1163,7 +1154,7 @@ class HP3ParMediatorTestCase(test.TestCase):
         """"Allow user access to nfs share is not supported."""
         self.init_mediator()
 
-        self.assertRaises(exception.HP3ParInvalid,
+        self.assertRaises(exception.HPE3ParInvalid,
                           self.mediator.allow_access,
                           constants.EXPECTED_PROJECT_ID,
                           constants.EXPECTED_SHARE_ID,
@@ -1207,13 +1198,13 @@ class HP3ParMediatorTestCase(test.TestCase):
     def test_other_protocol(self, protocols, expected_other):
         for protocol in protocols:
             self.assertEqual(expected_other,
-                             hp3parmediator.HP3ParMediator().other_protocol(
+                             hpe3parmediator.HPE3ParMediator().other_protocol(
                                  protocol))
 
     @ddt.data('', 'bogus')
     def test_other_protocol_exception(self, protocol):
         self.assertRaises(exception.InvalidInput,
-                          hp3parmediator.HP3ParMediator().other_protocol,
+                          hpe3parmediator.HPE3ParMediator().other_protocol,
                           protocol)
 
     @ddt.data(('osf-uid', None, 'osf-uid'),
@@ -1223,7 +1214,7 @@ class HP3ParMediatorTestCase(test.TestCase):
     @ddt.unpack
     def test_ensure_prefix(self, uid, protocol, expected):
         self.assertEqual(expected,
-                         hp3parmediator.HP3ParMediator().ensure_prefix(
+                         hpe3parmediator.HPE3ParMediator().ensure_prefix(
                              uid, protocol=protocol))
 
     def test_find_fstore_search(self):

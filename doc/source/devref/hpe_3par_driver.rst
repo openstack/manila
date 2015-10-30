@@ -13,16 +13,21 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-HP 3PAR Driver
+HPE 3PAR Driver
 ==============
 
-The HP 3PAR Manila driver provides NFS and CIFS shared file systems to
-OpenStack using HP 3PAR's File Persona capabilities.
+The HPE 3PAR Manila driver provides NFS and CIFS shared file systems to
+OpenStack using HPE 3PAR's File Persona capabilities.
+
+.. note::
+    In OpenStack releases prior to Mitaka this driver was called the
+    HP 3PAR driver. The Liberty configuration reference can be found
+    at: http://docs.openstack.org/liberty/config-reference/content/hp-3par-share-driver.html
 
 Supported Operations
 --------------------
 
-The following operations are supported with HP 3PAR File Persona:
+The following operations are supported with HPE 3PAR File Persona:
 
 - Create/delete NFS and CIFS shares
 
@@ -58,18 +63,18 @@ Requirements
 
 On the system running the Manila share service:
 
-- hp3parclient version 3.2.1 or newer from PyPI
+- python-3parclient 4.0.0 or newer from PyPI.
 
-On the HP 3PAR array:
+On the HPE 3PAR array:
 
-- HP 3PAR Operating System software version 3.2.1 MU3 or higher
+- HPE 3PAR Operating System software version 3.2.1 MU3 or higher
 - A license that enables the File Persona feature
 - The array class and hardware configuration must support File Persona
 
-Pre-Configuration on the HP 3PAR
+Pre-Configuration on the HPE 3PAR
 --------------------------------
 
-- HP 3PAR File Persona must be initialized and started (:code:`startfs`)
+- HPE 3PAR File Persona must be initialized and started (:code:`startfs`)
 - A File Provisioning Group (FPG) must be created for use with Manila
 - A Virtual File Server (VFS) must be created for the FPG
 - The VFS must be configured with an appropriate share export IP address
@@ -79,22 +84,22 @@ Backend Configuration
 ---------------------
 
 The following parameters need to be configured in the Manila configuration
-file for the HP 3PAR driver:
+file for the HPE 3PAR driver:
 
 - `share_backend_name` = <backend name to enable>
-- `share_driver` = manila.share.drivers.hp.hp_3par_driver.HP3ParShareDriver
+- `share_driver` = manila.share.drivers.hpe.hpe_3par_driver.HPE3ParShareDriver
 - `driver_handles_share_servers` = False
-- `hp3par_fpg` = <FPG to use for share creation>
-- `hp3par_share_ip_address` = <IP address to use for share export location>
-- `hp3par_san_ip` = <IP address for SSH access to the SAN controller>
-- `hp3par_api_url` = <3PAR WS API Server URL>
-- `hp3par_username` = <3PAR username with the 'edit' role>
-- `hp3par_password` = <3PAR password for the user specified in hp3par_username>
-- `hp3par_san_login` = <Username for SSH access to the SAN controller>
-- `hp3par_san_password` = <Password for SSH access to the SAN controller>
-- `hp3par_debug` = <False or True for extra debug logging>
+- `hpe3par_fpg` = <FPG to use for share creation>
+- `hpe3par_share_ip_address` = <IP address to use for share export location>
+- `hpe3par_san_ip` = <IP address for SSH access to the SAN controller>
+- `hpe3par_api_url` = <3PAR WS API Server URL>
+- `hpe3par_username` = <3PAR username with the 'edit' role>
+- `hpe3par_password` = <3PAR password for the user specified in hpe3par_username>
+- `hpe3par_san_login` = <Username for SSH access to the SAN controller>
+- `hpe3par_san_password` = <Password for SSH access to the SAN controller>
+- `hpe3par_debug` = <False or True for extra debug logging>
 
-The `hp3par_share_ip_address` must be a valid IP address for the configured
+The `hpe3par_share_ip_address` must be a valid IP address for the configured
 FPG's VFS. This IP address is used in export locations for shares that are
 created. Networking must be configured to allow connectivity from clients to
 shares.
@@ -127,23 +132,23 @@ Manila requires that the share type includes the
 `driver_handles_share_servers` extra-spec. This ensures that the share
 will be created on a backend that supports the requested
 driver_handles_share_servers (share networks) capability.
-For the HP 3PAR driver, this must be set to False.
+For the HPE 3PAR driver, this must be set to False.
 
 Another common Manila extra-spec used to determine where a share is created
 is `share_backend_name`. When this extra-spec is defined in the share type,
 the share will be created on a backend with a matching share_backend_name.
 
-The HP 3PAR driver automatically reports capabilities based on the FPG used
+The HPE 3PAR driver automatically reports capabilities based on the FPG used
 for each backend. Share types with extra specs can be created by an
 administrator to control which share types are allowed to use FPGs with or
 without specific capabilities. The following extra-specs are used with
-the capabilities filter and the HP 3PAR driver:
+the capabilities filter and the HPE 3PAR driver:
 
-- `hp3par_flash_cache` = '<is> True' or '<is> False'
+- `hpe3par_flash_cache` = '<is> True' or '<is> False'
 - `thin_provisioning` = '<is> True' or '<is> False'
 - `dedupe` = '<is> True' or '<is> False'
 
-`hp3par_flash_cache` will be reported as True for backends that have
+`hpe3par_flash_cache` will be reported as True for backends that have
 3PAR's Adaptive Flash Cache enabled.
 
 `thin_provisioning` will be reported as True for backends that use thin
@@ -155,14 +160,16 @@ over-subscription feature.
 technology.
 
 Scoped extra-specs are used to influence vendor-specific implementation
-details. Scoped extra-specs use a prefix followed by a colon.  For HP 3PAR
-these extra-specs have a prefix of `hp3par`.
+details. Scoped extra-specs use a prefix followed by a colon.  For HPE 3PAR
+these extra-specs have a prefix of `hpe3par`. For HP 3PAR these extra-specs
+have a prefix of `hp3par`.
 
-The following HP 3PAR extra-specs are used when creating CIFS (SMB) shares:
+The following HPE 3PAR extra-specs are used when creating CIFS (SMB) shares:
 
-- `hp3par:smb_access_based_enum` = true or false
-- `hp3par:smb_continuous_avail` = true or false
-- `hp3par:smb_cache` = off, manual, optimized or auto
+- `hpe3par:smb_access_based_enum` = true or false
+- `hpe3par:smb_continuous_avail` = true or false
+- `hpe3par:smb_cache` = off, manual, optimized or auto
+
 
 `smb_access_based_enum` (Access Based Enumeration) specifies if users can see
 only the files and directories to which they have been allowed access on the
@@ -188,25 +195,25 @@ or earlier.
   documents.
 * If this is not specified, the default is `manual`.
 
-The following HP 3PAR extra-specs are used when creating NFS shares:
+The following HPE 3PAR extra-specs are used when creating NFS shares:
 
-- `hp3par:nfs_options` = Comma separated list of NFS export options
+- `hpe3par:nfs_options` = Comma separated list of NFS export options
 
 The NFS export options have the following limitations:
 
   * `ro` and `rw` are not allowed (Manila will determine the read-only option)
-  * `no_subtree_check` and `fsid` are not allowed per HP 3PAR CLI support
-  * `(in)secure` and `(no_)root_squash` are not allowed because the HP 3PAR
+  * `no_subtree_check` and `fsid` are not allowed per HPE 3PAR CLI support
+  * `(in)secure` and `(no_)root_squash` are not allowed because the HPE 3PAR
     driver controls those settings
 
-All other NFS options are forwarded to the HP 3PAR as part of share creation.
-The HP 3PAR will do additional validation at share creation time. Refer to
-HP 3PAR CLI help for more details.
+All other NFS options are forwarded to the HPE 3PAR as part of share creation.
+The HPE 3PAR will do additional validation at share creation time. Refer to
+HPE 3PAR CLI help for more details.
 
-The :mod:`manila.share.drivers.hp.hp_3par_driver` Module
+The :mod:`manila.share.drivers.hpe.hpe_3par_driver` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.hp.hp_3par_driver
+.. automodule:: manila.share.drivers.hpe.hpe_3par_driver
     :noindex:
     :members:
     :undoc-members:
