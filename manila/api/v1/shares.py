@@ -225,13 +225,13 @@ class ShareController(wsgi.Controller):
 
         share = body['share']
 
-        # NOTE(rushiagr): v2 API allows name instead of display_name
+        # NOTE(rushiagr): Manila API allows 'name' instead of 'display_name'.
         if share.get('name'):
             share['display_name'] = share.get('name')
             del share['name']
 
-        # NOTE(rushiagr): v2 API allows description instead of
-        #                display_description
+        # NOTE(rushiagr): Manila API allows 'description' instead of
+        #                 'display_description'.
         if share.get('description'):
             share['display_description'] = share.get('description')
             del share['description']
