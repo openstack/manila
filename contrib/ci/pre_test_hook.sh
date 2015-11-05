@@ -59,7 +59,7 @@ echo 'ENABLE_ISOLATED_METADATA=True' >> $localrc_path
 
 # Go to Tempest dir and checkout stable commit to avoid possible
 # incompatibilities for plugin stored in Manila repo.
-TEMPEST_COMMIT="3b1bb9be3265f"  # 28 Aug, 2015
+TEMPEST_COMMIT="c43c8f91"  # 05 Nov, 2015
 cd $BASE/new/tempest
 git checkout $TEMPEST_COMMIT
 
