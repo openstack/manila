@@ -19,6 +19,8 @@
     "share:get_all_snapshots": "",
     "share:extend": "",
     "share:shrink": "",
+    "share:manage": "rule:admin_api",
+    "share:unmanage": "rule:admin_api",
 
     "share_type:index": "rule:default",
     "share_type:show": "rule:default",
@@ -58,8 +60,6 @@
     "share_extension:share_type_access": "",
     "share_extension:share_type_access:addProjectAccess": "rule:admin_api",
     "share_extension:share_type_access:removeProjectAccess": "rule:admin_api",
-    "share_extension:manage": "rule:admin_api",
-    "share_extension:unmanage": "rule:admin_api",
     "share_extension:availability_zones": "",
 
      "security_service:index": "",

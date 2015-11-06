@@ -17,29 +17,30 @@ import six
 import webob
 from webob import exc
 
-from manila.api import extensions
 from manila.api.openstack import wsgi
 from manila.common import constants
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LI
+from manila.i18n import _, _LI
 from manila import share
-
-authorize = extensions.extension_authorizer('share', 'unmanage')
 
 LOG = log.getLogger(__name__)
 
 
 class ShareUnmanageController(wsgi.Controller):
+    """The Unmanage API controller for the OpenStack API."""
+
+    resource_name = "share"
+
     def __init__(self, *args, **kwargs):
-        super(ShareUnmanageController, self).__init__(*args, **kwargs)
+        super(self.__class__, self).__init__(*args, **kwargs)
         self.share_api = share.API()
 
-    @wsgi.action('create')
+    @wsgi.action("unmanage")
     def unmanage(self, req, id):
         """Unmanage a share."""
+        # TODO(vponomaryov): move it to shares controller as 'unmanage' action.
         context = req.environ['manila.context']
-        authorize(context)
+        self.authorize(req.environ['manila.context'], 'unmanage')
 
         LOG.info(_LI("Unmanage share with id: %s"), id, context=context)
 
@@ -71,16 +72,5 @@ class ShareUnmanageController(wsgi.Controller):
         return webob.Response(status_int=202)
 
 
-class Share_unmanage(extensions.ExtensionDescriptor):
-    """Enable share unmanage operation."""
-
-    name = 'ShareUnmanage'
-    alias = 'os-share-unmanage'
-    updated = '2015-02-17T00:00:00+00:00'
-
-    def get_resources(self):
-        controller = ShareUnmanageController()
-        res = extensions.ResourceExtension(Share_unmanage.alias,
-                                           controller,
-                                           member_actions={"unmanage": "POST"})
-        return [res]
+def create_resource():
+    return wsgi.Resource(ShareUnmanageController())

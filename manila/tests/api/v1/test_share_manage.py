@@ -17,7 +17,7 @@ import ddt
 import mock
 import webob
 
-from manila.api.contrib import share_manage
+from manila.api.v1 import share_manage
 from manila.db import api as db_api
 from manila import exception
 from manila.share import api as share_api
@@ -165,7 +165,7 @@ class ShareManageTest(test.TestCase):
     def test_wrong_permissions(self):
         body = get_fake_manage_body()
 
-        self.assertRaises(exception.PolicyNotAuthorized,
+        self.assertRaises(webob.exc.HTTPForbidden,
                           self.controller.create,
                           fakes.HTTPRequest.blank('/share/manage',
                                                   use_admin_context=False),
