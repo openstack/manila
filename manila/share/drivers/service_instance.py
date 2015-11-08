@@ -125,7 +125,6 @@ common_opts = [
         help="User in service instance that will be used for authentication."),
     cfg.StrOpt(
         "service_instance_password",
-        default=None,
         secret=True,
         help="Password for service instance user."),
     cfg.StrOpt(

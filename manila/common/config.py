@@ -115,10 +115,8 @@ global_opts = [
                default='nova',
                help='Availability zone of this node.'),
     cfg.StrOpt('default_share_type',
-               default=None,
                help='Default share type to use.'),
     cfg.ListOpt('memcached_servers',
-                default=None,
                 help='Memcached servers or None for in process cache.'),
     cfg.StrOpt('share_usage_audit_period',
                default='month',
@@ -129,7 +127,6 @@ global_opts = [
                help='Deprecated: command to use for running commands as '
                     'root.'),
     cfg.StrOpt('rootwrap_config',
-               default=None,
                help='Path to the rootwrap configuration file to use for '
                     'running commands as root.'),
     cfg.BoolOpt('monkey_patch',
@@ -149,7 +146,6 @@ global_opts = [
                help='The strategy to use for auth. Supports noauth, keystone, '
                     'and deprecated.'),
     cfg.ListOpt('enabled_share_backends',
-                default=None,
                 help='A list of share backend names to use. These backend '
                      'names should be backed by a unique [CONFIG] group '
                      'with its options.'),

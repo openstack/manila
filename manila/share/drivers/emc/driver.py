@@ -31,13 +31,10 @@ LOG = log.getLogger(__name__)
 
 EMC_NAS_OPTS = [
     cfg.StrOpt('emc_nas_login',
-               default=None,
                help='User name for the EMC server.'),
     cfg.StrOpt('emc_nas_password',
-               default=None,
                help='Password for the EMC server.'),
     cfg.StrOpt('emc_nas_server',
-               default=None,
                help='EMC server hostname or IP address.'),
     cfg.IntOpt('emc_nas_server_port',
                default=8080,
@@ -46,15 +43,13 @@ EMC_NAS_OPTS = [
                 default=True,
                 help='Use secure connection to server.'),
     cfg.StrOpt('emc_share_backend',
-               default=None,
                help='Share backend.'),
     cfg.StrOpt('emc_nas_server_container',
                default='server_2',
                help='Container of share servers.'),
     cfg.StrOpt('emc_nas_pool_name',
-               default=None,
                help='EMC pool name.'),
-    cfg.StrOpt('emc_nas_root_dir', default=None,
+    cfg.StrOpt('emc_nas_root_dir',
                help='The root directory where shares will be located.'),
 ]
 

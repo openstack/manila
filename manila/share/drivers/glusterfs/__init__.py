@@ -47,13 +47,11 @@ GlusterfsManilaShare_opts = [
                help='Type of NFS server that mediate access to the Gluster '
                     'volumes (Gluster or Ganesha).'),
     cfg.StrOpt('glusterfs_ganesha_server_ip',
-               default=None,
                help="Remote Ganesha server node's IP address."),
     cfg.StrOpt('glusterfs_ganesha_server_username',
                default='root',
                help="Remote Ganesha server node's username."),
     cfg.StrOpt('glusterfs_ganesha_server_password',
-               default=None,
                secret=True,
                help="Remote Ganesha server node's login password. "
                     "This is not required if 'glusterfs_path_to_private_key'"

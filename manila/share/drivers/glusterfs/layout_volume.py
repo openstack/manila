@@ -48,7 +48,6 @@ glusterfs_volume_mapped_opts = [
                      '[remoteuser@]<volserver>, and they are assumed to '
                      'belong to distinct Gluster clusters.'),
     cfg.StrOpt('glusterfs_volume_pattern',
-               default=None,
                help='Regular expression template used to filter '
                     'GlusterFS volumes for share creation. '
                     'The regex template can optionally (ie. with support '

@@ -45,11 +45,9 @@ share_opts = [
         help='The percentage of backend capacity reserved.'),
     cfg.StrOpt(
         'share_backend_name',
-        default=None,
         help='The backend name for a given driver implementation.'),
     cfg.StrOpt(
         'network_config_group',
-        default=None,
         help="Name of the configuration group in the Manila conf file "
              "to look for network config options."
              "If not set, the share backend's config group will be used."
@@ -96,18 +94,15 @@ share_opts = [
              'when performing share migration (seconds).'),
     cfg.StrOpt(
         'migration_mounting_backend_ip',
-        default=None,
         help="Backend IP in admin network to use for mounting "
              "shares during migration."),
     cfg.StrOpt(
         'migration_data_copy_node_ip',
-        default=None,
         help="The IP of the node responsible for copying data during "
              "migration, such as the data copy service node, reachable by "
              "the backend."),
     cfg.StrOpt(
         'migration_protocol_mount_command',
-        default=None,
         help="The command for mounting shares for this backend. Must specify"
              "the executable and all necessary parameters for the protocol "
              "supported. It is advisable to separate protocols per backend."),

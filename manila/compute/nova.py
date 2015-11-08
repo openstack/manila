@@ -38,10 +38,8 @@ nova_opts = [
                default='compute:nova:adminURL',
                help='Same as nova_catalog_info, but for admin endpoint.'),
     cfg.StrOpt('os_region_name',
-               default=None,
                help='Region name of this node.'),
     cfg.StrOpt('nova_ca_certificates_file',
-               default=None,
                help='Location of CA certificates file to use for nova client '
                     'requests.'),
     cfg.BoolOpt('nova_api_insecure',

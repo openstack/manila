@@ -32,10 +32,8 @@ netapp_proxy_opts = [
 netapp_connection_opts = [
     cfg.StrOpt('netapp_server_hostname',
                deprecated_name='netapp_nas_server_hostname',
-               default=None,
                help='The hostname (or IP address) for the storage system.'),
     cfg.IntOpt('netapp_server_port',
-               default=None,
                help=('The TCP port to use for communication with the storage '
                      'system or proxy server. If not specified, Data ONTAP '
                      'drivers will use 80 for HTTP and 443 for HTTPS.')), ]
@@ -51,12 +49,10 @@ netapp_transport_opts = [
 netapp_basicauth_opts = [
     cfg.StrOpt('netapp_login',
                deprecated_name='netapp_nas_login',
-               default=None,
                help=('Administrative user account name used to access the '
                      'storage system.')),
     cfg.StrOpt('netapp_password',
                deprecated_name='netapp_nas_password',
-               default=None,
                help=('Password for the administrative user account '
                      'specified in the netapp_login option.'),
                secret=True), ]
@@ -91,7 +87,6 @@ netapp_provisioning_opts = [
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',
-               default=None,
                help=('This option specifies the Storage Virtual Machine '
                      '(i.e. Vserver) name on the storage cluster on which '
                      'provisioning of file storage shares should occur. This '
@@ -102,7 +97,6 @@ netapp_cluster_opts = [
 
 netapp_support_opts = [
     cfg.StrOpt('netapp_trace_flags',
-               default=None,
                help=('Comma-separated list of options that control which '
                      'trace info is written to the debug logs.  Values '
                      'include method and api.')), ]

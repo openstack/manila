@@ -45,7 +45,6 @@ LOG = log.getLogger(__name__)
 
 hdfs_native_share_opts = [
     cfg.StrOpt('hdfs_namenode_ip',
-               default=None,
                help='The IP of the HDFS namenode.'),
     cfg.IntOpt('hdfs_namenode_port',
                default=9000,
@@ -54,15 +53,12 @@ hdfs_native_share_opts = [
                default=22,
                help='HDFS namenode SSH port.'),
     cfg.StrOpt('hdfs_ssh_name',
-               default=None,
                help='HDFS namenode ssh login name.'),
     cfg.StrOpt('hdfs_ssh_pw',
-               default=None,
                help='HDFS namenode SSH login password, '
                     'This parameter is not necessary, if '
                     '\'hdfs_ssh_private_key\' is configured.'),
     cfg.StrOpt('hdfs_ssh_private_key',
-               default=None,
                help='Path to HDFS namenode SSH private '
                     'key for login.'),
 ]
