@@ -27,34 +27,26 @@ LOG = log.getLogger(__name__)
 
 hds_hnas_opts = [
     cfg.StrOpt('hds_hnas_ip',
-               default=None,
                help="HNAS management interface IP for communication "
                     "between Manila controller and HNAS."),
     cfg.StrOpt('hds_hnas_user',
-               default=None,
                help="HNAS username Base64 String in order to perform tasks "
                     "such as create file-systems and network interfaces."),
     cfg.StrOpt('hds_hnas_password',
-               default=None,
                secret=True,
                help="HNAS user password. Required only if private key is not "
                     "provided."),
     cfg.StrOpt('hds_hnas_evs_id',
-               default=None,
                help="Specify which EVS this backend is assigned to."),
     cfg.StrOpt('hds_hnas_evs_ip',
-               default=None,
                help="Specify IP for mounting shares."),
     cfg.StrOpt('hds_hnas_file_system_name',
-               default=None,
                help="Specify file-system name for creating shares."),
     cfg.StrOpt('hds_hnas_ssh_private_key',
-               default=None,
                secret=True,
                help="RSA/DSA private key value used to connect into HNAS. "
                     "Required only if password is not provided."),
     cfg.StrOpt('hds_hnas_cluster_admin_ip0',
-               default=None,
                help="The IP of the clusters admin node. Only set in HNAS "
                     "multinode clusters."),
     cfg.IntOpt('hds_hnas_stalled_job_timeout',

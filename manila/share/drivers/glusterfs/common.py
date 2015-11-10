@@ -34,7 +34,6 @@ LOG = log.getLogger(__name__)
 
 glusterfs_common_opts = [
     cfg.StrOpt('glusterfs_server_password',
-               default=None,
                secret=True,
                deprecated_name='glusterfs_native_server_password',
                help='Remote GlusterFS server node\'s login password. '
@@ -42,7 +41,6 @@ glusterfs_common_opts = [
                     '\'glusterfs_path_to_private_key\' is '
                     'configured.'),
     cfg.StrOpt('glusterfs_path_to_private_key',
-               default=None,
                deprecated_name='glusterfs_native_path_to_private_key',
                help='Path of Manila host\'s private SSH key file.'),
 ]

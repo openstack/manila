@@ -80,7 +80,6 @@ share_opts = [
                choices=['ext4', 'ext3'],
                help='Filesystem type of the share volume.'),
     cfg.StrOpt('cinder_volume_type',
-               default=None,
                help='Name or id of cinder volume type which will be used '
                     'for all volumes created by driver.'),
 ]

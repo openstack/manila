@@ -39,7 +39,6 @@ test_service_opts = [
                default="manila.tests.test_service.FakeManager",
                help="Manager for testing"),
     cfg.StrOpt("test_service_listen",
-               default=None,
                help="Host to bind test service to"),
     cfg.IntOpt("test_service_listen_port",
                default=0,

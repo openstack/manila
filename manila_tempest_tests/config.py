@@ -176,6 +176,5 @@ ShareGroup = [
                help="Time to wait for share migration before "
                     "timing out (seconds)."),
     cfg.StrOpt("default_share_type_name",
-               default=None,
                help="Default share type name to use in tempest tests."),
 ]

@@ -60,7 +60,6 @@ ERR_FILE_NOT_FOUND = 2
 
 gpfs_share_opts = [
     cfg.StrOpt('gpfs_share_export_ip',
-               default=None,
                help='IP to be added to GPFS export string.'),
     cfg.StrOpt('gpfs_mount_point_base',
                default='$state_path/mnt',
@@ -70,23 +69,19 @@ gpfs_share_opts = [
                help=('NFS Server type. Valid choices are "KNFS" (kernel NFS) '
                      'or "GNFS" (Ganesha NFS).')),
     cfg.ListOpt('gpfs_nfs_server_list',
-                default=None,
                 help=('A list of the fully qualified NFS server names that '
                       'make up the OpenStack Manila configuration.')),
     cfg.IntOpt('gpfs_ssh_port',
                default=22,
                help='GPFS server SSH port.'),
     cfg.StrOpt('gpfs_ssh_login',
-               default=None,
                help='GPFS server SSH login name.'),
     cfg.StrOpt('gpfs_ssh_password',
-               default=None,
                secret=True,
                help='GPFS server SSH login password. '
                     'The password is not needed, if \'gpfs_ssh_private_key\' '
                     'is configured.'),
     cfg.StrOpt('gpfs_ssh_private_key',
-               default=None,
                help='Path to GPFS server SSH private key for login.'),
     cfg.ListOpt('gpfs_share_helpers',
                 default=[

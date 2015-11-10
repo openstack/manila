@@ -41,7 +41,6 @@ quobyte_manila_share_opts = [
     cfg.StrOpt('quobyte_api_url',
                help='URL of the Quobyte API server (http or https)'),
     cfg.StrOpt('quobyte_api_ca',
-               default=None,
                help='The X.509 CA file to verify the server cert.'),
     cfg.BoolOpt('quobyte_delete_shares',
                 default=False,
