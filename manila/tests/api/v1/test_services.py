@@ -19,7 +19,7 @@ import datetime
 
 from oslo_utils import timeutils
 
-from manila.api.contrib import services
+from manila.api.v1 import services
 from manila import context
 from manila import db
 from manila import exception
