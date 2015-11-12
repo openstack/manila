@@ -7,6 +7,13 @@
 
     "availability_zone:index": "rule:default",
 
+    "quota_set:update": "rule:admin_api",
+    "quota_set:show": "rule:default",
+    "quota_set:delete": "rule:admin_api",
+
+    "quota_class_set:show": "rule:default",
+    "quota_class_set:update": "rule:admin_api",
+
     "service:index": "rule:admin_api",
     "service:update": "rule:admin_api",
 
@@ -40,11 +47,6 @@
 
     "share_instance:index": "rule:admin_api",
     "share_instance:show": "rule:admin_api",
-
-    "share_extension:quotas:show": "",
-    "share_extension:quotas:update": "rule:admin_api",
-    "share_extension:quotas:delete": "rule:admin_api",
-    "share_extension:quota_classes": "",
 
     "share_extension:share_admin_actions:force_delete": "rule:admin_api",
     "share_extension:share_admin_actions:reset_status": "rule:admin_api",

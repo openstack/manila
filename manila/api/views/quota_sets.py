@@ -1,5 +1,4 @@
-# Copyright 2013 OpenStack Foundation
-# Author: Andrei Ostapenko <aostapenko@mirantis.com>
+# Copyright (c) 2015 Mirantis inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,12 +13,23 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from manila.api import extensions
+from manila.api import common
 
 
-class User_quotas(extensions.ExtensionDescriptor):
-    """Project user quota support."""
+class ViewBuilder(common.ViewBuilder):
 
-    name = "UserQuotas"
-    alias = "os-user-quotas"
-    updated = "2013-07-18T00:00:00+00:00"
+    _collection_name = "quota_set"
+
+    def detail_list(self, quota_set, project_id=None):
+        """Detailed view of quota set."""
+        keys = (
+            'shares',
+            'gigabytes',
+            'snapshots',
+            'snapshot_gigabytes',
+            'share_networks',
+        )
+        view = {key: quota_set.get(key) for key in keys}
+        if project_id:
+            view['id'] = project_id
+        return {self._collection_name: view}
