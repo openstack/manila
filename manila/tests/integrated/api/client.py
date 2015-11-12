@@ -172,6 +172,12 @@ class TestOpenStackClient(object):
         else:
             return ""
 
+    def api_options(self, relative_uri, **kwargs):
+        kwargs['method'] = 'OPTIONS'
+        kwargs.setdefault('check_response_status', [200])
+        response = self.api_request(relative_uri, **kwargs)
+        return self._decode_json(response)
+
     def api_get(self, relative_uri, **kwargs):
         kwargs.setdefault('check_response_status', [200])
         response = self.api_request(relative_uri, **kwargs)
