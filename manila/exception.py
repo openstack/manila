@@ -595,6 +595,10 @@ class EMCVnxLockRequiredException(ManilaException):
     message = _("Unable to acquire lock(s).")
 
 
+class EMCVnxInvalidMoverID(ManilaException):
+    message = _("Invalid mover or vdm %(id)s.")
+
+
 class HP3ParInvalidClient(Invalid):
     message = _("%(err)s")
 

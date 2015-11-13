@@ -12,989 +12,306 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import xml.dom.minidom
 
-from oslo_log import log
+import re
+
+from lxml import etree
 import six
 
-from manila.i18n import _LW
 
-LOG = log.getLogger(__name__)
-
-
-def name(tt):
-    return tt[0]
-
-
-def attrs(tt):
-    return tt[1]
-
-
-def kids(tt):
-    return filter_tuples(tt[2])
-
-
-def filter_tuples(l):
-    """Return only the tuples in a list.
-
-    In a tupletree, tuples correspond to XML elements.  Useful for
-    stripping out whitespace data in a child list.
-    """
-
-    if l is None:
-        return []
-    else:
-        return [x for x in l if type(x) == tuple]
-
-
-def parse_xml_api(tt):
-    check_node(tt, 'ResponsePacket', ['xmlns'])
-
-    child = optional_child(tt, ['Response', 'PacketFault'])
-
-    return child
-
-
-def parse_response(tt):
-    check_node(tt, 'Response')
-
-    list_child = [
-        'QueryStatus',
-        'FileSystem',
-        'FileSystemCapabilities',
-        'FileSystemCapacityInfo',
-        'Mount',
-        'CifsShare',
-        'CifsServer',
-        'Volume',
-        'StoragePool',
-        'Fault',
-        'TaskResponse',
-        'Checkpoint',
-        'NfsExport',
-        'Mover',
-        'MoverStatus',
-        'MoverDnsDomain',
-        'MoverInterface',
-        'MoverRoute',
-        'LogicalNetworkDevice',
-        'MoverDeduplicationSettings',
-        'Vdm',
-    ]
-    return list_of_various(tt, list_child)
-
-
-def parse_querystatus(tt):
-    check_node(tt, 'QueryStatus', ['maxSeverity'])
-
-    child = list_of_various(tt, ['Problem'])
-
-    if child:
-        return name(tt), attrs(tt), child
-    else:
-        return name(tt), attrs(tt)
-
-
-def parse_filesystem(tt):
-    required_attrs = ['fileSystem', 'name', 'type', 'storages', 'volume']
-    optional_attrs = [
-        'containsSlices',
-        'flrClock',
-        'internalUse',
-        'maxFlrRetentionPeriod',
-        'storagePools',
-        'virtualProvisioning',
-        'dataServicePolicies',
-    ]
-    check_node(tt, 'FileSystem', required_attrs, optional_attrs)
-
-    list_child = [
-        'RwFileSystemHosts',
-        'RoFileSystemHosts',
-        'FileSystemAutoExtInfo',
-        'ProductionFileSystemData',
-        'MigrationFileSystemData',
-    ]
-    child = list_of_various(tt, list_child)
-
-    if len(child) > 0:
-        for item in child:
-            if (item[0] == 'RwFileSystemHosts' or
-                    item[0] == 'RoFileSystemHosts'):
-                if 'mover' in item[1].keys():
-                    attrs(tt)['mover'] = item[1]['mover']
-                if 'moverIdIsVdm' in item[1].keys():
-                    attrs(tt)['moverIdIsVdm'] = item[1]['moverIdIsVdm']
-            elif item[0] == 'FileSystemAutoExtInfo':
-                if 'autoExtEnabled' in item[1].keys():
-                    attrs(tt)['autoExtEnabled'] = item[1]['autoExtEnabled']
-                if 'autoExtensionMaxSize' in item[1].keys():
-                    attrs(tt)['autoExtensionMaxSize'] = (
-                        item[1]['autoExtensionMaxSize'])
-                if 'highWaterMark' in item[1].keys():
-                    attrs(tt)['highWaterMark'] = item[1]['highWaterMark']
-            elif item[0] == 'ProductionFileSystemData':
-                if 'cwormState' in item[1].keys():
-                    attrs(tt)['cwormState'] = item[1]['cwormState']
-                if 'replicationRole' in item[1].keys():
-                    attrs(tt)['replicationRole'] = item[1]['replicationRole']
-            elif item[0] == 'MigrationFileSystemData':
-                if 'state' in item[1].keys():
-                    attrs(tt)['state'] = item[1]['state']
-
-    return name(tt), attrs(tt)
-
-
-def parse_rwfilesystemhosts_filesystem(tt):
-    check_node(tt, 'RwFileSystemHosts', ['mover'], ['moverIdIsVdm'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_rofilesystemhosts_filesystem(tt):
-    check_node(tt, 'RoFileSystemHosts', ['mover'], ['moverIdIsVdm'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_rwfilesystemhosts_ckpt(tt):
-    check_node(tt, 'rwFileSystemHosts', ['mover'], ['moverIdIsVdm'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_rofilesystemhosts_ckpt(tt):
-    check_node(tt, 'roFileSystemHosts', ['mover'], ['moverIdIsVdm'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_filesystemautoextinfo(tt):
-    required_attrs = []
-    optional_attrs = [
-        'autoExtEnabled',
-        'autoExtensionMaxSize',
-        'highWaterMark',
-    ]
-    check_node(tt, 'FileSystemAutoExtInfo', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_productionfilesystemdata(tt):
-    required_attrs = []
-    optional_attrs = ['cwormState', 'replicationRole']
-    check_node(tt, 'ProductionFileSystemData', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_migrationfilesystemdata(tt):
-    check_node(tt, 'MigrationFileSystemData', [], ['state'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_filesystemcapabilities(tt):
-    check_node(tt, 'FileSystemCapabilities', ['fileSystem'], [])
-
-    child = list_of_various(tt, ['StoragePoolBased', 'DiskVolumeBased'])
-
-    if len(child) > 0:
-        for item in child:
-            if item[0] == 'StoragePoolBased':
-                if 'recommendedPool' in item[1].keys():
-                    attrs(tt)['recommendedPool'] = item[1]['recommendedPool']
-                if 'validPools' in item[1].keys():
-                    attrs(tt)['validPools'] = item[1]['validPools']
-
-    return name(tt), attrs(tt)
-
-
-def parse_storagepoolbased(tt):
-    check_node(tt, 'StoragePoolBased', [], ['recommendedPool', 'validPools'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_diskvolumebased(tt):
-    required_attrs = []
-    optional_attrs = ['recommendedStorage', 'validStorages']
-    check_node(tt, 'DiskVolumeBased', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_filesystemcapacityinfo(tt):
-    check_node(tt, 'FileSystemCapacityInfo', ['fileSystem', 'volumeSize'], [])
-
-    child = optional_child(tt, ['ResourceUsage'])
-
-    if child is not None:
-        if child[0] == 'ResourceUsage':
-            if 'spaceTotal' in child[1].keys():
-                attrs(tt)['spaceTotal'] = child[1]['spaceTotal']
-            if 'filesUsed' in child[1].keys():
-                attrs(tt)['filesUsed'] = child[1]['filesUsed']
-            if 'spaceUsed' in child[1].keys():
-                attrs(tt)['spaceUsed'] = child[1]['spaceUsed']
-            if 'filesTotal' in child[1].keys():
-                attrs(tt)['filesTotal'] = child[1]['filesTotal']
-
-    return name(tt), attrs(tt)
-
-
-def parse_resourceusage(tt):
-    required_attrs = ['filesTotal', 'filesUsed', 'spaceTotal', 'spaceUsed']
-    check_node(tt, 'ResourceUsage', required_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_mount(tt):
-    required_attrs = ['fileSystem', 'mover', 'path']
-    optional_attrs = ['disabled', 'ntCredential', 'moverIdIsVdm']
-    check_node(tt, 'Mount', required_attrs, optional_attrs)
-
-    child = list_of_various(tt, ['NfsOptions', 'CifsOptions'])
-
-    if child is not None:
-        for item in child:
-            if item[0] == 'NfsOptions':
-                if 'ro' in item[1].keys():
-                    attrs(tt)['ro'] = item[1]['ro']
-            if item[0] == 'CifsOptions':
-                if 'cifsSyncwrite' in item[1].keys():
-                    attrs(tt)['cifsSyncwrite'] = item[1]['cifsSyncwrite']
-
-    return name(tt), attrs(tt)
-
-
-def parse_nfsoptions(tt):
-    required_attrs = []
-    optional_attrs = ['ro', 'prefetch', 'uncached', 'virusScan']
-    check_node(tt, 'NfsOptions', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_cifsoptions(tt):
-    required_attrs = []
-    optional_attrs = [
-        'cifsSyncwrite',
-        'accessPolicy',
-        'lockingPolicy',
-        'notify',
-        'notifyOnAccess',
-        'notifyOnWrite',
-        'oplock',
-        'triggerLevel',
-    ]
-    check_node(tt, 'CifsOptions', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_cifsshare(tt):
-    required_attrs = ['mover', 'name', 'path']
-    optional_attrs = ['comment', 'fileSystem', 'maxUsers', 'moverIdIsVdm']
-    check_node(tt, 'CifsShare', required_attrs, optional_attrs)
-
-    child = one_child(tt, ['CifsServers'])
-
-    if child is not None:
-        attrs(tt)['CifsServers'] = child[1]
-
-    return name(tt), attrs(tt)
-
-
-def parse_cifsservers(tt):
-    check_node(tt, 'CifsServers')
-
-    child = list_of_various(tt, ['li'])
-
-    if len(child) > 0 and child[0] is not None:
-        return 'CifsServers', child
-
-
-def parse_li(tt):
-    check_node(tt, 'li', [], [], [], True)
-
-    return ''.join(tt[2])
-
-
-def parse_cifsserver(tt):
-    required_attrs = ['mover', 'name', 'type']
-    optional_attrs = ['localUsers', 'interfaces', 'moverIdIsVdm']
-    check_node(tt, 'CifsServer', required_attrs, optional_attrs)
-
-    list_child = [
-        'Aliases',
-        'StandaloneServerData',
-        'NT40ServerData',
-        'W2KServerData',
-    ]
-    child = list_of_various(tt, list_child)
-
-    if len(child) > 0:
-        for item in child:
-            if item[0] == 'Aliases':
-                attrs(tt)['aliases'] = item[1]
-            elif item[0] == 'W2KServerData':
-                if 'domain' in item[1].keys():
-                    attrs(tt)['domain'] = item[1]['domain']
-                if 'domainJoined' in item[1].keys():
-                    attrs(tt)['domainJoined'] = item[1]['domainJoined']
-                if 'compName' in item[1].keys():
-                    attrs(tt)['compName'] = item[1]['compName']
-            elif item[0] == 'NT40ServerData':
-                if 'domain' in item[1].keys():
-                    attrs(tt)['domain'] = item[1]['domain']
-
-    return name(tt), attrs(tt)
-
-
-def parse_aliases(tt):
-    check_node(tt, 'Aliases')
-
-    child = list_of_various(tt, ['li'])
-
-    if len(child) > 0:
-        return 'Aliases', child
-
-
-def parse_standaloneserverdata(tt):
-    check_node(tt, 'StandaloneServerData', ['workgroup'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_nt40serverdata(tt):
-    check_node(tt, 'NT40ServerData', ['domain'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_w2kserverdata(tt):
-    check_node(tt, 'W2KServerData', ['compName', 'domain'], ['domainJoined'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_volume(tt):
-    required_attrs = ['name', 'size', 'type', 'virtualProvisioning', 'volume']
-    optional_attrs = ['clientVolumes']
-    check_node(tt, 'Volume', required_attrs, optional_attrs)
-
-    list_child = [
-        'MetaVolumeData',
-        'SliceVolumeData',
-        'StripeVolumeData',
-        'DiskVolumeData',
-        'PoolVolumeData',
-        'FreeSpace',
-    ]
-    child = list_of_various(tt, list_child)
-
-    if len(child) > 0:
-        for item in child:
-            if item[0] == 'MetaVolumeData':
-                if 'memberVolumes' in item[1].keys():
-                    attrs(tt)['memberVolumes'] = item[1]['memberVolumes']
-                if 'clientFileSystems' in item[1].keys():
-                    attrs(tt)['clientFileSystems'] = (
-                        item[1]['clientFileSystems'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_slicevolumedata(tt):
-    pass
-
-
-def parse_stripevolumedata(tt):
-    pass
-
-
-def parse_diskvolumedata(tt):
-    pass
-
-
-def parse_poolvolumedata(tt):
-    pass
-
-
-def parse_freespace(tt):
-    pass
-
-
-def parse_metavolumedata(tt):
-    check_node(tt, 'MetaVolumeData', ['memberVolumes'], ['clientFileSystems'])
-
-    return name(tt), attrs(tt)
-
-
-def parse_storagepool(tt):
-    required_attrs = [
-        'autoSize',
-        'diskType',
-        'memberVolumes',
-        'movers',
-        'name',
-        'pool',
-        'size',
-        'storageSystems',
-        'usedSize',
-    ]
-    optional_attrs = [
-        'description',
-        'mayContainSlicesDefault',
-        'stripeCount',
-        'stripeSize',
-        'templatePool',
-        'virtualProvisioning',
-        'dataServicePolicies',
-        'isHomogeneous',
-    ]
-    check_node(tt, 'StoragePool', required_attrs, optional_attrs)
-
-    list_child = ['SystemStoragePoolData', 'UserStoragePoolData']
-    child = list_of_various(tt, list_child)
-
-    if len(child) > 0:
-        for item in child:
-            if item[0] == 'SystemStoragePoolData':
-                if 'greedy' in item[1].keys():
-                    attrs(tt)['greedy'] = item[1]['greedy']
-                if 'isBackendPool' in item[1].keys():
-                    attrs(tt)['isBackendPool'] = item[1]['isBackendPool']
-
-    return name(tt), attrs(tt)
-
-
-def parse_systemstoragepooldata(tt):
-    required_attrs = ['potentialAdditionalSize']
-    optional_attrs = [
-        'greedy',
-        'dynamic',
-        'isBackendPool',
-        'usedSize',
-        'size',
-    ]
-    check_node(tt, 'SystemStoragePoolData', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_userstoragepooldata(tt):
-    pass
-
-
-def parse_fault(tt):
-    check_node(tt, 'Fault', ['maxSeverity'])
-
-    child = list_of_various(tt, ['Problem'])
-
-    if len(child) != 0:
-        return name(tt), attrs(tt), child
-    else:
-        return name(tt), attrs(tt)
-
-
-def parse_packetfault(tt):
-    check_node(tt, 'PacketFault', ['maxSeverity'])
-
-    child = list_of_various(tt, ['Problem'])
-
-    if len(child) != 0:
-        return name(tt), attrs(tt), child
-    else:
-        return name(tt), attrs(tt)
-
-
-def parse_problem(tt):
-    required_attrs = ['component', 'messageCode', 'severity']
-    optional_attrs = ['facility', 'message']
-    check_node(tt, 'Problem', required_attrs, optional_attrs)
-
-    child = list_of_various(tt, ['Description', 'Action', 'Diagnostics'])
-
-    if 0 != len(child):
-        for item in child:
-            if item is not None:
-                if 'Description' in item.keys():
-                    attrs(tt)['description'] = item['Description']
-                if 'Action' in item.keys():
-                    attrs(tt)['action'] = item['Action']
-                if 'Diagnostics' in item.keys():
-                    attrs(tt)['Diagnostics'] = item['Diagnostics']
-
-    return name(tt), attrs(tt)
-
-
-def parse_description(tt):
-    check_node(tt, 'Description', [], [], [], True)
-
-    if tt[2] is not None:
-        return {name(tt): ''.join(tt[2])}
-
-
-def parse_action(tt):
-    pass
-
-
-def parse_diagnostics(tt):
-    check_node(tt, 'Diagnostics', [], [], [], True)
-
-    return {name(tt): ''.join(tt[2])}
-
-
-def parse_taskresponse(tt):
-    check_node(tt, 'TaskResponse', ['taskId'])
-
-    child = one_child(tt, ['Status'])
-
-    if 'maxSeverity' in child[1].keys():
-        attrs(tt)['maxSeverity'] = child[1]['maxSeverity']
-
-    if len(child) == 2:
-        return name(tt), attrs(tt)
-    else:
-        return name(tt), attrs(tt), child[2]
-
-
-def parse_status(tt):
-    check_node(tt, 'Status', ['maxSeverity'])
-
-    child = list_of_various(tt, ['Problem'])
-
-    if child:
-        return name(tt), attrs(tt), child
-    else:
-        return name(tt), attrs(tt)
-
-
-def parse_checkpoint(tt):
-    required_attrs = ['checkpoint', 'name', 'state', 'time']
-    optional_attrs = [
-        'baseline',
-        'checkpointOf',
-        'fileSystemSize',
-        'writeable',
-    ]
-    check_node(tt, 'Checkpoint', required_attrs, optional_attrs)
-
-    child = list_of_various(tt, ['rwFileSystemHosts', 'roFileSystemHosts'])
-
-    for item in child:
-        if item[0] == 'rwFileSystemHosts' or item[0] == 'roFileSystemHosts':
-            if 'mover' in item[1].keys():
-                attrs(tt)['mover'] = item[1]['mover']
-            if 'moverIdIsVdm' in item[1].keys():
-                attrs(tt)['moverIdIsVdm'] = item[1]['moverIdIsVdm']
-
-            if item[0] == 'roFileSystemHosts':
-                attrs(tt)['readOnly'] = True
-            else:
-                attrs(tt)['readOnly'] = False
-
-    return name(tt), attrs(tt)
-
-
-def parse_nfsexport(tt):
-    required_attrs = ['mover', 'path']
-    optional_attrs = ['anonUser', 'fileSystem', 'readOnly']
-    check_node(tt, 'NfsExport', required_attrs, optional_attrs)
-
-    list_child = ['AccessHosts', 'RwHosts', 'RoHosts', 'RootHosts']
-    child = list_of_various(tt, list_child)
-
-    for item in child:
-        if 'AccessHosts' in item.keys():
-            attrs(tt)['AccessHosts'] = item['AccessHosts']
-
-        if 'RwHosts' in item.keys():
-            attrs(tt)['RwHosts'] = item['RwHosts']
-
-        if 'RoHosts' in item.keys():
-            attrs(tt)['RoHosts'] = item['RoHosts']
-
-        if 'RootHosts' in item.keys():
-            attrs(tt)['RootHosts'] = item['RootHosts']
-
-    return name(tt), attrs(tt)
-
-
-def parse_accesshosts(tt):
-    check_node(tt, 'AccessHosts')
-
-    access_hosts = []
-
-    child = list_of_various(tt, ['li'])
-
-    for item in child:
-        if item != '':
-            access_hosts.append(item)
-
-    return {'AccessHosts': access_hosts}
-
-
-def parse_rwhosts(tt):
-    check_node(tt, 'RwHosts')
-
-    rw_hosts = []
-
-    child = list_of_various(tt, ['li'])
-
-    for item in child:
-        if item != '':
-            rw_hosts.append(item)
-
-    return {'RwHosts': rw_hosts}
-
-
-def parse_rohosts(tt):
-    check_node(tt, 'RoHosts')
-
-    ro_hosts = []
-
-    child = list_of_various(tt, ['li'])
-
-    for item in child:
-        if item != '':
-            ro_hosts.append(item)
-
-    return {'RoHosts': ro_hosts}
-
-
-def parse_roothosts(tt):
-    check_node(tt, 'RootHosts')
-
-    root_hosts = []
-
-    child = list_of_various(tt, ['li'])
-
-    for item in child:
-        if item != '':
-            root_hosts.append(item)
-
-    return {'RootHosts': root_hosts}
-
-
-def parse_mover(tt):
-    required_attrs = ['host', 'mover', 'name']
-    optional_attrs = [
-        'failoverPolicy',
-        'i18NMode',
-        'ntpServers',
-        'role',
-        'standbyFors',
-        'standbys',
-        'targetState',
-    ]
-    check_node(tt, 'Mover', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_moverstatus(tt):
-    required_attrs = ['csTime', 'mover', 'uptime']
-    optional_attrs = ['clock', 'timezone', 'version']
-    check_node(tt, 'MoverStatus', required_attrs, optional_attrs)
-
-    child = one_child(tt, ['Status'])
-
-    if len(child) >= 2:
-        attrs(tt)['Status'] = child[1]['maxSeverity']
-
-    if len(child) >= 3:
-        attrs(tt)['Problem'] = child[2]
-
-    return name(tt), attrs(tt)
-
-
-def parse_moverdnsdomain(tt):
-    required_attrs = ['mover', 'name', 'servers']
-    optional_attrs = ['protocol']
-    check_node(tt, 'MoverDnsDomain', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_moverinterface(tt):
-    required_attrs = ['device', 'ipAddress', 'macAddr', 'mover', 'name']
-    optional_attrs = [
-        'broadcastAddr',
-        'ipVersion',
-        'mtu',
-        'netMask',
-        'up',
-        'vlanid',
-    ]
-    check_node(tt, 'MoverInterface', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_moverroute(tt):
-    required_attrs = ['mover']
-    optional_attrs = [
-        'destination',
-        'interface',
-        'ipVersion',
-        'netMask',
-        'gateway',
-    ]
-    check_node(tt, 'MoverRoute', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_logicalnetworkdevice(tt):
-    required_attrs = ['mover', 'name', 'speed', 'type']
-    optional_attrs = ['interfaces']
-    check_node(tt, 'LogicalNetworkDevice', required_attrs, optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_moverdeduplicationsettings(tt):
-    required_attrs = ['mover']
-    optional_attrs = [
-        'accessTime',
-        'modificationTime',
-        'maximumSize',
-        'minimumSize',
-        'caseSensitive',
-        'duplicateDetectionMethod',
-        'minimumScanInterval',
-        'fileExtensionExcludeList',
-        'savVolHighWatermark',
-        'backupDataHighWatermark',
-        'CPULowWatermark',
-        'CPUHighWatermark',
-        'cifsCompressionEnabled',
-    ]
-    check_node(tt,
-               'MoverDeduplicationSettings',
-               required_attrs,
-               optional_attrs)
-
-    return name(tt), attrs(tt)
-
-
-def parse_vdm(tt):
-    required_attrs = ['name', 'state', 'vdm']
-    optional_attrs = ['mover', 'rootFileSystem']
-    check_node(tt, 'Vdm', required_attrs, optional_attrs)
-
-    child = list_of_various(tt, ['Status', 'Interfaces'])
-
-    if len(child) > 0:
-        for item in child:
-            if 'Interfaces' == item[0]:
-                attrs(tt)['Interfaces'] = item[1]
-
-    return name(tt), attrs(tt)
-
-
-def parse_interfaces(tt):
-    check_node(tt, 'Interfaces')
-
-    interfaces = []
-
-    child = list_of_various(tt, ['li'])
-
-    for item in child:
-        if item != '':
-            interfaces.append(item)
-
-    if interfaces:
-        return 'Interfaces', interfaces
-
-
-def one_child(tt, acceptable):
-    """Parse children of a node with exactly one child node.
-
-    PCData is ignored.
-    """
-    k = kids(tt)
-
-    if len(k) != 1:
-        LOG.warn(_LW('Expected just one %(item)s, got %(more)s.'),
-                 {'item': acceptable,
-                  'more': " ".join([t[0] for t in k])})
-
-    child = k[0]
-
-    if name(child) not in acceptable:
-        LOG.warn(_LW('Expected one of %(item)s, got %(child)s '
-                     'under %(parent)s.'),
-                 {'item': acceptable,
-                  'child': name(child),
-                  'parent': name(tt)})
-
-    return parse_any(child)
-
-
-def parse_any(tt):
-    """Parse any fragment of XML."""
-
-    node_name = name(tt).replace('.', '_')
-
-    # Special handle for file system and checkpoint
-    if node_name == 'RwFileSystemHosts' or node_name == 'RoFileSystemHosts':
-        node_name += '_filesystem'
-    elif node_name == 'rwFileSystemHosts' or node_name == 'roFileSystemHosts':
-        node_name += '_ckpt'
-
-    fn_name = 'parse_' + node_name.lower()
-    fn = globals().get(fn_name)
-    if fn is None:
-        LOG.warn(_LW('No parser for node type %s.'), name(tt))
-    else:
-        return fn(tt)
-
-
-def check_node(tt, nodename, required_attrs=None, optional_attrs=None,
-               allowed_children=None, allow_pcdata=False):
-    """Check static local constraints on a single node.
-
-    The node must have the given name.  The required attrs must be
-    present, and the optional attrs may be.
-
-    If allowed_children is not None, the node may have children of the
-    given types.  It can be [] for nodes that may not have any
-    children.  If it's None, it is assumed the children are validated
-    in some other way.
-
-    If allow_pcdata is true, then non-whitespace text children are allowed.
-    (Whitespace text nodes are always allowed.)
-    """
-    if not optional_attrs:
-        optional_attrs = []
-
-    if not required_attrs:
-        required_attrs = []
-
-    if name(tt) != nodename:
-        LOG.warn(_LW('Expected node type %(expected)s, not %(actual)s.'),
-                 {'expected': nodename, 'actual': name(tt)})
-
-    # Check we have all the required attributes, and no unexpected ones
-    tt_attrs = {}
-    if attrs(tt) is not None:
-        tt_attrs = attrs(tt).copy()
-
-    for attr in required_attrs:
-        if attr not in tt_attrs:
-            LOG.warn(_LW('Expected %(attr)s attribute on %(node)s node,'
-                         ' but only have %(attrs)s.'),
-                     {'attr': attr,
-                      'node': name(tt),
-                      'attrs': attrs(tt).keys()})
+class XMLAPIParser(object):
+    def __init__(self):
+        # The following Boolean acts as the flag for the common sub-element.
+        # For instance:
+        #     <CifsServers>
+        #         <li> server_1 </li>
+        #     </CifsServers>
+        #     <Alias>
+        #         <li> interface_1 </li>
+        #     </Alias>
+        self.is_QueryStatus = False
+        self.is_CifsServers = False
+        self.is_Aliases = False
+        self.is_MoverStatus = False
+        self.is_TaskResponse = False
+        self.is_Vdm = False
+        self.is_Interfaces = False
+
+        self.elt = {}
+
+    def _remove_ns(self, tag):
+        i = tag.find('}')
+        if i >= 0:
+            tag = tag[i + 1:]
+        return tag
+
+    def parse(self, xml):
+        result = {
+            'type': None,
+            'taskId': None,
+            'maxSeverity': None,
+            'objects': [],
+            'problems': [],
+        }
+
+        events = ("start", "end")
+
+        context = etree.iterparse(six.BytesIO(xml.encode('utf-8')),
+                                  events=events)
+        for action, elem in context:
+            self.tag = self._remove_ns(elem.tag)
+
+            func = self._get_func(action, self.tag)
+            if func in vars(XMLAPIParser):
+                if action == 'start':
+                    eval('self.' + func)(elem, result)
+                elif action == 'end':
+                    eval('self.' + func)()
+
+        return result
+
+    def _get_func(self, action, tag):
+        if tag == 'W2KServerData':
+            return action + '_' + 'w2k_server_data'
+
+        temp_list = re.sub(r"([A-Z])", r" \1", tag).split()
+        if temp_list:
+            func_name = action + '_' + '_'.join(temp_list)
         else:
-            del tt_attrs[attr]
+            func_name = action + '_' + tag
+        return func_name.lower()
 
-    for attr in optional_attrs:
-        if attr in tt_attrs:
-            del tt_attrs[attr]
+    def _copy_property(self, source, target, property, list_property=None):
+        for key in property:
+            if key in source:
+                target[key] = source[key]
 
-    if len(tt_attrs.keys()) > 0:
-        LOG.warn(_LW('Invalid extra attributes %s.'), tt_attrs.keys())
+        if list_property:
+            for key in list_property:
+                if key in source:
+                    target[key] = source[key].split()
 
-    if allowed_children is not None:
-        for c in kids(tt):
-            if name(c) not in allowed_children:
-                LOG.warn(_LW('Unexpected node %(node)s under %(parent)s;'
-                             ' wanted %(expected)s.'),
-                         {'node': name(c),
-                          'parent': name(tt),
-                          'expected': allowed_children})
+    def _append_elm_property(self, elm, result, property, identifier):
+        for obj in result['objects']:
+            if (identifier in obj and identifier in elm.attrib and
+                    elm.attrib[identifier] == obj[identifier]):
+                for key, value in elm.attrib.items():
+                    if key in property:
+                        obj[key] = value
 
-    if not allow_pcdata:
-        for c in tt[2]:
-            if isinstance(c, six.string_types):
-                if c.lstrip(' \t\n') != '':
-                    LOG.warn(_LW('Unexpected non-blank pcdata node %(node)s'
-                                 ' under %(parent)s.'),
-                             {'node': repr(c),
-                              'parent': name(tt)})
+    def _append_element(self, elm, result, property, list_property,
+                        identifier):
+        sub_elm = {}
+        self._copy_property(elm.attrib, sub_elm, property, list_property)
 
+        for obj in result['objects']:
+            if (identifier in obj and identifier in elm.attrib and
+                    elm.attrib[identifier] == obj[identifier]):
+                if self.tag in obj:
+                    obj[self.tag].append(sub_elm)
+                else:
+                    obj[self.tag] = [sub_elm]
 
-def optional_child(tt, allowed):
-    """Parse zero or one of a list of elements from the child nodes."""
+    def start_task_response(self, elm, result):
+        self.is_TaskResponse = True
+        result['type'] = 'TaskResponse'
+        self._copy_property(elm.attrib, result, ['taskId'])
 
-    k = kids(tt)
+    def end_task_response(self):
+        self.is_TaskResponse = False
 
-    if len(k) > 1:
-        LOG.warn(_LW('Expected either zero or one of %(node)s '
-                     'under %(parent)s.'), {'node': allowed,
-                                            'parent': tt})
-    elif len(k) == 1:
-        return one_child(tt, allowed)
-    else:
-        return None
+    def start_fault(self, elm, result):
+        result['type'] = 'Fault'
 
+    def start_status(self, elm, result):
+        if self.is_TaskResponse:
+            result['maxSeverity'] = elm.attrib['maxSeverity']
+        elif self.is_MoverStatus or self.is_Vdm:
+            self.elt['maxSeverity'] = elm.attrib['maxSeverity']
 
-def list_of_various(tt, acceptable):
-    """Parse zero or more of a list of elements from the child nodes.
+    def start_query_status(self, elm, result):
+        self.is_QueryStatus = True
+        result['type'] = 'QueryStatus'
+        self._copy_property(elm.attrib, result, ['maxSeverity'])
 
-    Each element of the list can be any type from the list of the acceptable
-    nodes.
-    """
+    def end_query_status(self):
+        self.is_QueryStatus = False
 
-    r = []
+    def start_problem(self, elm, result):
+        self.elt = {}
+        properties = ('message', 'messageCode')
 
-    for child in kids(tt):
-        if name(child) not in acceptable:
-            LOG.warn(_LW('Expected one of %(expected)s under'
-                         ' %(parent)s, got %(actual)s.'),
-                     {'expected': acceptable,
-                      'parent': name(tt),
-                      'actual': repr(name(child))})
-        result = parse_any(child)
-        if result is not None:
-            r.append(result)
+        self._copy_property(elm.attrib, self.elt, properties)
+        result['problems'].append(self.elt)
 
-    return r
+    def start_description(self, elm, result):
+        self.elt['Description'] = elm.text
 
+    def start_action(self, elm, result):
+        self.elt['Action'] = elm.text
 
-def dom_to_tupletree(node):
-    """Convert a DOM object to a pyRXP-style tuple tree.
+    def start_diagnostics(self, elm, result):
+        self.elt['Diagnostics'] = elm.text
 
-    Each element is a 4-tuple of (NAME, ATTRS, CONTENTS, None).
+    def start_file_system(self, elm, result):
+        self.elt = {}
+        property = (
+            'fileSystem',
+            'name',
+            'type',
+            'storages',
+            'volume',
+            'dataServicePolicies',
+            'internalUse',
+        )
+        list_property = ('storagePools',)
 
-    Very nice for processing complex nested trees.
-    """
+        self._copy_property(elm.attrib, self.elt, property, list_property)
+        result['objects'].append(self.elt)
 
-    if node.nodeType == node.DOCUMENT_NODE:
-        # boring; pop down one level
-        return dom_to_tupletree(node.firstChild)
-    assert node.nodeType == node.ELEMENT_NODE
+    def start_file_system_capacity_info(self, elm, result):
+        property = ('volumeSize',)
 
-    node_name = node.nodeName
-    attributes = {}
-    contents = []
+        identifier = 'fileSystem'
 
-    for child in node.childNodes:
-        if child.nodeType == child.ELEMENT_NODE:
-            contents.append(dom_to_tupletree(child))
-        elif child.nodeType == child.TEXT_NODE:
-            msg = "text node %s is not a string" % repr(child)
-            assert isinstance(child.nodeValue, six.string_types), msg
-            contents.append(child.nodeValue)
-        else:
-            raise RuntimeError("can't handle %s" % child)
+        self._append_elm_property(elm, result, property, identifier)
 
-    for i in range(node.attributes.length):
-        attr_node = node.attributes.item(i)
-        attributes[attr_node.nodeName] = attr_node.nodeValue
+    def start_storage_pool(self, elm, result):
+        self.elt = {}
+        property = ('name', 'autoSize', 'usedSize', 'diskType', 'pool',
+                    'dataServicePolicies', 'virtualProvisioning')
+        list_property = ('movers',)
 
-    return node_name, attributes, contents, None
+        self._copy_property(elm.attrib, self.elt, property, list_property)
+        result['objects'].append(self.elt)
 
+    def start_system_storage_pool_data(self, elm, result):
+        property = ('greedy', 'isBackendPool')
 
-def xml_to_tupletree(xml_string):
-    """Parse XML straight into tupletree."""
-    dom_xml = xml.dom.minidom.parseString(xml_string)
-    return dom_to_tupletree(dom_xml)
+        self._copy_property(elm.attrib, self.elt, property)
+
+    def start_mover(self, elm, result):
+        self.elt = {}
+        property = ('name', 'host', 'mover', 'role')
+        list_property = ('ntpServers', 'standbyFors', 'standbys')
+
+        self._copy_property(elm.attrib, self.elt, property, list_property)
+        result['objects'].append(self.elt)
+
+    def start_mover_status(self, elm, result):
+        self.is_MoverStatus = True
+
+        property = ('version', 'csTime', 'clock', 'timezone', 'uptime')
+
+        identifier = 'mover'
+
+        self._append_elm_property(elm, result, property, identifier)
+
+    def end_mover_status(self):
+        self.is_MoverStatus = False
+
+    def start_mover_dns_domain(self, elm, result):
+        property = ('name', 'protocol')
+        list_property = ('servers',)
+
+        identifier = 'mover'
+
+        self._append_element(elm, result, property, list_property, identifier)
+
+    def start_mover_interface(self, elm, result):
+        property = (
+            'name',
+            'device',
+            'up',
+            'ipVersion',
+            'netMask',
+            'ipAddress',
+            'vlanid',
+        )
+
+        identifier = 'mover'
+
+        self._append_element(elm, result, property, None, identifier)
+
+    def start_logical_network_device(self, elm, result):
+        property = ('name', 'type', 'speed')
+        list_property = ('interfaces',)
+        identifier = 'mover'
+
+        self._append_element(elm, result, property, list_property, identifier)
+
+    def start_vdm(self, elm, result):
+        self.is_Vdm = True
+
+        self.elt = {}
+        property = ('name', 'state', 'mover', 'vdm')
+
+        self._copy_property(elm.attrib, self.elt, property)
+        result['objects'].append(self.elt)
+
+    def end_vdm(self):
+        self.is_Vdm = False
+
+    def start_interfaces(self, elm, result):
+        self.is_Interfaces = True
+        self.elt['Interfaces'] = []
+
+    def end_interfaces(self):
+        self.is_Interfaces = False
+
+    def start_li(self, elm, result):
+        if self.is_CifsServers:
+            self.elt['CifsServers'].append(elm.text)
+        elif self.is_Aliases:
+            self.elt['Aliases'].append(elm.text)
+        elif self.is_Interfaces:
+            self.elt['Interfaces'].append(elm.text)
+
+    def start_cifs_server(self, elm, result):
+        self.elt = {}
+        property = ('type', 'localUsers', 'name', 'mover', 'moverIdIsVdm')
+
+        list_property = ('interfaces',)
+
+        self._copy_property(elm.attrib, self.elt, property, list_property)
+        result['objects'].append(self.elt)
+
+    def start_aliases(self, elm, result):
+        self.is_Aliases = True
+        self.elt['Aliases'] = []
+
+    def end_aliases(self):
+        self.is_Aliases = False
+
+    def start_w2k_server_data(self, elm, result):
+        property = ('domain', 'compName', 'domainJoined')
+
+        self._copy_property(elm.attrib, self.elt, property)
+
+    def start_cifs_share(self, elm, result):
+        self.elt = {}
+        property = ('path', 'fileSystem', 'name', 'mover', 'moverIdIsVdm')
+
+        self._copy_property(elm.attrib, self.elt, property)
+        result['objects'].append(self.elt)
+
+    def start_cifs_servers(self, elm, result):
+        self.is_CifsServers = True
+        self.elt['CifsServers'] = []
+
+    def end_cifs_servers(self):
+        self.is_CifsServers = False
+
+    def start_checkpoint(self, elm, result):
+        self.elt = {}
+        property = ('checkpointOf', 'name', 'checkpoint', 'state')
+
+        self._copy_property(elm.attrib, self.elt, property)
+        result['objects'].append(self.elt)
+
+    def start_mount(self, elm, result):
+        self.elt = {}
+        property = ('fileSystem', 'path', 'mover', 'moverIdIsVdm')
+
+        self._copy_property(elm.attrib, self.elt, property)
+        result['objects'].append(self.elt)

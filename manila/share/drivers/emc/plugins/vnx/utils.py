@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import types
 
 from oslo_config import cfg
@@ -41,7 +42,7 @@ def log_enter_exit(func):
         return func
 
     def inner(self, *args, **kwargs):
-        LOG.debug("Entering %(cls)s.%(method)s",
+        LOG.debug("Entering %(cls)s.%(method)s.",
                   {'cls': self.__class__.__name__,
                    'method': func.__name__})
         start = timeutils.utcnow()
@@ -49,7 +50,7 @@ def log_enter_exit(func):
         end = timeutils.utcnow()
         LOG.debug("Exiting %(cls)s.%(method)s. "
                   "Spent %(duration)s sec. "
-                  "Return %(return)s",
+                  "Return %(return)s.",
                   {'cls': self.__class__.__name__,
                    'duration': timeutils.delta_seconds(start, end),
                    'method': func.__name__,
