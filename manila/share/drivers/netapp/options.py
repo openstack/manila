@@ -33,10 +33,10 @@ netapp_connection_opts = [
     cfg.StrOpt('netapp_server_hostname',
                deprecated_name='netapp_nas_server_hostname',
                help='The hostname (or IP address) for the storage system.'),
-    cfg.IntOpt('netapp_server_port',
-               help=('The TCP port to use for communication with the storage '
-                     'system or proxy server. If not specified, Data ONTAP '
-                     'drivers will use 80 for HTTP and 443 for HTTPS.')), ]
+    cfg.PortOpt('netapp_server_port',
+                help=('The TCP port to use for communication with the storage '
+                      'system or proxy server. If not specified, Data ONTAP '
+                      'drivers will use 80 for HTTP and 443 for HTTPS.')), ]
 
 netapp_transport_opts = [
     cfg.StrOpt('netapp_transport_type',

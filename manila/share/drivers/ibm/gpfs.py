@@ -71,9 +71,9 @@ gpfs_share_opts = [
     cfg.ListOpt('gpfs_nfs_server_list',
                 help=('A list of the fully qualified NFS server names that '
                       'make up the OpenStack Manila configuration.')),
-    cfg.IntOpt('gpfs_ssh_port',
-               default=22,
-               help='GPFS server SSH port.'),
+    cfg.PortOpt('gpfs_ssh_port',
+                default=22,
+                help='GPFS server SSH port.'),
     cfg.StrOpt('gpfs_ssh_login',
                help='GPFS server SSH login name.'),
     cfg.StrOpt('gpfs_ssh_password',
