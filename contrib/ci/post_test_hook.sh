@@ -51,10 +51,11 @@ iniset $BASE/new/tempest/etc/tempest.conf share run_consistency_group_tests $RUN
 RUN_MANILA_MANAGE_TESTS=${RUN_MANILA_MANAGE_TESTS:-True}
 iniset $BASE/new/tempest/etc/tempest.conf share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS
 
+MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
+
 if [[ -z "$MULTITENANCY_ENABLED" ]]; then
     # Define whether share drivers handle share servers or not.
     # Requires defined config option 'driver_handles_share_servers'.
-    MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
     NO_SHARE_SERVER_HANDLING_MODES=0
     WITH_SHARE_SERVER_HANDLING_MODES=0
 
@@ -108,56 +109,10 @@ elif [[ "$JOB_NAME" =~ "no-share-servers"  ]]; then
     MANILA_TEMPEST_CONCURRENCY=8
 fi
 
-function check_service_vm_availability {
-    wait_step=10
-    wait_timeout=300
-    available='false'
-    while (( wait_timeout > 0 )) ; do
-        if [[ "$(ping -w 1 $1)" =~ "1 received" ]]; then
-            available='true'
-            break
-        fi
-        ((wait_timeout-=$wait_step))
-        sleep $wait_step
-    done
-
-    if [[ $available == 'true' ]]; then
-        echo "SUCCESS! Service VM $1 is available."
-    else
-        echo "FAILURE! Service VM $1 is not available."
-        exit 1
-    fi
-}
-
 # Also, we should wait until service VM is available
 # before running Tempest tests using Generic driver in DHSS=False mode.
-DRIVER_GROUPS=$(iniget $MANILA_CONF DEFAULT enabled_share_backends)
-for driver_group in ${DRIVER_GROUPS//,/ }; do
-    SHARE_DRIVER=$(iniget $MANILA_CONF $driver_group share_driver)
-    GENERIC_DRIVER='manila.share.drivers.generic.GenericShareDriver'
-    DHSS=$(iniget $MANILA_CONF $driver_group driver_handles_share_servers)
-    if [[ $SHARE_DRIVER == $GENERIC_DRIVER && $(trueorfalse False DHSS) == False ]]; then
-        # Wait for availability
-        source /opt/stack/new/devstack/openrc admin demo
-        vm_id=$(iniget $MANILA_CONF $driver_group service_instance_name_or_id)
-        vm_ips=$(nova show $vm_id | grep "private network")
-        attempts=0
-        for vm_ip in ${vm_ips//,/ }; do
-            # Get IPv4 address
-            if [[ $vm_ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-                # Check availability
-                ((attempts++))
-                check_service_vm_availability $vm_ip
-                break
-            fi
-        done
-        if [[ (( attempts < 1 )) ]]; then
-            echo "No IPv4 addresses found among private IPs of '$vm_id' for '$GENERIC_DRIVER'. "\
-                "Reported IPs: '$vm_ips'."
-            exit 1
-        fi
-    fi
-done
+source $BASE/new/manila/contrib/ci/common.sh
+manila_wait_for_drivers_init $MANILA_CONF
 
 # check if tempest plugin was installed correctly
 echo 'import pkg_resources; print list(pkg_resources.iter_entry_points("tempest.test_plugins"))' | python
