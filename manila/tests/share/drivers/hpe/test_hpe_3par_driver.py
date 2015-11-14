@@ -47,6 +47,7 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.conf.ssh_conn_timeout = constants.TIMEOUT
         self.conf.hpe3par_share_ip_address = None
         self.conf.hpe3par_fstore_per_share = False
+        self.conf.hpe3par_require_cifs_ip = False
         self.conf.network_config_group = 'test_network_config_group'
 
         def safe_get(attr):
@@ -81,6 +82,7 @@ class HPE3ParDriverTestCase(test.TestCase):
                       hpe3par_password=conf.hpe3par_password,
                       hpe3par_san_ip=conf.hpe3par_san_ip,
                       hpe3par_fstore_per_share=conf.hpe3par_fstore_per_share,
+                      hpe3par_require_cifs_ip=conf.hpe3par_require_cifs_ip,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([
@@ -124,6 +126,7 @@ class HPE3ParDriverTestCase(test.TestCase):
                       hpe3par_password=conf.hpe3par_password,
                       hpe3par_san_ip=conf.hpe3par_san_ip,
                       hpe3par_fstore_per_share=conf.hpe3par_fstore_per_share,
+                      hpe3par_require_cifs_ip=conf.hpe3par_require_cifs_ip,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([mock.call.do_setup()])
@@ -148,6 +151,7 @@ class HPE3ParDriverTestCase(test.TestCase):
                       hpe3par_password=conf.hpe3par_password,
                       hpe3par_san_ip=conf.hpe3par_san_ip,
                       hpe3par_fstore_per_share=conf.hpe3par_fstore_per_share,
+                      hpe3par_require_cifs_ip=conf.hpe3par_require_cifs_ip,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([
@@ -431,8 +435,10 @@ class HPE3ParDriverTestCase(test.TestCase):
             mock.call.allow_access(constants.EXPECTED_PROJECT_ID,
                                    constants.EXPECTED_SHARE_ID,
                                    constants.NFS,
+                                   constants.EXPECTED_EXTRA_SPECS,
                                    constants.IP,
                                    constants.EXPECTED_IP_1234,
+                                   constants.ACCESS_INFO['access_level'],
                                    constants.EXPECTED_FPG,
                                    constants.EXPECTED_VFS)
         ]
@@ -452,6 +458,7 @@ class HPE3ParDriverTestCase(test.TestCase):
                                   constants.NFS,
                                   constants.IP,
                                   constants.EXPECTED_IP_1234,
+                                  constants.READ_WRITE,
                                   constants.EXPECTED_FPG,
                                   constants.EXPECTED_VFS)
         ]

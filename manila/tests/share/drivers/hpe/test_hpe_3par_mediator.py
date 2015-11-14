@@ -137,8 +137,12 @@ class HPE3ParMediatorTestCase(test.TestCase):
                 {'fstoreName': constants.EXPECTED_FSTORE,
                  'shareName': constants.EXPECTED_SHARE_ID,
                  'shareDir': constants.EXPECTED_SHARE_PATH,
-                 'sharePath': constants.EXPECTED_SHARE_PATH}]
+                 'share_proto': constants.NFS,
+                 'sharePath': constants.EXPECTED_SHARE_PATH,
+                 'comment': constants.EXPECTED_COMMENT,
+                 }]
         }
+        self.mock_client.setfshare.return_value = []
         self.mediator.do_setup()
 
     def test_mediator_setup_success(self):
@@ -280,7 +284,6 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                     fpg=expected_fpg, vfs=expected_vfsname,
                                     fstore=expected_project_id)]
         else:
-            createfshare_kwargs['allowip'] = '127.0.0.1'
 
             smb_opts = (hpe3parmediator.ACCESS_BASED_ENUM,
                         hpe3parmediator.CONTINUOUS_AVAIL,
@@ -457,8 +460,10 @@ class HPE3ParMediatorTestCase(test.TestCase):
                           constants.EXPECTED_VFS,
                           size=constants.EXPECTED_SIZE_1)
 
-    def test_mediator_create_cifs_share_from_snapshot(self):
+    @ddt.data(True, False)
+    def test_mediator_create_cifs_share_from_snapshot(self, require_cifs_ip):
         self.init_mediator()
+        self.mediator.hpe3par_require_cifs_ip = require_cifs_ip
 
         self.mock_client.getfsnap.return_value = {
             'message': None,
@@ -479,6 +484,16 @@ class HPE3ParMediatorTestCase(test.TestCase):
 
         self.assertEqual(constants.EXPECTED_SHARE_ID, location)
 
+        expected_kwargs = {
+            'comment': mock.ANY,
+            'fpg': constants.EXPECTED_FPG,
+            'fstore': constants.EXPECTED_FSTORE,
+            'sharedir': '.snapshot/%s/%s' % (constants.EXPECTED_SNAP_ID,
+                                             constants.EXPECTED_SHARE_ID),
+        }
+        if require_cifs_ip:
+            expected_kwargs['allowip'] = constants.EXPECTED_IP_127
+
         expected_calls = [
             mock.call.getfsnap('*_%s' % constants.EXPECTED_SNAP_ID,
                                vfs=constants.EXPECTED_VFS,
@@ -488,13 +503,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
             mock.call.createfshare(constants.SMB_LOWER,
                                    constants.EXPECTED_VFS,
                                    constants.EXPECTED_SHARE_ID,
-                                   comment=mock.ANY,
-                                   fpg=constants.EXPECTED_FPG,
-                                   sharedir='.snapshot/%s/%s' % (
-                                            constants.EXPECTED_SNAP_ID,
-                                            constants.EXPECTED_SHARE_ID),
-                                   fstore=constants.EXPECTED_FSTORE,
-                                   allowip=constants.EXPECTED_IP_127),
+                                   **expected_kwargs),
             mock.call.getfshare(constants.SMB_LOWER,
                                 constants.EXPECTED_SHARE_ID,
                                 fpg=constants.EXPECTED_FPG,
@@ -540,7 +549,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                             (constants.EXPECTED_SNAP_ID,
                                              constants.EXPECTED_SHARE_ID),
                                    fstore=constants.EXPECTED_FSTORE,
-                                   clientip=constants.EXPECTED_IP_127,
+                                   clientip=constants.EXPECTED_IP_127_2,
                                    options='ro,no_root_squash,insecure'),
             mock.call.getfshare(constants.NFS_LOWER,
                                 constants.EXPECTED_SHARE_ID,
@@ -570,7 +579,132 @@ class HPE3ParMediatorTestCase(test.TestCase):
                           constants.EXPECTED_FPG,
                           constants.EXPECTED_VFS)
 
-    def test_mediator_delete_share(self):
+    def test_mediator_delete_nfs_share(self):
+        self.init_mediator()
+
+        share_id = 'foo'
+        osf_share_id = '-'.join(('osf', share_id))
+        osf_ro_share_id = '-ro-'.join(('osf', share_id))
+        fstore = osf_share_id
+
+        self.mock_object(self.mediator,
+                         '_find_fstore',
+                         mock.Mock(return_value=fstore))
+
+        self.mediator.delete_share(constants.EXPECTED_PROJECT_ID,
+                                   share_id,
+                                   constants.NFS,
+                                   constants.EXPECTED_FPG,
+                                   constants.EXPECTED_VFS)
+
+        expected_calls = [
+            mock.call.removefshare(constants.NFS_LOWER,
+                                   constants.EXPECTED_VFS,
+                                   osf_share_id,
+                                   fpg=constants.EXPECTED_FPG,
+                                   fstore=fstore),
+            mock.call.removefshare(constants.NFS_LOWER,
+                                   constants.EXPECTED_VFS,
+                                   osf_ro_share_id,
+                                   fpg=constants.EXPECTED_FPG,
+                                   fstore=fstore),
+            mock.call.removefstore(constants.EXPECTED_VFS,
+                                   fstore,
+                                   fpg=constants.EXPECTED_FPG),
+        ]
+
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_delete_share_not_found(self):
+        self.init_mediator()
+
+        self.mock_object(self.mediator,
+                         '_find_fstore',
+                         mock.Mock(return_value=None))
+
+        self.mediator.delete_share(constants.EXPECTED_PROJECT_ID,
+                                   constants.EXPECTED_SHARE_ID,
+                                   constants.CIFS,
+                                   constants.EXPECTED_FPG,
+                                   constants.EXPECTED_VFS)
+
+        self.assertFalse(self.mock_client.removefshare.called)
+
+    def test_mediator_delete_nfs_share_only_readonly(self):
+        self.init_mediator()
+
+        fstores = (None, constants.EXPECTED_FSTORE)
+        self.mock_object(self.mediator,
+                         '_find_fstore',
+                         mock.Mock(side_effect=fstores))
+
+        self.mediator.delete_share(constants.EXPECTED_PROJECT_ID,
+                                   constants.EXPECTED_SHARE_ID,
+                                   constants.NFS,
+                                   constants.EXPECTED_FPG,
+                                   constants.EXPECTED_VFS)
+
+        self.mock_client.removefshare.assert_called_once_with(
+            constants.NFS_LOWER,
+            constants.EXPECTED_VFS,
+            constants.EXPECTED_SHARE_ID,
+            fpg=constants.EXPECTED_FPG,
+            fstore=constants.EXPECTED_FSTORE
+        )
+
+    def test_mediator_delete_share_exception(self):
+        self.init_mediator()
+        self.mock_client.removefshare.side_effect = Exception(
+            'removeshare fail.')
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.delete_share,
+                          constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.CIFS,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+        expected_calls = [
+            mock.call.removefshare(constants.SMB_LOWER,
+                                   constants.EXPECTED_VFS,
+                                   constants.EXPECTED_SHARE_ID,
+                                   fpg=constants.EXPECTED_FPG,
+                                   fstore=constants.EXPECTED_FSTORE),
+        ]
+
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_delete_fstore_exception(self):
+        self.init_mediator()
+        self.mock_object(self.mediator,
+                         '_find_fstore',
+                         mock.Mock(return_value=constants.EXPECTED_SHARE_ID))
+        self.mock_client.removefstore.side_effect = Exception(
+            'removefstore fail.')
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.delete_share,
+                          constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.CIFS,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+        expected_calls = [
+            mock.call.removefshare(constants.SMB_LOWER,
+                                   constants.EXPECTED_VFS,
+                                   constants.EXPECTED_SHARE_ID,
+                                   fpg=constants.EXPECTED_FPG,
+                                   fstore=constants.EXPECTED_SHARE_ID),
+            mock.call.removefstore(constants.EXPECTED_VFS,
+                                   constants.EXPECTED_SHARE_ID,
+                                   fpg=constants.EXPECTED_FPG),
+        ]
+
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_delete_cifs_share(self):
         self.init_mediator()
 
         self.mock_object(self.mediator,
@@ -613,6 +747,44 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                   fpg=constants.EXPECTED_FPG)
         ]
         self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_create_snapshot_not_allowed(self):
+        self.init_mediator()
+        self.mock_client.getfshare.return_value['members'][0]['shareDir'] = (
+            None)
+        self.mock_client.getfshare.return_value['members'][0]['sharePath'] = (
+            'foo/.snapshot/foo')
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.create_snapshot,
+                          constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.NFS,
+                          constants.EXPECTED_SNAP_NAME,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+    def test_mediator_create_snapshot_share_not_found(self):
+        self.init_mediator()
+
+        mock_find_fshare = self.mock_object(self.mediator,
+                                            '_find_fshare',
+                                            mock.Mock(return_value=None))
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.create_snapshot,
+                          constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.NFS,
+                          constants.EXPECTED_SNAP_NAME,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+        mock_find_fshare.assert_called_once_with(constants.EXPECTED_PROJECT_ID,
+                                                 constants.EXPECTED_SHARE_ID,
+                                                 constants.NFS,
+                                                 constants.EXPECTED_FPG,
+                                                 constants.EXPECTED_VFS)
 
     def test_mediator_create_snapshot_backend_exception(self):
         self.init_mediator()
@@ -1001,17 +1173,70 @@ class HPE3ParMediatorTestCase(test.TestCase):
         expected_calls = [mock.call.getfsquota(fpg=constants.EXPECTED_FPG)]
         self.mock_client.assert_has_calls(expected_calls)
 
-    def test_mediator_allow_user_access_cifs(self):
+    def test_mediator_allow_ip_ro_access_cifs_error(self):
+        self.init_mediator()
+
+        self.assertRaises(exception.HPE3ParInvalid,
+                          self.mediator.allow_access,
+                          constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.CIFS,
+                          constants.EXPECTED_EXTRA_SPECS,
+                          constants.IP,
+                          constants.EXPECTED_IP_10203040,
+                          constants.READ_ONLY,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+    @ddt.data(constants.CIFS, constants.NFS)
+    def test_mediator_allow_rw_snapshot_error(self, proto):
+        self.init_mediator()
+        getfshare_result = {
+            'shareName': 'foo_ro_name',
+            'fstoreName': 'foo_fstore',
+            'comment': 'foo_comment',
+        }
+        path = 'foo/.snapshot/foo'
+        if proto == constants.NFS:
+            getfshare_result['sharePath'] = path
+        else:
+            getfshare_result['shareDir'] = path
+
+        self.mock_client.getfshare.return_value = {
+            'total': 1,
+            'members': [getfshare_result],
+            'message': None,
+        }
+
+        self.assertRaises(exception.InvalidShareAccess,
+                          self.mediator.allow_access,
+                          constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          proto,
+                          constants.EXPECTED_EXTRA_SPECS,
+                          constants.IP,
+                          constants.EXPECTED_IP_10203040,
+                          constants.READ_WRITE,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+    @ddt.data(constants.READ_ONLY, constants.READ_WRITE)
+    def test_mediator_allow_user_access_cifs(self, access_level):
         """"Allow user access to cifs share."""
         self.init_mediator()
 
-        expected_allowperm = '+%s:fullcontrol' % constants.USERNAME
+        if access_level == constants.READ_ONLY:
+            expected_allowperm = '+%s:read' % constants.USERNAME
+        else:
+            expected_allowperm = '+%s:fullcontrol' % constants.USERNAME
 
         self.mediator.allow_access(constants.EXPECTED_PROJECT_ID,
                                    constants.EXPECTED_SHARE_ID,
                                    constants.CIFS,
+                                   constants.EXPECTED_EXTRA_SPECS,
                                    constants.USER,
                                    constants.USERNAME,
+                                   access_level,
                                    constants.EXPECTED_FPG,
                                    constants.EXPECTED_VFS)
 
@@ -1020,11 +1245,45 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                 constants.EXPECTED_VFS,
                                 constants.EXPECTED_SHARE_ID,
                                 allowperm=expected_allowperm,
+                                comment=constants.EXPECTED_COMMENT,
                                 fpg=constants.EXPECTED_FPG,
                                 fstore=constants.EXPECTED_FSTORE)
 
         ]
         self.mock_client.assert_has_calls(expected_calls)
+
+    @ddt.data(constants.CIFS, constants.NFS)
+    def test_mediator_deny_rw_snapshot_error(self, proto):
+        self.init_mediator()
+        getfshare_result = {
+            'shareName': 'foo_ro_name',
+            'fstoreName': 'foo_fstore',
+            'comment': 'foo_comment',
+        }
+        path = 'foo/.snapshot/foo'
+        if proto == constants.NFS:
+            getfshare_result['sharePath'] = path
+        else:
+            getfshare_result['shareDir'] = path
+
+        self.mock_client.getfshare.return_value = {
+            'total': 1,
+            'members': [getfshare_result],
+            'message': None,
+        }
+        mock_log = self.mock_object(hpe3parmediator, 'LOG')
+
+        self.mediator.deny_access(constants.EXPECTED_PROJECT_ID,
+                                  constants.EXPECTED_SHARE_ID,
+                                  proto,
+                                  constants.IP,
+                                  constants.EXPECTED_IP_10203040,
+                                  constants.READ_WRITE,
+                                  constants.EXPECTED_FPG,
+                                  constants.EXPECTED_VFS)
+
+        self.assertFalse(self.mock_client.setfshare.called)
+        self.assertTrue(mock_log.error.called)
 
     def test_mediator_deny_user_access_cifs(self):
         """"Deny user access to cifs share."""
@@ -1037,6 +1296,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                   constants.CIFS,
                                   constants.USER,
                                   constants.USERNAME,
+                                  constants.READ_WRITE,
                                   constants.EXPECTED_FPG,
                                   constants.EXPECTED_VFS)
 
@@ -1045,6 +1305,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                 constants.EXPECTED_VFS,
                                 constants.EXPECTED_SHARE_ID,
                                 allowperm=expected_denyperm,
+                                comment=constants.EXPECTED_COMMENT,
                                 fpg=constants.EXPECTED_FPG,
                                 fstore=constants.EXPECTED_FSTORE)
 
@@ -1060,8 +1321,10 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.mediator.allow_access(constants.EXPECTED_PROJECT_ID,
                                    constants.EXPECTED_SHARE_ID,
                                    constants.CIFS,
+                                   constants.EXPECTED_EXTRA_SPECS,
                                    constants.IP,
                                    constants.EXPECTED_IP_1234,
+                                   constants.READ_WRITE,
                                    constants.EXPECTED_FPG,
                                    constants.EXPECTED_VFS)
 
@@ -1086,6 +1349,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                   constants.CIFS,
                                   constants.IP,
                                   constants.EXPECTED_IP_1234,
+                                  constants.READ_WRITE,
                                   constants.EXPECTED_FPG,
                                   constants.EXPECTED_VFS)
 
@@ -1102,26 +1366,34 @@ class HPE3ParMediatorTestCase(test.TestCase):
     def test_mediator_allow_ip_access_nfs(self):
         """"Allow ip access to nfs share."""
         self.init_mediator()
+        already_exists = (hpe3parmediator.IP_ALREADY_EXISTS %
+                          constants.EXPECTED_IP_1234)
+        self.mock_client.setfshare.side_effect = ([], [already_exists])
 
         expected_clientip = '+%s' % constants.EXPECTED_IP_1234
 
-        self.mediator.allow_access(constants.EXPECTED_PROJECT_ID,
-                                   constants.EXPECTED_SHARE_ID,
-                                   constants.NFS,
-                                   constants.IP,
-                                   constants.EXPECTED_IP_1234,
-                                   constants.EXPECTED_FPG,
-                                   constants.EXPECTED_VFS)
+        for _ in range(2):  # Test 2nd allow w/ already exists message.
+            self.mediator.allow_access(constants.EXPECTED_PROJECT_ID,
+                                       constants.EXPECTED_SHARE_ID,
+                                       constants.NFS,
+                                       constants.EXPECTED_EXTRA_SPECS,
+                                       constants.IP,
+                                       constants.EXPECTED_IP_1234,
+                                       constants.READ_WRITE,
+                                       constants.EXPECTED_FPG,
+                                       constants.EXPECTED_VFS)
 
-        expected_calls = [
+        expected_calls = 2 * [
             mock.call.setfshare(constants.NFS.lower(),
                                 constants.EXPECTED_VFS,
                                 constants.EXPECTED_SHARE_ID,
                                 clientip=expected_clientip,
                                 fpg=constants.EXPECTED_FPG,
-                                fstore=constants.EXPECTED_FSTORE)
+                                fstore=constants.EXPECTED_FSTORE,
+                                comment=constants.EXPECTED_COMMENT),
         ]
-        self.mock_client.assert_has_calls(expected_calls)
+
+        self.mock_client.assert_has_calls(expected_calls, any_order=True)
 
     def test_mediator_deny_ip_access_nfs(self):
         """"Deny ip access to nfs share."""
@@ -1134,6 +1406,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                   constants.NFS,
                                   constants.IP,
                                   constants.EXPECTED_IP_1234,
+                                  constants.READ_WRITE,
                                   constants.EXPECTED_FPG,
                                   constants.EXPECTED_VFS)
 
@@ -1143,9 +1416,63 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                 constants.EXPECTED_SHARE_ID,
                                 clientip=expected_clientip,
                                 fpg=constants.EXPECTED_FPG,
-                                fstore=constants.EXPECTED_FSTORE)
+                                fstore=constants.EXPECTED_FSTORE,
+                                comment=constants.EXPECTED_COMMENT)
         ]
         self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_deny_ip_ro_access_nfs_legacy(self):
+        self.init_mediator()
+
+        # Fail to find share with new naming. Succeed finding legacy naming.
+        legacy = {
+            'shareName': 'foo_name',
+            'fstoreName': 'foo_fstore',
+            'comment': 'foo_comment',
+            'sharePath': 'foo/.snapshot/foo',
+        }
+        fshares = (None, legacy)
+        mock_find_fshare = self.mock_object(self.mediator,
+                                            '_find_fshare',
+                                            mock.Mock(side_effect=fshares))
+
+        expected_clientip = '-%s' % constants.EXPECTED_IP_1234
+
+        self.mediator.deny_access(constants.EXPECTED_PROJECT_ID,
+                                  constants.EXPECTED_SHARE_ID,
+                                  constants.NFS,
+                                  constants.IP,
+                                  constants.EXPECTED_IP_1234,
+                                  constants.READ_ONLY,
+                                  constants.EXPECTED_FPG,
+                                  constants.EXPECTED_VFS)
+
+        expected_calls = [
+            mock.call.setfshare(constants.NFS.lower(),
+                                constants.EXPECTED_VFS,
+                                legacy['shareName'],
+                                clientip=expected_clientip,
+                                fpg=constants.EXPECTED_FPG,
+                                fstore=legacy['fstoreName'],
+                                comment=legacy['comment'])
+        ]
+        self.mock_client.assert_has_calls(expected_calls)
+
+        expected_find_fshare_calls = [
+            mock.call(constants.EXPECTED_PROJECT_ID,
+                      constants.EXPECTED_SHARE_ID,
+                      constants.NFS_LOWER,
+                      constants.EXPECTED_FPG,
+                      constants.EXPECTED_VFS,
+                      readonly=True),
+            mock.call(constants.EXPECTED_PROJECT_ID,
+                      constants.EXPECTED_SHARE_ID,
+                      constants.NFS_LOWER,
+                      constants.EXPECTED_FPG,
+                      constants.EXPECTED_VFS,
+                      readonly=False),
+        ]
+        mock_find_fshare.assert_has_calls(expected_find_fshare_calls)
 
     def test_mediator_allow_user_access_nfs(self):
         """"Allow user access to nfs share is not supported."""
@@ -1156,8 +1483,10 @@ class HPE3ParMediatorTestCase(test.TestCase):
                           constants.EXPECTED_PROJECT_ID,
                           constants.EXPECTED_SHARE_ID,
                           constants.NFS,
+                          constants.EXPECTED_EXTRA_SPECS,
                           constants.USER,
                           constants.USERNAME,
+                          constants.READ_WRITE,
                           constants.EXPECTED_FPG,
                           constants.EXPECTED_VFS)
 
@@ -1170,8 +1499,10 @@ class HPE3ParMediatorTestCase(test.TestCase):
                           constants.EXPECTED_PROJECT_ID,
                           constants.EXPECTED_SHARE_ID,
                           'unsupported_other_protocol',
+                          constants.EXPECTED_EXTRA_SPECS,
                           constants.USER,
                           constants.USERNAME,
+                          constants.READ_WRITE,
                           constants.EXPECTED_FPG,
                           constants.EXPECTED_VFS)
 
@@ -1184,10 +1515,177 @@ class HPE3ParMediatorTestCase(test.TestCase):
                           constants.EXPECTED_PROJECT_ID,
                           constants.EXPECTED_SHARE_ID,
                           constants.CIFS,
+                          constants.EXPECTED_EXTRA_SPECS,
                           'unsupported_other_type',
                           constants.USERNAME,
+                          constants.READ_WRITE,
                           constants.EXPECTED_FPG,
                           constants.EXPECTED_VFS)
+
+    def test_mediator_allow_access_missing_nfs_share(self):
+        self.init_mediator()
+        mock_find_fshare = self.mock_object(self.mediator,
+                                            '_find_fshare',
+                                            mock.Mock(return_value=None))
+
+        self.assertRaises(exception.HPE3ParInvalid,
+                          self.mediator.allow_access,
+                          constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.NFS,
+                          constants.EXPECTED_EXTRA_SPECS,
+                          constants.IP,
+                          constants.EXPECTED_IP_1234,
+                          constants.READ_WRITE,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+        expected_calls = [
+            mock.call(constants.EXPECTED_PROJECT_ID,
+                      constants.EXPECTED_SHARE_ID,
+                      constants.NFS_LOWER,
+                      constants.EXPECTED_FPG,
+                      constants.EXPECTED_VFS,
+                      readonly=False),
+            mock.call(constants.EXPECTED_PROJECT_ID,
+                      constants.EXPECTED_SHARE_ID,
+                      constants.NFS_LOWER,
+                      constants.EXPECTED_FPG,
+                      constants.EXPECTED_VFS,
+                      readonly=True),
+        ]
+        mock_find_fshare.assert_has_calls(expected_calls)
+
+    def test_mediator_allow_nfs_ro_access(self):
+        self.init_mediator()
+        getfshare_result = {
+            'shareName': 'foo_ro_name',
+            'fstoreName': 'foo_fstore',
+            'shareDir': 'foo_dir',
+            'comment': 'foo_comment',
+        }
+        findings = (None, getfshare_result)
+        mock_find_fshare = self.mock_object(self.mediator,
+                                            '_find_fshare',
+                                            mock.Mock(side_effect=findings))
+        self.mock_client.getfshare.return_value = {
+            'total': 1,
+            'members': [getfshare_result],
+            'message': None,
+        }
+
+        share_id = 'foo'
+
+        self.mediator.allow_access(constants.EXPECTED_PROJECT_ID,
+                                   share_id,
+                                   constants.NFS,
+                                   constants.EXPECTED_EXTRA_SPECS,
+                                   constants.IP,
+                                   constants.EXPECTED_IP_1234,
+                                   constants.READ_ONLY,
+                                   constants.EXPECTED_FPG,
+                                   constants.EXPECTED_VFS)
+
+        expected_calls = [
+            mock.call(constants.EXPECTED_PROJECT_ID,
+                      share_id,
+                      constants.NFS_LOWER,
+                      constants.EXPECTED_FPG,
+                      constants.EXPECTED_VFS,
+                      readonly=True),
+            mock.call(constants.EXPECTED_PROJECT_ID,
+                      share_id,
+                      constants.NFS_LOWER,
+                      constants.EXPECTED_FPG,
+                      constants.EXPECTED_VFS,
+                      readonly=False),
+        ]
+        mock_find_fshare.assert_has_calls(expected_calls)
+
+        ro_share = 'osf-ro-%s' % share_id
+
+        expected_calls = [
+            mock.call.createfshare(constants.NFS_LOWER,
+                                   constants.EXPECTED_VFS,
+                                   ro_share,
+                                   clientip=constants.EXPECTED_IP_127_2,
+                                   comment=getfshare_result['comment'],
+                                   fpg=constants.EXPECTED_FPG,
+                                   fstore=getfshare_result['fstoreName'],
+                                   options='ro,no_root_squash,insecure',
+                                   sharedir=getfshare_result['shareDir']),
+            mock.call.getfshare(constants.NFS_LOWER,
+                                ro_share,
+                                fstore=getfshare_result['fstoreName'],
+                                fpg=constants.EXPECTED_FPG,
+                                vfs=constants.EXPECTED_VFS),
+            mock.call.setfshare(constants.NFS_LOWER,
+                                constants.EXPECTED_VFS,
+                                getfshare_result['shareName'],
+                                clientip='+%s' % constants.EXPECTED_IP_1234,
+                                comment=getfshare_result['comment'],
+                                fpg=constants.EXPECTED_FPG,
+                                fstore=getfshare_result['fstoreName']),
+        ]
+        self.mock_client.assert_has_calls(expected_calls)
+
+    def test_mediator_deny_access_missing_nfs_share(self):
+        self.init_mediator()
+        mock_find_fshare = self.mock_object(self.mediator,
+                                            '_find_fshare',
+                                            mock.Mock(return_value=None))
+
+        self.mediator.deny_access(
+            constants.EXPECTED_PROJECT_ID,
+            constants.EXPECTED_SHARE_ID,
+            constants.NFS,
+            constants.IP,
+            constants.READ_WRITE,
+            constants.EXPECTED_IP_1234,
+            constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS)
+
+        expected_calls = [
+            mock.call(constants.EXPECTED_PROJECT_ID,
+                      constants.EXPECTED_SHARE_ID,
+                      constants.NFS_LOWER,
+                      constants.EXPECTED_FPG,
+                      constants.EXPECTED_VFS,
+                      readonly=False),
+        ]
+        mock_find_fshare.assert_has_calls(expected_calls)
+
+    @ddt.data((hpe3parmediator.ALLOW, 'ip', True,
+               ['IP address foo already exists']),
+              (hpe3parmediator.ALLOW, 'ip', False,
+               ['Another share already exists for this path and client']),
+              (hpe3parmediator.ALLOW, 'user', True,
+               ['"allow" permission already exists for "foo"']),
+              (hpe3parmediator.DENY, 'ip', True,
+               ['foo does not exist, cannot be removed']),
+              (hpe3parmediator.DENY, 'user', True,
+               ['foo:fullcontrol" does not exist, cannot delete it.']),
+              (hpe3parmediator.DENY, 'user', False,
+               ['SMB share osf-foo does not exist']),
+              (hpe3parmediator.ALLOW, 'ip', True, ['\r']),
+              (hpe3parmediator.ALLOW, 'user', True, ['\r']),
+              (hpe3parmediator.DENY, 'ip', True, ['\r']),
+              (hpe3parmediator.DENY, 'user', True, ['\r']),
+              (hpe3parmediator.ALLOW, 'ip', True, []),
+              (hpe3parmediator.ALLOW, 'user', True, []),
+              (hpe3parmediator.DENY, 'ip', True, []),
+              (hpe3parmediator.DENY, 'user', True, []))
+    @ddt.unpack
+    def test_ignore_benign_access_results(self, access, access_type,
+                                          expect_false, results):
+
+        returned = self.mediator.ignore_benign_access_results(
+            access, access_type, 'foo', results)
+
+        if expect_false:
+            self.assertFalse(returned)
+        else:
+            self.assertEqual(results, returned)
 
     @ddt.data((('nfs', 'NFS', 'nFs'), 'smb'),
               (('smb', 'SMB', 'SmB', 'CIFS', 'cifs', 'CiFs'), 'nfs'))
@@ -1204,15 +1702,18 @@ class HPE3ParMediatorTestCase(test.TestCase):
                           hpe3parmediator.HPE3ParMediator().other_protocol,
                           protocol)
 
-    @ddt.data(('osf-uid', None, 'osf-uid'),
-              ('uid', None, 'osf-uid'),
-              ('uid', 'smb', 'osf-smb-uid'),
-              ('uid', 'smb', 'osf-smb-uid'))
+    @ddt.data(('osf-uid', None, None, 'osf-uid'),
+              ('uid', None, True, 'osf-ro-uid'),
+              ('uid', None, False, 'osf-uid'),
+              ('uid', 'smb', True, 'osf-smb-ro-uid'),
+              ('uid', 'smb', False, 'osf-smb-uid'),
+              ('uid', 'nfs', True, 'osf-nfs-ro-uid'),
+              ('uid', 'nfs', False, 'osf-nfs-uid'))
     @ddt.unpack
-    def test_ensure_prefix(self, uid, protocol, expected):
+    def test_ensure_prefix(self, uid, protocol, readonly, expected):
         self.assertEqual(expected,
                          hpe3parmediator.HPE3ParMediator().ensure_prefix(
-                             uid, protocol=protocol))
+                             uid, protocol=protocol, readonly=readonly))
 
     def test_find_fstore_search(self):
         self.init_mediator()
@@ -1231,14 +1732,15 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                                  constants.EXPECTED_SHARE_ID,
                                                  constants.NFS,
                                                  constants.EXPECTED_FPG,
-                                                 constants.EXPECTED_VFS)
+                                                 constants.EXPECTED_VFS,
+                                                 allow_cross_protocol=False)
         self.assertIsNone(result)
 
     def test_find_fstore_search_xproto(self):
         self.init_mediator()
 
         mock_find_fshare = self.mock_object(self.mediator,
-                                            '_find_fshare',
+                                            '_find_fshare_with_proto',
                                             mock.Mock(return_value=None))
 
         result = self.mediator._find_fstore(constants.EXPECTED_PROJECT_ID,
@@ -1253,12 +1755,14 @@ class HPE3ParMediatorTestCase(test.TestCase):
                       constants.EXPECTED_SHARE_ID,
                       constants.NFS,
                       constants.EXPECTED_FPG,
-                      constants.EXPECTED_VFS),
+                      constants.EXPECTED_VFS,
+                      readonly=False),
             mock.call(constants.EXPECTED_PROJECT_ID,
                       constants.EXPECTED_SHARE_ID,
                       constants.SMB_LOWER,
                       constants.EXPECTED_FPG,
-                      constants.EXPECTED_VFS),
+                      constants.EXPECTED_VFS,
+                      readonly=False),
         ]
         mock_find_fshare.assert_has_calls(expected_calls)
         self.assertIsNone(result)

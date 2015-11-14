@@ -77,6 +77,9 @@ HPE3PAR_OPTS = [
                 default=False,
                 help="Use one filestore per share",
                 deprecated_name='hp3par_fstore_per_share'),
+    cfg.BoolOpt('hpe3par_require_cifs_ip',
+                default=False,
+                help="Require IP access rules for CIFS (in addition to user)"),
     cfg.BoolOpt('hpe3par_debug',
                 default=False,
                 help="Enable HTTP debugging to 3PAR",
@@ -99,10 +102,11 @@ class HPE3ParShareDriver(driver.ShareDriver):
         1.0.1 - Report thin/dedup/hp_flash_cache capabilities
         1.0.2 - Add share server/share network support
         2.0.0 - Rebranded HP to HPE
+        2.0.1 - Add access_level (e.g. read-only support)
 
     """
 
-    VERSION = "2.0.0"
+    VERSION = "2.0.1"
 
     def __init__(self, *args, **kwargs):
         super(HPE3ParShareDriver, self).__init__((True, False),
@@ -143,6 +147,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
             hpe3par_san_ssh_port=self.configuration.hpe3par_san_ssh_port,
             hpe3par_fstore_per_share=(self.configuration
                                       .hpe3par_fstore_per_share),
+            hpe3par_require_cifs_ip=self.configuration.hpe3par_require_cifs_ip,
             ssh_conn_timeout=self.configuration.ssh_conn_timeout,
         )
 
@@ -345,11 +350,18 @@ class HPE3ParShareDriver(driver.ShareDriver):
 
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
+
+        extra_specs = None
+        if 'NFS' == share['share_proto']:  # Avoiding DB call otherwise
+            extra_specs = share_types.get_extra_specs_from_share(share)
+
         self._hpe3par.allow_access(share['project_id'],
                                    share['id'],
                                    share['share_proto'],
+                                   extra_specs,
                                    access['access_type'],
                                    access['access_to'],
+                                   access['access_level'],
                                    self.fpg,
                                    self.vfs)
 
@@ -360,6 +372,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
                                   share['share_proto'],
                                   access['access_type'],
                                   access['access_to'],
+                                  access['access_level'],
                                   self.fpg,
                                   self.vfs)
 
