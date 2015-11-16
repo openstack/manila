@@ -164,7 +164,7 @@ class APIRouter(manila.api.openstack.APIRouter):
                         member={'action': 'POST'})
 
         self.resources['share_servers'] = share_servers.create_resource()
-        mapper.resource(share_servers.RESOURCE_NAME,
+        mapper.resource('share_server',
                         'share-servers',
                         controller=self.resources['share_servers'])
         mapper.connect('details',

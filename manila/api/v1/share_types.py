@@ -25,7 +25,6 @@ from manila.api.openstack import wsgi
 from manila.api.views import types as views_types
 from manila import exception
 from manila.i18n import _
-from manila import policy
 from manila import rpc
 from manila.share import share_types
 
@@ -54,20 +53,18 @@ class ShareTypesController(wsgi.Controller):
                     "project is not in proper format (%s)") % project
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
+    @wsgi.Controller.authorize
     def index(self, req):
         """Returns the list of share types."""
-        context = req.environ['manila.context']
-        policy.check_policy(context, self.resource_name, 'index')
 
         limited_types = self._get_share_types(req)
         req.cache_db_share_types(limited_types)
         return self._view_builder.index(req, limited_types)
 
+    @wsgi.Controller.authorize
     def show(self, req, id):
         """Return a single share type item."""
         context = req.environ['manila.context']
-        policy.check_policy(context, self.resource_name, 'show')
-
         try:
             share_type = share_types.get_share_type(context, id)
         except exception.NotFound:
@@ -78,10 +75,10 @@ class ShareTypesController(wsgi.Controller):
         req.cache_db_share_type(share_type)
         return self._view_builder.show(req, share_type)
 
+    @wsgi.Controller.authorize
     def default(self, req):
         """Return default volume type."""
         context = req.environ['manila.context']
-        policy.check_policy(context, self.resource_name, 'default')
 
         try:
             share_type = share_types.get_default_share_type(context)
@@ -131,10 +128,10 @@ class ShareTypesController(wsgi.Controller):
                 raise exc.HTTPBadRequest(explanation=msg)
 
     @wsgi.action("create")
+    @wsgi.Controller.authorize('create')
     def _create(self, req, body):
         """Creates a new share type."""
         context = req.environ['manila.context']
-        self.authorize(context, 'create')
 
         if not self.is_valid_body(body, 'share_type') and \
                 not self.is_valid_body(body, 'volume_type'):
@@ -185,10 +182,10 @@ class ShareTypesController(wsgi.Controller):
         return self._view_builder.show(req, share_type)
 
     @wsgi.action("delete")
+    @wsgi.Controller.authorize('delete')
     def _delete(self, req, id):
         """Deletes an existing share type."""
         context = req.environ['manila.context']
-        self.authorize(context, 'delete')
 
         try:
             share_type = share_types.get_share_type(context, id)
@@ -211,9 +208,9 @@ class ShareTypesController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
+    @wsgi.Controller.authorize('list_project_access')
     def _list_project_access(self, req, id):
         context = req.environ['manila.context']
-        self.authorize(context, 'list_project_access')
 
         try:
             share_type = share_types.get_share_type(
@@ -235,9 +232,9 @@ class ShareTypesController(wsgi.Controller):
         return {'share_type_access': rval}
 
     @wsgi.action('addProjectAccess')
+    @wsgi.Controller.authorize('add_project_access')
     def _add_project_access(self, req, id, body):
         context = req.environ['manila.context']
-        self.authorize(context, 'add_project_access')
         self._check_body(body, 'addProjectAccess')
         project = body['addProjectAccess']['project']
 
@@ -259,9 +256,9 @@ class ShareTypesController(wsgi.Controller):
         return webob.Response(status_int=202)
 
     @wsgi.action('removeProjectAccess')
+    @wsgi.Controller.authorize('remove_project_access')
     def _remove_project_access(self, req, id, body):
         context = req.environ['manila.context']
-        self.authorize(context, 'remove_project_access')
         self._check_body(body, 'removeProjectAccess')
         project = body['removeProjectAccess']['project']
 

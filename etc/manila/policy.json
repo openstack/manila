@@ -97,13 +97,14 @@
     "consistency_group:update": "rule:default",
     "consistency_group:get": "rule:default",
     "consistency_group:get_all": "rule:default",
-    "consistency_group:create_cgsnapshot" : "rule:default",
-    "consistency_group:delete_cgsnapshot": "rule:default",
     "consistency_group:force_delete": "rule:admin_api",
     "consistency_group:reset_status": "rule:admin_api",
-    "consistency_group:get_cgsnapshot": "rule:default",
-    "consistency_group:get_all_cgsnapshots": "rule:default",
 
     "cgsnapshot:force_delete": "rule:admin_api",
-    "cgsnapshot:reset_status": "rule:admin_api"
+    "cgsnapshot:reset_status": "rule:admin_api",
+    "cgsnapshot:create" : "rule:default",
+    "cgsnapshot:update" : "rule:default",
+    "cgsnapshot:delete": "rule:default",
+    "cgsnapshot:get_cgsnapshot": "rule:default",
+    "cgsnapshot:get_all": "rule:default"
 }

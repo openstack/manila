@@ -17,6 +17,7 @@ import mock
 
 from manila.api.v1 import availability_zones
 from manila import context
+from manila import policy
 from manila import test
 from manila.tests.api import fakes
 
@@ -50,6 +51,7 @@ class AvailabilityZonesAPITest(test.TestCase):
                 "redundant_key": "redundant_value",
             },
         ]
+        mock_policy_check = self.mock_object(policy, 'check_policy')
         self.mock_object(availability_zones.db, 'availability_zone_get_all',
                          mock.Mock(return_value=azs))
         controller = availability_zones.AvailabilityZoneController()
@@ -61,6 +63,8 @@ class AvailabilityZonesAPITest(test.TestCase):
 
         availability_zones.db.availability_zone_get_all.\
             assert_called_once_with(ctxt)
+        mock_policy_check.assert_called_once_with(
+            ctxt, controller.resource_name, 'index')
         self.assertTrue(isinstance(result, dict))
         self.assertEqual(["availability_zones"], list(result.keys()))
         self.assertTrue(isinstance(result["availability_zones"], list))

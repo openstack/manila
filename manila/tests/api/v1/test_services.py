@@ -17,6 +17,7 @@
 
 import datetime
 
+import mock
 from oslo_utils import timeutils
 
 from manila.api.v1 import services
@@ -167,10 +168,6 @@ def fake_service_update(context, service_id, values):
          'disabled': values['disabled']}
 
 
-def fake_policy_enforce(context, action, target):
-    pass
-
-
 def fake_utcnow():
     return datetime.datetime(2012, 10, 29, 13, 42, 11)
 
@@ -185,10 +182,11 @@ class ServicesTest(test.TestCase):
         self.mock_object(db, "service_get_by_args",
                          fake_service_get_by_host_binary)
         self.mock_object(db, "service_update", fake_service_update)
-        self.mock_object(policy, "enforce", fake_policy_enforce)
-
         self.context = context.get_admin_context()
         self.controller = services.ServiceController()
+        self.resource_name = self.controller.resource_name
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
 
     def tearDown(self):
         super(ServicesTest, self).tearDown()
@@ -197,6 +195,8 @@ class ServicesTest(test.TestCase):
         req = FakeRequest()
         res_dict = self.controller.index(req)
         self.assertEqual(fake_response_service_list, res_dict)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'index')
 
     def test_services_list_with_host(self):
         req = FakeRequestWithHost()
@@ -207,6 +207,8 @@ class ServicesTest(test.TestCase):
             fake_response_service_list['services'][1],
         ]}
         self.assertEqual(response, res_dict)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'index')
 
     def test_services_list_with_binary(self):
         req = FakeRequestWithBinary()
@@ -217,6 +219,8 @@ class ServicesTest(test.TestCase):
         ]}
 
         self.assertEqual(response, res_dict)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'index')
 
     def test_services_list_with_zone(self):
         req = FakeRequestWithZone()
@@ -226,6 +230,8 @@ class ServicesTest(test.TestCase):
             fake_response_service_list['services'][1],
         ]}
         self.assertEqual(response, res_dict)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'index')
 
     def test_services_list_with_status(self):
         req = FakeRequestWithStatus()
@@ -234,6 +240,8 @@ class ServicesTest(test.TestCase):
             fake_response_service_list['services'][2],
         ]}
         self.assertEqual(response, res_dict)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'index')
 
     def test_services_list_with_state(self):
         req = FakeRequestWithState()
@@ -243,21 +251,29 @@ class ServicesTest(test.TestCase):
             fake_response_service_list['services'][1],
         ]}
         self.assertEqual(response, res_dict)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'index')
 
     def test_services_list_with_host_binary(self):
         req = FakeRequestWithHostBinary()
         res_dict = self.controller.index(req)
         response = {'services': [fake_response_service_list['services'][1], ]}
         self.assertEqual(response, res_dict)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'index')
 
     def test_services_enable(self):
         body = {'host': 'host1', 'binary': 'manila-share'}
         req = fakes.HTTPRequest.blank('/v1/fake/os-services/enable')
         res_dict = self.controller.update(req, "enable", body)
         self.assertFalse(res_dict['disabled'])
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'update')
 
     def test_services_disable(self):
         req = fakes.HTTPRequest.blank('/v1/fake/os-services/disable')
         body = {'host': 'host1', 'binary': 'manila-share'}
         res_dict = self.controller.update(req, "disable", body)
         self.assertTrue(res_dict['disabled'])
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'update')

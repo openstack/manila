@@ -24,8 +24,8 @@ class AvailabilityZoneController(wsgi.Controller):
     resource_name = "availability_zone"
     _view_builder_class = availability_zones_views.ViewBuilder
 
+    @wsgi.Controller.authorize
     def index(self, req):
-        self.authorize(req.environ['manila.context'], 'index')
         return self._index(req)
 
     def _index(self, req):

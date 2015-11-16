@@ -11,6 +11,7 @@
 #    under the License.
 
 import ddt
+import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 import six
@@ -22,6 +23,7 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
+from manila import policy
 from manila import test
 from manila.tests.api import fakes
 from manila.tests import db_utils
@@ -36,6 +38,10 @@ class ShareInstancesAPITest(test.TestCase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.controller = share_instances.ShareInstancesController()
+        self.resource_name = self.controller.resource_name
+        self.context = context.RequestContext('admin', 'fake', True)
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
         self.admin_context = context.RequestContext('admin', 'fake', True)
         self.member_context = context.RequestContext('fake', 'fake')
 
@@ -64,6 +70,7 @@ class ShareInstancesAPITest(test.TestCase):
 
     def test_index(self):
         req = self._get_request('/share_instances')
+        req_context = req.environ['manila.context']
         share_instances_count = 3
         test_instances = [
             db_utils.create_share(size=s + 1).instance
@@ -74,6 +81,8 @@ class ShareInstancesAPITest(test.TestCase):
 
         self._validate_ids_in_share_instances_list(
             test_instances, actual_result['share_instances'])
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'index')
 
     def test_show(self):
         test_instance = db_utils.create_share(size=1).instance
@@ -82,11 +91,18 @@ class ShareInstancesAPITest(test.TestCase):
         actual_result = self.controller.show(self._get_request('fake'), id)
 
         self.assertEqual(id, actual_result['share_instance']['id'])
+        self.mock_policy_check.assert_called_once_with(
+            self.admin_context, self.resource_name, 'show')
 
     def test_get_share_instances(self):
         test_share = db_utils.create_share(size=1)
         id = test_share['id']
         req = self._get_request('fake')
+        req_context = req.environ['manila.context']
+        share_policy_check_call = mock.call(
+            req_context, 'share', 'get', mock.ANY)
+        get_instances_policy_check_call = mock.call(
+            req_context, 'share_instance', 'index')
 
         actual_result = self.controller.get_share_instances(req, id)
 
@@ -94,22 +110,33 @@ class ShareInstancesAPITest(test.TestCase):
             [test_share.instance],
             actual_result['share_instances']
         )
+        self.mock_policy_check.assert_has_calls([
+            get_instances_policy_check_call, share_policy_check_call])
 
     @ddt.data('show', 'get_share_instances')
     def test_not_found(self, target_method_name):
         method = getattr(self.controller, target_method_name)
+        action = (target_method_name if target_method_name == 'show' else
+                  'index')
         self.assertRaises(webob_exc.HTTPNotFound, method,
                           self._get_request('fake'), 'fake')
+        self.mock_policy_check.assert_called_once_with(
+            self.admin_context, self.resource_name, action)
 
     @ddt.data(('show', 2), ('get_share_instances', 2), ('index', 1))
     @ddt.unpack
     def test_access(self, target_method_name, args_count):
         user_context = context.RequestContext('fake', 'fake')
         req = self._get_request('fake', user_context)
+        policy_exception = exception.PolicyNotAuthorized(
+            action=target_method_name)
         target_method = getattr(self.controller, target_method_name)
         args = [i for i in range(1, args_count)]
 
-        self.assertRaises(webob_exc.HTTPForbidden, target_method, req, *args)
+        with mock.patch.object(policy, 'check_policy', mock.Mock(
+                side_effect=policy_exception)):
+            self.assertRaises(
+                webob_exc.HTTPForbidden, target_method, req, *args)
 
     def _reset_status(self, ctxt, model, req, db_access_method,
                       valid_code, valid_status=None, body=None):
@@ -120,7 +147,9 @@ class ShareInstancesAPITest(test.TestCase):
         req.body = six.b(jsonutils.dumps(body))
         req.environ['manila.context'] = ctxt
 
-        resp = req.get_response(fakes.app())
+        with mock.patch.object(
+                policy, 'check_policy', fakes.mock_fake_admin_check):
+            resp = req.get_response(fakes.app())
 
         # validate response code and model status
         self.assertEqual(valid_code, resp.status_int)
@@ -163,7 +192,9 @@ class ShareInstancesAPITest(test.TestCase):
         req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
         req.environ['manila.context'] = ctxt
 
-        resp = req.get_response(fakes.app())
+        with mock.patch.object(
+                policy, 'check_policy', fakes.mock_fake_admin_check):
+            resp = req.get_response(fakes.app())
 
         # validate response
         self.assertEqual(valid_code, resp.status_int)

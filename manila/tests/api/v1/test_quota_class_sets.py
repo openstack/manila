@@ -29,6 +29,7 @@ import webob.response
 from manila.api.v1 import quota_class_sets
 from manila import context
 from manila import exception
+from manila import policy
 from manila import test
 
 CONF = cfg.CONF
@@ -49,7 +50,10 @@ class QuotaSetsControllerTest(test.TestCase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.controller = quota_class_sets.QuotaClassSetsController()
+        self.resource_name = self.controller.resource_name
         self.class_name = 'foo_class_name'
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
 
     def test_show_quota(self):
         quotas = {
@@ -75,6 +79,8 @@ class QuotaSetsControllerTest(test.TestCase):
         result = self.controller.show(REQ, self.class_name)
 
         self.assertEqual(expected, result)
+        self.mock_policy_check.assert_called_once_with(
+            REQ.environ['manila.context'], self.resource_name, 'show')
 
     def test_show_quota_not_authorized(self):
         self.mock_object(
@@ -86,6 +92,8 @@ class QuotaSetsControllerTest(test.TestCase):
             webob.exc.HTTPForbidden,
             self.controller.show,
             REQ, self.class_name)
+        self.mock_policy_check.assert_called_once_with(
+            REQ.environ['manila.context'], self.resource_name, 'show')
 
     def test_update_quota(self):
         CONF.set_default('quota_shares', 789)
@@ -114,6 +122,9 @@ class QuotaSetsControllerTest(test.TestCase):
 
         expected['quota_class_set']['id'] = self.class_name
         self.assertEqual(expected, show_result)
+        self.mock_policy_check.assert_has_calls([mock.call(
+            REQ.environ['manila.context'], self.resource_name, action_name)
+            for action_name in ('update', 'show')])
 
     def test_update_quota_not_authorized(self):
         body = {
@@ -127,3 +138,5 @@ class QuotaSetsControllerTest(test.TestCase):
             webob.exc.HTTPForbidden,
             self.controller.update,
             REQ_MEMBER, self.class_name, body=body)
+        self.mock_policy_check.assert_called_once_with(
+            REQ_MEMBER.environ['manila.context'], self.resource_name, 'update')

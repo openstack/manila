@@ -31,11 +31,11 @@ class ServiceController(wsgi.Controller):
     resource_name = "service"
     _view_builder_class = services_views.ViewBuilder
 
+    @wsgi.Controller.authorize
     def index(self, req):
         """Return a list of all running services."""
 
         context = req.environ['manila.context']
-        self.authorize(context, 'index')
         all_services = db.service_get_all(context)
 
         services = []
@@ -68,10 +68,10 @@ class ServiceController(wsgi.Controller):
 
         return self._view_builder.detail_list(services)
 
+    @wsgi.Controller.authorize
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service."""
         context = req.environ['manila.context']
-        self.authorize(context, 'update')
 
         if id == "enable":
             data = {'disabled': False}

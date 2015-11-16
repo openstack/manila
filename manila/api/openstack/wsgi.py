@@ -1112,11 +1112,42 @@ class Controller(object):
 
         return decorator
 
-    def authorize(self, context, action):
-        try:
-            policy.check_policy(context, self.resource_name, action)
-        except exception.PolicyNotAuthorized:
-            raise webob.exc.HTTPForbidden()
+    @staticmethod
+    def authorize(arg):
+        """Decorator for checking the policy on API methods.
+
+        Add this decorator to any API method which takes a request object
+        as the first parameter and belongs to a class which inherits from
+        wsgi.Controller. The class must also have a class member called
+        'resource_name' which specifies the resource for the policy check.
+
+        Can be used in any of the following forms
+        @authorize
+        @authorize('my_action_name')
+
+        :param arg: Can either be the function being decorated or a str
+        containing the 'action' for the policy check. If no action name is
+        provided, the function name is assumed to be the action name.
+        """
+        action_name = None
+
+        def decorator(f):
+            @functools.wraps(f)
+            def wrapper(self, req, *args, **kwargs):
+                action = action_name or f.__name__
+                context = req.environ['manila.context']
+                try:
+                    policy.check_policy(context, self.resource_name, action)
+                except exception.PolicyNotAuthorized:
+                    raise webob.exc.HTTPForbidden()
+                return f(self, req, *args, **kwargs)
+            return wrapper
+
+        if callable(arg):
+            return decorator(arg)
+        else:
+            action_name = arg
+            return decorator
 
     @staticmethod
     def is_valid_body(body, entity_name):
@@ -1169,10 +1200,10 @@ class AdminActionsMixin(object):
         return update
 
     @action('os-reset_status')
+    @Controller.authorize('reset_status')
     def _reset_status(self, req, id, body):
         """Reset status on the resource."""
         context = req.environ['manila.context']
-        self.authorize(context, 'reset_status')
         update = self.validate_update(body['os-reset_status'])
         msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
@@ -1184,10 +1215,10 @@ class AdminActionsMixin(object):
         return webob.Response(status_int=202)
 
     @action('os-force_delete')
+    @Controller.authorize('force_delete')
     def _force_delete(self, req, id, body):
         """Delete a resource, bypassing the check for status."""
         context = req.environ['manila.context']
-        self.authorize(context, 'force_delete')
         try:
             resource = self._get(context, id)
         except exception.NotFound as e:

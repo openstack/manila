@@ -30,9 +30,9 @@ class QuotaClassSetsController(wsgi.Controller):
     resource_name = "quota_class_set"
     _view_builder_class = quota_class_sets_views.ViewBuilder
 
+    @wsgi.Controller.authorize
     def show(self, req, id):
         context = req.environ['manila.context']
-        self.authorize(context, 'show')
         try:
             db.authorize_quota_class_context(context, id)
         except exception.NotAuthorized:
@@ -41,9 +41,9 @@ class QuotaClassSetsController(wsgi.Controller):
         return self._view_builder.detail_list(
             QUOTAS.get_class_quotas(context, id), id)
 
+    @wsgi.Controller.authorize
     def update(self, req, id, body):
         context = req.environ['manila.context']
-        self.authorize(context, 'update')
         quota_class = id
         for key in body.get(self.resource_name, {}).keys():
             if key in QUOTAS:

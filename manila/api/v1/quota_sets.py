@@ -61,9 +61,9 @@ class QuotaSetsController(wsgi.Controller):
             return values
         return dict((k, v['limit']) for k, v in values.items())
 
+    @wsgi.Controller.authorize
     def show(self, req, id):
         context = req.environ['manila.context']
-        self.authorize(context, 'show')
         params = parse.parse_qs(req.environ.get('QUERY_STRING', ''))
         user_id = params.get('user_id', [None])[0]
         try:
@@ -73,14 +73,14 @@ class QuotaSetsController(wsgi.Controller):
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
+    @wsgi.Controller.authorize('show')
     def defaults(self, req, id):
         context = req.environ['manila.context']
-        self.authorize(context, 'show')
         return self._view_builder.detail_list(QUOTAS.get_defaults(context), id)
 
+    @wsgi.Controller.authorize
     def update(self, req, id, body):
         context = req.environ['manila.context']
-        self.authorize(context, 'update')
         project_id = id
         bad_keys = []
         force_update = False
@@ -166,9 +166,9 @@ class QuotaSetsController(wsgi.Controller):
         return self._view_builder.detail_list(
             self._get_quotas(context, id, user_id=user_id))
 
+    @wsgi.Controller.authorize
     def delete(self, req, id):
         context = req.environ['manila.context']
-        self.authorize(context, 'update')
         params = parse.parse_qs(req.environ.get('QUERY_STRING', ''))
         user_id = params.get('user_id', [None])[0]
         try:

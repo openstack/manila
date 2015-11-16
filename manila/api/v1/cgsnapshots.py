@@ -44,6 +44,7 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         self.cg_api = cg_api.API()
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize('get_cgsnapshot')
     def show(self, req, id):
         """Return data about the given cgsnapshot."""
         context = req.environ['manila.context']
@@ -57,6 +58,7 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._view_builder.detail(req, cg)
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize
     def delete(self, req, id):
         """Delete a cgsnapshot."""
         context = req.environ['manila.context']
@@ -78,11 +80,13 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return webob.Response(status_int=202)
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize('get_all')
     def index(self, req):
         """Returns a summary list of cgsnapshots."""
         return self._get_cgs(req, is_detail=False)
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize('get_all')
     def detail(self, req):
         """Returns a detailed list of cgsnapshots."""
         return self._get_cgs(req, is_detail=True)
@@ -110,6 +114,7 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         return snaps
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize
     def update(self, req, id, body):
         """Update a cgsnapshot."""
         context = req.environ['manila.context']
@@ -139,6 +144,7 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.response(202)
+    @wsgi.Controller.authorize
     def create(self, req, body):
         """Creates a new cgsnapshot."""
         context = req.environ['manila.context']
@@ -177,6 +183,7 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
                                          new_snapshot)))
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize('get_cgsnapshot')
     def members(self, req, id):
         """Returns a list of cgsnapshot members."""
         context = req.environ['manila.context']

@@ -29,6 +29,7 @@ import webob.response
 from manila.api.v1 import quota_sets
 from manila import context
 from manila import exception
+from manila import policy
 from manila import test
 from manila import utils
 
@@ -54,7 +55,10 @@ class QuotaSetsControllerTest(test.TestCase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.controller = quota_sets.QuotaSetsController()
+        self.resource_name = self.controller.resource_name
         self.project_id = 'foo_project_id'
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
 
     @ddt.data(
         {"shares": 3, "snapshots": 4, "gigabytes": 5,
@@ -84,6 +88,8 @@ class QuotaSetsControllerTest(test.TestCase):
         result = self.controller.defaults(REQ, self.project_id)
 
         self.assertEqual(expected, result)
+        self.mock_policy_check.assert_called_once_with(
+            REQ.environ['manila.context'], self.resource_name, 'show')
 
     @ddt.data(REQ, REQ_WITH_USER)
     def test_show_quota(self, request):
@@ -110,6 +116,8 @@ class QuotaSetsControllerTest(test.TestCase):
         result = self.controller.show(request, self.project_id)
 
         self.assertEqual(expected, result)
+        self.mock_policy_check.assert_called_once_with(
+            request.environ['manila.context'], self.resource_name, 'show')
 
     def test_show_quota_not_authorized(self):
         self.mock_object(
@@ -121,6 +129,8 @@ class QuotaSetsControllerTest(test.TestCase):
             webob.exc.HTTPForbidden,
             self.controller.show,
             REQ, self.project_id)
+        self.mock_policy_check.assert_called_once_with(
+            REQ.environ['manila.context'], self.resource_name, 'show')
 
     @ddt.data(REQ, REQ_WITH_USER)
     def test_update_quota(self, request):
@@ -135,6 +145,10 @@ class QuotaSetsControllerTest(test.TestCase):
                 'share_networks': 10,
             }
         }
+        mock_policy_update_check_call = mock.call(
+            request.environ['manila.context'], self.resource_name, 'update')
+        mock_policy_show_check_call = mock.call(
+            request.environ['manila.context'], self.resource_name, 'show')
 
         update_result = self.controller.update(
             request, self.project_id, body=body)
@@ -145,6 +159,8 @@ class QuotaSetsControllerTest(test.TestCase):
 
         expected['quota_set']['id'] = self.project_id
         self.assertEqual(expected, show_result)
+        self.mock_policy_check.assert_has_calls([
+            mock_policy_update_check_call, mock_policy_show_check_call])
 
     @ddt.data(-2, 'foo', {1: 2}, [1])
     def test_update_quota_with_invalid_value(self, value):
@@ -154,6 +170,8 @@ class QuotaSetsControllerTest(test.TestCase):
             webob.exc.HTTPBadRequest,
             self.controller.update,
             REQ, self.project_id, body=body)
+        self.mock_policy_check.assert_called_once_with(
+            REQ.environ['manila.context'], self.resource_name, 'update')
 
     def test_user_quota_can_not_be_bigger_than_tenant_quota(self):
         value = 777
@@ -169,6 +187,9 @@ class QuotaSetsControllerTest(test.TestCase):
             webob.exc.HTTPBadRequest,
             self.controller.update,
             REQ_WITH_USER, self.project_id, body=body)
+        self.mock_policy_check.assert_called_once_with(
+            REQ_WITH_USER.environ['manila.context'], self.resource_name,
+            'update')
 
     def test_update_inexistent_quota(self):
         body = {
@@ -182,6 +203,8 @@ class QuotaSetsControllerTest(test.TestCase):
             webob.exc.HTTPBadRequest,
             self.controller.update,
             REQ, self.project_id, body=body)
+        self.mock_policy_check.assert_called_once_with(
+            REQ.environ['manila.context'], self.resource_name, 'update')
 
     def test_update_quota_not_authorized(self):
         body = {'quota_set': {'tenant_id': self.project_id, 'shares': 13}}
@@ -190,6 +213,8 @@ class QuotaSetsControllerTest(test.TestCase):
             webob.exc.HTTPForbidden,
             self.controller.update,
             REQ_MEMBER, self.project_id, body=body)
+        self.mock_policy_check.assert_called_once_with(
+            REQ_MEMBER.environ['manila.context'], self.resource_name, 'update')
 
     def test_update_all_quotas_with_force(self):
         quotas = (
@@ -212,6 +237,10 @@ class QuotaSetsControllerTest(test.TestCase):
                 'force': True,
             }
         }
+        mock_policy_update_check_call = mock.call(
+            REQ.environ['manila.context'], self.resource_name, 'update')
+        mock_policy_show_check_call = mock.call(
+            REQ.environ['manila.context'], self.resource_name, 'show')
 
         update_result = self.controller.update(
             REQ, self.project_id, body=expected)
@@ -224,6 +253,8 @@ class QuotaSetsControllerTest(test.TestCase):
 
         expected['quota_set']['id'] = self.project_id
         self.assertEqual(expected, show_result)
+        self.mock_policy_check.assert_has_calls([
+            mock_policy_update_check_call, mock_policy_show_check_call])
 
     def test_delete_tenant_quota(self):
         self.mock_object(quota_sets.QUOTAS, 'destroy_all_by_project_and_user')
@@ -240,6 +271,8 @@ class QuotaSetsControllerTest(test.TestCase):
             quota_sets.QUOTAS.destroy_all_by_project_and_user.called)
         quota_sets.QUOTAS.destroy_all_by_project.assert_called_once_with(
             REQ.environ['manila.context'], self.project_id)
+        self.mock_policy_check.assert_called_once_with(
+            REQ.environ['manila.context'], self.resource_name, 'delete')
 
     def test_delete_user_quota(self):
         project_id = 'foo_project_id'
@@ -259,9 +292,14 @@ class QuotaSetsControllerTest(test.TestCase):
                 project_id,
                 REQ_WITH_USER.environ['manila.context'].user_id)
         self.assertFalse(quota_sets.QUOTAS.destroy_all_by_project.called)
+        self.mock_policy_check.assert_called_once_with(
+            REQ_WITH_USER.environ['manila.context'], self.resource_name,
+            'delete')
 
     def test_delete_not_authorized(self):
         self.assertRaises(
             webob.exc.HTTPForbidden,
             self.controller.delete,
             REQ_MEMBER, self.project_id)
+        self.mock_policy_check.assert_called_once_with(
+            REQ_MEMBER.environ['manila.context'], self.resource_name, 'delete')

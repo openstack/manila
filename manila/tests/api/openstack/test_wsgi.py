@@ -1,10 +1,13 @@
 import ddt
 import inspect
+import mock
 import six
 import webob
 
 from manila.api.openstack import wsgi
+from manila import context
 from manila import exception
+from manila import policy
 from manila import test
 from manila.tests.api import fakes
 
@@ -865,3 +868,50 @@ class ValidBodyTest(test.TestCase):
     def test_is_valid_body_malformed_entity(self):
         body = {'foo': 'bar'}
         self.assertFalse(self.controller.is_valid_body(body, 'foo'))
+
+class AuthorizeDecoratorTest(test.TestCase):
+    class FakeController(wsgi.Controller):
+        resource_name = 'fake_resource_name'
+
+        @wsgi.Controller.authorize
+        def fake_action_1(self, req):
+            pass
+
+        @wsgi.Controller.authorize('fake_action')
+        def fake_action_2(self, req):
+            pass
+
+    def setUp(self):
+        super(AuthorizeDecoratorTest, self).setUp()
+        self.controller = self.FakeController()
+        self.admin_context = context.get_admin_context()
+        self.user_context = fakes.FakeRequestContext
+        self.mock_policy_check = self.mock_object(policy, 'check_policy')
+
+    def test_authorize_decorator_no_args(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/fake_id')
+        req.environ['manila.context'] = self.user_context
+
+        self.controller.fake_action_1(req)
+
+        self.mock_policy_check.assert_called_once_with(
+            self.user_context, self.controller.resource_name, 'fake_action_1')
+
+    def test_authorize_decorator_action_name(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/fake_id')
+        req.environ['manila.context'] = self.admin_context
+
+        self.controller.fake_action_2(req)
+
+        self.mock_policy_check.assert_called_once_with(
+            self.admin_context, self.controller.resource_name, 'fake_action')
+
+    def test_authorize_exception(self):
+        req = fakes.HTTPRequest.blank('/v2/fake/fake_id')
+        req.environ['manila.context'] = self.admin_context
+        exc = exception.PolicyNotAuthorized(action='fake_action')
+
+        with mock.patch.object(policy, 'check_policy',
+                               mock.Mock(side_effect=exc)):
+            self.assertRaises(webob.exc.HTTPForbidden,
+                              self.controller.fake_action_2, req)

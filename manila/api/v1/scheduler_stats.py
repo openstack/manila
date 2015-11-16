@@ -16,32 +16,33 @@ from oslo_log import log
 
 from manila.api.openstack import wsgi
 from manila.api.views import scheduler_stats as scheduler_stats_views
-from manila import policy
 from manila.scheduler import rpcapi
 
-POOLS_RESOURCES_NAME = 'scheduler_stats:pools'
 LOG = log.getLogger(__name__)
 
 
 class SchedulerStatsController(wsgi.Controller):
     """The Scheduler Stats API controller for the OpenStack API."""
 
+    resource_name = 'scheduler_stats:pools'
+
     def __init__(self):
         self.scheduler_api = rpcapi.SchedulerAPI()
         self._view_builder_class = scheduler_stats_views.ViewBuilder
         super(SchedulerStatsController, self).__init__()
 
+    @wsgi.Controller.authorize('index')
     def pools_index(self, req):
         """Returns a list of storage pools known to the scheduler."""
         return self._pools(req, action='index')
 
+    @wsgi.Controller.authorize('detail')
     def pools_detail(self, req):
         """Returns a detailed list of storage pools known to the scheduler."""
         return self._pools(req, action='detail')
 
     def _pools(self, req, action='index'):
         context = req.environ['manila.context']
-        policy.check_policy(context, POOLS_RESOURCES_NAME, action)
         search_opts = {}
         search_opts.update(req.GET)
         pools = self.scheduler_api.get_pools(context, filters=search_opts)

@@ -83,7 +83,6 @@ class CGAPITestCase(test.TestCase):
 
         dt_utc = datetime.datetime.utcnow()
         self.mock_object(timeutils, 'utcnow', mock.Mock(return_value=dt_utc))
-        self.mock_object(cg_api.policy, 'check_policy')
 
     def test_create_empty_request(self):
         cg = fake_cg('fakeid',
@@ -100,19 +99,6 @@ class CGAPITestCase(test.TestCase):
 
         db_driver.consistency_group_create.assert_called_once_with(
             self.context, expected_values)
-
-    def test_create_policy_check(self):
-        cg = fake_cg('fakeid',
-                     user_id=self.context.user_id,
-                     project_id=self.context.project_id,
-                     status=constants.STATUS_CREATING)
-
-        self.mock_object(db_driver, 'consistency_group_create',
-                         mock.Mock(return_value=cg))
-        self.api.create(self.context)
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'create')
 
     def test_create_request_spec(self):
         """Ensure the correct values are sent to the scheduler."""
@@ -498,18 +484,6 @@ class CGAPITestCase(test.TestCase):
         db_driver.consistency_group_destroy.assert_called_once_with(
             mock.ANY, cg['id'])
 
-    def test_delete_policy_check(self):
-        cg = fake_cg('fakeid',
-                     user_id=self.context.user_id,
-                     project_id=self.context.project_id,
-                     status=constants.STATUS_CREATING)
-        self.mock_object(db_driver, 'consistency_group_destroy')
-
-        self.api.delete(self.context, cg)
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'delete', cg)
-
     def test_delete_creating_with_host(self):
         cg = fake_cg('fakeid',
                      user_id=self.context.user_id,
@@ -599,21 +573,6 @@ class CGAPITestCase(test.TestCase):
         self.assertRaises(exception.InvalidConsistencyGroup, self.api.delete,
                           self.context, cg)
 
-    def test_update_policy_check(self):
-        cg = fake_cg('fakeid',
-                     user_id=self.context.user_id,
-                     project_id=self.context.project_id,
-                     status=constants.STATUS_CREATING)
-        expected_values = {}
-
-        self.mock_object(db_driver, 'consistency_group_update',
-                         mock.Mock(return_value=cg))
-
-        self.api.update(self.context, cg, expected_values)
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'update', cg)
-
     def test_update_no_values(self):
         cg = fake_cg('fakeid',
                      user_id=self.context.user_id,
@@ -660,19 +619,6 @@ class CGAPITestCase(test.TestCase):
         db_driver.consistency_group_update.assert_called_once_with(
             self.context, cg['id'], expected_values)
 
-    def test_get_policy_check(self):
-        cg = fake_cg('fakeid',
-                     user_id=self.context.user_id,
-                     project_id=self.context.project_id,
-                     status=constants.STATUS_CREATING)
-        self.mock_object(db_driver, 'consistency_group_get',
-                         mock.Mock(return_value=cg))
-
-        self.api.get(self.context, cg['id'])
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'get')
-
     def test_get(self):
         expected_cg = fake_cg('fakeid',
                               user_id=self.context.user_id,
@@ -683,15 +629,6 @@ class CGAPITestCase(test.TestCase):
 
         actual_cg = self.api.get(self.context, expected_cg['id'])
         self.assertEqual(expected_cg, actual_cg)
-
-    def test_get_all_policy_check(self):
-        self.mock_object(db_driver, 'consistency_group_get_all',
-                         mock.Mock(return_value=[]))
-
-        self.api.get_all(self.context)
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'get_all')
 
     def test_get_all_no_cgs(self):
 
@@ -740,26 +677,6 @@ class CGAPITestCase(test.TestCase):
         self.assertEqual(expected_cgs, actual_cgs)
         db_driver.consistency_group_get_all.assert_called_once_with(
             self.context, detailed=True)
-
-    def test_create_cgsnapshot_policy_check(self):
-        cg = fake_cg('fake_cg_id',
-                     user_id=self.context.user_id,
-                     project_id=self.context.project_id,
-                     status=constants.STATUS_AVAILABLE)
-        snap = fake_cgsnapshot('fakeid',
-                               user_id=self.context.user_id,
-                               project_id=self.context.project_id,
-                               status=constants.STATUS_CREATING)
-
-        self.mock_object(db_driver, 'cgsnapshot_create',
-                         mock.Mock(return_value=snap))
-        self.mock_object(db_driver, 'consistency_group_get',
-                         mock.Mock(return_value=cg))
-
-        self.api.create_cgsnapshot(self.context)
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'create_cgsnapshot')
 
     def test_create_cgsnapshot_minimal_request_no_members(self):
         cg = fake_cg('fake_cg_id',
@@ -1103,8 +1020,6 @@ class CGAPITestCase(test.TestCase):
 
         self.api.delete_cgsnapshot(self.context, snap)
 
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'delete_cgsnapshot', snap)
         db_driver.consistency_group_get.assert_called_once_with(
             self.context, "fake_id"
         )
@@ -1147,21 +1062,6 @@ class CGAPITestCase(test.TestCase):
             self.context, "fake_id"
         )
 
-    def test_update_cgsnapshot_policy_check(self):
-        snap = fake_cgsnapshot('fakeid',
-                               user_id=self.context.user_id,
-                               project_id=self.context.project_id,
-                               status=constants.STATUS_CREATING)
-        expected_values = {}
-
-        self.mock_object(db_driver, 'cgsnapshot_update',
-                         mock.Mock(return_value=snap))
-
-        self.api.update_cgsnapshot(self.context, snap, expected_values)
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'update_cgsnapshot', snap)
-
     def test_update_cgsnapshot_no_values(self):
         snap = fake_cgsnapshot('fakeid',
                                user_id=self.context.user_id,
@@ -1192,19 +1092,6 @@ class CGAPITestCase(test.TestCase):
         db_driver.cgsnapshot_update.assert_called_once_with(
             self.context, snap['id'], expected_values)
 
-    def test_cgsnapshot_get_policy_check(self):
-        snap = fake_cgsnapshot('fakeid',
-                               user_id=self.context.user_id,
-                               project_id=self.context.project_id,
-                               status=constants.STATUS_CREATING)
-        self.mock_object(db_driver, 'cgsnapshot_get',
-                         mock.Mock(return_value=snap))
-
-        self.api.get_cgsnapshot(self.context, snap['id'])
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'get_cgsnapshot')
-
     def test_cgsnapshot_get(self):
         expected_snap = fake_cgsnapshot('fakeid',
                                         user_id=self.context.user_id,
@@ -1215,15 +1102,6 @@ class CGAPITestCase(test.TestCase):
 
         actual_cg = self.api.get_cgsnapshot(self.context, expected_snap['id'])
         self.assertEqual(expected_snap, actual_cg)
-
-    def test_cgsnapshot_get_all_policy_check(self):
-        self.mock_object(db_driver, 'cgsnapshot_get_all',
-                         mock.Mock(return_value=[]))
-
-        self.api.get_all_cgsnapshots(self.context)
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'get_all_cgsnapshots')
 
     def test_cgsnapshot_get_all_no_cgs(self):
 
@@ -1272,15 +1150,6 @@ class CGAPITestCase(test.TestCase):
         self.assertEqual(expected_snaps, actual_cgs)
         db_driver.cgsnapshot_get_all.assert_called_once_with(
             self.context, detailed=True)
-
-    def test_get_all_cgsnapshot_members_policy_check(self):
-        self.mock_object(db_driver, 'cgsnapshot_members_get_all',
-                         mock.Mock(return_value=[]))
-
-        self.api.get_all_cgsnapshot_members(self.context, 'fake_id')
-
-        cg_api.policy.check_policy.assert_called_once_with(
-            self.context, 'consistency_group', 'get_cgsnapshot')
 
     def test_get_all_cgsnapshot_members(self):
         self.mock_object(db_driver, 'cgsnapshot_members_get_all',

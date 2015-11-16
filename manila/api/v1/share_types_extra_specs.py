@@ -71,16 +71,16 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
                 }
                 raise webob.exc.HTTPBadRequest(explanation=expl)
 
+    @wsgi.Controller.authorize
     def index(self, req, type_id):
         """Returns the list of extra specs for a given share type."""
         context = req.environ['manila.context']
-        self.authorize(context, 'index')
         self._check_type(context, type_id)
         return self._get_extra_specs(context, type_id)
 
+    @wsgi.Controller.authorize
     def create(self, req, type_id, body=None):
         context = req.environ['manila.context']
-        self.authorize(context, 'create')
 
         if not self.is_valid_body(body, 'extra_specs'):
             raise webob.exc.HTTPBadRequest()
@@ -95,9 +95,9 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         notifier.info(context, 'share_type_extra_specs.create', notifier_info)
         return body
 
+    @wsgi.Controller.authorize
     def update(self, req, type_id, id, body=None):
         context = req.environ['manila.context']
-        self.authorize(context, 'update')
         if not body:
             expl = _('Request body empty')
             raise webob.exc.HTTPBadRequest(explanation=expl)
@@ -115,10 +115,10 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         notifier.info(context, 'share_type_extra_specs.update', notifier_info)
         return body
 
+    @wsgi.Controller.authorize
     def show(self, req, type_id, id):
         """Return a single extra spec item."""
         context = req.environ['manila.context']
-        self.authorize(context, 'show')
         self._check_type(context, type_id)
         specs = self._get_extra_specs(context, type_id)
         if id in specs['extra_specs']:
@@ -126,11 +126,11 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
         else:
             raise webob.exc.HTTPNotFound()
 
+    @wsgi.Controller.authorize
     def delete(self, req, type_id, id):
         """Deletes an existing extra spec."""
         context = req.environ['manila.context']
         self._check_type(context, type_id)
-        self.authorize(context, 'delete')
 
         if id in share_types.get_undeletable_extra_specs():
             msg = _("Extra spec '%s' can't be deleted.") % id

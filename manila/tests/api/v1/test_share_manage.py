@@ -20,6 +20,7 @@ import webob
 from manila.api.v1 import share_manage
 from manila.db import api as db_api
 from manila import exception
+from manila import policy
 from manila.share import api as share_api
 from manila.share import share_types
 from manila import test
@@ -45,8 +46,12 @@ class ShareManageTest(test.TestCase):
     def setUp(self):
         super(ShareManageTest, self).setUp()
         self.controller = share_manage.ShareManageController()
+        self.resource_name = self.controller.resource_name
         self.request = fakes.HTTPRequest.blank('/share/manage',
                                                use_admin_context=True)
+        self.context = self.request.environ['manila.context']
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
 
     @ddt.data({},
               {'share': None},
@@ -57,6 +62,8 @@ class ShareManageTest(test.TestCase):
                           self.controller.create,
                           self.request,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
 
     def test_share_manage_service_not_found(self):
         body = get_fake_manage_body()
@@ -67,6 +74,8 @@ class ShareManageTest(test.TestCase):
                           self.controller.create,
                           self.request,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
 
     def test_share_manage_share_type_not_found(self):
         body = get_fake_manage_body()
@@ -80,6 +89,8 @@ class ShareManageTest(test.TestCase):
                           self.controller.create,
                           self.request,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
 
     def _setup_manage_mocks(self, service_is_up=True):
         self.mock_object(db_api, 'service_get_by_host_and_topic', mock.Mock(
@@ -99,6 +110,8 @@ class ShareManageTest(test.TestCase):
                           self.controller.create,
                           self.request,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
 
     def test_share_manage_duplicate_share(self):
         body = get_fake_manage_body()
@@ -110,6 +123,8 @@ class ShareManageTest(test.TestCase):
                           self.controller.create,
                           self.request,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
 
     def test_share_manage_forbidden_manage(self):
         body = get_fake_manage_body()
@@ -121,6 +136,8 @@ class ShareManageTest(test.TestCase):
                           self.controller.create,
                           self.request,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
 
     def test_share_manage_forbidden_validate_service_host(self):
         body = get_fake_manage_body()
@@ -132,6 +149,8 @@ class ShareManageTest(test.TestCase):
                           self.controller.create,
                           self.request,
                           body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
 
     @ddt.data(
         get_fake_manage_body(name='foo', description='bar'),
@@ -161,12 +180,16 @@ class ShareManageTest(test.TestCase):
         share_api.API.manage.assert_called_once_with(
             mock.ANY, share, driver_options)
         self.assertIsNotNone(actual_result)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'manage')
 
     def test_wrong_permissions(self):
         body = get_fake_manage_body()
+        fake_req = fakes.HTTPRequest.blank(
+            '/share/manage', use_admin_context=False)
 
         self.assertRaises(webob.exc.HTTPForbidden,
                           self.controller.create,
-                          fakes.HTTPRequest.blank('/share/manage',
-                                                  use_admin_context=False),
-                          body)
+                          fake_req, body)
+        self.mock_policy_check.assert_called_once_with(
+            fake_req.environ['manila.context'], self.resource_name, 'manage')

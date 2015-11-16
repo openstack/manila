@@ -31,6 +31,7 @@ import manila.consistency_group.api as cg_api
 from manila import context
 from manila import db
 from manila import exception
+from manila import policy
 from manila.share import share_types
 from manila import test
 from manila.tests.api import fakes
@@ -47,6 +48,7 @@ class CGApiTest(test.TestCase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.controller = cgs.CGController()
+        self.resource_name = self.controller.resource_name
         self.fake_share_type = {'id': six.text_type(uuid.uuid4())}
         self.api_version = '2.4'
         self.request = fakes.HTTPRequest.blank('/consistency-groups',
@@ -55,6 +57,9 @@ class CGApiTest(test.TestCase):
         self.flags(rpc_backend='manila.openstack.common.rpc.impl_fake')
         self.admin_context = context.RequestContext('admin', 'fake', True)
         self.member_context = context.RequestContext('fake', 'fake')
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
+        self.context = self.request.environ['manila.context']
 
     def _get_context(self, role):
         return getattr(self, '%s_context' % role)
@@ -121,6 +126,8 @@ class CGApiTest(test.TestCase):
         self.controller.cg_api.create.assert_called_once_with(
             context, share_type_ids=[self.fake_share_type['id']])
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_invalid_cgsnapshot_state(self):
         fake_snap_id = six.text_type(uuid.uuid4())
@@ -132,6 +139,8 @@ class CGApiTest(test.TestCase):
         body = {"consistency_group": {"source_cgsnapshot_id": fake_snap_id}}
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.create, self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_no_default_share_type(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -143,6 +152,8 @@ class CGApiTest(test.TestCase):
         body = {"consistency_group": {}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_with_name(self):
         fake_name = 'fake_name'
@@ -153,13 +164,15 @@ class CGApiTest(test.TestCase):
                          mock.Mock(return_value=fake_cg))
 
         body = {"consistency_group": {"name": fake_name}}
-        context = self.request.environ['manila.context']
+
         res_dict = self.controller.create(self.request, body)
 
         self.controller.cg_api.create.assert_called_once_with(
-            context, name=fake_name,
+            self.context, name=fake_name,
             share_type_ids=[self.fake_share_type['id']])
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_with_description(self):
         fake_description = 'fake_description'
@@ -170,13 +183,15 @@ class CGApiTest(test.TestCase):
                          mock.Mock(return_value=fake_cg))
 
         body = {"consistency_group": {"description": fake_description}}
-        context = self.request.environ['manila.context']
+
         res_dict = self.controller.create(self.request, body)
 
         self.controller.cg_api.create.assert_called_once_with(
-            context, description=fake_description,
+            self.context, description=fake_description,
             share_type_ids=[self.fake_share_type['id']])
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_with_share_types(self):
         fake_share_types = [{"share_type_id": self.fake_share_type['id']}]
@@ -186,12 +201,13 @@ class CGApiTest(test.TestCase):
 
         body = {"consistency_group": {
             "share_types": [self.fake_share_type['id']]}}
-        context = self.request.environ['manila.context']
         res_dict = self.controller.create(self.request, body)
 
         self.controller.cg_api.create.assert_called_once_with(
-            context, share_type_ids=[self.fake_share_type['id']])
+            self.context, share_type_ids=[self.fake_share_type['id']])
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_with_source_cgsnapshot_id(self):
         fake_snap_id = six.text_type(uuid.uuid4())
@@ -205,12 +221,14 @@ class CGApiTest(test.TestCase):
 
         body = {"consistency_group": {
                 "source_cgsnapshot_id": fake_snap_id}}
-        context = self.request.environ['manila.context']
+
         res_dict = self.controller.create(self.request, body)
 
         self.controller.cg_api.create.assert_called_once_with(
-            context, source_cgsnapshot_id=fake_snap_id)
+            self.context, source_cgsnapshot_id=fake_snap_id)
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_with_share_network_id(self):
         fake_net_id = six.text_type(uuid.uuid4())
@@ -224,12 +242,15 @@ class CGApiTest(test.TestCase):
 
         body = {"consistency_group": {
                 "share_network_id": fake_net_id}}
-        context = self.request.environ['manila.context']
+
         res_dict = self.controller.create(self.request, body)
 
         self.controller.cg_api.create.assert_called_once_with(
-            context, share_network_id=fake_net_id, share_type_ids=mock.ANY)
+            self.context, share_network_id=fake_net_id,
+            share_type_ids=mock.ANY)
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_no_default_share_type_with_cgsnapshot(self):
         fake_snap_id = six.text_type(uuid.uuid4())
@@ -241,12 +262,14 @@ class CGApiTest(test.TestCase):
 
         body = {"consistency_group": {
                 "source_cgsnapshot_id": fake_snap_id}}
-        context = self.request.environ['manila.context']
+
         res_dict = self.controller.create(self.request, body)
 
         self.controller.cg_api.create.assert_called_once_with(
-            context, source_cgsnapshot_id=fake_snap_id)
+            self.context, source_cgsnapshot_id=fake_snap_id)
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_with_name_and_description(self):
         fake_name = 'fake_name'
@@ -260,32 +283,41 @@ class CGApiTest(test.TestCase):
 
         body = {"consistency_group": {"name": fake_name,
                                       "description": fake_description}}
-        context = self.request.environ['manila.context']
+
         res_dict = self.controller.create(self.request, body)
 
         self.controller.cg_api.create.assert_called_once_with(
-            context, name=fake_name, description=fake_description,
+            self.context, name=fake_name, description=fake_description,
             share_type_ids=[self.fake_share_type['id']])
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_invalid_body(self):
         body = {"not_consistency_group": {}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_invalid_body_share_types_and_source_cgsnapshot(self):
         body = {"consistency_group": {"share_types": [],
                                       "source_cgsnapshot_id": ""}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_source_cgsnapshot_not_in_available(self):
         fake_snap_id = six.text_type(uuid.uuid4())
         body = {"consistency_group": {"source_cgsnapshot_id": fake_snap_id}}
         self.mock_object(self.controller.cg_api, 'create', mock.Mock(
             side_effect=exception.InvalidCGSnapshot(reason='blah')))
+
         self.assertRaises(webob.exc.HTTPConflict, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_source_cgsnapshot_does_not_exist(self):
         fake_snap_id = six.text_type(uuid.uuid4())
@@ -293,42 +325,61 @@ class CGApiTest(test.TestCase):
         self.mock_object(self.controller.cg_api, 'create', mock.Mock(
             side_effect=exception.CGSnapshotNotFound(
                 cgsnapshot_id=fake_snap_id)))
+
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_source_cgsnapshot_not_a_uuid(self):
         fake_snap_id = "Not a uuid"
         body = {"consistency_group": {"source_cgsnapshot_id": fake_snap_id}}
+
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_share_network_id_not_a_uuid(self):
         fake_net_id = "Not a uuid"
         body = {"consistency_group": {"share_network_id": fake_net_id}}
+
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_invalid_body_share_types_not_a_list(self):
         body = {"consistency_group": {"share_types": ""}}
+
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_invalid_body_invalid_field(self):
         body = {"consistency_group": {"unknown_field": ""}}
+
         exc = self.assertRaises(webob.exc.HTTPBadRequest,
                                 self.controller.create,
                                 self.request, body)
         self.assertTrue('unknown_field' in six.text_type(exc))
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_with_invalid_share_types_field(self):
         body = {"consistency_group": {"share_types": 'iamastring'}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_create_with_invalid_share_types_field_not_uuids(self):
         body = {"consistency_group": {"share_types": ['iamastring']}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           self.request, body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'create')
 
     def test_cg_update_with_name_and_description(self):
         fake_name = 'fake_name'
@@ -349,6 +400,8 @@ class CGApiTest(test.TestCase):
             context, fake_cg,
             {"name": fake_name, "description": fake_description})
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'update')
 
     def test_cg_update_cg_not_found(self):
         body = {"consistency_group": {}}
@@ -358,12 +411,16 @@ class CGApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.update,
                           self.request, 'fake_id', body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'update')
 
     def test_cg_update_invalid_body(self):
         body = {"not_consistency_group": {}}
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
                           self.request, 'fake_id', body)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'update')
 
     def test_cg_update_invalid_body_invalid_field(self):
         body = {"consistency_group": {"unknown_field": ""}}
@@ -371,6 +428,8 @@ class CGApiTest(test.TestCase):
                                 self.controller.update,
                                 self.request, 'fake_id', body)
         self.assertTrue('unknown_field' in six.text_type(exc))
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'update')
 
     def test_cg_update_invalid_body_readonly_field(self):
         body = {"consistency_group": {"share_types": []}}
@@ -378,6 +437,8 @@ class CGApiTest(test.TestCase):
                                 self.controller.update,
                                 self.request, 'fake_id', body)
         self.assertTrue('share_types' in six.text_type(exc))
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'update')
 
     def test_cg_list_index(self):
         fake_cg, expected_cg = self._get_fake_simple_cg()
@@ -385,12 +446,16 @@ class CGApiTest(test.TestCase):
                          mock.Mock(return_value=[fake_cg]))
         res_dict = self.controller.index(self.request)
         self.assertEqual([expected_cg], res_dict['consistency_groups'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'get_all')
 
     def test_cg_list_index_no_cgs(self):
         self.mock_object(cg_api.API, 'get_all',
                          mock.Mock(return_value=[]))
         res_dict = self.controller.index(self.request)
         self.assertEqual([], res_dict['consistency_groups'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'get_all')
 
     def test_cg_list_index_with_limit(self):
         fake_cg, expected_cg = self._get_fake_simple_cg()
@@ -400,9 +465,14 @@ class CGApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/consistency_groups?limit=1',
                                       version=self.api_version,
                                       experimental=True)
+        req_context = req.environ['manila.context']
+
         res_dict = self.controller.index(req)
+
         self.assertEqual(1, len(res_dict['consistency_groups']))
         self.assertEqual([expected_cg], res_dict['consistency_groups'])
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'get_all')
 
     def test_cg_list_index_with_limit_and_offset(self):
         fake_cg, expected_cg = self._get_fake_simple_cg()
@@ -412,11 +482,14 @@ class CGApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/consistency_groups?limit=1&offset=1',
                                       version=self.api_version,
                                       experimental=True)
+        req_context = req.environ['manila.context']
 
         res_dict = self.controller.index(req)
 
         self.assertEqual(1, len(res_dict['consistency_groups']))
         self.assertEqual([expected_cg2], res_dict['consistency_groups'])
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'get_all')
 
     def test_cg_list_detail(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -426,6 +499,8 @@ class CGApiTest(test.TestCase):
         res_dict = self.controller.detail(self.request)
 
         self.assertEqual([expected_cg], res_dict['consistency_groups'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'get_all')
 
     def test_cg_list_detail_no_cgs(self):
         self.mock_object(cg_api.API, 'get_all',
@@ -434,6 +509,8 @@ class CGApiTest(test.TestCase):
         res_dict = self.controller.detail(self.request)
 
         self.assertEqual([], res_dict['consistency_groups'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'get_all')
 
     def test_cg_list_detail_with_limit(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -443,11 +520,14 @@ class CGApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/consistency_groups?limit=1',
                                       version=self.api_version,
                                       experimental=True)
+        req_context = req.environ['manila.context']
 
         res_dict = self.controller.detail(req)
 
         self.assertEqual(1, len(res_dict['consistency_groups']))
         self.assertEqual([expected_cg], res_dict['consistency_groups'])
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'get_all')
 
     def test_cg_list_detail_with_limit_and_offset(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -457,11 +537,14 @@ class CGApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/consistency_groups?limit=1&offset=1',
                                       version=self.api_version,
                                       experimental=True)
+        req_context = req.environ['manila.context']
 
         res_dict = self.controller.detail(req)
 
         self.assertEqual(1, len(res_dict['consistency_groups']))
         self.assertEqual([expected_cg2], res_dict['consistency_groups'])
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'get_all')
 
     def test_cg_delete(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -472,6 +555,8 @@ class CGApiTest(test.TestCase):
         res = self.controller.delete(self.request, fake_cg['id'])
 
         self.assertEqual(202, res.status_code)
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'delete')
 
     def test_cg_delete_cg_not_found(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -480,6 +565,8 @@ class CGApiTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
                           self.request, fake_cg['id'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'delete')
 
     def test_cg_delete_in_conflicting_status(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -490,6 +577,8 @@ class CGApiTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPConflict, self.controller.delete,
                           self.request, fake_cg['id'])
+        self.mock_policy_check.assert_called_once_with(
+            self.context, self.resource_name, 'delete')
 
     def test_cg_show(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -498,10 +587,13 @@ class CGApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/consistency_groups/%s' % fake_cg['id'],
             version=self.api_version, experimental=True)
+        req_context = req.environ['manila.context']
 
         res_dict = self.controller.show(req, fake_cg['id'])
 
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'get')
 
     def test_cg_show_as_admin(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -517,6 +609,8 @@ class CGApiTest(test.TestCase):
         res_dict = self.controller.show(req, fake_cg['id'])
 
         self.assertEqual(expected_cg, res_dict['consistency_group'])
+        self.mock_policy_check.assert_called_once_with(
+            admin_context, self.resource_name, 'get')
 
     def test_cg_show_cg_not_found(self):
         fake_cg, expected_cg = self._get_fake_cg()
@@ -525,9 +619,12 @@ class CGApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/consistency_groups/%s' % fake_cg['id'],
             version=self.api_version, experimental=True)
+        req_context = req.environ['manila.context']
 
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
                           req, fake_cg['id'])
+        self.mock_policy_check.assert_called_once_with(
+            req_context, self.resource_name, 'get')
 
     @ddt.data(*fakes.fixture_reset_status_with_different_roles)
     @ddt.unpack
@@ -542,7 +639,9 @@ class CGApiTest(test.TestCase):
         req.body = six.b(jsonutils.dumps(body))
         req.environ['manila.context'] = ctxt
 
-        resp = req.get_response(fakes.app())
+        with mock.patch.object(
+                policy, 'check_policy', fakes.mock_fake_admin_check):
+            resp = req.get_response(fakes.app())
 
         # validate response code and model status
         self.assertEqual(valid_code, resp.status_int)
@@ -567,7 +666,9 @@ class CGApiTest(test.TestCase):
         req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
         req.environ['manila.context'] = ctxt
 
-        resp = req.get_response(fakes.app())
+        with mock.patch.object(
+                policy, 'check_policy', fakes.mock_fake_admin_check):
+            resp = req.get_response(fakes.app())
 
         # validate response
         self.assertEqual(resp_code, resp.status_int)

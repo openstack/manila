@@ -35,11 +35,11 @@ class ShareManageController(wsgi.Controller):
         super(self.__class__, self).__init__(*args, **kwargs)
         self.share_api = share.API()
 
+    @wsgi.Controller.authorize('manage')
     def create(self, req, body):
         # TODO(vponomaryov): move it to shares controller.
 
         context = req.environ['manila.context']
-        self.authorize(req.environ['manila.context'], 'manage')
         share_data = self._validate_manage_parameters(context, body)
 
         # NOTE(vponomaryov): compatibility actions are required between API and
@@ -97,6 +97,8 @@ class ShareManageController(wsgi.Controller):
         except exception.ServiceNotFound as e:
             raise exc.HTTPNotFound(explanation=six.text_type(e))
         except exception.PolicyNotAuthorized as e:
+            raise exc.HTTPForbidden(explanation=six.text_type(e))
+        except exception.AdminRequired as e:
             raise exc.HTTPForbidden(explanation=six.text_type(e))
         except exception.ServiceIsDown as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))

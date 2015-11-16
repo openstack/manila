@@ -36,11 +36,11 @@ class ShareUnmanageController(wsgi.Controller):
         self.share_api = share.API()
 
     @wsgi.action("unmanage")
+    @wsgi.Controller.authorize
     def unmanage(self, req, id):
         """Unmanage a share."""
         # TODO(vponomaryov): move it to shares controller as 'unmanage' action.
         context = req.environ['manila.context']
-        self.authorize(req.environ['manila.context'], 'unmanage')
 
         LOG.info(_LI("Unmanage share with id: %s"), id, context=context)
 

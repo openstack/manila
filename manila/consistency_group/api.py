@@ -27,7 +27,6 @@ from manila.common import constants
 from manila.db import base
 from manila import exception
 from manila.i18n import _
-from manila import policy
 from manila.scheduler import rpcapi as scheduler_rpcapi
 from manila import share
 from manila.share import rpcapi as share_rpcapi
@@ -52,7 +51,6 @@ class API(base.Base):
                share_type_ids=None, source_cgsnapshot_id=None,
                share_network_id=None):
         """Create new consistency group."""
-        policy.check_policy(context, 'consistency_group', 'create')
 
         cgsnapshot = None
         original_cg = None
@@ -164,7 +162,6 @@ class API(base.Base):
 
         return cg
 
-    @policy.wrap_check_policy('consistency_group')
     def delete(self, context, cg):
         """Delete consistency group."""
 
@@ -194,16 +191,13 @@ class API(base.Base):
 
         self.share_rpcapi.delete_consistency_group(context, cg)
 
-    @policy.wrap_check_policy('consistency_group')
     def update(self, context, cg, fields):
         return self.db.consistency_group_update(context, cg['id'], fields)
 
     def get(self, context, cg_id):
-        policy.check_policy(context, 'consistency_group', 'get')
         return self.db.consistency_group_get(context, cg_id)
 
     def get_all(self, context, detailed=True, search_opts=None):
-        policy.check_policy(context, 'consistency_group', 'get_all')
 
         if search_opts is None:
             search_opts = {}
@@ -224,7 +218,6 @@ class API(base.Base):
     def create_cgsnapshot(self, context, name=None, description=None,
                           consistency_group_id=None):
         """Create new cgsnapshot."""
-        policy.check_policy(context, 'consistency_group', 'create_cgsnapshot')
 
         options = {
             'consistency_group_id': consistency_group_id,
@@ -285,7 +278,6 @@ class API(base.Base):
 
         return snap
 
-    @policy.wrap_check_policy('consistency_group')
     def delete_cgsnapshot(self, context, snap):
         """Delete consistency group snapshot."""
 
@@ -307,17 +299,13 @@ class API(base.Base):
         # Cast to share manager
         self.share_rpcapi.delete_cgsnapshot(context, snap, cg['host'])
 
-    @policy.wrap_check_policy('consistency_group')
     def update_cgsnapshot(self, context, cg, fields):
         return self.db.cgsnapshot_update(context, cg['id'], fields)
 
     def get_cgsnapshot(self, context, snapshot_id):
-        policy.check_policy(context, 'consistency_group', 'get_cgsnapshot')
         return self.db.cgsnapshot_get(context, snapshot_id)
 
     def get_all_cgsnapshots(self, context, detailed=True, search_opts=None):
-        policy.check_policy(context, 'consistency_group',
-                            'get_all_cgsnapshots')
 
         if search_opts is None:
             search_opts = {}
@@ -336,7 +324,6 @@ class API(base.Base):
         return cgsnapshots
 
     def get_all_cgsnapshot_members(self, context, cgsnapshot_id):
-        policy.check_policy(context, 'consistency_group', 'get_cgsnapshot')
         members = self.db.cgsnapshot_members_get_all(context,
                                                      cgsnapshot_id)
 

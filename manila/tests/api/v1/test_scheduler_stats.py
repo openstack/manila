@@ -16,6 +16,7 @@ import mock
 
 from manila.api.v1 import scheduler_stats
 from manila import context
+from manila import policy
 from manila.scheduler import rpcapi
 from manila import test
 from manila.tests.api import fakes
@@ -62,7 +63,10 @@ class SchedulerStatsControllerTestCase(test.TestCase):
         super(SchedulerStatsControllerTestCase, self).setUp()
         self.flags(host='fake')
         self.controller = scheduler_stats.SchedulerStatsController()
+        self.resource_name = self.controller.resource_name
         self.ctxt = context.RequestContext('admin', 'fake', True)
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
 
     def test_pools_index(self):
         mock_get_pools = self.mock_object(rpcapi.SchedulerAPI,
@@ -92,6 +96,8 @@ class SchedulerStatsControllerTestCase(test.TestCase):
 
         self.assertDictMatch(result, expected)
         mock_get_pools.assert_called_once_with(self.ctxt, filters={})
+        self.mock_policy_check.assert_called_once_with(
+            self.ctxt, self.resource_name, 'index')
 
     def test_pools_index_with_filters(self):
         mock_get_pools = self.mock_object(rpcapi.SchedulerAPI,
@@ -127,6 +133,8 @@ class SchedulerStatsControllerTestCase(test.TestCase):
         self.assertDictMatch(result, expected)
         mock_get_pools.assert_called_once_with(self.ctxt,
                                                filters=expected_filters)
+        self.mock_policy_check.assert_called_once_with(
+            self.ctxt, self.resource_name, 'index')
 
     def test_get_pools_detail(self):
         mock_get_pools = self.mock_object(rpcapi.SchedulerAPI,
@@ -177,6 +185,8 @@ class SchedulerStatsControllerTestCase(test.TestCase):
 
         self.assertDictMatch(expected, result)
         mock_get_pools.assert_called_once_with(self.ctxt, filters={})
+        self.mock_policy_check.assert_called_once_with(
+            self.ctxt, self.resource_name, 'detail')
 
 
 class SchedulerStatsTestCase(test.TestCase):

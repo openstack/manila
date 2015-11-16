@@ -39,12 +39,14 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     resource_name = 'consistency_group'
     _view_builder_class = cg_views.CGViewBuilder
+    resource_name = 'consistency_group'
 
     def __init__(self):
         super(CGController, self).__init__()
         self.cg_api = cg_api.API()
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize('get')
     def show(self, req, id):
         """Return data about the given CG."""
         context = req.environ['manila.context']
@@ -58,6 +60,7 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._view_builder.detail(req, cg)
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize
     def delete(self, req, id):
         """Delete a CG."""
         context = req.environ['manila.context']
@@ -79,11 +82,13 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
         return webob.Response(status_int=202)
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize('get_all')
     def index(self, req):
         """Returns a summary list of shares."""
         return self._get_cgs(req, is_detail=False)
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize('get_all')
     def detail(self, req):
         """Returns a detailed list of shares."""
         return self._get_cgs(req, is_detail=True)
@@ -111,6 +116,7 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
         return cgs
 
     @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.Controller.authorize
     def update(self, req, id, body):
         """Update a share."""
         context = req.environ['manila.context']
@@ -140,6 +146,7 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
 
     @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.response(202)
+    @wsgi.Controller.authorize
     def create(self, req, body):
         """Creates a new share."""
         context = req.environ['manila.context']

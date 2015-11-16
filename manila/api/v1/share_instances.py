@@ -42,17 +42,17 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self.share_api.delete_instance(*args, **kwargs)
 
     @wsgi.Controller.api_version("2.3")
+    @wsgi.Controller.authorize
     def index(self, req):
         context = req.environ['manila.context']
-        self.authorize(context, 'index')
 
         instances = db.share_instances_get_all(context)
         return self._view_builder.detail_list(req, instances)
 
     @wsgi.Controller.api_version("2.3")
+    @wsgi.Controller.authorize
     def show(self, req, id):
         context = req.environ['manila.context']
-        self.authorize(context, 'show')
 
         try:
             instance = db.share_instance_get(context, id)
@@ -62,9 +62,9 @@ class ShareInstancesController(wsgi.Controller, wsgi.AdminActionsMixin):
         return self._view_builder.detail(req, instance)
 
     @wsgi.Controller.api_version("2.3")
+    @wsgi.Controller.authorize('index')
     def get_share_instances(self, req, share_id):
         context = req.environ['manila.context']
-        self.authorize(context, 'index')
 
         try:
             share = self.share_api.get(context, share_id)

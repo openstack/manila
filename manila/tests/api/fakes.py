@@ -32,6 +32,7 @@ from manila.api.v1 import router
 from manila.api import versions
 from manila.common import constants
 from manila import context
+from manila import exception
 from manila import wsgi
 
 
@@ -202,3 +203,10 @@ fixture_invalid_reset_status_body = (
     {'os-reset_status': {'x-status': 'bad'}},
     {'os-reset_status': {'status': 'invalid'}}
 )
+
+
+def mock_fake_admin_check(context, resource_name, action, *args, **kwargs):
+    if context.is_admin:
+        return
+    else:
+        raise exception.PolicyNotAuthorized(action=action)

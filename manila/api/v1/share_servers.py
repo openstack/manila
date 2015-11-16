@@ -24,11 +24,8 @@ from manila.common import constants
 from manila.db import api as db_api
 from manila import exception
 from manila.i18n import _
-from manila import policy
 from manila import share
 
-RESOURCE_NAME = 'share_server'
-RESOURCES_NAME = 'share_servers'
 LOG = log.getLogger(__name__)
 
 
@@ -38,13 +35,14 @@ class ShareServerController(wsgi.Controller):
     def __init__(self):
         self.share_api = share.API()
         self._view_builder_class = share_servers_views.ViewBuilder
+        self.resource_name = 'share_server'
         super(ShareServerController, self).__init__()
 
+    @wsgi.Controller.authorize
     def index(self, req):
         """Returns a list of share servers."""
 
         context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'index')
 
         search_opts = {}
         search_opts.update(req.GET)
@@ -65,10 +63,10 @@ class ShareServerController(wsgi.Controller):
                                         s.share_network['id']])]
         return self._view_builder.build_share_servers(share_servers)
 
+    @wsgi.Controller.authorize
     def show(self, req, id):
         """Return data about the requested share server."""
         context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'show')
         try:
             server = db_api.share_server_get(context, id)
             server.project_id = server.share_network["project_id"]
@@ -80,10 +78,10 @@ class ShareServerController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=six.text_type(e))
         return self._view_builder.build_share_server(server)
 
+    @wsgi.Controller.authorize
     def details(self, req, id):
         """Return details for requested share server."""
         context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'details')
         try:
             share_server = db_api.share_server_get(context, id)
         except exception.ShareServerNotFound as e:
@@ -92,10 +90,10 @@ class ShareServerController(wsgi.Controller):
         return self._view_builder.build_share_server_details(
             share_server['backend_details'])
 
+    @wsgi.Controller.authorize
     def delete(self, req, id):
         """Delete specified share server."""
         context = req.environ['manila.context']
-        policy.check_policy(context, RESOURCE_NAME, 'delete')
         try:
             share_server = db_api.share_server_get(context, id)
         except exception.ShareServerNotFound as e:
