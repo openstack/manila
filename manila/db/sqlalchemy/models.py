@@ -242,13 +242,13 @@ class Share(BASE, ManilaBase):
     @property
     def instance(self):
         # NOTE(ganso): We prefer instances with AVAILABLE status,
-        # and we also prefer to show any other status than CREATING
+        # and we also prefer to show any status other than TRANSITIONAL ones.
         result = None
         if len(self.instances) > 0:
             for instance in self.instances:
                 if instance.status == constants.STATUS_AVAILABLE:
                     return instance
-                elif instance.status == constants.STATUS_CREATING:
+                elif instance.status not in constants.TRANSITIONAL_STATUSES:
                     result = instance
             if result is None:
                     result = self.instances[0]
