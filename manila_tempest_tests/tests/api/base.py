@@ -86,7 +86,7 @@ class BaseSharesTest(test.BaseTestCase):
     """Base test case class for all Manila API tests."""
 
     force_tenant_isolation = False
-    protocols = ["nfs", "cifs", "glusterfs", "hdfs"]
+    protocols = ["nfs", "cifs", "glusterfs", "hdfs", "cephfs"]
 
     # Will be cleaned up in resource_cleanup
     class_resources = []

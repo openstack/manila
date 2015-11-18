@@ -753,6 +753,20 @@ class ShareAPITest(test.TestCase):
         common.remove_invalid_options(ctx, search_opts, allowed_opts)
         self.assertEqual(expected_opts, search_opts)
 
+    def test_validate_cephx_id_invalid_with_period(self):
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._validate_cephx_id,
+                          "client.manila")
+
+    def test_validate_cephx_id_invalid_with_non_ascii(self):
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._validate_cephx_id,
+                          u"bj\u00F6rn")
+
+    @ddt.data("alice", "alice_bob", "alice bob")
+    def test_validate_cephx_id_valid(self, test_id):
+        self.controller._validate_cephx_id(test_id)
+
 
 def _fake_access_get(self, ctxt, access_id):
 
@@ -816,6 +830,7 @@ class ShareActionsTest(test.TestCase):
         {'access_type': 'cert', 'access_to': ''},
         {'access_type': 'cert', 'access_to': ' '},
         {'access_type': 'cert', 'access_to': 'x' * 65},
+        {'access_type': 'cephx', 'access_to': 'alice'}
     )
     def test_allow_access_error(self, access):
         id = 'fake_share_id'

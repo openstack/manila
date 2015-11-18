@@ -359,6 +359,41 @@ class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
 
 
 @ddt.ddt
+class ShareCephxRulesForCephFSTest(base.BaseSharesTest):
+    protocol = "cephfs"
+
+    @classmethod
+    def resource_setup(cls):
+        super(ShareCephxRulesForCephFSTest, cls).resource_setup()
+        if (cls.protocol not in CONF.share.enable_protocols or
+                cls.protocol not in
+                CONF.share.enable_cephx_rules_for_protocols):
+            msg = ("Cephx rule tests for %s protocol are disabled." %
+                   cls.protocol)
+            raise cls.skipException(msg)
+        cls.share = cls.create_share(cls.protocol)
+        cls.access_type = "cephx"
+        # Provide access to a client identified by a cephx auth id.
+        cls.access_to = "bob"
+
+    @test.attr(type=["gate", ])
+    @ddt.data("alice", "alice_bob", "alice bob")
+    def test_create_delete_cephx_rule(self, access_to):
+        rule = self.shares_v2_client.create_access_rule(
+            self.share["id"], self.access_type, access_to)
+
+        self.assertEqual('rw', rule['access_level'])
+        for key in ('deleted', 'deleted_at', 'instance_mappings'):
+            self.assertNotIn(key, rule.keys())
+        self.shares_v2_client.wait_for_access_rule_status(
+            self.share["id"], rule["id"], "active")
+
+        self.shares_v2_client.delete_access_rule(self.share["id"], rule["id"])
+        self.shares_v2_client.wait_for_resource_deletion(
+            rule_id=rule["id"], share_id=self.share['id'])
+
+
+@ddt.ddt
 class ShareRulesTest(base.BaseSharesTest):
 
     @classmethod
@@ -369,6 +404,8 @@ class ShareRulesTest(base.BaseSharesTest):
                 any(p in CONF.share.enable_user_rules_for_protocols
                     for p in cls.protocols) or
                 any(p in CONF.share.enable_cert_rules_for_protocols
+                    for p in cls.protocols) or
+                any(p in CONF.share.enable_cephx_rules_for_protocols
                     for p in cls.protocols)):
             cls.message = "Rule tests are disabled"
             raise cls.skipException(cls.message)
@@ -384,12 +421,21 @@ class ShareRulesTest(base.BaseSharesTest):
             cls.protocol = CONF.share.enable_cert_rules_for_protocols[0]
             cls.access_type = "cert"
             cls.access_to = "client3.com"
+        elif CONF.share.enable_cephx_rules_for_protocols:
+            cls.protocol = CONF.share.enable_cephx_rules_for_protocols[0]
+            cls.access_type = "cephx"
+            cls.access_to = "alice"
         cls.shares_v2_client.share_protocol = cls.protocol
         cls.share = cls.create_share()
 
     @test.attr(type=["gate", ])
     @ddt.data('1.0', '2.9', LATEST_MICROVERSION)
     def test_list_access_rules(self, version):
+        if (utils.is_microversion_lt(version, '2.13') and
+                CONF.share.enable_cephx_rules_for_protocols):
+            msg = ("API version %s does not support cephx access type, "
+                   "need version greater than 2.13." % version)
+            raise self.skipException(msg)
 
         # create rule
         if utils.is_microversion_eq(version, '1.0'):
@@ -447,6 +493,11 @@ class ShareRulesTest(base.BaseSharesTest):
     @test.attr(type=["gate", ])
     @ddt.data('1.0', '2.9', LATEST_MICROVERSION)
     def test_access_rules_deleted_if_share_deleted(self, version):
+        if (utils.is_microversion_lt(version, '2.13') and
+                CONF.share.enable_cephx_rules_for_protocols):
+            msg = ("API version %s does not support cephx access type, "
+                   "need version greater than 2.13." % version)
+            raise self.skipException(msg)
 
         # create share
         share = self.create_share()

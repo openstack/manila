@@ -1017,10 +1017,11 @@ class ShareActionsTest(test.TestCase):
                          mock.Mock(return_value={'fake': 'fake'}))
 
         id = 'fake_share_id'
-        body = {'os-allow_access': access}
+        body = {'allow_access': access}
         expected = {'access': {'fake': 'fake'}}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
-        res = self.controller._allow_access(req, id, body)
+        req = fakes.HTTPRequest.blank(
+            '/v2/tenant1/shares/%s/action' % id, version="2.7")
+        res = self.controller.allow_access(req, id, body)
         self.assertEqual(expected, res)
 
     @ddt.data(
@@ -1039,10 +1040,41 @@ class ShareActionsTest(test.TestCase):
     )
     def test_allow_access_error(self, access):
         id = 'fake_share_id'
-        body = {'os-allow_access': access}
-        req = fakes.HTTPRequest.blank('/v1/tenant1/shares/%s/action' % id)
+        body = {'allow_access': access}
+        req = fakes.HTTPRequest.blank('/v2/tenant1/shares/%s/action' % id,
+                                      version="2.7")
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller._allow_access, req, id, body)
+                          self.controller.allow_access, req, id, body)
+
+    @ddt.unpack
+    @ddt.data(
+        {'exc': None, 'access_to': 'alice', 'version': '2.13'},
+        {'exc': webob.exc.HTTPBadRequest, 'access_to': 'alice',
+         'version': '2.11'}
+    )
+    def test_allow_access_ceph(self, exc, access_to, version):
+        share_id = "fake_id"
+        self.mock_object(share_api.API,
+                         'allow_access',
+                         mock.Mock(return_value={'fake': 'fake'}))
+
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/action' % share_id, version=version)
+
+        body = {'allow_access':
+                {
+                    'access_type': 'cephx',
+                    'access_to': access_to,
+                    'access_level': 'rw'
+                }}
+
+        if exc:
+            self.assertRaises(exc, self.controller.allow_access, req, share_id,
+                              body)
+        else:
+            expected = {'access': {'fake': 'fake'}}
+            res = self.controller.allow_access(req, id, body)
+            self.assertEqual(expected, res)
 
     def test_deny_access(self):
         def _stub_deny_access(*args, **kwargs):

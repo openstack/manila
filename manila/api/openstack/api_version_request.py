@@ -59,13 +59,14 @@ REST_API_VERSION_HISTORY = """
             instances.
     * 2.11 - Share Replication support
     * 2.12 - Manage/unmanage snapshot API.
+    * 2.13 - Add "cephx" auth type to allow_access
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.12"
+_MAX_API_VERSION = "2.13"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

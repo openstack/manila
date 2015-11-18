@@ -89,3 +89,7 @@ user documentation.
 2.12
 ----
   Share snapshot manage and unmanage API.
+
+2.13
+----
+  Add 'cephx' authentication type for the CephFS Native driver.

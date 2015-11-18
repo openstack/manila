@@ -16,6 +16,7 @@
 import datetime
 import uuid
 
+from manila.db.sqlalchemy import models
 from manila.tests.db import fakes as db_fakes
 
 
@@ -27,15 +28,35 @@ def fake_share(**kwargs):
         'share_proto': 'fake_proto',
         'share_network_id': 'fake share network id',
         'share_server_id': 'fake share server id',
+        'share_type_id': 'fake share type id',
         'export_location': 'fake_location:/fake_share',
         'project_id': 'fake_project_uuid',
         'availability_zone': 'fake_az',
         'snapshot_support': 'True',
         'replication_type': None,
         'is_busy': False,
+        'consistency_group_id': 'fakecgid',
     }
     share.update(kwargs)
     return db_fakes.FakeModel(share)
+
+
+def fake_share_instance(base_share=None, **kwargs):
+    if base_share is None:
+        share = fake_share()
+    else:
+        share = base_share
+
+    share_instance = {
+        'share_id': share['id'],
+        'id': "fakeinstanceid",
+        'status': "active",
+    }
+
+    for attr in models.ShareInstance._proxified_properties:
+        share_instance[attr] = getattr(share, attr, None)
+
+    return db_fakes.FakeModel(share_instance)
 
 
 def fake_snapshot(**kwargs):

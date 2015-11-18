@@ -17,6 +17,7 @@
 
 import ast
 import re
+import string
 
 from oslo_log import log
 from oslo_utils import strutils
@@ -383,7 +384,27 @@ class ShareMixin(object):
             except ValueError:
                 raise webob.exc.HTTPBadRequest(explanation=exc_str)
 
-    def _allow_access(self, req, id, body):
+    @staticmethod
+    def _validate_cephx_id(cephx_id):
+        if not cephx_id:
+            raise webob.exc.HTTPBadRequest(explanation=_(
+                'Ceph IDs may not be empty'))
+
+        # This restriction may be lifted in Ceph in the future:
+        # http://tracker.ceph.com/issues/14626
+        if not set(cephx_id) <= set(string.printable):
+            raise webob.exc.HTTPBadRequest(explanation=_(
+                'Ceph IDs must consist of ASCII printable characters'))
+
+        # Periods are technically permitted, but we restrict them here
+        # to avoid confusion where users are unsure whether they should
+        # include the "client." prefix: otherwise they could accidentally
+        # create "client.client.foobar".
+        if '.' in cephx_id:
+            raise webob.exc.HTTPBadRequest(explanation=_(
+                'Ceph IDs may not contain periods'))
+
+    def _allow_access(self, req, id, body, enable_ceph=False):
         """Add share access rule."""
         context = req.environ['manila.context']
         access_data = body.get('allow_access', body.get('os-allow_access'))
@@ -397,9 +418,16 @@ class ShareMixin(object):
             self._validate_username(access_to)
         elif access_type == 'cert':
             self._validate_common_name(access_to.strip())
+        elif access_type == "cephx" and enable_ceph:
+            self._validate_cephx_id(access_to)
         else:
-            exc_str = _("Only 'ip','user',or'cert' access types "
-                        "are supported.")
+            if enable_ceph:
+                exc_str = _("Only 'ip', 'user', 'cert' or 'cephx' access "
+                            "types are supported.")
+            else:
+                exc_str = _("Only 'ip', 'user' or 'cert' access types "
+                            "are supported.")
+
             raise webob.exc.HTTPBadRequest(explanation=exc_str)
         try:
             access = self.share_api.allow_access(

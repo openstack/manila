@@ -187,3 +187,8 @@ class SharesGLUSTERFSTest(SharesNFSTest):
 class SharesHDFSTest(SharesNFSTest):
     """Covers share functionality that is related to HDFS share type."""
     protocol = "hdfs"
+
+
+class SharesCephFSTest(SharesNFSTest):
+    """Covers share functionality that is related to CEPHFS share type."""
+    protocol = "cephfs"

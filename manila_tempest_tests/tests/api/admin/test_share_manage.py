@@ -196,3 +196,7 @@ class ManageGLUSTERFSShareTest(ManageNFSShareTest):
 
 class ManageHDFSShareTest(ManageNFSShareTest):
     protocol = 'hdfs'
+
+
+class ManageCephFSShareTest(ManageNFSShareTest):
+    protocol = 'cephfs'
