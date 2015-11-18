@@ -39,6 +39,7 @@ from manila.api.v1 import share_networks
 from manila.api.v1 import share_servers
 from manila.api.v1 import share_snapshots
 from manila.api.v1 import share_types
+from manila.api.v1 import share_types_extra_specs
 from manila.api.v1 import share_unmanage
 from manila.api.v1 import shares
 from manila.api import versions
@@ -176,7 +177,15 @@ class APIRouter(manila.api.openstack.APIRouter):
         mapper.resource("type", "types",
                         controller=self.resources['types'],
                         collection={'detail': 'GET', 'default': 'GET'},
-                        member={'action': 'POST'})
+                        member={'action': 'POST',
+                                'os-share-type-access': 'GET'})
+
+        self.resources['extra_specs'] = (
+            share_types_extra_specs.create_resource())
+        mapper.resource('extra_spec', 'extra_specs',
+                        controller=self.resources['extra_specs'],
+                        parent_resource=dict(member_name='type',
+                                             collection_name='types'))
 
         self.resources['scheduler_stats'] = scheduler_stats.create_resource()
         mapper.connect('pools', '/{project_id}/scheduler-stats/pools',

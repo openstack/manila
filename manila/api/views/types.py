@@ -35,10 +35,14 @@ class ViewBuilder(common.ViewBuilder):
             required_extra_specs = self._filter_extra_specs(
                 required_extra_specs, extra_spec_names)
 
-        trimmed = dict(id=share_type.get('id'),
-                       name=share_type.get('name'),
-                       extra_specs=extra_specs,
-                       required_extra_specs=required_extra_specs)
+        trimmed = {
+            'id': share_type.get('id'),
+            'name': share_type.get('name'),
+            'os-share-type-access:is_public': share_type.get(
+                'is_public', True),
+            'extra_specs': extra_specs,
+            'required_extra_specs': required_extra_specs,
+        }
         if brief:
             return trimmed
         else:
