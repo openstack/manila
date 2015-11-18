@@ -1,4 +1,4 @@
-# Copyright 2015 Hewlett Packard Development Company, L.P.
+# Copyright 2015 Hewlett Packard Enterprise Development LP
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""HP 3PAR Mediator for OpenStack Manila.
+"""HPE 3PAR Mediator for OpenStack Manila.
 
 This 'mediator' de-couples the 3PAR focused client from the OpenStack focused
 driver.
@@ -26,14 +26,13 @@ import six
 from manila import exception
 from manila.i18n import _, _LI, _LW
 
-hp3parclient = importutils.try_import("hp3parclient")
-if hp3parclient:
-    from hp3parclient import file_client
+hpe3parclient = importutils.try_import("hpe3parclient")
+if hpe3parclient:
+    from hpe3parclient import file_client
 
 
 LOG = log.getLogger(__name__)
-MIN_CLIENT_VERSION = (3, 2, 1)
-MIN_SMB_CA_VERSION = (3, 2, 2)
+MIN_CLIENT_VERSION = (4, 0, 0)
 DENY = '-'
 ALLOW = '+'
 OPEN_STACK_MANILA = 'OpenStack Manila'
@@ -52,31 +51,32 @@ SMB_EXTRA_SPECS_MAP = {
 }
 
 
-class HP3ParMediator(object):
+class HPE3ParMediator(object):
     """3PAR client-facing code for the 3PAR driver.
 
     Version history:
-        1.0.00 - Begin Liberty development (post-Kilo)
-        1.0.01 - Report thin/dedup/hp_flash_cache capabilities
-        1.0.02 - Add share server/share network support
-        1.0.03 - Use hp3par prefix for share types and capabilities
+        1.0.0 - Begin Liberty development (post-Kilo)
+        1.0.1 - Report thin/dedup/hp_flash_cache capabilities
+        1.0.2 - Add share server/share network support
+        1.0.3 - Use hp3par prefix for share types and capabilities
+        2.0.0 - Rebranded HP to HPE
 
     """
 
-    VERSION = "1.0.03"
+    VERSION = "2.0.0"
 
     def __init__(self, **kwargs):
 
-        self.hp3par_username = kwargs.get('hp3par_username')
-        self.hp3par_password = kwargs.get('hp3par_password')
-        self.hp3par_api_url = kwargs.get('hp3par_api_url')
-        self.hp3par_debug = kwargs.get('hp3par_debug')
-        self.hp3par_san_ip = kwargs.get('hp3par_san_ip')
-        self.hp3par_san_login = kwargs.get('hp3par_san_login')
-        self.hp3par_san_password = kwargs.get('hp3par_san_password')
-        self.hp3par_san_ssh_port = kwargs.get('hp3par_san_ssh_port')
-        self.hp3par_san_private_key = kwargs.get('hp3par_san_private_key')
-        self.hp3par_fstore_per_share = kwargs.get('hp3par_fstore_per_share')
+        self.hpe3par_username = kwargs.get('hpe3par_username')
+        self.hpe3par_password = kwargs.get('hpe3par_password')
+        self.hpe3par_api_url = kwargs.get('hpe3par_api_url')
+        self.hpe3par_debug = kwargs.get('hpe3par_debug')
+        self.hpe3par_san_ip = kwargs.get('hpe3par_san_ip')
+        self.hpe3par_san_login = kwargs.get('hpe3par_san_login')
+        self.hpe3par_san_password = kwargs.get('hpe3par_san_password')
+        self.hpe3par_san_ssh_port = kwargs.get('hpe3par_san_ssh_port')
+        self.hpe3par_san_private_key = kwargs.get('hpe3par_san_private_key')
+        self.hpe3par_fstore_per_share = kwargs.get('hpe3par_fstore_per_share')
 
         self.ssh_conn_timeout = kwargs.get('ssh_conn_timeout')
         self._client = None
@@ -84,61 +84,61 @@ class HP3ParMediator(object):
 
     @staticmethod
     def no_client():
-        return hp3parclient is None
+        return hpe3parclient is None
 
     def do_setup(self):
 
         if self.no_client():
-            msg = _('You must install hp3parclient before using the 3PAR '
+            msg = _('You must install hpe3parclient before using the 3PAR '
                     'driver.')
             LOG.error(msg)
-            raise exception.HP3ParInvalidClient(message=msg)
+            raise exception.HPE3ParInvalidClient(message=msg)
 
-        self.client_version = hp3parclient.version_tuple
+        self.client_version = hpe3parclient.version_tuple
         if self.client_version < MIN_CLIENT_VERSION:
-            msg = (_('Invalid hp3parclient version found (%(found)s). '
+            msg = (_('Invalid hpe3parclient version found (%(found)s). '
                      'Version %(minimum)s or greater required.') %
                    {'found': '.'.join(map(six.text_type, self.client_version)),
                     'minimum': '.'.join(map(six.text_type,
                                             MIN_CLIENT_VERSION))})
             LOG.error(msg)
-            raise exception.HP3ParInvalidClient(message=msg)
+            raise exception.HPE3ParInvalidClient(message=msg)
 
         try:
-            self._client = file_client.HP3ParFilePersonaClient(
-                self.hp3par_api_url)
+            self._client = file_client.HPE3ParFilePersonaClient(
+                self.hpe3par_api_url)
         except Exception as e:
-            msg = (_('Failed to connect to HP 3PAR File Persona Client: %s') %
+            msg = (_('Failed to connect to HPE 3PAR File Persona Client: %s') %
                    six.text_type(e))
             LOG.exception(msg)
             raise exception.ShareBackendException(message=msg)
 
         try:
             ssh_kwargs = {}
-            if self.hp3par_san_ssh_port:
-                ssh_kwargs['port'] = self.hp3par_san_ssh_port
+            if self.hpe3par_san_ssh_port:
+                ssh_kwargs['port'] = self.hpe3par_san_ssh_port
             if self.ssh_conn_timeout:
                 ssh_kwargs['conn_timeout'] = self.ssh_conn_timeout
-            if self.hp3par_san_private_key:
-                ssh_kwargs['privatekey'] = self.hp3par_san_private_key
+            if self.hpe3par_san_private_key:
+                ssh_kwargs['privatekey'] = self.hpe3par_san_private_key
 
             self._client.setSSHOptions(
-                self.hp3par_san_ip,
-                self.hp3par_san_login,
-                self.hp3par_san_password,
+                self.hpe3par_san_ip,
+                self.hpe3par_san_login,
+                self.hpe3par_san_password,
                 **ssh_kwargs
             )
 
         except Exception as e:
-            msg = (_('Failed to set SSH options for HP 3PAR File Persona '
+            msg = (_('Failed to set SSH options for HPE 3PAR File Persona '
                      'Client: %s') % six.text_type(e))
             LOG.exception(msg)
             raise exception.ShareBackendException(message=msg)
 
-        LOG.info(_LI("HP3ParMediator %(version)s, "
-                     "hp3parclient %(client_version)s"),
+        LOG.info(_LI("HPE3ParMediator %(version)s, "
+                     "hpe3parclient %(client_version)s"),
                  {"version": self.VERSION,
-                  "client_version": hp3parclient.get_version_string()})
+                  "client_version": hpe3parclient.get_version_string()})
 
         try:
             wsapi_version = self._client.getWsApiVersion()['build']
@@ -149,17 +149,17 @@ class HP3ParMediator(object):
             LOG.exception(msg)
             raise exception.ShareBackendException(message=msg)
 
-        if self.hp3par_debug:
+        if self.hpe3par_debug:
             self._client.debug_rest(True)  # Includes SSH debug (setSSH above)
 
     def _wsapi_login(self):
         try:
-            self._client.login(self.hp3par_username, self.hp3par_password)
+            self._client.login(self.hpe3par_username, self.hpe3par_password)
         except Exception as e:
             msg = (_("Failed to Login to 3PAR (%(url)s) as %(user)s "
                      "because: %(err)s") %
-                   {'url': self.hp3par_api_url,
-                    'user': self.hp3par_username,
+                   {'url': self.hpe3par_api_url,
+                    'user': self.hpe3par_username,
                     'err': six.text_type(e)})
             LOG.error(msg)
             raise exception.ShareBackendException(msg=msg)
@@ -169,7 +169,7 @@ class HP3ParMediator(object):
             self._client.http.unauthenticate()
         except Exception as e:
             msg = _LW("Failed to Logout from 3PAR (%(url)s) because %(err)s")
-            LOG.warning(msg, {'url': self.hp3par_api_url,
+            LOG.warning(msg, {'url': self.hpe3par_api_url,
                               'err': six.text_type(e)})
             # don't raise exception on logout()
 
@@ -236,14 +236,15 @@ class HP3ParMediator(object):
         thin_provisioning = provisioning_type in (THIN, DEDUPE)
 
         flash_cache_policy = volume_set.get('flashCachePolicy', DISABLED)
-        hp3par_flash_cache = flash_cache_policy == ENABLED
+        hpe3par_flash_cache = flash_cache_policy == ENABLED
 
         status = {
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
             'thin_provisioning': thin_provisioning,
             'dedupe': dedupe,
-            'hp3par_flash_cache': hp3par_flash_cache,
+            'hpe3par_flash_cache': hpe3par_flash_cache,
+            'hp3par_flash_cache': hpe3par_flash_cache,
         }
 
         if thin_provisioning:
@@ -266,7 +267,7 @@ class HP3ParMediator(object):
     @staticmethod
     def other_protocol(share_proto):
         """Given 'nfs' or 'smb' (or equivalent) return the other one."""
-        protocol = HP3ParMediator.ensure_supported_protocol(share_proto)
+        protocol = HPE3ParMediator.ensure_supported_protocol(share_proto)
         return 'nfs' if protocol == 'smb' else 'smb'
 
     @staticmethod
@@ -275,7 +276,7 @@ class HP3ParMediator(object):
             return uid
         elif protocol:
             return 'osf-%s-%s' % (
-                HP3ParMediator.ensure_supported_protocol(protocol), uid)
+                HPE3ParMediator.ensure_supported_protocol(protocol), uid)
         else:
             return 'osf-%s' % uid
 
@@ -283,7 +284,14 @@ class HP3ParMediator(object):
     def _get_nfs_options(extra_specs, readonly):
         """Validate the NFS extra_specs and return the options to use."""
 
-        nfs_options = extra_specs.get('hp3par:nfs_options')
+        nfs_options = extra_specs.get('hpe3par:nfs_options')
+        if nfs_options is None:
+            nfs_options = extra_specs.get('hp3par:nfs_options')
+            if nfs_options:
+                msg = _LW("hp3par:nfs_options is deprecated. Use "
+                          "hpe3par:nfs_options instead.")
+                LOG.warning(msg)
+
         if nfs_options:
             options = nfs_options.split(',')
         else:
@@ -304,7 +312,8 @@ class HP3ParMediator(object):
         ]
 
         if invalid_options:
-            raise exception.InvalidInput(_('Invalid hp3par:nfs_options in '
+            raise exception.InvalidInput(_('Invalid hp3par:nfs_options or '
+                                           'hpe3par:nfs_options in '
                                            'extra-specs. The following '
                                            'options are not allowed: %s') %
                                          invalid_options)
@@ -321,6 +330,12 @@ class HP3ParMediator(object):
                                    fstore=fstore,
                                    sharedir=sharedir,
                                    comment=comment)
+
+        if 'hp3par_flash_cache' in extra_specs:
+            msg = _LW("hp3par_flash_cache is deprecated. Use "
+                      "hpe3par_flash_cache instead.")
+            LOG.warning(msg)
+
         if protocol == 'nfs':
             createfshare_kwargs['clientip'] = '127.0.0.1'
             options = self._get_nfs_options(extra_specs, readonly)
@@ -328,13 +343,17 @@ class HP3ParMediator(object):
         else:
             createfshare_kwargs['allowip'] = '127.0.0.1'
 
-            if self.client_version < MIN_SMB_CA_VERSION:
-                smb_opts = (ACCESS_BASED_ENUM, CACHE)
-            else:
-                smb_opts = (ACCESS_BASED_ENUM, CONTINUOUS_AVAIL, CACHE)
+            smb_opts = (ACCESS_BASED_ENUM, CONTINUOUS_AVAIL, CACHE)
 
             for smb_opt in smb_opts:
-                opt_value = extra_specs.get('hp3par:smb_%s' % smb_opt)
+                opt_value = extra_specs.get('hpe3par:smb_%s' % smb_opt)
+                if opt_value is None:
+                    opt_value = extra_specs.get('hp3par:smb_%s' % smb_opt)
+                    if opt_value:
+                        msg = _LW("hp3par:smb_* is deprecated. Use "
+                                  "hpe3par:smb_* instead.")
+                        LOG.warning(msg)
+
                 if opt_value:
                     opt_key = SMB_EXTRA_SPECS_MAP[smb_opt]
                     createfshare_kwargs[opt_key] = opt_value
@@ -367,14 +386,14 @@ class HP3ParMediator(object):
         protocol = self.ensure_supported_protocol(share_proto)
         share_name = self.ensure_prefix(share_id)
 
-        if not (sharedir or self.hp3par_fstore_per_share):
+        if not (sharedir or self.hpe3par_fstore_per_share):
             sharedir = share_name
 
         if fstore:
             use_existing_fstore = True
         else:
             use_existing_fstore = False
-            if self.hp3par_fstore_per_share:
+            if self.hpe3par_fstore_per_share:
                 fstore = share_name
             else:
                 fstore = self.ensure_prefix(project_id, protocol)
@@ -401,7 +420,7 @@ class HP3ParMediator(object):
                 raise exception.ShareBackendException(msg)
 
             if size:
-                if self.hp3par_fstore_per_share:
+                if self.hpe3par_fstore_per_share:
                     hcapacity = six.text_type(size * units.Ki)
                     scapacity = hcapacity
                 else:
@@ -706,10 +725,10 @@ class HP3ParMediator(object):
             raise exception.InvalidInput(msg)
 
         if protocol == 'nfs' and access_type != 'ip':
-            msg = (_("Invalid NFS access type.  HP 3PAR NFS supports 'ip'. "
+            msg = (_("Invalid NFS access type.  HPE 3PAR NFS supports 'ip'. "
                      "Actual '%s'.") % access_type)
             LOG.error(msg)
-            raise exception.HP3ParInvalid(msg)
+            raise exception.HPE3ParInvalid(msg)
 
         return protocol
 
@@ -748,7 +767,7 @@ class HP3ParMediator(object):
                 msg = (_("Unexpected error:  After ensure_supported_protocol "
                          "only 'nfs' or 'smb' strings are allowed, but found: "
                          "%s.") % protocol)
-                raise exception.HP3ParUnexpectedError(msg)
+                raise exception.HPE3ParUnexpectedError(msg)
 
             LOG.debug("setfshare result=%s", result)
         except Exception as e:

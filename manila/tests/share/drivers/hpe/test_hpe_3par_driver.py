@@ -1,4 +1,4 @@
-# Copyright 2015 Hewlett Packard Development Company, L.P.
+# Copyright 2015 Hewlett Packard Enterprise Development LP
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,37 +16,37 @@ import sys
 
 import ddt
 import mock
-if 'hp3parclient' not in sys.modules:
-    sys.modules['hp3parclient'] = mock.Mock()
+if 'hpe3parclient' not in sys.modules:
+    sys.modules['hpe3parclient'] = mock.Mock()
 
 from manila import exception
-from manila.share.drivers.hp import hp_3par_driver as hp3pardriver
-from manila.share.drivers.hp import hp_3par_mediator as hp3parmediator
+from manila.share.drivers.hpe import hpe_3par_driver as hpe3pardriver
+from manila.share.drivers.hpe import hpe_3par_mediator as hpe3parmediator
 from manila import test
-from manila.tests.share.drivers.hp import test_hp_3par_constants as constants
+from manila.tests.share.drivers.hpe import test_hpe_3par_constants as constants
 
 
 @ddt.ddt
-class HP3ParDriverTestCase(test.TestCase):
+class HPE3ParDriverTestCase(test.TestCase):
 
     def setUp(self):
-        super(HP3ParDriverTestCase, self).setUp()
+        super(HPE3ParDriverTestCase, self).setUp()
 
         # Create a mock configuration with attributes and a safe_get()
         self.conf = mock.Mock()
         self.conf.driver_handles_share_servers = True
-        self.conf.hp3par_debug = constants.EXPECTED_HP_DEBUG
-        self.conf.hp3par_username = constants.USERNAME
-        self.conf.hp3par_password = constants.PASSWORD
-        self.conf.hp3par_api_url = constants.API_URL
-        self.conf.hp3par_san_login = constants.SAN_LOGIN
-        self.conf.hp3par_san_password = constants.SAN_PASSWORD
-        self.conf.hp3par_san_ip = constants.EXPECTED_IP_1234
-        self.conf.hp3par_fpg = constants.EXPECTED_FPG
-        self.conf.hp3par_san_ssh_port = constants.PORT
+        self.conf.hpe3par_debug = constants.EXPECTED_HPE_DEBUG
+        self.conf.hpe3par_username = constants.USERNAME
+        self.conf.hpe3par_password = constants.PASSWORD
+        self.conf.hpe3par_api_url = constants.API_URL
+        self.conf.hpe3par_san_login = constants.SAN_LOGIN
+        self.conf.hpe3par_san_password = constants.SAN_PASSWORD
+        self.conf.hpe3par_san_ip = constants.EXPECTED_IP_1234
+        self.conf.hpe3par_fpg = constants.EXPECTED_FPG
+        self.conf.hpe3par_san_ssh_port = constants.PORT
         self.conf.ssh_conn_timeout = constants.TIMEOUT
-        self.conf.hp3par_share_ip_address = None
-        self.conf.hp3par_fstore_per_share = False
+        self.conf.hpe3par_share_ip_address = None
+        self.conf.hpe3par_fstore_per_share = False
         self.conf.network_config_group = 'test_network_config_group'
 
         def safe_get(attr):
@@ -56,12 +56,12 @@ class HP3ParDriverTestCase(test.TestCase):
                 return None
         self.conf.safe_get = safe_get
 
-        self.real_hp_3par_mediator = hp3parmediator.HP3ParMediator
-        self.mock_object(hp3parmediator, 'HP3ParMediator')
-        self.mock_mediator_constructor = hp3parmediator.HP3ParMediator
+        self.real_hpe_3par_mediator = hpe3parmediator.HPE3ParMediator
+        self.mock_object(hpe3parmediator, 'HPE3ParMediator')
+        self.mock_mediator_constructor = hpe3parmediator.HPE3ParMediator
         self.mock_mediator = self.mock_mediator_constructor()
 
-        self.driver = hp3pardriver.HP3ParShareDriver(
+        self.driver = hpe3pardriver.HPE3ParShareDriver(
             configuration=self.conf)
 
     def test_driver_setup_success(self):
@@ -72,20 +72,20 @@ class HP3ParDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
         conf = self.conf
         self.mock_mediator_constructor.assert_has_calls([
-            mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
-                      hp3par_san_password=conf.hp3par_san_password,
-                      hp3par_username=conf.hp3par_username,
-                      hp3par_san_login=conf.hp3par_san_login,
-                      hp3par_debug=conf.hp3par_debug,
-                      hp3par_api_url=conf.hp3par_api_url,
-                      hp3par_password=conf.hp3par_password,
-                      hp3par_san_ip=conf.hp3par_san_ip,
-                      hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
+            mock.call(hpe3par_san_ssh_port=conf.hpe3par_san_ssh_port,
+                      hpe3par_san_password=conf.hpe3par_san_password,
+                      hpe3par_username=conf.hpe3par_username,
+                      hpe3par_san_login=conf.hpe3par_san_login,
+                      hpe3par_debug=conf.hpe3par_debug,
+                      hpe3par_api_url=conf.hpe3par_api_url,
+                      hpe3par_password=conf.hpe3par_password,
+                      hpe3par_san_ip=conf.hpe3par_san_ip,
+                      hpe3par_fstore_per_share=conf.hpe3par_fstore_per_share,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([
             mock.call.do_setup(),
-            mock.call.get_vfs_name(conf.hp3par_fpg)])
+            mock.call.get_vfs_name(conf.hpe3par_fpg)])
 
         self.assertEqual(constants.EXPECTED_VFS, self.driver.vfs)
 
@@ -93,7 +93,7 @@ class HP3ParDriverTestCase(test.TestCase):
         """Driver do_setup without any errors with dhss=False."""
 
         self.conf.driver_handles_share_servers = False
-        self.conf.hp3par_share_ip_address = constants.EXPECTED_IP_10203040
+        self.conf.hpe3par_share_ip_address = constants.EXPECTED_IP_10203040
 
         self.test_driver_setup_success()
 
@@ -101,7 +101,7 @@ class HP3ParDriverTestCase(test.TestCase):
         """Configured IP address is required for dhss=False."""
 
         self.conf.driver_handles_share_servers = False
-        self.assertRaises(exception.HP3ParInvalid,
+        self.assertRaises(exception.HPE3ParInvalid,
                           self.driver.do_setup, None)
 
     def test_driver_with_setup_error(self):
@@ -115,15 +115,15 @@ class HP3ParDriverTestCase(test.TestCase):
 
         conf = self.conf
         self.mock_mediator_constructor.assert_has_calls([
-            mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
-                      hp3par_san_password=conf.hp3par_san_password,
-                      hp3par_username=conf.hp3par_username,
-                      hp3par_san_login=conf.hp3par_san_login,
-                      hp3par_debug=conf.hp3par_debug,
-                      hp3par_api_url=conf.hp3par_api_url,
-                      hp3par_password=conf.hp3par_password,
-                      hp3par_san_ip=conf.hp3par_san_ip,
-                      hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
+            mock.call(hpe3par_san_ssh_port=conf.hpe3par_san_ssh_port,
+                      hpe3par_san_password=conf.hpe3par_san_password,
+                      hpe3par_username=conf.hpe3par_username,
+                      hpe3par_san_login=conf.hpe3par_san_login,
+                      hpe3par_debug=conf.hpe3par_debug,
+                      hpe3par_api_url=conf.hpe3par_api_url,
+                      hpe3par_password=conf.hpe3par_password,
+                      hpe3par_san_ip=conf.hpe3par_san_ip,
+                      hpe3par_fstore_per_share=conf.hpe3par_fstore_per_share,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([mock.call.do_setup()])
@@ -139,29 +139,29 @@ class HP3ParDriverTestCase(test.TestCase):
 
         conf = self.conf
         self.mock_mediator_constructor.assert_has_calls([
-            mock.call(hp3par_san_ssh_port=conf.hp3par_san_ssh_port,
-                      hp3par_san_password=conf.hp3par_san_password,
-                      hp3par_username=conf.hp3par_username,
-                      hp3par_san_login=conf.hp3par_san_login,
-                      hp3par_debug=conf.hp3par_debug,
-                      hp3par_api_url=conf.hp3par_api_url,
-                      hp3par_password=conf.hp3par_password,
-                      hp3par_san_ip=conf.hp3par_san_ip,
-                      hp3par_fstore_per_share=conf.hp3par_fstore_per_share,
+            mock.call(hpe3par_san_ssh_port=conf.hpe3par_san_ssh_port,
+                      hpe3par_san_password=conf.hpe3par_san_password,
+                      hpe3par_username=conf.hpe3par_username,
+                      hpe3par_san_login=conf.hpe3par_san_login,
+                      hpe3par_debug=conf.hpe3par_debug,
+                      hpe3par_api_url=conf.hpe3par_api_url,
+                      hpe3par_password=conf.hpe3par_password,
+                      hpe3par_san_ip=conf.hpe3par_san_ip,
+                      hpe3par_fstore_per_share=conf.hpe3par_fstore_per_share,
                       ssh_conn_timeout=conf.ssh_conn_timeout)])
 
         self.mock_mediator.assert_has_calls([
             mock.call.do_setup(),
-            mock.call.get_vfs_name(conf.hp3par_fpg)])
+            mock.call.get_vfs_name(conf.hpe3par_fpg)])
 
     def init_driver(self):
         """Simple driver setup for re-use with tests that need one."""
 
-        self.driver._hp3par = self.mock_mediator
+        self.driver._hpe3par = self.mock_mediator
         self.driver.vfs = constants.EXPECTED_VFS
         self.driver.fpg = constants.EXPECTED_FPG
-        self.mock_object(hp3pardriver, 'share_types')
-        get_extra_specs = hp3pardriver.share_types.get_extra_specs_from_share
+        self.mock_object(hpe3pardriver, 'share_types')
+        get_extra_specs = hpe3pardriver.share_types.get_extra_specs_from_share
         get_extra_specs.return_value = constants.EXPECTED_EXTRA_SPECS
 
     def do_create_share(self, protocol, share_type_id, expected_project_id,
@@ -213,29 +213,29 @@ class HP3ParDriverTestCase(test.TestCase):
         """check_for_setup_error when things go well."""
 
         # Generally this is always mocked, but here we reference the class.
-        hp3parmediator.HP3ParMediator = self.real_hp_3par_mediator
+        hpe3parmediator.HPE3ParMediator = self.real_hpe_3par_mediator
 
-        self.mock_object(hp3pardriver, 'LOG')
+        self.mock_object(hpe3pardriver, 'LOG')
         self.init_driver()
         self.driver.check_for_setup_error()
         expected_calls = [
-            mock.call.debug('HP3ParShareDriver SHA1: %s', mock.ANY),
-            mock.call.debug('HP3ParMediator SHA1: %s', mock.ANY)
+            mock.call.debug('HPE3ParShareDriver SHA1: %s', mock.ANY),
+            mock.call.debug('HPE3ParMediator SHA1: %s', mock.ANY)
         ]
-        hp3pardriver.LOG.assert_has_calls(expected_calls)
+        hpe3pardriver.LOG.assert_has_calls(expected_calls)
 
     def test_driver_check_for_setup_error_exception(self):
         """check_for_setup_error catch and log any exceptions."""
 
-        # Since HP3ParMediator is mocked, we'll hit the except/log.
-        self.mock_object(hp3pardriver, 'LOG')
+        # Since HPE3ParMediator is mocked, we'll hit the except/log.
+        self.mock_object(hpe3pardriver, 'LOG')
         self.init_driver()
         self.driver.check_for_setup_error()
         expected_calls = [
-            mock.call.debug('HP3ParShareDriver SHA1: %s', mock.ANY),
+            mock.call.debug('HPE3ParShareDriver SHA1: %s', mock.ANY),
             mock.call.debug('Source code SHA1 not logged due to: %s', mock.ANY)
         ]
-        hp3pardriver.LOG.assert_has_calls(expected_calls)
+        hpe3pardriver.LOG.assert_has_calls(expected_calls)
 
     def test_driver_create_cifs_share(self):
         self.init_driver()
@@ -458,7 +458,7 @@ class HP3ParDriverTestCase(test.TestCase):
     def test_driver_get_share_stats_not_ready(self):
         """Protect against stats update before driver is ready."""
 
-        self.mock_object(hp3pardriver, 'LOG')
+        self.mock_object(hpe3pardriver, 'LOG')
 
         expected_result = {
             'driver_handles_share_servers': True,
@@ -468,12 +468,12 @@ class HP3ParDriverTestCase(test.TestCase):
             'max_over_subscription_ratio': None,
             'reserved_percentage': 0,
             'provisioned_capacity_gb': 0,
-            'share_backend_name': 'HP_3PAR',
+            'share_backend_name': 'HPE_3PAR',
             'snapshot_support': True,
             'storage_protocol': 'NFS_CIFS',
             'thin_provisioning': True,
             'total_capacity_gb': 0,
-            'vendor_name': 'HP',
+            'vendor_name': 'HPE',
             'pools': None,
         }
 
@@ -484,7 +484,7 @@ class HP3ParDriverTestCase(test.TestCase):
             mock.call.info('Skipping capacity and capabilities update. '
                            'Setup has not completed.')
         ]
-        hp3pardriver.LOG.assert_has_calls(expected_calls)
+        hpe3pardriver.LOG.assert_has_calls(expected_calls)
 
     def test_driver_get_share_stats_no_refresh(self):
         """Driver does not call mediator when refresh=False."""
@@ -511,6 +511,7 @@ class HP3ParDriverTestCase(test.TestCase):
             'thin_provisioning': True,
             'dedupe': False,
             'hpe3par_flash_cache': False,
+            'hp3par_flash_cache': False,
         }
 
         expected_result = {
@@ -522,13 +523,14 @@ class HP3ParDriverTestCase(test.TestCase):
             'pools': None,
             'provisioned_capacity_gb': 0,
             'reserved_percentage': 0,
-            'share_backend_name': 'HP_3PAR',
+            'share_backend_name': 'HPE_3PAR',
             'storage_protocol': 'NFS_CIFS',
             'total_capacity_gb': expected_capacity,
-            'vendor_name': 'HP',
+            'vendor_name': 'HPE',
             'thin_provisioning': True,
             'dedupe': False,
             'hpe3par_flash_cache': False,
+            'hp3par_flash_cache': False,
             'snapshot_support': True,
         }
 
@@ -557,11 +559,11 @@ class HP3ParDriverTestCase(test.TestCase):
             'pools': None,
             'provisioned_capacity_gb': 0,
             'reserved_percentage': 0,
-            'share_backend_name': 'HP_3PAR',
+            'share_backend_name': 'HPE_3PAR',
             'storage_protocol': 'NFS_CIFS',
             'thin_provisioning': True,
             'total_capacity_gb': 0,
-            'vendor_name': 'HP',
+            'vendor_name': 'HPE',
             'snapshot_support': True,
         }
 

@@ -1,4 +1,4 @@
-# Copyright 2015 Hewlett Packard Development Company, L.P.
+# Copyright 2015 Hewlett Packard Enterprise Development LP
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -48,7 +48,7 @@ EXPECTED_STATS = {'test': 'stats'}
 EXPECTED_FPG = 'FPG_1'
 EXPECTED_FSTORE = EXPECTED_PROJECT_ID
 EXPECTED_VFS = 'test_vfs'
-EXPECTED_HP_DEBUG = True
+EXPECTED_HPE_DEBUG = True
 EXPECTED_EXTRA_SPECS = {}
 
 GET_FSQUOTA = {'message': None,

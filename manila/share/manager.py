@@ -98,7 +98,10 @@ CONF.import_opt('periodic_hooks_interval', 'manila.share.hook')
 # old/new path here to maintain backward compatibility.
 MAPPING = {
     'manila.share.drivers.netapp.cluster_mode.NetAppClusteredShareDriver':
-    'manila.share.drivers.netapp.common.NetAppDriver', }
+    'manila.share.drivers.netapp.common.NetAppDriver',
+    'manila.share.drivers.hp.hp_3par_driver.HP3ParShareDriver':
+    'manila.share.drivers.hpe.hpe_3par_driver.HPE3ParShareDriver',
+}
 
 QUOTAS = quota.QUOTAS
 
