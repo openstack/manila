@@ -70,31 +70,16 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
     def test_create_cg_from_multi_typed_populated_cgsnapshot_v2_4(self):
         share_name = data_utils.rand_name("tempest-share-name")
         share_desc = data_utils.rand_name("tempest-share-description")
-        share_size = 1
-        share = self.create_share(
-            cleanup_in_class=False,
-            name=share_name,
-            description=share_desc,
-            size=share_size,
-            consistency_group_id=self.consistency_group['id'],
-            share_type_id=self.share_type['id'],
-            client=self.shares_v2_client,
-            version='2.4',
-        )
 
-        share_name2 = data_utils.rand_name("tempest-share-name")
-        share_desc2 = data_utils.rand_name("tempest-share-description")
-        share_size2 = 1
-        share2 = self.create_share(
-            cleanup_in_class=False,
-            name=share_name2,
-            description=share_desc2,
-            size=share_size2,
-            consistency_group_id=self.consistency_group['id'],
-            share_type_id=self.share_type2['id'],
-            client=self.shares_v2_client,
-            version='2.4',
-        )
+        shares = self.create_shares([
+            {'kwargs': {
+                'cleanup_in_class': False,
+                'name': share_name,
+                'description': share_desc,
+                'consistency_group_id': self.consistency_group['id'],
+                'share_type_id': st_id,
+            }} for st_id in (self.share_type['id'], self.share_type2['id'])
+        ])
 
         cg_shares = self.shares_v2_client.list_shares(
             detailed=True,
@@ -103,7 +88,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesAdminTest):
         )
 
         cg_share_ids = [s['id'] for s in cg_shares]
-        for share_id in [share['id'], share2['id']]:
+        for share_id in (shares[0]['id'], shares[1]['id']):
             self.assertIn(share_id, cg_share_ids, 'Share %s not in '
                                                   'consistency group %s.' %
                           (share_id, self.consistency_group['id']))
