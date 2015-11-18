@@ -40,14 +40,14 @@ class AdminActionsTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", ])
     def test_reset_share_state(self):
         for status in self.states:
-            self.shares_client.reset_state(self.sh["id"], status=status)
-            self.shares_client.wait_for_share_status(self.sh["id"], status)
+            self.shares_v2_client.reset_state(self.sh["id"], status=status)
+            self.shares_v2_client.wait_for_share_status(self.sh["id"], status)
 
     @test.attr(type=["gate", ])
     def test_reset_share_instance_state(self):
         id = self.sh_instance["id"]
         for status in self.states:
-            self.shares_client.reset_state(
+            self.shares_v2_client.reset_state(
                 id, s_type="share_instances", status=status)
             self.shares_v2_client.wait_for_share_instance_status(id, status)
 
@@ -56,24 +56,25 @@ class AdminActionsTest(base.BaseSharesAdminTest):
                           "Snapshot tests are disabled.")
     def test_reset_snapshot_state_to_error(self):
         for status in self.states:
-            self.shares_client.reset_state(
+            self.shares_v2_client.reset_state(
                 self.sn["id"], s_type="snapshots", status=status)
-            self.shares_client.wait_for_snapshot_status(self.sn["id"], status)
+            self.shares_v2_client.wait_for_snapshot_status(
+                self.sn["id"], status)
 
     @test.attr(type=["gate", ])
     def test_force_delete_share(self):
         share = self.create_share()
 
         # Change status from 'available' to 'error_deleting'
-        self.shares_client.reset_state(share["id"], status=self.bad_status)
+        self.shares_v2_client.reset_state(share["id"], status=self.bad_status)
 
         # Check that status was changed
-        check_status = self.shares_client.get_share(share["id"])
+        check_status = self.shares_v2_client.get_share(share["id"])
         self.assertEqual(check_status["status"], self.bad_status)
 
         # Share with status 'error_deleting' should be deleted
-        self.shares_client.force_delete(share["id"])
-        self.shares_client.wait_for_resource_deletion(share_id=share["id"])
+        self.shares_v2_client.force_delete(share["id"])
+        self.shares_v2_client.wait_for_resource_deletion(share_id=share["id"])
 
     @test.attr(type=["gate", ])
     def test_force_delete_share_instance(self):
@@ -85,7 +86,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         instance = instances[0]
 
         # Change status from 'available' to 'error_deleting'
-        self.shares_client.reset_state(
+        self.shares_v2_client.reset_state(
             instance["id"], s_type="share_instances", status=self.bad_status)
 
         # Check that status was changed
@@ -93,7 +94,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         self.assertEqual(self.bad_status, check_status["status"])
 
         # Share with status 'error_deleting' should be deleted
-        self.shares_client.force_delete(
+        self.shares_v2_client.force_delete(
             instance["id"], s_type="share_instances")
         self.shares_v2_client.wait_for_resource_deletion(
             share_instance_id=instance["id"])
@@ -105,13 +106,13 @@ class AdminActionsTest(base.BaseSharesAdminTest):
         sn = self.create_snapshot_wait_for_active(self.sh["id"])
 
         # Change status from 'available' to 'error_deleting'
-        self.shares_client.reset_state(
+        self.shares_v2_client.reset_state(
             sn["id"], s_type="snapshots", status=self.bad_status)
 
         # Check that status was changed
-        check_status = self.shares_client.get_snapshot(sn["id"])
+        check_status = self.shares_v2_client.get_snapshot(sn["id"])
         self.assertEqual(check_status["status"], self.bad_status)
 
         # Snapshot with status 'error_deleting' should be deleted
-        self.shares_client.force_delete(sn["id"], s_type="snapshots")
-        self.shares_client.wait_for_resource_deletion(snapshot_id=sn["id"])
+        self.shares_v2_client.force_delete(sn["id"], s_type="snapshots")
+        self.shares_v2_client.wait_for_resource_deletion(snapshot_id=sn["id"])

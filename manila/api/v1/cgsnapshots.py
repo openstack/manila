@@ -25,6 +25,7 @@ from manila.api import common
 from manila.api.openstack import wsgi
 import manila.api.views.cgsnapshots as cg_views
 import manila.consistency_group.api as cg_api
+from manila import db
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LI
@@ -32,9 +33,10 @@ from manila.i18n import _LI
 LOG = log.getLogger(__name__)
 
 
-class CGSnapshotController(wsgi.Controller):
+class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
     """The Consistency Group Snapshots API controller for the OpenStack API."""
 
+    resource_name = 'cgsnapshot'
     _view_builder_class = cg_views.CGSnapshotViewBuilder
 
     def __init__(self):
@@ -192,6 +194,27 @@ class CGSnapshotController(wsgi.Controller):
 
         snaps = self._view_builder.member_list(req, limited_list)
         return snaps
+
+    def _update(self, *args, **kwargs):
+        db.cgsnapshot_update(*args, **kwargs)
+
+    def _get(self, *args, **kwargs):
+        return self.cg_api.get_cgsnapshot(*args, **kwargs)
+
+    def _delete(self, context, resource, force=True):
+        db.cgsnapshot_destroy(context.elevated(), resource['id'])
+
+    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.action('os-reset_status')
+    @wsgi.response(202)
+    def cgsnapshot_reset_status(self, req, id, body):
+        super(self.__class__, self)._reset_status(req, id, body)
+
+    @wsgi.Controller.api_version('2.4', experimental=True)
+    @wsgi.action('os-force_delete')
+    @wsgi.response(202)
+    def cgsnapshot_force_delete(self, req, id, body):
+        super(self.__class__, self)._force_delete(req, id, body)
 
 
 def create_resource():

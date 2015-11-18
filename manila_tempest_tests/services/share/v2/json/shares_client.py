@@ -100,7 +100,8 @@ class SharesV2Client(shares_client.SharesClient):
         """Resets the state of a share, snapshot, cg, or a cgsnapshot.
 
         status: available, error, creating, deleting, error_deleting
-        s_type: shares, snapshots, consistency-groups, cgsnapshots
+        s_type: shares, share_instances, snapshots, consistency-groups,
+            cgsnapshots.
         """
         body = {"os-reset_status": {"status": status}}
         body = json.dumps(body)

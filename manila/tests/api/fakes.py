@@ -30,6 +30,7 @@ from manila.api import urlmap
 from manila.api.v1 import limits
 from manila.api.v1 import router
 from manila.api import versions
+from manila.common import constants
 from manila import context
 from manila import wsgi
 
@@ -165,3 +166,39 @@ def get_fake_uuid(token=0):
     if token not in FAKE_UUIDS:
         FAKE_UUIDS[token] = str(uuid.uuid4())
     return FAKE_UUIDS[token]
+
+
+def app():
+    """API application.
+
+    No auth, just let environ['manila.context'] pass through.
+    """
+    api = router.APIRouter()
+    mapper = urlmap.URLMap()
+    mapper['/v2'] = api
+    mapper['/v1'] = api
+    return mapper
+
+
+fixture_reset_status_with_different_roles = (
+    {
+        'role': 'admin', 'valid_code': 202,
+        'valid_status': constants.STATUS_ERROR,
+    },
+    {
+        'role': 'member', 'valid_code': 403,
+        'valid_status': constants.STATUS_AVAILABLE,
+    },
+)
+
+
+fixture_force_delete_with_different_roles = (
+    {'role': 'admin', 'resp_code': 202},
+    {'role': 'member', 'resp_code': 403},
+)
+
+
+fixture_invalid_reset_status_body = (
+    {'os-reset_status': {'x-status': 'bad'}},
+    {'os-reset_status': {'status': 'invalid'}}
+)

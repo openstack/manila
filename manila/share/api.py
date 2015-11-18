@@ -702,13 +702,13 @@ class API(base.Base):
         return shares
 
     def get_snapshot(self, context, snapshot_id):
-        policy.check_policy(context, 'share', 'get_snapshot')
+        policy.check_policy(context, 'share_snapshot', 'get_snapshot')
         rv = self.db.share_snapshot_get(context, snapshot_id)
         return dict(six.iteritems(rv))
 
     def get_all_snapshots(self, context, search_opts=None,
                           sort_key='share_id', sort_dir='desc'):
-        policy.check_policy(context, 'share', 'get_all_snapshots')
+        policy.check_policy(context, 'share_snapshot', 'get_all_snapshots')
 
         search_opts = search_opts or {}
         LOG.debug("Searching for snapshots by: %s", six.text_type(search_opts))

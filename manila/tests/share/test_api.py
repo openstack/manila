@@ -1012,7 +1012,7 @@ class ShareAPITestCase(test.TestCase):
             rule = self.api.get_snapshot(self.context, 'fakeid')
             self.assertEqual(fake_get_snap, rule)
             share_api.policy.check_policy.assert_called_once_with(
-                self.context, 'share', 'get_snapshot')
+                self.context, 'share_snapshot', 'get_snapshot')
             db_api.share_snapshot_get.assert_called_once_with(
                 self.context, 'fakeid')
 
@@ -1171,7 +1171,7 @@ class ShareAPITestCase(test.TestCase):
         ctx = context.RequestContext('fakeuid', 'fakepid', is_admin=True)
         self.api.get_all_snapshots(ctx)
         share_api.policy.check_policy.assert_called_once_with(
-            ctx, 'share', 'get_all_snapshots')
+            ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(
             ctx, 'fakepid', sort_dir='desc', sort_key='share_id', filters={})
 
@@ -1180,7 +1180,7 @@ class ShareAPITestCase(test.TestCase):
         self.api.get_all_snapshots(self.context,
                                    search_opts={'all_tenants': 1})
         share_api.policy.check_policy.assert_called_once_with(
-            self.context, 'share', 'get_all_snapshots')
+            self.context, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all.assert_called_once_with(
             self.context, sort_dir='desc', sort_key='share_id', filters={})
 
@@ -1190,7 +1190,7 @@ class ShareAPITestCase(test.TestCase):
         ctx = context.RequestContext('fakeuid', 'fakepid', is_admin=False)
         self.api.get_all_snapshots(ctx)
         share_api.policy.check_policy.assert_called_once_with(
-            ctx, 'share', 'get_all_snapshots')
+            ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(
             ctx, 'fakepid', sort_dir='desc', sort_key='share_id', filters={})
 
@@ -1205,7 +1205,7 @@ class ShareAPITestCase(test.TestCase):
 
         self.assertEqual([search_opts], result)
         share_api.policy.check_policy.assert_called_once_with(
-            ctx, 'share', 'get_all_snapshots')
+            ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(
             ctx, 'fakepid', sort_dir='desc', sort_key='share_id',
             filters=search_opts)
@@ -1218,7 +1218,7 @@ class ShareAPITestCase(test.TestCase):
         snapshots = self.api.get_all_snapshots(
             ctx, sort_key='status', sort_dir='asc')
         share_api.policy.check_policy.assert_called_once_with(
-            ctx, 'share', 'get_all_snapshots')
+            ctx, 'share_snapshot', 'get_all_snapshots')
         db_api.share_snapshot_get_all_by_project.assert_called_once_with(
             ctx, 'fake_pid_1', sort_dir='asc', sort_key='status', filters={})
         self.assertEqual(_FAKE_LIST_OF_ALL_SNAPSHOTS[0], snapshots)
@@ -1235,7 +1235,7 @@ class ShareAPITestCase(test.TestCase):
             sort_key=1,
         )
         share_api.policy.check_policy.assert_called_once_with(
-            ctx, 'share', 'get_all_snapshots')
+            ctx, 'share_snapshot', 'get_all_snapshots')
 
     def test_get_all_snapshots_sort_dir_invalid(self):
         self.mock_object(
@@ -1249,7 +1249,7 @@ class ShareAPITestCase(test.TestCase):
             sort_dir=1,
         )
         share_api.policy.check_policy.assert_called_once_with(
-            ctx, 'share', 'get_all_snapshots')
+            ctx, 'share_snapshot', 'get_all_snapshots')
 
     @ddt.data(None, 'rw', 'ro')
     def test_allow_access(self, level):
