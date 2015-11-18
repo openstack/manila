@@ -384,6 +384,10 @@ class InvalidShare(Invalid):
     message = _("Invalid share: %(reason)s.")
 
 
+class ShareBusyException(Invalid):
+    message = _("Share is busy with an active task: %(reason)s.")
+
+
 class InvalidShareInstance(Invalid):
     message = _("Invalid share instance: %(reason)s.")
 
@@ -412,10 +416,6 @@ class InvalidShareAccess(Invalid):
 
 class InvalidShareAccessLevel(Invalid):
     message = _("Invalid or unsupported share access level: %(level)s.")
-
-
-class ShareIsBusy(ManilaException):
-    message = _("Deleting $(share_name) share that used.")
 
 
 class ShareBackendException(ManilaException):
