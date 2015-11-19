@@ -65,6 +65,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
             group_name: {
                 'standalone_network_plugin_gateway': '10.0.0.1',
                 'standalone_network_plugin_mask': '255.255.0.0',
+                'standalone_network_plugin_network_type': 'vlan',
                 'standalone_network_plugin_segmentation_id': '1001',
                 'standalone_network_plugin_allowed_ip_ranges': (
                     '10.0.0.3-10.0.0.7,10.0.0.69-10.0.0.157,10.0.0.213'),
@@ -83,6 +84,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
         self.assertEqual(4, instance.ip_version)
         self.assertEqual('10.0.0.1', instance.gateway)
         self.assertEqual('255.255.0.0', instance.mask)
+        self.assertEqual('vlan', instance.network_type)
         self.assertEqual('1001', instance.segmentation_id)
         self.assertEqual(allowed_cidrs, instance.allowed_cidrs)
         self.assertEqual(
@@ -130,6 +132,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
             group_name: {
                 'standalone_network_plugin_gateway': '2001:db8::0001',
                 'standalone_network_plugin_mask': '88',
+                'standalone_network_plugin_network_type': 'vlan',
                 'standalone_network_plugin_segmentation_id': '3999',
                 'standalone_network_plugin_allowed_ip_ranges': (
                     '2001:db8::-2001:db8:0000:0000:0000:007f:ffff:ffff'),
@@ -143,6 +146,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
         self.assertEqual(6, instance.ip_version)
         self.assertEqual('2001:db8::0001', instance.gateway)
         self.assertEqual('88', instance.mask)
+        self.assertEqual('vlan', instance.network_type)
         self.assertEqual('3999', instance.segmentation_id)
         self.assertEqual(['2001:db8::/89'], instance.allowed_cidrs)
         self.assertEqual(
@@ -153,6 +157,42 @@ class StandaloneNetworkPluginTest(test.TestCase):
         self.assertEqual(
             ('2001:db8::', '2001:db8::0001', '2001:db8::ff:ffff:ffff'),
             instance.reserved_addresses)
+
+    @ddt.data('flat', 'vlan', 'vxlan', 'gre')
+    def test_init_with_valid_network_types_v4(self, network_type):
+        data = {
+            'DEFAULT': {
+                'standalone_network_plugin_gateway': '10.0.0.1',
+                'standalone_network_plugin_mask': '255.255.0.0',
+                'standalone_network_plugin_network_type': network_type,
+                'standalone_network_plugin_segmentation_id': '1001',
+                'standalone_network_plugin_ip_version': 4,
+            },
+        }
+        with test_utils.create_temp_config_with_opts(data):
+            instance = plugin.StandaloneNetworkPlugin(
+                config_group_name='DEFAULT')
+
+            self.assertEqual(instance.network_type, network_type)
+
+    @ddt.data(
+        'foo', 'foovlan', 'vlanfoo', 'foovlanbar', 'None', 'Vlan', 'vlaN')
+    def test_init_with_fake_network_types_v4(self, fake_network_type):
+        data = {
+            'DEFAULT': {
+                'standalone_network_plugin_gateway': '10.0.0.1',
+                'standalone_network_plugin_mask': '255.255.0.0',
+                'standalone_network_plugin_network_type': fake_network_type,
+                'standalone_network_plugin_segmentation_id': '1001',
+                'standalone_network_plugin_ip_version': 4,
+            },
+        }
+        with test_utils.create_temp_config_with_opts(data):
+            self.assertRaises(
+                cfg.ConfigFileValueError,
+                plugin.StandaloneNetworkPlugin,
+                config_group_name='DEFAULT',
+            )
 
     @ddt.data('custom_config_group_name', 'DEFAULT')
     def test_invalid_init_without_any_config_definitions(self, group_name):
@@ -266,7 +306,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
         self.assertEqual([], allocations)
         instance.db.share_network_update.assert_called_once_with(
             fake_context, fake_share_network['id'],
-            dict(segmentation_id=None, cidr=instance.net.cidr, ip_version=4))
+            dict(network_type=None, segmentation_id=None,
+                 cidr=instance.net.cidr, ip_version=4))
 
     def test_allocate_network_zero_addresses_ipv6(self):
         data = {
@@ -286,11 +327,14 @@ class StandaloneNetworkPluginTest(test.TestCase):
         self.assertEqual([], allocations)
         instance.db.share_network_update.assert_called_once_with(
             fake_context, fake_share_network['id'],
-            dict(segmentation_id=None, cidr=instance.net.cidr, ip_version=6))
+            dict(network_type=None, segmentation_id=None,
+                 cidr=instance.net.cidr, ip_version=6))
 
     def test_allocate_network_one_ip_address_ipv4_no_usages_exist(self):
         data = {
             'DEFAULT': {
+                'standalone_network_plugin_network_type': 'vlan',
+                'standalone_network_plugin_segmentation_id': '1003',
                 'standalone_network_plugin_gateway': '10.0.0.1',
                 'standalone_network_plugin_mask': '24',
             },
@@ -309,7 +353,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
         self.assertEqual(1, len(allocations))
         instance.db.share_network_update.assert_called_once_with(
             fake_context, fake_share_network['id'],
-            dict(segmentation_id=None, cidr=instance.net.cidr, ip_version=4))
+            dict(network_type='vlan', segmentation_id='1003',
+                 cidr=instance.net.cidr, ip_version=4))
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(fake_context, '10.0.0.2')])
         instance.db.network_allocation_create.assert_called_once_with(
@@ -347,7 +392,8 @@ class StandaloneNetworkPluginTest(test.TestCase):
         self.assertEqual(2, len(allocations))
         instance.db.share_network_update.assert_called_once_with(
             ctxt, fake_share_network['id'],
-            dict(segmentation_id=None, cidr=instance.net.cidr, ip_version=4))
+            dict(network_type=None, segmentation_id=None,
+                 cidr=instance.net.cidr, ip_version=4))
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(ctxt, '10.0.0.2'), mock.call(ctxt, '10.0.0.3'),
              mock.call(ctxt, '10.0.0.4'), mock.call(ctxt, '10.0.0.5')])
@@ -384,6 +430,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
 
         instance.db.share_network_update.assert_called_once_with(
             fake_context, fake_share_network['id'],
-            dict(segmentation_id=None, cidr=instance.net.cidr, ip_version=4))
+            dict(network_type=None, segmentation_id=None,
+                 cidr=instance.net.cidr, ip_version=4))
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(fake_context, '10.0.0.2')])

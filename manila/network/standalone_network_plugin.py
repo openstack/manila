@@ -35,6 +35,15 @@ standalone_network_plugin_opts = [
              "like '24' or binary like '255.255.255.0'. Required.",
         deprecated_group='DEFAULT'),
     cfg.StrOpt(
+        'standalone_network_plugin_network_type',
+        help="Network type, such as 'flat', 'vlan', 'vxlan' or 'gre'. "
+             "Empty value is alias for 'flat'. "
+             "It will be assigned to share-network and share drivers will be "
+             "able to use this for network interfaces within provisioned "
+             "share servers. Optional.",
+        choices=['flat', 'vlan', 'vxlan', 'gre'],
+        deprecated_group='DEFAULT'),
+    cfg.StrOpt(
         'standalone_network_plugin_segmentation_id',
         help="Set it if network has segmentation (VLAN, VXLAN, etc...). "
              "It will be assigned to share-network and share drivers will be "
@@ -87,6 +96,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             "IP version - %(ip_version)s\n"
             "Used network - %(net)s\n"
             "Used gateway - %(gateway)s\n"
+            "Used network type - %(network_type)s\n"
             "Used segmentation ID - %(segmentation_id)s\n"
             "Allowed CIDRs - %(cidrs)s\n"
             "Original allowed IP ranges - %(ip_ranges)s\n"
@@ -96,6 +106,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                 ip_version=self.ip_version,
                 net=six.text_type(self.net),
                 gateway=self.gateway,
+                network_type=self.network_type,
                 segmentation_id=self.segmentation_id,
                 cidrs=self.allowed_cidrs,
                 ip_ranges=self.allowed_ip_ranges,
@@ -103,6 +114,8 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
 
     def _set_persistent_network_data(self):
         """Sets persistent data for whole plugin."""
+        self.network_type = (
+            self.configuration.standalone_network_plugin_network_type)
         self.segmentation_id = (
             self.configuration.standalone_network_plugin_segmentation_id)
         self.gateway = self.configuration.standalone_network_plugin_gateway
@@ -228,6 +241,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
     def _save_network_info(self, context, share_network):
         """Update share-network with plugin specific data."""
         data = dict(
+            network_type=self.network_type,
             segmentation_id=self.segmentation_id,
             cidr=self.net.cidr,
             ip_version=self.ip_version)
