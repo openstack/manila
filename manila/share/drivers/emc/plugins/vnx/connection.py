@@ -525,7 +525,7 @@ class VNXStorageConnection(driver.StorageConnection):
                     pool_name=pool['name'],
                     total_capacity_gb=total_size,
                     free_capacity_gb=total_size - used_size,
-                    QoS_support=False,
+                    qos=False,
                     reserved_percentage=self.reserved_percentage,
                 )
                 stats_dict['pools'].append(pool_stat)

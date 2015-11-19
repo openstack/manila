@@ -93,7 +93,8 @@ function correctly in Manila, such as:
 - dedupe: whether the backend supports deduplication;
 - compression: whether the backend supports compressed shares;
 - thin_provisioning: whether the backend is overprovisioning shares;
-- pools: list of storage pools managed by this driver instance.
+- pools: list of storage pools managed by this driver instance;
+- qos: whether the backend supports quality of service for shares.
 
 .. note:: for more information please see http://docs.openstack.org/developer/manila/devref/capabilities_and_extra_specs.html
 

@@ -36,7 +36,7 @@ FAKE_POOLS = [
             'reserved_percentage': 0,
             'driver_version': '1.0.0',
             'storage_protocol': 'iSCSI',
-            'QoS_support': 'False',
+            'qos': 'False',
         },
     },
     {
@@ -52,7 +52,7 @@ FAKE_POOLS = [
             'reserved_percentage': 0,
             'driver_version': '1.0.1',
             'storage_protocol': 'iSER',
-            'QoS_support': 'True',
+            'qos': 'True',
         },
     },
 ]
@@ -161,7 +161,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
                         'reserved_percentage': 0,
                         'driver_version': '1.0.0',
                         'storage_protocol': 'iSCSI',
-                        'QoS_support': 'False',
+                        'qos': 'False',
                     },
                 },
                 {
@@ -177,7 +177,7 @@ class SchedulerStatsControllerTestCase(test.TestCase):
                         'reserved_percentage': 0,
                         'driver_version': '1.0.1',
                         'storage_protocol': 'iSER',
-                        'QoS_support': 'True',
+                        'qos': 'True',
                     },
                 },
             ],

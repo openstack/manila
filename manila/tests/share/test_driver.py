@@ -121,7 +121,7 @@ class ShareDriverTestCase(test.TestCase):
     def test_get_share_stats_refresh_true(self):
         conf = configuration.Configuration(None)
         expected_keys = [
-            'QoS_support', 'driver_version', 'share_backend_name',
+            'qos', 'driver_version', 'share_backend_name',
             'free_capacity_gb', 'total_capacity_gb',
             'driver_handles_share_servers',
             'reserved_percentage', 'vendor_name', 'storage_protocol',

@@ -252,7 +252,7 @@ class V3StorageConnection(driver.HuaweiBase):
                         self.configuration.safe_get(
                             'max_over_subscription_ratio')),
                     allocated_capacity_gb=capacity['CONSUMEDCAPACITY'],
-                    QoS_support=False,
+                    qos=False,
                     reserved_percentage=0,
                     thin_provisioning=[True, False],
                     dedupe=[True, False],

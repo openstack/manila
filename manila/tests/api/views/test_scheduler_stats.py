@@ -27,7 +27,7 @@ POOL1 = {
     'capabilities': {
         'pool_name': 'pool1',
         'driver_handles_share_servers': False,
-        'QoS_support': 'False',
+        'qos': 'False',
         'timestamp': '2015-03-15T19:15:42.611690',
         'allocated_capacity_gb': 5,
         'total_capacity_gb': 10,
@@ -41,7 +41,7 @@ POOL2 = {
     'capabilities': {
         'pool_name': 'pool2',
         'driver_handles_share_servers': False,
-        'QoS_support': 'False',
+        'qos': 'False',
         'timestamp': '2015-03-15T19:15:42.611690',
         'allocated_capacity_gb': 15,
         'total_capacity_gb': 20,
@@ -59,7 +59,7 @@ POOLS_DETAIL_VIEW = {
             'capabilities': {
                 'pool_name': 'pool1',
                 'driver_handles_share_servers': False,
-                'QoS_support': 'False',
+                'qos': 'False',
                 'timestamp': '2015-03-15T19:15:42.611690',
                 'allocated_capacity_gb': 5,
                 'total_capacity_gb': 10,
@@ -72,7 +72,7 @@ POOLS_DETAIL_VIEW = {
             'capabilities': {
                 'pool_name': 'pool2',
                 'driver_handles_share_servers': False,
-                'QoS_support': 'False',
+                'qos': 'False',
                 'timestamp': '2015-03-15T19:15:42.611690',
                 'allocated_capacity_gb': 15,
                 'total_capacity_gb': 20,

@@ -505,7 +505,7 @@ class HPE3ParDriverTestCase(test.TestCase):
 
         expected_result = {
             'driver_handles_share_servers': True,
-            'QoS_support': False,
+            'qos': False,
             'driver_version': self.driver.VERSION,
             'free_capacity_gb': 0,
             'max_over_subscription_ratio': None,
@@ -559,7 +559,7 @@ class HPE3ParDriverTestCase(test.TestCase):
 
         expected_result = {
             'driver_handles_share_servers': True,
-            'QoS_support': False,
+            'qos': False,
             'driver_version': expected_version,
             'free_capacity_gb': expected_free,
             'max_over_subscription_ratio': None,
@@ -594,7 +594,7 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.mock_mediator.get_fpg_status.return_value = {'not_called': 1}
 
         expected_result = {
-            'QoS_support': False,
+            'qos': False,
             'driver_handles_share_servers': True,
             'driver_version': expected_version,
             'free_capacity_gb': 0,

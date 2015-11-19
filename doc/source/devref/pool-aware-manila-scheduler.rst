@@ -191,7 +191,7 @@ pools:
              'total_capacity_gb': 500,        #  mandatory stats for
              'free_capacity_gb': 230,         #  pools
              'allocated_capacity_gb': 270,    # |
-             'QoS_support': 'False',          # |
+             'qos': True,                     # |
              'reserved_percentage': 0,        #/
 
              'dying_disks': 100,              #\
@@ -203,7 +203,7 @@ pools:
              'total_capacity_gb': 1024,
              'free_capacity_gb': 1024,
              'allocated_capacity_gb': 0,
-             'QoS_support': 'False',
+             'qos': False,
              'reserved_percentage': 0,
 
              'dying_disks': 200,

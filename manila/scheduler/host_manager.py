@@ -108,7 +108,7 @@ class HostState(object):
         self.vendor_name = None
         self.driver_version = 0
         self.storage_protocol = None
-        self.QoS_support = False
+        self.qos = False
         # Mutable available resources.
         # These will change as resources are virtually "consumed".
         self.total_capacity_gb = 0
@@ -164,7 +164,7 @@ class HostState(object):
                  'total_capacity_gb': 500,        #  mandatory stats for
                  'free_capacity_gb': 230,         #  pools
                  'allocated_capacity_gb': 270,    # |
-                 'QoS_support': 'False',          # |
+                 'qos': 'False',                  # |
                  'reserved_percentage': 0,        #/
 
                  'dying_disks': 100,              #\
@@ -176,7 +176,7 @@ class HostState(object):
                  'total_capacity_gb': 1024,
                  'free_capacity_gb': 1024,
                  'allocated_capacity_gb': 0,
-                 'QoS_support': 'False',
+                 'qos': 'False',
                  'reserved_percentage': 0,
 
                  'dying_disks': 200,
@@ -346,7 +346,7 @@ class PoolState(HostState):
             self.free_capacity_gb = capability['free_capacity_gb']
             self.allocated_capacity_gb = capability.get(
                 'allocated_capacity_gb', 0)
-            self.QoS_support = capability.get('QoS_support', False)
+            self.qos = capability.get('qos', False)
             self.reserved_percentage = capability['reserved_percentage']
             # NOTE(xyang): provisioned_capacity_gb is the apparent total
             # capacity of all the shares created on a backend, which is

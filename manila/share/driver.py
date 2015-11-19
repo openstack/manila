@@ -813,7 +813,7 @@ class ShareDriver(object):
             total_capacity_gb='unknown',
             free_capacity_gb='unknown',
             reserved_percentage=0,
-            QoS_support=False,
+            qos=False,
             pools=self.pools or None,
             snapshot_support=self.snapshots_are_supported,
         )

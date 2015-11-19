@@ -1356,7 +1356,7 @@ class GenericShareDriverTestCase(test.TestCase):
         fake_stats = {'fake_key': 'fake_value'}
         self._driver._stats = fake_stats
         expected_keys = [
-            'QoS_support', 'driver_version', 'share_backend_name',
+            'qos', 'driver_version', 'share_backend_name',
             'free_capacity_gb', 'total_capacity_gb',
             'driver_handles_share_servers',
             'reserved_percentage', 'vendor_name', 'storage_protocol',
