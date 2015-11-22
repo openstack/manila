@@ -66,6 +66,7 @@ PASSWORD_FOR_SAMBA_USER=${PASSWORD_FOR_SAMBA_USER:-$USERNAME_FOR_USER_RULES}
 
 RUN_MANILA_CG_TESTS=${RUN_MANILA_CG_TESTS:-True}
 RUN_MANILA_MANAGE_TESTS=${RUN_MANILA_MANAGE_TESTS:-True}
+RUN_MANILA_MANAGE_SNAPSHOT_TESTS=${RUN_MANILA_MANAGE_SNAPSHOT_TESTS:-False}
 
 MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
 
@@ -128,6 +129,7 @@ if [[ "$TEST_TYPE" == "scenario" ]]; then
     echo "Set test set to scenario only"
     MANILA_TESTS='manila_tempest_tests.tests.scenario'
 elif [[ "$DRIVER" == "generic" ]]; then
+    RUN_MANILA_MANAGE_SNAPSHOT_TESTS=True
     if [[ "$POSTGRES_ENABLED" == "True" ]]; then
         # Run only CIFS tests on PostgreSQL DB backend
         # to reduce amount of tests per job using 'generic' share driver.
@@ -164,6 +166,9 @@ iniset $TEMPEST_CONFIG share run_consistency_group_tests $RUN_MANILA_CG_TESTS
 
 # Enable manage/unmanage tests
 iniset $TEMPEST_CONFIG share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS
+
+# Enable manage/unmanage snapshot tests
+iniset $TEMPEST_CONFIG share run_manage_unmanage_snapshot_tests $RUN_MANILA_MANAGE_SNAPSHOT_TESTS
 
 # Also, we should wait until service VM is available
 # before running Tempest tests using Generic driver in DHSS=False mode.

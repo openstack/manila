@@ -745,6 +745,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Creates a snapshot."""
+        model_update = {}
         volume = self._get_volume(self.admin_context, snapshot['share_id'])
         volume_snapshot_name = (self.configuration.
                                 volume_snapshot_name_template % snapshot['id'])
@@ -762,13 +763,21 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 self.admin_context,
                 volume_snapshot['id'])
 
+            # NOTE(xyang): We should look at whether we still need to save
+            # volume_snapshot_id in private_storage later, now that is saved
+            # in provider_location.
             self.private_storage.update(
                 snapshot['id'], {'volume_snapshot_id': volume_snapshot['id']})
+            # NOTE(xyang): Need to update provider_location in the db so
+            # that it can be used in manage/unmanage snapshot tempest tests.
+            model_update['provider_location'] = volume_snapshot['id']
         else:
             raise exception.ManilaException(
                 _('Volume snapshot have not been '
                   'created in %ss. Giving up') %
                 self.configuration.max_time_to_create_volume)
+
+        return model_update
 
     def delete_snapshot(self, context, snapshot, share_server=None):
         """Deletes a snapshot."""
@@ -934,6 +943,46 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         export_locations = helper.get_exports_for_share(
             server_details, old_export_location)
         return {'size': share_size, 'export_locations': export_locations}
+
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """Manage existing share snapshot with manila.
+
+        :param snapshot: Snapshot data
+        :param driver_options: Not used by the Generic driver currently
+        :return: dict with share snapshot size, example: {'size': 1}
+        """
+        model_update = {}
+        volume_snapshot = None
+        snapshot_size = snapshot.get('share_size', 0)
+        provider_location = snapshot.get('provider_location')
+        try:
+            volume_snapshot = self.volume_api.get_snapshot(
+                self.admin_context,
+                provider_location)
+        except exception.VolumeSnapshotNotFound as e:
+            raise exception.ManageInvalidShareSnapshot(
+                reason=six.text_type(e))
+
+        if volume_snapshot:
+            snapshot_size = volume_snapshot['size']
+            # NOTE(xyang): volume_snapshot_id is saved in private_storage
+            # in create_snapshot, so saving it here too for consistency.
+            # We should look at whether we still need to save it in
+            # private_storage later.
+            self.private_storage.update(
+                snapshot['id'], {'volume_snapshot_id': volume_snapshot['id']})
+            # NOTE(xyang): provider_location is used to map a Manila snapshot
+            # to its name on the storage backend and prevent managing of the
+            # same snapshot twice.
+            model_update['provider_location'] = volume_snapshot['id']
+
+        model_update['size'] = snapshot_size
+        return model_update
+
+    def unmanage_snapshot(self, snapshot):
+        """Unmanage share snapshot with manila."""
+
+        self.private_storage.delete(snapshot['id'])
 
     def _get_mount_stats_by_index(self, mount_path, server_details, index,
                                   block_size='G'):

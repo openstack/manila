@@ -2013,6 +2013,46 @@ class GenericShareDriverTestCase(test.TestCase):
 
         self.assertEqual(FAKE_COLLATED_INFO, result)
 
+    def test_manage_snapshot_not_found(self):
+        snapshot_instance = {'id': 'snap_instance_id',
+                             'provider_location': 'vol_snap_id'}
+        driver_options = {}
+        self.mock_object(
+            self._driver.volume_api, 'get_snapshot',
+            mock.Mock(side_effect=exception.VolumeSnapshotNotFound(
+                      snapshot_id='vol_snap_id')))
+
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self._driver.manage_existing_snapshot,
+                          snapshot_instance,
+                          driver_options)
+        self._driver.volume_api.get_snapshot.assert_called_once_with(
+            self._context, 'vol_snap_id')
+
+    def test_manage_snapshot_valid(self):
+        snapshot_instance = {'id': 'snap_instance_id',
+                             'provider_location': 'vol_snap_id'}
+        volume_snapshot = {'id': 'vol_snap_id', 'size': 1}
+        self.mock_object(self._driver.volume_api, 'get_snapshot',
+                         mock.Mock(return_value=volume_snapshot))
+        ret_manage = self._driver.manage_existing_snapshot(
+            snapshot_instance, {})
+
+        self.assertEqual({'provider_location': 'vol_snap_id',
+                          'size': 1}, ret_manage)
+
+        self._driver.volume_api.get_snapshot.assert_called_once_with(
+            self._context, 'vol_snap_id')
+
+    def test_unmanage_snapshot(self):
+        snapshot_instance = {'id': 'snap_instance_id',
+                             'provider_location': 'vol_snap_id'}
+        self.mock_object(self._driver.private_storage, 'delete')
+        self._driver.unmanage_snapshot(snapshot_instance)
+
+        self._driver.private_storage.delete.assert_called_once_with(
+            'snap_instance_id')
+
 
 @generic.ensure_server
 def fake(driver_instance, context, share_server=None):

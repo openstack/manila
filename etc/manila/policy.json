@@ -52,6 +52,8 @@
     "share_snapshot:get_snapshot": "rule:default",
     "share_snapshot:get_all_snapshots": "rule:default",
     "share_snapshot:snapshot_update": "rule:default",
+    "share_snapshot:manage_snapshot": "rule:admin_api",
+    "share_snapshot:unmanage_snapshot": "rule:admin_api",
     "share_snapshot:force_delete": "rule:admin_api",
     "share_snapshot:reset_status": "rule:admin_api",
 

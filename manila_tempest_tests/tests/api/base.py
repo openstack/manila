@@ -79,6 +79,7 @@ def network_synchronized(f):
 
 
 skip_if_microversion_not_supported = utils.skip_if_microversion_not_supported
+skip_if_microversion_lt = utils.skip_if_microversion_lt
 
 
 class BaseSharesTest(test.BaseTestCase):
@@ -103,6 +104,13 @@ class BaseSharesTest(test.BaseTestCase):
         if not utils.is_microversion_supported(microversion):
             raise self.skipException(
                 "Microversion '%s' is not supported." % microversion)
+
+    def skip_if_microversion_lt(self, microversion):
+        if utils.is_microversion_lt(CONF.share.max_api_microversion,
+                                    microversion):
+            raise self.skipException(
+                "Microversion must be greater than or equal to '%s'." %
+                microversion)
 
     @classmethod
     def get_client_with_isolated_creds(cls,

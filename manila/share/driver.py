@@ -826,6 +826,40 @@ class ShareDriver(object):
         UnmanageInvalidShare exception, specifying a reason for the failure.
         """
 
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """Brings an existing snapshot under Manila management.
+
+        If provided snapshot is not valid, then raise a
+        ManageInvalidShareSnapshot exception, specifying a reason for
+        the failure.
+
+        :param snapshot: ShareSnapshotInstance model with ShareSnapshot data.
+                         Example:
+                         {'id': <instance id>, 'snapshot_id': < snapshot id>,
+                          'provider_location': <location>, ......}
+        :param driver_options: Optional driver-specific options provided
+                               by admin. Example:
+                               {'key': 'value', ......}
+        :return: model_update dictionary with required key 'size',
+                 which should contain size of the share snapshot.
+        """
+        raise NotImplementedError()
+
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Manila management.
+
+        Does not delete the underlying backend share snapshot.
+
+        For most drivers, this will not need to do anything.  However, some
+        drivers might use this call as an opportunity to clean up any
+        Manila-specific configuration that they have associated with the
+        backend share snapshot.
+
+        If provided share snapshot cannot be unmanaged, then raise an
+        UnmanageInvalidShareSnapshot exception, specifying a reason for
+        the failure.
+        """
+
     def extend_share(self, share, new_size, share_server=None):
         """Extends size of existing share.
 

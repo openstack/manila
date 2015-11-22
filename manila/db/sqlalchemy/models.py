@@ -583,7 +583,8 @@ class ShareInstanceAccessMapping(BASE, ManilaBase):
 class ShareSnapshot(BASE, ManilaBase):
     """Represents a snapshot of a share."""
     __tablename__ = 'share_snapshots'
-    _extra_keys = ['name', 'share_name', 'status', 'progress']
+    _extra_keys = ['name', 'share_name', 'status', 'progress',
+                   'provider_location']
 
     @property
     def name(self):
@@ -602,6 +603,11 @@ class ShareSnapshot(BASE, ManilaBase):
     def progress(self):
         if self.instance:
             return self.instance.progress
+
+    @property
+    def provider_location(self):
+        if self.instance:
+            return self.instance.provider_location
 
     @property
     def instance(self):
@@ -664,6 +670,7 @@ class ShareSnapshotInstance(BASE, ManilaBase):
         String(36), ForeignKey('share_instances.id'), nullable=False)
     status = Column(String(255))
     progress = Column(String(255))
+    provider_location = Column(String(255))
     share_instance = orm.relationship(
         ShareInstance, backref="snapshot_instances",
         primaryjoin=(

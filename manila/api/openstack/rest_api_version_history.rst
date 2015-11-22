@@ -85,3 +85,7 @@ user documentation.
   'Experimental'. Share APIs return two new attributes: 'has_replicas' and
   'replication_type'. Share instance APIs return a new attribute,
   'replica_state'.
+
+2.12
+----
+  Share snapshot manage and unmanage API.

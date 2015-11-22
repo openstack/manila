@@ -227,6 +227,20 @@ class ManilaExceptionResponseCode400(test.TestCase):
         self.assertEqual(400, e.code)
         self.assertIn(reason, e.msg)
 
+    def test_manage_invalid_share_snapshot(self):
+        # Verify response code for exception.ManageInvalidShareSnapshot
+        reason = "fake_reason"
+        e = exception.ManageInvalidShareSnapshot(reason=reason)
+        self.assertEqual(400, e.code)
+        self.assertIn(reason, e.msg)
+
+    def test_unmanage_invalid_share_snapshot(self):
+        # Verify response code for exception.UnmanageInvalidShareSnapshot
+        reason = "fake_reason"
+        e = exception.UnmanageInvalidShareSnapshot(reason=reason)
+        self.assertEqual(400, e.code)
+        self.assertIn(reason, e.msg)
+
 
 class ManilaExceptionResponseCode403(test.TestCase):
 
@@ -487,6 +501,13 @@ class ManilaExceptionResponseCode404(test.TestCase):
         # verify response code for exception.ShareResourceNotFound
         share_id = "fake_share_id"
         e = exception.ShareResourceNotFound(share_id=share_id)
+        self.assertEqual(404, e.code)
+        self.assertIn(share_id, e.msg)
+
+    def test_share_not_found(self):
+        # verify response code for exception.ShareNotFound
+        share_id = "fake_share_id"
+        e = exception.ShareNotFound(share_id=share_id)
         self.assertEqual(404, e.code)
         self.assertIn(share_id, e.msg)
 

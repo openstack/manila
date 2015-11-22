@@ -552,3 +552,57 @@ class NetworkAllocationsNewLabelColumnChecks(BaseMigrationChecks):
             for col_name in ('label', 'network_type', 'segmentation_id',
                              'ip_version', 'cidr'):
                 self.test_case.assertFalse(hasattr(na, col_name))
+
+
+@map_to_migration('eb6d5544cbbd')
+class ShareSnapshotInstanceNewProviderLocationColumnChecks(
+        BaseMigrationChecks):
+    table_name = 'share_snapshot_instances'
+
+    def setup_upgrade_data(self, engine):
+        # Setup shares
+        share_data = {'id': 'new_share_id'}
+        s_table = utils.load_table('shares', engine)
+        engine.execute(s_table.insert(share_data))
+
+        # Setup share instances
+        share_instance_data = {
+            'id': 'new_share_instance_id',
+            'share_id': share_data['id']
+        }
+        si_table = utils.load_table('share_instances', engine)
+        engine.execute(si_table.insert(share_instance_data))
+
+        # Setup share snapshots
+        share_snapshot_data = {
+            'id': 'new_snapshot_id',
+            'share_id': share_data['id']}
+        snap_table = utils.load_table('share_snapshots', engine)
+        engine.execute(snap_table.insert(share_snapshot_data))
+
+        # Setup snapshot instances
+        snapshot_instance_data = {
+            'id': 'new_snapshot_instance_id',
+            'snapshot_id': share_snapshot_data['id'],
+            'share_instance_id': share_instance_data['id']
+        }
+        snap_i_table = utils.load_table('share_snapshot_instances', engine)
+        engine.execute(snap_i_table.insert(snapshot_instance_data))
+
+    def check_upgrade(self, engine, data):
+        ss_table = utils.load_table(self.table_name, engine)
+        db_result = engine.execute(ss_table.select())
+        self.test_case.assertTrue(db_result.rowcount > 0)
+        for ss in db_result:
+            self.test_case.assertTrue(hasattr(ss, 'provider_location'))
+            self.test_case.assertEqual('new_snapshot_instance_id', ss.id)
+            self.test_case.assertEqual('new_snapshot_id', ss.snapshot_id)
+
+    def check_downgrade(self, engine):
+        ss_table = utils.load_table(self.table_name, engine)
+        db_result = engine.execute(ss_table.select())
+        self.test_case.assertTrue(db_result.rowcount > 0)
+        for ss in db_result:
+            self.test_case.assertFalse(hasattr(ss, 'provider_location'))
+            self.test_case.assertEqual('new_snapshot_instance_id', ss.id)
+            self.test_case.assertEqual('new_snapshot_id', ss.snapshot_id)

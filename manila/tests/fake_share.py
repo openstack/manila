@@ -52,6 +52,48 @@ def fake_snapshot(**kwargs):
     return db_fakes.FakeModel(snapshot)
 
 
+def expected_snapshot(id='fake_snapshot_id', **kwargs):
+    self_link = 'http://localhost/v1/fake/snapshots/%s' % id
+    bookmark_link = 'http://localhost/fake/snapshots/%s' % id
+    snapshot = {
+        'id': id,
+        'share_id': 'fakeshareid',
+        'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+        'status': 'fakesnapstatus',
+        'name': 'displaysnapname',
+        'description': 'displaysnapdesc',
+        'share_size': 1,
+        'size': 1,
+        'share_proto': 'fakesnapproto',
+        'links': [
+            {
+                'href': self_link,
+                'rel': 'self',
+            },
+            {
+                'href': bookmark_link,
+                'rel': 'bookmark',
+            },
+        ],
+    }
+    snapshot.update(kwargs)
+    return {'snapshot': snapshot}
+
+
+def search_opts(**kwargs):
+    search_opts = {
+        'name': 'fake_name',
+        'status': 'fake_status',
+        'share_id': 'fake_share_id',
+        'sort_key': 'fake_sort_key',
+        'sort_dir': 'fake_sort_dir',
+        'offset': '1',
+        'limit': '1',
+    }
+    search_opts.update(kwargs)
+    return search_opts
+
+
 def fake_access(**kwargs):
     access = {
         'id': 'fakeaccid',

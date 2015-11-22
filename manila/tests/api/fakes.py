@@ -179,6 +179,18 @@ def app():
     mapper['/v2'] = router_v2.APIRouter()
     return mapper
 
+fixture_reset_status_with_different_roles_v1 = (
+    {
+        'role': 'admin',
+        'valid_code': 202,
+        'valid_status': constants.STATUS_ERROR,
+    },
+    {
+        'role': 'member',
+        'valid_code': 403,
+        'valid_status': constants.STATUS_AVAILABLE,
+    },
+)
 
 fixture_reset_status_with_different_roles = (
     {

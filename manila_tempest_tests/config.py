@@ -36,7 +36,7 @@ ShareGroup = [
                help="The minimum api microversion is configured to be the "
                     "value of the minimum microversion supported by Manila."),
     cfg.StrOpt("max_api_microversion",
-               default="2.11",
+               default="2.12",
                help="The maximum api microversion is configured to be the "
                     "value of the latest microversion supported by Manila."),
     cfg.StrOpt("region",
@@ -128,11 +128,6 @@ ShareGroup = [
                 help="Whether to suppress errors with clean up operation "
                      "or not. There are cases when we may want to skip "
                      "such errors and catch only test errors."),
-    cfg.BoolOpt("run_manage_unmanage_tests",
-                default=False,
-                help="Defines whether to run manage/unmanage tests or not. "
-                     "These test may leave orphaned resources, so be careful "
-                     "enabling this opt."),
 
     # Switching ON/OFF test suites filtered by features
     cfg.BoolOpt("run_quota_tests",
@@ -161,6 +156,16 @@ ShareGroup = [
     cfg.BoolOpt("run_migration_tests",
                 default=False,
                 help="Enable or disable migration tests."),
+    cfg.BoolOpt("run_manage_unmanage_tests",
+                default=False,
+                help="Defines whether to run manage/unmanage tests or not. "
+                     "These test may leave orphaned resources, so be careful "
+                     "enabling this opt."),
+    cfg.BoolOpt("run_manage_unmanage_snapshot_tests",
+                default=False,
+                help="Defines whether to run manage/unmanage snapshot tests "
+                     "or not. These tests may leave orphaned resources, so be "
+                     "careful enabling this opt."),
 
     cfg.StrOpt("image_with_share_tools",
                default="manila-service-image",
