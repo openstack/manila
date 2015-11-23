@@ -92,6 +92,13 @@ SNAPSHOT_INFO = {
     },
 }
 
+SNAPSHOT_INSTANCE = {
+    'name': EXPECTED_SNAP_NAME,
+    'id': EXPECTED_SNAP_ID,
+    'share_id': EXPECTED_SHARE_ID,
+    'share_proto': NFS,
+}
+
 
 class FakeException(Exception):
     pass

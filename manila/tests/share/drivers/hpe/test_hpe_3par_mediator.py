@@ -473,7 +473,6 @@ class HPE3ParMediatorTestCase(test.TestCase):
             constants.EXPECTED_EXTRA_SPECS,
             constants.EXPECTED_PROJECT_ID,
             constants.EXPECTED_SHARE_ID,
-            constants.NFS,
             constants.EXPECTED_SNAP_ID,
             constants.EXPECTED_FPG,
             constants.EXPECTED_VFS)
@@ -520,7 +519,6 @@ class HPE3ParMediatorTestCase(test.TestCase):
             constants.EXPECTED_EXTRA_SPECS,
             constants.EXPECTED_PROJECT_ID,
             constants.EXPECTED_SHARE_ID,
-            constants.NFS,
             constants.EXPECTED_SNAP_ID,
             constants.EXPECTED_FPG,
             constants.EXPECTED_VFS)
@@ -568,7 +566,6 @@ class HPE3ParMediatorTestCase(test.TestCase):
                           constants.EXPECTED_EXTRA_SPECS,
                           constants.EXPECTED_PROJECT_ID,
                           constants.EXPECTED_SHARE_ID,
-                          constants.NFS,
                           constants.EXPECTED_SNAP_ID,
                           constants.EXPECTED_FPG,
                           constants.EXPECTED_VFS)
