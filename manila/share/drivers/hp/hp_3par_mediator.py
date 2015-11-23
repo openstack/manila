@@ -469,7 +469,7 @@ class HP3ParMediator(object):
             return result['members'][0]['shareName']
 
     def create_share_from_snapshot(self, share_id, share_proto, extra_specs,
-                                   orig_project_id, orig_share_id, orig_proto,
+                                   orig_project_id, orig_share_id,
                                    snapshot_id, fpg, vfs,
                                    comment=OPEN_STACK_MANILA):
 
@@ -479,7 +479,7 @@ class HP3ParMediator(object):
 
         snapshot = self._find_fsnap(orig_project_id,
                                     orig_share_name,
-                                    orig_proto,
+                                    protocol,
                                     snapshot_tag,
                                     fpg,
                                     vfs)

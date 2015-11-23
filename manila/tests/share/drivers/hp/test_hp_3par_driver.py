@@ -185,7 +185,7 @@ class HP3ParDriverTestCase(test.TestCase):
     def do_create_share_from_snapshot(self,
                                       protocol,
                                       share_type_id,
-                                      snapshot_id,
+                                      snapshot_instance,
                                       expected_share_id,
                                       expected_size):
         """Re-usable code for create share from snapshot."""
@@ -196,6 +196,7 @@ class HP3ParDriverTestCase(test.TestCase):
             },
         }
         share = {
+            'project_id': constants.EXPECTED_PROJECT_ID,
             'display_name': constants.EXPECTED_SHARE_NAME,
             'host': constants.EXPECTED_HOST,
             'id': expected_share_id,
@@ -205,7 +206,7 @@ class HP3ParDriverTestCase(test.TestCase):
         }
         location = self.driver.create_share_from_snapshot(context,
                                                           share,
-                                                          snapshot_id,
+                                                          snapshot_instance,
                                                           share_server)
         return location
 
@@ -301,10 +302,13 @@ class HP3ParDriverTestCase(test.TestCase):
         self.mock_mediator.create_share_from_snapshot.return_value = (
             constants.EXPECTED_SHARE_NAME)
 
+        snapshot_instance = constants.SNAPSHOT_INSTANCE.copy()
+        snapshot_instance['protocol'] = constants.CIFS
+
         location = self.do_create_share_from_snapshot(
             constants.CIFS,
             constants.SHARE_TYPE_ID,
-            constants.SNAPSHOT_INFO,
+            snapshot_instance,
             constants.EXPECTED_SHARE_ID,
             constants.EXPECTED_SIZE_2)
 
@@ -316,7 +320,6 @@ class HP3ParDriverTestCase(test.TestCase):
                 constants.EXPECTED_EXTRA_SPECS,
                 constants.EXPECTED_FSTORE,
                 constants.EXPECTED_SHARE_ID,
-                constants.NFS,
                 constants.EXPECTED_SNAP_ID,
                 constants.EXPECTED_FPG,
                 constants.EXPECTED_VFS,
@@ -336,7 +339,7 @@ class HP3ParDriverTestCase(test.TestCase):
         location = self.do_create_share_from_snapshot(
             constants.NFS,
             constants.SHARE_TYPE_ID,
-            constants.SNAPSHOT_INFO,
+            constants.SNAPSHOT_INSTANCE,
             constants.EXPECTED_SHARE_ID,
             constants.EXPECTED_SIZE_1)
 
@@ -348,7 +351,6 @@ class HP3ParDriverTestCase(test.TestCase):
                 constants.EXPECTED_EXTRA_SPECS,
                 constants.EXPECTED_PROJECT_ID,
                 constants.EXPECTED_SHARE_ID,
-                constants.NFS,
                 constants.EXPECTED_SNAP_ID,
                 constants.EXPECTED_FPG,
                 constants.EXPECTED_VFS,
