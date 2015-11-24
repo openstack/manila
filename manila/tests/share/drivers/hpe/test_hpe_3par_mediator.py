@@ -143,6 +143,8 @@ class HPE3ParMediatorTestCase(test.TestCase):
                  }]
         }
         self.mock_client.setfshare.return_value = []
+        self.mock_client.setfsquota.return_value = []
+        self.mock_client.getfsquota.return_value = constants.GET_FSQUOTA
         self.mediator.do_setup()
 
     def test_mediator_setup_success(self):
@@ -340,8 +342,6 @@ class HPE3ParMediatorTestCase(test.TestCase):
             'members': [{'shareName': constants.EXPECTED_SHARE_NAME}]
         }
 
-        self.mock_client.getfsquota.return_value = constants.GET_FSQUOTA
-
         extra_specs = self._build_smb_extra_specs(access_based_enum=abe,
                                                   continuous_avail=ca,
                                                   cache=cache)
@@ -402,8 +402,6 @@ class HPE3ParMediatorTestCase(test.TestCase):
             'members': [{'sharePath': constants.EXPECTED_SHARE_PATH}]
         }
 
-        self.mock_client.getfsquota.return_value = constants.GET_FSQUOTA
-
         extra_specs = {'hpe3par:nfs_options': nfs_options}
 
         location = self.mediator.create_share(constants.EXPECTED_PROJECT_ID,
@@ -431,7 +429,6 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.init_mediator()
 
         self.mock_client.getfshare.side_effect = constants.FAKE_EXCEPTION
-        self.mock_client.getfsquota.return_value = constants.GET_FSQUOTA
 
         self.assertRaises(exception.ShareBackendException,
                           self.mediator.create_share,
@@ -448,7 +445,6 @@ class HPE3ParMediatorTestCase(test.TestCase):
         self.init_mediator()
 
         self.mock_client.getfshare.return_value = {'total': count}
-        self.mock_client.getfsquota.return_value = constants.GET_FSQUOTA
 
         self.assertRaises(exception.ShareBackendException,
                           self.mediator.create_share,
@@ -1686,6 +1682,118 @@ class HPE3ParMediatorTestCase(test.TestCase):
             self.assertFalse(returned)
         else:
             self.assertEqual(results, returned)
+
+    @ddt.data((2, 1, True),
+              (2, 1, False),
+              (1, 2, True),
+              (1, 2, False),
+              (1024, 2048, True),
+              (1024, 2048, False),
+              (2048, 1024, True),
+              (2048, 1024, False),
+              (99999999, 1, True),
+              (99999999, 1, False),
+              (1, 99999999, True),
+              (1, 99999999, False),
+              )
+    @ddt.unpack
+    def test_mediator_resize_share(self, new_size, old_size, fstore_per_share):
+        self.init_mediator()
+        fstore = 'foo_fstore'
+        mock_find_fstore = self.mock_object(self.mediator,
+                                            '_find_fstore',
+                                            mock.Mock(return_value=fstore))
+        fstore_init_size = int(
+            constants.GET_FSQUOTA['members'][0]['hardBlock'])
+        self.mediator.hpe3par_fstore_per_share = fstore_per_share
+
+        if fstore_per_share:
+            expected_capacity = new_size * units.Ki
+        else:
+            expected_capacity = (
+                (new_size - old_size) * units.Ki + fstore_init_size)
+
+        self.mediator.resize_share(
+            constants.EXPECTED_PROJECT_ID,
+            constants.EXPECTED_SHARE_ID,
+            constants.NFS,
+            new_size,
+            old_size,
+            constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS)
+
+        mock_find_fstore.assert_called_with(constants.EXPECTED_PROJECT_ID,
+                                            constants.EXPECTED_SHARE_ID,
+                                            constants.NFS,
+                                            constants.EXPECTED_FPG,
+                                            constants.EXPECTED_VFS,
+                                            allow_cross_protocol=False)
+        self.mock_client.setfsquota.assert_called_with(
+            constants.EXPECTED_VFS,
+            fpg=constants.EXPECTED_FPG,
+            fstore=fstore,
+            scapacity=six.text_type(expected_capacity),
+            hcapacity=six.text_type(expected_capacity))
+
+    @ddt.data(['This is a fake setfsquota returned error'], Exception('boom'))
+    def test_mediator_resize_share_setfsquota_side_effects(self, side_effect):
+        self.init_mediator()
+        fstore_init_size = int(
+            constants.GET_FSQUOTA['members'][0]['hardBlock'])
+        fstore = 'foo_fstore'
+        new_size = 2
+        old_size = 1
+        expected_capacity = (new_size - old_size) * units.Ki + fstore_init_size
+        mock_find_fstore = self.mock_object(self.mediator,
+                                            '_find_fstore',
+                                            mock.Mock(return_value=fstore))
+        self.mock_client.setfsquota.side_effect = side_effect
+
+        self.assertRaises(exception.ShareBackendException,
+                          self.mediator.resize_share,
+                          constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.NFS,
+                          new_size,
+                          old_size,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+        mock_find_fstore.assert_called_with(constants.EXPECTED_PROJECT_ID,
+                                            constants.EXPECTED_SHARE_ID,
+                                            constants.NFS,
+                                            constants.EXPECTED_FPG,
+                                            constants.EXPECTED_VFS,
+                                            allow_cross_protocol=False)
+        self.mock_client.setfsquota.assert_called_with(
+            constants.EXPECTED_VFS,
+            fpg=constants.EXPECTED_FPG,
+            fstore=fstore,
+            scapacity=six.text_type(expected_capacity),
+            hcapacity=six.text_type(expected_capacity))
+
+    def test_mediator_resize_share_not_found(self):
+        self.init_mediator()
+        mock_find_fshare = self.mock_object(self.mediator,
+                                            '_find_fshare',
+                                            mock.Mock(return_value=None))
+
+        self.assertRaises(exception.InvalidShare,
+                          self.mediator.resize_share,
+                          constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.NFS,
+                          999,
+                          99,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS)
+
+        mock_find_fshare.assert_called_with(constants.EXPECTED_PROJECT_ID,
+                                            constants.EXPECTED_SHARE_ID,
+                                            constants.NFS,
+                                            constants.EXPECTED_FPG,
+                                            constants.EXPECTED_VFS,
+                                            allow_cross_protocol=False)
 
     @ddt.data((('nfs', 'NFS', 'nFs'), 'smb'),
               (('smb', 'SMB', 'SmB', 'CIFS', 'cifs', 'CiFs'), 'nfs'))

@@ -103,10 +103,11 @@ class HPE3ParShareDriver(driver.ShareDriver):
         1.0.2 - Add share server/share network support
         2.0.0 - Rebranded HP to HPE
         2.0.1 - Add access_level (e.g. read-only support)
+        2.0.2 - Add extend/shrink
 
     """
 
-    VERSION = "2.0.1"
+    VERSION = "2.0.2"
 
     def __init__(self, *args, **kwargs):
         super(HPE3ParShareDriver, self).__init__((True, False),
@@ -375,6 +376,26 @@ class HPE3ParShareDriver(driver.ShareDriver):
                                   access['access_level'],
                                   self.fpg,
                                   self.vfs)
+
+    def extend_share(self, share, new_size, share_server=None):
+        """Extends size of existing share."""
+        self._hpe3par.resize_share(share['project_id'],
+                                   share['id'],
+                                   share['share_proto'],
+                                   new_size,
+                                   share['size'],
+                                   self.fpg,
+                                   self.vfs)
+
+    def shrink_share(self, share, new_size, share_server=None):
+        """Shrinks size of existing share."""
+        self._hpe3par.resize_share(share['project_id'],
+                                   share['id'],
+                                   share['share_proto'],
+                                   new_size,
+                                   share['size'],
+                                   self.fpg,
+                                   self.vfs)
 
     def _update_share_stats(self):
         """Retrieve stats info from share group."""

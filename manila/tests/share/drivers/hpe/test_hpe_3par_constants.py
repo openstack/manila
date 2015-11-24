@@ -82,6 +82,7 @@ NFS_SHARE_INFO = {
     'id': EXPECTED_SHARE_ID,
     'share_proto': NFS,
     'export_location': EXPECTED_LOCATION,
+    'size': 1234,
 }
 
 ACCESS_INFO = {

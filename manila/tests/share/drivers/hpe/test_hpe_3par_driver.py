@@ -464,6 +464,40 @@ class HPE3ParDriverTestCase(test.TestCase):
         ]
         self.mock_mediator.assert_has_calls(expected_calls)
 
+    def test_driver_extend_share(self):
+        self.init_driver()
+
+        old_size = constants.NFS_SHARE_INFO['size']
+        new_size = old_size * 2
+
+        self.driver.extend_share(constants.NFS_SHARE_INFO, new_size)
+
+        self.mock_mediator.resize_share.assert_called_once_with(
+            constants.EXPECTED_PROJECT_ID,
+            constants.EXPECTED_SHARE_ID,
+            constants.NFS,
+            new_size,
+            old_size,
+            constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS)
+
+    def test_driver_shrink_share(self):
+        self.init_driver()
+
+        old_size = constants.NFS_SHARE_INFO['size']
+        new_size = old_size / 2
+
+        self.driver.shrink_share(constants.NFS_SHARE_INFO, new_size)
+
+        self.mock_mediator.resize_share.assert_called_once_with(
+            constants.EXPECTED_PROJECT_ID,
+            constants.EXPECTED_SHARE_ID,
+            constants.NFS,
+            new_size,
+            old_size,
+            constants.EXPECTED_FPG,
+            constants.EXPECTED_VFS)
+
     def test_driver_get_share_stats_not_ready(self):
         """Protect against stats update before driver is ready."""
 

@@ -24,6 +24,7 @@ from oslo_utils import units
 import six
 
 from manila import exception
+from manila import utils
 from manila.i18n import _, _LI, _LW
 
 hpe3parclient = importutils.try_import("hpe3parclient")
@@ -66,10 +67,11 @@ class HPE3ParMediator(object):
         1.0.3 - Use hp3par prefix for share types and capabilities
         2.0.0 - Rebranded HP to HPE
         2.0.1 - Add access_level (e.g. read-only support)
+        2.0.2 - Add extend/shrink
 
     """
 
-    VERSION = "2.0.1"
+    VERSION = "2.0.2"
 
     def __init__(self, **kwargs):
 
@@ -384,6 +386,57 @@ class HPE3ParMediator(object):
                     createfshare_kwargs[opt_key] = opt_value
         return createfshare_kwargs
 
+    def _update_capacity_quotas(self, fstore, new_size, old_size, fpg, vfs):
+
+        @utils.synchronized('hpe3par-update-quota-' + fstore)
+        def _sync_update_capacity_quotas(fstore, new_size, old_size, fpg, vfs):
+            """Update 3PAR quotas and return setfsquota output."""
+
+            if self.hpe3par_fstore_per_share:
+                hcapacity = six.text_type(new_size * units.Ki)
+                scapacity = hcapacity
+            else:
+                hard_size_mb = (new_size - old_size) * units.Ki
+                soft_size_mb = hard_size_mb
+                result = self._client.getfsquota(
+                    fpg=fpg, vfs=vfs, fstore=fstore)
+                LOG.debug("getfsquota result=%s", result)
+                quotas = result['members']
+                if len(quotas) == 1:
+                    hard_size_mb += int(quotas[0].get('hardBlock', '0'))
+                    soft_size_mb += int(quotas[0].get('softBlock', '0'))
+                hcapacity = six.text_type(hard_size_mb)
+                scapacity = six.text_type(soft_size_mb)
+
+            return self._client.setfsquota(vfs,
+                                           fpg=fpg,
+                                           fstore=fstore,
+                                           scapacity=scapacity,
+                                           hcapacity=hcapacity)
+
+        try:
+            result = _sync_update_capacity_quotas(
+                fstore, new_size, old_size, fpg, vfs)
+            LOG.debug("setfsquota result=%s", result)
+        except Exception as e:
+            msg = (_('Failed to update capacity quota '
+                     '%(size)s on %(fstore)s with exception: %(e)s') %
+                   {'size': new_size - old_size,
+                    'fstore': fstore,
+                    'e': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+
+        # Non-empty result is an error message returned from the 3PAR
+        if result:
+            msg = (_('Failed to update capacity quota '
+                     '%(size)s on %(fstore)s with error: %(error)s') %
+                   {'size': new_size - old_size,
+                    'fstore': fstore,
+                    'error': result})
+            LOG.error(msg)
+            raise exception.ShareBackendException(msg=msg)
+
     def _create_share(self, project_id, share_id, protocol, extra_specs,
                       fpg, vfs, fstore, sharedir, readonly, size, comment):
         share_name = self.ensure_prefix(share_id, readonly=readonly)
@@ -423,32 +476,7 @@ class HPE3ParMediator(object):
                 raise exception.ShareBackendException(msg)
 
             if size:
-                if self.hpe3par_fstore_per_share:
-                    hcapacity = six.text_type(size * units.Ki)
-                    scapacity = hcapacity
-                else:
-                    hard_size_mb = size * units.Ki
-                    soft_size_mb = hard_size_mb
-                    result = self._client.getfsquota(
-                        fpg=fpg, vfs=vfs, fstore=fstore)
-                    LOG.debug("getfsquota result=%s", result)
-                    quotas = result['members']
-                    if len(quotas) == 1:
-                        hard_size_mb += int(quotas[0].get('hardBlock', '0'))
-                        soft_size_mb += int(quotas[0].get('softBlock', '0'))
-                    hcapacity = six.text_type(hard_size_mb)
-                    scapacity = six.text_type(soft_size_mb)
-
-                try:
-                    result = self._client.setfsquota(
-                        vfs, fpg=fpg, fstore=fstore,
-                        scapacity=scapacity, hcapacity=hcapacity)
-                    LOG.debug("setfsquota result=%s", result)
-                except Exception as e:
-                    msg = (_('Failed to setfsquota on %(fstore)s: %(e)s') %
-                           {'fstore': fstore, 'e': six.text_type(e)})
-                    LOG.exception(msg)
-                    raise exception.ShareBackendException(msg)
+                self._update_capacity_quotas(fstore, size, 0, fpg, vfs)
 
         try:
 
@@ -1161,6 +1189,24 @@ class HPE3ParMediator(object):
                             access_level,
                             fpg,
                             vfs)
+
+    def resize_share(self, project_id, share_id, share_proto,
+                     new_size, old_size, fpg, vfs):
+        """Extends or shrinks size of existing share."""
+
+        share_name = self.ensure_prefix(share_id)
+        fstore = self._find_fstore(project_id,
+                                   share_name,
+                                   share_proto,
+                                   fpg,
+                                   vfs,
+                                   allow_cross_protocol=False)
+
+        if not fstore:
+            msg = (_('Cannot resize share because it was not found.'))
+            raise exception.InvalidShare(reason=msg)
+
+        self._update_capacity_quotas(fstore, new_size, old_size, fpg, vfs)
 
     def fsip_exists(self, fsip):
         """Try to get FSIP. Return True if it exists."""
