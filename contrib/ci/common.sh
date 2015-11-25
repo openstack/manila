@@ -1,6 +1,6 @@
 # Environment variables
 
-export MANILA_TEMPEST_COMMIT="c43c8f91"  # 05 Nov, 2015
+export MANILA_TEMPEST_COMMIT="d160c29b"  # 01 Dec, 2015
 
 # ----------------------------------------------
 
