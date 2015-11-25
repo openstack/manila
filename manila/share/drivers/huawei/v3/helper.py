@@ -606,6 +606,10 @@ class RestHelper(object):
         fs['CAPACITY'] = result['data']['CAPACITY']
         fs['ALLOCTYPE'] = result['data']['ALLOCTYPE']
         fs['POOLNAME'] = result['data']['PARENTNAME']
+        fs['COMPRESSION'] = result['data']['ENABLECOMPRESSION']
+        fs['DEDUP'] = result['data']['ENABLEDEDUP']
+        fs['SMARTPARTITIONID'] = result['data']['CACHEPARTITIONID']
+        fs['SMARTCACHEID'] = result['data']['SMARTCACHEPARTITIONID']
         return fs
 
     def _get_share_path(self, share_name):
@@ -679,6 +683,18 @@ class RestHelper(object):
         msg = _("Change filesystem name error.")
         self._assert_rest_result(result, msg)
 
+    def _change_extra_specs(self, fsid, extra_specs):
+        url = "/filesystem/%s" % fsid
+        fs_param = {
+            "ENABLEDEDUP": extra_specs['dedupe'],
+            "ENABLECOMPRESSION": extra_specs['compression']
+        }
+        data = jsonutils.dumps(fs_param)
+        result = self.call(url, data, "PUT")
+
+        msg = _("Change extra_specs error.")
+        self._assert_rest_result(result, msg)
+
     def _get_partition_id_by_name(self, name):
         url = "/cachepartition"
         result = self.call(url, None, "GET")
@@ -689,6 +705,14 @@ class RestHelper(object):
                 if name == item['NAME']:
                     return item['ID']
         return None
+
+    def get_partition_info_by_id(self, partitionid):
+        url = '/cachepartition/' + partitionid
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result,
+                                 _('Get partition by partition id error.'))
+
+        return result['data']
 
     def _add_fs_to_partition(self, fs_id, partition_id):
         url = "/filesystem/associate/cachepartition"
@@ -701,6 +725,17 @@ class RestHelper(object):
         self._assert_rest_result(result,
                                  _('Add filesystem to partition error.'))
 
+    def _remove_fs_from_partition(self, fs_id, partition_id):
+        url = "/smartPartition/removeFs"
+        data = jsonutils.dumps({"ID": partition_id,
+                                "ASSOCIATEOBJTYPE": 40,
+                                "ASSOCIATEOBJID": fs_id,
+                                "TYPE": 268})
+        result = self.call(url, data, "PUT")
+
+        self._assert_rest_result(result,
+                                 _('Remove filesystem from partition error.'))
+
     def _get_cache_id_by_name(self, name):
         url = "/SMARTCACHEPARTITION"
         result = self.call(url, None, "GET")
@@ -712,6 +747,17 @@ class RestHelper(object):
                     return item['ID']
         return None
 
+    def get_cache_info_by_id(self, cacheid):
+        url = "/SMARTCACHEPARTITION/" + cacheid
+        data = jsonutils.dumps({"TYPE": "273",
+                                "ID": cacheid})
+
+        result = self.call(url, data, "GET")
+        self._assert_rest_result(
+            result, _('Get smartcache by cache id error.'))
+
+        return result['data']
+
     def _add_fs_to_cache(self, fs_id, cache_id):
         url = "/SMARTCACHEPARTITION/CREATE_ASSOCIATE"
         data = jsonutils.dumps({"ID": cache_id,
@@ -721,3 +767,14 @@ class RestHelper(object):
         result = self.call(url, data, "PUT")
 
         self._assert_rest_result(result, _('Add filesystem to cache error.'))
+
+    def _remove_fs_from_cache(self, fs_id, cache_id):
+        url = "/SMARTCACHEPARTITION/REMOVE_ASSOCIATE"
+        data = jsonutils.dumps({"ID": cache_id,
+                                "ASSOCIATEOBJTYPE": 40,
+                                "ASSOCIATEOBJID": fs_id,
+                                "TYPE": 273})
+        result = self.call(url, data, "PUT")
+
+        self._assert_rest_result(result,
+                                 _('Remove filesystem from cache error.'))

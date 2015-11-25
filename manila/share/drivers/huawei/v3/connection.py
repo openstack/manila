@@ -16,6 +16,7 @@
 import time
 
 from oslo_log import log
+from oslo_utils import strutils
 from oslo_utils import units
 
 from manila.common import constants as common_constants
@@ -28,6 +29,7 @@ from manila.share.drivers.huawei import constants
 from manila.share.drivers.huawei import huawei_utils
 from manila.share.drivers.huawei.v3 import helper
 from manila.share.drivers.huawei.v3 import smartx
+from manila.share import share_types
 from manila.share import utils as share_utils
 
 
@@ -474,19 +476,18 @@ class V3StorageConnection(driver.HuaweiBase):
         old_export_location = share['export_locations'][0]['path']
         pool_name = share_utils.extract_host(share['host'], level='pool')
         share_url_type = self.helper._get_share_url_type(share_proto)
-
         old_share_name = self.helper._get_share_name_by_export_location(
             old_export_location, share_proto)
 
-        share = self.helper._get_share_by_name(old_share_name,
-                                               share_url_type)
-        if not share:
+        share_storage = self.helper._get_share_by_name(old_share_name,
+                                                       share_url_type)
+        if not share_storage:
             err_msg = (_("Can not get share ID by share %s.")
                        % old_export_location)
             LOG.error(err_msg)
             raise exception.InvalidShare(reason=err_msg)
 
-        fs_id = share['FSID']
+        fs_id = share_storage['FSID']
         fs = self.helper._get_fs_info_by_id(fs_id)
         if not self.check_fs_status(fs['HEALTHSTATUS'],
                                     fs['RUNNINGSTATUS']):
@@ -503,11 +504,211 @@ class V3StorageConnection(driver.HuaweiBase):
                         % {'fs_pool': fs['POOLNAME'],
                            'host_pool': pool_name}))
 
-        self.helper._change_fs_name(fs_id, share_name)
-        share_size = int(fs['CAPACITY']) / units.Mi / 2
+        result = self.helper._find_all_pool_info()
+        poolinfo = self.helper._find_pool_info(pool_name, result)
 
+        opts = huawei_utils.get_share_extra_specs_params(
+            share['share_type_id'])
+        specs = share_types.get_share_type_extra_specs(share['share_type_id'])
+        if ('capabilities:thin_provisioning' not in specs.keys()
+                and 'thin_provisioning' not in specs.keys()):
+            if fs['ALLOCTYPE'] == constants.ALLOC_TYPE_THIN_FLAG:
+                opts['thin_provisioning'] = constants.THIN_PROVISIONING
+            else:
+                opts['thin_provisioning'] = constants.THICK_PROVISIONING
+
+        change_opts = self.check_retype_change_opts(opts, poolinfo, fs)
+        LOG.info(_LI('Retyping share (%(share)s), changed options are : '
+                     '(%(change_opts)s).'),
+                 {'share': old_share_name, 'change_opts': change_opts})
+        try:
+            self.retype_share(change_opts, fs_id)
+        except Exception as err:
+            message = (_("Retype share error. Share: %(share)s. "
+                         "Reason: %(reason)s.")
+                       % {'share': old_share_name,
+                          'reason': err})
+            raise exception.InvalidShare(reason=message)
+
+        share_size = int(fs['CAPACITY']) / units.Mi / 2
+        self.helper._change_fs_name(fs_id, share_name)
         location = self._get_location_path(share_name, share_proto)
         return (share_size, [location])
+
+    def check_retype_change_opts(self, opts, poolinfo, fs):
+        change_opts = {
+            "partitionid": None,
+            "cacheid": None,
+            "dedupe&compression": None,
+        }
+
+        # SmartPartition
+        old_partition_id = fs['SMARTPARTITIONID']
+        old_partition_name = None
+        new_partition_id = None
+        new_partition_name = None
+        if strutils.bool_from_string(opts['huawei_smartpartition']):
+            if not opts['partitionname']:
+                raise exception.InvalidInput(
+                    reason=_('Partition name is None, please set '
+                             'huawei_smartpartition:partitionname in key.'))
+            new_partition_name = opts['partitionname']
+            new_partition_id = self.helper._get_partition_id_by_name(
+                new_partition_name)
+            if new_partition_id is None:
+                raise exception.InvalidInput(
+                    reason=(_("Can't find partition name on the array, "
+                              "partition name is: %(name)s.")
+                            % {"name": new_partition_name}))
+
+        if old_partition_id != new_partition_id:
+            if old_partition_id:
+                partition_info = self.helper.get_partition_info_by_id(
+                    old_partition_id)
+                old_partition_name = partition_info['NAME']
+            change_opts["partitionid"] = ([old_partition_id,
+                                           old_partition_name],
+                                          [new_partition_id,
+                                           new_partition_name])
+
+        # SmartCache
+        old_cache_id = fs['SMARTCACHEID']
+        old_cache_name = None
+        new_cache_id = None
+        new_cache_name = None
+        if strutils.bool_from_string(opts['huawei_smartcache']):
+            if not opts['cachename']:
+                raise exception.InvalidInput(
+                    reason=_('Cache name is None, please set '
+                             'huawei_smartcache:cachename in key.'))
+            new_cache_name = opts['cachename']
+            new_cache_id = self.helper._get_cache_id_by_name(
+                new_cache_name)
+            if new_cache_id is None:
+                raise exception.InvalidInput(
+                    reason=(_("Can't find cache name on the array, "
+                              "cache name is: %(name)s.")
+                            % {"name": new_cache_name}))
+
+        if old_cache_id != new_cache_id:
+            if old_cache_id:
+                cache_info = self.helper.get_cache_info_by_id(
+                    old_cache_id)
+                old_cache_name = cache_info['NAME']
+            change_opts["cacheid"] = ([old_cache_id, old_cache_name],
+                                      [new_cache_id, new_cache_name])
+
+        # SmartDedupe&SmartCompression
+        smartx_opts = constants.OPTS_CAPABILITIES
+        if opts is not None:
+            smart = smartx.SmartX()
+            smartx_opts = smart.get_smartx_extra_specs_opts(opts)
+
+        old_compression = fs['COMPRESSION']
+        new_compression = smartx_opts['compression']
+        old_dedupe = fs['DEDUP']
+        new_dedupe = smartx_opts['dedupe']
+
+        if fs['ALLOCTYPE'] == constants.ALLOC_TYPE_THIN_FLAG:
+            fs['ALLOCTYPE'] = constants.ALLOC_TYPE_THIN
+        else:
+            fs['ALLOCTYPE'] = constants.ALLOC_TYPE_THICK
+
+        if strutils.bool_from_string(opts['thin_provisioning']):
+            opts['thin_provisioning'] = constants.ALLOC_TYPE_THIN
+        else:
+            opts['thin_provisioning'] = constants.ALLOC_TYPE_THICK
+
+        if (fs['ALLOCTYPE'] != poolinfo['type']
+                or fs['ALLOCTYPE'] != opts['thin_provisioning']):
+            msg = (_("Manage existing share fs type and pool type "
+                     "or fs type and new_share_type mismatch. "
+                     "fs type is: %(fs_type)s, pool type is: "
+                     "%(pool_type)s, new_share_type is: "
+                     "%(new_share_type)s")
+                   % {"fs_type": fs['ALLOCTYPE'],
+                      "pool_type": poolinfo['type'],
+                      "new_share_type": opts['thin_provisioning']})
+            raise exception.InvalidHost(reason=msg)
+        else:
+            if fs['ALLOCTYPE'] == constants.ALLOC_TYPE_THICK:
+                if new_compression or new_dedupe:
+                    raise exception.InvalidInput(
+                        reason=_("Dedupe or compression cannot be set for "
+                                 "thick filesystem."))
+            else:
+                if (old_dedupe != new_dedupe
+                        or old_compression != new_compression):
+                    change_opts["dedupe&compression"] = ([old_dedupe,
+                                                          old_compression],
+                                                         [new_dedupe,
+                                                          new_compression])
+        return change_opts
+
+    def retype_share(self, change_opts, fs_id):
+        if change_opts.get('partitionid'):
+            old, new = change_opts['partitionid']
+            old_id = old[0]
+            old_name = old[1]
+            new_id = new[0]
+            new_name = new[1]
+
+            if old_id:
+                self.helper._remove_fs_from_partition(fs_id, old_id)
+            if new_id:
+                self.helper._add_fs_to_partition(fs_id, new_id)
+                msg = (_("Retype FS(id: %(fs_id)s) smartpartition from "
+                         "(name: %(old_name)s, id: %(old_id)s) to "
+                         "(name: %(new_name)s, id: %(new_id)s) "
+                         "performed successfully.")
+                       % {"fs_id": fs_id,
+                          "old_id": old_id, "old_name": old_name,
+                          "new_id": new_id, "new_name": new_name})
+                LOG.info(msg)
+
+        if change_opts.get('cacheid'):
+            old, new = change_opts['cacheid']
+            old_id = old[0]
+            old_name = old[1]
+            new_id = new[0]
+            new_name = new[1]
+            if old_id:
+                self.helper._remove_fs_from_cache(fs_id, old_id)
+            if new_id:
+                self.helper._add_fs_to_cache(fs_id, new_id)
+                msg = (_("Retype FS(id: %(fs_id)s) smartcache from "
+                         "(name: %(old_name)s, id: %(old_id)s) to "
+                         "(name: %(new_name)s, id: %(new_id)s) "
+                         "performed successfully.")
+                       % {"fs_id": fs_id,
+                          "old_id": old_id, "old_name": old_name,
+                          "new_id": new_id, "new_name": new_name})
+                LOG.info(msg)
+
+        if change_opts.get('dedupe&compression'):
+            old, new = change_opts['dedupe&compression']
+            old_dedupe = old[0]
+            old_compression = old[1]
+            new_dedupe = new[0]
+            new_compression = new[1]
+            if ((old_dedupe != new_dedupe)
+                    or (old_compression != new_compression)):
+
+                new_smartx_opts = {"dedupe": new_dedupe,
+                                   "compression": new_compression}
+
+                self.helper._change_extra_specs(fs_id, new_smartx_opts)
+                msg = (_("Retype FS(id: %(fs_id)s) dedupe from %(old_dedupe)s "
+                         "to %(new_dedupe)s performed successfully, "
+                         "compression from "
+                         "%(old_compression)s to %(new_compression)s "
+                         "performed successfully.")
+                       % {"fs_id": fs_id,
+                          "old_dedupe": old_dedupe,
+                          "new_dedupe": new_dedupe,
+                          "old_compression": old_compression,
+                          "new_compression": new_compression})
+                LOG.info(msg)
 
     def _get_location_path(self, share_name, share_proto):
         root = self.helper._read_xml()
