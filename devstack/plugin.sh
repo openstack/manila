@@ -76,7 +76,7 @@ fi
 # Common opts
 SHARE_NAME_PREFIX=${SHARE_NAME_PREFIX:-share-}
 MANILA_ENABLED_SHARE_PROTOCOLS=${ENABLED_SHARE_PROTOCOLS:-"NFS,CIFS"}
-MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.filter_scheduler.FilterScheduler}
+MANILA_SCHEDULER_DRIVER=${MANILA_SCHEDULER_DRIVER:-manila.scheduler.drivers.filter.FilterScheduler}
 MANILA_SERVICE_SECGROUP="manila-service"
 
 # Following env var defines whether to apply downgrade migrations setting up DB or not.

@@ -39,14 +39,14 @@ import manila.network.neutron.neutron_network_plugin
 import manila.network.nova_network_plugin
 import manila.network.standalone_network_plugin
 import manila.quota
-import manila.scheduler.driver
+import manila.scheduler.drivers.base
+import manila.scheduler.drivers.simple
 import manila.scheduler.host_manager
 import manila.scheduler.manager
 import manila.scheduler.scheduler_options
-import manila.scheduler.simple
-import manila.scheduler.weights
-import manila.scheduler.weights.capacity
-import manila.scheduler.weights.pool
+import manila.scheduler.weighers
+import manila.scheduler.weighers.capacity
+import manila.scheduler.weighers.pool
 import manila.service
 import manila.share.api
 import manila.share.driver
@@ -99,13 +99,13 @@ _global_opt_lists = [
     manila.network.nova_network_plugin.nova_single_network_plugin_opts,
     manila.network.standalone_network_plugin.standalone_network_plugin_opts,
     manila.quota.quota_opts,
-    manila.scheduler.driver.scheduler_driver_opts,
+    manila.scheduler.drivers.base.scheduler_driver_opts,
     manila.scheduler.host_manager.host_manager_opts,
     [manila.scheduler.manager.scheduler_driver_opt],
     [manila.scheduler.scheduler_options.scheduler_json_config_location_opt],
-    manila.scheduler.simple.simple_scheduler_opts,
-    manila.scheduler.weights.capacity.capacity_weight_opts,
-    manila.scheduler.weights.pool.pool_weight_opts,
+    manila.scheduler.drivers.simple.simple_scheduler_opts,
+    manila.scheduler.weighers.capacity.capacity_weight_opts,
+    manila.scheduler.weighers.pool.pool_weight_opts,
     manila.service.service_opts,
     manila.share.api.share_api_opts,
     manila.share.driver.ganesha_opts,

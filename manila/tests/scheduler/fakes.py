@@ -19,8 +19,9 @@ Fakes For Scheduler tests.
 from oslo_utils import timeutils
 import six
 
-from manila.scheduler import filter_scheduler
+from manila.scheduler.drivers import filter
 from manila.scheduler import host_manager
+from manila.scheduler.weighers import base_host as base_host_weigher
 
 SHARE_SERVICES_NO_POOLS = [
     dict(id=1, host='host1', topic='share', disabled=False,
@@ -167,7 +168,7 @@ SHARE_SERVICE_STATES_WITH_POOLS = {
 }
 
 
-class FakeFilterScheduler(filter_scheduler.FilterScheduler):
+class FakeFilterScheduler(filter.FilterScheduler):
     def __init__(self, *args, **kwargs):
         super(FakeFilterScheduler, self).__init__(*args, **kwargs)
         self.host_manager = host_manager.HostManager()
@@ -260,3 +261,18 @@ def mock_host_manager_db_calls(mock_obj, disabled=None):
     else:
         mock_obj.return_value = [service for service in services
                                  if service['disabled'] == disabled]
+
+
+class FakeWeigher1(base_host_weigher.BaseHostWeigher):
+    def __init__(self):
+        pass
+
+
+class FakeWeigher2(base_host_weigher.BaseHostWeigher):
+    def __init__(self):
+        pass
+
+
+class FakeClass(object):
+    def __init__(self):
+        pass
