@@ -2765,14 +2765,17 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('cifs-share-create', cifs_share_create_args)])
 
-    def test_add_cifs_share_access(self):
+    @ddt.data(True, False)
+    def test_add_cifs_share_access(self, readonly):
 
         self.mock_object(self.client, 'send_request')
 
-        self.client.add_cifs_share_access(fake.SHARE_NAME, fake.USER_NAME)
+        self.client.add_cifs_share_access(fake.SHARE_NAME,
+                                          fake.USER_NAME,
+                                          readonly)
 
         cifs_share_access_control_create_args = {
-            'permission': 'full_control',
+            'permission': 'read' if readonly else 'full_control',
             'share': fake.SHARE_NAME,
             'user-or-group': fake.USER_NAME
         }

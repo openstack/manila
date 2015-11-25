@@ -15,10 +15,13 @@
 Mock unit tests for the NetApp driver protocols CIFS class module.
 """
 
+import copy
+
 import ddt
 import mock
 from oslo_log import log
 
+from manila.common import constants
 from manila import exception
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
@@ -88,7 +91,20 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
                                  fake.USER_ACCESS)
 
         self.mock_client.add_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.USER_ACCESS['access_to'])
+            fake.SHARE_NAME, fake.USER_ACCESS['access_to'], False)
+
+    def test_allow_access_readonly(self):
+
+        user_access = copy.deepcopy(fake.USER_ACCESS)
+        user_access['access_level'] = constants.ACCESS_LEVEL_RO
+
+        self.helper.allow_access(self.mock_context,
+                                 fake.CIFS_SHARE,
+                                 fake.SHARE_NAME,
+                                 user_access)
+
+        self.mock_client.add_cifs_share_access.assert_called_once_with(
+            fake.SHARE_NAME, fake.USER_ACCESS['access_to'], True)
 
     def test_allow_access_preexisting(self):
 
@@ -114,11 +130,23 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
                           fake.SHARE_NAME,
                           fake.USER_ACCESS)
 
+    def test_allow_access_invalid_level(self):
+
+        user_access = copy.deepcopy(fake.USER_ACCESS)
+        user_access['access_level'] = 'fake_level'
+
+        self.assertRaises(exception.InvalidShareAccessLevel,
+                          self.helper.allow_access,
+                          self.mock_context,
+                          fake.NFS_SHARE,
+                          fake.SHARE_NAME,
+                          user_access)
+
     def test_allow_access_invalid_type(self):
 
         fake_access = fake.USER_ACCESS.copy()
         fake_access['access_type'] = 'group'
-        self.assertRaises(exception.NetAppException,
+        self.assertRaises(exception.InvalidShareAccess,
                           self.helper.allow_access,
                           self.mock_context,
                           fake.CIFS_SHARE,

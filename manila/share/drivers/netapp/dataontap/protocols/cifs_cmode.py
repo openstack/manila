@@ -19,6 +19,7 @@ import re
 
 from oslo_log import log
 
+from manila.common import constants
 from manila import exception
 from manila.i18n import _, _LE
 from manila.share.drivers.netapp.dataontap.client import api as netapp_api
@@ -52,11 +53,23 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         if access['access_type'] != 'user':
             msg = _("Cluster Mode supports only 'user' type for share access"
                     " rules with CIFS protocol.")
-            raise exception.NetAppException(msg)
+            raise exception.InvalidShareAccess(reason=msg)
+
+        user_name = access['access_to']
+
+        if access['access_level'] == constants.ACCESS_LEVEL_RW:
+            readonly = False
+        elif access['access_level'] == constants.ACCESS_LEVEL_RO:
+            readonly = True
+        else:
+            raise exception.InvalidShareAccessLevel(
+                level=access['access_level'])
 
         target, share_name = self._get_export_location(share)
         try:
-            self._client.add_cifs_share_access(share_name, access['access_to'])
+            self._client.add_cifs_share_access(share_name,
+                                               user_name,
+                                               readonly)
         except netapp_api.NaApiError as e:
             if e.code == netapp_api.EDUPLICATEENTRY:
                 # Duplicate entry, so use specific exception.
