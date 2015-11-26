@@ -6,6 +6,9 @@ export MANILA_TEMPEST_COMMIT="c43c8f91"  # 05 Nov, 2015
 
 # Functions
 
+# Import devstack functions
+source $BASE/new/devstack/functions
+
 function manila_check_service_vm_availability {
     # First argument is expected to be IP address of a service VM
 
