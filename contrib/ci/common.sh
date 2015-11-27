@@ -69,4 +69,8 @@ function manila_wait_for_drivers_init {
     # First argument is expected to be file path to Manila config
 
     manila_wait_for_generic_driver_init $1
+
+    # Sleep to make manila-share service notify manila-scheduler about
+    # its capabilities on time.
+    sleep 10
 }
