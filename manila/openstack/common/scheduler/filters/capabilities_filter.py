@@ -47,8 +47,11 @@ class CapabilitiesFilter(filters.BaseHostFilter):
                 try:
                     cap = cap.get(scope[index])
                 except AttributeError:
-                    return False
+                    cap = None
                 if cap is None:
+                    LOG.debug("Host doesn't provide capability '%(cap)s' "
+                              "listed in the extra specs",
+                              {'cap': scope[index]})
                     return False
             if not extra_specs_ops.match(cap, req):
                 LOG.debug("extra_spec requirement '%(req)s' "
