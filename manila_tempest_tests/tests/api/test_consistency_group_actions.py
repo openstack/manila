@@ -39,78 +39,52 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
     @classmethod
     def resource_setup(cls):
         super(ConsistencyGroupActionsTest, cls).resource_setup()
-        # Create consistency group
+
+        # Create first consistency group
         cls.cg_name = data_utils.rand_name("tempest-cg-name")
         cls.cg_desc = data_utils.rand_name("tempest-cg-description")
-        cls.consistency_group = cls.create_consistency_group(
-            name=cls.cg_name,
-            description=cls.cg_desc,
-        )
-
-        # Create 2 shares inside consistency group
-        cls.share_name = data_utils.rand_name("tempest-share-name")
-        cls.share_desc = data_utils.rand_name("tempest-share-description")
-        cls.share_size = 1
-        cls.share = cls.create_share(
-            name=cls.share_name,
-            description=cls.share_desc,
-            size=cls.share_size,
-            consistency_group_id=cls.consistency_group['id'],
-            metadata={'key': 'value'},
-            client=cls.shares_v2_client,
-        )
-
-        cls.share_name2 = data_utils.rand_name("tempest-share-name")
-        cls.share_desc2 = data_utils.rand_name("tempest-share-description")
-        cls.share_size2 = 2
-        cls.share2 = cls.create_share(
-            name=cls.share_name2,
-            description=cls.share_desc2,
-            size=cls.share_size2,
-            consistency_group_id=cls.consistency_group['id'],
-            client=cls.shares_v2_client,
-        )
-
-        cls.cgsnap_name = data_utils.rand_name("tempest-cgsnap-name")
-        cls.cgsnap_desc = data_utils.rand_name("tempest-cgsnap-description")
-        cls.cgsnapshot = cls.create_cgsnapshot_wait_for_active(
-            cls.consistency_group["id"],
-            name=cls.cgsnap_name,
-            description=cls.cgsnap_desc)
+        cls.cg = cls.create_consistency_group(
+            name=cls.cg_name, description=cls.cg_desc)
 
         # Create second consistency group for purposes of sorting and snapshot
         # filtering
-        cls.cg_name2 = data_utils.rand_name("tempest-cg-name")
-        cls.cg_desc2 = data_utils.rand_name("tempest-cg-description")
-        cls.consistency_group2 = cls.create_consistency_group(
-            name=cls.cg_name2,
-            description=cls.cg_desc2,
-        )
+        cls.cg2 = cls.create_consistency_group(
+            name=cls.cg_name, description=cls.cg_desc)
 
-        # Create 1 share in second consistency group
-        cls.share_name3 = data_utils.rand_name("tempest-share-name")
-        cls.share_desc3 = data_utils.rand_name("tempest-share-description")
-        cls.share3 = cls.create_share(
-            name=cls.share_name3,
-            description=cls.share_desc3,
-            size=cls.share_size,
-            consistency_group_id=cls.consistency_group2['id'],
-            client=cls.shares_v2_client,
-        )
+        # Create 2 shares inside first CG and 1 inside second CG
+        cls.share_name = data_utils.rand_name("tempest-share-name")
+        cls.share_desc = data_utils.rand_name("tempest-share-description")
+        cls.share_size = 1
+        cls.share_size2 = 2
+        cls.shares = cls.create_shares([
+            {'kwargs': {
+                'name': cls.share_name,
+                'description': cls.share_desc,
+                'size': size,
+                'consistency_group_id': cg_id,
+            }} for size, cg_id in ((cls.share_size, cls.cg['id']),
+                                   (cls.share_size2, cls.cg['id']),
+                                   (cls.share_size, cls.cg2['id']))
+        ])
 
-        cls.cgsnap_name2 = data_utils.rand_name("tempest-cgsnap-name")
-        cls.cgsnap_desc2 = data_utils.rand_name("tempest-cgsnap-description")
+        # Create CG snapshots
+        cls.cgsnap_name = data_utils.rand_name("tempest-cgsnap-name")
+        cls.cgsnap_desc = data_utils.rand_name("tempest-cgsnap-description")
+
+        cls.cgsnapshot = cls.create_cgsnapshot_wait_for_active(
+            cls.cg["id"],
+            name=cls.cgsnap_name,
+            description=cls.cgsnap_desc)
+
         cls.cgsnapshot2 = cls.create_cgsnapshot_wait_for_active(
-            cls.consistency_group2['id'],
-            name=cls.cgsnap_name2,
-            description=cls.cgsnap_desc2)
+            cls.cg2['id'], name=cls.cgsnap_name, description=cls.cgsnap_desc)
 
     @test.attr(type=["gate", ])
     def test_get_consistency_group_v2_4(self):
 
         # Get consistency group
         consistency_group = self.shares_v2_client.get_consistency_group(
-            self.consistency_group['id'], version='2.4')
+            self.cg['id'], version='2.4')
 
         # Verify keys
         actual_keys = set(consistency_group.keys())
@@ -135,7 +109,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
     def test_get_share_v2_4(self):
 
         # Get share
-        share = self.shares_v2_client.get_share(self.share['id'],
+        share = self.shares_v2_client.get_share(self.shares[0]['id'],
                                                 version='2.4')
 
         # Verify keys
@@ -164,9 +138,8 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
         self.assertEqual(self.share_size, int(share["size"]), msg)
 
         msg = "Expected consistency_group_id: '%s', actual value: '%s'" % (
-            self.consistency_group["id"], share["consistency_group_id"])
-        self.assertEqual(
-            self.consistency_group["id"], share["consistency_group_id"], msg)
+            self.cg["id"], share["consistency_group_id"])
+        self.assertEqual(self.cg["id"], share["consistency_group_id"], msg)
 
     @test.attr(type=["gate", ])
     def test_list_consistency_groups_v2_4(self):
@@ -180,8 +153,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
          consistency_groups]
 
         # Consistency group ids are in list exactly once
-        for cg_id in [self.consistency_group["id"],
-                      self.consistency_group2["id"]]:
+        for cg_id in (self.cg["id"], self.cg2["id"]):
             gen = [cgid["id"] for cgid in consistency_groups
                    if cgid["id"] == cg_id]
             msg = ("Expected id %s exactly once in consistency group list" %
@@ -200,8 +172,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
          for cg in consistency_groups]
 
         # Consistency group ids are in list exactly once
-        for cg_id in [self.consistency_group["id"],
-                      self.consistency_group2["id"]]:
+        for cg_id in (self.cg["id"], self.cg2["id"]):
             gen = [cgid["id"] for cgid in consistency_groups
                    if cgid["id"] == cg_id]
             msg = ("Expected id %s exactly once in consistency group list" %
@@ -213,7 +184,7 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
 
         shares = self.shares_v2_client.list_shares(
             detailed=True,
-            params={'consistency_group_id': self.consistency_group['id']},
+            params={'consistency_group_id': self.cg['id']},
             version='2.4'
         )
 
@@ -222,18 +193,19 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
         self.assertEqual(2, len(shares),
                          'Incorrect number of shares returned. Expected 2, '
                          'got %s' % len(shares))
-        self.assertIn(self.share['id'], share_ids,
+        self.assertIn(self.shares[0]['id'], share_ids,
                       'Share %s expected in returned list, but got %s'
-                      % (self.share['id'], share_ids))
-        self.assertIn(self.share2['id'], share_ids,
+                      % (self.shares[0]['id'], share_ids))
+        self.assertIn(self.shares[1]['id'], share_ids,
                       'Share %s expected in returned list, but got %s'
-                      % (self.share['id'], share_ids))
+                      % (self.shares[0]['id'], share_ids))
 
     @test.attr(type=["gate", ])
     def test_get_cgsnapshot_v2_4(self):
+
         # Get consistency group
         consistency_group = self.shares_v2_client.get_consistency_group(
-            self.consistency_group['id'], version='2.4')
+            self.cg['id'], version='2.4')
 
         # Verify keys
         actual_keys = set(consistency_group.keys())
@@ -265,11 +237,11 @@ class ConsistencyGroupActionsTest(base.BaseSharesTest):
                          'Unexpected number of cgsnapshot members. Expected '
                          '2, got %s.' % len(cgsnapshot_members))
         # Verify each share is represented in the cgsnapshot appropriately
-        for share_id in [self.share['id'], self.share2['id']]:
+        for share_id in (self.shares[0]['id'], self.shares[1]['id']):
             self.assertIn(share_id, member_share_ids,
                           'Share missing %s missing from cgsnapshot. Found %s.'
                           % (share_id, member_share_ids))
-        for share in [self.share, self.share2]:
+        for share in (self.shares[0], self.shares[1]):
             for member in cgsnapshot_members:
                 if share['id'] == member['share_id']:
                     self.assertEqual(share['size'], member['size'])
