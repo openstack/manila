@@ -191,6 +191,21 @@ SHARE_TYPE = {
     'extra_specs': EXTRA_SPEC
 }
 
+OVERLAPPING_EXTRA_SPEC = {
+    'compression': '<is> True',
+    'netapp:compression': 'true',
+    'dedupe': '<is> True',
+    'netapp:dedup': 'false',
+    'thin_provisioning': '<is> False',
+    'netapp:thin_provisioned': 'true',
+}
+
+REMAPPED_OVERLAPPING_EXTRA_SPEC = {
+    'netapp:compression': 'true',
+    'netapp:dedup': 'true',
+    'netapp:thin_provisioned': 'false',
+}
+
 EXTRA_SPEC_SHARE = copy.deepcopy(SHARE)
 EXTRA_SPEC_SHARE['share_type_id'] = SHARE_TYPE_ID
 
@@ -424,6 +439,9 @@ POOLS = [
      'allocated_capacity_gb': 2.2,
      'QoS_support': 'False',
      'reserved_percentage': 0,
+     'dedupe': [True, False],
+     'compression': [True, False],
+     'thin_provisioning': [True, False],
      'netapp_raid_type': 'raid4',
      'netapp_disk_type': 'FCAL'
      },
@@ -433,6 +451,9 @@ POOLS = [
      'allocated_capacity_gb': 4.0,
      'QoS_support': 'False',
      'reserved_percentage': 0,
+     'dedupe': [True, False],
+     'compression': [True, False],
+     'thin_provisioning': [True, False],
      'netapp_raid_type': 'raid_dp',
      'netapp_disk_type': 'SSD'
      },
@@ -445,6 +466,9 @@ POOLS_VSERVER_CREDS = [
      'allocated_capacity_gb': 0.0,
      'QoS_support': 'False',
      'reserved_percentage': 0,
+     'dedupe': [True, False],
+     'compression': [True, False],
+     'thin_provisioning': [True, False],
      'netapp_raid_type': 'raid4',
      'netapp_disk_type': 'FCAL'
      },
@@ -454,6 +478,9 @@ POOLS_VSERVER_CREDS = [
      'allocated_capacity_gb': 0.0,
      'QoS_support': 'False',
      'reserved_percentage': 0,
+     'dedupe': [True, False],
+     'compression': [True, False],
+     'thin_provisioning': [True, False],
      'netapp_raid_type': 'raid_dp',
      'netapp_disk_type': 'SSD'
      },
