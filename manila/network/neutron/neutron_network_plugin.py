@@ -196,9 +196,30 @@ class NeutronSingleNetworkPlugin(NeutronNetworkPlugin):
 
     def _update_share_network_net_data(self, context, share_network):
         upd = dict()
+
+        if share_network.get('nova_net_id') is not None:
+            raise exception.NetworkBadConfigurationException(
+                "Share network has nova_net_id set.")
+
         if not share_network.get('neutron_net_id') == self.net:
+            if share_network.get('neutron_net_id') is not None:
+                raise exception.NetworkBadConfigurationException(
+                    "Using neutron net id different from None or value "
+                    "specified in the config is forbidden for "
+                    "NeutronSingleNetworkPlugin. Allowed values: (%(net)s, "
+                    "None), received value: %(err)s" % {
+                        "net": self.net,
+                        "err": share_network.get('neutron_net_id')})
             upd['neutron_net_id'] = self.net
         if not share_network.get('neutron_subnet_id') == self.subnet:
+            if share_network.get('neutron_subnet_id') is not None:
+                raise exception.NetworkBadConfigurationException(
+                    "Using neutron subnet id different from None or value "
+                    "specified in the config is forbidden for "
+                    "NeutronSingleNetworkPlugin. Allowed values: (%(snet)s, "
+                    "None), received value: %(err)s" % {
+                        "snet": self.subnet,
+                        "err": share_network.get('neutron_subnet_id')})
             upd['neutron_subnet_id'] = self.subnet
         if upd:
             share_network = self.db.share_network_update(
