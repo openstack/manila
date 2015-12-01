@@ -81,7 +81,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_vserver(self, vserver_name, root_volume_aggregate_name,
-                       root_volume_name, aggregate_names):
+                       root_volume_name, aggregate_names, ipspace_name):
         """Creates new vserver and assigns aggregates."""
         create_args = {
             'vserver-name': vserver_name,
@@ -92,6 +92,14 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                 'nsswitch': 'file',
             },
         }
+
+        if ipspace_name:
+            if not self.features.IPSPACES:
+                msg = 'IPSpaces are not supported on this backend.'
+                raise exception.NetAppException(msg)
+            else:
+                create_args['ipspace'] = ipspace_name
+
         self.send_request('vserver-create', create_args)
 
         aggr_list = [{'aggr-name': aggr_name} for aggr_name in aggregate_names]
@@ -147,6 +155,57 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     'for Vserver %s.') % vserver_name
             raise exception.NetAppException(msg)
         return root_volume_name
+
+    @na_utils.trace
+    def get_vserver_ipspace(self, vserver_name):
+        """Get the IPspace of the vserver, or None if not supported."""
+        if not self.features.IPSPACES:
+            return None
+
+        api_args = {
+            'query': {
+                'vserver-info': {
+                    'vserver-name': vserver_name,
+                },
+            },
+            'desired-attributes': {
+                'vserver-info': {
+                    'ipspace': None,
+                },
+            },
+        }
+        vserver_info = self.send_request('vserver-get-iter', api_args)
+
+        try:
+            ipspace = vserver_info.get_child_by_name(
+                'attributes-list').get_child_by_name(
+                    'vserver-info').get_child_content('ipspace')
+        except AttributeError:
+            msg = _('Could not determine IPspace for Vserver %s.')
+            raise exception.NetAppException(msg % vserver_name)
+        return ipspace
+
+    @na_utils.trace
+    def ipspace_has_data_vservers(self, ipspace_name):
+        """Check whether an IPspace has any data Vservers assigned to it."""
+        if not self.features.IPSPACES:
+            return False
+
+        api_args = {
+            'query': {
+                'vserver-info': {
+                    'ipspace': ipspace_name,
+                    'vserver-type': 'data'
+                },
+            },
+            'desired-attributes': {
+                'vserver-info': {
+                    'vserver-name': None,
+                },
+            },
+        }
+        result = self.send_request('vserver-get-iter', api_args)
+        return self._has_records(result)
 
     @na_utils.trace
     def list_vservers(self, vserver_type='data'):
@@ -358,7 +417,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     @na_utils.trace
     def create_network_interface(self, ip, netmask, vlan, node, port,
                                  vserver_name, allocation_id,
-                                 lif_name_template):
+                                 lif_name_template, ipspace_name):
         """Creates LIF on VLAN port."""
 
         home_port_name = port
@@ -367,7 +426,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             home_port_name = '%(port)s-%(tag)s' % {'port': port, 'tag': vlan}
 
         if self.features.BROADCAST_DOMAINS:
-            self._ensure_broadcast_domain_for_port(node, home_port_name)
+            self._ensure_broadcast_domain_for_port(node, home_port_name,
+                                                   ipspace=ipspace_name)
 
         interface_name = (lif_name_template %
                           {'node': node, 'net_allocation_id': allocation_id})
@@ -416,14 +476,34 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def _ensure_broadcast_domain_for_port(self, node, port,
                                           domain=DEFAULT_BROADCAST_DOMAIN,
                                           ipspace=DEFAULT_IPSPACE):
-        """Ensure a port is in a broadcast domain.  Create one if necessary."""
+        """Ensure a port is in a broadcast domain.  Create one if necessary.
 
-        if self._get_broadcast_domain_for_port(node, port):
+        If the IPspace:domain pair match for the given port, which commonly
+        happens in multi-node clusters, then there isn't anything to do.
+        Otherwise, we can assume the IPspace is correct and extant by this
+        point, so the remaining task is to remove the port from any domain it
+        is already in, create the desired domain if it doesn't exist, and add
+        the port to the desired domain.
+        """
+
+        port_info = self._get_broadcast_domain_for_port(node, port)
+
+        # Port already in desired ipspace and broadcast domain.
+        if (port_info['ipspace'] == ipspace
+                and port_info['broadcast-domain'] == domain):
             return
 
+        # If in another broadcast domain, remove port from it.
+        if port_info['broadcast-domain']:
+            self._remove_port_from_broadcast_domain(
+                node, port, port_info['broadcast-domain'],
+                port_info['ipspace'])
+
+        # If desired broadcast domain doesn't exist, create it.
         if not self._broadcast_domain_exists(domain, ipspace):
             self._create_broadcast_domain(domain, ipspace)
 
+        # Move the port into the broadcast domain where it is needed.
         self._add_port_to_broadcast_domain(node, port, domain, ipspace)
 
     @na_utils.trace
@@ -439,6 +519,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'desired-attributes': {
                 'net-port-info': {
                     'broadcast-domain': None,
+                    'ipspace': None,
                 },
             },
         }
@@ -452,7 +533,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             msg_args = {'port': port, 'node': node}
             raise exception.NetAppException(msg % msg_args)
 
-        return port_info[0].get_child_content('broadcast-domain')
+        port = {
+            'broadcast-domain':
+            port_info[0].get_child_content('broadcast-domain'),
+            'ipspace': port_info[0].get_child_content('ipspace')
+        }
+        return port
 
     @na_utils.trace
     def _broadcast_domain_exists(self, domain, ipspace):
@@ -483,6 +569,25 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('net-port-broadcast-domain-create', api_args)
 
     @na_utils.trace
+    def _delete_broadcast_domain(self, domain, ipspace):
+        """Delete a broadcast domain."""
+        api_args = {
+            'ipspace': ipspace,
+            'broadcast-domain': domain,
+        }
+        self.send_request('net-port-broadcast-domain-destroy', api_args)
+
+    def _delete_broadcast_domains_for_ipspace(self, ipspace_name):
+        """Deletes all broadcast domains in an IPspace."""
+        ipspaces = self.get_ipspaces(ipspace_name=ipspace_name)
+        if not ipspaces:
+            return
+
+        ipspace = ipspaces[0]
+        for broadcast_domain_name in ipspace['broadcast-domains']:
+            self._delete_broadcast_domain(broadcast_domain_name, ipspace_name)
+
+    @na_utils.trace
     def _add_port_to_broadcast_domain(self, node, port, domain, ipspace):
 
         qualified_port_name = ':'.join([node, port])
@@ -509,6 +614,19 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
                     'err_msg': e.message,
                 }
                 raise exception.NetAppException(msg % msg_args)
+
+    @na_utils.trace
+    def _remove_port_from_broadcast_domain(self, node, port, domain, ipspace):
+
+        qualified_port_name = ':'.join([node, port])
+        api_args = {
+            'ipspace': ipspace,
+            'broadcast-domain': domain,
+            'ports': {
+                'net-qualified-port-name': qualified_port_name,
+            }
+        }
+        self.send_request('net-port-broadcast-domain-remove-ports', api_args)
 
     @na_utils.trace
     def network_interface_exists(self, vserver_name, node, port, ip, netmask,
@@ -593,6 +711,103 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         """Deletes LIF."""
         api_args = {'vserver': None, 'interface-name': interface_name}
         self.send_request('net-interface-delete', api_args)
+
+    @na_utils.trace
+    def get_ipspaces(self, ipspace_name=None, max_records=1000):
+        """Gets one or more IPSpaces."""
+
+        if not self.features.IPSPACES:
+            return []
+
+        api_args = {'max-records': max_records}
+        if ipspace_name:
+            api_args['query'] = {
+                'net-ipspaces-info': {
+                    'ipspace': ipspace_name,
+                }
+            }
+
+        result = self.send_request('net-ipspaces-get-iter', api_args)
+        if not self._has_records(result):
+            return []
+
+        ipspaces = []
+
+        for net_ipspaces_info in result.get_child_by_name(
+                'attributes-list').get_children():
+
+            ipspace = {
+                'ports': [],
+                'vservers': [],
+                'broadcast-domains': [],
+            }
+
+            ports = net_ipspaces_info.get_child_by_name(
+                'ports') or netapp_api.NaElement('none')
+            for port in ports.get_children():
+                ipspace['ports'].append(port.get_content())
+
+            vservers = net_ipspaces_info.get_child_by_name(
+                'vservers') or netapp_api.NaElement('none')
+            for vserver in vservers.get_children():
+                ipspace['vservers'].append(vserver.get_content())
+
+            broadcast_domains = net_ipspaces_info.get_child_by_name(
+                'broadcast-domains') or netapp_api.NaElement('none')
+            for broadcast_domain in broadcast_domains.get_children():
+                ipspace['broadcast-domains'].append(
+                    broadcast_domain.get_content())
+
+            ipspace['ipspace'] = net_ipspaces_info.get_child_content('ipspace')
+            ipspace['id'] = net_ipspaces_info.get_child_content('id')
+            ipspace['uuid'] = net_ipspaces_info.get_child_content('uuid')
+
+            ipspaces.append(ipspace)
+
+        return ipspaces
+
+    @na_utils.trace
+    def ipspace_exists(self, ipspace_name):
+        """Checks if IPspace exists."""
+
+        if not self.features.IPSPACES:
+            return False
+
+        api_args = {
+            'query': {
+                'net-ipspaces-info': {
+                    'ipspace': ipspace_name,
+                },
+            },
+            'desired-attributes': {
+                'net-ipspaces-info': {
+                    'ipspace': None,
+                },
+            },
+        }
+        result = self.send_request('net-ipspaces-get-iter', api_args)
+        return self._has_records(result)
+
+    @na_utils.trace
+    def create_ipspace(self, ipspace_name):
+        """Creates an IPspace."""
+        api_args = {'ipspace': ipspace_name}
+        self.send_request('net-ipspaces-create', api_args)
+
+    @na_utils.trace
+    def delete_ipspace(self, ipspace_name):
+        """Deletes an IPspace."""
+
+        self._delete_broadcast_domains_for_ipspace(ipspace_name)
+
+        api_args = {'ipspace': ipspace_name}
+        self.send_request('net-ipspaces-destroy', api_args)
+
+    @na_utils.trace
+    def add_vserver_to_ipspace(self, ipspace_name, vserver_name):
+        """Assigns a vserver to an IPspace."""
+        api_args = {'ipspace': ipspace_name, 'vserver': vserver_name}
+        self.send_request('net-ipspaces-assign-vserver', api_args)
 
     @na_utils.trace
     def get_node_for_aggregate(self, aggregate_name):

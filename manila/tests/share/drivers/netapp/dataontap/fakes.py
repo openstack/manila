@@ -62,6 +62,8 @@ NODE_DATA_PORTS = ('e0c', 'e0d')
 LIF_NAME_TEMPLATE = 'os_%(net_allocation_id)s'
 SHARE_TYPE_ID = '26e89a5b-960b-46bb-a8cf-0778e653098f'
 SHARE_TYPE_NAME = 'fake_share_type'
+IPSPACE = 'fake_ipspace'
+IPSPACE_ID = '27d38c27-3e8b-4d7d-9d91-fcf295e3ac8f'
 
 CLIENT_KWARGS = {
     'username': 'admin',
@@ -203,7 +205,8 @@ NETWORK_INFO = {
          'ip_address': '10.10.10.10'},
         {'id': '7eabdeed-bad2-46ea-bd0f-a33884c869e0',
          'ip_address': '10.10.10.20'}
-    ]
+    ],
+    'neutron_subnet_id': '62bf1c2c-18eb-421b-8983-48a6d39aafe0',
 }
 NETWORK_INFO_NETMASK = '255.255.255.0'
 
