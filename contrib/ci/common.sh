@@ -16,7 +16,7 @@ function manila_check_service_vm_availability {
     wait_timeout=300
     available='false'
     while (( wait_timeout > 0 )) ; do
-        if [[ "$(ping -w 1 $1)" =~ "1 received" ]]; then
+        if ping -w 1 $1; then
             available='true'
             break
         fi
