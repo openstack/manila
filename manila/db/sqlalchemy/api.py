@@ -179,6 +179,20 @@ def require_share_exists(f):
     return wrapper
 
 
+def require_share_instance_exists(f):
+    """Decorator to require the specified share instance to exist.
+
+    Requires the wrapped function to use context and share_instance_id as
+    their first two arguments.
+    """
+
+    def wrapper(context, share_instance_id, *args, **kwargs):
+        share_instance_get(context, share_instance_id)
+        return f(context, share_instance_id, *args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
+
+
 def model_query(context, model, *args, **kwargs):
     """Query helper that accounts for context's `read_deleted` field.
 
@@ -1171,10 +1185,13 @@ def share_instance_get(context, share_instance_id, session=None,
                        with_share_data=False):
     if session is None:
         session = get_session()
-    result = (
-        model_query(context, models.ShareInstance, session=session).filter_by(
-            id=share_instance_id).first()
-    )
+    result = model_query(
+        context, models.ShareInstance, session=session,
+    ).filter_by(
+        id=share_instance_id,
+    ).options(
+        joinedload('export_locations'),
+    ).first()
     if result is None:
         raise exception.NotFound()
 
@@ -1188,10 +1205,11 @@ def share_instance_get(context, share_instance_id, session=None,
 @require_admin_context
 def share_instances_get_all(context):
     session = get_session()
-    return (
-        model_query(context, models.ShareInstance, session=session,
-                    read_deleted="no").all()
-    )
+    return model_query(
+        context, models.ShareInstance, session=session, read_deleted="no",
+    ).options(
+        joinedload('export_locations'),
+    ).all()
 
 
 @require_context
@@ -1200,15 +1218,11 @@ def share_instance_delete(context, instance_id, session=None):
         session = get_session()
 
     with session.begin():
+        share_export_locations_update(context, instance_id, [], delete=True)
         instance_ref = share_instance_get(context, instance_id,
                                           session=session)
         instance_ref.soft_delete(session=session, update_status=True)
-
-        session.query(models.ShareInstanceExportLocations).filter_by(
-            share_instance_id=instance_id).soft_delete()
-
         share = share_get(context, instance_ref['share_id'], session=session)
-
         if len(share.instances) == 0:
             share.soft_delete(session=session)
             share_access_delete_all_by_share(context, share['id'])
@@ -2019,28 +2033,89 @@ def _share_metadata_get_item(context, share_id, key, session=None):
     return result
 
 
-#################################
+############################
+# Export locations functions
+############################
+
+def _share_export_locations_get(context, share_instance_ids,
+                                include_admin_only=True, session=None):
+    session = session or get_session()
+
+    if not isinstance(share_instance_ids, (set, list, tuple)):
+        share_instance_ids = (share_instance_ids, )
+
+    query = model_query(
+        context,
+        models.ShareInstanceExportLocations,
+        session=session,
+        read_deleted="no",
+    ).filter(
+        models.ShareInstanceExportLocations.share_instance_id.in_(
+            share_instance_ids),
+    ).order_by(
+        "updated_at",
+    ).options(
+        joinedload("_el_metadata_bare"),
+    )
+
+    if not include_admin_only:
+        query = query.filter_by(is_admin_only=False)
+    return query.all()
+
+
+@require_context
+@require_share_exists
+def share_export_locations_get_by_share_id(context, share_id,
+                                           include_admin_only=True):
+    share = share_get(context, share_id)
+    ids = [instance.id for instance in share.instances]
+    rows = _share_export_locations_get(
+        context, ids, include_admin_only=include_admin_only)
+    return rows
+
+
+@require_context
+@require_share_instance_exists
+def share_export_locations_get_by_share_instance_id(context,
+                                                    share_instance_id):
+    rows = _share_export_locations_get(
+        context, [share_instance_id], include_admin_only=True)
+    return rows
+
 
 @require_context
 @require_share_exists
 def share_export_locations_get(context, share_id):
+    # NOTE(vponomaryov): this method is kept for compatibility with
+    # old approach. New one uses 'share_export_locations_get_by_share_id'.
+    # Which returns list of dicts instead of list of strings, as this one does.
     share = share_get(context, share_id)
-    rows = _share_export_locations_get(context, share.instance.id)
+    rows = _share_export_locations_get(
+        context, share.instance.id, context.is_admin)
 
     return [location['path'] for location in rows]
 
 
-def _share_export_locations_get(context, share_instance_id, session=None):
-    if not session:
-        session = get_session()
+@require_context
+def share_export_location_get_by_uuid(context, export_location_uuid,
+                                      session=None):
+    session = session or get_session()
 
-    return (
-        model_query(context, models.ShareInstanceExportLocations,
-                    session=session, read_deleted="no").
-        filter_by(share_instance_id=share_instance_id).
-        order_by("updated_at").
-        all()
+    query = model_query(
+        context,
+        models.ShareInstanceExportLocations,
+        session=session,
+        read_deleted="no",
+    ).filter_by(
+        uuid=export_location_uuid,
+    ).options(
+        joinedload("_el_metadata_bare"),
     )
+
+    result = query.first()
+    if not result:
+        raise exception.ExportLocationNotFound(uuid=export_location_uuid)
+    return result
 
 
 @require_context
@@ -2049,67 +2124,177 @@ def share_export_locations_update(context, share_instance_id, export_locations,
                                   delete):
     # NOTE(u_glide):
     # Backward compatibility code for drivers,
-    # which returns single export_location as string
-    if not isinstance(export_locations, list):
-        export_locations = [export_locations]
+    # which return single export_location as string
+    if not isinstance(export_locations, (list, tuple, set)):
+        export_locations = (export_locations, )
+    export_locations_as_dicts = []
+    for el in export_locations:
+        # NOTE(vponomaryov): transform old export locations view to new one
+        export_location = el
+        if isinstance(el, six.string_types):
+            export_location = {
+                "path": el,
+                "is_admin_only": False,
+                "metadata": {},
+            }
+        elif isinstance(export_location, dict):
+            if 'metadata' not in export_location:
+                export_location['metadata'] = {}
+        else:
+            raise exception.ManilaException(
+                _("Wrong export location type '%s'.") % type(export_location))
+        export_locations_as_dicts.append(export_location)
+    export_locations = export_locations_as_dicts
+
+    export_locations_paths = [el['path'] for el in export_locations]
 
     session = get_session()
 
-    with session.begin():
-        location_rows = _share_export_locations_get(
-            context, share_instance_id, session=session)
+    current_el_rows = _share_export_locations_get(
+        context, share_instance_id, session=session)
 
-        def get_path_list_from_rows(rows):
-            return set([l['path'] for l in rows])
+    def get_path_list_from_rows(rows):
+        return set([l['path'] for l in rows])
 
-        current_locations = get_path_list_from_rows(location_rows)
+    current_el_paths = get_path_list_from_rows(current_el_rows)
 
-        def create_indexed_time_dict(key_list):
-            base = timeutils.utcnow()
-            return {
-                # NOTE(u_glide): Incrementing timestamp by microseconds to make
-                # timestamp order match index order.
-                key: base + datetime.timedelta(microseconds=index)
-                for index, key in enumerate(key_list)
-            }
+    def create_indexed_time_dict(key_list):
+        base = timeutils.utcnow()
+        return {
+            # NOTE(u_glide): Incrementing timestamp by microseconds to make
+            # timestamp order match index order.
+            key: base + datetime.timedelta(microseconds=index)
+            for index, key in enumerate(key_list)
+        }
 
-        indexed_update_time = create_indexed_time_dict(export_locations)
+    indexed_update_time = create_indexed_time_dict(export_locations_paths)
 
-        for location in location_rows:
-            if delete and location['path'] not in export_locations:
-                location.soft_delete(session)
-            else:
-                updated_at = indexed_update_time[location['path']]
-                location.update({
-                    'updated_at': updated_at,
-                    'deleted': 0,
-                })
-
-            location.save(session=session)
-
-        # Now add new export locations
-        for path in export_locations:
-            if path in current_locations:
-                # Already updated
-                continue
-
-            location_ref = models.ShareInstanceExportLocations()
-            location_ref.update({
-                'path': path,
-                'share_instance_id': share_instance_id,
-                'updated_at': indexed_update_time[path],
+    for el in current_el_rows:
+        if delete and el['path'] not in export_locations_paths:
+            export_location_metadata_delete(context, el['uuid'])
+            el.soft_delete(session)
+        else:
+            updated_at = indexed_update_time[el['path']]
+            el.update({
+                'updated_at': updated_at,
                 'deleted': 0,
             })
-            location_ref.save(session=session)
+            el.save(session=session)
+            if el['el_metadata']:
+                export_location_metadata_update(
+                    context, el['uuid'], el['el_metadata'], session=session)
 
-        if delete:
-            return export_locations
+    # Now add new export locations
+    for el in export_locations:
+        if el['path'] in current_el_paths:
+            # Already updated
+            continue
 
-        return get_path_list_from_rows(_share_export_locations_get(
-            context, share_instance_id, session=session))
+        location_ref = models.ShareInstanceExportLocations()
+        location_ref.update({
+            'uuid': uuidutils.generate_uuid(),
+            'path': el['path'],
+            'share_instance_id': share_instance_id,
+            'updated_at': indexed_update_time[el['path']],
+            'deleted': 0,
+            'is_admin_only': el.get('is_admin_only', False),
+        })
+        location_ref.save(session=session)
+        if not el.get('metadata'):
+            continue
+        export_location_metadata_update(
+            context, location_ref['uuid'], el.get('metadata'), session=session)
+
+    return get_path_list_from_rows(_share_export_locations_get(
+        context, share_instance_id, session=session))
 
 
-#################################
+#####################################
+# Export locations metadata functions
+#####################################
+
+def _export_location_metadata_get_query(context, export_location_uuid,
+                                        session=None):
+    session = session or get_session()
+    export_location_id = share_export_location_get_by_uuid(
+        context, export_location_uuid).id
+
+    return model_query(
+        context, models.ShareInstanceExportLocationsMetadata, session=session,
+        read_deleted="no",
+    ).filter_by(
+        export_location_id=export_location_id,
+    )
+
+
+@require_context
+def export_location_metadata_get(context, export_location_uuid, session=None):
+    rows = _export_location_metadata_get_query(
+        context, export_location_uuid, session=session).all()
+    result = {}
+    for row in rows:
+        result[row["key"]] = row["value"]
+    return result
+
+
+@require_context
+def export_location_metadata_delete(context, export_location_uuid, keys=None):
+    session = get_session()
+    metadata = _export_location_metadata_get_query(
+        context, export_location_uuid, session=session,
+    )
+    # NOTE(vponomaryov): if keys is None then we delete all metadata.
+    if keys is not None:
+        keys = keys if isinstance(keys, (list, set, tuple)) else (keys, )
+        metadata = metadata.filter(
+            models.ShareInstanceExportLocationsMetadata.key.in_(keys))
+    metadata = metadata.all()
+    for meta_ref in metadata:
+        meta_ref.soft_delete(session=session)
+
+
+@require_context
+@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+def export_location_metadata_update(context, export_location_uuid, metadata,
+                                    delete=False, session=None):
+    session = session or get_session()
+    if delete:
+        original_metadata = export_location_metadata_get(
+            context, export_location_uuid, session=session)
+        keys_for_deletion = set(original_metadata).difference(metadata)
+        if keys_for_deletion:
+            export_location_metadata_delete(
+                context, export_location_uuid, keys=keys_for_deletion)
+
+    el = share_export_location_get_by_uuid(context, export_location_uuid)
+    for meta_key, meta_value in metadata.items():
+        # NOTE(vponomaryov): we should use separate session
+        # for each meta_ref because of autoincrement of integer primary key
+        # that will not take effect using one session and we will rewrite,
+        # in that case, single record - first one added with this call.
+        session = get_session()
+        item = {"value": meta_value, "updated_at": timeutils.utcnow()}
+
+        meta_ref = _export_location_metadata_get_query(
+            context, export_location_uuid, session=session,
+        ).filter_by(
+            key=meta_key,
+        ).first()
+
+        if not meta_ref:
+            meta_ref = models.ShareInstanceExportLocationsMetadata()
+            item.update({
+                "key": meta_key,
+                "export_location_id": el.id,
+            })
+
+        meta_ref.update(item)
+        meta_ref.save(session=session)
+
+    return metadata
+
+
+###################################
 
 
 @require_context

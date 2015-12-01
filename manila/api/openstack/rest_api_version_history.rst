@@ -69,3 +69,8 @@ user documentation.
 2.8
 ---
   Allow to set share visibility explicitly using "manage" API.
+
+2.9
+---
+  Add export locations API. Remove export locations from "shares" and
+  "share instances" APIs.

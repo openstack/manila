@@ -20,6 +20,7 @@ from tempest_lib.common.utils import data_utils
 from tempest_lib import exceptions
 
 from manila_tempest_tests.tests.scenario import manager_share as manager
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -190,6 +191,9 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         instance1 = self.boot_instance()
         self.allow_access_ip(self.share['id'], instance=instance1)
         ssh_client_inst1 = self.init_ssh(instance1)
+
+        # TODO(vponomaryov): use separate API for getting export location for
+        # share when "v2" client is used.
         first_location = self.share['export_locations'][0]
         self.mount_share(first_location, ssh_client_inst1)
         self.addCleanup(self.umount_share,
@@ -235,12 +239,13 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         dest_pool = dest_pool['name']
 
-        old_export_location = share['export_locations'][0]
-
         instance1 = self.boot_instance()
         self.allow_access_ip(self.share['id'], instance=instance1,
                              cleanup=False)
         ssh_client = self.init_ssh(instance1)
+
+        # TODO(vponomaryov): use separate API for getting export location for
+        # share when "v2" client is used.
         first_location = self.share['export_locations'][0]
         self.mount_share(first_location, ssh_client)
 
@@ -266,12 +271,19 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.umount_share(ssh_client)
 
         share = self.migrate_share(share['id'], dest_pool)
+        if utils.is_microversion_supported("2.9"):
+            second_location = (
+                self.shares_v2_client.list_share_export_locations(
+                    share['id'])[0]['path'])
+        else:
+            # NOTE(vponomaryov): following approach is valid for picking up
+            # export location only using microversions lower than '2.9'.
+            second_location = share['export_locations'][0]
 
         self.assertEqual(dest_pool, share['host'])
-        self.assertNotEqual(old_export_location, share['export_locations'][0])
+        self.assertNotEqual(first_location, second_location)
         self.assertEqual('migration_success', share['task_state'])
 
-        second_location = share['export_locations'][0]
         self.mount_share(second_location, ssh_client)
 
         output = ssh_client.exec_command("ls -lRA --ignore=lost+found /mnt")

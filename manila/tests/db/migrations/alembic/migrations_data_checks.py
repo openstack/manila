@@ -37,6 +37,7 @@ import abc
 
 from oslo_utils import uuidutils
 import six
+from sqlalchemy import exc as sa_exc
 
 from manila.db.migrations import utils
 
@@ -172,3 +173,83 @@ class AvailabilityZoneMigrationChecks(BaseMigrationChecks):
             self.test_case.assertIn(
                 service.availability_zone, self.valid_az_names
             )
+
+
+@map_to_migration('dda6de06349')
+class ShareInstanceExportLocationMetadataChecks(BaseMigrationChecks):
+    el_table_name = 'share_instance_export_locations'
+    elm_table_name = 'share_instance_export_locations_metadata'
+
+    def setup_upgrade_data(self, engine):
+        # Setup shares
+        share_fixture = [{'id': 'foo_share_id'}, {'id': 'bar_share_id'}]
+        share_table = utils.load_table('shares', engine)
+        for fixture in share_fixture:
+            engine.execute(share_table.insert(fixture))
+
+        # Setup share instances
+        si_fixture = [
+            {'id': 'foo_share_instance_id_oof',
+             'share_id': share_fixture[0]['id']},
+            {'id': 'bar_share_instance_id_rab',
+             'share_id': share_fixture[1]['id']},
+        ]
+        si_table = utils.load_table('share_instances', engine)
+        for fixture in si_fixture:
+            engine.execute(si_table.insert(fixture))
+
+        # Setup export locations
+        el_fixture = [
+            {'id': 1, 'path': '/1', 'share_instance_id': si_fixture[0]['id']},
+            {'id': 2, 'path': '/2', 'share_instance_id': si_fixture[1]['id']},
+        ]
+        el_table = utils.load_table(self.el_table_name, engine)
+        for fixture in el_fixture:
+            engine.execute(el_table.insert(fixture))
+
+    def check_upgrade(self, engine, data):
+        el_table = utils.load_table(
+            'share_instance_export_locations', engine)
+        for el in engine.execute(el_table.select()):
+            self.test_case.assertTrue(hasattr(el, 'is_admin_only'))
+            self.test_case.assertTrue(hasattr(el, 'uuid'))
+            self.test_case.assertEqual(False, el.is_admin_only)
+            self.test_case.assertTrue(uuidutils.is_uuid_like(el.uuid))
+
+        # Write export location metadata
+        el_metadata = [
+            {'key': 'foo_key', 'value': 'foo_value', 'export_location_id': 1},
+            {'key': 'bar_key', 'value': 'bar_value', 'export_location_id': 2},
+        ]
+        elm_table = utils.load_table(self.elm_table_name, engine)
+        engine.execute(elm_table.insert(el_metadata))
+
+        # Verify values of written metadata
+        for el_meta_datum in el_metadata:
+            el_id = el_meta_datum['export_location_id']
+            records = engine.execute(elm_table.select().where(
+                elm_table.c.export_location_id == el_id))
+            self.test_case.assertEqual(1, records.rowcount)
+            record = records.first()
+
+            expected_keys = (
+                'id', 'created_at', 'updated_at', 'deleted_at', 'deleted',
+                'export_location_id', 'key', 'value',
+            )
+            self.test_case.assertEqual(len(expected_keys), len(record.keys()))
+            for key in expected_keys:
+                self.test_case.assertIn(key, record.keys())
+
+            for k, v in el_meta_datum.items():
+                self.test_case.assertTrue(hasattr(record, k))
+                self.test_case.assertEqual(v, getattr(record, k))
+
+    def check_downgrade(self, engine):
+        el_table = utils.load_table(
+            'share_instance_export_locations', engine)
+        for el in engine.execute(el_table.select()):
+            self.test_case.assertFalse(hasattr(el, 'is_admin_only'))
+            self.test_case.assertFalse(hasattr(el, 'uuid'))
+        self.test_case.assertRaises(
+            sa_exc.NoSuchTableError,
+            utils.load_table, self.elm_table_name, engine)

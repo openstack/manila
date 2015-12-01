@@ -82,11 +82,12 @@ class SharesActionsTest(base.BaseSharesTest):
         # verify keys
         expected_keys = [
             "status", "description", "links", "availability_zone",
-            "created_at", "export_location", "project_id",
-            "export_locations", "volume_type", "share_proto", "name",
+            "created_at", "project_id", "volume_type", "share_proto", "name",
             "snapshot_id", "id", "size", "share_network_id", "metadata",
             "host", "snapshot_id", "is_public",
         ]
+        if utils.is_microversion_lt(version, '2.9'):
+            expected_keys.extend(["export_location", "export_locations"])
         if utils.is_microversion_ge(version, '2.2'):
             expected_keys.append("snapshot_support")
         if utils.is_microversion_ge(version, '2.4'):
@@ -131,10 +132,15 @@ class SharesActionsTest(base.BaseSharesTest):
         self._get_share('2.6')
 
     @test.attr(type=["gate", ])
+    @utils.skip_if_microversion_not_supported('2.9')
+    def test_get_share_export_locations_removed(self):
+        self._get_share('2.9')
+
+    @test.attr(type=["gate", ])
     def test_list_shares(self):
 
         # list shares
-        shares = self.shares_client.list_shares()
+        shares = self.shares_v2_client.list_shares()
 
         # verify keys
         keys = ["name", "id", "links"]
@@ -155,11 +161,12 @@ class SharesActionsTest(base.BaseSharesTest):
         # verify keys
         keys = [
             "status", "description", "links", "availability_zone",
-            "created_at", "export_location", "project_id",
-            "export_locations", "volume_type", "share_proto", "name",
+            "created_at", "project_id", "volume_type", "share_proto", "name",
             "snapshot_id", "id", "size", "share_network_id", "metadata",
             "host", "snapshot_id", "is_public", "share_type",
         ]
+        if utils.is_microversion_lt(version, '2.9'):
+            keys.extend(["export_location", "export_locations"])
         if utils.is_microversion_ge(version, '2.2'):
             keys.append("snapshot_support")
         if utils.is_microversion_ge(version, '2.4'):
@@ -193,6 +200,11 @@ class SharesActionsTest(base.BaseSharesTest):
     @utils.skip_if_microversion_not_supported('2.6')
     def test_list_shares_with_detail_share_type_name_key(self):
         self._list_shares_with_detail('2.6')
+
+    @test.attr(type=["gate", ])
+    @utils.skip_if_microversion_not_supported('2.9')
+    def test_list_shares_with_detail_export_locations_removed(self):
+        self._list_shares_with_detail('2.9')
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_metadata(self):

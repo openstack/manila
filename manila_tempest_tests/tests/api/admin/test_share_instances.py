@@ -17,6 +17,7 @@ from tempest import config
 from tempest import test
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -58,21 +59,31 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
         msg = 'Share instance for share %s was not found.' % self.share['id']
         self.assertIn(self.share['id'], share_ids, msg)
 
-    @test.attr(type=["gate", ])
-    def test_get_share_instance_v2_3(self):
+    def _get_share_instance(self, version):
         """Test that we get the proper keys back for the instance."""
         share_instances = self.shares_v2_client.get_instances_of_share(
-            self.share['id'], version='2.3'
+            self.share['id'], version=version,
         )
-        si = self.shares_v2_client.get_share_instance(share_instances[0]['id'],
-                                                      version='2.3')
+        si = self.shares_v2_client.get_share_instance(
+            share_instances[0]['id'], version=version)
 
-        expected_keys = ['host', 'share_id', 'id', 'share_network_id',
-                         'status', 'availability_zone', 'share_server_id',
-                         'export_locations', 'export_location', 'created_at']
-        actual_keys = si.keys()
-        self.assertEqual(sorted(expected_keys), sorted(actual_keys),
+        expected_keys = [
+            'host', 'share_id', 'id', 'share_network_id', 'status',
+            'availability_zone', 'share_server_id', 'created_at',
+        ]
+        if utils.is_microversion_lt(version, '2.9'):
+            expected_keys.extend(["export_location", "export_locations"])
+        expected_keys = sorted(expected_keys)
+        actual_keys = sorted(si.keys())
+        self.assertEqual(expected_keys, actual_keys,
                          'Share instance %s returned incorrect keys; '
-                         'expected %s, got %s.' % (si['id'],
-                                                   sorted(expected_keys),
-                                                   sorted(actual_keys)))
+                         'expected %s, got %s.' % (
+                             si['id'], expected_keys, actual_keys))
+
+    @test.attr(type=["gate", ])
+    def test_get_share_instance_v2_3(self):
+        self._get_share_instance('2.3')
+
+    @test.attr(type=["gate", ])
+    def test_get_share_instance_v2_9(self):
+        self._get_share_instance('2.9')

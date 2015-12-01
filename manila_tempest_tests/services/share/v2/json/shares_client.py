@@ -238,6 +238,23 @@ class SharesV2Client(shares_client.SharesClient):
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 
+    def get_share_export_location(
+            self, share_id, export_location_uuid, version=LATEST_MICROVERSION):
+        resp, body = self.get(
+            "shares/%(share_id)s/export_locations/%(el_uuid)s" % {
+                "share_id": share_id, "el_uuid": export_location_uuid},
+            version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_share_export_locations(
+            self, share_id, version=LATEST_MICROVERSION):
+        resp, body = self.get(
+            "shares/%(share_id)s/export_locations" % {"share_id": share_id},
+            version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
     def delete_share(self, share_id, params=None,
                      version=LATEST_MICROVERSION):
         uri = "shares/%s" % share_id
@@ -262,6 +279,24 @@ class SharesV2Client(shares_client.SharesClient):
     def get_share_instance(self, instance_id, version=LATEST_MICROVERSION):
         resp, body = self.get("share_instances/%s" % instance_id,
                               version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def get_share_instance_export_location(
+            self, instance_id, export_location_uuid,
+            version=LATEST_MICROVERSION):
+        resp, body = self.get(
+            "share_instances/%(instance_id)s/export_locations/%(el_uuid)s" % {
+                "instance_id": instance_id, "el_uuid": export_location_uuid},
+            version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_share_instance_export_locations(
+            self, instance_id, version=LATEST_MICROVERSION):
+        resp, body = self.get(
+            "share_instances/%s/export_locations" % instance_id,
+            version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
 

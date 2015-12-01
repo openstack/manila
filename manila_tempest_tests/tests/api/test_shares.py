@@ -19,6 +19,7 @@ from tempest_lib import exceptions as lib_exc  # noqa
 import testtools  # noqa
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -40,7 +41,7 @@ class SharesNFSTest(base.BaseSharesTest):
 
         share = self.create_share(self.protocol)
         detailed_elements = {'name', 'id', 'availability_zone',
-                             'description', 'export_location', 'project_id',
+                             'description', 'project_id',
                              'host', 'created_at', 'share_proto', 'metadata',
                              'size', 'snapshot_id', 'share_network_id',
                              'status', 'share_type', 'volume_type', 'links',
@@ -57,12 +58,21 @@ class SharesNFSTest(base.BaseSharesTest):
 
         # Get share using v 2.1 - we expect key 'snapshot_support' to be absent
         share_get = self.shares_v2_client.get_share(share['id'], version='2.1')
+        detailed_elements.add('export_location')
         self.assertTrue(detailed_elements.issubset(share_get.keys()), msg)
 
         # Get share using v 2.2 - we expect key 'snapshot_support' to exist
         share_get = self.shares_v2_client.get_share(share['id'], version='2.2')
         detailed_elements.add('snapshot_support')
         self.assertTrue(detailed_elements.issubset(share_get.keys()), msg)
+
+        if utils.is_microversion_supported('2.9'):
+            # Get share using v 2.9 - key 'export_location' is expected
+            # to be absent
+            share_get = self.shares_v2_client.get_share(
+                share['id'], version='2.9')
+            detailed_elements.remove('export_location')
+            self.assertTrue(detailed_elements.issubset(share_get.keys()), msg)
 
         # Delete share
         self.shares_v2_client.delete_share(share['id'])

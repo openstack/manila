@@ -18,6 +18,10 @@ class ViewBuilder(common.ViewBuilder):
 
     _collection_name = 'share_instances'
 
+    _detail_version_modifiers = [
+        "remove_export_locations",
+    ]
+
     def detail_list(self, request, instances):
         """Detailed view of a list of share instances."""
         return self._list_view(self.detail, request, instances)
@@ -38,7 +42,8 @@ class ViewBuilder(common.ViewBuilder):
             'export_location': share_instance.get('export_location'),
             'export_locations': export_locations,
         }
-
+        self.update_versioned_resource_dict(
+            request, instance_dict, share_instance)
         return {'share_instance': instance_dict}
 
     def _list_view(self, func, request, instances):
@@ -54,3 +59,8 @@ class ViewBuilder(common.ViewBuilder):
             instances_dict[self._collection_name] = instances_links
 
         return instances_dict
+
+    @common.ViewBuilder.versioned_method("2.9")
+    def remove_export_locations(self, share_instance_dict, share_instance):
+        share_instance_dict.pop('export_location')
+        share_instance_dict.pop('export_locations')

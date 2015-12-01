@@ -363,13 +363,52 @@ class ShareInstance(BASE, ManilaBase):
 
 
 class ShareInstanceExportLocations(BASE, ManilaBase):
-    """Represents export locations of shares."""
+    """Represents export locations of share instances."""
     __tablename__ = 'share_instance_export_locations'
 
+    _extra_keys = ['el_metadata', ]
+
+    @property
+    def el_metadata(self):
+        el_metadata = {}
+        for meta in self._el_metadata_bare:  # pylint: disable=E1101
+            el_metadata[meta['key']] = meta['value']
+        return el_metadata
+
     id = Column(Integer, primary_key=True)
+    uuid = Column(String(36), nullable=False, unique=True)
     share_instance_id = Column(
         String(36), ForeignKey('share_instances.id'), nullable=False)
     path = Column(String(2000))
+    is_admin_only = Column(Boolean, default=False, nullable=False)
+
+
+class ShareInstanceExportLocationsMetadata(BASE, ManilaBase):
+    """Represents export location metadata of share instances."""
+    __tablename__ = "share_instance_export_locations_metadata"
+
+    _extra_keys = ['export_location_uuid', ]
+
+    id = Column(Integer, primary_key=True)
+    export_location_id = Column(
+        Integer,
+        ForeignKey("share_instance_export_locations.id"), nullable=False)
+    key = Column(String(255), nullable=False)
+    value = Column(String(1023), nullable=False)
+    export_location = orm.relationship(
+        ShareInstanceExportLocations,
+        backref="_el_metadata_bare",
+        foreign_keys=export_location_id,
+        lazy='immediate',
+        primaryjoin="and_("
+                    "%(cls_name)s.export_location_id == "
+                    "ShareInstanceExportLocations.id,"
+                    "%(cls_name)s.deleted == 0)" % {
+                        "cls_name": "ShareInstanceExportLocationsMetadata"})
+
+    @property
+    def export_location_uuid(self):
+        return self.export_location.uuid  # pylint: disable=E1101
 
 
 class ShareTypes(BASE, ManilaBase):

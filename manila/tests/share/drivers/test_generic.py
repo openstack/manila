@@ -339,11 +339,16 @@ class GenericShareDriverTestCase(test.TestCase):
                          mock.Mock(return_value=volume2))
         self.mock_object(self._driver, '_format_device')
         self.mock_object(self._driver, '_mount_device')
+        expected_el = {
+            'is_admin_only': False,
+            'path': 'fakelocation',
+            'metadata': {'export_location_metadata_example': 'example'},
+        }
 
         result = self._driver.create_share(
             self._context, self.share, share_server=self.server)
 
-        self.assertEqual('fakelocation', result)
+        self.assertEqual(expected_el, result)
         self._driver._allocate_container.assert_called_once_with(
             self._driver.admin_context, self.share)
         self._driver._attach_volume.assert_called_once_with(

@@ -242,7 +242,15 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         location = helper.create_export(
             server_details,
             share['name'])
-        return location
+        return {
+            "path": location,
+            "is_admin_only": False,
+            "metadata": {
+                # TODO(vponomaryov): remove this fake metadata when proper
+                # appears.
+                "export_location_metadata_example": "example",
+            },
+        }
 
     def _format_device(self, server_details, volume):
         """Formats device attached to the service vm."""

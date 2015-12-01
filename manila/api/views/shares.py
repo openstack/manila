@@ -25,6 +25,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_consistency_group_fields",
         "add_task_state_field",
         "modify_share_type_field",
+        "remove_export_locations",
     ]
 
     def summary_list(self, request, shares):
@@ -116,6 +117,11 @@ class ViewBuilder(common.ViewBuilder):
             'share_type_name': share_type_name,
             'share_type': share_type,
         })
+
+    @common.ViewBuilder.versioned_method("2.9")
+    def remove_export_locations(self, share_dict, share):
+        share_dict.pop('export_location')
+        share_dict.pop('export_locations')
 
     def _list_view(self, func, request, shares):
         """Provide a view for a list of shares."""
