@@ -405,7 +405,8 @@ def service_is_up(service):
     """Check whether a service is up based on last heartbeat."""
     last_heartbeat = service['updated_at'] or service['created_at']
     # Timestamps in DB are UTC.
-    elapsed = timeutils.total_seconds(timeutils.utcnow() - last_heartbeat)
+    tdelta = timeutils.utcnow() - last_heartbeat
+    elapsed = tdelta.total_seconds()
     return abs(elapsed) <= CONF.service_down_time
 
 
