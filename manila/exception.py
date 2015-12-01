@@ -688,3 +688,8 @@ class InvalidCGSnapshot(Invalid):
 
 class DriverNotInitialized(ManilaException):
     message = _("Share driver '%(driver)s' not initialized.")
+
+
+class ShareResourceNotFound(StorageResourceNotFound):
+    message = _("Share id %(share_id)s could not be found "
+                "in storage backend.")
