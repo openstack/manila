@@ -17,7 +17,7 @@ from oslo_serialization import jsonutils
 import six
 from webob import exc as webob_exc
 
-from manila.api.v1 import share_instances
+from manila.api.v2 import share_instances
 from manila.common import constants
 from manila import context
 from manila import db
