@@ -323,7 +323,8 @@ class SharesV2Client(shares_client.SharesClient):
 
     def manage_share(self, service_host, protocol, export_path,
                      share_type_id, name=None, description=None,
-                     version=LATEST_MICROVERSION, url=None):
+                     is_public=False, version=LATEST_MICROVERSION,
+                     url=None):
         post_body = {
             "share": {
                 "export_path": export_path,
@@ -332,6 +333,7 @@ class SharesV2Client(shares_client.SharesClient):
                 "share_type": share_type_id,
                 "name": name,
                 "description": description,
+                "is_public": is_public,
             }
         }
         if url is None:

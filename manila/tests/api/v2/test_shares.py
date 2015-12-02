@@ -30,6 +30,7 @@ from manila.common import constants
 from manila import context
 from manila import db
 from manila import exception
+from manila import policy
 from manila.share import api as share_api
 from manila.share import share_types
 from manila import test
@@ -1299,8 +1300,11 @@ class ShareManageTest(test.TestCase):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.controller = shares.ShareController()
+        self.resource_name = self.controller.resource_name
         self.request = fakes.HTTPRequest.blank(
-            '/v2/share/manage', use_admin_context=True, version='2.7')
+            '/v2/shares/manage', use_admin_context=True, version='2.7')
+        self.mock_policy_check = self.mock_object(
+            policy, 'check_policy', mock.Mock(return_value=True))
 
     def _setup_manage_mocks(self, service_is_up=True):
         self.mock_object(db, 'service_get_by_host_and_topic', mock.Mock(
@@ -1318,7 +1322,6 @@ class ShareManageTest(test.TestCase):
                 mock.Mock(side_effect=exception.ServiceIsDown(service='fake')))
 
     @ddt.data({},
-              {'share': None},
               {'shares': {}},
               {'share': get_fake_manage_body('', None, None)})
     def test_share_manage_invalid_body(self, body):
@@ -1404,6 +1407,16 @@ class ShareManageTest(test.TestCase):
                              driver_options=dict(volume_id='quuz')),
     )
     def test_share_manage(self, data):
+        self._test_share_manage(data, "2.7")
+
+    @ddt.data(
+        get_fake_manage_body(name='foo', description='bar', is_public=True),
+        get_fake_manage_body(name='foo', description='bar', is_public=False)
+    )
+    def test_share_manage_with_is_public(self, data):
+        self._test_share_manage(data, "2.8")
+
+    def _test_share_manage(self, data, version):
         self._setup_manage_mocks()
         return_share = {'share_type_id': '', 'id': 'fake'}
         self.mock_object(
@@ -1418,11 +1431,20 @@ class ShareManageTest(test.TestCase):
         }
         driver_options = data['share'].get('driver_options', {})
 
-        actual_result = self.controller.manage(self.request, data)
+        if (api_version.APIVersionRequest(version) >=
+                api_version.APIVersionRequest('2.8')):
+            share['is_public'] = data['share']['is_public']
+
+        req = fakes.HTTPRequest.blank('/v2/shares/manage', version=version,
+                                      use_admin_context=True)
+
+        actual_result = self.controller.manage(req, data)
 
         share_api.API.manage.assert_called_once_with(
             mock.ANY, share, driver_options)
         self.assertIsNotNone(actual_result)
+        self.mock_policy_check.assert_called_once_with(
+            req.environ['manila.context'], self.resource_name, 'manage')
 
     def test_wrong_permissions(self):
         body = get_fake_manage_body()

@@ -136,9 +136,16 @@ class ShareController(shares.ShareMixin,
         """Shrink size of a share."""
         return self._shrink(req, id, body)
 
-    @wsgi.Controller.api_version('2.7')
+    @wsgi.Controller.api_version('2.7', '2.7')
     def manage(self, req, body):
-        return self._manage(req, body)
+        body.get('share', {}).pop('is_public', None)
+        detail = self._manage(req, body)
+        return detail
+
+    @wsgi.Controller.api_version("2.8")  # noqa
+    def manage(self, req, body):  # pylint: disable=E0102
+        detail = self._manage(req, body)
+        return detail
 
     @wsgi.Controller.api_version('2.7')
     @wsgi.action('unmanage')

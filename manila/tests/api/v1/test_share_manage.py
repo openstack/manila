@@ -54,7 +54,6 @@ class ShareManageTest(test.TestCase):
             policy, 'check_policy', mock.Mock(return_value=True))
 
     @ddt.data({},
-              {'share': None},
               {'shares': {}},
               {'share': get_fake_manage_body('', None, None)})
     def test_share_manage_invalid_body(self, body):
@@ -173,6 +172,7 @@ class ShareManageTest(test.TestCase):
             'display_name': 'foo',
             'display_description': 'bar',
         }
+        data['share']['is_public'] = 'foo'
         driver_options = data['share'].get('driver_options', {})
 
         actual_result = self.controller.create(self.request, data)
