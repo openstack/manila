@@ -405,7 +405,7 @@ class StorageConnectionTestCase(test.TestCase):
         xml_req_mock.assert_has_calls(expected_calls)
 
         ssh_calls = [
-            mock.call(self.nfs_share.cmd_get(), True),
+            mock.call(self.nfs_share.cmd_get(), False),
             mock.call(self.nfs_share.cmd_delete(), True),
         ]
         ssh_cmd_mock.assert_has_calls(ssh_calls)
@@ -792,6 +792,47 @@ class StorageConnectionTestCase(test.TestCase):
         expected_calls = [
             mock.call(self.vdm.req_get()),
             mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+            mock.call(self.mover.req_delete_interface(
+                fakes.FakeData.network_allocations_ip1)),
+            mock.call(self.mover.req_delete_interface(
+                fakes.FakeData.network_allocations_ip2)),
+            mock.call(self.vdm.req_delete()),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
+        ssh_calls = [
+            mock.call(self.vdm.cmd_get_interfaces(), False),
+            mock.call(self.vdm.cmd_detach_nfs_interface(), True),
+        ]
+        ssh_cmd_mock.assert_has_calls(ssh_calls)
+
+    def test_teardown_server_with_invalid_cifs_server_modification(self):
+        hook = utils.RequestSideEffect()
+        hook.append(self.vdm.resp_get_succeed())
+        hook.append(self.cifs_server.resp_get_succeed(
+            mover_id=self.vdm.vdm_id, is_vdm=True, join_domain=True))
+        hook.append(self.cifs_server.resp_task_error())
+        hook.append(self.cifs_server.resp_task_succeed())
+        hook.append(self.mover.resp_task_succeed())
+        hook.append(self.mover.resp_task_succeed())
+        hook.append(self.vdm.resp_task_succeed())
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        ssh_hook = utils.SSHSideEffect()
+        ssh_hook.append(self.vdm.output_get_interfaces())
+        ssh_hook.append()
+        ssh_cmd_mock = mock.Mock(side_effect=ssh_hook)
+        self.connection.manager.connectors['SSH'].run_ssh = ssh_cmd_mock
+
+        self.connection.teardown_server(fakes.SERVER_DETAIL,
+                                        fakes.SECURITY_SERVICE)
+
+        expected_calls = [
+            mock.call(self.vdm.req_get()),
+            mock.call(self.cifs_server.req_get(self.vdm.vdm_id)),
+            mock.call(self.cifs_server.req_modify(self.vdm.vdm_id)),
+            mock.call(self.cifs_server.req_delete(self.vdm.vdm_id)),
             mock.call(self.mover.req_delete_interface(
                 fakes.FakeData.network_allocations_ip1)),
             mock.call(self.mover.req_delete_interface(

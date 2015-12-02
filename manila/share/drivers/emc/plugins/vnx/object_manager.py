@@ -1766,7 +1766,7 @@ class NFSShare(StorageObject):
 
         self.nfs_share_map.pop(name)
 
-    def get(self, name, mover_name, force=False):
+    def get(self, name, mover_name, force=False, check_exit_code=False):
         if name in self.nfs_share_map and not force:
             return constants.STATUS_OK, self.nfs_share_map[name]
 
@@ -1789,7 +1789,8 @@ class NFSShare(StorageObject):
         ]
 
         try:
-            out, err = self._execute_cmd(nfs_query_cmd, check_exit_code=True)
+            out, err = self._execute_cmd(nfs_query_cmd,
+                                         check_exit_code=check_exit_code)
         except processutils.ProcessExecutionError as expt:
             dup_msg = (r'%(mover_name)s : No such file or directory' %
                        {'mover_name': mover_name})
@@ -1824,6 +1825,8 @@ class NFSShare(StorageObject):
                     nfs_share['RoHosts'] = field[3:].split(":")
 
             self.nfs_share_map[name] = nfs_share
+        else:
+            return constants.STATUS_NOT_FOUND, None
 
         return constants.STATUS_OK, self.nfs_share_map[name]
 
@@ -1877,7 +1880,7 @@ class NFSShare(StorageObject):
                                        accesshosts)
 
                 # Update self.nfs_share_map
-                self.get(share_name, mover_name, True)
+                self.get(share_name, mover_name, True, True)
 
         do_allow_access(share_name, host_ip, mover_name, access_level)
 
@@ -1923,7 +1926,7 @@ class NFSShare(StorageObject):
                                        accesshosts)
 
                 # Update self.nfs_share_map
-                self.get(share_name, mover_name, True)
+                self.get(share_name, mover_name, True, True)
 
         do_deny_access(share_name, host_ip, mover_name)
 

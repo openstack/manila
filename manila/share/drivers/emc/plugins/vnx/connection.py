@@ -597,8 +597,13 @@ class VNXStorageConnection(driver.StorageConnection):
                             'is_vdm': True,
                         }
 
-                        self._get_context('CIFSServer').modify(
-                            cifs_server_args)
+                        try:
+                            self._get_context('CIFSServer').modify(
+                                cifs_server_args)
+                        except exception.EMCVnxXMLAPIError as expt:
+                            LOG.debug("Failed to modify CIFS server "
+                                      "%(server)s. Reason: %(err)s.",
+                                      {'server': server, 'err': expt})
 
                         self._get_context('CIFSServer').delete(name, vdm_name)
 

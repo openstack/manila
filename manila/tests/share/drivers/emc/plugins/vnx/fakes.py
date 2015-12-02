@@ -1107,7 +1107,7 @@ class CIFSServerTestData(StorageObjectTestData):
         )
 
     @start_task
-    def req_modify(self, mover_id, is_vdm, join_domain):
+    def req_modify(self, mover_id, is_vdm=True, join_domain=False):
         return (
             '<ModifyW2KCifsServer mover="%(mover_id)s" '
             'moverIdIsVdm="%(is_vdm)s" name="%(cifsserver)s">'
