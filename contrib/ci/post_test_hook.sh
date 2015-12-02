@@ -95,12 +95,18 @@ fi
 set +o errexit
 cd $BASE/new/tempest
 
-export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-12}
+export MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-20}
 export MANILA_TESTS=${MANILA_TESTS:-'manila_tempest_tests.tests.api'}
 
+# Run only NFS tests on MySQL backend to reduce amount of tests per job
+iniset $BASE/new/tempest/etc/tempest.conf share enable_protocols nfs
 if [[ "$JOB_NAME" =~ "scenario" ]]; then
     echo "Set test set to scenario only"
     MANILA_TESTS='manila_tempest_tests.tests.scenario'
+    iniset $BASE/new/tempest/etc/tempest.conf share enable_protocols nfs,cifs
+elif [[ "$JOB_NAME" =~ "postgres"  ]]; then
+    # Run only CIFS tests on PostgreSQL backend to reduce amount of tests per job
+    iniset $BASE/new/tempest/etc/tempest.conf share enable_protocols cifs
 elif [[ "$JOB_NAME" =~ "no-share-servers"  ]]; then
     # Using approach without handling of share servers we have bigger load for
     # volume creation in Cinder using Generic driver. So, reduce amount of

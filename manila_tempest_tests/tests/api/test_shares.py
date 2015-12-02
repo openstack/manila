@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
 from tempest import config  # noqa
 from tempest import test  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
@@ -36,40 +35,41 @@ class SharesNFSTest(base.BaseSharesTest):
             raise cls.skipException(message)
         cls.share = cls.create_share(cls.protocol)
 
-    def _create_delete_share(self, version):
+    @test.attr(type=["gate", ])
+    def test_create_get_delete_share(self):
 
-        # create share
-        share = self.create_share(
-            self.protocol, version=six.text_type(version))
+        share = self.create_share(self.protocol)
         detailed_elements = {'name', 'id', 'availability_zone',
                              'description', 'export_location', 'project_id',
                              'host', 'created_at', 'share_proto', 'metadata',
                              'size', 'snapshot_id', 'share_network_id',
                              'status', 'share_type', 'volume_type', 'links',
                              'is_public'}
-        if version > 2.2:
-            detailed_elements.add('snapshot_support')
-        self.assertTrue(detailed_elements.issubset(share.keys()),
-                        'At least one expected element missing from share '
-                        'response. Expected %(expected)s, got %(actual)s.' % {
-                            "expected": detailed_elements,
-                            "actual": share.keys()})
+        msg = (
+            "At least one expected element missing from share "
+            "response. Expected %(expected)s, got %(actual)s." % {
+                "expected": detailed_elements,
+                "actual": share.keys(),
+            }
+        )
+        self.assertTrue(detailed_elements.issubset(share.keys()), msg)
         self.assertFalse(share['is_public'])
 
-        # delete share
-        self.shares_client.delete_share(share['id'])
-        self.shares_client.wait_for_resource_deletion(share_id=share['id'])
+        # Get share using v 2.1 - we expect key 'snapshot_support' to be absent
+        share_get = self.shares_v2_client.get_share(share['id'], version='2.1')
+        self.assertTrue(detailed_elements.issubset(share_get.keys()), msg)
+
+        # Get share using v 2.2 - we expect key 'snapshot_support' to exist
+        share_get = self.shares_v2_client.get_share(share['id'], version='2.2')
+        detailed_elements.add('snapshot_support')
+        self.assertTrue(detailed_elements.issubset(share_get.keys()), msg)
+
+        # Delete share
+        self.shares_v2_client.delete_share(share['id'])
+        self.shares_v2_client.wait_for_resource_deletion(share_id=share['id'])
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.get_share,
+                          self.shares_v2_client.get_share,
                           share['id'])
-
-    @test.attr(type=["gate", ])
-    def test_create_delete_share_without_snapshot_support_feature(self):
-        self._create_delete_share(2.1)
-
-    @test.attr(type=["gate", ])
-    def test_create_delete_share_with_snapshot_support_feature(self):
-        self._create_delete_share(2.2)
 
     @test.attr(type=["gate", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
