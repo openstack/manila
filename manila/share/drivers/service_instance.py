@@ -921,13 +921,15 @@ class NeutronNetworkHelper(BaseNetworkhelper):
 
         This port will be used for connectivity with service instances.
         """
+        host = socket.gethostname()
+        search_opts = {'device_id': 'manila-share',
+                       'binding:host_id': host}
         ports = [port for port in self.neutron_api.
-                 list_ports(device_id='manila-share')]
+                 list_ports(**search_opts)]
         if len(ports) > 1:
             raise exception.ServiceInstanceException(
                 _('Error. Ambiguous service ports.'))
         elif not ports:
-            host = socket.gethostname()
             port = self.neutron_api.create_port(
                 self.admin_project_id, self.service_network_id,
                 device_id='manila-share', device_owner='manila:share',

@@ -1939,6 +1939,8 @@ class NeutronNetworkHelperTestCase(test.TestCase):
     def test__get_service_port_none_exist(self):
         instance = self._init_neutron_network_plugin()
         admin_project_id = 'fake_admin_project_id'
+        fake_port_values = {'device_id': 'manila-share',
+                            'binding:host_id': 'fake_host'}
         self.mock_object(
             service_instance.neutron.API, 'admin_project_id',
             mock.Mock(return_value=admin_project_id))
@@ -1955,7 +1957,7 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         result = instance._get_service_port()
 
         instance.neutron_api.list_ports.assert_called_once_with(
-            device_id='manila-share')
+            **fake_port_values)
         instance.neutron_api.create_port.assert_called_once_with(
             instance.admin_project_id, instance.service_network_id,
             device_id='manila-share', device_owner='manila:share',
@@ -1964,9 +1966,13 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         self.assertFalse(instance.neutron_api.update_port_fixed_ips.called)
         self.assertEqual(fake_service_port, result)
 
-    def test__get_service_port_one_exist(self):
+    def test__get_service_port_one_exist_on_same_host(self):
         instance = self._init_neutron_network_plugin()
-        fake_service_port = fake_network.FakePort(device_id='manila-share')
+        fake_port_values = {'device_id': 'manila-share',
+                            'binding:host_id': 'fake_host'}
+        fake_service_port = fake_network.FakePort(**fake_port_values)
+        self.mock_object(service_instance.socket, 'gethostname',
+                         mock.Mock(return_value='fake_host'))
         self.mock_object(instance.neutron_api, 'list_ports',
                          mock.Mock(return_value=[fake_service_port]))
         self.mock_object(instance.neutron_api, 'create_port',
@@ -1977,19 +1983,55 @@ class NeutronNetworkHelperTestCase(test.TestCase):
         result = instance._get_service_port()
 
         instance.neutron_api.list_ports.assert_called_once_with(
-            device_id='manila-share')
+            **fake_port_values)
         self.assertFalse(instance.neutron_api.create_port.called)
         self.assertFalse(instance.neutron_api.update_port_fixed_ips.called)
         self.assertEqual(fake_service_port, result)
 
-    def test__get_service_port_two_exist(self):
+    def test__get_service_port_one_exist_on_different_host(self):
         instance = self._init_neutron_network_plugin()
-        fake_service_port = fake_network.FakePort(device_id='manila-share')
+        admin_project_id = 'fake_admin_project_id'
+        fake_port = {'device_id': 'manila-share',
+                     'binding:host_id': 'fake_host'}
+        self.mock_object(
+            service_instance.neutron.API, 'admin_project_id',
+            mock.Mock(return_value=admin_project_id))
+        fake_service_port = fake_network.FakePort(**fake_port)
+        self.mock_object(instance.neutron_api, 'list_ports',
+                         mock.Mock(return_value=[]))
+        self.mock_object(service_instance.socket, 'gethostname',
+                         mock.Mock(return_value='fake_host'))
+        self.mock_object(instance.neutron_api, 'create_port',
+                         mock.Mock(return_value=fake_service_port))
+        self.mock_object(instance.neutron_api, 'update_port_fixed_ips',
+                         mock.Mock(return_value=fake_service_port))
+
+        result = instance._get_service_port()
+
+        instance.neutron_api.list_ports.assert_called_once_with(
+            **fake_port)
+        instance.neutron_api.create_port.assert_called_once_with(
+            instance.admin_project_id, instance.service_network_id,
+            device_id='manila-share', device_owner='manila:share',
+            host_id='fake_host')
+        service_instance.socket.gethostname.assert_called_once_with()
+        self.assertFalse(instance.neutron_api.update_port_fixed_ips.called)
+        self.assertEqual(fake_service_port, result)
+
+    def test__get_service_port_two_exist_on_same_host(self):
+        instance = self._init_neutron_network_plugin()
+        fake_service_port = fake_network.FakePort(**{
+            'device_id': 'manila-share', 'binding:host_id': 'fake_host'})
         self.mock_object(
             instance.neutron_api, 'list_ports',
             mock.Mock(return_value=[fake_service_port, fake_service_port]))
+        self.mock_object(service_instance.socket, 'gethostname',
+                         mock.Mock(return_value='fake_host'))
+        self.mock_object(instance.neutron_api, 'create_port',
+                         mock.Mock(return_value=fake_service_port))
         self.assertRaises(
-            exception.ManilaException, instance._get_service_port)
+            exception.ServiceInstanceException, instance._get_service_port)
+        self.assertFalse(instance.neutron_api.create_port.called)
 
     def test__add_fixed_ips_to_service_port(self):
         ip_address1 = '13.0.0.13'
