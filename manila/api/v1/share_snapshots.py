@@ -50,15 +50,25 @@ class ShareSnapshotsController(wsgi.Controller, wsgi.AdminActionsMixin):
     def _delete(self, *args, **kwargs):
         return self.share_api.delete_snapshot(*args, **kwargs)
 
+    @wsgi.Controller.api_version('1.0', '2.6')
     @wsgi.action('os-reset_status')
-    @wsgi.response(202)
-    def share_snapshot_reset_status(self, req, id, body):
-        super(self.__class__, self)._reset_status(req, id, body)
+    def snapshot_reset_status_legacy(self, req, id, body):
+        return self._reset_status(req, id, body)
 
+    @wsgi.Controller.api_version('2.7')
+    @wsgi.action('reset_status')
+    def snapshot_reset_status(self, req, id, body):
+        return self._reset_status(req, id, body)
+
+    @wsgi.Controller.api_version('1.0', '2.6')
     @wsgi.action('os-force_delete')
-    @wsgi.response(202)
-    def share_snapshot_force_delete(self, req, id, body):
-        super(self.__class__, self)._force_delete(req, id, body)
+    def snapshot_force_delete_legacy(self, req, id, body):
+        return self._force_delete(req, id, body)
+
+    @wsgi.Controller.api_version('2.7')
+    @wsgi.action('force_delete')
+    def snapshot_force_delete(self, req, id, body):
+        return self._force_delete(req, id, body)
 
     def show(self, req, id):
         """Return data about the given snapshot."""

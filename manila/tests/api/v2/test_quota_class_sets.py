@@ -26,11 +26,12 @@ from oslo_config import cfg
 import webob.exc
 import webob.response
 
-from manila.api.v1 import quota_class_sets
+from manila.api.v2 import quota_class_sets
 from manila import context
 from manila import exception
 from manila import policy
 from manila import test
+from manila.tests.api import fakes
 
 CONF = cfg.CONF
 
@@ -55,7 +56,16 @@ class QuotaSetsControllerTest(test.TestCase):
         self.mock_policy_check = self.mock_object(
             policy, 'check_policy', mock.Mock(return_value=True))
 
-    def test_show_quota(self):
+    @ddt.data(
+        ('os-', '1.0', quota_class_sets.QuotaClassSetsControllerLegacy),
+        ('os-', '2.6', quota_class_sets.QuotaClassSetsControllerLegacy),
+        ('', '2.7', quota_class_sets.QuotaClassSetsController),
+    )
+    @ddt.unpack
+    def test_show_quota(self, url, version, controller):
+        req = fakes.HTTPRequest.blank(
+            '/fooproject/%squota-class-sets' % url,
+            version=version, use_admin_context=True)
         quotas = {
             "shares": 23,
             "snapshots": 34,
@@ -76,11 +86,11 @@ class QuotaSetsControllerTest(test.TestCase):
         for k, v in quotas.items():
             CONF.set_default('quota_' + k, v)
 
-        result = self.controller.show(REQ, self.class_name)
+        result = controller().show(req, self.class_name)
 
         self.assertEqual(expected, result)
         self.mock_policy_check.assert_called_once_with(
-            REQ.environ['manila.context'], self.resource_name, 'show')
+            req.environ['manila.context'], self.resource_name, 'show')
 
     def test_show_quota_not_authorized(self):
         self.mock_object(
@@ -95,7 +105,16 @@ class QuotaSetsControllerTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             REQ.environ['manila.context'], self.resource_name, 'show')
 
-    def test_update_quota(self):
+    @ddt.data(
+        ('os-', '1.0', quota_class_sets.QuotaClassSetsControllerLegacy),
+        ('os-', '2.6', quota_class_sets.QuotaClassSetsControllerLegacy),
+        ('', '2.7', quota_class_sets.QuotaClassSetsController),
+    )
+    @ddt.unpack
+    def test_update_quota(self, url, version, controller):
+        req = fakes.HTTPRequest.blank(
+            '/fooproject/%squota-class-sets' % url,
+            version=version, use_admin_context=True)
         CONF.set_default('quota_shares', 789)
         body = {
             'quota_class_set': {
@@ -113,17 +132,17 @@ class QuotaSetsControllerTest(test.TestCase):
             }
         }
 
-        update_result = self.controller.update(
-            REQ, self.class_name, body=body)
+        update_result = controller().update(
+            req, self.class_name, body=body)
 
         self.assertEqual(expected, update_result)
 
-        show_result = self.controller.show(REQ, self.class_name)
+        show_result = controller().show(req, self.class_name)
 
         expected['quota_class_set']['id'] = self.class_name
         self.assertEqual(expected, show_result)
         self.mock_policy_check.assert_has_calls([mock.call(
-            REQ.environ['manila.context'], self.resource_name, action_name)
+            req.environ['manila.context'], self.resource_name, action_name)
             for action_name in ('update', 'show')])
 
     def test_update_quota_not_authorized(self):
@@ -140,3 +159,32 @@ class QuotaSetsControllerTest(test.TestCase):
             REQ_MEMBER, self.class_name, body=body)
         self.mock_policy_check.assert_called_once_with(
             REQ_MEMBER.environ['manila.context'], self.resource_name, 'update')
+
+    @ddt.data(
+        ('os-', '2.7', quota_class_sets.QuotaClassSetsControllerLegacy),
+        ('', '2.6', quota_class_sets.QuotaClassSetsController),
+        ('', '2.0', quota_class_sets.QuotaClassSetsController),
+    )
+    @ddt.unpack
+    def test_api_not_found(self, url, version, controller):
+        req = fakes.HTTPRequest.blank(
+            '/fooproject/%squota-class-sets' % url, version=version)
+        for method_name in ('show', 'update'):
+            self.assertRaises(
+                exception.VersionNotFoundForAPIMethod,
+                getattr(controller(), method_name),
+                req, self.class_name)
+
+    @ddt.data(
+        ('os-', '2.7', quota_class_sets.QuotaClassSetsControllerLegacy),
+        ('', '2.6', quota_class_sets.QuotaClassSetsController),
+        ('', '2.0', quota_class_sets.QuotaClassSetsController),
+    )
+    @ddt.unpack
+    def test_update_api_not_found(self, url, version, controller):
+        req = fakes.HTTPRequest.blank(
+            '/fooproject/%squota-class-sets' % url, version=version)
+        self.assertRaises(
+            exception.VersionNotFoundForAPIMethod,
+            controller().update,
+            req, self.class_name)

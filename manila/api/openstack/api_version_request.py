@@ -52,6 +52,7 @@ REST_API_VERSION_HISTORY = """
     * 2.4 - Consistency Group support
     * 2.5 - Share Migration admin API
     * 2.6 - Return share_type UUID instead of name in Share API
+    * 2.7 - Rename old extension-like API URLs to core-API-like
 
 """
 
@@ -59,7 +60,7 @@ REST_API_VERSION_HISTORY = """
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.6"
+_MAX_API_VERSION = "2.7"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

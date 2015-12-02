@@ -21,7 +21,7 @@ from oslo_utils import timeutils
 import six
 import webob
 
-from manila.api.v1 import share_types as types
+from manila.api.v2 import share_types as types
 from manila.api.views import types as views_types
 from manila.common import constants
 from manila import context
@@ -217,7 +217,14 @@ class ShareTypesAPITest(test.TestCase):
         policy.check_policy.assert_called_once_with(
             req.environ['manila.context'], self.resource_name, 'default')
 
-    def test_view_builder_show(self):
+    @ddt.data(
+        ('1.0', 'os-share-type-access'),
+        ('2.0', 'os-share-type-access'),
+        ('2.6', 'os-share-type-access'),
+        ('2.7', 'share_type_access'),
+    )
+    @ddt.unpack
+    def test_view_builder_show(self, version, prefix):
         view_builder = views_types.ViewBuilder()
 
         now = timeutils.isotime()
@@ -232,14 +239,16 @@ class ShareTypesAPITest(test.TestCase):
             id=42,
         )
 
-        request = fakes.HTTPRequest.blank("/v2")
+        request = fakes.HTTPRequest.blank("/v%s" % version[0], version=version)
+        request.headers['X-Openstack-Manila-Api-Version'] = version
+
         output = view_builder.show(request, raw_share_type)
 
         self.assertIn('share_type', output)
         expected_share_type = {
             'name': 'new_type',
             'extra_specs': {},
-            'os-share-type-access:is_public': True,
+            '%s:is_public' % prefix: True,
             'required_extra_specs': {},
             'id': 42,
         }
@@ -444,7 +453,7 @@ class ShareTypeAccessTest(test.TestCase):
                                       use_admin_context=True)
 
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller._list_project_access,
+                          self.controller.share_type_access,
                           req, '1')
 
     def test_list_type_access_private(self):
@@ -453,7 +462,7 @@ class ShareTypeAccessTest(test.TestCase):
             {'share_type_id': '2', 'project_id': PROJ3_UUID},
         ]}
 
-        result = self.controller._list_project_access(self.req, '2')
+        result = self.controller.share_type_access(self.req, '2')
 
         self.assertEqual(expected, result)
 
@@ -464,7 +473,7 @@ class ShareTypeAccessTest(test.TestCase):
             raise exception.PolicyNotAuthorized(action='index')
 
         self.assertRaises(webob.exc.HTTPForbidden,
-                          self.controller._list_project_access,
+                          self.controller.share_type_access,
                           req, 'fake')
 
     def test_list_type_with_admin_default_proj1(self):

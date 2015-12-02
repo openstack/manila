@@ -16,32 +16,30 @@
 #    under the License.
 
 """
-WSGI middleware for OpenStack Share API.
+WSGI middleware for OpenStack Share API v1.
 """
 
 from oslo_log import log
 
 from manila.api import extensions
 import manila.api.openstack
-from manila.api.v1 import availability_zones
-from manila.api.v1 import cgsnapshots
-from manila.api.v1 import consistency_groups
 from manila.api.v1 import limits
-from manila.api.v1 import quota_class_sets
-from manila.api.v1 import quota_sets
 from manila.api.v1 import scheduler_stats
 from manila.api.v1 import security_service
-from manila.api.v1 import services
 from manila.api.v1 import share_instances
 from manila.api.v1 import share_manage
 from manila.api.v1 import share_metadata
 from manila.api.v1 import share_networks
 from manila.api.v1 import share_servers
 from manila.api.v1 import share_snapshots
-from manila.api.v1 import share_types
 from manila.api.v1 import share_types_extra_specs
 from manila.api.v1 import share_unmanage
 from manila.api.v1 import shares
+from manila.api.v2 import availability_zones
+from manila.api.v2 import quota_class_sets
+from manila.api.v2 import quota_sets
+from manila.api.v2 import services
+from manila.api.v2 import share_types
 from manila.api import versions
 
 LOG = log.getLogger(__name__)
@@ -64,46 +62,35 @@ class APIRouter(manila.api.openstack.APIRouter):
         mapper.redirect("", "/")
 
         self.resources["availability_zones"] = (
-            availability_zones.create_resource())
+            availability_zones.create_resource_legacy())
         mapper.resource("availability-zone",
-                        # TODO(vponomaryov): rename 'os-availability-zone' to
-                        # 'availability-zones' when API urls rename happens.
                         "os-availability-zone",
                         controller=self.resources["availability_zones"])
 
-        self.resources["services"] = services.create_resource()
+        self.resources["services"] = services.create_resource_legacy()
         mapper.resource("service",
-                        # TODO(vponomaryov): rename 'os-services' to
-                        # 'services' when API urls rename happens.
                         "os-services",
                         controller=self.resources["services"])
 
-        self.resources["quota_sets"] = quota_sets.create_resource()
+        self.resources["quota_sets"] = quota_sets.create_resource_legacy()
         mapper.resource("quota-set",
-                        # TODO(vponomaryov): rename 'os-quota-sets' to
-                        # 'quota-sets' when API urls rename happens.
                         "os-quota-sets",
                         controller=self.resources["quota_sets"],
                         member={'defaults': 'GET'})
 
-        self.resources["quota_class_sets"] = quota_class_sets.create_resource()
+        self.resources["quota_class_sets"] = (
+            quota_class_sets.create_resource_legacy())
         mapper.resource("quota-class-set",
-                        # TODO(vponomaryov): rename 'os-quota-class-sets' to
-                        # 'quota-class-sets' when API urls rename happens.
                         "os-quota-class-sets",
                         controller=self.resources["quota_class_sets"])
 
         self.resources["share_manage"] = share_manage.create_resource()
         mapper.resource("share_manage",
-                        # TODO(vponomaryov): remove it when it is ported
-                        # to shares controller.
                         "os-share-manage",
                         controller=self.resources["share_manage"])
 
         self.resources["share_unmanage"] = share_unmanage.create_resource()
         mapper.resource("share_unmanage",
-                        # TODO(vponomaryov): remove it when it is ported
-                        # to shares controller.
                         "os-share-unmanage",
                         controller=self.resources["share_unmanage"],
                         member={'unmanage': 'POST'})
@@ -196,20 +183,3 @@ class APIRouter(manila.api.openstack.APIRouter):
                        controller=self.resources['scheduler_stats'],
                        action='pools_detail',
                        conditions={'method': ['GET']})
-
-        self.resources['consistency-groups'] = (
-            consistency_groups.create_resource())
-        mapper.resource('consistency-group', 'consistency-groups',
-                        controller=self.resources['consistency-groups'],
-                        collection={'detail': 'GET'})
-        mapper.connect('consistency-groups',
-                       '/{project_id}/consistency-groups/{id}/action',
-                       controller=self.resources['consistency-groups'],
-                       action='action',
-                       conditions={"action": ['POST']})
-
-        self.resources['cgsnapshots'] = cgsnapshots.create_resource()
-        mapper.resource('cgsnapshot', 'cgsnapshots',
-                        controller=self.resources['cgsnapshots'],
-                        collection={'detail': 'GET'},
-                        member={'members': 'GET', 'action': 'POST'})

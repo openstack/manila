@@ -15,8 +15,9 @@
 import ddt
 import mock
 
-from manila.api.v1 import availability_zones
+from manila.api.v2 import availability_zones
 from manila import context
+from manila import exception
 from manila import policy
 from manila import test
 from manila.tests.api import fakes
@@ -25,16 +26,26 @@ from manila.tests.api import fakes
 @ddt.ddt
 class AvailabilityZonesAPITest(test.TestCase):
 
-    def test_instantiate_controller(self):
-        controller = availability_zones.AvailabilityZoneController()
+    @ddt.data(
+        availability_zones.AvailabilityZoneControllerLegacy,
+        availability_zones.AvailabilityZoneController,
+    )
+    def test_instantiate_controller(self, controller):
+        az_controller = controller()
 
-        self.assertTrue(hasattr(controller, "resource_name"))
-        self.assertEqual("availability_zone", controller.resource_name)
-        self.assertTrue(hasattr(controller, "_view_builder"))
-        self.assertTrue(hasattr(controller._view_builder, "detail_list"))
+        self.assertTrue(hasattr(az_controller, "resource_name"))
+        self.assertEqual("availability_zone", az_controller.resource_name)
+        self.assertTrue(hasattr(az_controller, "_view_builder"))
+        self.assertTrue(hasattr(az_controller._view_builder, "detail_list"))
 
-    @ddt.data('1.0', '2.0', '2.6')
-    def test_index(self, version):
+    @ddt.data(
+        ('1.0', availability_zones.AvailabilityZoneControllerLegacy),
+        ('2.0', availability_zones.AvailabilityZoneControllerLegacy),
+        ('2.6', availability_zones.AvailabilityZoneControllerLegacy),
+        ('2.7', availability_zones.AvailabilityZoneController),
+    )
+    @ddt.unpack
+    def test_index(self, version, controller):
         azs = [
             {
                 "id": "fake_id1",
@@ -54,12 +65,12 @@ class AvailabilityZonesAPITest(test.TestCase):
         mock_policy_check = self.mock_object(policy, 'check_policy')
         self.mock_object(availability_zones.db, 'availability_zone_get_all',
                          mock.Mock(return_value=azs))
-        controller = availability_zones.AvailabilityZoneController()
+        az_controller = controller()
         ctxt = context.RequestContext("admin", "fake", True)
         req = fakes.HTTPRequest.blank('/shares', version=version)
         req.environ['manila.context'] = ctxt
 
-        result = controller.index(req)
+        result = az_controller.index(req)
 
         availability_zones.db.availability_zone_get_all.\
             assert_called_once_with(ctxt)
@@ -73,3 +84,19 @@ class AvailabilityZonesAPITest(test.TestCase):
         azs[1].pop("deleted")
         azs[1].pop("redundant_key")
         self.assertTrue(azs[1] in result["availability_zones"])
+
+    @ddt.data(
+        ('1.0', availability_zones.AvailabilityZoneController),
+        ('2.0', availability_zones.AvailabilityZoneController),
+        ('2.6', availability_zones.AvailabilityZoneController),
+        ('2.7', availability_zones.AvailabilityZoneControllerLegacy),
+    )
+    @ddt.unpack
+    def test_index_with_unsupported_versions(self, version, controller):
+        ctxt = context.RequestContext("admin", "fake", True)
+        req = fakes.HTTPRequest.blank('/shares', version=version)
+        req.environ['manila.context'] = ctxt
+        az_controller = controller()
+
+        self.assertRaises(
+            exception.VersionNotFoundForAPIMethod, az_controller.index, req)

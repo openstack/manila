@@ -25,7 +25,7 @@ import six
 import webob
 
 from manila.api.openstack import wsgi
-import manila.api.v1.cgsnapshots as cgs
+import manila.api.v2.cgsnapshots as cgs
 from manila.common import constants
 from manila import context
 from manila import db
@@ -518,25 +518,31 @@ class CGSnapshotApiTest(test.TestCase):
     def _get_context(self, role):
         return getattr(self, '%s_context' % role)
 
-    def _setup_cgsnapshot_data(self, cgsnapshot=None):
+    def _setup_cgsnapshot_data(self, cgsnapshot=None, version='2.7'):
         if cgsnapshot is None:
             cgsnapshot = db_utils.create_cgsnapshot(
                 'fake_id', status=constants.STATUS_AVAILABLE)
-        req = webob.Request.blank('/v2/fake/cgsnapshots/%s/action' %
-                                  cgsnapshot['id'])
-        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '2.4'
+        req = fakes.HTTPRequest.blank('/v2/fake/cgsnapshots/%s/action' %
+                                      cgsnapshot['id'], version=version)
+        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = version
         req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
         return cgsnapshot, req
 
     @ddt.data(*fakes.fixture_force_delete_with_different_roles)
     @ddt.unpack
     def test_cgsnapshot_force_delete_with_different_roles(self, role,
-                                                          resp_code):
+                                                          resp_code, version):
         cgsnap, req = self._setup_cgsnapshot_data()
         ctxt = self._get_context(role)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
+        if float(version) > 2.6:
+            action_name = 'force_delete'
+        else:
+            action_name = 'os-force_delete'
+        body = {action_name: {'status': constants.STATUS_ERROR}}
+        req.body = six.b(jsonutils.dumps(body))
+        req.headers['X-Openstack-Manila-Api-Version'] = version
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(
@@ -549,13 +555,18 @@ class CGSnapshotApiTest(test.TestCase):
     @ddt.data(*fakes.fixture_reset_status_with_different_roles)
     @ddt.unpack
     def test_cgsnapshot_reset_status_with_different_roles(
-            self, role, valid_code, valid_status):
+            self, role, valid_code, valid_status, version):
         ctxt = self._get_context(role)
-        cgsnap, req = self._setup_cgsnapshot_data()
-        body = {'os-reset_status': {'status': constants.STATUS_ERROR}}
+        cgsnap, req = self._setup_cgsnapshot_data(version=version)
+        if float(version) > 2.6:
+            action_name = 'reset_status'
+        else:
+            action_name = 'os-reset_status'
+        body = {action_name: {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = six.b(jsonutils.dumps(body))
+        req.headers['X-Openstack-Manila-Api-Version'] = version
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(

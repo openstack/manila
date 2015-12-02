@@ -96,14 +96,20 @@ class SharesV2Client(shares_client.SharesClient):
         return super(SharesV2Client, self).copy(url, headers=headers)
 
     def reset_state(self, s_id, status="error", s_type="shares",
-                    headers=None, version=LATEST_MICROVERSION):
+                    headers=None, version=LATEST_MICROVERSION,
+                    action_name=None):
         """Resets the state of a share, snapshot, cg, or a cgsnapshot.
 
         status: available, error, creating, deleting, error_deleting
         s_type: shares, share_instances, snapshots, consistency-groups,
             cgsnapshots.
         """
-        body = {"os-reset_status": {"status": status}}
+        if action_name is None:
+            if float(version) > 2.6:
+                action_name = 'reset_status'
+            else:
+                action_name = 'os-reset_status'
+        body = {action_name: {"status": status}}
         body = json.dumps(body)
         resp, body = self.post("%s/%s/action" % (s_type, s_id), body,
                                headers=headers, extra_headers=True,
@@ -112,12 +118,17 @@ class SharesV2Client(shares_client.SharesClient):
         return body
 
     def force_delete(self, s_id, s_type="shares", headers=None,
-                     version=LATEST_MICROVERSION):
+                     version=LATEST_MICROVERSION, action_name=None):
         """Force delete share or snapshot.
 
         s_type: shares, snapshots
         """
-        body = {"os-force_delete": None}
+        if action_name is None:
+            if float(version) > 2.6:
+                action_name = 'force_delete'
+            else:
+                action_name = 'os-force_delete'
+        body = {action_name: None}
         body = json.dumps(body)
         resp, body = self.post("%s/%s/action" % (s_type, s_id), body,
                                headers=headers, extra_headers=True,
@@ -275,6 +286,267 @@ class SharesV2Client(shares_client.SharesClient):
                            ' the required time (%s s).' %
                            (instance_id, status, self.build_timeout))
                 raise exceptions.TimeoutException(message)
+
+###############
+
+    def extend_share(self, share_id, new_size, version=LATEST_MICROVERSION,
+                     action_name=None):
+        if action_name is None:
+            action_name = 'extend' if float(version) > 2.6 else 'os-extend'
+        post_body = {
+            action_name: {
+                "new_size": new_size,
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(
+            "shares/%s/action" % share_id, body, version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+    def shrink_share(self, share_id, new_size, version=LATEST_MICROVERSION,
+                     action_name=None):
+        if action_name is None:
+            action_name = 'shrink' if float(version) > 2.6 else 'os-shrnk'
+        post_body = {
+            action_name: {
+                "new_size": new_size,
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(
+            "shares/%s/action" % share_id, body, version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+###############
+
+    def manage_share(self, service_host, protocol, export_path,
+                     share_type_id, name=None, description=None,
+                     version=LATEST_MICROVERSION, url=None):
+        post_body = {
+            "share": {
+                "export_path": export_path,
+                "service_host": service_host,
+                "protocol": protocol,
+                "share_type": share_type_id,
+                "name": name,
+                "description": description,
+            }
+        }
+        if url is None:
+            if float(version) > 2.6:
+                url = 'shares/manage'
+            else:
+                url = 'os-share-manage'
+        body = json.dumps(post_body)
+        resp, body = self.post(url, body, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def unmanage_share(self, share_id, version=LATEST_MICROVERSION, url=None,
+                       action_name=None, body=None):
+        if url is None:
+            url = 'shares' if float(version) > 2.6 else 'os-share-unmanage'
+        if action_name is None:
+            action_name = 'action' if float(version) > 2.6 else 'unmanage'
+        if body is None and float(version) > 2.6:
+            body = json.dumps({'unmanage': {}})
+        resp, body = self.post(
+            "%(url)s/%(share_id)s/%(action_name)s" % {
+                'url': url, 'share_id': share_id, 'action_name': action_name},
+            body,
+            version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+###############
+
+    def _get_access_action_name(self, version):
+        if float(version) > 2.6:
+            return 'allow_access'
+        return 'os-allow_access'
+
+    def create_access_rule(self, share_id, access_type="ip",
+                           access_to="0.0.0.0", access_level=None,
+                           version=LATEST_MICROVERSION, action_name=None):
+        post_body = {
+            self._get_access_action_name(version): {
+                "access_type": access_type,
+                "access_to": access_to,
+                "access_level": access_level,
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(
+            "shares/%s/action" % share_id, body, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_access_rules(self, share_id, version=LATEST_MICROVERSION,
+                          action_name=None):
+        body = {self._get_access_action_name(version): None}
+        resp, body = self.post(
+            "shares/%s/action" % share_id, json.dumps(body), version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def delete_access_rule(self, share_id, rule_id,
+                           version=LATEST_MICROVERSION, action_name=None):
+        post_body = {
+            self._get_access_action_name(version): {
+                "access_id": rule_id,
+            }
+        }
+        body = json.dumps(post_body)
+        resp, body = self.post(
+            "shares/%s/action" % share_id, body, version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+###############
+
+    def list_availability_zones(self, url='availability-zones',
+                                version=LATEST_MICROVERSION):
+        """Get list of availability zones."""
+        if url is None:
+            if float(version) > 2.6:
+                url = 'availability-zones'
+            else:
+                url = 'os-availability-zone'
+        resp, body = self.get(url, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+###############
+
+    def list_services(self, params=None, url=None,
+                      version=LATEST_MICROVERSION):
+        """List services."""
+        if url is None:
+            url = 'services' if float(version) > 2.6 else 'os-services'
+        if params:
+            url += '?%s' % urllib.urlencode(params)
+        resp, body = self.get(url, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+###############
+
+    def list_share_types(self, params=None, version=LATEST_MICROVERSION):
+        uri = 'types'
+        if params is not None:
+            uri += '?%s' % urllib.urlencode(params)
+        resp, body = self.get(uri, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def create_share_type(self, name, is_public=True,
+                          version=LATEST_MICROVERSION, **kwargs):
+        if float(version) > 2.6:
+            is_public_keyname = 'share_type_access:is_public'
+        else:
+            is_public_keyname = 'os-share-type-access:is_public'
+        post_body = {
+            'name': name,
+            'extra_specs': kwargs.get('extra_specs'),
+            is_public_keyname: is_public,
+        }
+        post_body = json.dumps({'share_type': post_body})
+        resp, body = self.post('types', post_body, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def delete_share_type(self, share_type_id, version=LATEST_MICROVERSION):
+        resp, body = self.delete("types/%s" % share_type_id, version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+    def get_share_type(self, share_type_id, version=LATEST_MICROVERSION):
+        resp, body = self.get("types/%s" % share_type_id, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def list_access_to_share_type(self, share_type_id,
+                                  version=LATEST_MICROVERSION,
+                                  action_name=None):
+        if action_name is None:
+            if float(version) > 2.6:
+                action_name = 'share_type_access'
+            else:
+                action_name = 'os-share-type-access'
+        url = 'types/%(st_id)s/%(action_name)s' % {
+            'st_id': share_type_id, 'action_name': action_name}
+        resp, body = self.get(url, version=version)
+        # [{"share_type_id": "%st_id%", "project_id": "%project_id%"}, ]
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+###############
+
+    def _get_quotas_url(self, version):
+        if float(version) > 2.6:
+            return 'quota-sets'
+        return 'os-quota-sets'
+
+    def default_quotas(self, tenant_id, url=None, version=LATEST_MICROVERSION):
+        if url is None:
+            url = self._get_quotas_url(version)
+        url += '/%s' % tenant_id
+        resp, body = self.get("%s/defaults" % url, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def show_quotas(self, tenant_id, user_id=None, url=None,
+                    version=LATEST_MICROVERSION):
+        if url is None:
+            url = self._get_quotas_url(version)
+        url += '/%s' % tenant_id
+        if user_id is not None:
+            url += "?user_id=%s" % user_id
+        resp, body = self.get(url, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
+
+    def reset_quotas(self, tenant_id, user_id=None, url=None,
+                     version=LATEST_MICROVERSION):
+        if url is None:
+            url = self._get_quotas_url(version)
+        url += '/%s' % tenant_id
+        if user_id is not None:
+            url += "?user_id=%s" % user_id
+        resp, body = self.delete(url, version=version)
+        self.expected_success(202, resp.status)
+        return body
+
+    def update_quotas(self, tenant_id, user_id=None, shares=None,
+                      snapshots=None, gigabytes=None, snapshot_gigabytes=None,
+                      share_networks=None, force=True, url=None,
+                      version=LATEST_MICROVERSION):
+        if url is None:
+            url = self._get_quotas_url(version)
+        url += '/%s' % tenant_id
+        if user_id is not None:
+            url += "?user_id=%s" % user_id
+
+        put_body = {"tenant_id": tenant_id}
+        if force:
+            put_body["force"] = "true"
+        if shares is not None:
+            put_body["shares"] = shares
+        if snapshots is not None:
+            put_body["snapshots"] = snapshots
+        if gigabytes is not None:
+            put_body["gigabytes"] = gigabytes
+        if snapshot_gigabytes is not None:
+            put_body["snapshot_gigabytes"] = snapshot_gigabytes
+        if share_networks is not None:
+            put_body["share_networks"] = share_networks
+        put_body = json.dumps({"quota_set": put_body})
+
+        resp, body = self.put(url, put_body, version=version)
+        self.expected_success(200, resp.status)
+        return self._parse_resp(body)
 
 ###############
 
@@ -481,9 +753,15 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
-    def migrate_share(self, share_id, host, version=LATEST_MICROVERSION):
+    def migrate_share(self, share_id, host, version=LATEST_MICROVERSION,
+                      action_name=None):
+        if action_name is None:
+            if float(version) > 2.6:
+                action_name = 'migrate_share'
+            else:
+                action_name = 'os-migrate_share'
         post_body = {
-            'os-migrate_share': {
+            action_name: {
                 'host': host,
             }
         }

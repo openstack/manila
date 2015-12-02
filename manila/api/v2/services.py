@@ -25,14 +25,18 @@ from manila import utils
 LOG = log.getLogger(__name__)
 
 
-class ServiceController(wsgi.Controller):
-    """The Services API controller for the OpenStack API."""
+class ServiceMixin(object):
+    """The Services API controller common logic.
+
+    Mixin class that should be inherited by Services API controllers,
+    which are used for different API URLs and microversions.
+    """
 
     resource_name = "service"
     _view_builder_class = services_views.ViewBuilder
 
-    @wsgi.Controller.authorize
-    def index(self, req):
+    @wsgi.Controller.authorize("index")
+    def _index(self, req):
         """Return a list of all running services."""
 
         context = req.environ['manila.context']
@@ -68,8 +72,8 @@ class ServiceController(wsgi.Controller):
 
         return self._view_builder.detail_list(services)
 
-    @wsgi.Controller.authorize
-    def update(self, req, id, body):
+    @wsgi.Controller.authorize("update")
+    def _update(self, req, id, body):
         """Enable/Disable scheduling for a service."""
         context = req.environ['manila.context']
 
@@ -91,6 +95,42 @@ class ServiceController(wsgi.Controller):
             context, svc['id'], {'disabled': data['disabled']})
 
         return self._view_builder.summary(data)
+
+
+class ServiceControllerLegacy(ServiceMixin, wsgi.Controller):
+    """Deprecated Services API controller.
+
+    Used by legacy API v1 and v2 microversions from 2.0 to 2.6.
+    Registered under deprecated API URL 'os-services'.
+    """
+
+    @wsgi.Controller.api_version('1.0', '2.6')
+    def index(self, req):
+        return self._index(req)
+
+    @wsgi.Controller.api_version('1.0', '2.6')
+    def update(self, req, id, body):
+        return self._update(req, id, body)
+
+
+class ServiceController(ServiceMixin, wsgi.Controller):
+    """Services API controller.
+
+    Used only by API v2 starting from microversion 2.7.
+    Registered under API URL 'services'.
+    """
+
+    @wsgi.Controller.api_version('2.7')
+    def index(self, req):
+        return self._index(req)
+
+    @wsgi.Controller.api_version('2.7')
+    def update(self, req, id, body):
+        return self._update(req, id, body)
+
+
+def create_resource_legacy():
+    return wsgi.Resource(ServiceControllerLegacy())
 
 
 def create_resource():

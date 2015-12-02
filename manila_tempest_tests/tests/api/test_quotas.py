@@ -13,22 +13,25 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import test  # noqa
 
 from manila_tempest_tests.tests.api import base
 
 
+@ddt.data
 class SharesQuotasTest(base.BaseSharesTest):
 
     @classmethod
     def resource_setup(cls):
         super(SharesQuotasTest, cls).resource_setup()
-        cls.user_id = cls.shares_client.user_id
-        cls.tenant_id = cls.shares_client.tenant_id
+        cls.user_id = cls.shares_v2_client.user_id
+        cls.tenant_id = cls.shares_v2_client.tenant_id
 
     @test.attr(type=["gate", "smoke", ])
-    def test_default_quotas(self):
-        quotas = self.shares_client.default_quotas(self.tenant_id)
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_default_quotas(self, client_name):
+        quotas = getattr(self, client_name).default_quotas(self.tenant_id)
         self.assertGreater(int(quotas["gigabytes"]), -2)
         self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)
@@ -36,8 +39,9 @@ class SharesQuotasTest(base.BaseSharesTest):
         self.assertGreater(int(quotas["share_networks"]), -2)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_show_quotas(self):
-        quotas = self.shares_client.show_quotas(self.tenant_id)
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_show_quotas(self, client_name):
+        quotas = getattr(self, client_name).show_quotas(self.tenant_id)
         self.assertGreater(int(quotas["gigabytes"]), -2)
         self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)
         self.assertGreater(int(quotas["shares"]), -2)
@@ -45,8 +49,9 @@ class SharesQuotasTest(base.BaseSharesTest):
         self.assertGreater(int(quotas["share_networks"]), -2)
 
     @test.attr(type=["gate", "smoke", ])
-    def test_show_quotas_for_user(self):
-        quotas = self.shares_client.show_quotas(
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_show_quotas_for_user(self, client_name):
+        quotas = getattr(self, client_name).show_quotas(
             self.tenant_id, self.user_id)
         self.assertGreater(int(quotas["gigabytes"]), -2)
         self.assertGreater(int(quotas["snapshot_gigabytes"]), -2)

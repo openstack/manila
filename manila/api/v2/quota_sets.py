@@ -31,8 +31,12 @@ LOG = log.getLogger(__name__)
 NON_QUOTA_KEYS = ('tenant_id', 'id', 'force')
 
 
-class QuotaSetsController(wsgi.Controller):
-    """The Quota Sets API controller for the OpenStack API."""
+class QuotaSetsMixin(object):
+    """The Quota Sets API controller common logic.
+
+    Mixin class that should be inherited by Quota Sets API controllers,
+    which are used for different API URLs and microversions.
+    """
 
     resource_name = "quota_set"
     _view_builder_class = quota_sets_views.ViewBuilder
@@ -61,8 +65,8 @@ class QuotaSetsController(wsgi.Controller):
             return values
         return dict((k, v['limit']) for k, v in values.items())
 
-    @wsgi.Controller.authorize
-    def show(self, req, id):
+    @wsgi.Controller.authorize("show")
+    def _show(self, req, id):
         context = req.environ['manila.context']
         params = parse.parse_qs(req.environ.get('QUERY_STRING', ''))
         user_id = params.get('user_id', [None])[0]
@@ -74,12 +78,12 @@ class QuotaSetsController(wsgi.Controller):
             raise webob.exc.HTTPForbidden()
 
     @wsgi.Controller.authorize('show')
-    def defaults(self, req, id):
+    def _defaults(self, req, id):
         context = req.environ['manila.context']
         return self._view_builder.detail_list(QUOTAS.get_defaults(context), id)
 
-    @wsgi.Controller.authorize
-    def update(self, req, id, body):
+    @wsgi.Controller.authorize("update")
+    def _update(self, req, id, body):
         context = req.environ['manila.context']
         project_id = id
         bad_keys = []
@@ -166,8 +170,8 @@ class QuotaSetsController(wsgi.Controller):
         return self._view_builder.detail_list(
             self._get_quotas(context, id, user_id=user_id))
 
-    @wsgi.Controller.authorize
-    def delete(self, req, id):
+    @wsgi.Controller.authorize("delete")
+    def _delete(self, req, id):
         context = req.environ['manila.context']
         params = parse.parse_qs(req.environ.get('QUERY_STRING', ''))
         user_id = params.get('user_id', [None])[0]
@@ -180,6 +184,58 @@ class QuotaSetsController(wsgi.Controller):
             return webob.Response(status_int=202)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
+
+
+class QuotaSetsControllerLegacy(QuotaSetsMixin, wsgi.Controller):
+    """Deprecated Quota Sets API controller.
+
+    Used by legacy API v1 and v2 microversions from 2.0 to 2.6.
+    Registered under deprecated API URL 'os-quota-sets'.
+    """
+
+    @wsgi.Controller.api_version('1.0', '2.6')
+    def show(self, req, id):
+        return self._show(req, id)
+
+    @wsgi.Controller.api_version('1.0', '2.6')
+    def defaults(self, req, id):
+        return self._defaults(req, id)
+
+    @wsgi.Controller.api_version('1.0', '2.6')
+    def update(self, req, id, body):
+        return self._update(req, id, body)
+
+    @wsgi.Controller.api_version('1.0', '2.6')
+    def delete(self, req, id):
+        return self._delete(req, id)
+
+
+class QuotaSetsController(QuotaSetsMixin, wsgi.Controller):
+    """Quota Sets API controller.
+
+    Used only by API v2 starting from microversion 2.7.
+    Registered under API URL 'quota-sets'.
+    """
+
+    @wsgi.Controller.api_version('2.7')
+    def show(self, req, id):
+        return self._show(req, id)
+
+    @wsgi.Controller.api_version('2.7')
+    def defaults(self, req, id):
+        return self._defaults(req, id)
+
+    @wsgi.Controller.api_version('2.7')
+    def update(self, req, id, body):
+        return self._update(req, id, body)
+
+    @wsgi.Controller.api_version('2.7')
+    def delete(self, req, id):
+        return self._delete(req, id)
+
+
+def create_resource_legacy():
+    return wsgi.Resource(QuotaSetsControllerLegacy())
 
 
 def create_resource():

@@ -28,7 +28,8 @@ from manila.api.openstack import api_version_request as api_version
 from manila.api.openstack import wsgi as os_wsgi
 from manila.api import urlmap
 from manila.api.v1 import limits
-from manila.api.v1 import router
+from manila.api.v1 import router as router_v1
+from manila.api.v2 import router as router_v2
 from manila.api import versions
 from manila.common import constants
 from manila import context
@@ -64,7 +65,7 @@ def fake_wsgi(self, req):
 def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
              use_no_auth=False, ext_mgr=None):
     if not inner_app_v2:
-        inner_app_v2 = router.APIRouter(ext_mgr)
+        inner_app_v2 = router_v2.APIRouter(ext_mgr)
 
     if fake_auth:
         if fake_auth_context is not None:
@@ -174,28 +175,45 @@ def app():
 
     No auth, just let environ['manila.context'] pass through.
     """
-    api = router.APIRouter()
     mapper = urlmap.URLMap()
-    mapper['/v2'] = api
-    mapper['/v1'] = api
+    mapper['/v1'] = router_v1.APIRouter()
+    mapper['/v2'] = router_v2.APIRouter()
     return mapper
 
 
 fixture_reset_status_with_different_roles = (
     {
-        'role': 'admin', 'valid_code': 202,
+        'role': 'admin',
+        'valid_code': 202,
         'valid_status': constants.STATUS_ERROR,
+        'version': '2.6',
     },
     {
-        'role': 'member', 'valid_code': 403,
+        'role': 'admin',
+        'valid_code': 202,
+        'valid_status': constants.STATUS_ERROR,
+        'version': '2.7',
+    },
+    {
+        'role': 'member',
+        'valid_code': 403,
         'valid_status': constants.STATUS_AVAILABLE,
+        'version': '2.6',
+    },
+    {
+        'role': 'member',
+        'valid_code': 403,
+        'valid_status': constants.STATUS_AVAILABLE,
+        'version': '2.7',
     },
 )
 
 
 fixture_force_delete_with_different_roles = (
-    {'role': 'admin', 'resp_code': 202},
-    {'role': 'member', 'resp_code': 403},
+    {'role': 'admin', 'resp_code': 202, 'version': '2.6'},
+    {'role': 'admin', 'resp_code': 202, 'version': '2.7'},
+    {'role': 'member', 'resp_code': 403, 'version': '2.6'},
+    {'role': 'member', 'resp_code': 403, 'version': '2.7'},
 )
 
 

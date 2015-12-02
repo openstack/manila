@@ -25,7 +25,7 @@ import six
 import webob
 
 from manila.api.openstack import wsgi
-import manila.api.v1.consistency_groups as cgs
+import manila.api.v2.consistency_groups as cgs
 from manila.common import constants
 import manila.consistency_group.api as cg_api
 from manila import context
@@ -64,13 +64,13 @@ class CGApiTest(test.TestCase):
     def _get_context(self, role):
         return getattr(self, '%s_context' % role)
 
-    def _setup_cg_data(self, cg=None):
+    def _setup_cg_data(self, cg=None, version='2.7'):
         if cg is None:
             cg = db_utils.create_consistency_group(
                 status=constants.STATUS_AVAILABLE)
-        req = webob.Request.blank('/v2/fake/consistency-groups/%s/action' %
-                                  cg['id'])
-        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = '2.4'
+        req = fakes.HTTPRequest.blank('/v2/fake/consistency-groups/%s/action' %
+                                      cg['id'], version=version)
+        req.headers[wsgi.API_VERSION_REQUEST_HEADER] = version
         req.headers[wsgi.EXPERIMENTAL_API_REQUEST_HEADER] = 'True'
 
         return cg, req
@@ -629,14 +629,19 @@ class CGApiTest(test.TestCase):
     @ddt.data(*fakes.fixture_reset_status_with_different_roles)
     @ddt.unpack
     def test_consistency_groups_reset_status_with_different_roles(
-            self, role, valid_code, valid_status):
+            self, role, valid_code, valid_status, version):
         ctxt = self._get_context(role)
-        cg, req = self._setup_cg_data()
+        cg, req = self._setup_cg_data(version=version)
 
-        body = {'os-reset_status': {'status': constants.STATUS_ERROR}}
+        if float(version) > 2.6:
+            action_name = 'reset_status'
+        else:
+            action_name = 'os-reset_status'
+        body = {action_name: {'status': constants.STATUS_ERROR}}
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = six.b(jsonutils.dumps(body))
+        req.headers['X-Openstack-Manila-Api-Version'] = version
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(
@@ -658,12 +663,18 @@ class CGApiTest(test.TestCase):
     @ddt.data(*fakes.fixture_force_delete_with_different_roles)
     @ddt.unpack
     def test_consistency_group_force_delete_with_different_roles(self, role,
-                                                                 resp_code):
+                                                                 resp_code,
+                                                                 version):
         ctxt = self._get_context(role)
-        cg, req = self._setup_cg_data()
+        cg, req = self._setup_cg_data(version=version)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = six.b(jsonutils.dumps({'os-force_delete': {}}))
+        if float(version) > 2.6:
+            action_name = 'force_delete'
+        else:
+            action_name = 'os-force_delete'
+        body = {action_name: {}}
+        req.body = six.b(jsonutils.dumps(body))
         req.environ['manila.context'] = ctxt
 
         with mock.patch.object(

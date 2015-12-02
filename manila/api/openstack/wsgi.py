@@ -1199,12 +1199,12 @@ class AdminActionsMixin(object):
             raise webob.exc.HTTPBadRequest(explanation=expl)
         return update
 
-    @action('os-reset_status')
     @Controller.authorize('reset_status')
     def _reset_status(self, req, id, body):
         """Reset status on the resource."""
         context = req.environ['manila.context']
-        update = self.validate_update(body['os-reset_status'])
+        update = self.validate_update(
+            body.get('reset_status', body.get('os-reset_status')))
         msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
@@ -1214,7 +1214,6 @@ class AdminActionsMixin(object):
             raise webob.exc.HTTPNotFound(six.text_type(e))
         return webob.Response(status_int=202)
 
-    @action('os-force_delete')
     @Controller.authorize('force_delete')
     def _force_delete(self, req, id, body):
         """Delete a resource, bypassing the check for status."""
