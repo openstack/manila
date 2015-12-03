@@ -21,6 +21,7 @@ import traceback
 from oslo_concurrency import lockutils
 from oslo_log import log
 import six
+from tempest.common import credentials_factory as common_creds
 from tempest.common import dynamic_creds
 from tempest import config
 from tempest import test
@@ -153,7 +154,9 @@ class BaseSharesTest(test.BaseTestCase):
         ic = dynamic_creds.DynamicCredentialProvider(
             identity_version=CONF.identity.auth_version,
             name=name,
-            admin_role=CONF.identity.admin_role)
+            admin_role=CONF.identity.admin_role,
+            admin_creds=common_creds.get_configured_credentials(
+                'identity_admin'))
         if "admin" in type_of_creds:
             creds = ic.get_admin_creds()
         elif "alt" in type_of_creds:
@@ -290,7 +293,8 @@ class BaseSharesTest(test.BaseTestCase):
                         identity_version=CONF.identity.auth_version,
                         name=service_net_name,
                         admin_role=CONF.identity.admin_role,
-                    )
+                        admin_creds=common_creds.get_configured_credentials(
+                            'identity_admin'))
                     net_data = ic._create_network_resources(sc.tenant_id)
                     network, subnet, router = net_data
                     net_id = network["id"]

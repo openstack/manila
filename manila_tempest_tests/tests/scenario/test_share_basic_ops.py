@@ -78,13 +78,13 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
     def init_ssh(self, instance, do_ping=False):
         # Obtain a floating IP
-        floating_ip = (self.floating_ips_client.create_floating_ip()
+        floating_ip = (self.compute_floating_ips_client.create_floating_ip()
                        ['floating_ip'])
         self.addCleanup(self.delete_wrapper,
-                        self.floating_ips_client.delete_floating_ip,
+                        self.compute_floating_ips_client.delete_floating_ip,
                         floating_ip['id'])
         # Attach a floating IP
-        self.floating_ips_client.associate_floating_ip_to_server(
+        self.compute_floating_ips_client.associate_floating_ip_to_server(
             floating_ip['ip'], instance['id'])
         # Check ssh
         ssh_client = self.get_remote_client(
