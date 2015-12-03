@@ -37,12 +37,23 @@ from manila.share import rpcapi as share_rpcapi
 LOG = log.getLogger(__name__)
 
 scheduler_driver_opt = cfg.StrOpt('scheduler_driver',
-                                  default='manila.scheduler.filter_scheduler.'
-                                          'FilterScheduler',
+                                  default='manila.scheduler.drivers.'
+                                          'filter.FilterScheduler',
                                   help='Default scheduler driver to use.')
 
 CONF = cfg.CONF
 CONF.register_opt(scheduler_driver_opt)
+
+# Drivers that need to change module paths or class names can add their
+# old/new path here to maintain backward compatibility.
+MAPPING = {
+    'manila.scheduler.chance.ChanceScheduler':
+    'manila.scheduler.drivers.chance.ChanceScheduler',
+    'manila.scheduler.filter_scheduler.FilterScheduler':
+    'manila.scheduler.drivers.filter.FilterScheduler',
+    'manila.scheduler.simple.SimpleScheduler':
+    'manila.scheduler.drivers.simple.SimpleScheduler',
+}
 
 
 class SchedulerManager(manager.Manager):
@@ -52,8 +63,19 @@ class SchedulerManager(manager.Manager):
 
     def __init__(self, scheduler_driver=None, service_name=None,
                  *args, **kwargs):
+
         if not scheduler_driver:
             scheduler_driver = CONF.scheduler_driver
+        if scheduler_driver in MAPPING:
+            msg_args = {
+                'old': scheduler_driver,
+                'new': MAPPING[scheduler_driver],
+            }
+            LOG.warning(_LW("Scheduler driver path %(old)s is deprecated, "
+                            "update your configuration to the new path "
+                            "%(new)s"), msg_args)
+            scheduler_driver = MAPPING[scheduler_driver]
+
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
 

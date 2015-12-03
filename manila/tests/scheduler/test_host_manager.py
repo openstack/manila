@@ -26,7 +26,7 @@ from six import moves
 
 from manila import db
 from manila import exception
-from manila.openstack.common.scheduler import filters
+from manila.scheduler.filters import base_host
 from manila.scheduler import host_manager
 from manila import test
 from manila.tests.scheduler import fakes
@@ -36,12 +36,12 @@ from manila import utils
 CONF = cfg.CONF
 
 
-class FakeFilterClass1(filters.BaseHostFilter):
+class FakeFilterClass1(base_host.BaseHostFilter):
     def host_passes(self, host_state, filter_properties):
         pass
 
 
-class FakeFilterClass2(filters.BaseHostFilter):
+class FakeFilterClass2(base_host.BaseHostFilter):
     def host_passes(self, host_state, filter_properties):
         pass
 
