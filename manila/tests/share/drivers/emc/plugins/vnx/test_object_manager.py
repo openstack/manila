@@ -2732,7 +2732,7 @@ class NFSShareTestCase(StorageObjectTestCase):
                        mover_name=self.vdm.vdm_name)
 
         ssh_calls = [
-            mock.call(self.nfs_share.cmd_get(), True),
+            mock.call(self.nfs_share.cmd_get(), False),
             mock.call(self.nfs_share.cmd_delete(), True),
         ]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
@@ -2748,7 +2748,7 @@ class NFSShareTestCase(StorageObjectTestCase):
         context.delete(name=self.nfs_share.share_name,
                        mover_name=self.vdm.vdm_name)
 
-        ssh_calls = [mock.call(self.nfs_share.cmd_get(), True)]
+        ssh_calls = [mock.call(self.nfs_share.cmd_get(), False)]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
     @mock.patch('time.sleep')
@@ -2768,7 +2768,7 @@ class NFSShareTestCase(StorageObjectTestCase):
                        mover_name=self.vdm.vdm_name)
 
         ssh_calls = [
-            mock.call(self.nfs_share.cmd_get(), True),
+            mock.call(self.nfs_share.cmd_get(), False),
             mock.call(self.nfs_share.cmd_delete(), True),
             mock.call(self.nfs_share.cmd_delete(), True),
         ]
@@ -2793,7 +2793,7 @@ class NFSShareTestCase(StorageObjectTestCase):
                           mover_name=self.vdm.vdm_name)
 
         ssh_calls = [
-            mock.call(self.nfs_share.cmd_get(), True),
+            mock.call(self.nfs_share.cmd_get(), False),
             mock.call(self.nfs_share.cmd_delete(), True),
         ]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
@@ -2813,13 +2813,14 @@ class NFSShareTestCase(StorageObjectTestCase):
         context.get(name=self.nfs_share.share_name,
                     mover_name=self.vdm.vdm_name)
 
-        ssh_calls = [mock.call(self.nfs_share.cmd_get(), True)]
+        ssh_calls = [mock.call(self.nfs_share.cmd_get(), False)]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
     def test_get_nfs_share_not_found(self):
         expt_not_found = processutils.ProcessExecutionError(
             stdout=self.nfs_share.output_get_but_not_found())
         self.ssh_hook.append(ex=expt_not_found)
+        self.ssh_hook.append(self.nfs_share.output_get_but_not_found())
 
         context = self.manager.getStorageContext('NFSShare')
         context.conn['SSH'].run_ssh = mock.Mock(side_effect=self.ssh_hook)
@@ -2827,7 +2828,13 @@ class NFSShareTestCase(StorageObjectTestCase):
         context.get(name=self.nfs_share.share_name,
                     mover_name=self.vdm.vdm_name)
 
-        ssh_calls = [mock.call(self.nfs_share.cmd_get(), True)]
+        context.get(name=self.nfs_share.share_name,
+                    mover_name=self.vdm.vdm_name)
+
+        ssh_calls = [
+            mock.call(self.nfs_share.cmd_get(), False),
+            mock.call(self.nfs_share.cmd_get(), False),
+        ]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
     def test_get_nfs_share_with_error(self):
@@ -2843,7 +2850,7 @@ class NFSShareTestCase(StorageObjectTestCase):
                           name=self.nfs_share.share_name,
                           mover_name=self.vdm.vdm_name)
 
-        ssh_calls = [mock.call(self.nfs_share.cmd_get(), True)]
+        ssh_calls = [mock.call(self.nfs_share.cmd_get(), False)]
         context.conn['SSH'].run_ssh.assert_has_calls(ssh_calls)
 
     def test_allow_share_access(self):
