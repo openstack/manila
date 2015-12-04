@@ -200,6 +200,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 }, {
                     'name': 'host2@back1#BBB',
@@ -224,6 +225,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 }, {
                     'name': 'host2@back2#CCC',
@@ -248,6 +250,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 },
             ]
@@ -294,6 +297,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 }, {
                     'name': 'host2@BBB#pool2',
@@ -319,6 +323,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 }, {
                     'name': 'host3@CCC#pool3',
@@ -344,6 +349,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 }, {
                     'name': 'host4@DDD#pool4a',
@@ -369,6 +375,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 }, {
                     'name': 'host4@DDD#pool4b',
@@ -394,6 +401,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 },
             ]
@@ -452,6 +460,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 }, {
                     'name': 'host2@back1#BBB',
@@ -476,6 +485,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 },
             ]
@@ -526,6 +536,7 @@ class HostManagerTestCase(test.TestCase):
                         'dedupe': False,
                         'compression': False,
                         'replication_type': None,
+                        'replication_domain': None,
                     },
                 },
             ]

@@ -325,6 +325,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'free_capacity_gb': 'unknown',
             'pools': None,
             'snapshot_support': True,
+            'replication_domain': None,
         }
         self.assertEqual(test_data, self._driver._stats)
 

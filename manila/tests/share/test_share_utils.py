@@ -52,6 +52,18 @@ class ShareUtilsTestCase(test.TestCase):
         self.assertEqual(
             'Host', share_utils.extract_host(host))
 
+    def test_extract_host_only_return_backend_name(self):
+        host = 'Host@Backend#Pool'
+        self.assertEqual(
+            'Backend', share_utils.extract_host(host, 'backend_name'))
+
+    def test_extract_host_only_return_backend_name_index_error(self):
+        host = 'Host#Pool'
+
+        self.assertRaises(IndexError,
+                          share_utils.extract_host,
+                          host, 'backend_name')
+
     def test_extract_host_missing_backend(self):
         host = 'Host#Pool'
         self.assertEqual(

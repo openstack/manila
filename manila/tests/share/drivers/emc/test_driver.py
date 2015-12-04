@@ -124,6 +124,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['qos'] = False
         data['pools'] = None
         data['snapshot_support'] = True
+        data['replication_domain'] = None
         self.assertEqual(data, self.driver._stats)
 
     def _fake_safe_get(self, value):

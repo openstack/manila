@@ -375,8 +375,10 @@ class API(base.Base):
 
         self._check_is_share_busy(share)
 
-        if not self.db.share_replicas_get_available_active_replica(
-                context, share['id']):
+        active_replica = self.db.share_replicas_get_available_active_replica(
+            context, share['id'])
+
+        if not active_replica:
             msg = _("Share %s does not have any active replica in available "
                     "state.")
             raise exception.ReplicationException(reason=msg % share['id'])
@@ -385,6 +387,8 @@ class API(base.Base):
             self._create_share_instance_and_get_request_spec(
                 context, share, availability_zone=availability_zone,
                 share_network_id=share_network_id))
+
+        request_spec['active_replica_host'] = active_replica['host']
 
         self.db.share_replica_update(
             context, share_replica['id'],

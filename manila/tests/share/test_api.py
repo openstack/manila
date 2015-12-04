@@ -1835,7 +1835,7 @@ class ShareAPITestCase(test.TestCase):
         fake_replica = fakes.fake_replica(replica['id'])
         fake_request_spec = fakes.fake_replica_request_spec()
         self.mock_object(db_api, 'share_replicas_get_available_active_replica',
-                         mock.Mock(return_value='FAKE_ACTIVE_REPLICA'))
+                         mock.Mock(return_value={'host': 'fake_ar_host'}))
         self.mock_object(
             share_api.API, '_create_share_instance_and_get_request_spec',
             mock.Mock(return_value=(fake_request_spec, fake_replica)))

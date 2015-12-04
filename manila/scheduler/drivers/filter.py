@@ -181,6 +181,18 @@ class FilterScheduler(base.Scheduler):
             if cg_host:
                 cg_support = cg_host.consistency_group_support
 
+        # NOTE(gouthamr): If 'active_replica_host' is present in the request
+        # spec, pass that host's 'replication_domain' to the
+        # ShareReplication filter.
+        active_replica_host = request_spec.get('active_replica_host')
+        replication_domain = None
+        if active_replica_host:
+            temp_hosts = self.host_manager.get_all_host_states_share(elevated)
+            ar_host = next((host for host in temp_hosts
+                            if host.host == active_replica_host), None)
+            if ar_host:
+                replication_domain = ar_host.replication_domain
+
         if filter_properties is None:
             filter_properties = {}
         self._populate_retry_share(filter_properties, resource_properties)
@@ -192,6 +204,7 @@ class FilterScheduler(base.Scheduler):
                                   'resource_type': resource_type,
                                   'cg_support': cg_support,
                                   'consistency_group': cg,
+                                  'replication_domain': replication_domain,
                                   })
 
         self.populate_filter_properties_share(request_spec, filter_properties)

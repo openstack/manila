@@ -32,8 +32,8 @@ def extract_host(host, level='backend', use_default_pool_name=False):
 
     :param host: String for host, which could include host@backend#pool info
     :param level: Indicate which level of information should be extracted
-                  from host string. Level can be 'host', 'backend' or 'pool',
-                  default value is 'backend'
+                  from host string. Level can be 'host', 'backend', 'pool',
+                  or 'backend_name', default value is 'backend'
     :param use_default_pool_name: This flag specifies what to do
                               if level == 'pool' and there is no 'pool' info
                               encoded in host string.  default_pool_name=True
@@ -50,7 +50,8 @@ def extract_host(host, level='backend', use_default_pool_name=False):
         # ret is 'HostA@BackendB'
         ret = extract_host(host, 'pool')
         # ret is 'PoolC'
-
+        ret = extract_host(host, 'backend_name')
+        # ret is 'BackendB'
         host = 'HostX@BackendY'
         ret = extract_host(host, 'pool')
         # ret is None
@@ -61,6 +62,9 @@ def extract_host(host, level='backend', use_default_pool_name=False):
         # Make sure pool is not included
         hst = host.split('#')[0]
         return hst.split('@')[0]
+    if level == 'backend_name':
+        hst = host.split('#')[0]
+        return hst.split('@')[1]
     elif level == 'backend':
         return host.split('#')[0]
     elif level == 'pool':
