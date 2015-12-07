@@ -161,6 +161,10 @@ class IsilonStorageConnection(base.StorageConnection):
         """Is called to remove snapshot."""
         self._isilon_api.delete_snapshot(snapshot['name'])
 
+    def extend_share(self, share, new_size, share_server):
+        """Is called to extend share."""
+        raise NotImplementedError()
+
     def ensure_share(self, context, share, share_server):
         """Invoked to ensure that share is exported."""
 

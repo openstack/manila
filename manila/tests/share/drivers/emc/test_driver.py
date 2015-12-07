@@ -36,35 +36,30 @@ class FakeConnection(base.StorageConnection):
 
     def create_share(self, context, share, share_server):
         """Is called to create share."""
-        pass
 
     def create_snapshot(self, context, snapshot, share_server):
         """Is called to create snapshot."""
-        pass
 
     def delete_share(self, context, share, share_server):
         """Is called to remove share."""
-        pass
+
+    def extend_share(self, share, new_size, share_server):
+        """Is called to extend share."""
 
     def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
-        pass
 
     def ensure_share(self, context, share, share_server):
         """Invoked to sure that share is exported."""
-        pass
 
     def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
-        pass
 
     def deny_access(self, context, share, access, share_server):
         """Deny access to the share."""
-        pass
 
     def raise_connect_error(self):
         """Check for setup error."""
-        pass
 
     def connect(self, emc_share_driver, context):
         """Any initialization the share driver does while starting."""
@@ -72,7 +67,6 @@ class FakeConnection(base.StorageConnection):
 
     def update_share_stats(self, stats_dict):
         """Add key/values to stats_dict."""
-        pass
 
     def get_network_allocations_number(self):
         """Returns number of network allocations for creating VIFs."""
@@ -80,11 +74,9 @@ class FakeConnection(base.StorageConnection):
 
     def setup_server(self, network_info, metadata=None):
         """Set up and configures share server with given network parameters."""
-        pass
 
     def teardown_server(self, server_details, security_services=None):
         """Teardown share server."""
-        pass
 
 FAKE_BACKEND = 'fake_backend'
 

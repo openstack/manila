@@ -64,6 +64,7 @@ class FakeData(object):
     share_id = '7cf7c200_d3af_4e05_b87e_9167c95df4f9'
     share_name = share_id
     share_size = 10
+    new_size = 20
     src_share_name = '7cf7c200_d3af_4e05_b87e_9167c95df4f0'
 
     # Snapshot information
