@@ -469,6 +469,149 @@ class IsilonApiTest(test.TestCase):
         self.assertRaises(requests.exceptions.HTTPError,
                           self.isilon_api.delete_snapshot, "my_snapshot")
 
+    @requests_mock.mock()
+    def test_quota_create(self, m):
+        quota_path = '/ifs/manila/test'
+        quota_size = 256
+        self.assertEqual(0, len(m.request_history))
+        m.post(self._mock_url + '/platform/1/quota/quotas', status_code=201)
+
+        self.isilon_api.quota_create(quota_path, 'directory', quota_size)
+
+        self.assertEqual(1, len(m.request_history))
+        expected_request_json = {
+            'path': quota_path,
+            'type': 'directory',
+            'include_snapshots': False,
+            'thresholds_include_overhead': False,
+            'enforced': True,
+            'thresholds': {'hard': quota_size},
+        }
+        call_body = m.request_history[0].body
+        self.assertEqual(expected_request_json, json.loads(call_body))
+
+    @requests_mock.mock()
+    def test_quota_create__path_does_not_exist(self, m):
+        quota_path = '/ifs/test2'
+        self.assertEqual(0, len(m.request_history))
+        m.post(self._mock_url + '/platform/1/quota/quotas', status_code=400)
+
+        self.assertRaises(
+            requests.exceptions.HTTPError,
+            self.isilon_api.quota_create,
+            quota_path, 'directory', 2
+        )
+
+    @requests_mock.mock()
+    def test_quota_get(self, m):
+        self.assertEqual(0, len(m.request_history))
+        response_json = {'quotas': [{}]}
+        m.get(self._mock_url + '/platform/1/quota/quotas', json=response_json,
+              status_code=200)
+        quota_path = "/ifs/manila/test"
+        quota_type = "directory"
+
+        self.isilon_api.quota_get(quota_path, quota_type)
+
+        self.assertEqual(1, len(m.request_history))
+        request_query_string = m.request_history[0].qs
+        expected_query_string = {'path': [quota_path]}
+        self.assertEqual(expected_query_string, request_query_string)
+
+    @requests_mock.mock()
+    def test_quota_get__path_does_not_exist(self, m):
+        self.assertEqual(0, len(m.request_history))
+        m.get(self._mock_url + '/platform/1/quota/quotas', status_code=404)
+
+        response = self.isilon_api.quota_get(
+            '/ifs/does_not_exist', 'directory')
+
+        self.assertIsNone(response)
+
+    @requests_mock.mock()
+    def test_quota_modify(self, m):
+        self.assertEqual(0, len(m.request_history))
+        quota_id = "ADEF1G"
+        new_size = 1024
+        m.put('{0}/platform/1/quota/quotas/{1}'.format(
+            self._mock_url, quota_id), status_code=204)
+
+        self.isilon_api.quota_modify_size(quota_id, new_size)
+
+        self.assertEqual(1, len(m.request_history))
+        expected_request_body = {'thresholds': {'hard': new_size}}
+        request_body = m.request_history[0].body
+        self.assertEqual(expected_request_body, json.loads(request_body))
+
+    @requests_mock.mock()
+    def test_quota_modify__given_id_does_not_exist(self, m):
+        quota_id = 'ADE2F'
+        m.put('{0}/platform/1/quota/quotas/{1}'.format(
+            self._mock_url, quota_id), status_code=404)
+
+        self.assertRaises(
+            requests.exceptions.HTTPError,
+            self.isilon_api.quota_modify_size,
+            quota_id, 1024
+        )
+
+    @requests_mock.mock()
+    def test_quota_set__quota_already_exists(self, m):
+        self.assertEqual(0, len(m.request_history))
+        quota_path = '/ifs/manila/test'
+        quota_type = 'directory'
+        quota_size = 256
+        quota_id = 'AFE2C'
+        m.get('{0}/platform/1/quota/quotas'.format(
+            self._mock_url), json={'quotas': [{'id': quota_id}]},
+            status_code=200)
+        m.put(
+            '{0}/platform/1/quota/quotas/{1}'.format(self._mock_url, quota_id),
+            status_code=204
+        )
+
+        self.isilon_api.quota_set(quota_path, quota_type, quota_size)
+
+        expected_quota_modify_json = {'thresholds': {'hard': quota_size}}
+        quota_put_json = json.loads(m.request_history[1].body)
+        self.assertEqual(expected_quota_modify_json, quota_put_json)
+
+    @requests_mock.mock()
+    def test_quota_set__quota_does_not_already_exist(self, m):
+        self.assertEqual(0, len(m.request_history))
+        m.get('{0}/platform/1/quota/quotas'.format(
+            self._mock_url), status_code=404)
+        m.post('{0}/platform/1/quota/quotas'.format(self._mock_url),
+               status_code=201)
+        quota_path = '/ifs/manila/test'
+        quota_type = 'directory'
+        quota_size = 256
+
+        self.isilon_api.quota_set(quota_path, quota_type, quota_size)
+
+        # verify a call is made to create a quota
+        expected_create_json = {
+            six.text_type('path'): quota_path,
+            six.text_type('type'): 'directory',
+            six.text_type('include_snapshots'): False,
+            six.text_type('thresholds_include_overhead'): False,
+            six.text_type('enforced'): True,
+            six.text_type('thresholds'): {six.text_type('hard'): quota_size},
+        }
+        create_request_json = json.loads(m.request_history[1].body)
+        self.assertEqual(expected_create_json, create_request_json)
+
+    @requests_mock.mock()
+    def test_quota_set__path_does_not_already_exist(self, m):
+        m.get(self._mock_url + '/platform/1/quota/quotas', status_code=400)
+
+        e = self.assertRaises(
+            requests.exceptions.HTTPError,
+            self.isilon_api.quota_set,
+            '/ifs/does_not_exist', 'directory', 2048
+        )
+        self.assertEqual(400, e.response.status_code)
+
     def _add_create_directory_response(self, m, path, is_recursive):
         url = '{0}/namespace{1}?recursive={2}'.format(
             self._mock_url, path, six.text_type(is_recursive))
