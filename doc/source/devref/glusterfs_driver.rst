@@ -81,7 +81,8 @@ back to key based authentication, using the key specified by
 one of the OpenSSH-style default key locations (*~/.ssh/id_{r,d,ecd}sa*).
 
 For further (non driver specific) configuration of Ganesha, see
-:doc:`ganesha`.
+:doc:`ganesha`. It is recommended to consult with :doc:`ganesha`:
+:ref:`ganesha_known_issues` too.
 
 Layouts have also their set of parameters, see :ref:`glusterfs_layouts` about
 that.

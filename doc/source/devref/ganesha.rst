@@ -185,6 +185,35 @@ Known Restrictions
 - The library does not support network segmented multi-tenancy model but
   instead works over a flat network, where the tenants share a network.
 
+.. _ganesha_known_issues
+
+Known Issues
+------------
+
+- The export location for shares of a driver that uses the Ganesha Library
+  will be of the format ``<ganesha-server>:/share-<share-id>``. However,
+  this is incomplete information, because it pertains only to NFSv3
+  access, which is partially broken. NFSv4 mounts work well but the
+  actual NFSv4 export paths differ from the above. In detail:
+
+  - The export location is usable only for NFSv3 mounts.
+  - The export location works only for the first access
+    rule that's added for the given share. Tenants that
+    should be allowed to access according to a further
+    access rule will be refused (cf.
+    https://bugs.launchpad.net/manila/+bug/1513061).
+  - The share is, however, exported through NFSv4, just
+    on paths that differ from the one indicated by
+    the export location, namely at:
+    ``<ganesha-server>:/share-<share-id>--<access-id>``,
+    where ``<access-id>`` ranges over the ID-s of access
+    rules of the share (and the export with ``<access-id>``
+    is accessible according to the access rule of that ID).
+  - NFSv4 access also works with pseudofs. That is, the
+    tenant can do a v4 mount of``<ganesha-server>:/`` and
+    access the shares allowed for her at the respective
+    ``share-<share-id>--<access-id>`` subdirectories.
+
 The :mod:`manila.share.drivers.ganesha` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
