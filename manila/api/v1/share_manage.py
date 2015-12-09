@@ -49,6 +49,9 @@ class ShareManageMixin(object):
             'display_description': description,
         }
 
+        if share_data.get('is_public') is not None:
+            share['is_public'] = share_data['is_public']
+
         driver_options = share_data.get('driver_options', {})
 
         try:
@@ -125,6 +128,7 @@ class ShareManageController(ShareManageMixin, wsgi.Controller):
         Should be removed when minimum API version becomes equal to or
         greater than v2.7
         """
+        body.get('share', {}).pop('is_public', None)
         return self._manage(req, body)
 
 
