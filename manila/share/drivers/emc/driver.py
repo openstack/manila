@@ -88,6 +88,10 @@ class EMCShareDriver(driver.ShareDriver):
 
         return location
 
+    def extend_share(self, share, new_size, share_server=None):
+        """Is called to extend share."""
+        self.plugin.extend_share(share, new_size, share_server)
+
     def create_snapshot(self, context, snapshot, share_server=None):
         """Is called to create snapshot."""
         self.plugin.create_snapshot(context, snapshot, share_server)

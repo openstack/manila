@@ -260,6 +260,11 @@ class VNXStorageConnection(driver.StorageConnection):
     def ensure_share(self, context, share, share_server=None):
         """Ensure that the share is exported."""
 
+    def extend_share(self, share, new_size, share_server=None):
+        share_name = share['id']
+        self._get_context('FileSystem').extend(
+            share_name, self.pool_name, new_size * units.Ki)
+
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to a share."""
         access_level = access['access_level']

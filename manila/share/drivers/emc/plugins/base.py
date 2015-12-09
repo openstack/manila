@@ -50,6 +50,10 @@ class StorageConnection(object):
         """Invoked to ensure that share is exported."""
 
     @abc.abstractmethod
+    def extend_share(self, share, new_size, share_server):
+        """Invoked to extend share."""
+
+    @abc.abstractmethod
     def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
 

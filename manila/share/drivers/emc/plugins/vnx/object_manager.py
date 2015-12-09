@@ -1880,7 +1880,8 @@ class NFSShare(StorageObject):
                                        accesshosts)
 
                 # Update self.nfs_share_map
-                self.get(share_name, mover_name, True, True)
+                self.get(share_name, mover_name, force=True,
+                         check_exit_code=True)
 
         do_allow_access(share_name, host_ip, mover_name, access_level)
 
@@ -1926,7 +1927,8 @@ class NFSShare(StorageObject):
                                        accesshosts)
 
                 # Update self.nfs_share_map
-                self.get(share_name, mover_name, True, True)
+                self.get(share_name, mover_name, force=True,
+                         check_exit_code=True)
 
         do_deny_access(share_name, host_ip, mover_name)
 

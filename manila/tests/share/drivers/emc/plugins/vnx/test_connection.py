@@ -451,6 +451,26 @@ class StorageConnectionTestCase(test.TestCase):
         ]
         xml_req_mock.assert_has_calls(expected_calls)
 
+    def test_extend_share(self):
+        share_server = fakes.SHARE_SERVER
+        share = fakes.CIFS_SHARE
+        new_size = fakes.FakeData.new_size
+
+        hook = utils.RequestSideEffect()
+        hook.append(self.fs.resp_get_succeed())
+        hook.append(self.fs.resp_task_succeed())
+
+        xml_req_mock = utils.EMCMock(side_effect=hook)
+        self.connection.manager.connectors['XML'].request = xml_req_mock
+
+        self.connection.extend_share(share, new_size, share_server)
+
+        expected_calls = [
+            mock.call(self.fs.req_get()),
+            mock.call(self.fs.req_extend()),
+        ]
+        xml_req_mock.assert_has_calls(expected_calls)
+
     def test_create_snapshot(self):
         share_server = fakes.SHARE_SERVER
         snapshot = fake_share.fake_snapshot(
