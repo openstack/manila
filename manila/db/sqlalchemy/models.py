@@ -698,8 +698,8 @@ class ShareServer(BASE, ManilaBase):
 
     @property
     def backend_details(self):
-        return dict((model['key'], model['value'])
-                    for model in self._backend_details)
+        return {model['key']: model['value']
+                for model in self._backend_details}
 
     _extra_keys = ['backend_details']
 

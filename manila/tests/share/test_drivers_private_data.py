@@ -135,7 +135,7 @@ def create_arg_list(key_names):
 
 
 def create_arg_dict(key_names):
-    return dict((key, fake_storage_data[key]) for key in key_names)
+    return {key: fake_storage_data[key] for key in key_names}
 
 
 @ddt.ddt

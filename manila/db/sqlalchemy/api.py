@@ -770,7 +770,7 @@ def _get_user_quota_usages(context, session, project_id, user_id):
                    models.QuotaUsage.user_id is None)).\
         with_lockmode('update').\
         all()
-    return dict((row.resource, row) for row in rows)
+    return {row.resource: row for row in rows}
 
 
 def _get_project_quota_usages(context, session, project_id):
@@ -980,8 +980,8 @@ def quota_reserve(context, resources, project_quotas, user_quotas, deltas,
             usages = project_usages
         else:
             usages = user_usages
-        usages = dict((k, dict(in_use=v['in_use'], reserved=v['reserved']))
-                      for k, v in usages.items())
+        usages = {k: dict(in_use=v['in_use'], reserved=v['reserved'])
+                  for k, v in usages.items()}
         raise exception.OverQuota(overs=sorted(overs), quotas=user_quotas,
                                   usages=usages)
 
@@ -2465,7 +2465,7 @@ def driver_private_data_get(context, host, entity_id, key=None,
     query = _driver_private_data_query(session, context, host, entity_id, key)
 
     if key is None or isinstance(key, list):
-        return dict([(item.key, item.value) for item in query.all()])
+        return {item.key: item.value for item in query.all()}
     else:
         result = query.first()
         return result["value"] if result is not None else default
@@ -2606,8 +2606,8 @@ to a single dict:
 'extra_specs' : {'k1': 'v1'}
 """
     inst_type_dict = dict(inst_type_query)
-    extra_specs = dict([(x['key'], x['value'])
-                        for x in inst_type_query['extra_specs']])
+    extra_specs = {x['key']: x['value']
+                   for x in inst_type_query['extra_specs']}
     inst_type_dict['extra_specs'] = extra_specs
     return inst_type_dict
 

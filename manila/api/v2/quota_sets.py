@@ -63,7 +63,7 @@ class QuotaSetsMixin(object):
 
         if usages:
             return values
-        return dict((k, v['limit']) for k, v in values.items())
+        return {k: v['limit'] for k, v in values.items()}
 
     @wsgi.Controller.authorize("show")
     def _show(self, req, id):

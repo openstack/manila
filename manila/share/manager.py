@@ -1173,8 +1173,8 @@ class ShareManager(manager.SchedulerDependentManager):
         """Get info about relationships between pools and share_servers."""
         share_servers = self.db.share_server_get_all_by_host(context,
                                                              self.host)
-        return dict((server['id'], self.driver.get_share_server_pools(server))
-                    for server in share_servers)
+        return {server['id']: self.driver.get_share_server_pools(server)
+                for server in share_servers}
 
     @add_hooks
     @utils.require_driver_initialized

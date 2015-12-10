@@ -50,7 +50,7 @@ class ViewBuilder(common.ViewBuilder):
         context = request.environ['manila.context']
         metadata = share.get('share_metadata')
         if metadata:
-            metadata = dict((item['key'], item['value']) for item in metadata)
+            metadata = {item['key']: item['value'] for item in metadata}
         else:
             metadata = {}
 

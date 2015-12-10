@@ -20,6 +20,8 @@ Manila Specific Commandments
 - [M330] LOG.warning messages require translations _LW()!
 - [M331] Log messages require translations!
 - [M333] 'oslo_' should be used instead of 'oslo.'
+- [M336] Must use a dict comprehension instead of a dict constructor
+  with a sequence of key-value pairs.
 
 
 LOG Translations

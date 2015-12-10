@@ -218,7 +218,7 @@ class API(object):
 
     def list_extensions(self):
         extensions_list = self.client.list_extensions().get('extensions')
-        return dict((ext['name'], ext) for ext in extensions_list)
+        return {ext['name']: ext for ext in extensions_list}
 
     def _has_port_binding_extension(self):
         if not self.extensions:

@@ -154,9 +154,9 @@ class ShareSnapshotsController(wsgi.Controller, wsgi.AdminActionsMixin):
             'display_description',
         )
 
-        update_dict = dict([(key, snapshot_data[key])
-                            for key in valid_update_keys
-                            if key in snapshot_data])
+        update_dict = {key: snapshot_data[key]
+                       for key in valid_update_keys
+                       if key in snapshot_data}
 
         try:
             snapshot = self.share_api.get_snapshot(context, id)

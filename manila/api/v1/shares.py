@@ -197,9 +197,9 @@ class ShareMixin(object):
             'is_public',
         )
 
-        update_dict = dict([(key, share_data[key])
-                            for key in valid_update_keys
-                            if key in share_data])
+        update_dict = {key: share_data[key]
+                       for key in valid_update_keys
+                       if key in share_data}
 
         try:
             share = self.share_api.get(context, id)
