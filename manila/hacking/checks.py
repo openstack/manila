@@ -226,7 +226,7 @@ def check_oslo_namespace_imports(logical_line, physical_line, filename):
     if pep8.noqa(physical_line):
         return
     if re.match(oslo_namespace_imports, logical_line):
-        msg = ("N333: '%s' must be used instead of '%s'.") % (
+        msg = ("M333: '%s' must be used instead of '%s'.") % (
             logical_line.replace('oslo.', 'oslo_'),
             logical_line)
         yield(0, msg)
