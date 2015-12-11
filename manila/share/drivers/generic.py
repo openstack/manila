@@ -143,7 +143,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             service_instance.ServiceInstanceManager(
                 driver_config=self.configuration))
 
-    def _ssh_exec(self, server, command):
+    def _ssh_exec(self, server, command, check_exit_code=True):
         connection = self.ssh_connections.get(server['instance_id'])
         ssh_conn_timeout = self.configuration.ssh_conn_timeout
         if not connection:
@@ -163,7 +163,8 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             ssh_pool.remove(ssh)
             ssh = ssh_pool.create()
             self.ssh_connections[server['instance_id']] = (ssh_pool, ssh)
-        return processutils.ssh_execute(ssh, ' '.join(command))
+        return processutils.ssh_execute(ssh, ' '.join(command),
+                                        check_exit_code=check_exit_code)
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -821,23 +822,34 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 share_server['backend_details'], share['name'], recreate=True)
 
     @ensure_server
-    def allow_access(self, context, share, access, share_server=None):
-        """Allow access to the share."""
+    def update_access(self, context, share, access_rules, add_rules=None,
+                      delete_rules=None, share_server=None):
+        """Update access rules for given share.
 
-        # NOTE(vponomaryov): use direct verification for case some additional
-        # level is added.
-        access_level = access['access_level']
-        if access_level not in (const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO):
-            raise exception.InvalidShareAccessLevel(level=access_level)
-        self._get_helper(share).allow_access(
-            share_server['backend_details'], share['name'],
-            access['access_type'], access['access_level'], access['access_to'])
+        This driver has two different behaviors according to parameters:
+        1. Recovery after error - 'access_rules' contains all access_rules,
+        'add_rules' and 'delete_rules' shall be None. Previously existing
+        access rules are cleared and then added back according
+        to 'access_rules'.
 
-    @ensure_server
-    def deny_access(self, context, share, access, share_server=None):
-        """Deny access to the share."""
-        self._get_helper(share).deny_access(
-            share_server['backend_details'], share['name'], access)
+        2. Adding/Deleting of several access rules - 'access_rules' contains
+        all access_rules, 'add_rules' and 'delete_rules' contain rules which
+        should be added/deleted. Rules in 'access_rules' are ignored and
+        only rules from 'add_rules' and 'delete_rules' are applied.
+
+        :param context: Current context
+        :param share: Share model with share data.
+        :param access_rules: All access rules for given share
+        :param add_rules: None or List of access rules which should be added
+               access_rules already contains these rules.
+        :param delete_rules: None or List of access rules which should be
+               removed. access_rules doesn't contain these rules.
+        :param share_server: None or Share server model
+        """
+        self._get_helper(share).update_access(share_server['backend_details'],
+                                              share['name'], access_rules,
+                                              add_rules=add_rules,
+                                              delete_rules=delete_rules)
 
     def _get_helper(self, share):
         helper = self._helpers.get(share['share_proto'])

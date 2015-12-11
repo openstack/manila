@@ -16,9 +16,11 @@
 
 import os
 
+import ddt
 import mock
 from oslo_config import cfg
 
+from manila.common import constants as const
 from manila import context
 from manila import exception
 from manila.share import configuration
@@ -26,6 +28,7 @@ from manila.share.drivers import lvm
 from manila import test
 from manila.tests.db import fakes as db_fakes
 from manila.tests import fake_utils
+from manila.tests.share.drivers import test_generic
 
 
 CONF = cfg.CONF
@@ -69,6 +72,7 @@ def fake_access(**kwargs):
     return db_fakes.FakeModel(access)
 
 
+@ddt.ddt
 class LVMShareDriverTestCase(test.TestCase):
     """Tests LVMShareDriver."""
 
@@ -358,23 +362,22 @@ class LVMShareDriverTestCase(test.TestCase):
             self.server,
             self.share['name'])
 
-    def test_allow_access(self):
-        mount_path = self._get_mount_path(self.share)
-        self._helper_nfs.allow_access(mount_path,
-                                      self.share['name'],
-                                      self.access['access_type'],
-                                      self.access['access_to'])
-        self._driver.allow_access(self._context, self.share, self.access,
-                                  self.share_server)
-
-    def test_deny_access(self):
-        mount_path = self._get_mount_path(self.share)
-        self._helper_nfs.deny_access(mount_path,
-                                     self.share['name'],
-                                     self.access['access_type'],
-                                     self.access['access_to'])
-        self._driver.deny_access(self._context, self.share, self.access,
-                                 self.share_server)
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
+    def test_update_access(self, access_level):
+        access_rules = [test_generic.get_fake_access_rule(
+            '1.1.1.1', access_level), ]
+        add_rules = [test_generic.get_fake_access_rule(
+            '2.2.2.2', access_level), ]
+        delete_rules = [test_generic.get_fake_access_rule(
+            '3.3.3.3', access_level), ]
+        self._driver.update_access(self._context, self.share, access_rules,
+                                   add_rules=add_rules,
+                                   delete_rules=delete_rules,
+                                   share_server=self.server)
+        (self._driver._helpers[self.share['share_proto']].
+            update_access.assert_called_once_with(
+                self.server, self.share['name'],
+                access_rules, add_rules=add_rules, delete_rules=delete_rules))
 
     def test_mount_device(self):
         mount_path = self._get_mount_path(self.share)
@@ -448,14 +451,15 @@ class LVMShareDriverTestCase(test.TestCase):
         command = ['fake_command']
         self.mock_object(self._driver, '_execute')
         self._driver._ssh_exec_as_root('fake_server', command)
-        self._driver._execute.assert_called_once_with('fake_command')
+        self._driver._execute.assert_called_once_with('fake_command',
+                                                      check_exit_code=True)
 
     def test_ssh_exec_as_root_with_sudo(self):
         command = ['sudo', 'fake_command']
         self.mock_object(self._driver, '_execute')
         self._driver._ssh_exec_as_root('fake_server', command)
-        self._driver._execute.assert_called_once_with('fake_command',
-                                                      run_as_root=True)
+        self._driver._execute.assert_called_once_with(
+            'fake_command', run_as_root=True, check_exit_code=True)
 
     def test_extend_container(self):
         self.mock_object(self._driver, '_try_execute')

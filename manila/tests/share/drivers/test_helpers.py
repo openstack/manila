@@ -26,6 +26,7 @@ from manila.share.drivers import helpers
 from manila import test
 from manila.tests import fake_compute
 from manila.tests import fake_utils
+from manila.tests.share.drivers import test_generic
 
 
 CONF = cfg.CONF
@@ -48,6 +49,37 @@ class NFSHelperTestCase(test.TestCase):
             ip=ip, public_address=ip, instance_id='fake_instance_id')
         self.share_name = 'fake_share_name'
 
+    def test_init_helper(self):
+
+        # mocks
+        self.mock_object(
+            self._helper, '_ssh_exec',
+            mock.Mock(side_effect=exception.ProcessExecutionError(
+                stderr='command not found')))
+
+        # run
+        self.assertRaises(exception.ManilaException,
+                          self._helper.init_helper, self.server)
+
+        # asserts
+        self._helper._ssh_exec.assert_called_once_with(
+            self.server, ['sudo', 'exportfs'])
+
+    def test_init_helper_log(self):
+
+        # mocks
+        self.mock_object(
+            self._helper, '_ssh_exec',
+            mock.Mock(side_effect=exception.ProcessExecutionError(
+                stderr='fake')))
+
+        # run
+        self._helper.init_helper(self.server)
+
+        # asserts
+        self._helper._ssh_exec.assert_called_once_with(
+            self.server, ['sudo', 'exportfs'])
+
     def test_create_export(self):
         ret = self._helper.create_export(self.server, self.share_name)
         expected_location = ':'.join([self.server['public_address'],
@@ -56,38 +88,88 @@ class NFSHelperTestCase(test.TestCase):
         self.assertEqual(expected_location, ret)
 
     @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
-    def test_allow_access(self, data):
+    def test_update_access(self, access_level):
         self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
-        self._helper.allow_access(
-            self.server, self.share_name, 'ip', data, '10.0.0.2')
+        local_path = os.path.join(CONF.share_mount_path, self.share_name)
+        exec_result = ' '.join([local_path, '2.2.2.3'])
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(return_value=(exec_result, '')))
+        access_rules = [
+            test_generic.get_fake_access_rule('1.1.1.1', access_level),
+            test_generic.get_fake_access_rule('2.2.2.2', access_level),
+            test_generic.get_fake_access_rule('2.2.2.3', access_level)]
+        add_rules = [
+            test_generic.get_fake_access_rule('2.2.2.2', access_level),
+            test_generic.get_fake_access_rule('2.2.2.3', access_level)]
+        delete_rules = [
+            test_generic.get_fake_access_rule('3.3.3.3', access_level),
+            test_generic.get_fake_access_rule('4.4.4.4', access_level, 'user')]
+        self._helper.update_access(self.server, self.share_name, access_rules,
+                                   add_rules=add_rules,
+                                   delete_rules=delete_rules)
+        local_path = os.path.join(CONF.share_mount_path, self.share_name)
+        self._helper._ssh_exec.assert_has_calls([
+            mock.call(self.server, ['sudo', 'exportfs']),
+            mock.call(self.server, ['sudo', 'exportfs', '-u',
+                                    ':'.join(['3.3.3.3', local_path])]),
+            mock.call(self.server, ['sudo', 'exportfs', '-o',
+                                    '%s,no_subtree_check' % access_level,
+                                    ':'.join(['2.2.2.2', local_path])]),
+        ])
+        self._helper._sync_nfs_temp_and_perm_files.assert_has_calls([
+            mock.call(self.server), mock.call(self.server)])
+
+    def test_update_access_invalid_type(self):
+        access_rules = [test_generic.get_fake_access_rule(
+            '2.2.2.2', const.ACCESS_LEVEL_RW, access_type='fake'), ]
+        self.assertRaises(
+            exception.InvalidShareAccess,
+            self._helper.update_access,
+            self.server,
+            self.share_name,
+            access_rules)
+
+    def test_update_access_invalid_level(self):
+        access_rules = [test_generic.get_fake_access_rule(
+            '2.2.2.2', 'fake_level', access_type='ip'), ]
+        self.assertRaises(
+            exception.InvalidShareAccessLevel,
+            self._helper.update_access,
+            self.server,
+            self.share_name,
+            access_rules)
+
+    def test_get_host_list(self):
+        fake_exportfs = ('/shares/share-1\n\t\t20.0.0.3\n'
+                         '/shares/share-1\n\t\t20.0.0.6\n'
+                         '/shares/share-2\n\t\t10.0.0.2\n'
+                         '/shares/share-2\n\t\t10.0.0.5\n'
+                         '/shares/share-3\n\t\t30.0.0.4\n'
+                         '/shares/share-3\n\t\t30.0.0.7\n')
+        expected = ['20.0.0.3', '20.0.0.6']
+        result = self._helper._get_host_list(fake_exportfs, '/shares/share-1')
+        self.assertEqual(expected, result)
+
+    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
+    def test_update_access_recovery_mode(self, access_level):
+        access_rules = [test_generic.get_fake_access_rule(
+            '1.1.1.1', access_level), ]
+        self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
+        self.mock_object(self._helper, '_get_host_list',
+                         mock.Mock(return_value=['1.1.1.1']))
+        self._helper.update_access(self.server, self.share_name, access_rules)
         local_path = os.path.join(CONF.share_mount_path, self.share_name)
         self._ssh_exec.assert_has_calls([
             mock.call(self.server, ['sudo', 'exportfs']),
+            mock.call(
+                self.server, ['sudo', 'exportfs', '-u',
+                              ':'.join([access_rules[0]['access_to'],
+                                        local_path])]),
             mock.call(self.server, ['sudo', 'exportfs', '-o',
-                                    '%s,no_subtree_check' % data,
-                                    ':'.join(['10.0.0.2', local_path])])
+                                    '%s,no_subtree_check' % access_level,
+                                    ':'.join(['1.1.1.1', local_path])]),
         ])
-        self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
-            self.server)
-
-    def test_allow_access_no_ip(self):
-        self.assertRaises(
-            exception.InvalidShareAccess,
-            self._helper.allow_access,
-            self.server, self.share_name,
-            'fake_type', 'fake_level', 'fake_rule')
-
-    @ddt.data(const.ACCESS_LEVEL_RW, const.ACCESS_LEVEL_RO)
-    def test_deny_access(self, data):
-        self.mock_object(self._helper, '_sync_nfs_temp_and_perm_files')
-        local_path = os.path.join(CONF.share_mount_path, self.share_name)
-        access = dict(
-            access_to='10.0.0.2', access_type='ip', access_level=data)
-        self._helper.deny_access(self.server, self.share_name, access)
-        export_string = ':'.join(['10.0.0.2', local_path])
-        expected_exec = ['sudo', 'exportfs', '-u', export_string]
-        self._ssh_exec.assert_called_once_with(self.server, expected_exec)
-        self._helper._sync_nfs_temp_and_perm_files.assert_called_once_with(
+        self._helper._sync_nfs_temp_and_perm_files.assert_called_with(
             self.server)
 
     def test_sync_nfs_temp_and_perm_files(self):
@@ -198,7 +280,7 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
             if 'showshare' in args[1]:
                 raise exception.ProcessExecutionError()
             else:
-                return ('', '')
+                return '', ''
 
         self.mock_object(self._helper, '_ssh_exec',
                          mock.Mock(side_effect=fake_ssh_exec))
@@ -222,7 +304,20 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
                     share_path, 'writeable=y', 'guest_ok=y',
                 ]
             ),
+            mock.call(self.server_details, mock.ANY),
         ])
+
+    def test_create_export_share_does_not_exist_exception(self):
+
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(
+                             side_effect=[exception.ProcessExecutionError(),
+                                          Exception('')]
+                         ))
+
+        self.assertRaises(
+            exception.ManilaException, self._helper.create_export,
+            self.server_details, self.share_name)
 
     def test_create_export_share_exist_recreate_true(self):
         ret = self._helper.create_export(self.server_details, self.share_name,
@@ -249,6 +344,7 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
                     share_path, 'writeable=y', 'guest_ok=y',
                 ]
             ),
+            mock.call(self.server_details, mock.ANY),
         ])
 
     def test_create_export_share_exist_recreate_false(self):
@@ -298,122 +394,49 @@ class CIFSHelperIPAccessTestCase(test.TestCase):
             ),
         ])
 
-    def test_allow_access_ip_exist(self):
-        hosts = [self.access['access_to'], ]
-        self.mock_object(self._helper, '_get_allow_hosts',
-                         mock.Mock(return_value=hosts))
-        self.mock_object(self._helper, '_set_allow_hosts')
-
-        self.assertRaises(
-            exception.ShareAccessExists,
-            self._helper.allow_access,
-            self.server_details,
-            self.share_name,
-            self.access['access_type'],
-            self.access['access_level'],
-            self.access['access_to'])
-
-        self._helper._get_allow_hosts.assert_called_once_with(
-            self.server_details, self.share_name)
-        self._helper._set_allow_hosts.assert_has_calls([])
-
-    def test_allow_access_ip_does_not_exist(self):
-        hosts = []
-        self.mock_object(self._helper, '_get_allow_hosts',
-                         mock.Mock(return_value=hosts))
-        self.mock_object(self._helper, '_set_allow_hosts')
-
-        self._helper.allow_access(
-            self.server_details, self.share_name,
-            self.access['access_type'], self.access['access_level'],
-            self.access['access_to'])
-
-        self._helper._get_allow_hosts.assert_called_once_with(
-            self.server_details, self.share_name)
-        self._helper._set_allow_hosts.assert_called_once_with(
-            self.server_details, hosts, self.share_name)
-
-    def test_allow_access_wrong_type(self):
-        self.assertRaises(
-            exception.InvalidShareAccess,
-            self._helper.allow_access,
-            self.server_details,
-            self.share_name, 'fake', const.ACCESS_LEVEL_RW, '1.1.1.1')
-
-    @ddt.data(const.ACCESS_LEVEL_RO, 'fake')
-    def test_allow_access_wrong_access_level(self, data):
+    def test_update_access_wrong_access_level(self):
+        access_rules = [test_generic.get_fake_access_rule(
+            '2.2.2.2', const.ACCESS_LEVEL_RO), ]
         self.assertRaises(
             exception.InvalidShareAccessLevel,
-            self._helper.allow_access,
+            self._helper.update_access,
             self.server_details,
-            self.share_name, 'ip', data, '1.1.1.1')
+            self.share_name,
+            access_rules)
 
-    @ddt.data(const.ACCESS_LEVEL_RO, 'fake')
-    def test_deny_access_unsupported_access_level(self, data):
-        access = dict(access_to='1.1.1.1', access_level=data)
-        self.mock_object(self._helper, '_get_allow_hosts')
-        self.mock_object(self._helper, '_set_allow_hosts')
-
-        self._helper.deny_access(self.server_details, self.share_name, access)
-
-        self.assertFalse(self._helper._get_allow_hosts.called)
-        self.assertFalse(self._helper._set_allow_hosts.called)
-
-    def test_deny_access_list_has_value(self):
-        hosts = [self.access['access_to'], ]
-        self.mock_object(self._helper, '_get_allow_hosts',
-                         mock.Mock(return_value=hosts))
-        self.mock_object(self._helper, '_set_allow_hosts')
-
-        self._helper.deny_access(
-            self.server_details, self.share_name, self.access)
-        self._helper._get_allow_hosts.assert_called_once_with(
-            self.server_details, self.share_name)
-        self._helper._set_allow_hosts.assert_called_once_with(
-            self.server_details, [], self.share_name)
-
-    def test_deny_access_list_does_not_have_value(self):
-        hosts = []
-        self.mock_object(self._helper, '_get_allow_hosts',
-                         mock.Mock(return_value=hosts))
-        self.mock_object(self._helper, '_set_allow_hosts')
-
-        self._helper.deny_access(
-            self.server_details, self.share_name, self.access)
-
-        self._helper._get_allow_hosts.assert_called_once_with(
-            self.server_details, self.share_name)
-        self._helper._set_allow_hosts.assert_has_calls([])
-
-    def test_deny_access_force(self):
-        self.mock_object(
-            self._helper,
-            '_get_allow_hosts',
-            mock.Mock(side_effect=exception.ProcessExecutionError()),
-        )
-        self.mock_object(self._helper, '_set_allow_hosts')
-
-        self._helper.deny_access(
-            self.server_details, self.share_name, self.access, force=True)
-
-        self._helper._get_allow_hosts.assert_called_once_with(
-            self.server_details, self.share_name)
-        self._helper._set_allow_hosts.assert_has_calls([])
-
-    def test_deny_access_not_force(self):
-        def raise_process_execution_error(*args, **kwargs):
-            raise exception.ProcessExecutionError()
-
-        self.mock_object(self._helper, '_get_allow_hosts',
-                         mock.Mock(side_effect=raise_process_execution_error))
-        self.mock_object(self._helper, '_set_allow_hosts')
+    def test_update_access_wrong_access_type(self):
+        access_rules = [test_generic.get_fake_access_rule(
+            '2.2.2.2', const.ACCESS_LEVEL_RW, access_type='fake'), ]
         self.assertRaises(
-            exception.ProcessExecutionError,
-            self._helper.deny_access,
-            self.server_details, self.share_name, self.access)
-        self._helper._get_allow_hosts.assert_called_once_with(
+            exception.InvalidShareAccess,
+            self._helper.update_access,
+            self.server_details,
+            self.share_name,
+            access_rules)
+
+    def test_update_access(self):
+        access_rules = [test_generic.get_fake_access_rule(
+            '1.1.1.1', const.ACCESS_LEVEL_RW), ]
+
+        self._helper.update_access(self.server_details, self.share_name,
+                                   access_rules)
+        self._helper._ssh_exec.assert_called_once_with(
+            self.server_details, ['sudo', 'net', 'conf', 'setparm',
+                                  self.share_name, '"hosts allow"',
+                                  '"1.1.1.1"'])
+
+    def test_get_allow_hosts(self):
+        self.mock_object(self._helper, '_ssh_exec',
+                         mock.Mock(
+                             return_value=('1.1.1.1 2.2.2.2 3.3.3.3', '')))
+        expected = ['1.1.1.1', '2.2.2.2', '3.3.3.3']
+        result = self._helper._get_allow_hosts(
             self.server_details, self.share_name)
-        self._helper._set_allow_hosts.assert_has_calls([])
+        self.assertEqual(expected, result)
+        cmd = ['sudo', 'net', 'conf', 'getparm', self.share_name,
+               '\"hosts allow\"']
+        self._helper._ssh_exec.assert_called_once_with(
+            self.server_details, cmd)
 
     @ddt.data(
         '', '1.2.3.4:/nfs/like/export', '/1.2.3.4/foo', '\\1.2.3.4\\foo',
@@ -534,232 +557,36 @@ class CIFSHelperUserAccessTestCase(test.TestCase):
         self._helper = helpers.CIFSHelperUserAccess(
             self._execute, self._ssh_exec, self.fake_conf)
 
-    @ddt.data('ip', 'cert', 'fake')
-    def test_allow_access_wrong_type(self, wrong_access_type):
+    def test_update_access_exception_type(self):
+        access_rules = [test_generic.get_fake_access_rule(
+            'user1', const.ACCESS_LEVEL_RW, access_type='ip')]
+        self.assertRaises(exception.InvalidShareAccess,
+                          self._helper.update_access, self.server_details,
+                          self.share_name, access_rules, None, None)
+
+    def test_update_access(self):
+        access_list = [test_generic.get_fake_access_rule(
+            'user1', const.ACCESS_LEVEL_RW, access_type='user'),
+            test_generic.get_fake_access_rule(
+                'user2', const.ACCESS_LEVEL_RO, access_type='user')]
+        self._helper.update_access(self.server_details, self.share_name,
+                                   access_list, None, None)
+
+        self._helper._ssh_exec.assert_has_calls([
+            mock.call(self.server_details,
+                      ['sudo', 'net', 'conf', 'setparm', self.share_name,
+                       'valid users', '"user1"']),
+            mock.call(self.server_details,
+                      ['sudo', 'net', 'conf', 'setparm', self.share_name,
+                       'read list', '"user2"'])
+        ])
+
+    def test_update_access_exception_level(self):
+        access_rules = [test_generic.get_fake_access_rule(
+            'user1', 'fake_level', access_type='user'), ]
         self.assertRaises(
-            exception.InvalidShareAccess,
-            self._helper.allow_access,
+            exception.InvalidShareAccessLevel,
+            self._helper.update_access,
             self.server_details,
             self.share_name,
-            wrong_access_type,
-            const.ACCESS_LEVEL_RW,
-            '1.1.1.1')
-
-    @ddt.data(access_rw, access_ro)
-    def test_allow_access_ro_rule_does_not_exist(self, access):
-        users = ['user1', 'user2']
-        self.mock_object(self._helper, '_get_valid_users',
-                         mock.Mock(return_value=users))
-        self.mock_object(self._helper, '_set_valid_users')
-
-        self._helper.allow_access(
-            self.server_details, self.share_name,
-            access['access_type'], access['access_level'],
-            access['access_to'])
-        self.assertEqual(
-            [mock.call(self.server_details, self.share_name),
-             mock.call(self.server_details, self.share_name,
-                       access['access_level'])],
-            self._helper._get_valid_users.call_args_list)
-        self._helper._set_valid_users.assert_called_once_with(
-            self.server_details,
-            users,
-            self.share_name,
-            access['access_level'])
-
-    @ddt.data(access_rw, access_ro)
-    def test_allow_access_ro_rule_exists(self, access):
-        users = ['user1', 'user2', 'manila-user']
-        self.mock_object(self._helper, '_get_valid_users',
-                         mock.Mock(return_value=users))
-
-        self.assertRaises(
-            exception.ShareAccessExists,
-            self._helper.allow_access,
-            self.server_details,
-            self.share_name,
-            access['access_type'],
-            access['access_level'],
-            access['access_to'])
-
-    @ddt.data(access_rw, access_ro)
-    def test_deny_access_list_has_value(self, access):
-        users = ['user1', 'user2', 'manila-user']
-        self.mock_object(self._helper, '_get_valid_users',
-                         mock.Mock(return_value=users))
-        self.mock_object(self._helper, '_set_valid_users')
-
-        self._helper.deny_access(
-            self.server_details, self.share_name, access)
-        self._helper._get_valid_users.assert_called_once_with(
-            self.server_details,
-            self.share_name,
-            access['access_level'],
-            force=False)
-        self._helper._set_valid_users.assert_called_once_with(
-            self.server_details, ['user1', 'user2'], self.share_name,
-            access['access_level'])
-
-    @ddt.data(access_rw, access_ro)
-    def test_deny_access_list_does_not_have_value(self, access):
-        users = []
-        self.mock_object(self._helper, '_get_valid_users',
-                         mock.Mock(return_value=users))
-        self.mock_object(self._helper, '_set_valid_users')
-
-        self._helper.deny_access(
-            self.server_details, self.share_name, access)
-        self._helper._get_valid_users.assert_called_once_with(
-            self.server_details,
-            self.share_name,
-            access['access_level'],
-            force=False)
-        self._helper._set_valid_users.assert_has_calls([])
-
-    @ddt.data(access_rw, access_ro)
-    def test_deny_access_force_access_exists(self, access):
-        users = ['user1', 'user2', 'manila-user']
-        self.mock_object(self._helper, '_get_valid_users',
-                         mock.Mock(return_value=users))
-        self.mock_object(self._helper, '_set_valid_users')
-
-        self._helper.deny_access(
-            self.server_details, self.share_name, access, force=True)
-        self._helper._get_valid_users.assert_called_once_with(
-            self.server_details,
-            self.share_name,
-            access['access_level'],
-            force=True)
-        self._helper._set_valid_users.assert_called_once_with(
-            self.server_details, ['user1', 'user2'], self.share_name,
-            access['access_level'])
-
-    @ddt.data(access_rw, access_ro)
-    def test_deny_access_force_access_does_not_exist(self, access):
-        self.mock_object(
-            self._helper,
-            '_get_valid_users',
-            mock.Mock(return_value=[]),
-        )
-        self.mock_object(self._helper, '_set_valid_users')
-
-        self._helper.deny_access(
-            self.server_details, self.share_name, access, force=True)
-
-        self._helper._get_valid_users.assert_called_once_with(
-            self.server_details,
-            self.share_name,
-            access['access_level'],
-            force=True)
-        self._helper._set_valid_users.assert_has_calls([])
-
-    @ddt.data(access_rw, access_ro)
-    def test_deny_access_force_exc(self, access):
-        self.mock_object(
-            self._helper,
-            '_get_valid_users',
-            mock.Mock(side_effect=exception.ProcessExecutionError()),
-        )
-        self.mock_object(self._helper, '_set_valid_users')
-
-        self.assertRaises(exception.ProcessExecutionError,
-                          self._helper.deny_access,
-                          self.server_details,
-                          self.share_name,
-                          access,
-                          force=True)
-        self._helper._get_valid_users.assert_called_once_with(
-            self.server_details,
-            self.share_name,
-            access['access_level'],
-            force=True)
-
-    def test_get_conf_param_rw(self):
-        result = self._helper._get_conf_param(const.ACCESS_LEVEL_RW)
-        self.assertEqual('valid users', result)
-
-    def test_get_conf_param_ro(self):
-        result = self._helper._get_conf_param(const.ACCESS_LEVEL_RO)
-        self.assertEqual('read list', result)
-
-    @ddt.data(False, True)
-    def test_get_valid_users(self, force):
-        users = ("\"manila-user\" \"user1\" \"user2\"", None)
-        self.mock_object(self._helper, '_ssh_exec',
-                         mock.Mock(return_value=users))
-        result = self._helper._get_valid_users(self.server_details,
-                                               self.share_name,
-                                               const.ACCESS_LEVEL_RW,
-                                               force=force)
-        self.assertEqual(['manila-user', 'user1', 'user2'], result)
-        self._helper._ssh_exec.assert_called_once_with(
-            self.server_details,
-            ['sudo', 'net', 'conf', 'getparm', self.share_name, 'valid users'])
-
-    @ddt.data(False, True)
-    def test_get_valid_users_access_level_none(self, force):
-        def fake_ssh_exec(*args, **kwargs):
-            if 'valid users' in args[1]:
-                return ("\"user1\"", '')
-            else:
-                return ("\"user2\"", '')
-
-        self.mock_object(self._helper, '_ssh_exec',
-                         mock.Mock(side_effect=fake_ssh_exec))
-
-        result = self._helper._get_valid_users(self.server_details,
-                                               self.share_name,
-                                               force=force)
-        self.assertEqual(['user1', 'user2'], result)
-        for param in ['read list', 'valid users']:
-            self._helper._ssh_exec.assert_any_call(
-                self.server_details,
-                ['sudo', 'net', 'conf', 'getparm', self.share_name, param])
-
-    def test_get_valid_users_access_level_none_with_exc(self):
-        self.mock_object(
-            self._helper,
-            '_ssh_exec',
-            mock.Mock(side_effect=exception.ProcessExecutionError()))
-        self.assertRaises(exception.ProcessExecutionError,
-                          self._helper._get_valid_users,
-                          self.server_details,
-                          self.share_name,
-                          force=False)
-        self._helper._ssh_exec.assert_called_once_with(
-            self.server_details,
-            ['sudo', 'net', 'conf', 'getparm', self.share_name, 'valid users'])
-
-    def test_get_valid_users_force_with_exc(self):
-        self.mock_object(
-            self._helper,
-            '_ssh_exec',
-            mock.Mock(side_effect=exception.ProcessExecutionError()))
-        result = self._helper._get_valid_users(self.server_details,
-                                               self.share_name,
-                                               const.ACCESS_LEVEL_RW)
-        self.assertEqual([], result)
-        self._helper._ssh_exec.assert_called_once_with(
-            self.server_details,
-            ['sudo', 'net', 'conf', 'getparm', self.share_name, 'valid users'])
-
-    def test_get_valid_users_not_force_with_exc(self):
-        self.mock_object(
-            self._helper,
-            '_ssh_exec',
-            mock.Mock(side_effect=exception.ProcessExecutionError()))
-        self.assertRaises(exception.ProcessExecutionError,
-                          self._helper._get_valid_users, self.server_details,
-                          self.share_name, const.ACCESS_LEVEL_RW, force=False)
-        self._helper._ssh_exec.assert_called_once_with(
-            self.server_details,
-            ['sudo', 'net', 'conf', 'getparm', self.share_name, 'valid users'])
-
-    def test_set_valid_users(self):
-        self.mock_object(self._helper, '_ssh_exec', mock.Mock())
-        self._helper._set_valid_users(self.server_details, ['user1', 'user2'],
-                                      self.share_name, const.ACCESS_LEVEL_RW)
-        self._helper._ssh_exec.assert_called_once_with(
-            self.server_details,
-            ['sudo', 'net', 'conf', 'setparm', self.share_name,
-             'valid users', '"user1 user2"'])
+            access_rules)

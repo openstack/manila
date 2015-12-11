@@ -35,7 +35,6 @@ from manila.i18n import _LW
 from manila.share import driver
 from manila.share.drivers import generic
 
-
 LOG = log.getLogger(__name__)
 
 share_opts = [
@@ -146,11 +145,12 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
             'instance_id': self.backend_name,
         }
 
-    def _ssh_exec_as_root(self, server, command):
+    def _ssh_exec_as_root(self, server, command, check_exit_code=True):
         kwargs = {}
         if 'sudo' in command:
             kwargs['run_as_root'] = True
             command.remove('sudo')
+        kwargs['check_exit_code'] = check_exit_code
         return self._execute(*command, **kwargs)
 
     def do_setup(self, context):
@@ -265,17 +265,34 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
         except exception.InvalidShare as exc:
             LOG.warning(exc.message)
 
-    def allow_access(self, ctx, share, access, share_server=None):
-        """Allow access to the share."""
-        self._get_helper(share).allow_access(self.share_server, share['name'],
-                                             access['access_type'],
-                                             access['access_level'],
-                                             access['access_to'])
+    def update_access(self, context, share, access_rules, add_rules=None,
+                      delete_rules=None, share_server=None):
+        """Update access rules for given share.
 
-    def deny_access(self, ctx, share, access, share_server=None):
-        """Deny access to the share."""
-        self._get_helper(share).deny_access(self.share_server, share['name'],
-                                            access)
+        This driver has two different behaviors according to parameters:
+        1. Recovery after error - 'access_rules' contains all access_rules,
+        'add_rules' and 'delete_rules' shall be None. Previously existing
+        access rules are cleared and then added back according
+        to 'access_rules'.
+
+        2. Adding/Deleting of several access rules - 'access_rules' contains
+        all access_rules, 'add_rules' and 'delete_rules' contain rules which
+        should be added/deleted. Rules in 'access_rules' are ignored and
+        only rules from 'add_rules' and 'delete_rules' are applied.
+
+        :param context: Current context
+        :param share: Share model with share data.
+        :param access_rules: All access rules for given share
+        :param add_rules: None or List of access rules which should be added
+               access_rules already contains these rules.
+        :param delete_rules: None or List of access rules which should be
+               removed. access_rules doesn't contain these rules.
+        :param share_server: None or Share server model
+        """
+        self._get_helper(share).update_access(self.share_server,
+                                              share['name'], access_rules,
+                                              add_rules=add_rules,
+                                              delete_rules=delete_rules)
 
     def _get_helper(self, share):
         if share['share_proto'].lower().startswith('nfs'):

@@ -17,7 +17,6 @@ import os
 import re
 
 from oslo_log import log
-from oslo_utils import excutils
 
 from manila.common import constants as const
 from manila import exception
@@ -51,13 +50,29 @@ class NASHelperBase(object):
         """Configure server before allowing access."""
         pass
 
-    def allow_access(self, server, share_name, access_type, access_level,
-                     access_to):
-        """Allow access to the host."""
-        raise NotImplementedError()
+    def update_access(self, server, share_name, access_rules, add_rules=None,
+                      delete_rules=None):
+        """Update access rules for given share.
 
-    def deny_access(self, server, share_name, access, force=False):
-        """Deny access to the host."""
+        This driver has two different behaviors according to parameters:
+        1. Recovery after error - 'access_rules' contains all access_rules,
+        'add_rules' and 'delete_rules' shall be None. Previously existing
+        access rules are cleared and then added back according
+        to 'access_rules'.
+
+        2. Adding/Deleting of several access rules - 'access_rules' contains
+        all access_rules, 'add_rules' and 'delete_rules' contain rules which
+        should be added/deleted. Rules in 'access_rules' are ignored and
+        only rules from 'add_rules' and 'delete_rules' are applied.
+
+        :param server: None or Share server's backend details
+        :param share_name: Share's path according to id.
+        :param access_rules: All access rules for given share
+        :param add_rules: None or List of access rules which should be added
+               access_rules already contains these rules.
+        :param delete_rules: None or List of access rules which should be
+               removed. access_rules doesn't contain these rules.
+        """
         raise NotImplementedError()
 
     @staticmethod
@@ -80,6 +95,24 @@ class NASHelperBase(object):
     def restore_access_after_maintenance(self, server, share_name):
         """Enables access to share after maintenance operations were done."""
 
+    @staticmethod
+    def validate_access_rules(access_rules, allowed_types, allowed_levels):
+        """Validates access rules according to access_type and access_level.
+
+        :param access_rules: List of access rules to be validated.
+        :param allowed_types: tuple of allowed type values.
+        :param allowed_levels: tuple of allowed level values.
+        """
+        for access in (access_rules or []):
+            access_type = access['access_type']
+            access_level = access['access_level']
+            if access_type not in allowed_types:
+                reason = _("Only %s access type allowed.") % (
+                    ', '.join(tuple(["'%s'" % x for x in allowed_types])))
+                raise exception.InvalidShareAccess(reason=reason)
+            if access_level not in allowed_levels:
+                raise exception.InvalidShareAccessLevel(level=access_level)
+
     def _get_maintenance_file_path(self, share_name):
         return os.path.join(self.configuration.share_mount_path,
                             "%s.maintenance" % share_name)
@@ -88,7 +121,7 @@ class NASHelperBase(object):
 def nfs_synchronized(f):
 
     def wrapped_func(self, *args, **kwargs):
-        key = "nfs-%s" % args[0]["instance_id"]
+        key = "nfs-%s" % args[0]["public_address"]
 
         @utils.synchronized(key)
         def source_func(self, *args, **kwargs):
@@ -104,9 +137,9 @@ class NFSHelper(NASHelperBase):
 
     def create_export(self, server, share_name, recreate=False):
         """Create new export, delete old one if exists."""
-        return ':'.join([server['public_address'],
+        return ':'.join((server['public_address'],
                          os.path.join(
-                             self.configuration.share_mount_path, share_name)])
+                             self.configuration.share_mount_path, share_name)))
 
     def init_helper(self, server):
         try:
@@ -122,36 +155,90 @@ class NFSHelper(NASHelperBase):
         """Remove export."""
 
     @nfs_synchronized
-    def allow_access(self, server, share_name, access_type, access_level,
-                     access_to):
-        """Allow access to the host."""
+    def update_access(self, server, share_name, access_rules, add_rules=None,
+                      delete_rules=None):
+        """Update access rules for given share.
+
+        Please refer to base class for a more in-depth description.
+        """
         local_path = os.path.join(self.configuration.share_mount_path,
                                   share_name)
-        if access_type != 'ip':
-            msg = _('only ip access type allowed')
-            raise exception.InvalidShareAccess(reason=msg)
-
-        # check if presents in export
         out, err = self._ssh_exec(server, ['sudo', 'exportfs'])
-        out = re.search(
-            re.escape(local_path) + '[\s\n]*' + re.escape(access_to), out)
-        if out is not None:
-            raise exception.ShareAccessExists(access_type=access_type,
-                                              access=access_to)
-        self._ssh_exec(
-            server,
-            ['sudo', 'exportfs', '-o', '%s,no_subtree_check' % access_level,
-             ':'.join([access_to, local_path])])
-        self._sync_nfs_temp_and_perm_files(server)
+        # Recovery mode
+        if not (add_rules or delete_rules):
 
-    @nfs_synchronized
-    def deny_access(self, server, share_name, access, force=False):
-        """Deny access to the host."""
-        local_path = os.path.join(self.configuration.share_mount_path,
-                                  share_name)
-        self._ssh_exec(server, ['sudo', 'exportfs', '-u',
-                                ':'.join([access['access_to'], local_path])])
-        self._sync_nfs_temp_and_perm_files(server)
+            self.validate_access_rules(
+                access_rules, ('ip',),
+                (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
+
+            hosts = self._get_host_list(out, local_path)
+            for host in hosts:
+                self._ssh_exec(server, ['sudo', 'exportfs', '-u',
+                                        ':'.join((host, local_path))])
+            self._sync_nfs_temp_and_perm_files(server)
+            for access in access_rules:
+                self._ssh_exec(
+                    server,
+                    ['sudo', 'exportfs', '-o',
+                     '%s,no_subtree_check' % access['access_level'],
+                     ':'.join((access['access_to'], local_path))])
+            self._sync_nfs_temp_and_perm_files(server)
+        # Adding/Deleting specific rules
+        else:
+
+            self.validate_access_rules(
+                add_rules, ('ip',),
+                (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
+
+            for access in (delete_rules or []):
+                try:
+                    self.validate_access_rules(
+                        [access], ('ip',),
+                        (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
+                except (exception.InvalidShareAccess,
+                        exception.InvalidShareAccessLevel):
+                    LOG.warning(_LW(
+                        "Unsupported access level %(level)s or access type "
+                        "%(type)s, skipping removal of access rule to "
+                        "%(to)s.") % {'level': access['access_level'],
+                                      'type': access['access_type'],
+                                      'to': access['access_to']})
+                    continue
+                self._ssh_exec(server, ['sudo', 'exportfs', '-u',
+                               ':'.join((access['access_to'], local_path))])
+            if delete_rules:
+                self._sync_nfs_temp_and_perm_files(server)
+            for access in (add_rules or []):
+                access_to, access_type = (access['access_to'],
+                                          access['access_type'])
+                found_item = re.search(
+                    re.escape(local_path) + '[\s\n]*' + re.escape(access_to),
+                    out)
+                if found_item is not None:
+                    LOG.warning(_LW("Access rule %(type)s:%(to)s already "
+                                    "exists for share %(name)s") % {
+                        'to': access_to,
+                        'type': access_type,
+                        'name': share_name
+                    })
+                else:
+                    self._ssh_exec(
+                        server,
+                        ['sudo', 'exportfs', '-o',
+                         '%s,no_subtree_check' % access['access_level'],
+                         ':'.join((access['access_to'], local_path))])
+            if add_rules:
+                self._sync_nfs_temp_and_perm_files(server)
+
+    def _get_host_list(self, output, local_path):
+        entries = []
+        output = output.replace('\n\t\t', ' ')
+        lines = output.split('\n')
+        for line in lines:
+            items = line.split(' ')
+            if local_path == items[0]:
+                entries.append(items[1])
+        return entries
 
     def _sync_nfs_temp_and_perm_files(self, server):
         """Sync changes of exports with permanent NFS config file.
@@ -164,11 +251,17 @@ class NFSHelper(NASHelperBase):
         ]
         self._ssh_exec(server, sync_cmd)
         self._ssh_exec(server, ['sudo', 'exportfs', '-a'])
+        out, _ = self._ssh_exec(
+            server, ['sudo', 'service', 'nfs-kernel-server', 'status'],
+            check_exit_code=False)
+        if "not" in out:
+            self._ssh_exec(
+                server, ['sudo', 'service', 'nfs-kernel-server', 'restart'])
 
     def get_exports_for_share(self, server, old_export_location):
         self._verify_server_has_public_address(server)
         path = old_export_location.split(':')[-1]
-        return [':'.join([server['public_address'], path])]
+        return [':'.join((server['public_address'], path))]
 
     def get_share_path_by_export_location(self, server, export_location):
         return export_location.split(':')[-1]
@@ -234,21 +327,27 @@ class CIFSHelperIPAccess(NASHelperBase):
         try:
             self._ssh_exec(
                 server, ['sudo', 'net', 'conf', 'showshare', share_name, ])
-        except exception.ProcessExecutionError as parent_e:
+        except exception.ProcessExecutionError:
             # Share does not exist, create it
             try:
                 self._ssh_exec(server, create_cmd)
-            except Exception:
-                # If we get here, then it will be useful
-                # to log parent exception too.
-                with excutils.save_and_reraise_exception():
-                    LOG.error(parent_e)
+            except Exception as child_e:
+                msg = _("Could not create CIFS export %s.") % share_name
+                LOG.exception(child_e)
+                LOG.error(msg)
+                raise exception.ManilaException(reason=msg)
         else:
             # Share exists
             if recreate:
                 self._ssh_exec(
                     server, ['sudo', 'net', 'conf', 'delshare', share_name, ])
-                self._ssh_exec(server, create_cmd)
+                try:
+                    self._ssh_exec(server, create_cmd)
+                except Exception as e:
+                    msg = _("Could not create CIFS export %s.") % share_name
+                    LOG.exception(e)
+                    LOG.error(msg)
+                    raise exception.ManilaException(reason=msg)
             else:
                 msg = _('Share section %s already defined.') % share_name
                 raise exception.ShareBackendException(msg=msg)
@@ -270,37 +369,22 @@ class CIFSHelperIPAccess(NASHelperBase):
             self._ssh_exec(server, ['sudo', 'smbcontrol', 'all', 'close-share',
                                     share_name])
 
-    def allow_access(self, server, share_name, access_type, access_level,
-                     access_to):
-        """Add access for share."""
-        if access_type != 'ip':
-            reason = _('Only ip access type allowed.')
-            raise exception.InvalidShareAccess(reason=reason)
-        if access_level != const.ACCESS_LEVEL_RW:
-            raise exception.InvalidShareAccessLevel(level=access_level)
+    def update_access(self, server, share_name, access_rules, add_rules=None,
+                      delete_rules=None):
+        """Update access rules for given share.
 
-        hosts = self._get_allow_hosts(server, share_name)
-        if access_to in hosts:
-            raise exception.ShareAccessExists(
-                access_type=access_type, access=access_to)
-        hosts.append(access_to)
+        Please refer to base class for a more in-depth description. For this
+        specific implementation, add_rules and delete_rules parameters are not
+        used.
+        """
+        hosts = []
+
+        self.validate_access_rules(
+            access_rules, ('ip',), (const.ACCESS_LEVEL_RW,))
+
+        for access in access_rules:
+            hosts.append(access['access_to'])
         self._set_allow_hosts(server, hosts, share_name)
-
-    def deny_access(self, server, share_name, access, force=False):
-        """Remove access for share."""
-        access_to, access_level = access['access_to'], access['access_level']
-        if access_level != const.ACCESS_LEVEL_RW:
-            return
-        try:
-            hosts = self._get_allow_hosts(server, share_name)
-            if access_to in hosts:
-                # Access rule can be in error state, if so
-                # it can be absent in rules, hence - skip removal.
-                hosts.remove(access_to)
-                self._set_allow_hosts(server, hosts, share_name)
-        except exception.ProcessExecutionError:
-            if not force:
-                raise
 
     def _get_allow_hosts(self, server, share_name):
         (out, _) = self._ssh_exec(server, ['sudo', 'net', 'conf', 'getparm',
@@ -378,63 +462,35 @@ class CIFSHelperUserAccess(CIFSHelperIPAccess):
             'read only': 'no',
         }
 
-    def allow_access(self, server, share_name, access_type, access_level,
-                     access_to):
-        """Add to allow hosts additional access rule."""
-        if access_type != 'user':
-            reason = _('Only user access type allowed.')
-            raise exception.InvalidShareAccess(reason=reason)
-        all_users = self._get_valid_users(server, share_name)
+    def update_access(self, server, share_name, access_rules, add_rules=None,
+                      delete_rules=None):
+        """Update access rules for given share.
 
-        if access_to in all_users:
-            raise exception.ShareAccessExists(
-                access_type=access_type, access=access_to)
+        Please refer to base class for a more in-depth description. For this
+        specific implementation, add_rules and delete_rules parameters are not
+        used.
+        """
+        all_users_rw = []
+        all_users_ro = []
 
-        user_list = self._get_valid_users(server, share_name, access_level)
-        user_list.append(access_to)
-        self._set_valid_users(server, user_list, share_name, access_level)
+        self.validate_access_rules(
+            access_rules, ('user',),
+            (const.ACCESS_LEVEL_RO, const.ACCESS_LEVEL_RW))
 
-    def deny_access(self, server, share_name, access, force=False):
-        """Remove from allow hosts permit rule."""
-        access_to, access_level = access['access_to'], access['access_level']
-        users = self._get_valid_users(server, share_name, access_level,
-                                      force=force)
-        if access_to in users:
-            users.remove(access_to)
-            self._set_valid_users(server, users, share_name, access_level)
-
-    def _get_valid_users(self, server, share_name, access_level=None,
-                         force=True):
-        if not access_level:
-            all_users_list = []
-            for param in ['valid users', 'read list']:
-                out = ""
-                try:
-                    (out, _) = self._ssh_exec(server, ['sudo', 'net', 'conf',
-                                                       'getparm', share_name,
-                                                       param])
-                    out = out.replace("\"", "")
-                except exception.ProcessExecutionError:
-                    if not force:
-                        raise
-                all_users_list += out.split()
-            return all_users_list
-
-        param = self._get_conf_param(access_level)
-        try:
-            (out, _) = self._ssh_exec(server, ['sudo', 'net', 'conf',
-                                               'getparm', share_name, param])
-            out = out.replace("\"", "")
-            return out.split()
-        except exception.ProcessExecutionError:
-            if not force:
-                raise
-            return []
+        for access in access_rules:
+            if access['access_level'] == const.ACCESS_LEVEL_RW:
+                all_users_rw.append(access['access_to'])
+            else:
+                all_users_ro.append(access['access_to'])
+        self._set_valid_users(
+            server, all_users_rw, share_name, const.ACCESS_LEVEL_RW)
+        self._set_valid_users(
+            server, all_users_ro, share_name, const.ACCESS_LEVEL_RO)
 
     def _get_conf_param(self, access_level):
         if access_level == const.ACCESS_LEVEL_RW:
             return 'valid users'
-        if access_level == const.ACCESS_LEVEL_RO:
+        else:
             return 'read list'
 
     def _set_valid_users(self, server, users, share_name, access_level):

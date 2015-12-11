@@ -652,7 +652,7 @@ class ShareDriver(object):
 
         Drivers should support 2 different cases in this method:
         1. Recovery after error - 'access_rules' contains all access_rules,
-        'add_rules' and 'delete_rules' are None. Driver should clear any
+        'add_rules' and 'delete_rules' shall be None. Driver should clear any
         existent access rules and apply all access rules for given share.
         This recovery is made at driver start up.
 
