@@ -192,6 +192,24 @@ class ShareAPITest(test.TestCase):
                           self.controller.create, req, {'share': self.share})
         share_types.get_default_share_type.assert_called_once_with()
 
+    def test_share_create_with_dhss_true_and_network_notexist(self):
+        fake_share_type = {
+            'id': 'fake_volume_type_id',
+            'name': 'fake_volume_type_name',
+            'extra_specs': {
+                'driver_handles_share_servers': True,
+            }
+        }
+        self.mock_object(
+            share_types, 'get_default_share_type',
+            mock.Mock(return_value=fake_share_type),
+        )
+        CONF.set_default("default_share_type", fake_share_type['name'])
+        req = fakes.HTTPRequest.blank('/shares')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.create, req, {'share': self.share})
+        share_types.get_default_share_type.assert_called_once_with()
+
     def test_share_create_with_share_net(self):
         shr = {
             "size": 100,
