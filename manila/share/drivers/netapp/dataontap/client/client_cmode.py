@@ -1777,9 +1777,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('cifs-share-create', api_args)
 
     @na_utils.trace
-    def add_cifs_share_access(self, share_name, user_name):
+    def add_cifs_share_access(self, share_name, user_name, readonly):
         api_args = {
-            'permission': 'full_control',
+            'permission': 'read' if readonly else 'full_control',
             'share': share_name,
             'user-or-group': user_name,
         }

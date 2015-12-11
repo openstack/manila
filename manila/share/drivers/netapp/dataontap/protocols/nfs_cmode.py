@@ -51,8 +51,9 @@ class NetAppCmodeNFSHelper(base.NetAppBaseHelper):
     def allow_access(self, context, share, share_name, access):
         """Allows access to a given NFS share."""
         if access['access_type'] != 'ip':
-            reason = _('Only ip access type allowed.')
-            raise exception.InvalidShareAccess(reason)
+            msg = _("Cluster Mode supports only 'ip' type for share access"
+                    " rules with NFS protocol.")
+            raise exception.InvalidShareAccess(reason=msg)
 
         self._ensure_export_policy(share, share_name)
         export_policy_name = self._get_export_policy_name(share)
