@@ -15,6 +15,7 @@
 """VNX backend for the EMC Manila driver."""
 
 import copy
+import fnmatch
 import random
 
 from oslo_log import log
@@ -30,6 +31,7 @@ from manila.share.drivers.emc.plugins import base as driver
 from manila.share.drivers.emc.plugins.vnx import constants
 from manila.share.drivers.emc.plugins.vnx import object_manager as manager
 from manila.share.drivers.emc.plugins.vnx import utils as vnx_utils
+from manila.share import utils as share_utils
 from manila import utils
 
 VERSION = "2.0.0"
@@ -46,8 +48,10 @@ class VNXStorageConnection(driver.StorageConnection):
     def __init__(self, *args, **kwargs):
         super(VNXStorageConnection, self).__init__(*args, **kwargs)
         self.mover_name = None
-        self.pool_name = None
+        self.pools = None
         self.manager = None
+        self.pool_conf = None
+        self.reserved_percentage = None
         self.driver_handles_share_servers = True
 
     def create_share(self, context, share, share_server=None):
@@ -57,11 +61,20 @@ class VNXStorageConnection(driver.StorageConnection):
 
         share_proto = share['share_proto']
 
+        # Validate the share protocol
         if share_proto.upper() not in ('NFS', 'CIFS'):
             raise exception.InvalidShare(
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share_proto))
 
+        # Get the pool name from share host field
+        pool_name = share_utils.extract_host(share['host'], level='pool')
+        if not pool_name:
+            message = (_("Pool is not available in the share host %s.") %
+                       share['host'])
+            raise exception.InvalidHost(reason=message)
+
+        # Validate share server
         self._share_server_validation(share_server)
 
         if share_proto == 'CIFS':
@@ -76,7 +89,7 @@ class VNXStorageConnection(driver.StorageConnection):
                 LOG.error(message)
                 raise exception.EMCVnxXMLAPIError(err=message)
 
-        self._allocate_container(share_name, size, share_server)
+        self._allocate_container(share_name, size, share_server, pool_name)
 
         if share_proto == 'NFS':
             location = self._create_nfs_share(share_name, share_server)
@@ -100,14 +113,15 @@ class VNXStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.EMCVnxXMLAPIError(err=message)
 
-    def _allocate_container(self, share_name, size, share_server):
+    def _allocate_container(self, share_name, size, share_server, pool_name):
         """Allocate file system for share."""
         vdm_name = self._get_share_server_name(share_server)
 
         self._get_context('FileSystem').create(
-            share_name, size, self.pool_name, vdm_name)
+            share_name, size, pool_name, vdm_name)
 
-    def _allocate_container_from_snapshot(self, share, snapshot, share_server):
+    def _allocate_container_from_snapshot(self, share, snapshot, share_server,
+                                          pool_name):
         """Allocate file system from snapshot."""
         vdm_name = self._get_share_server_name(share_server)
 
@@ -116,10 +130,10 @@ class VNXStorageConnection(driver.StorageConnection):
 
         self._get_context('FileSystem').create_from_snapshot(
             share['id'], snapshot['id'], snapshot['share_id'],
-            self.pool_name, vdm_name, interconn_id)
+            pool_name, vdm_name, interconn_id)
 
         nwe_size = share['size'] * units.Ki
-        self._get_context('FileSystem').extend(share['id'], self.pool_name,
+        self._get_context('FileSystem').extend(share['id'], pool_name,
                                                nwe_size)
 
     @vnx_utils.log_enter_exit
@@ -170,14 +184,23 @@ class VNXStorageConnection(driver.StorageConnection):
 
         share_proto = share['share_proto']
 
+        # Validate the share protocol
         if share_proto.upper() not in ('NFS', 'CIFS'):
             raise exception.InvalidShare(
                 reason=(_('Invalid NAS protocol supplied: %s.')
                         % share_proto))
 
+        # Get the pool name from share host field
+        pool_name = share_utils.extract_host(share['host'], level='pool')
+        if not pool_name:
+            message = (_("Pool is not available in the share host %s.") %
+                       share['host'])
+            raise exception.InvalidHost(reason=message)
+
         self._share_server_validation(share_server)
 
-        self._allocate_container_from_snapshot(share, snapshot, share_server)
+        self._allocate_container_from_snapshot(
+            share, snapshot, share_server, pool_name)
 
         if share_proto == 'NFS':
             self._create_nfs_share(share_name, share_server)
@@ -191,9 +214,18 @@ class VNXStorageConnection(driver.StorageConnection):
 
     def create_snapshot(self, context, snapshot, share_server=None):
         """Create snapshot from share."""
+        share_name = snapshot['share_id']
+        status, filesystem = self._get_context('FileSystem').get(share_name)
+        if status != constants.STATUS_OK:
+                message = (_("File System %s not found.") % share_name)
+                LOG.error(message)
+                raise exception.EMCVnxXMLAPIError(err=message)
+
+        pool_id = filesystem['pools_id'][0]
+
         self._get_context('Snapshot').create(snapshot['id'],
                                              snapshot['share_id'],
-                                             self.pool_name)
+                                             pool_id)
 
     def delete_share(self, context, share, share_server=None):
         """Delete a share."""
@@ -261,9 +293,17 @@ class VNXStorageConnection(driver.StorageConnection):
         """Ensure that the share is exported."""
 
     def extend_share(self, share, new_size, share_server=None):
+        # Get the pool name from share host field
+        pool_name = share_utils.extract_host(share['host'], level='pool')
+        if not pool_name:
+            message = (_("Pool is not available in the share host %s.") %
+                       share['host'])
+            raise exception.InvalidHost(reason=message)
+
         share_name = share['id']
+
         self._get_context('FileSystem').extend(
-            share_name, self.pool_name, new_size * units.Ki)
+            share_name, pool_name, new_size * units.Ki)
 
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to a share."""
@@ -395,20 +435,7 @@ class VNXStorageConnection(driver.StorageConnection):
 
     def check_for_setup_error(self):
         """Check for setup error."""
-        pass
-
-    def connect(self, emc_share_driver, context):
-        """Connect to VNX NAS server."""
-        self.mover_name = (
-            emc_share_driver.configuration.emc_nas_server_container)
-
-        self.pool_name = emc_share_driver.configuration.emc_nas_pool_name
-
-        configuration = emc_share_driver.configuration
-
-        self.manager = manager.StorageObjectManager(configuration)
-
-        # To verify the input from manila configuration
+        # To verify the input from Manila configuration
         status, out = self._get_context('Mover').get_ref(self.mover_name,
                                                          True)
         if constants.STATUS_ERROR == status:
@@ -417,13 +444,68 @@ class VNXStorageConnection(driver.StorageConnection):
             LOG.error(message)
             raise exception.InvalidParameterValue(err=message)
 
-        status, out = self._get_context('StoragePool').get(self.pool_name,
-                                                           True)
-        if constants.STATUS_ERROR == status:
-            message = (_("Could not find storage pool by name: %s.") %
-                       self.pool_name)
-            LOG.error(message)
-            raise exception.InvalidParameterValue(err=message)
+        self.pools = self._get_managed_storage_pools(self.pool_conf)
+
+    def _get_managed_storage_pools(self, pools):
+        matched_pools = set()
+        if pools:
+            # Get the real pools from the backend storage
+            status, backend_pools = self._get_context('StoragePool').get_all()
+            if status != constants.STATUS_OK:
+                message = (_("Failed to get storage pool information. "
+                             "Reason: %s") % backend_pools)
+                LOG.error(message)
+                raise exception.EMCVnxXMLAPIError(err=message)
+
+            real_pools = set([item for item in backend_pools])
+
+            conf_pools = set([item.strip() for item in pools.split(",")])
+
+            for pool in real_pools:
+                for matcher in conf_pools:
+                    if fnmatch.fnmatchcase(pool, matcher):
+                        matched_pools.add(pool)
+
+            nonexistent_pools = real_pools.difference(matched_pools)
+
+            if not matched_pools:
+                msg = (_("All the specified storage pools to be managed "
+                         "do not exist. Please check your configuration "
+                         "emc_nas_pool_names in manila.conf. "
+                         "The available pools in the backend are %s") %
+                       ",".join(real_pools))
+                raise exception.InvalidParameterValue(err=msg)
+            if nonexistent_pools:
+                LOG.warning(_LW("The following specified storage pools "
+                                "do not exist: %(unexist)s. "
+                                "This host will only manage the storage "
+                                "pools: %(exist)s"),
+                            {'unexist': ",".join(nonexistent_pools),
+                             'exist': ",".join(matched_pools)})
+            else:
+                LOG.debug("Storage pools: %s will be managed.",
+                          ",".join(matched_pools))
+        else:
+            LOG.debug("No storage pool is specified, so all pools "
+                      "in storage system will be managed.")
+        return matched_pools
+
+    def connect(self, emc_share_driver, context):
+        """Connect to VNX NAS server."""
+        self.mover_name = (
+            emc_share_driver.configuration.emc_nas_server_container)
+
+        self.pool_conf = emc_share_driver.configuration.safe_get(
+            'emc_nas_pool_names')
+
+        self.reserved_percentage = emc_share_driver.configuration.safe_get(
+            'reserved_share_percentage')
+        if self.reserved_percentage is None:
+            self.reserved_percentage = 0
+
+        configuration = emc_share_driver.configuration
+
+        self.manager = manager.StorageObjectManager(configuration)
 
     def update_share_stats(self, stats_dict):
         """Communicate with EMCNASClient to get the stats."""
@@ -431,12 +513,58 @@ class VNXStorageConnection(driver.StorageConnection):
 
         self._get_context('Mover').get_ref(self.mover_name, True)
 
-        status, pool = self._get_context('StoragePool').get(self.pool_name,
-                                                            True)
+        stats_dict['pools'] = []
 
-        stats_dict['total_capacity_gb'] = int(pool['total_size'])
-        stats_dict['free_capacity_gb'] = (
-            int(pool['total_size']) - int(pool['used_size']))
+        status, pools = self._get_context('StoragePool').get_all()
+        for name, pool in pools.items():
+            if not self.pools or pool['name'] in self.pools:
+                total_size = float(pool['total_size'])
+                used_size = float(pool['used_size'])
+
+                pool_stat = dict(
+                    pool_name=pool['name'],
+                    total_capacity_gb=total_size,
+                    free_capacity_gb=total_size - used_size,
+                    QoS_support=False,
+                    reserved_percentage=self.reserved_percentage,
+                )
+                stats_dict['pools'].append(pool_stat)
+
+        if not stats_dict['pools']:
+            message = _("Failed to update storage pool.")
+            LOG.error(message)
+            raise exception.EMCVnxXMLAPIError(err=message)
+
+    def get_pool(self, share):
+        """Get the pool name of the share."""
+        share_name = share['id']
+        status, filesystem = self._get_context('FileSystem').get(share_name)
+        if status != constants.STATUS_OK:
+            message = (_("File System %(name)s not found. "
+                         "Reason: %(err)s") %
+                       {'name': share_name, 'err': filesystem})
+            LOG.error(message)
+            raise exception.EMCVnxXMLAPIError(err=message)
+
+        pool_id = filesystem['pools_id'][0]
+
+        # Get the real pools from the backend storage
+        status, backend_pools = self._get_context('StoragePool').get_all()
+        if status != constants.STATUS_OK:
+            message = (_("Failed to get storage pool information. "
+                         "Reason: %s") % backend_pools)
+            LOG.error(message)
+            raise exception.EMCVnxXMLAPIError(err=message)
+
+        for name, pool_info in backend_pools.items():
+            if pool_info['id'] == pool_id:
+                return name
+
+        available_pools = [item for item in backend_pools]
+        message = (_("No matched pool name for share: %(share)s. "
+                     "Available pools: %(pools)s") %
+                   {'share': share_name, 'pools': available_pools})
+        raise exception.EMCVnxXMLAPIError(err=message)
 
     def get_network_allocations_number(self):
         """Returns number of network allocations for creating VIFs."""

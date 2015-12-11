@@ -1338,7 +1338,6 @@ class SnapshotTestCase(StorageObjectTestCase):
 
     def test_create_snapshot(self):
         self.hook.append(self.fs.resp_get_succeed())
-        self.hook.append(self.pool.resp_get_succeed())
         self.hook.append(self.snap.resp_task_succeed())
 
         context = self.manager.getStorageContext('Snapshot')
@@ -1346,18 +1345,16 @@ class SnapshotTestCase(StorageObjectTestCase):
 
         context.create(name=self.snap.snapshot_name,
                        fs_name=self.fs.filesystem_name,
-                       pool_name=self.pool.pool_name)
+                       pool_id=self.pool.pool_id)
 
         expected_calls = [
             mock.call(self.fs.req_get()),
-            mock.call(self.pool.req_get()),
             mock.call(self.snap.req_create()),
         ]
         context.conn['XML'].request.assert_has_calls(expected_calls)
 
     def test_create_snapshot_but_already_exist(self):
         self.hook.append(self.fs.resp_get_succeed())
-        self.hook.append(self.pool.resp_get_succeed())
         self.hook.append(self.snap.resp_create_but_already_exist())
 
         context = self.manager.getStorageContext('Snapshot')
@@ -1365,19 +1362,17 @@ class SnapshotTestCase(StorageObjectTestCase):
 
         context.create(name=self.snap.snapshot_name,
                        fs_name=self.fs.filesystem_name,
-                       pool_name=self.pool.pool_name,
+                       pool_id=self.pool.pool_id,
                        ckpt_size=self.snap.snapshot_size)
 
         expected_calls = [
             mock.call(self.fs.req_get()),
-            mock.call(self.pool.req_get()),
             mock.call(self.snap.req_create_with_size()),
         ]
         context.conn['XML'].request.assert_has_calls(expected_calls)
 
     def test_create_snapshot_with_error(self):
         self.hook.append(self.fs.resp_get_succeed())
-        self.hook.append(self.pool.resp_get_succeed())
         self.hook.append(self.snap.resp_task_error())
 
         context = self.manager.getStorageContext('Snapshot')
@@ -1387,12 +1382,11 @@ class SnapshotTestCase(StorageObjectTestCase):
                           context.create,
                           name=self.snap.snapshot_name,
                           fs_name=self.fs.filesystem_name,
-                          pool_name=self.pool.pool_name,
+                          pool_id=self.pool.pool_id,
                           ckpt_size=self.snap.snapshot_size)
 
         expected_calls = [
             mock.call(self.fs.req_get()),
-            mock.call(self.pool.req_get()),
             mock.call(self.snap.req_create_with_size()),
         ]
         context.conn['XML'].request.assert_has_calls(expected_calls)

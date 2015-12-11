@@ -283,6 +283,9 @@ class IsilonStorageConnection(base.StorageConnection):
             resp = self._isilon_api.request('PUT', url, data=share_params)
             resp.raise_for_status()
 
+    def check_for_setup_error(self):
+        """Check for setup error."""
+
     def connect(self, emc_share_driver, context):
         """Connect to an Isilon cluster."""
         self._server = emc_share_driver.configuration.safe_get(
