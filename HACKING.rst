@@ -19,6 +19,7 @@ Manila Specific Commandments
 - [M329] LOG.info messages require translations _LI()!
 - [M330] LOG.warning messages require translations _LW()!
 - [M331] Log messages require translations!
+- [M333] 'oslo_' should be used instead of 'oslo.'
 
 
 LOG Translations
