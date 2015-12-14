@@ -130,7 +130,7 @@ common_opts = [
         help="Password for service instance user."),
     cfg.StrOpt(
         "path_to_private_key",
-        default="~/.ssh/id_rsa",
+        default=None,
         help="Path to host's private key."),
     cfg.IntOpt(
         "max_time_to_build_instance",
