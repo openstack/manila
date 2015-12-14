@@ -109,7 +109,7 @@ class API(base.Base):
         if (driver_handles_share_servers and
                 not (source_cgsnapshot_id or share_network_id)):
             msg = _("When using a share type with the "
-                    "driver_handles_share_servers extra spec as"
+                    "driver_handles_share_servers extra spec as "
                     "True, a share_network_id must be provided.")
             raise exception.InvalidInput(reason=msg)
 
