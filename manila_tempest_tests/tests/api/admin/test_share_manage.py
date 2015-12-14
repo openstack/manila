@@ -14,13 +14,14 @@
 #    under the License.
 
 import six
-from tempest import config  # noqa
-from tempest import test  # noqa
-from tempest_lib.common.utils import data_utils  # noqa
-from tempest_lib import exceptions as lib_exc  # noqa
-import testtools  # noqa
+from tempest import config
+from tempest import test
+from tempest_lib.common.utils import data_utils
+from tempest_lib import exceptions as lib_exc
+import testtools
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -78,7 +79,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
         # Data for creating shares in parallel
         data = [creation_data, creation_data]
-        if float(CONF.share.max_api_microversion) >= 2.8:
+        if utils.is_microversion_ge(CONF.share.max_api_microversion, "2.8"):
             data.append(creation_data)
         shares_created = cls.create_shares(data)
 
@@ -127,7 +128,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
         share = self.shares_v2_client.get_share(share['id'], version="2.6")
         self.assertEqual(self.st['share_type']['id'], share['share_type'])
 
-        if float(version) >= 2.8:
+        if utils.is_microversion_ge(version, "2.8"):
             self.assertEqual(is_public, share['is_public'])
         else:
             self.assertFalse(share['is_public'])
@@ -139,9 +140,7 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
                           self.shares_v2_client.get_share,
                           share['id'])
 
-    @testtools.skipIf(
-        float(CONF.share.max_api_microversion) < 2.8,
-        "Only for API Microversion >= 2.8")
+    @base.skip_if_microversion_not_supported("2.8")
     @test.attr(type=["gate", "smoke"])
     def test_manage_with_is_public_True(self):
         self._test_manage(share=self.shares[2], is_public=True)

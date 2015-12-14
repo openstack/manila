@@ -17,12 +17,13 @@ import json
 import time
 import urllib
 
+from tempest import config
 from tempest_lib.common.utils import data_utils
 from tempest_lib import exceptions
 
-from manila_tempest_tests.services.share.json import shares_client  # noqa
+from manila_tempest_tests.services.share.json import shares_client
 from manila_tempest_tests import share_exceptions
-from tempest import config  # noqa
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 LATEST_MICROVERSION = CONF.share.max_api_microversion
@@ -105,7 +106,7 @@ class SharesV2Client(shares_client.SharesClient):
             cgsnapshots.
         """
         if action_name is None:
-            if float(version) > 2.6:
+            if utils.is_microversion_gt(version, "2.6"):
                 action_name = 'reset_status'
             else:
                 action_name = 'os-reset_status'
@@ -124,7 +125,7 @@ class SharesV2Client(shares_client.SharesClient):
         s_type: shares, snapshots
         """
         if action_name is None:
-            if float(version) > 2.6:
+            if utils.is_microversion_gt(version, "2.6"):
                 action_name = 'force_delete'
             else:
                 action_name = 'os-force_delete'
@@ -292,7 +293,10 @@ class SharesV2Client(shares_client.SharesClient):
     def extend_share(self, share_id, new_size, version=LATEST_MICROVERSION,
                      action_name=None):
         if action_name is None:
-            action_name = 'extend' if float(version) > 2.6 else 'os-extend'
+            if utils.is_microversion_gt(version, "2.6"):
+                action_name = 'extend'
+            else:
+                action_name = 'os-extend'
         post_body = {
             action_name: {
                 "new_size": new_size,
@@ -307,7 +311,10 @@ class SharesV2Client(shares_client.SharesClient):
     def shrink_share(self, share_id, new_size, version=LATEST_MICROVERSION,
                      action_name=None):
         if action_name is None:
-            action_name = 'shrink' if float(version) > 2.6 else 'os-shrnk'
+            if utils.is_microversion_gt(version, "2.6"):
+                action_name = 'shrink'
+            else:
+                action_name = 'os-shrink'
         post_body = {
             action_name: {
                 "new_size": new_size,
@@ -337,7 +344,7 @@ class SharesV2Client(shares_client.SharesClient):
             }
         }
         if url is None:
-            if float(version) > 2.6:
+            if utils.is_microversion_gt(version, "2.6"):
                 url = 'shares/manage'
             else:
                 url = 'os-share-manage'
@@ -349,10 +356,16 @@ class SharesV2Client(shares_client.SharesClient):
     def unmanage_share(self, share_id, version=LATEST_MICROVERSION, url=None,
                        action_name=None, body=None):
         if url is None:
-            url = 'shares' if float(version) > 2.6 else 'os-share-unmanage'
+            if utils.is_microversion_gt(version, "2.6"):
+                url = 'shares'
+            else:
+                url = 'os-share-unmanage'
         if action_name is None:
-            action_name = 'action' if float(version) > 2.6 else 'unmanage'
-        if body is None and float(version) > 2.6:
+            if utils.is_microversion_gt(version, "2.6"):
+                action_name = 'action'
+            else:
+                action_name = 'unmanage'
+        if body is None and utils.is_microversion_gt(version, "2.6"):
             body = json.dumps({'unmanage': {}})
         resp, body = self.post(
             "%(url)s/%(share_id)s/%(action_name)s" % {
@@ -365,7 +378,7 @@ class SharesV2Client(shares_client.SharesClient):
 ###############
 
     def _get_access_action_name(self, version):
-        if float(version) > 2.6:
+        if utils.is_microversion_gt(version, "2.6"):
             return 'allow_access'
         return 'os-allow_access'
 
@@ -412,7 +425,7 @@ class SharesV2Client(shares_client.SharesClient):
                                 version=LATEST_MICROVERSION):
         """Get list of availability zones."""
         if url is None:
-            if float(version) > 2.6:
+            if utils.is_microversion_gt(version, "2.6"):
                 url = 'availability-zones'
             else:
                 url = 'os-availability-zone'
@@ -426,7 +439,10 @@ class SharesV2Client(shares_client.SharesClient):
                       version=LATEST_MICROVERSION):
         """List services."""
         if url is None:
-            url = 'services' if float(version) > 2.6 else 'os-services'
+            if utils.is_microversion_gt(version, "2.6"):
+                url = 'services'
+            else:
+                url = 'os-services'
         if params:
             url += '?%s' % urllib.urlencode(params)
         resp, body = self.get(url, version=version)
@@ -445,7 +461,7 @@ class SharesV2Client(shares_client.SharesClient):
 
     def create_share_type(self, name, is_public=True,
                           version=LATEST_MICROVERSION, **kwargs):
-        if float(version) > 2.6:
+        if utils.is_microversion_gt(version, "2.6"):
             is_public_keyname = 'share_type_access:is_public'
         else:
             is_public_keyname = 'os-share-type-access:is_public'
@@ -473,7 +489,7 @@ class SharesV2Client(shares_client.SharesClient):
                                   version=LATEST_MICROVERSION,
                                   action_name=None):
         if action_name is None:
-            if float(version) > 2.6:
+            if utils.is_microversion_gt(version, "2.6"):
                 action_name = 'share_type_access'
             else:
                 action_name = 'os-share-type-access'
@@ -487,7 +503,7 @@ class SharesV2Client(shares_client.SharesClient):
 ###############
 
     def _get_quotas_url(self, version):
-        if float(version) > 2.6:
+        if utils.is_microversion_gt(version, "2.6"):
             return 'quota-sets'
         return 'os-quota-sets'
 
@@ -758,7 +774,7 @@ class SharesV2Client(shares_client.SharesClient):
     def migrate_share(self, share_id, host, version=LATEST_MICROVERSION,
                       action_name=None):
         if action_name is None:
-            if float(version) > 2.6:
+            if utils.is_microversion_gt(version, "2.6"):
                 action_name = 'migrate_share'
             else:
                 action_name = 'os-migrate_share'
