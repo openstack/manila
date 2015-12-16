@@ -148,3 +148,9 @@ zfs: CommandFilter, zfs, root
 
 # manila/share/drivers/zfsonlinux/driver.py
 nsenter: CommandFilter, /usr/local/bin/nsenter, root
+
+# LXD driver commands
+# manila/share/drivers/lxd.py
+lxc: CommandFilter, lxc, root
+# manila/share/drivers/lxd.py
+brctl: CommandFilter, brctl, root

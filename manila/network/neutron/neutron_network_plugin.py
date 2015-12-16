@@ -39,6 +39,14 @@ neutron_single_network_plugin_opts = [
         deprecated_group='DEFAULT'),
 ]
 
+neutron_network_plugin_opts = [
+    cfg.StrOpt(
+        "neutron_host_id",
+        help="Host id to be used when creating neutron port. Hostname of "
+        "a controller running Neutron should be used in a general case.",
+        deprecated_group='DEFAULT'),
+]
+
 CONF = cfg.CONF
 
 
@@ -51,6 +59,9 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
         self._neutron_api_args = args
         self._neutron_api_kwargs = kwargs
         self._label = kwargs.pop('label', 'user')
+        CONF.register_opts(
+            neutron_network_plugin_opts,
+            group=self.neutron_api.config_group_name)
 
     @property
     def label(self):
@@ -114,11 +125,12 @@ class NeutronNetworkPlugin(network.NetworkBaseAPI):
             self._delete_port(context, port)
 
     def _create_port(self, context, share_server, share_network, device_owner):
+        host_id = self.neutron_api.configuration.neutron_host_id
         port = self.neutron_api.create_port(
             share_network['project_id'],
             network_id=share_network['neutron_net_id'],
             subnet_id=share_network['neutron_subnet_id'],
-            device_owner='manila:' + device_owner)
+            device_owner='manila:' + device_owner, host_id=host_id)
         port_dict = {
             'id': port['id'],
             'share_server_id': share_server['id'],
