@@ -41,6 +41,7 @@ from manila.i18n import _LI
 from manila.i18n import _LW
 from manila import manager
 from manila import quota
+from manila.share import access
 import manila.share.configuration
 from manila.share import drivers_private_data
 from manila.share import migration
@@ -136,7 +137,7 @@ def add_hooks(f):
 class ShareManager(manager.SchedulerDependentManager):
     """Manages NAS storages."""
 
-    RPC_API_VERSION = '1.6'
+    RPC_API_VERSION = '1.7'
 
     def __init__(self, share_driver=None, service_name=None, *args, **kwargs):
         """Load the driver from args, or from flags."""
@@ -166,6 +167,8 @@ class ShareManager(manager.SchedulerDependentManager):
             share_driver, private_storage=private_storage,
             configuration=self.configuration
         )
+
+        self.access_helper = access.ShareInstanceAccess(self.db, self.driver)
 
         self.hooks = []
         self._init_hook_drivers()
@@ -271,28 +274,18 @@ class ShareManager(manager.SchedulerDependentManager):
                 self.db.share_export_locations_update(
                     ctxt, share_instance['id'], export_locations)
 
-            rules = self.db.share_access_get_all_for_share(
-                ctxt, share_instance['share_id'])
-            for access_ref in rules:
-                if access_ref['state'] != constants.STATUS_ACTIVE:
-                    continue
+            if share_instance['access_rules_status'] == (
+                    constants.STATUS_OUT_OF_SYNC):
 
                 try:
-                    self.driver.allow_access(ctxt, share_instance, access_ref,
-                                             share_server=share_server)
-                except exception.ShareAccessExists:
-                    pass
+                    self.access_helper.update_access_rules(
+                        ctxt, share_instance['id'], share_server=share_server)
                 except Exception as e:
                     LOG.error(
-                        _LE("Unexpected exception during share access"
-                            " allow operation. Share id is '%(s_id)s'"
-                            ", access rule type is '%(ar_type)s', "
-                            "access rule id is '%(ar_id)s', exception"
-                            " is '%(e)s'."),
-                        {'s_id': share_instance['id'],
-                         'ar_type': access_ref['access_type'],
-                         'ar_id': access_ref['id'],
-                         'e': six.text_type(e)},
+                        _LE("Unexpected error occurred while updating access "
+                            "rules for share instance %(s_id)s. "
+                            "Exception: \n%(e)s."),
+                        {'s_id': share_instance['id'], 'e': six.text_type(e)},
                     )
 
         self.publish_service_capabilities(ctxt)
@@ -946,8 +939,12 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if self.configuration.safe_get('unmanage_remove_access_rules'):
             try:
-                self._remove_share_access_rules(context, share_ref,
-                                                share_instance, share_server)
+                self.access_helper.update_access_rules(
+                    context,
+                    share_instance['id'],
+                    delete_rules="all",
+                    share_server=share_server
+                )
             except Exception as e:
                 share_manage_set_error_status(
                     _LE("Can not remove access rules of share: %s."), e)
@@ -962,12 +959,15 @@ class ShareManager(manager.SchedulerDependentManager):
         """Delete a share instance."""
         context = context.elevated()
         share_instance = self._get_share_instance(context, share_instance_id)
-        share = self.db.share_get(context, share_instance['share_id'])
         share_server = self._get_share_server(context, share_instance)
 
         try:
-            self._remove_share_access_rules(context, share, share_instance,
-                                            share_server)
+            self.access_helper.update_access_rules(
+                context,
+                share_instance_id,
+                delete_rules="all",
+                share_server=share_server
+            )
             self.driver.delete_share(context, share_instance,
                                      share_server=share_server)
         except Exception:
@@ -1003,15 +1003,6 @@ class ShareManager(manager.SchedulerDependentManager):
                                                                 updated_before)
         for server in servers:
             self.delete_share_server(ctxt, server)
-
-    def _remove_share_access_rules(self, context, share_ref, share_instance,
-                                   share_server):
-        rules = self.db.share_access_get_all_for_share(
-            context, share_ref['id'])
-
-        for access_ref in rules:
-            self._deny_access(context, access_ref,
-                              share_instance, share_server)
 
     @add_hooks
     @utils.require_driver_initialized
@@ -1097,61 +1088,37 @@ class ShareManager(manager.SchedulerDependentManager):
 
     @add_hooks
     @utils.require_driver_initialized
-    def allow_access(self, context, share_instance_id, access_id):
+    def allow_access(self, context, share_instance_id, access_rules):
         """Allow access to some share instance."""
-        access_mapping = self.db.share_instance_access_get(context, access_id,
-                                                           share_instance_id)
+        add_rules = [self.db.share_access_get(context, rule_id)
+                     for rule_id in access_rules]
 
-        if access_mapping['state'] != access_mapping.STATE_NEW:
-            return
+        share_instance = self._get_share_instance(context, share_instance_id)
+        share_server = self._get_share_server(context, share_instance)
 
-        try:
-            access_ref = self.db.share_access_get(context, access_id)
-            share_instance = self.db.share_instance_get(
-                context, share_instance_id, with_share_data=True)
-            share_server = self._get_share_server(context, share_instance)
-            self.driver.allow_access(context, share_instance, access_ref,
-                                     share_server=share_server)
-            self.db.share_instance_access_update_state(
-                context, access_mapping['id'], access_mapping.STATE_ACTIVE)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                self.db.share_instance_access_update_state(
-                    context, access_mapping['id'], access_mapping.STATE_ERROR)
-
-        LOG.info(_LI("'%(access_to)s' has been successfully allowed "
-                     "'%(access_level)s' access on share instance "
-                     "%(share_instance_id)s."),
-                 {'access_to': access_ref['access_to'],
-                  'access_level': access_ref['access_level'],
-                  'share_instance_id': share_instance_id})
+        return self.access_helper.update_access_rules(
+            context,
+            share_instance_id,
+            add_rules=add_rules,
+            share_server=share_server
+        )
 
     @add_hooks
     @utils.require_driver_initialized
-    def deny_access(self, context, share_instance_id, access_id):
+    def deny_access(self, context, share_instance_id, access_rules):
         """Deny access to some share."""
-        access_ref = self.db.share_access_get(context, access_id)
-        share_instance = self.db.share_instance_get(
-            context, share_instance_id, with_share_data=True)
+        delete_rules = [self.db.share_access_get(context, rule_id)
+                        for rule_id in access_rules]
+
+        share_instance = self._get_share_instance(context, share_instance_id)
         share_server = self._get_share_server(context, share_instance)
-        self._deny_access(context, access_ref, share_instance, share_server)
 
-        LOG.info(_LI("'(access_to)s' has been successfully denied access to "
-                     "share instance %(share_instance_id)s."),
-                 {'access_to': access_ref['access_to'],
-                  'share_instance_id': share_instance_id})
-
-    def _deny_access(self, context, access_ref, share_instance, share_server):
-        access_mapping = self.db.share_instance_access_get(
-            context, access_ref['id'], share_instance['id'])
-        try:
-            self.driver.deny_access(context, share_instance, access_ref,
-                                    share_server=share_server)
-            self.db.share_instance_access_delete(context, access_mapping['id'])
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                self.db.share_instance_access_update_state(
-                    context, access_mapping['id'], access_mapping.STATE_ERROR)
+        return self.access_helper.update_access_rules(
+            context,
+            share_instance_id,
+            delete_rules=delete_rules,
+            share_server=share_server
+        )
 
     @periodic_task.periodic_task(spacing=CONF.periodic_interval)
     @utils.require_driver_initialized

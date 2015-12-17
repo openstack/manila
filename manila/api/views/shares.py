@@ -26,6 +26,7 @@ class ViewBuilder(common.ViewBuilder):
         "add_task_state_field",
         "modify_share_type_field",
         "remove_export_locations",
+        "add_access_rules_status_field",
     ]
 
     def summary_list(self, request, shares):
@@ -122,6 +123,10 @@ class ViewBuilder(common.ViewBuilder):
     def remove_export_locations(self, share_dict, share):
         share_dict.pop('export_location')
         share_dict.pop('export_locations')
+
+    @common.ViewBuilder.versioned_method("2.10")
+    def add_access_rules_status_field(self, share_dict, share):
+        share_dict['access_rules_status'] = share.get('access_rules_status')
 
     def _list_view(self, func, request, shares):
         """Provide a view for a list of shares."""

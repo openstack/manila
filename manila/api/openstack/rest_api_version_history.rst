@@ -74,3 +74,7 @@ user documentation.
 ---
   Add export locations API. Remove export locations from "shares" and
   "share instances" APIs.
+
+2.10
+----
+  Field 'access_rules_status' was added to shares and share instances.

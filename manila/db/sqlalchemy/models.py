@@ -189,7 +189,7 @@ class Share(BASE, ManilaBase):
     __tablename__ = 'shares'
     _extra_keys = ['name', 'export_location', 'export_locations', 'status',
                    'host', 'share_server_id', 'share_network_id',
-                   'availability_zone']
+                   'availability_zone', 'access_rules_status']
 
     @property
     def name(self):
@@ -252,6 +252,10 @@ class Share(BASE, ManilaBase):
             if result is None:
                     result = self.instances[0]
         return result
+
+    @property
+    def access_rules_status(self):
+        return get_access_rules_status(self.instances)
 
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
@@ -326,6 +330,18 @@ class ShareInstance(BASE, ManilaBase):
     deleted = Column(String(36), default='False')
     host = Column(String(255))
     status = Column(String(255))
+
+    ACCESS_STATUS_PRIORITIES = {
+        constants.STATUS_ACTIVE: 0,
+        constants.STATUS_OUT_OF_SYNC: 1,
+        constants.STATUS_ERROR: 2,
+    }
+
+    access_rules_status = Column(Enum(constants.STATUS_ACTIVE,
+                                      constants.STATUS_OUT_OF_SYNC,
+                                      constants.STATUS_ERROR),
+                                 default=constants.STATUS_ACTIVE)
+
     scheduled_at = Column(DateTime)
     launched_at = Column(DateTime)
     terminated_at = Column(DateTime)
@@ -476,26 +492,6 @@ class ShareAccessMapping(BASE, ManilaBase):
     """Represents access to share."""
     __tablename__ = 'share_access_map'
 
-    @property
-    def state(self):
-        state = ShareInstanceAccessMapping.STATE_NEW
-
-        if len(self.instance_mappings) > 0:
-            state = ShareInstanceAccessMapping.STATE_ACTIVE
-            priorities = ShareInstanceAccessMapping.STATE_PRIORITIES
-
-            for mapping in self.instance_mappings:
-                priority = priorities.get(
-                    mapping['state'], ShareInstanceAccessMapping.STATE_ERROR)
-
-                if priority > priorities.get(state):
-                    state = mapping['state']
-
-                if state == ShareInstanceAccessMapping.STATE_ERROR:
-                    break
-
-        return state
-
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
     share_id = Column(String(36), ForeignKey('shares.id'))
@@ -516,33 +512,36 @@ class ShareAccessMapping(BASE, ManilaBase):
         )
     )
 
+    @property
+    def state(self):
+        instances = [im.instance for im in self.instance_mappings]
+        access_rules_status = get_access_rules_status(instances)
+
+        if access_rules_status == constants.STATUS_OUT_OF_SYNC:
+            return constants.STATUS_NEW
+        else:
+            return access_rules_status
+
 
 class ShareInstanceAccessMapping(BASE, ManilaBase):
     """Represents access to individual share instances."""
-    STATE_NEW = constants.STATUS_NEW
-    STATE_ACTIVE = constants.STATUS_ACTIVE
-    STATE_DELETING = constants.STATUS_DELETING
-    STATE_DELETED = constants.STATUS_DELETED
-    STATE_ERROR = constants.STATUS_ERROR
-
-    # NOTE(u_glide): State with greatest priority becomes a state of access
-    # rule
-    STATE_PRIORITIES = {
-        STATE_ACTIVE: 0,
-        STATE_NEW: 1,
-        STATE_DELETED: 2,
-        STATE_DELETING: 3,
-        STATE_ERROR: 4
-    }
 
     __tablename__ = 'share_instance_access_map'
     id = Column(String(36), primary_key=True)
     deleted = Column(String(36), default='False')
     share_instance_id = Column(String(36), ForeignKey('share_instances.id'))
     access_id = Column(String(36), ForeignKey('share_access_map.id'))
-    state = Column(Enum(STATE_NEW, STATE_ACTIVE,
-                        STATE_DELETING, STATE_DELETED, STATE_ERROR),
-                   default=STATE_NEW)
+
+    instance = orm.relationship(
+        "ShareInstance",
+        lazy='immediate',
+        primaryjoin=(
+            'and_('
+            'ShareInstanceAccessMapping.share_instance_id == '
+            'ShareInstance.id, '
+            'ShareInstanceAccessMapping.deleted == "False")'
+        )
+    )
 
 
 class ShareSnapshot(BASE, ManilaBase):
@@ -902,3 +901,27 @@ def register_models():
     engine = create_engine(CONF.database.connection, echo=False)
     for model in models:
         model.metadata.create_all(engine)
+
+
+def get_access_rules_status(instances):
+    share_access_status = constants.STATUS_ACTIVE
+
+    if len(instances) == 0:
+        return share_access_status
+
+    priorities = ShareInstance.ACCESS_STATUS_PRIORITIES
+
+    for instance in instances:
+        if instance['status'] != constants.STATUS_AVAILABLE:
+            continue
+
+        instance_access_status = instance['access_rules_status']
+
+        if priorities.get(instance_access_status) > priorities.get(
+                share_access_status):
+            share_access_status = instance_access_status
+
+        if share_access_status == constants.STATUS_ERROR:
+            break
+
+    return share_access_status

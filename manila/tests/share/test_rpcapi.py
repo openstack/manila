@@ -83,7 +83,7 @@ class ShareRpcAPITestCase(test.TestCase):
         if 'access' in expected_msg:
             access = expected_msg['access']
             del expected_msg['access']
-            expected_msg['access_id'] = access['id']
+            expected_msg['access_rules'] = [access['id']]
         if 'host' in expected_msg:
             del expected_msg['host']
         if 'snapshot' in expected_msg:
@@ -153,14 +153,14 @@ class ShareRpcAPITestCase(test.TestCase):
     def test_allow_access(self):
         self._test_share_api('allow_access',
                              rpc_method='cast',
-                             version='1.4',
+                             version='1.7',
                              share_instance=self.fake_share,
                              access=self.fake_access)
 
     def test_deny_access(self):
         self._test_share_api('deny_access',
                              rpc_method='cast',
-                             version='1.4',
+                             version='1.7',
                              share_instance=self.fake_share,
                              access=self.fake_access)
 

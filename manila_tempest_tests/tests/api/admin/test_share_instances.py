@@ -64,6 +64,7 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
         share_instances = self.shares_v2_client.get_instances_of_share(
             self.share['id'], version=version,
         )
+
         si = self.shares_v2_client.get_share_instance(
             share_instances[0]['id'], version=version)
 
@@ -73,6 +74,8 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
         ]
         if utils.is_microversion_lt(version, '2.9'):
             expected_keys.extend(["export_location", "export_locations"])
+        if utils.is_microversion_ge(version, '2.10'):
+            expected_keys.append("access_rules_status")
         expected_keys = sorted(expected_keys)
         actual_keys = sorted(si.keys())
         self.assertEqual(expected_keys, actual_keys,
@@ -87,3 +90,7 @@ class ShareInstancesTest(base.BaseSharesAdminTest):
     @test.attr(type=["gate", ])
     def test_get_share_instance_v2_9(self):
         self._get_share_instance('2.9')
+
+    @test.attr(type=["gate", ])
+    def test_get_share_instance_v2_10(self):
+        self._get_share_instance('2.10')

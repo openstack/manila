@@ -1538,9 +1538,12 @@ def _share_access_get_query(context, session, values, read_deleted='no'):
     return query.filter_by(**values)
 
 
-def _share_instance_access_query(context, session, access_id,
+def _share_instance_access_query(context, session, access_id=None,
                                  instance_id=None):
-    filters = {'access_id': access_id}
+    filters = {}
+
+    if access_id is not None:
+        filters.update({'access_id': access_id})
 
     if instance_id is not None:
         filters.update({'share_instance_id': instance_id})
@@ -1555,7 +1558,6 @@ def share_access_create(context, values):
     session = get_session()
     with session.begin():
         access_ref = models.ShareAccessMapping()
-        state = values.pop('state', None)
         access_ref.update(values)
         access_ref.save(session=session)
 
@@ -1566,8 +1568,6 @@ def share_access_create(context, values):
                 'share_instance_id': instance['id'],
                 'access_id': access_ref['id'],
             }
-            if state is not None:
-                vals.update({'state': state})
 
             _share_instance_access_create(vals, session)
 
@@ -1615,6 +1615,18 @@ def share_access_get_all_for_share(context, share_id):
 
 
 @require_context
+def share_access_get_all_for_instance(context, instance_id, session=None):
+    """Get all access rules related to a certain share instance."""
+    session = get_session()
+    return _share_access_get_query(context, session, {}).join(
+        models.ShareInstanceAccessMapping,
+        models.ShareInstanceAccessMapping.access_id ==
+        models.ShareAccessMapping.id).filter(
+        models.ShareInstanceAccessMapping.share_instance_id ==
+        instance_id).all()
+
+
+@require_context
 def share_instance_access_get_all(context, access_id, session=None):
     if not session:
         session = get_session()
@@ -1644,8 +1656,7 @@ def share_access_delete(context, access_id):
             raise exception.InvalidShareAccess(msg)
 
         session.query(models.ShareAccessMapping).\
-            filter_by(id=access_id).soft_delete(update_status=True,
-                                                status_field_name='state')
+            filter_by(id=access_id).soft_delete()
 
 
 @require_context
@@ -1653,8 +1664,7 @@ def share_access_delete_all_by_share(context, share_id):
     session = get_session()
     with session.begin():
         session.query(models.ShareAccessMapping). \
-            filter_by(share_id=share_id).soft_delete(update_status=True,
-                                                     status_field_name='state')
+            filter_by(share_id=share_id).soft_delete()
 
 
 @require_context
@@ -1668,8 +1678,7 @@ def share_instance_access_delete(context, mapping_id):
         if not mapping:
             exception.NotFound()
 
-        mapping.soft_delete(session, update_status=True,
-                            status_field_name='state')
+        mapping.soft_delete(session)
 
         other_mappings = share_instance_access_get_all(
             context, mapping['access_id'], session)
@@ -1679,18 +1688,18 @@ def share_instance_access_delete(context, mapping_id):
             (
                 session.query(models.ShareAccessMapping)
                 .filter_by(id=mapping['access_id'])
-                .soft_delete(update_status=True, status_field_name='state')
+                .soft_delete()
             )
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def share_instance_access_update_state(context, mapping_id, state):
+def share_instance_update_access_status(context, share_instance_id, status):
     session = get_session()
     with session.begin():
-        mapping = session.query(models.ShareInstanceAccessMapping).\
-            filter_by(id=mapping_id).first()
-        mapping.update({'state': state})
+        mapping = session.query(models.ShareInstance).\
+            filter_by(id=share_instance_id).first()
+        mapping.update({'access_rules_status': status})
         mapping.save(session=session)
         return mapping
 

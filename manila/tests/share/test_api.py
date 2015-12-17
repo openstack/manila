@@ -1293,7 +1293,7 @@ class ShareAPITestCase(test.TestCase):
         fake_access_expected = copy.deepcopy(values)
         fake_access_expected.update({
             'id': 'fake_access_id',
-            'state': 'fake_state',
+            'state': constants.STATUS_ACTIVE,
         })
         fake_access = copy.deepcopy(fake_access_expected)
         fake_access.update({
@@ -1302,6 +1302,8 @@ class ShareAPITestCase(test.TestCase):
             'instance_mappings': ['foo', 'bar'],
         })
         self.mock_object(db_api, 'share_access_create',
+                         mock.Mock(return_value=fake_access))
+        self.mock_object(db_api, 'share_access_get',
                          mock.Mock(return_value=fake_access))
 
         access = self.api.allow_access(
@@ -1316,6 +1318,15 @@ class ShareAPITestCase(test.TestCase):
             self.context, values)
         share_api.policy.check_policy.assert_called_with(
             self.context, 'share', 'allow_access')
+
+    def test_allow_access_existent_access(self):
+        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
+        fake_access = db_utils.create_access(share_id=share['id'])
+
+        self.assertRaises(exception.ShareAccessExists, self.api.allow_access,
+                          self.context, share, fake_access['access_type'],
+                          fake_access['access_to'], fake_access['access_level']
+                          )
 
     def test_allow_access_invalid_access_level(self):
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
@@ -1335,8 +1346,7 @@ class ShareAPITestCase(test.TestCase):
 
     def test_allow_access_to_instance(self):
         share = db_utils.create_share(host='fake')
-        access = db_utils.create_access(share_id=share['id'],
-                                        state=constants.STATUS_ACTIVE)
+        access = db_utils.create_access(share_id=share['id'])
         rpc_method = self.mock_object(self.api.share_rpcapi, 'allow_access')
 
         self.api.allow_access_to_instance(self.context, share.instance, access)
@@ -1344,25 +1354,32 @@ class ShareAPITestCase(test.TestCase):
         rpc_method.assert_called_once_with(
             self.context, share.instance, access)
 
+    def test_allow_access_to_instance_exception(self):
+        share = db_utils.create_share(host='fake')
+        access = db_utils.create_access(share_id=share['id'])
+
+        share.instance['access_rules_status'] = constants.STATUS_ERROR
+
+        self.assertRaises(exception.InvalidShareInstance,
+                          self.api.allow_access_to_instance, self.context,
+                          share.instance, access)
+
     def test_deny_access_to_instance(self):
         share = db_utils.create_share(host='fake')
-        access = db_utils.create_access(share_id=share['id'],
-                                        state=constants.STATUS_ACTIVE)
+        access = db_utils.create_access(share_id=share['id'])
         rpc_method = self.mock_object(self.api.share_rpcapi, 'deny_access')
         self.mock_object(db_api, 'share_instance_access_get',
                          mock.Mock(return_value=access.instance_mappings[0]))
-        self.mock_object(db_api, 'share_instance_access_update_state')
+        self.mock_object(db_api, 'share_instance_update_access_status')
 
         self.api.deny_access_to_instance(self.context, share.instance, access)
 
         rpc_method.assert_called_once_with(
             self.context, share.instance, access)
-        db_api.share_instance_access_get.assert_called_once_with(
-            self.context, access['id'], share.instance['id'])
-        db_api.share_instance_access_update_state.assert_called_once_with(
+        db_api.share_instance_update_access_status.assert_called_once_with(
             self.context,
-            access.instance_mappings[0]['id'],
-            constants.STATUS_DELETING
+            share.instance['id'],
+            constants.STATUS_OUT_OF_SYNC
         )
 
     @ddt.data('allow_access_to_instance', 'deny_access_to_instance')
@@ -1377,12 +1394,12 @@ class ShareAPITestCase(test.TestCase):
 
     @mock.patch.object(db_api, 'share_get', mock.Mock())
     @mock.patch.object(share_api.API, 'deny_access_to_instance', mock.Mock())
-    @mock.patch.object(db_api, 'share_instance_access_get_all', mock.Mock())
+    @mock.patch.object(db_api, 'share_instance_update_access_status',
+                       mock.Mock())
     def test_deny_access_error(self):
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         db_api.share_get.return_value = share
-        access = db_utils.create_access(state=constants.STATUS_ERROR,
-                                        share_id=share['id'])
+        access = db_utils.create_access(share_id=share['id'])
         share_instance = share.instances[0]
         db_api.share_instance_access_get_all.return_value = [share_instance, ]
         self.api.deny_access(self.context, share, access)
@@ -1391,8 +1408,6 @@ class ShareAPITestCase(test.TestCase):
             self.context, 'share', 'deny_access')
         share_api.API.deny_access_to_instance.assert_called_once_with(
             self.context, share_instance, access)
-        db_api.share_instance_access_get_all.assert_called_once_with(
-            self.context, access['id'])
 
     @mock.patch.object(db_api, 'share_get', mock.Mock())
     @mock.patch.object(db_api, 'share_instance_access_get_all', mock.Mock())
@@ -1400,29 +1415,24 @@ class ShareAPITestCase(test.TestCase):
     def test_deny_access_error_no_share_instance_mapping(self):
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
         db_api.share_get.return_value = share
-        access = db_utils.create_access(state=constants.STATUS_ERROR,
-                                        share_id=share['id'])
+        access = db_utils.create_access(share_id=share['id'])
         db_api.share_instance_access_get_all.return_value = []
-        self.api.deny_access(self.context, share, access)
-        db_api.share_get.assert_called_once_with(self.context, share['id'])
-        share_api.policy.check_policy.assert_called_once_with(
-            self.context, 'share', 'deny_access')
-        db_api.share_access_delete.assert_called_once_with(
-            self.context, access['id'])
-        db_api.share_instance_access_get_all.assert_called_once_with(
-            self.context, access['id'])
 
-    @mock.patch.object(db_api, 'share_instance_access_update_state',
+        self.api.deny_access(self.context, share, access)
+
+        db_api.share_get.assert_called_once_with(self.context, share['id'])
+        self.assertTrue(share_api.policy.check_policy.called)
+
+    @mock.patch.object(db_api, 'share_instance_update_access_status',
                        mock.Mock())
     def test_deny_access_active(self):
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
-        access = db_utils.create_access(state=constants.STATUS_ACTIVE,
-                                        share_id=share['id'])
+        access = db_utils.create_access(share_id=share['id'])
         self.api.deny_access(self.context, share, access)
-        db_api.share_instance_access_update_state.assert_called_once_with(
+        db_api.share_instance_update_access_status.assert_called_once_with(
             self.context,
-            access.instance_mappings[0]['id'],
-            constants.STATUS_DELETING
+            share.instance['id'],
+            constants.STATUS_OUT_OF_SYNC
         )
         share_api.policy.check_policy.assert_called_with(
             self.context, 'share', 'deny_access')
@@ -1431,20 +1441,11 @@ class ShareAPITestCase(test.TestCase):
 
     def test_deny_access_not_found(self):
         share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
-        access = db_utils.create_access(state=constants.STATUS_ACTIVE,
-                                        share_id=share['id'])
+        access = db_utils.create_access(share_id=share['id'])
         self.mock_object(db_api, 'share_instance_access_get',
                          mock.Mock(side_effect=[exception.NotFound('fake')]))
         self.api.deny_access(self.context, share, access)
         share_api.policy.check_policy.assert_called_with(
-            self.context, 'share', 'deny_access')
-
-    def test_deny_access_not_active_not_error(self):
-        share = db_utils.create_share(status=constants.STATUS_AVAILABLE)
-        access = db_utils.create_access(share_id=share['id'])
-        self.assertRaises(exception.InvalidShareAccess, self.api.deny_access,
-                          self.context, share, access)
-        share_api.policy.check_policy.assert_called_once_with(
             self.context, 'share', 'deny_access')
 
     def test_deny_access_status_not_available(self):
@@ -1475,13 +1476,12 @@ class ShareAPITestCase(test.TestCase):
     def test_access_get_all(self):
         share = db_utils.create_share(id='fakeid')
 
-        expected = {
+        values = {
             'fakeacc0id': {
                 'id': 'fakeacc0id',
                 'access_type': 'fakeacctype',
                 'access_to': 'fakeaccto',
                 'access_level': 'rw',
-                'state': constants.STATUS_ACTIVE,
                 'share_id': share['id'],
             },
             'fakeacc1id': {
@@ -1489,20 +1489,23 @@ class ShareAPITestCase(test.TestCase):
                 'access_type': 'fakeacctype',
                 'access_to': 'fakeaccto',
                 'access_level': 'rw',
-                'state': constants.STATUS_DELETING,
                 'share_id': share['id'],
             },
         }
         rules = [
-            db_utils.create_access(**expected['fakeacc0id']),
-            db_utils.create_access(**expected['fakeacc1id']),
+            db_utils.create_access(**values['fakeacc0id']),
+            db_utils.create_access(**values['fakeacc1id']),
         ]
+
+        # add state property
+        values['fakeacc0id']['state'] = constants.STATUS_ACTIVE
+        values['fakeacc1id']['state'] = constants.STATUS_ACTIVE
 
         self.mock_object(db_api, 'share_access_get_all_for_share',
                          mock.Mock(return_value=rules))
         actual = self.api.access_get_all(self.context, share)
         for access in actual:
-            expected_access = expected[access['id']]
+            expected_access = values[access['id']]
             expected_access.pop('share_id')
             self.assertEqual(expected_access, access)
 

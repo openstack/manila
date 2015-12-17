@@ -75,3 +75,27 @@ class ShareTestCase(test.TestCase):
         share = db_utils.create_share(status=constants.STATUS_CREATING)
 
         self.assertEqual(constants.STATUS_CREATING, share.instance['status'])
+
+    def test_access_rules_status_no_instances(self):
+        share = db_utils.create_share(instances=[])
+
+        self.assertEqual(constants.STATUS_ACTIVE, share.access_rules_status)
+
+    @ddt.data(constants.STATUS_ACTIVE, constants.STATUS_OUT_OF_SYNC,
+              constants.STATUS_ERROR)
+    def test_access_rules_status(self, access_status):
+        instances = [
+            db_utils.create_share_instance(
+                share_id='fake_id', status=constants.STATUS_ERROR,
+                access_rules_status=constants.STATUS_ACTIVE),
+            db_utils.create_share_instance(
+                share_id='fake_id', status=constants.STATUS_AVAILABLE,
+                access_rules_status=constants.STATUS_ACTIVE),
+            db_utils.create_share_instance(
+                share_id='fake_id', status=constants.STATUS_AVAILABLE,
+                access_rules_status=access_status),
+        ]
+
+        share = db_utils.create_share(instances=instances)
+
+        self.assertEqual(access_status, share.access_rules_status)

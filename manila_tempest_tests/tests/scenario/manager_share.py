@@ -133,7 +133,12 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
         """
         client = client or self.shares_client
         access = client.create_access_rule(share_id, access_type, access_to)
-        client.wait_for_access_rule_status(share_id, access['id'], "active")
+
+        # NOTE(u_glide): Ignore provided client, because we always need v2
+        # client to make this call
+        self.shares_v2_client.wait_for_share_status(
+            share_id, "active", status_attr='access_rules_status')
+
         if cleanup:
             self.addCleanup(client.delete_access_rule, share_id, access['id'])
         return access

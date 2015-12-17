@@ -32,6 +32,7 @@ def stub_share(id, **kwargs):
         'host': 'fakehost',
         'size': 1,
         'availability_zone': 'fakeaz',
+        'access_rules_status': 'active',
         'status': 'fakestatus',
         'display_name': 'displayname',
         'display_description': 'displaydesc',

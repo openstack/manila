@@ -435,6 +435,12 @@ def share_instance_access_get_all(context, access_id, session=None):
     return IMPL.share_instance_access_get_all(context, access_id, session=None)
 
 
+def share_access_get_all_for_instance(context, instance_id, session=None):
+    """Get all access rules related to a certain share instance."""
+    return IMPL.share_access_get_all_for_instance(
+        context, instance_id, session=None)
+
+
 def share_access_get_all_by_type_and_access(context, share_id, access_type,
                                             access):
     """Returns share access by given type and access."""
@@ -452,9 +458,10 @@ def share_instance_access_delete(context, mapping_id):
     return IMPL.share_instance_access_delete(context, mapping_id)
 
 
-def share_instance_access_update_state(context, mapping_id, state):
-    """Update state of access rule mapping."""
-    return IMPL.share_instance_access_update_state(context, mapping_id, state)
+def share_instance_update_access_status(context, share_instance_id, status):
+    """Update access rules status of share instance."""
+    return IMPL.share_instance_update_access_status(context, share_instance_id,
+                                                    status)
 
 
 ####################

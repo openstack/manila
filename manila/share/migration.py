@@ -104,113 +104,50 @@ class ShareMigrationHelper(object):
     def deny_rules_and_wait(self, context, share, saved_rules):
 
         api = share_api.API()
+        api.deny_access_to_instance(context, share.instance, saved_rules)
 
-        # Deny each one.
-        for instance in share.instances:
-            for access in saved_rules:
-                api.deny_access_to_instance(context, instance, access)
-
-        # Wait for all rules to be cleared.
-        starttime = time.time()
-        deadline = starttime + self.migration_wait_access_rules_timeout
-        tries = 0
-        rules = self.db.share_access_get_all_for_share(context, share['id'])
-        while len(rules) > 0:
-            tries += 1
-            now = time.time()
-            if now > deadline:
-                msg = _("Timeout removing access rules from share "
-                        "%(share_id)s. Timeout was %(timeout)s seconds.") % {
-                    'share_id': share['id'],
-                    'timeout': self.migration_wait_access_rules_timeout}
-                raise exception.ShareMigrationFailed(reason=msg)
-            else:
-                time.sleep(tries ** 2)
-            rules = self.db.share_access_get_all_for_share(
-                context, share['id'])
+        self.wait_for_access_update(share.instance)
 
     def add_rules_and_wait(self, context, share, saved_rules,
                            access_level=None):
-
+        rules = []
         for access in saved_rules:
-            if access_level:
-                level = access_level
-            else:
-                level = access['access_level']
-            self.api.allow_access(context, share, access['access_type'],
-                                  access['access_to'], level)
+            values = {
+                'share_id': share['id'],
+                'access_type': access['access_type'],
+                'access_level': access_level or access['access_level'],
+                'access_to': access['access_to'],
+            }
+            rules.append(self.db.share_access_create(context, values))
 
+        self.api.allow_access_to_instance(context, share.instance, rules)
+        self.wait_for_access_update(share.instance)
+
+    def wait_for_access_update(self, share_instance):
         starttime = time.time()
         deadline = starttime + self.migration_wait_access_rules_timeout
-        rules_added = False
         tries = 0
-        rules = self.db.share_access_get_all_for_share(context, share['id'])
-        while not rules_added:
-            rules_added = True
-            tries += 1
-            now = time.time()
-            for access in rules:
-                if access['state'] != constants.STATUS_ACTIVE:
-                    rules_added = False
-            if rules_added:
+
+        while True:
+            instance = self.db.share_instance_get(
+                self.context, share_instance['id'])
+
+            if instance['access_rules_status'] == constants.STATUS_ACTIVE:
                 break
-            if now > deadline:
-                msg = _("Timeout adding access rules for share "
-                        "%(share_id)s. Timeout was %(timeout)s seconds.") % {
-                    'share_id': share['id'],
-                    'timeout': self.migration_wait_access_rules_timeout}
-                raise exception.ShareMigrationFailed(reason=msg)
-            else:
-                time.sleep(tries ** 2)
-            rules = self.db.share_access_get_all_for_share(
-                context, share['id'])
 
-    def wait_for_allow_access(self, access_ref):
-
-        starttime = time.time()
-        deadline = starttime + self.migration_wait_access_rules_timeout
-        tries = 0
-        rule = self.api.access_get(self.context, access_ref['id'])
-        while rule['state'] != constants.STATUS_ACTIVE:
             tries += 1
             now = time.time()
-            if rule['state'] == constants.STATUS_ERROR:
-                msg = _("Failed to allow access"
-                        " on share %s") % self.share['id']
+            if instance['access_rules_status'] == constants.STATUS_ERROR:
+                msg = _("Failed to update access rules"
+                        " on share instance %s") % share_instance['id']
                 raise exception.ShareMigrationFailed(reason=msg)
             elif now > deadline:
-                msg = _("Timeout trying to allow access"
-                        " on share %(share_id)s. Timeout "
+                msg = _("Timeout trying to update access rules"
+                        " on share instance %(share_id)s. Timeout "
                         "was %(timeout)s seconds.") % {
-                    'share_id': self.share['id'],
+                    'share_id': share_instance['id'],
                     'timeout': self.migration_wait_access_rules_timeout}
                 raise exception.ShareMigrationFailed(reason=msg)
-            else:
-                time.sleep(tries ** 2)
-            rule = self.api.access_get(self.context, access_ref['id'])
-
-        return rule
-
-    def wait_for_deny_access(self, access_ref):
-
-        starttime = time.time()
-        deadline = starttime + self.migration_wait_access_rules_timeout
-        tries = -1
-        rule = "Something not None"
-        while rule:
-            try:
-                rule = self.api.access_get(self.context, access_ref['id'])
-                tries += 1
-                now = time.time()
-                if now > deadline:
-                    msg = _("Timeout trying to deny access"
-                            " on share %(share_id)s. Timeout "
-                            "was %(timeout)s seconds.") % {
-                        'share_id': self.share['id'],
-                        'timeout': self.migration_wait_access_rules_timeout}
-                    raise exception.ShareMigrationFailed(reason=msg)
-            except exception.NotFound:
-                rule = None
             else:
                 time.sleep(tries ** 2)
 
@@ -234,7 +171,7 @@ class ShareMigrationHelper(object):
                     access_ref = access_item
 
         if access_ref and allowed:
-            access_ref = self.wait_for_allow_access(access_ref)
+            self.wait_for_access_update(self.share.instance)
 
         return access_ref
 
@@ -273,7 +210,7 @@ class ShareMigrationHelper(object):
                     raise
 
             if denied:
-                self.wait_for_deny_access(access_ref)
+                self.wait_for_access_update(self.share.instance)
 
     # NOTE(ganso): Cleanup methods do not throw exception, since the
     # exceptions that should be thrown are the ones that call the cleanup

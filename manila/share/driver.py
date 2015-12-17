@@ -603,6 +603,32 @@ class ShareDriver(object):
         """Deny access to the share."""
         raise NotImplementedError()
 
+    def update_access(self, context, share, access_rules, add_rules=None,
+                      delete_rules=None, share_server=None):
+        """Update access rules for given share.
+
+        Drivers should support 2 different cases in this method:
+        1. Recovery after error - 'access_rules' contains all access_rules,
+        'add_rules' and 'delete_rules' are None. Driver should clear any
+        existent access rules and apply all access rules for given share.
+        This recovery is made at driver start up.
+
+        2. Adding/Deleting of several access rules - 'access_rules' contains
+        all access_rules, 'add_rules' and 'delete_rules' contain rules which
+        should be added/deleted. Driver can ignore rules in 'access_rules' and
+        apply only rules from 'add_rules' and 'delete_rules'.
+
+        :param context: Current context
+        :param share: Share model with share data.
+        :param access_rules: All access rules for given share
+        :param add_rules: None or List of access rules which should be added
+               access_rules already contains these rules.
+        :param delete_rules: None or List of access rules which should be
+               removed. access_rules doesn't contain these rules.
+        :param share_server: None or Share server model
+        """
+        raise NotImplementedError()
+
     def check_for_setup_error(self):
         """Check for setup error."""
         max_ratio = self.configuration.safe_get('max_over_subscription_ratio')

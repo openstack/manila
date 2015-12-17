@@ -45,6 +45,7 @@ class ShareAPI(object):
             migrate_share()
             get_migration_info()
             get_driver_migration_info()
+        1.7 - Update target call API in allow/deny access methods
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -53,7 +54,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.6')
+        self.client = rpc.get_client(target, version_cap='1.7')
 
     def create_share_instance(self, ctxt, share_instance, host,
                               request_spec, filter_properties,
@@ -131,19 +132,26 @@ class ShareAPI(object):
         cctxt = self.client.prepare(server=new_host)
         cctxt.cast(ctxt, 'delete_snapshot', snapshot_id=snapshot['id'])
 
+    @staticmethod
+    def _get_access_rules(access):
+        if isinstance(access, list):
+            return [rule['id'] for rule in access]
+        else:
+            return [access['id']]
+
     def allow_access(self, ctxt, share_instance, access):
         host = utils.extract_host(share_instance['host'])
-        cctxt = self.client.prepare(server=host, version='1.4')
+        cctxt = self.client.prepare(server=host, version='1.7')
         cctxt.cast(ctxt, 'allow_access',
                    share_instance_id=share_instance['id'],
-                   access_id=access['id'])
+                   access_rules=self._get_access_rules(access))
 
     def deny_access(self, ctxt, share_instance, access):
         host = utils.extract_host(share_instance['host'])
-        cctxt = self.client.prepare(server=host, version='1.4')
+        cctxt = self.client.prepare(server=host, version='1.7')
         cctxt.cast(ctxt, 'deny_access',
                    share_instance_id=share_instance['id'],
-                   access_id=access['id'])
+                   access_rules=self._get_access_rules(access))
 
     def publish_service_capabilities(self, ctxt):
         cctxt = self.client.prepare(fanout=True, version='1.0')

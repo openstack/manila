@@ -105,12 +105,17 @@ def handle_message(data):
 
     Expected structure of a message is following:
         {'data': {
-             'access_id': u'b28268b9-36c6-40d3-a485-22534077328f',
-             'access_instance_id': u'd137b2cb-f549-4141-9dd7-36b2789fb973',
-             'access_level': u'rw',
-             'access_state': u'active',
-             'access_to': u'7.7.7.7',
-             'access_type': u'ip',
+            'access_rules': [
+                 {
+                    'access_id': u'b28268b9-36c6-40d3-a485-22534077328f',
+                    'access_instance_id':
+                        u'd137b2cb-f549-4141-9dd7-36b2789fb973',
+                    'access_level': u'rw',
+                    'access_state': u'active',
+                    'access_to': u'7.7.7.7',
+                    'access_type': u'ip',
+                }
+              ],
              'availability_zone': u'nova',
              'export_locations': [u'127.0.0.1:/path/to/nfs/share'],
              'is_allow_operation': True,
@@ -121,10 +126,14 @@ def handle_message(data):
     """
     if 'data' in data.keys():
         data = data['data']
-    if (data.get('access_type', '?').lower() == 'ip' and
-            'access_state' in data.keys() and
-            'error' not in data.get('access_state', '?').lower() and
-            data.get('share_proto', '?').lower() == 'nfs'):
+
+    valid_access = (
+        'access_rules' in data and len(data['access_rules']) == 1 and
+        data['access_rules'][0].get('access_type', '?').lower() == 'ip' and
+        data.get('share_proto', '?').lower() == 'nfs'
+    )
+
+    if valid_access:
         is_allow_operation = data['is_allow_operation']
         export_location = data['export_locations'][0]
         if is_allow_operation:

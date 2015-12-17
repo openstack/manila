@@ -411,7 +411,7 @@ class ShareAccessExists(ManilaException):
 
 
 class InvalidShareAccess(Invalid):
-    message = _("Invalid access_rule: %(reason)s.")
+    message = _("Invalid access rule: %(reason)s")
 
 
 class InvalidShareAccessLevel(Invalid):

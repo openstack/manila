@@ -30,37 +30,46 @@ class ZaqarNotification(hook.HookBase):
     share_api = api.API()
 
     def _access_changed_trigger(self, context, func_name,
-                                access_id, share_instance_id):
-        access = self.share_api.access_get(context, access_id=access_id)
-        share = self.share_api.get(context, share_id=access.share_id)
+                                access_rules_ids, share_instance_id):
 
-        for ins in share.instances:
-            if ins.id == share_instance_id:
-                share_instance = ins
-                break
-        else:
-            raise exception.InstanceNotFound(instance_id=share_instance_id)
+        access = [self.db.share_access_get(context, rule_id)
+                  for rule_id in access_rules_ids]
 
-        for ins in access.instance_mappings:
-            if ins.share_instance_id == share_instance_id:
-                access_instance = ins
-                break
-        else:
-            raise exception.InstanceNotFound(instance_id=share_instance_id)
+        share_instance = self.db.share_instance_get(context, share_instance_id)
+
+        share = self.share_api.get(context, share_id=share_instance.share_id)
+
+        def rules_view(rules):
+            result = []
+
+            for rule in rules:
+                access_instance = None
+
+                for ins in rule.instance_mappings:
+                    if ins.share_instance_id == share_instance_id:
+                        access_instance = ins
+                        break
+                    else:
+                        raise exception.InstanceNotFound(
+                            instance_id=share_instance_id)
+
+                result.append({
+                    'access_id': rule.id,
+                    'access_instance_id': access_instance.id,
+                    'access_type': rule.access_type,
+                    'access_to': rule.access_to,
+                    'access_level': rule.access_level,
+                })
+            return result
 
         is_allow_operation = 'allow' in func_name
         results = {
-            'share_id': access.share_id,
+            'share_id': share.share_id,
             'share_instance_id': share_instance_id,
             'export_locations': [
                 el.path for el in share_instance.export_locations],
             'share_proto': share.share_proto,
-            'access_id': access.id,
-            'access_instance_id': access_instance.id,
-            'access_type': access.access_type,
-            'access_to': access.access_to,
-            'access_level': access.access_level,
-            'access_state': access_instance.state,
+            'access_rules': rules_view(access),
             'is_allow_operation': is_allow_operation,
             'availability_zone': share_instance.availability_zone,
         }
@@ -75,7 +84,7 @@ class ZaqarNotification(hook.HookBase):
             data = self._access_changed_trigger(
                 context,
                 func_name,
-                kwargs.get('access_id'),
+                kwargs.get('access_rules'),
                 kwargs.get('share_instance_id'),
             )
             self._send_notification(data)
@@ -89,7 +98,7 @@ class ZaqarNotification(hook.HookBase):
             data = self._access_changed_trigger(
                 context,
                 func_name,
-                kwargs.get('access_id'),
+                kwargs.get('access_rules'),
                 kwargs.get('share_instance_id'),
             )
             self._send_notification(data)

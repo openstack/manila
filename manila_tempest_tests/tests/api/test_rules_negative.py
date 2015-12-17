@@ -14,14 +14,16 @@
 #    under the License.
 
 import ddt
-from tempest import config  # noqa
-from tempest import test  # noqa
-from tempest_lib import exceptions as lib_exc  # noqa
-import testtools  # noqa
+from tempest import config
+from tempest import test
+from tempest_lib import exceptions as lib_exc
+import testtools
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
+LATEST_MICROVERSION = CONF.share.max_api_microversion
 
 
 @ddt.ddt
@@ -108,28 +110,53 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
                           'su')
 
     @test.attr(type=["negative", "gate", ])
-    @ddt.data('shares_client', 'shares_v2_client')
-    def test_create_duplicate_of_ip_rule(self, client_name):
+    @ddt.data('1.0', '2.9', LATEST_MICROVERSION)
+    def test_create_duplicate_of_ip_rule(self, version):
         # test data
         access_type = "ip"
         access_to = "1.2.3.4"
 
         # create rule
-        rule = getattr(self, client_name).create_access_rule(
-            self.share["id"], access_type, access_to)
-        getattr(self, client_name).wait_for_access_rule_status(
-            self.share["id"], rule["id"], "active")
+        if utils.is_microversion_eq(version, '1.0'):
+            rule = self.shares_client.create_access_rule(
+                self.share["id"], access_type, access_to)
+        else:
+            rule = self.shares_v2_client.create_access_rule(
+                self.share["id"], access_type, access_to, version=version)
+
+        if utils.is_microversion_eq(version, '1.0'):
+            self.shares_client.wait_for_access_rule_status(
+                self.share["id"], rule["id"], "active")
+        elif utils.is_microversion_eq(version, '2.9'):
+            self.shares_v2_client.wait_for_access_rule_status(
+                self.share["id"], rule["id"], "active")
+        else:
+            self.shares_v2_client.wait_for_share_status(
+                self.share["id"], "active", status_attr='access_rules_status',
+                version=version)
 
         # try create duplicate of rule
-        self.assertRaises(lib_exc.BadRequest,
-                          getattr(self, client_name).create_access_rule,
-                          self.share["id"], access_type, access_to)
+        if utils.is_microversion_eq(version, '1.0'):
+            self.assertRaises(lib_exc.BadRequest,
+                              self.shares_client.create_access_rule,
+                              self.share["id"], access_type, access_to)
+        else:
+            self.assertRaises(lib_exc.BadRequest,
+                              self.shares_v2_client.create_access_rule,
+                              self.share["id"], access_type, access_to,
+                              version=version)
 
         # delete rule and wait for deletion
-        getattr(self, client_name).delete_access_rule(self.share["id"],
-                                                      rule["id"])
-        getattr(self, client_name).wait_for_resource_deletion(
-            rule_id=rule["id"], share_id=self.share['id'])
+        if utils.is_microversion_eq(version, '1.0'):
+            self.shares_client.delete_access_rule(self.share["id"],
+                                                  rule["id"])
+            self.shares_client.wait_for_resource_deletion(
+                rule_id=rule["id"], share_id=self.share["id"])
+        else:
+            self.shares_v2_client.delete_access_rule(self.share["id"],
+                                                     rule["id"])
+            self.shares_v2_client.wait_for_resource_deletion(
+                rule_id=rule["id"], share_id=self.share["id"], version=version)
 
 
 @ddt.ddt

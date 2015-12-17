@@ -689,3 +689,13 @@ class ShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.ShareMigrationFailed,
                           share_driver.copy_share_data, 'ctx', None,
                           fake_share, None, None, None, None, local, remote)
+
+    def test_update_access(self):
+        share_driver = driver.ShareDriver(True, configuration=None)
+        self.assertRaises(
+            NotImplementedError,
+            share_driver.update_access,
+            'ctx',
+            'fake_share',
+            'fake_access_rules'
+        )

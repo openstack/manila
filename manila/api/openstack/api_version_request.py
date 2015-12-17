@@ -44,24 +44,27 @@ REST_API_VERSION_HISTORY = """
 
     REST API Version History:
 
-    * 1.0 - Initial version. Includes all V1 APIs and extensions in Kilo.
-    * 2.0 - Versions API updated to reflect beginning of microversions epoch.
-    * 2.1 - Share create() doesn't ignore availability_zone field of share.
-    * 2.2 - Snapshots become optional feature.
-    * 2.3 - Share instances admin API
-    * 2.4 - Consistency Group support
-    * 2.5 - Share Migration admin API
-    * 2.6 - Return share_type UUID instead of name in Share API
-    * 2.7 - Rename old extension-like API URLs to core-API-like
-    * 2.8 - Attr "is_public" can be set for share using API "manage"
-    * 2.9 - Add export locations API
+    * 1.0  - Initial version. Includes all V1 APIs and extensions in Kilo.
+    * 2.0  - Versions API updated to reflect beginning of microversions epoch.
+    * 2.1  - Share create() doesn't ignore availability_zone field of share.
+    * 2.2  - Snapshots become optional feature.
+    * 2.3  - Share instances admin API
+    * 2.4  - Consistency Group support
+    * 2.5  - Share Migration admin API
+    * 2.6  - Return share_type UUID instead of name in Share API
+    * 2.7  - Rename old extension-like API URLs to core-API-like
+    * 2.8  - Attr "is_public" can be set for share using API "manage"
+    * 2.9  - Add export locations API
+    * 2.10 - Field 'access_rules_status' was added to shares and share
+            instances.
+
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.9"
+_MAX_API_VERSION = "2.10"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

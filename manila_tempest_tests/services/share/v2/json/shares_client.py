@@ -323,6 +323,30 @@ class SharesV2Client(shares_client.SharesClient):
                            (instance_id, status, self.build_timeout))
                 raise exceptions.TimeoutException(message)
 
+    def wait_for_share_status(self, share_id, status, status_attr='status',
+                              version=LATEST_MICROVERSION):
+        """Waits for a share to reach a given status."""
+        body = self.get_share(share_id, version=version)
+        share_status = body[status_attr]
+        start = int(time.time())
+
+        while share_status != status:
+            time.sleep(self.build_interval)
+            body = self.get_share(share_id, version=version)
+            share_status = body[status_attr]
+            if share_status == status:
+                return
+            elif 'error' in share_status.lower():
+                raise share_exceptions.ShareBuildErrorException(
+                    share_id=share_id)
+
+            if int(time.time()) - start >= self.build_timeout:
+                message = ("Share's %(status_attr)s failed to transition to "
+                           "%(status)s within the required time %(seconds)s." %
+                           {"status_attr": status_attr, "status": status,
+                            "seconds": self.build_timeout})
+                raise exceptions.TimeoutException(message)
+
 ###############
 
     def extend_share(self, share_id, new_size, version=LATEST_MICROVERSION,

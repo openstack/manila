@@ -253,3 +253,101 @@ class ShareInstanceExportLocationMetadataChecks(BaseMigrationChecks):
         self.test_case.assertRaises(
             sa_exc.NoSuchTableError,
             utils.load_table, self.elm_table_name, engine)
+
+
+@map_to_migration('344c1ac4747f')
+class AccessRulesStatusMigrationChecks(BaseMigrationChecks):
+
+    def _get_instance_data(self, data):
+        base_dict = {}
+        base_dict.update(data)
+        return base_dict
+
+    def setup_upgrade_data(self, engine):
+
+        share_table = utils.load_table('shares', engine)
+
+        share = {
+            'id': 1,
+            'share_proto': "NFS",
+            'size': 0,
+            'snapshot_id': None,
+            'user_id': 'fake',
+            'project_id': 'fake',
+        }
+
+        engine.execute(share_table.insert(share))
+
+        rules1 = [
+            {'id': 'r1', 'share_instance_id': 1, 'state': 'active',
+             'deleted': 'False'},
+            {'id': 'r2', 'share_instance_id': 1, 'state': 'active',
+             'deleted': 'False'},
+            {'id': 'r3', 'share_instance_id': 1, 'state': 'deleting',
+             'deleted': 'False'},
+        ]
+        rules2 = [
+            {'id': 'r4', 'share_instance_id': 2, 'state': 'active',
+             'deleted': 'False'},
+            {'id': 'r5', 'share_instance_id': 2, 'state': 'error',
+             'deleted': 'False'},
+        ]
+
+        rules3 = [
+            {'id': 'r6', 'share_instance_id': 3, 'state': 'new',
+             'deleted': 'False'},
+        ]
+
+        instance_fixtures = [
+            {'id': 1, 'deleted': 'False', 'host': 'fake1', 'share_id': 1,
+             'status': 'available', 'rules': rules1},
+            {'id': 2, 'deleted': 'False', 'host': 'fake2', 'share_id': 1,
+             'status': 'available', 'rules': rules2},
+            {'id': 3, 'deleted': 'False', 'host': 'fake3', 'share_id': 1,
+             'status': 'available', 'rules': rules3},
+            {'id': 4, 'deleted': 'False', 'host': 'fake4', 'share_id': 1,
+             'status': 'deleting', 'rules': []},
+        ]
+
+        share_instances_table = utils.load_table('share_instances', engine)
+        share_instances_rules_table = utils.load_table(
+            'share_instance_access_map', engine)
+
+        for fixture in instance_fixtures:
+            rules = fixture.pop('rules')
+            engine.execute(share_instances_table.insert(fixture))
+
+            for rule in rules:
+                engine.execute(share_instances_rules_table.insert(rule))
+
+    def check_upgrade(self, engine, _):
+        instances_table = utils.load_table('share_instances', engine)
+
+        valid_statuses = {
+            '1': 'active',
+            '2': 'error',
+            '3': 'out_of_sync',
+            '4': None,
+        }
+
+        instances = engine.execute(instances_table.select().where(
+            instances_table.c.id in valid_statuses.keys()))
+
+        for instance in instances:
+            self.test_case.assertEqual(valid_statuses[instance['id']],
+                                       instance['access_rules_status'])
+
+    def check_downgrade(self, engine):
+        share_instances_rules_table = utils.load_table(
+            'share_instance_access_map', engine)
+
+        valid_statuses = {
+            '1': 'active',
+            '2': 'error',
+            '3': 'error',
+            '4': None,
+        }
+
+        for rule in engine.execute(share_instances_rules_table.select()):
+            valid_state = valid_statuses[rule['share_instance_id']]
+            self.test_case.assertEqual(valid_state, rule['state'])

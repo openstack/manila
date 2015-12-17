@@ -92,43 +92,33 @@ class ShareAccessDatabaseAPITestCase(test.TestCase):
         super(ShareAccessDatabaseAPITestCase, self).setUp()
         self.ctxt = context.get_admin_context()
 
-    @ddt.data(
-        {'statuses': (constants.STATUS_ACTIVE, constants.STATUS_ACTIVE,
-                      constants.STATUS_ACTIVE),
-         'valid': constants.STATUS_ACTIVE},
-        {'statuses': (constants.STATUS_ACTIVE, constants.STATUS_ACTIVE,
-                      constants.STATUS_NEW),
-         'valid': constants.STATUS_NEW},
-        {'statuses': (constants.STATUS_ACTIVE, constants.STATUS_ACTIVE,
-                      constants.STATUS_ERROR),
-         'valid': constants.STATUS_ERROR},
-        {'statuses': (constants.STATUS_DELETING, constants.STATUS_DELETED,
-                      constants.STATUS_ERROR),
-         'valid': constants.STATUS_ERROR},
-        {'statuses': (constants.STATUS_DELETING, constants.STATUS_DELETED,
-                      constants.STATUS_ACTIVE),
-         'valid': constants.STATUS_DELETING},
-        {'statuses': (constants.STATUS_DELETED, constants.STATUS_DELETED,
-                      constants.STATUS_DELETED),
-         'valid': constants.STATUS_DELETED},
-    )
-    @ddt.unpack
-    def test_share_access_state(self, statuses, valid):
+    def test_share_instance_update_access_status(self):
         share = db_utils.create_share()
-        db_utils.create_share_instance(share_id=share['id'])
-        db_utils.create_share_instance(share_id=share['id'])
+        share_instance = db_utils.create_share_instance(share_id=share['id'])
+        db_utils.create_access(share_id=share_instance['share_id'])
 
-        share = db_api.share_get(self.ctxt, share['id'])
-        access = db_utils.create_access(state=constants.STATUS_ACTIVE,
-                                        share_id=share['id'])
+        db_api.share_instance_update_access_status(
+            self.ctxt,
+            share_instance['id'],
+            constants.STATUS_ACTIVE
+        )
 
-        for index, mapping in enumerate(access.instance_mappings):
-            db_api.share_instance_access_update_state(
-                self.ctxt, mapping['id'], statuses[index])
+        result = db_api.share_instance_get(self.ctxt, share_instance['id'])
 
-        access = db_api.share_access_get(self.ctxt, access['id'])
+        self.assertEqual(constants.STATUS_ACTIVE,
+                         result['access_rules_status'])
 
-        self.assertEqual(valid, access.state)
+    def test_share_instance_update_access_status_invalid(self):
+        share = db_utils.create_share()
+        share_instance = db_utils.create_share_instance(share_id=share['id'])
+        db_utils.create_access(share_id=share_instance['share_id'])
+
+        self.assertRaises(
+            db_exception.DBError,
+            db_api.share_instance_update_access_status,
+            self.ctxt, share_instance['id'],
+            "fake_status"
+        )
 
 
 @ddt.ddt
