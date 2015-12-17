@@ -290,10 +290,15 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
 
     def test_ensure_share(self):
         share = self.share1
+        gmgr1 = common.GlusterManager(self.glusterfs_target1, self._execute,
+                                      None, None)
+        self.mock_object(self._layout, '_share_manager',
+                         mock.Mock(return_value=gmgr1))
 
         self._layout.ensure_share(self._context, share)
 
-        self.assertIn(share['export_location'], self._layout.gluster_used_vols)
+        self._layout._share_manager.assert_called_once_with(share)
+        self.assertIn(self.glusterfs_target1, self._layout.gluster_used_vols)
 
     @ddt.data({"voldict": {"host:/share2G": {"size": 2}}, "used_vols": set(),
                "size": 1, "expected": "host:/share2G"},

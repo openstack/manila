@@ -584,7 +584,8 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
 
     def ensure_share(self, context, share, share_server=None):
         """Invoked to ensure that share is exported."""
-        self.gluster_used_vols.add(share['export_location'])
+        gmgr = self._share_manager(share)
+        self.gluster_used_vols.add(gmgr.qualified)
 
     # Debt...
 
