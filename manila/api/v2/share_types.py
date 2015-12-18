@@ -241,15 +241,7 @@ class ShareTypesController(wsgi.Controller):
         self._check_body(body, 'addProjectAccess')
         project = body['addProjectAccess']['project']
 
-        try:
-            share_type = share_types.get_share_type(context, id)
-
-            if share_type['is_public']:
-                msg = _("Project cannot be added to public share_type.")
-                raise webob.exc.HTTPForbidden(explanation=msg)
-
-        except exception.ShareTypeNotFound as err:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+        self._verify_if_non_public_share_type(context, id)
 
         try:
             share_types.add_share_type_access(context, id, project)
@@ -265,12 +257,25 @@ class ShareTypesController(wsgi.Controller):
         self._check_body(body, 'removeProjectAccess')
         project = body['removeProjectAccess']['project']
 
+        self._verify_if_non_public_share_type(context, id)
+
         try:
             share_types.remove_share_type_access(context, id, project)
-        except (exception.ShareTypeNotFound,
-                exception.ShareTypeAccessNotFound) as err:
+        except exception.ShareTypeAccessNotFound as err:
             raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
         return webob.Response(status_int=202)
+
+    def _verify_if_non_public_share_type(self, context, share_type_id):
+        try:
+            share_type = share_types.get_share_type(context, share_type_id)
+
+            if share_type['is_public']:
+                msg = _("Type access modification is not applicable to "
+                        "public share type.")
+                raise webob.exc.HTTPConflict(explanation=msg)
+
+        except exception.ShareTypeNotFound as err:
+            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
 
 
 def create_resource():
