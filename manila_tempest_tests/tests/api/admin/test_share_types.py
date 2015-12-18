@@ -20,7 +20,7 @@ from tempest_lib.common.utils import data_utils  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
 
 from manila_tempest_tests.tests.api import base
-
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -51,7 +51,7 @@ class ShareTypesAdminTest(base.BaseSharesAdminTest):
     def _verify_is_public_key_name(self, share_type, version):
         old_key_name = 'os-share-type-access:is_public'
         new_key_name = 'share_type_access:is_public'
-        if float(version) > 2.6:
+        if utils.is_microversion_gt(version, "2.6"):
             self.assertIn(new_key_name, share_type)
             self.assertNotIn(old_key_name, share_type)
         else:
