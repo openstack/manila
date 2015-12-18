@@ -19,6 +19,8 @@ IP = 'ip'
 USER = 'user'
 USERNAME = 'USERNAME_0'
 PASSWORD = 'PASSWORD_0'
+READ_WRITE = 'rw'
+READ_ONLY = 'ro'
 SAN_LOGIN = 'testlogin4san'
 SAN_PASSWORD = 'testpassword4san'
 API_URL = 'https://1.2.3.4:8080/api/v1'
@@ -31,6 +33,8 @@ CIDR_PREFIX = '24'
 EXPECTED_IP_10203040 = '10.20.30.40'
 EXPECTED_IP_1234 = '1.2.3.4'
 EXPECTED_IP_127 = '127.0.0.1'
+EXPECTED_IP_127_2 = '127.0.0.2'
+EXPECTED_ACCESS_LEVEL = 'foo_access'
 EXPECTED_SUBNET = '255.255.255.0'  # based on CIDR_PREFIX above
 EXPECTED_VLAN_TYPE = 'vlan'
 EXPECTED_VLAN_TAG = '101'
@@ -49,7 +53,9 @@ EXPECTED_FPG = 'FPG_1'
 EXPECTED_FSTORE = EXPECTED_PROJECT_ID
 EXPECTED_VFS = 'test_vfs'
 EXPECTED_HPE_DEBUG = True
+EXPECTED_COMMENT = "OpenStack Manila - foo-comment"
 EXPECTED_EXTRA_SPECS = {}
+EXPECTED_LOCATION = ':'.join((EXPECTED_IP_1234, EXPECTED_SHARE_PATH))
 
 GET_FSQUOTA = {'message': None,
                'total': 1,
@@ -75,11 +81,13 @@ NFS_SHARE_INFO = {
     'project_id': EXPECTED_PROJECT_ID,
     'id': EXPECTED_SHARE_ID,
     'share_proto': NFS,
+    'export_location': EXPECTED_LOCATION,
 }
 
 ACCESS_INFO = {
     'access_type': IP,
     'access_to': EXPECTED_IP_1234,
+    'access_level': READ_WRITE,
 }
 
 SNAPSHOT_INFO = {
@@ -89,6 +97,7 @@ SNAPSHOT_INFO = {
         'project_id': EXPECTED_PROJECT_ID,
         'id': EXPECTED_SHARE_ID,
         'share_proto': NFS,
+        'export_location': EXPECTED_LOCATION,
     },
 }
 
