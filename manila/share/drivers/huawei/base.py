@@ -73,3 +73,11 @@ class HuaweiBase(object):
 
     def update_share_stats(self, stats_dict):
         """Retrieve stats info from share group."""
+
+    @abc.abstractmethod
+    def setup_server(self, network_info, metadata=None):
+        """Set up share server with given network parameters."""
+
+    @abc.abstractmethod
+    def teardown_server(self, server_details, security_services=None):
+        """Teardown share server."""
