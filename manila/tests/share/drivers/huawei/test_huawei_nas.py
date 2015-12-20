@@ -700,6 +700,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'share_proto': 'NFS',
             'share_network_id': 'fake_net_id',
             'share_server_id': 'fake-share-srv-id',
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
             'export_locations': [
                 {'path': '100.115.10.68:/share_fake_uuid'},
             ],
@@ -1070,6 +1071,15 @@ class HuaweiShareDriverTestCase(test.TestCase):
                 'updated_at': None
             }
         }
+
+    def _get_share_by_proto(self, share_proto):
+        if share_proto == "NFS":
+            share = self.share_nfs
+        elif share_proto == "CIFS":
+            share = self.share_cifs
+        else:
+            share = None
+        return share
 
     def test_conf_product_fail(self):
         self.recreate_fake_conf_file(product_flag=False)
@@ -2696,6 +2706,64 @@ class HuaweiShareDriverTestCase(test.TestCase):
         with mock.patch.object(connection.LOG, 'debug') as mock_debug:
             self.driver._teardown_server(server_details, None)
             mock_debug.assert_called_with('Server details are empty.')
+
+    @ddt.data({"share_proto": "NFS",
+               "path": ["100.115.10.68:/share_fake_uuid"]},
+              {"share_proto": "CIFS",
+               "path": ["\\\\100.115.10.68\\share_fake_uuid"]})
+    @ddt.unpack
+    def test_ensure_share_sucess(self, share_proto, path):
+        share = self._get_share_by_proto(share_proto)
+
+        self.driver.plugin.helper.login()
+        location = self.driver.ensure_share(self._context,
+                                            share,
+                                            self.share_server)
+        self.assertEqual(path, location)
+
+    @ddt.data({"share_proto": "NFS",
+               "path": ["111.111.111.109:/share_fake_uuid"]},
+              {"share_proto": "CIFS",
+               "path": ["\\\\111.111.111.109\\share_fake_uuid"]})
+    @ddt.unpack
+    @dec_driver_handles_share_servers
+    def test_ensure_share_with_share_server_sucess(self, share_proto, path):
+        share = self._get_share_by_proto(share_proto)
+        backend_details = self.driver.setup_server(self.fake_network_info)
+        fake_share_server = {'backend_details': backend_details}
+
+        self.driver.plugin.helper.login()
+        location = self.driver.ensure_share(self._context,
+                                            share,
+                                            fake_share_server)
+        self.assertEqual(path, location)
+
+    @ddt.data({"share_proto": "NFS"},
+              {"share_proto": "CIFS"})
+    @ddt.unpack
+    def test_ensure_share_get_share_fail(self, share_proto):
+        share = self._get_share_by_proto(share_proto)
+        self.mock_object(self.driver.plugin.helper,
+                         '_get_share_by_name',
+                         mock.Mock(return_value={}))
+
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.ShareResourceNotFound,
+                          self.driver.ensure_share,
+                          self._context,
+                          share,
+                          self.share_server)
+
+    def test_ensure_share_get_filesystem_status_fail(self):
+        self.driver.plugin.helper.fs_status_flag = False
+        share = self.share_nfs_thickfs
+
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.StorageResourceException,
+                          self.driver.ensure_share,
+                          self._context,
+                          share,
+                          self.share_server)
 
     def create_fake_conf_file(self, fake_conf_file,
                               product_flag=True, username_flag=True,

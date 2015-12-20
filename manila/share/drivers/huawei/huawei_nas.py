@@ -53,6 +53,7 @@ class HuaweiNasDriver(driver.ShareDriver):
               Add smartx capabilities.
               Support multi pools in one backend.
         1.2 - Add share server support.
+              Add ensure share.
     """
 
     def __init__(self, *args, **kwargs):
@@ -131,8 +132,10 @@ class HuaweiNasDriver(driver.ShareDriver):
         self.plugin.delete_snapshot(snapshot, share_server)
 
     def ensure_share(self, context, share, share_server=None):
-        """Ensure that storages are mounted and exported."""
+        """Ensure that share is exported."""
         LOG.debug("Ensure share.")
+        location = self.plugin.ensure_share(share, share_server)
+        return location
 
     def allow_access(self, context, share, access, share_server=None):
         """Allow access to the share."""
