@@ -13,18 +13,23 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 import random
 import string
+import tempfile
 import time
 
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
+import six
 
 from manila.common import constants as common_constants
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
 from manila.i18n import _LI
 from manila.i18n import _LW
 from manila.share.drivers.huawei import base as driver
@@ -327,6 +332,241 @@ class V3StorageConnection(driver.HuaweiBase):
             self.helper._delete_fs(share_fs_id)
 
         return share
+
+    def create_share_from_snapshot(self, share, snapshot,
+                                   share_server=None):
+        """Create a share from snapshot."""
+        share_fs_id = self.helper._get_fsid_by_name(snapshot['share_name'])
+        if not share_fs_id:
+            err_msg = (_("The source filesystem of snapshot %s "
+                         "does not exist.")
+                       % snapshot['snapshot_id'])
+            LOG.error(err_msg)
+            raise exception.StorageResourceNotFound(
+                name=snapshot['share_name'])
+
+        snapshot_id = self.helper._get_snapshot_id(share_fs_id, snapshot['id'])
+        snapshot_flag = self.helper._check_snapshot_id_exist(snapshot_id)
+        if not snapshot_flag:
+            err_msg = (_("Cannot find snapshot %s on array.")
+                       % snapshot['snapshot_id'])
+            LOG.error(err_msg)
+            raise exception.ShareSnapshotNotFound(
+                snapshot_id=snapshot['snapshot_id'])
+
+        self.assert_filesystem(share_fs_id)
+
+        old_share_name = self.helper.get_share_name_by_id(
+            snapshot['share_id'])
+        old_share_proto = self._get_share_proto(old_share_name)
+        if not old_share_proto:
+            err_msg = (_("Cannot find source share %(share)s of "
+                         "snapshot %(snapshot)s on array.")
+                       % {'share': snapshot['share_id'],
+                          'snapshot': snapshot['snapshot_id']})
+            LOG.error(err_msg)
+            raise exception.ShareResourceNotFound(
+                share_id=snapshot['share_id'])
+
+        new_share_path = self.create_share(share)
+        new_share = {
+            "share_proto": share['share_proto'],
+            "size": share['size'],
+            "name": share['name'],
+            "mount_path": new_share_path.replace("\\", "/"),
+            "mount_src":
+                tempfile.mkdtemp(prefix=constants.TMP_PATH_DST_PREFIX),
+        }
+
+        old_share_path = self._get_location_path(old_share_name,
+                                                 old_share_proto)
+        old_share = {
+            "share_proto": old_share_proto,
+            "name": old_share_name,
+            "mount_path": old_share_path.replace("\\", "/"),
+            "mount_src":
+                tempfile.mkdtemp(prefix=constants.TMP_PATH_SRC_PREFIX),
+            "snapshot_name": ("share_snapshot_" +
+                              snapshot['id'].replace("-", "_"))
+        }
+
+        try:
+            self.copy_data_from_parent_share(old_share, new_share)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self.delete_share(new_share)
+        finally:
+            for item in (new_share, old_share):
+                try:
+                    os.rmdir(item['mount_src'])
+                except Exception as err:
+                    err_msg = (_('Failed to remove temp file. '
+                                 'File path: %(file_path)s. Reason: %(err)s.')
+                               % {'file_path': item['mount_src'],
+                                  'err': six.text_type(err)})
+                    LOG.warning(err_msg)
+
+        return new_share_path
+
+    def copy_data_from_parent_share(self, old_share, new_share):
+        old_access = self.get_access(old_share)
+        old_access_id = self._get_access_id(old_share, old_access)
+        if not old_access_id:
+            try:
+                self.allow_access(old_share, old_access)
+            except exception.ManilaException as err:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE('Failed to add access to share %(name)s. '
+                                  'Reason: %(err)s.')
+                              % {'name': old_share['name'],
+                                 'err': six.text_type(err)})
+
+        new_access = self.get_access(new_share)
+        try:
+            try:
+                self.mount_share_to_host(old_share, old_access)
+            except exception.ShareMountException as err:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE('Failed to mount old share %(name)s. '
+                                  'Reason: %(err)s.')
+                              % {'name': old_share['name'],
+                                 'err': six.text_type(err)})
+
+            try:
+                self.allow_access(new_share, new_access)
+                self.mount_share_to_host(new_share, new_access)
+            except Exception as err:
+                with excutils.save_and_reraise_exception():
+                    self.umount_share_from_host(old_share)
+                    LOG.error(_LE('Failed to mount new share %(name)s. '
+                                  'Reason: %(err)s.')
+                              % {'name': new_share['name'],
+                                 'err': six.text_type(err)})
+
+            copied = self.copy_snapshot_data(old_share, new_share)
+
+            for item in (new_share, old_share):
+                try:
+                    self.umount_share_from_host(item)
+                except exception.ShareUmountException as err:
+                    err_msg = (_('Failed to unmount share %(name)s. '
+                                 'Reason: %(err)s.')
+                               % {'name': item['name'],
+                                  'err': six.text_type(err)})
+                    LOG.warning(err_msg)
+
+            self.deny_access(new_share, new_access)
+
+            if copied:
+                LOG.debug("Created share from snapshot successfully, "
+                          "new_share: %s, old_share: %s.",
+                          new_share, old_share)
+            else:
+                message = (_('Failed to copy data from share %(old_share)s '
+                             'to share %(new_share)s.')
+                           % {'old_share': old_share['name'],
+                              'new_share': new_share['name']})
+                raise exception.ShareCopyDataException(reason=message)
+        finally:
+            if not old_access_id:
+                self.deny_access(old_share, old_access)
+
+    def get_access(self, share):
+        share_proto = share['share_proto']
+        access = {}
+        root = self.helper._read_xml()
+
+        if share_proto == 'NFS':
+            access['access_to'] = root.findtext('Filesystem/NFSClient/IP')
+            access['access_level'] = common_constants.ACCESS_LEVEL_RW
+            access['access_type'] = 'ip'
+        elif share_proto == 'CIFS':
+            access['access_to'] = root.findtext(
+                'Filesystem/CIFSClient/UserName')
+            access['access_password'] = root.findtext(
+                'Filesystem/CIFSClient/UserPassword')
+            access['access_level'] = common_constants.ACCESS_LEVEL_RW
+            access['access_type'] = 'user'
+
+        LOG.debug("Get access for share: %s, access_type: %s, access_to: %s, "
+                  "access_level: %s", share['name'], access['access_type'],
+                  access['access_to'], access['access_level'])
+        return access
+
+    def _get_access_id(self, share, access):
+        """Get access id of the share."""
+        access_id = None
+        share_name = share['name']
+        share_url_type = self.helper._get_share_url_type(share['share_proto'])
+        share_client_type = self.helper._get_share_client_type(
+            share['share_proto'])
+        access_to = access['access_to']
+        share = self.helper._get_share_by_name(share_name, share_url_type)
+        access_id = self.helper._get_access_from_share(share['ID'], access_to,
+                                                       share_client_type)
+        if access_id is None:
+            LOG.debug('Cannot get access ID from share. '
+                      'share_name: %s', share_name)
+
+        return access_id
+
+    def copy_snapshot_data(self, old_share, new_share):
+        src_path = '/'.join((old_share['mount_src'], '.snapshot',
+                             old_share['snapshot_name']))
+        dst_path = new_share['mount_src']
+        copy_finish = False
+        LOG.debug("Copy data from src_path: %s to dst_path: %s.",
+                  src_path, dst_path)
+        try:
+            ignore_list = ''
+            copy = share_utils.Copy(src_path,
+                                    dst_path,
+                                    ignore_list)
+            copy.run()
+            if copy.get_progress()['total_progress'] == 100:
+                copy_finish = True
+        except Exception as err:
+            err_msg = (_("Failed to copy data, reason: %s.")
+                       % six.text_type(err))
+            LOG.error(err_msg)
+
+        return copy_finish
+
+    def umount_share_from_host(self, share):
+        try:
+            utils.execute('umount', share['mount_path'],
+                          run_as_root=True)
+        except Exception as err:
+            message = (_("Failed to unmount share %(share)s. "
+                         "Reason: %(reason)s.")
+                       % {'share': share['name'],
+                          'reason': six.text_type(err)})
+            raise exception.ShareUmountException(reason=message)
+
+    def mount_share_to_host(self, share, access):
+        LOG.debug("Mounting share: %s to host, mount_src: %s",
+                  share['name'], share['mount_src'])
+        try:
+            if share['share_proto'] == 'NFS':
+                utils.execute('mount', '-t', 'nfs',
+                              share['mount_path'], share['mount_src'],
+                              run_as_root=True)
+
+                LOG.debug("Execute mount. mount_src: %s",
+                          share['mount_src'])
+
+            elif share['share_proto'] == 'CIFS':
+                user = ('user=' + access['access_to'] + ',' +
+                        'password=' + access['access_password'])
+                utils.execute('mount', '-t', 'cifs',
+                              share['mount_path'], share['mount_src'],
+                              '-o', user, run_as_root=True)
+        except Exception as err:
+            message = (_('Bad response from mount share: %(share)s. '
+                         'Reason: %(reason)s.')
+                       % {'share': share['name'],
+                          'reason': six.text_type(err)})
+            raise exception.ShareMountException(reason=message)
 
     def get_network_allocations_number(self):
         """Get number of network interfaces to be created."""
@@ -798,6 +1038,16 @@ class V3StorageConnection(driver.HuaweiBase):
                         % share_proto))
 
         return location
+
+    def _get_share_proto(self, share_name):
+        share_proto = None
+        for proto in ('NFS', 'CIFS'):
+            share_url_type = self.helper._get_share_url_type(proto)
+            share = self.helper._get_share_by_name(share_name, share_url_type)
+            if share:
+                share_proto = proto
+                break
+        return share_proto
 
     def _get_wait_interval(self):
         """Get wait interval from huawei conf file."""
