@@ -807,7 +807,12 @@ class NetworkAllocation(BASE, ManilaBase):
     __tablename__ = 'network_allocations'
     id = Column(String(36), primary_key=True, nullable=False)
     deleted = Column(String(36), default='False')
+    label = Column(String(255), nullable=True)
     ip_address = Column(String(64), nullable=True)
+    ip_version = Column(Integer, nullable=True)
+    cidr = Column(String(64), nullable=True)
+    network_type = Column(String(32), nullable=True)
+    segmentation_id = Column(Integer, nullable=True)
     mac_address = Column(String(32), nullable=True)
     share_server_id = Column(String(36), ForeignKey('share_servers.id'),
                              nullable=False)

@@ -710,6 +710,9 @@ def share_network_remove_security_service(context, id, security_service_id):
                                                       security_service_id)
 
 
+##################
+
+
 def network_allocation_create(context, values):
     """Create a network allocation DB record."""
     return IMPL.network_allocation_create(context, values)
@@ -726,11 +729,10 @@ def network_allocation_update(context, id, values):
 
 
 def network_allocations_get_for_share_server(context, share_server_id,
-                                             session=None):
-    """Get network allocation for share server."""
-    return IMPL.network_allocations_get_for_share_server(context,
-                                                         share_server_id,
-                                                         session=session)
+                                             session=None, label=None):
+    """Get network allocations for share server."""
+    return IMPL.network_allocations_get_for_share_server(
+        context, share_server_id, label=label, session=session)
 
 
 def network_allocations_get_by_ip_address(context, ip_address):

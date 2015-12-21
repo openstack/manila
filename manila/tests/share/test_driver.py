@@ -72,12 +72,15 @@ class ShareDriverTestCase(test.TestCase):
             self.assertTrue(share_driver.driver_handles_share_servers)
 
     def _instantiate_share_driver(self, network_config_group,
-                                  driver_handles_share_servers):
+                                  driver_handles_share_servers,
+                                  admin_network_config_group=None):
         self.mock_object(network, 'API')
         config = mock.Mock()
         config.append_config_values = mock.Mock()
         config.config_group = 'fake_config_group'
         config.network_config_group = network_config_group
+        if admin_network_config_group:
+            config.admin_network_config_group = admin_network_config_group
         config.safe_get = mock.Mock(return_value=driver_handles_share_servers)
 
         share_driver = driver.ShareDriver([True, False], configuration=config)
@@ -85,14 +88,26 @@ class ShareDriverTestCase(test.TestCase):
         self.assertTrue(hasattr(share_driver, 'configuration'))
         config.append_config_values.assert_called_once_with(driver.share_opts)
         if driver_handles_share_servers:
+            calls = []
             if network_config_group:
-                network.API.assert_called_once_with(
-                    config_group_name=config.network_config_group)
+                calls.append(mock.call(
+                    config_group_name=config.network_config_group))
             else:
-                network.API.assert_called_once_with(
-                    config_group_name=config.config_group)
+                calls.append(mock.call(
+                    config_group_name=config.config_group))
+            if admin_network_config_group:
+                calls.append(mock.call(
+                    config_group_name=config.admin_network_config_group,
+                    label='admin'))
+            network.API.assert_has_calls(calls)
+            self.assertTrue(hasattr(share_driver, 'network_api'))
+            self.assertTrue(hasattr(share_driver, 'admin_network_api'))
+            self.assertIsNotNone(share_driver.network_api)
+            self.assertIsNotNone(share_driver.admin_network_api)
         else:
             self.assertFalse(hasattr(share_driver, 'network_api'))
+            self.assertTrue(hasattr(share_driver, 'admin_network_api'))
+            self.assertIsNone(share_driver.admin_network_api)
             self.assertFalse(network.API.called)
         return share_driver
 
@@ -101,6 +116,11 @@ class ShareDriverTestCase(test.TestCase):
 
     def test_instantiate_share_driver_another_config_group(self):
         self._instantiate_share_driver("fake_network_config_group", True)
+
+    def test_instantiate_share_driver_with_admin_network(self):
+        self._instantiate_share_driver(
+            "fake_network_config_group", True,
+            "fake_admin_network_config_group")
 
     def test_instantiate_share_driver_no_configuration(self):
         self.mock_object(network, 'API')
@@ -357,6 +377,87 @@ class ShareDriverTestCase(test.TestCase):
             "fake_context", share_instances)
 
         self.assertEqual(share_instances, result)
+
+    def test_get_admin_network_allocations_number(self):
+        share_driver = self._instantiate_share_driver(None, True)
+
+        self.assertEqual(
+            0, share_driver.get_admin_network_allocations_number())
+
+    def test_allocate_admin_network_count_None(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        ctxt = 'fake_context'
+        share_server = 'fake_share_server'
+        mock_get_admin_network_allocations_number = self.mock_object(
+            share_driver,
+            'get_admin_network_allocations_number',
+            mock.Mock(return_value=0))
+        self.mock_object(
+            share_driver.admin_network_api,
+            'allocate_network',
+            mock.Mock(side_effect=Exception('ShouldNotBeRaised')))
+
+        share_driver.allocate_admin_network(ctxt, share_server)
+
+        mock_get_admin_network_allocations_number.assert_called_once_with()
+        self.assertFalse(
+            share_driver.admin_network_api.allocate_network.called)
+
+    def test_allocate_admin_network_count_0(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        ctxt = 'fake_context'
+        share_server = 'fake_share_server'
+        self.mock_object(
+            share_driver,
+            'get_admin_network_allocations_number',
+            mock.Mock(return_value=0))
+        self.mock_object(
+            share_driver.admin_network_api,
+            'allocate_network',
+            mock.Mock(side_effect=Exception('ShouldNotBeRaised')))
+
+        share_driver.allocate_admin_network(ctxt, share_server, count=0)
+
+        self.assertFalse(
+            share_driver.get_admin_network_allocations_number.called)
+        self.assertFalse(
+            share_driver.admin_network_api.allocate_network.called)
+
+    def test_allocate_admin_network_count_1_api_initialized(self):
+        share_driver = self._instantiate_share_driver(None, True)
+        ctxt = 'fake_context'
+        share_server = 'fake_share_server'
+        mock_get_admin_network_allocations_number = self.mock_object(
+            share_driver,
+            'get_admin_network_allocations_number',
+            mock.Mock(return_value=1))
+        self.mock_object(
+            share_driver.admin_network_api,
+            'allocate_network',
+            mock.Mock())
+
+        share_driver.allocate_admin_network(ctxt, share_server)
+
+        mock_get_admin_network_allocations_number.assert_called_once_with()
+        share_driver.admin_network_api.allocate_network.\
+            assert_called_once_with(ctxt, share_server, count=1)
+
+    def test_allocate_admin_network_count_1_api_not_initialized(self):
+        share_driver = self._instantiate_share_driver(None, True, None)
+        ctxt = 'fake_context'
+        share_server = 'fake_share_server'
+        share_driver._admin_network_api = None
+        mock_get_admin_network_allocations_number = self.mock_object(
+            share_driver,
+            'get_admin_network_allocations_number',
+            mock.Mock(return_value=1))
+
+        self.assertRaises(
+            exception.NetworkBadConfigurationException,
+            share_driver.allocate_admin_network,
+            ctxt, share_server,
+        )
+        mock_get_admin_network_allocations_number.assert_called_once_with()
 
     def test_migrate_share(self):
 

@@ -712,6 +712,8 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.safe_get = mock.Mock(side_effect=_safe_get)
         self.configuration.network_config_group = 'fake_network_config_group'
+        self.configuration.admin_network_config_group = (
+            'fake_admin_network_config_group')
         self.configuration.share_backend_name = 'fake_share_backend_name'
         self.configuration.huawei_share_backend = 'V3'
         self.configuration.max_over_subscription_ratio = 1

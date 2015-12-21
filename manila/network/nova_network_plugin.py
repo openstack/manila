@@ -44,11 +44,16 @@ class NovaNetworkPlugin(network.NetworkBaseAPI):
     This plugin uses Nova networks provided within 'share-network' entities.
     """
 
-    def __init__(self, config_group_name=None, db_driver=None):
+    def __init__(self, config_group_name=None, db_driver=None, label=None):
         super(NovaNetworkPlugin, self).__init__(db_driver=db_driver)
         self.config_group_name = config_group_name or 'DEFAULT'
+        self._label = label or 'user'
         self.admin_context = manila.context.get_admin_context()
         self.nova_api = nova.API()
+
+    @property
+    def label(self):
+        return self._label
 
     @utils.synchronized(
         "allocate_network_for_nova_network_plugin", external=True)
@@ -73,14 +78,20 @@ class NovaNetworkPlugin(network.NetworkBaseAPI):
         # because several required attrs of network are available
         # only for admins.
         nova_net = self.nova_api.network_get(self.admin_context, nova_net_id)
-        self._save_network_info(context, nova_net, share_network['id'])
+        self._save_network_info(context, nova_net, share_network)
         ip_addresses = self._get_available_ips(
             context, nova_net, allocation_count)
         for ip_address in ip_addresses:
-            data = dict(
-                share_server_id=share_server['id'],
-                ip_address=ip_address,
-                status=constants.STATUS_ACTIVE)
+            data = {
+                'share_server_id': share_server['id'],
+                'ip_address': ip_address,
+                'status': constants.STATUS_ACTIVE,
+                'label': self.label,
+                'cidr': share_network['cidr'],
+                'ip_version': share_network['ip_version'],
+                'segmentation_id': share_network['segmentation_id'],
+                'network_type': share_network['network_type'],
+            }
             self.nova_api.fixed_ip_reserve(self.admin_context, ip_address)
             allocations.append(
                 self.db.network_allocation_create(context, data))
@@ -135,14 +146,17 @@ class NovaNetworkPlugin(network.NetworkBaseAPI):
         LOG.error(msg)
         raise exception.NetworkBadConfigurationException(reason=msg)
 
-    def _save_network_info(self, context, nova_net, share_network_id):
+    def _save_network_info(self, context, nova_net, share_network):
         """Update 'share-network' with plugin specific data."""
-        data = dict(
-            cidr=(nova_net['cidr'] or nova_net['cidr_v6']),
-            ip_version=(4 if nova_net['cidr'] else 6),
-            segmentation_id=nova_net['vlan'],
-            network_type=('vlan' if nova_net['vlan'] else 'flat'))
-        self.db.share_network_update(context, share_network_id, data)
+        data = {
+            'cidr': (nova_net['cidr'] or nova_net['cidr_v6']),
+            'ip_version': (4 if nova_net['cidr'] else 6),
+            'segmentation_id': nova_net['vlan'],
+            'network_type': ('vlan' if nova_net['vlan'] else 'flat'),
+        }
+        share_network.update(data)
+        if self.label != 'admin':
+            self.db.share_network_update(context, share_network['id'], data)
 
     def deallocate_network(self, context, share_server_id):
         """Deallocate network resources for share server."""
@@ -177,8 +191,11 @@ class NovaSingleNetworkPlugin(NovaNetworkPlugin):
     @utils.synchronized(
         "allocate_network_for_nova_network_plugin", external=True)
     def allocate_network(self, context, share_server, share_network, **kwargs):
-        share_network = self._update_share_network_net_data(
-            context, share_network)
+        if self.label != 'admin':
+            share_network = self._update_share_network_net_data(
+                context, share_network)
+        else:
+            share_network = {'nova_net_id': self.net_id}
         return self._allocate_network(
             context, share_server, share_network, **kwargs)
 

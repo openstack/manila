@@ -43,7 +43,7 @@ standalone_network_plugin_opts = [
              "share servers. Optional.",
         choices=['flat', 'vlan', 'vxlan', 'gre'],
         deprecated_group='DEFAULT'),
-    cfg.StrOpt(
+    cfg.IntOpt(
         'standalone_network_plugin_segmentation_id',
         help="Set it if network has segmentation (VLAN, VXLAN, etc...). "
              "It will be assigned to share-network and share drivers will be "
@@ -82,7 +82,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
     from some network.
     """
 
-    def __init__(self, config_group_name=None, db_driver=None):
+    def __init__(self, config_group_name=None, db_driver=None, label='user'):
         super(StandaloneNetworkPlugin, self).__init__(db_driver=db_driver)
         self.config_group_name = config_group_name or 'DEFAULT'
         CONF.register_opts(
@@ -90,6 +90,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
             group=self.config_group_name)
         self.configuration = getattr(CONF, self.config_group_name, CONF)
         self._set_persistent_network_data()
+        self._label = label
         LOG.debug(
             "\nStandalone network plugin data for config group "
             "'%(config_group)s': \n"
@@ -111,6 +112,10 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
                 cidrs=self.allowed_cidrs,
                 ip_ranges=self.allowed_ip_ranges,
                 reserved=self.reserved_addresses))
+
+    @property
+    def label(self):
+        return self._label
 
     def _set_persistent_network_data(self):
         """Sets persistent data for whole plugin."""
@@ -240,30 +245,44 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
 
     def _save_network_info(self, context, share_network):
         """Update share-network with plugin specific data."""
-        data = dict(
-            network_type=self.network_type,
-            segmentation_id=self.segmentation_id,
-            cidr=six.text_type(self.net.cidr),
-            ip_version=self.ip_version)
-        self.db.share_network_update(context, share_network['id'], data)
+        data = {
+            'network_type': self.network_type,
+            'segmentation_id': self.segmentation_id,
+            'cidr': six.text_type(self.net.cidr),
+            'ip_version': self.ip_version,
+        }
+        share_network.update(data)
+        if self.label != 'admin':
+            self.db.share_network_update(context, share_network['id'], data)
 
     @utils.synchronized(
         "allocate_network_for_standalone_network_plugin", external=True)
-    def allocate_network(self, context, share_server, share_network, **kwargs):
+    def allocate_network(self, context, share_server, share_network=None,
+                         **kwargs):
         """Allocate network resources using one dedicated network.
 
         This one has interprocess lock to avoid concurrency in creation of
         share servers with same IP addresses using different share-networks.
         """
         allocation_count = kwargs.get('count', 1)
+        if self.label != 'admin':
+            self._verify_share_network(share_server['id'], share_network)
+        else:
+            share_network = share_network or {}
         self._save_network_info(context, share_network)
         allocations = []
         ip_addresses = self._get_available_ips(context, allocation_count)
         for ip_address in ip_addresses:
-            data = dict(
-                share_server_id=share_server['id'],
-                ip_address=ip_address,
-                status=constants.STATUS_ACTIVE)
+            data = {
+                'share_server_id': share_server['id'],
+                'ip_address': ip_address,
+                'status': constants.STATUS_ACTIVE,
+                'label': self.label,
+                'network_type': share_network['network_type'],
+                'segmentation_id': share_network['segmentation_id'],
+                'cidr': share_network['cidr'],
+                'ip_version': share_network['ip_version'],
+            }
             allocations.append(
                 self.db.network_allocation_create(context, data))
         return allocations

@@ -89,6 +89,8 @@ class ZFSSAShareDriverTestCase(test.TestCase):
         self.configuration.zfssa_nas_quota_snap = 'true'
         self.configuration.zfssa_rest_timeout = 60
         self.configuration.network_config_group = 'fake_network_config_group'
+        self.configuration.admin_network_config_group = (
+            'fake_admin_network_config_group')
         self.configuration.driver_handles_share_servers = False
 
     def test_create_share(self):

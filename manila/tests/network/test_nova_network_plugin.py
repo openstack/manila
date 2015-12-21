@@ -42,6 +42,8 @@ class NovaNetworkPluginTest(test.TestCase):
             self.fake_context, self.share_server, share_network, count=0)
 
         self.assertEqual([], allocations)
+        self.assertTrue(hasattr(self.instance, 'label'))
+        self.assertEqual('user', self.instance.label)
 
     @ddt.data('flat', 'vlan')
     def test_allocate_network_get_one(self, net_type):
@@ -226,12 +228,12 @@ class NovaSingleNetworkPluginTest(test.TestCase):
         self.context = context.RequestContext(
             user_id='fake user', project_id='fake project', is_admin=False)
 
-    def _get_instance(self):
+    def _get_instance(self, label=None):
         nova_net_id = 'fake_nova_net_id'
         config_data = dict(
             DEFAULT=dict(nova_single_network_plugin_net_id=nova_net_id))
         with test_utils.create_temp_config_with_opts(config_data):
-            return plugin.NovaSingleNetworkPlugin()
+            return plugin.NovaSingleNetworkPlugin(label=label)
 
     def test_init_valid(self):
         nova_net_id = 'fake_nova_net_id'
@@ -286,6 +288,24 @@ class NovaSingleNetworkPluginTest(test.TestCase):
         instance.db.share_network_update.assert_has_calls([])
         instance._allocate_network.assert_called_once_with(
             self.context, self.share_server, share_network, count=2)
+
+    def test_allocate_network_with_admin_label(self):
+        instance = self._get_instance(label='admin')
+        allocations = ['foo', 'bar']
+        self.mock_object(instance.db, 'share_network_update')
+        self.mock_object(
+            instance, '_allocate_network', mock.Mock(return_value=allocations))
+        fake_share_network = {'nova_net_id': 'fake_nova_net_id'}
+
+        result = instance.allocate_network(
+            self.context, self.share_server, fake_share_network, count=2)
+
+        self.assertTrue(hasattr(instance, 'label'))
+        self.assertEqual('admin', instance.label)
+        self.assertEqual(allocations, result)
+        instance.db.share_network_update.assert_has_calls([])
+        instance._allocate_network.assert_called_once_with(
+            self.context, self.share_server, fake_share_network, count=2)
 
     def test_allocate_network_different_nova_net_id_is_set(self):
         instance = self._get_instance()

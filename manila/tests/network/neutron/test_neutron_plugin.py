@@ -57,6 +57,10 @@ fake_share_network = {
     'name': 'fake name',
     'description': 'fake description',
     'security_services': [],
+    'network_type': 'fake_network_type',
+    'segmentation_id': 1234,
+    'ip_version': 4,
+    'cidr': 'fake_cidr',
 }
 
 fake_share_server = {
@@ -73,6 +77,11 @@ fake_network_allocation = {
     'ip_address': fake_neutron_port['fixed_ips'][0]['ip_address'],
     'mac_address': fake_neutron_port['mac_address'],
     'status': constants.STATUS_ACTIVE,
+    'label': 'user',
+    'network_type': fake_share_network['network_type'],
+    'segmentation_id': fake_share_network['segmentation_id'],
+    'ip_version': fake_share_network['ip_version'],
+    'cidr': fake_share_network['cidr'],
 }
 
 

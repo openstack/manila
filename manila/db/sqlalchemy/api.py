@@ -2942,11 +2942,26 @@ def network_allocations_get_by_ip_address(context, ip_address):
 
 @require_context
 def network_allocations_get_for_share_server(context, share_server_id,
-                                             session=None):
+                                             session=None, label=None):
     if session is None:
         session = get_session()
-    result = model_query(context, models.NetworkAllocation, session=session).\
-        filter_by(share_server_id=share_server_id).all()
+
+    query = model_query(
+        context, models.NetworkAllocation, session=session,
+    ).filter_by(
+        share_server_id=share_server_id,
+    )
+    if label:
+        if label != 'admin':
+            query = query.filter(or_(
+                # NOTE(vponomaryov): we treat None as alias for 'user'.
+                models.NetworkAllocation.label == None,  # noqa
+                models.NetworkAllocation.label == label,
+            ))
+        else:
+            query = query.filter(models.NetworkAllocation.label == label)
+
+    result = query.all()
     return result
 
 
