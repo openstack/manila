@@ -511,4 +511,5 @@ def get_config_cmode():
     config.netapp_root_volume_aggregate = ROOT_VOLUME_AGGREGATE
     config.netapp_root_volume = ROOT_VOLUME
     config.netapp_lif_name_template = LIF_NAME_TEMPLATE
+    config.netapp_volume_snapshot_reserve_percent = 8
     return config

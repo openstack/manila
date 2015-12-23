@@ -569,7 +569,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.POOL_NAME, fake.SHARE_NAME, fake.SHARE['size'],
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True,
-            compression_enabled=False, max_files=5000)
+            compression_enabled=False, max_files=5000, snapshot_reserve=8)
         mock_remap_standard_boolean_extra_specs.assert_called_once_with(
             fake.EXTRA_SPEC)
 

@@ -1131,7 +1131,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
     def create_volume(self, aggregate_name, volume_name, size_gb,
                       thin_provisioned=False, snapshot_policy=None,
                       language=None, dedup_enabled=False,
-                      compression_enabled=False, max_files=None):
+                      compression_enabled=False, max_files=None,
+                      snapshot_reserve=None):
 
         """Creates a volume."""
         api_args = {
@@ -1146,6 +1147,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             api_args['snapshot-policy'] = snapshot_policy
         if language is not None:
             api_args['language-code'] = language
+        if snapshot_reserve is not None:
+            api_args['percentage-snapshot-reserve'] = six.text_type(
+                snapshot_reserve)
         self.send_request('volume-create', api_args)
 
         # cDOT compression requires that deduplication be enabled.

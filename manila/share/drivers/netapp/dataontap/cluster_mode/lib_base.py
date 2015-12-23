@@ -383,9 +383,10 @@ class NetAppCmodeFileStorageLibrary(object):
                   'provisioning options %(options)s',
                   {'share': share_name, 'pool': pool_name,
                    'options': provisioning_options})
-        vserver_client.create_volume(pool_name, share_name,
-                                     share['size'],
-                                     **provisioning_options)
+        vserver_client.create_volume(
+            pool_name, share_name, share['size'],
+            snapshot_reserve=self.configuration.
+            netapp_volume_snapshot_reserve_percent, **provisioning_options)
 
     @na_utils.trace
     def _remap_standard_boolean_extra_specs(self, extra_specs):
