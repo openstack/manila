@@ -68,10 +68,11 @@ class HPE3ParMediator(object):
         2.0.0 - Rebranded HP to HPE
         2.0.1 - Add access_level (e.g. read-only support)
         2.0.2 - Add extend/shrink
+        2.0.3 - Fix SMB read-only access (added in 2.0.1)
 
     """
 
-    VERSION = "2.0.2"
+    VERSION = "2.0.3"
 
     def __init__(self, **kwargs):
 
@@ -847,9 +848,7 @@ class HPE3ParMediator(object):
                      "other shares. Use the required CIFS 'user' access rules "
                      "to refine access."))
             LOG.error(msg)
-            raise exception.HPE3ParInvalid(msg)
-
-        return protocol
+            raise exception.InvalidShareAccess(reason=msg)
 
     @staticmethod
     def ignore_benign_access_results(plus_or_minus, access_type, access_to,
@@ -897,169 +896,121 @@ class HPE3ParMediator(object):
                                    fpg,
                                    vfs,
                                    readonly=readonly)
+        if not fshare:
+            # Change access might apply to the share with the name that
+            # does not match the access_level prefix.
+            other_fshare = self._find_fshare(project_id,
+                                             share_id,
+                                             protocol,
+                                             fpg,
+                                             vfs,
+                                             readonly=not readonly)
+            if other_fshare:
+
+                if plus_or_minus == DENY:
+                    # Try to deny rule from 'other' share for SMB or legacy.
+                    fshare = other_fshare
+
+                elif self._is_share_from_snapshot(other_fshare):
+                    # Found a share-from-snapshot from before
+                    # "-ro" was added to the name. Use it.
+                    fshare = other_fshare
+
+                elif protocol == 'nfs':
+                    # We don't have the RO|RW share we need, but the
+                    # opposite one already exists. It is OK to create
+                    # the one we need for ALLOW with NFS (not from snapshot).
+                    fstore = other_fshare.get('fstoreName')
+                    sharedir = other_fshare.get('shareDir')
+                    comment = other_fshare.get('comment')
+
+                    fshare = self._create_share(project_id,
+                                                share_id,
+                                                protocol,
+                                                extra_specs,
+                                                fpg,
+                                                vfs,
+                                                fstore=fstore,
+                                                sharedir=sharedir,
+                                                readonly=readonly,
+                                                size=None,
+                                                comment=comment)
+                else:
+                    # SMB only has one share for RO and RW. Try to use it.
+                    fshare = other_fshare
+
+            if not fshare:
+                msg = _('Failed to change (%(change)s) access '
+                        'to FPG/share %(fpg)s/%(share)s '
+                        'for %(type)s %(to)s %(level)s): '
+                        'Share does not exist on 3PAR.')
+                msg_data = {
+                    'change': plus_or_minus,
+                    'fpg': fpg,
+                    'share': share_id,
+                    'type': access_type,
+                    'to': access_to,
+                    'level': access_level,
+                }
+
+                if plus_or_minus == DENY:
+                    LOG.warning(msg, msg_data)
+                    return
+                else:
+                    raise exception.HPE3ParInvalid(err=msg % msg_data)
 
         try:
-            result = None
-            if protocol == 'nfs':
+            self._validate_access_level(
+                protocol, access_type, access_level, fshare)
+        except exception.InvalidShareAccess as e:
+            if plus_or_minus == DENY:
+                # Allow invalid access rules to be deleted.
+                msg = _('Ignoring deny invalid access rule '
+                        'for FPG/share %(fpg)s/%(share)s '
+                        'for %(type)s %(to)s %(level)s): %(e)s')
+                msg_data = {
+                    'change': plus_or_minus,
+                    'fpg': fpg,
+                    'share': share_id,
+                    'type': access_type,
+                    'to': access_to,
+                    'level': access_level,
+                    'e': six.text_type(e),
+                }
+                LOG.info(msg, msg_data)
+                return
+            else:
+                raise
 
-                if not fshare:
+        share_name = fshare.get('shareName')
+        setfshare_kwargs = {
+            'fpg': fpg,
+            'fstore': fshare.get('fstoreName'),
+            'comment': fshare.get('comment'),
+        }
 
-                    # For NFS we could have a RO a RW or both. We may need to
-                    # find the other one and create the one we need.
+        if protocol == 'nfs':
+            access_change = '%s%s' % (plus_or_minus, access_to)
+            setfshare_kwargs['clientip'] = access_change
 
-                    other_fshare = self._find_fshare(project_id,
-                                                     share_id,
-                                                     protocol,
-                                                     fpg,
-                                                     vfs,
-                                                     readonly=not readonly)
+        elif protocol == 'smb':
 
-                    if other_fshare:
+            if access_type == 'ip':
+                access_change = '%s%s' % (plus_or_minus, access_to)
+                setfshare_kwargs['allowip'] = access_change
 
-                        if plus_or_minus == DENY:
-                            # Try to deny rule from before RO|RW split
-                            fshare = other_fshare
+            else:
+                access_str = 'read' if readonly else 'fullcontrol'
+                perm = '%s%s:%s' % (plus_or_minus, access_to, access_str)
+                setfshare_kwargs['allowperm'] = perm
 
-                        elif self._is_share_from_snapshot(other_fshare):
-                            # Found a share-from-snapshot from before
-                            # "-ro" was added to the name. Use it.
-                            fshare = other_fshare
+        try:
+            result = self._client.setfshare(
+                protocol, vfs, share_name, **setfshare_kwargs)
 
-                        else:
-                            # We don't have the RO|RW share we need, but the
-                            # opposite one already exists. It is OK to create
-                            # the one we need.
-                            fstore = other_fshare.get('fstoreName')
-                            sharedir = other_fshare.get('shareDir')
-                            comment = other_fshare.get('comment')
+            result = self.ignore_benign_access_results(
+                plus_or_minus, access_type, access_to, result)
 
-                            fshare = self._create_share(project_id,
-                                                        share_id,
-                                                        protocol,
-                                                        extra_specs,
-                                                        fpg,
-                                                        vfs,
-                                                        fstore=fstore,
-                                                        sharedir=sharedir,
-                                                        readonly=readonly,
-                                                        size=None,
-                                                        comment=comment)
-
-                if not fshare:
-                    msg = _('Failed to change (%(change)s) access '
-                            'to FPG/share %(fpg)s/%(share)s '
-                            'for %(type)s %(to)s %(level)s): '
-                            'Share does not exist on 3PAR.')
-                    msg_data = {
-                        'change': plus_or_minus,
-                        'fpg': fpg,
-                        'share': share_id,
-                        'type': access_type,
-                        'to': access_to,
-                        'level': access_level,
-                    }
-
-                    if plus_or_minus == DENY:
-                        LOG.warning(msg, msg_data)
-                        return
-                    else:
-                        raise exception.HPE3ParInvalid(err=msg % msg_data)
-
-                try:
-                    self._validate_access_level(
-                        protocol, access_type, access_level, fshare)
-                except Exception:
-                    if plus_or_minus == DENY:
-                        # Allow invalid access rules to be deleted.
-                        return
-                    else:
-                        raise
-
-                fstore = fshare.get('fstoreName')
-                share_name = fshare.get('shareName')
-                comment = fshare.get('comment')
-
-                result = self._client.setfshare(
-                    protocol,
-                    vfs,
-                    share_name,
-                    fpg=fpg,
-                    fstore=fstore,
-                    comment=comment,
-                    clientip='%s%s' % (plus_or_minus, access_to))
-
-            elif protocol == 'smb':
-
-                if not fshare:
-                    msg = _('Failed to change (%(change)s) access '
-                            'to FPG/share %(fpg)s/%(share)s '
-                            'for %(type)s %(to)s %(level)s): '
-                            'Share does not exist on 3PAR.')
-                    msg_data = {
-                        'change': plus_or_minus,
-                        'fpg': fpg,
-                        'share': share_id,
-                        'type': access_type,
-                        'to': access_to,
-                        'level': access_level,
-                    }
-
-                    if plus_or_minus == DENY:
-                        LOG.warning(msg, msg_data)
-                        return
-                    else:
-                        raise exception.HPE3ParInvalid(err=msg % msg_data)
-
-                try:
-                    self._validate_access_level(
-                        protocol, access_type, access_level, fshare)
-                except Exception as e:
-                    if plus_or_minus == DENY:
-                        # Allow invalid access rules to be deleted.
-                        msg = _('Ignoring deny invalid access rule '
-                                'for FPG/share %(fpg)s/%(share)s '
-                                'for %(type)s %(to)s %(level)s): %(e)s')
-                        msg_data = {
-                            'change': plus_or_minus,
-                            'fpg': fpg,
-                            'share': share_id,
-                            'type': access_type,
-                            'to': access_to,
-                            'level': access_level,
-                            'e': six.text_type(e),
-                        }
-                        LOG.info(msg, msg_data)
-                        return
-                    else:
-                        raise
-
-                share_name = fshare.get('shareName')
-                fstore = fshare.get('fstoreName')
-                comment = fshare.get('comment')
-                if access_type == 'ip':
-                    result = self._client.setfshare(
-                        protocol, vfs, share_name, fpg=fpg, fstore=fstore,
-                        allowip='%s%s' % (plus_or_minus, access_to))
-                else:
-                    access_str = 'read' if readonly else 'fullcontrol'
-                    perm = '%s%s:%s' % (plus_or_minus, access_to, access_str)
-                    result = self._client.setfshare(protocol,
-                                                    vfs,
-                                                    share_name,
-                                                    fpg=fpg,
-                                                    fstore=fstore,
-                                                    comment=comment,
-                                                    allowperm=perm)
-
-            result = self.ignore_benign_access_results(plus_or_minus,
-                                                       access_type,
-                                                       access_to,
-                                                       result)
-
-        except exception.HPE3ParInvalid:
-            raise
-        except exception.InvalidShareAccess:
-            raise
         except Exception as e:
             result = six.text_type(e)
 
