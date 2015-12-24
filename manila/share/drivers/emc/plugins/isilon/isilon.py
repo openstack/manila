@@ -20,6 +20,7 @@ import os
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import units
 import six
 
 from manila import exception
@@ -69,6 +70,12 @@ class IsilonStorageConnection(base.StorageConnection):
                        {'proto': share['share_proto']})
             LOG.error(message)
             raise exception.InvalidShare(message=message)
+
+        # apply directory quota based on share size
+        max_share_size = share['size'] * units.Gi
+        self._isilon_api.quota_create(
+            self._get_container_path(share), 'directory', max_share_size)
+
         return location
 
     def create_share_from_snapshot(self, context, share, snapshot,
@@ -161,12 +168,14 @@ class IsilonStorageConnection(base.StorageConnection):
         """Is called to remove snapshot."""
         self._isilon_api.delete_snapshot(snapshot['name'])
 
-    def extend_share(self, share, new_size, share_server):
-        """Is called to extend share."""
-        raise NotImplementedError()
-
     def ensure_share(self, context, share, share_server):
         """Invoked to ensure that share is exported."""
+
+    def extend_share(self, share, new_size, share_server=None):
+        """Extends a share."""
+        new_quota_size = new_size * units.Gi
+        self._isilon_api.quota_set(
+            self._get_container_path(share), 'directory', new_quota_size)
 
     def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""

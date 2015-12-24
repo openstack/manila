@@ -15,6 +15,7 @@
 
 import mock
 from oslo_log import log
+from oslo_utils import units
 
 from manila import exception
 from manila.share.drivers.emc.plugins.isilon import isilon
@@ -312,7 +313,7 @@ class IsilonTest(test.TestCase):
         self.assertFalse(self._mock_isilon_api.create_nfs_export.called)
 
         # create the share
-        share = {"name": self.SHARE_NAME, "share_proto": 'NFS'}
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS', "size": 8}
         location = self.storage_connection.create_share(self.mock_context,
                                                         share, None)
 
@@ -322,12 +323,16 @@ class IsilonTest(test.TestCase):
         self._mock_isilon_api.create_directory.assert_called_with(share_path)
         self._mock_isilon_api.create_nfs_export.assert_called_with(share_path)
 
+        # verify directory quota call made
+        self._mock_isilon_api.quota_create.assert_called_with(
+            share_path, 'directory', 8 * units.Gi)
+
     def test_create_share_cifs(self):
         self.assertFalse(self._mock_isilon_api.create_directory.called)
         self.assertFalse(self._mock_isilon_api.create_smb_share.called)
 
         # create the share
-        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS'}
+        share = {"name": self.SHARE_NAME, "share_proto": 'CIFS', "size": 8}
         location = self.storage_connection.create_share(self.mock_context,
                                                         share, None)
 
@@ -338,6 +343,10 @@ class IsilonTest(test.TestCase):
             self.SHARE_DIR)
         self._mock_isilon_api.create_smb_share.assert_called_once_with(
             self.SHARE_NAME, self.SHARE_DIR)
+
+        # verify directory quota call made
+        self._mock_isilon_api.quota_create.assert_called_with(
+            self.SHARE_DIR, 'directory', 8 * units.Gi)
 
     def test_create_share_invalid_share_protocol(self):
         share = {"name": self.SHARE_NAME, "share_proto": 'FOO_PROTOCOL'}
@@ -378,7 +387,7 @@ class IsilonTest(test.TestCase):
 
         # execute method under test
         snapshot = {'name': snapshot_name, 'share_name': snapshot_path}
-        share = {"name": self.SHARE_NAME, "share_proto": 'NFS'}
+        share = {"name": self.SHARE_NAME, "share_proto": 'NFS', 'size': 5}
         location = self.storage_connection.create_share_from_snapshot(
             self.mock_context, share, snapshot, None)
 
@@ -393,6 +402,10 @@ class IsilonTest(test.TestCase):
             self.ISILON_ADDR, self.SHARE_DIR)
         self.assertEqual(expected_location, location)
 
+        # verify directory quota call made
+        self._mock_isilon_api.quota_create.assert_called_with(
+            self.SHARE_DIR, 'directory', 5 * units.Gi)
+
     def test_create_share_from_snapshot_cifs(self):
         # assertions
         self.assertFalse(self._mock_isilon_api.create_smb_share.called)
@@ -404,7 +417,7 @@ class IsilonTest(test.TestCase):
 
         # execute method under test
         snapshot = {'name': snapshot_name, 'share_name': snapshot_path}
-        share = {"name": new_share_name, "share_proto": 'CIFS'}
+        share = {"name": new_share_name, "share_proto": 'CIFS', "size": 2}
         location = self.storage_connection.create_share_from_snapshot(
             self.mock_context, share, snapshot, None)
 
@@ -416,6 +429,11 @@ class IsilonTest(test.TestCase):
         expected_location = '\\\\{0}\\{1}'.format(self.ISILON_ADDR,
                                                   new_share_name)
         self.assertEqual(expected_location, location)
+
+        # verify directory quota call made
+        expected_share_path = '{0}/{1}'.format(self.ROOT_DIR, new_share_name)
+        self._mock_isilon_api.quota_create.assert_called_with(
+            expected_share_path, 'directory', 2 * units.Gi)
 
     def test_delete_share_nfs(self):
         share = {"name": self.SHARE_NAME, "share_proto": 'NFS'}
@@ -553,3 +571,21 @@ class IsilonTest(test.TestCase):
         num = self.storage_connection.get_network_allocations_number()
 
         self.assertEqual(0, num)
+
+    def test_extend_share(self):
+        quota_id = 'abcdef'
+        new_share_size = 8
+        share = {
+            "name": self.SHARE_NAME,
+            "share_proto": 'NFS',
+            "size": new_share_size
+        }
+        self._mock_isilon_api.quota_get.return_value = {'id': quota_id}
+        self.assertFalse(self._mock_isilon_api.quota_set.called)
+
+        self.storage_connection.extend_share(share, new_share_size)
+
+        share_path = '{0}/{1}'.format(self.ROOT_DIR, self.SHARE_NAME)
+        expected_quota_size = new_share_size * units.Gi
+        self._mock_isilon_api.quota_set.assert_called_once_with(
+            share_path, 'directory', expected_quota_size)

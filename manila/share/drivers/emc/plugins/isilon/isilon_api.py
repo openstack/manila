@@ -18,6 +18,9 @@ from oslo_serialization import jsonutils
 import requests
 import six
 
+from manila import exception
+from manila.i18n import _
+
 LOG = log.getLogger(__name__)
 
 
@@ -208,9 +211,65 @@ class IsilonApi(object):
             .format(self.host_url, snapshot_name))
         response.raise_for_status()
 
-    def request(self, method, url, headers=None, data=None):
+    def quota_create(self, path, quota_type, size):
+        thresholds = {'hard': size}
+        data = {
+            'path': path,
+            'type': quota_type,
+            'include_snapshots': False,
+            'thresholds_include_overhead': False,
+            'enforced': True,
+            'thresholds': thresholds,
+        }
+        response = self.request(
+            'POST', '{0}/platform/1/quota/quotas'.format(self.host_url),
+            data=data)
+        response.raise_for_status()
+
+    def quota_get(self, path, quota_type):
+        response = self.request(
+            'GET',
+            '{0}/platform/1/quota/quotas?path={1}'.format(self.host_url, path),
+        )
+        if response.status_code == 404:
+            return None
+        elif response.status_code != 200:
+            response.raise_for_status()
+
+        json = response.json()
+        len_returned_quotas = len(json['quotas'])
+        if len_returned_quotas == 0:
+            return None
+        elif len_returned_quotas == 1:
+            return json['quotas'][0]
+        else:
+            message = (_('Greater than one quota returned when querying '
+                         'quotas associated with share path: %(path)s .') %
+                       {'path': path})
+            raise exception.ShareBackendException(msg=message)
+
+    def quota_modify_size(self, quota_id, new_size):
+        data = {'thresholds': {'hard': new_size}}
+        response = self.request(
+            'PUT',
+            '{0}/platform/1/quota/quotas/{1}'.format(self.host_url, quota_id),
+            data=data
+        )
+        response.raise_for_status()
+
+    def quota_set(self, path, quota_type, size):
+        """Sets a quota of the given type and size on the given path."""
+        quota_json = self.quota_get(path, quota_type)
+        if quota_json is None:
+            self.quota_create(path, quota_type, size)
+        else:
+            # quota already exists, modify it's size
+            quota_id = quota_json['id']
+            self.quota_modify_size(quota_id, size)
+
+    def request(self, method, url, headers=None, data=None, params=None):
         if data is not None:
             data = jsonutils.dumps(data)
         r = self.session.request(method, url, headers=headers, data=data,
-                                 verify=self.verify_ssl_cert)
+                                 verify=self.verify_ssl_cert, params=params)
         return r
