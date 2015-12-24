@@ -53,8 +53,6 @@ class ShareNetworkAdminTest(
             type_of_creds='alt')
         cls.data_sn_with_kerberos_ss = {
             'name': 'sn_with_kerberos_ss',
-            'neutron_net_id': '3333',
-            'neutron_subnet_id': '4444',
             'created_at': '2003-03-03',
             'updated_at': None,
             'neutron_net_id': 'test net id',
