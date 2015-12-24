@@ -15,8 +15,8 @@
 
 import json
 import time
-import urllib
 
+from six.moves.urllib import parse as urlparse
 from tempest import config
 from tempest_lib.common.utils import data_utils
 from tempest_lib import exceptions
@@ -223,7 +223,7 @@ class SharesV2Client(shares_client.SharesClient):
                     version=LATEST_MICROVERSION):
         """Get list of shares w/o filters."""
         uri = 'shares/detail' if detailed else 'shares'
-        uri += '?%s' % urllib.urlencode(params) if params else ''
+        uri += '?%s' % urlparse.urlencode(params) if params else ''
         resp, body = self.get(uri, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -241,7 +241,7 @@ class SharesV2Client(shares_client.SharesClient):
     def delete_share(self, share_id, params=None,
                      version=LATEST_MICROVERSION):
         uri = "shares/%s" % share_id
-        uri += '?%s' % (urllib.urlencode(params) if params else '')
+        uri += '?%s' % (urlparse.urlencode(params) if params else '')
         resp, body = self.delete(uri, version=version)
         self.expected_success(202, resp.status)
         return body
@@ -444,7 +444,7 @@ class SharesV2Client(shares_client.SharesClient):
             else:
                 url = 'os-services'
         if params:
-            url += '?%s' % urllib.urlencode(params)
+            url += '?%s' % urlparse.urlencode(params)
         resp, body = self.get(url, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -454,7 +454,7 @@ class SharesV2Client(shares_client.SharesClient):
     def list_share_types(self, params=None, version=LATEST_MICROVERSION):
         uri = 'types'
         if params is not None:
-            uri += '?%s' % urllib.urlencode(params)
+            uri += '?%s' % urlparse.urlencode(params)
         resp, body = self.get(uri, version=version)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -604,7 +604,7 @@ class SharesV2Client(shares_client.SharesClient):
                                 version=LATEST_MICROVERSION):
         """Get list of consistency groups w/o filters."""
         uri = 'consistency-groups%s' % ('/detail' if detailed else '')
-        uri += '?%s' % (urllib.urlencode(params) if params else '')
+        uri += '?%s' % (urlparse.urlencode(params) if params else '')
         resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
                               version=version)
         self.expected_success(200, resp.status)
@@ -700,7 +700,7 @@ class SharesV2Client(shares_client.SharesClient):
                          version=LATEST_MICROVERSION):
         """Get list of cgsnapshots w/o filters."""
         uri = 'cgsnapshots/detail' if detailed else 'cgsnapshots'
-        uri += '?%s' % (urllib.urlencode(params) if params else '')
+        uri += '?%s' % (urlparse.urlencode(params) if params else '')
         resp, body = self.get(uri, headers=EXPERIMENTAL, extra_headers=True,
                               version=version)
         self.expected_success(200, resp.status)

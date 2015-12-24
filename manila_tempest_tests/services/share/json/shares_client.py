@@ -15,9 +15,10 @@
 
 import json
 import time
-import urllib
 
 import six
+from six.moves.urllib import parse as urlparse
+
 from tempest import config  # noqa
 from tempest_lib.common import rest_client
 from tempest_lib.common.utils import data_utils
@@ -111,7 +112,7 @@ class SharesClient(rest_client.RestClient):
     def list_shares(self, detailed=False, params=None):
         """Get list of shares w/o filters."""
         uri = 'shares/detail' if detailed else 'shares'
-        uri += '?%s' % urllib.urlencode(params) if params else ''
+        uri += '?%s' % urlparse.urlencode(params) if params else ''
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -206,7 +207,7 @@ class SharesClient(rest_client.RestClient):
     def list_snapshots(self, detailed=False, params=None):
         """Get list of share snapshots w/o filters."""
         uri = 'snapshots/detail' if detailed else 'snapshots'
-        uri += '?%s' % urllib.urlencode(params) if params else ''
+        uri += '?%s' % urlparse.urlencode(params) if params else ''
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -456,7 +457,7 @@ class SharesClient(rest_client.RestClient):
         """List services."""
         uri = 'os-services'
         if params:
-            uri += '?%s' % urllib.urlencode(params)
+            uri += '?%s' % urlparse.urlencode(params)
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -524,7 +525,7 @@ class SharesClient(rest_client.RestClient):
         if detailed:
             uri += '/detail'
         if params:
-            uri += "?%s" % urllib.urlencode(params)
+            uri += "?%s" % urlparse.urlencode(params)
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -566,7 +567,7 @@ class SharesClient(rest_client.RestClient):
         """List the details of all shares."""
         uri = "share-networks/detail"
         if params:
-            uri += "?%s" % urllib.urlencode(params)
+            uri += "?%s" % urlparse.urlencode(params)
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -612,7 +613,7 @@ class SharesClient(rest_client.RestClient):
     def list_share_types(self, params=None):
         uri = 'types'
         if params is not None:
-            uri += '?%s' % urllib.urlencode(params)
+            uri += '?%s' % urlparse.urlencode(params)
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -679,7 +680,7 @@ class SharesClient(rest_client.RestClient):
     def get_share_type_extra_specs(self, share_type_id, params=None):
         uri = "types/%s/extra_specs" % share_type_id
         if params is not None:
-            uri += '?%s' % urllib.urlencode(params)
+            uri += '?%s' % urlparse.urlencode(params)
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -713,7 +714,7 @@ class SharesClient(rest_client.RestClient):
         """Get list of share servers."""
         uri = "share-servers"
         if search_opts:
-            uri += "?%s" % urllib.urlencode(search_opts)
+            uri += "?%s" % urlparse.urlencode(search_opts)
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return self._parse_resp(body)
@@ -747,7 +748,7 @@ class SharesClient(rest_client.RestClient):
         if detail:
             uri += '/detail'
         if search_opts:
-            uri += "?%s" % urllib.urlencode(search_opts)
+            uri += "?%s" % urlparse.urlencode(search_opts)
         resp, body = self.get(uri)
         self.expected_success(200, resp.status)
         return json.loads(body)
