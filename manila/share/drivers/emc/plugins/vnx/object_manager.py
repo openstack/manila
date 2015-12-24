@@ -1026,10 +1026,8 @@ class Snapshot(StorageObject):
         super(Snapshot, self).__init__(conn, elt_maker, xml_parser, manager)
         self.snap_map = dict()
 
-    def create(self, name, fs_name, pool_name, ckpt_size=None):
+    def create(self, name, fs_name, pool_id, ckpt_size=None):
         fs_id = self.get_context('FileSystem').get_id(fs_name)
-
-        pool_id = self.get_context('StoragePool').get_id(pool_name)
 
         if ckpt_size:
             elt_pool = self.elt_maker.StoragePool(
