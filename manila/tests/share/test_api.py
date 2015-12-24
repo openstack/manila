@@ -875,6 +875,8 @@ class ShareAPITestCase(test.TestCase):
 
     @mock.patch.object(db_api, 'share_instances_get_all_by_share_server',
                        mock.Mock(return_value=[]))
+    @mock.patch.object(db_api, 'consistency_group_get_all_by_share_server',
+                       mock.Mock(return_value=[]))
     def test_delete_share_server_no_dependent_shares(self):
         server = {'id': 'fake_share_server_id'}
         server_returned = {
@@ -885,11 +887,15 @@ class ShareAPITestCase(test.TestCase):
         self.api.delete_share_server(self.context, server)
         db_api.share_instances_get_all_by_share_server.assert_called_once_with(
             self.context, server['id'])
+        db_api.consistency_group_get_all_by_share_server.\
+            assert_called_once_with(self.context, server['id'])
         self.share_rpcapi.delete_share_server.assert_called_once_with(
             self.context, server_returned)
 
     @mock.patch.object(db_api, 'share_instances_get_all_by_share_server',
                        mock.Mock(return_value=['fake_share', ]))
+    @mock.patch.object(db_api, 'consistency_group_get_all_by_share_server',
+                       mock.Mock(return_value=[]))
     def test_delete_share_server_dependent_share_exists(self):
         server = {'id': 'fake_share_server_id'}
         self.assertRaises(exception.ShareServerInUse,
@@ -898,6 +904,22 @@ class ShareAPITestCase(test.TestCase):
                           server)
         db_api.share_instances_get_all_by_share_server.assert_called_once_with(
             self.context, server['id'])
+
+    @mock.patch.object(db_api, 'share_instances_get_all_by_share_server',
+                       mock.Mock(return_value=[]))
+    @mock.patch.object(db_api, 'consistency_group_get_all_by_share_server',
+                       mock.Mock(return_value=['fake_cg', ]))
+    def test_delete_share_server_dependent_cg_exists(self):
+        server = {'id': 'fake_share_server_id'}
+        self.assertRaises(exception.ShareServerInUse,
+                          self.api.delete_share_server,
+                          self.context,
+                          server)
+
+        db_api.share_instances_get_all_by_share_server.assert_called_once_with(
+            self.context, server['id'])
+        db_api.consistency_group_get_all_by_share_server.\
+            assert_called_once_with(self.context, server['id'])
 
     @mock.patch.object(db_api, 'share_snapshot_update', mock.Mock())
     def test_delete_snapshot(self):

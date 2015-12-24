@@ -3064,6 +3064,12 @@ def consistency_group_get_all_by_project(context, project_id, detailed=True):
 
 
 @require_context
+def consistency_group_get_all_by_share_server(context, share_server_id):
+    return _consistency_group_get_all_query(context).filter_by(
+        share_server_id=share_server_id).all()
+
+
+@require_context
 def consistency_group_create(context, values):
     consistency_group = models.ConsistencyGroup()
     if not values.get('id'):

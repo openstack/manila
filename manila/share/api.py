@@ -465,8 +465,17 @@ class API(base.Base):
         policy.check_policy(context, 'share_server', 'delete', server)
         shares = self.db.share_instances_get_all_by_share_server(context,
                                                                  server['id'])
+
         if shares:
             raise exception.ShareServerInUse(share_server_id=server['id'])
+
+        cgs = self.db.consistency_group_get_all_by_share_server(context,
+                                                                server['id'])
+        if cgs:
+            LOG.error(_LE("share server '%(ssid)s' in use by CGs"),
+                      {'ssid': server['id']})
+            raise exception.ShareServerInUse(share_server_id=server['id'])
+
         # NOTE(vponomaryov): There is no share_server status update here,
         # it is intentional.
         # Status will be changed in manila.share.manager after verification
