@@ -554,7 +554,9 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             return_value=fake.POOL_NAME))
         self.mock_object(share_types, 'get_extra_specs_from_share',
                          mock.Mock(return_value=fake.EXTRA_SPEC))
-
+        mock_remap_standard_boolean_extra_specs = self.mock_object(
+            self.library, '_remap_standard_boolean_extra_specs',
+            mock.Mock(return_value=fake.EXTRA_SPEC))
         self.mock_object(self.library, '_check_boolean_extra_specs_validity')
         self.mock_object(self.library, '_get_boolean_provisioning_options',
                          mock.Mock(return_value=fake.PROVISIONING_OPTIONS))
@@ -568,6 +570,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             thin_provisioned=True, snapshot_policy='default',
             language='en-US', dedup_enabled=True,
             compression_enabled=False, max_files=5000)
+        mock_remap_standard_boolean_extra_specs.assert_called_once_with(
+            fake.EXTRA_SPEC)
+
+    def test_remap_standard_boolean_extra_specs(self):
+
+        extra_specs = copy.deepcopy(fake.OVERLAPPING_EXTRA_SPEC)
+
+        result = self.library._remap_standard_boolean_extra_specs(extra_specs)
+
+        self.assertDictEqual(fake.REMAPPED_OVERLAPPING_EXTRA_SPEC, result)
 
     def test_allocate_container_no_pool_name(self):
         self.mock_object(self.library, '_get_valid_share_name', mock.Mock(

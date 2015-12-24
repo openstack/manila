@@ -63,6 +63,12 @@ class NetAppCmodeFileStorageLibrary(object):
         'netapp:language': 'language',
         'netapp:max_files': 'max_files',
     }
+    # Maps standard extra spec keys to legacy NetApp keys
+    STANDARD_BOOLEAN_EXTRA_SPECS_MAP = {
+        'thin_provisioning': 'netapp:thin_provisioned',
+        'dedupe': 'netapp:dedup',
+        'compression': 'netapp:compression',
+    }
 
     def __init__(self, driver_name, **kwargs):
         na_utils.validate_driver_instantiation(**kwargs)
@@ -256,6 +262,9 @@ class NetAppCmodeFileStorageLibrary(object):
                 'allocated_capacity_gb': allocated_capacity_gb,
                 'QoS_support': 'False',
                 'reserved_percentage': 0,
+                'dedupe': [True, False],
+                'compression': [True, False],
+                'thin_provisioning': [True, False],
             }
 
             # Add storage service catalog data.
@@ -366,6 +375,7 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.InvalidHost(reason=msg)
 
         extra_specs = share_types.get_extra_specs_from_share(share)
+        extra_specs = self._remap_standard_boolean_extra_specs(extra_specs)
         self._check_extra_specs_validity(share, extra_specs)
         provisioning_options = self._get_provisioning_options(extra_specs)
 
@@ -376,6 +386,18 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.create_volume(pool_name, share_name,
                                      share['size'],
                                      **provisioning_options)
+
+    @na_utils.trace
+    def _remap_standard_boolean_extra_specs(self, extra_specs):
+        """Replace standard boolean extra specs with NetApp-specific ones."""
+        specs = copy.deepcopy(extra_specs)
+        for (key, netapp_key) in self.STANDARD_BOOLEAN_EXTRA_SPECS_MAP.items():
+            if key in specs:
+                bool_value = share_types.parse_boolean_extra_spec(key,
+                                                                  specs[key])
+                specs[netapp_key] = 'true' if bool_value else 'false'
+                del specs[key]
+        return specs
 
     @na_utils.trace
     def _check_extra_specs_validity(self, share, extra_specs):

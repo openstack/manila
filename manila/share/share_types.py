@@ -15,6 +15,7 @@
 
 """Built-in share type properties."""
 
+import re
 
 from oslo_config import cfg
 from oslo_db import exception as db_exception
@@ -318,3 +319,28 @@ def share_types_diff(context, share_type_id1, share_type_id2):
 def get_extra_specs_from_share(share):
     type_id = share.get('share_type_id', None)
     return get_share_type_extra_specs(type_id)
+
+
+def parse_boolean_extra_spec(extra_spec_key, extra_spec_value):
+    """Parse extra spec values of the form '<is> True' or '<is> False'
+
+    This method returns the boolean value of an extra spec value.  If
+    the value does not conform to the standard boolean pattern, it raises
+    an InvalidExtraSpec exception.
+    """
+
+    try:
+        if not isinstance(extra_spec_value, six.string_types):
+            raise ValueError
+
+        match = re.match(r'^<is>\s*(?P<value>True|False)$',
+                         extra_spec_value.strip(),
+                         re.IGNORECASE)
+        if not match:
+            raise ValueError
+        else:
+            return strutils.bool_from_string(match.group('value'), strict=True)
+    except ValueError:
+        msg = (_('Invalid boolean extra spec %(key)s : %(value)s') %
+               {'key': extra_spec_key, 'value': extra_spec_value})
+        raise exception.InvalidExtraSpec(reason=msg)
