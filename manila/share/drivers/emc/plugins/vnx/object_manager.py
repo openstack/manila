@@ -1189,6 +1189,19 @@ class MoverInterface(StorageObject):
             LOG.warn(_LW("Mover interface IP %s already exists. "
                          "Skip the creation."), ip_addr)
             return
+        elif self._response_validation(
+                response, constants.MSG_INTERFACE_INVALID_VLAN_ID):
+            # When fail to create a mover interface with the specified
+            # vlan id, VNX will leave a interface with vlan id 0 in the
+            # backend. So we should explicitly remove the interface.
+            try:
+                self.delete(six.text_type(ip_addr), mover_name)
+            except exception.EMCVnxXMLAPIError:
+                pass
+            message = (_("Invalid vlan id %s. Other interfaces on this "
+                         "subnet are in a different vlan.") % vlan_id)
+            LOG.error(message)
+            raise exception.EMCVnxXMLAPIError(err=message)
         elif constants.STATUS_OK != response['maxSeverity']:
             message = (_("Failed to create mover interface %(interface)s. "
                          "Reason: %(err)s.") %
