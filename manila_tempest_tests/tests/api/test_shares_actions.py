@@ -14,12 +14,13 @@
 #    under the License.
 
 import six
-from tempest import config  # noqa
-from tempest import test  # noqa
-from tempest_lib.common.utils import data_utils  # noqa
-import testtools  # noqa
+from tempest import config
+from tempest import test
+from tempest_lib.common.utils import data_utils
+import testtools
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -79,11 +80,20 @@ class SharesActionsTest(base.BaseSharesTest):
             self.shares[0]['id'], version=six.text_type(version))
 
         # verify keys
-        expected_keys = ["status", "description", "links", "availability_zone",
-                         "created_at", "export_location", "share_proto",
-                         "name", "snapshot_id", "id", "size"]
-        if version > 2.1:
+        expected_keys = [
+            "status", "description", "links", "availability_zone",
+            "created_at", "export_location", "project_id",
+            "export_locations", "volume_type", "share_proto", "name",
+            "snapshot_id", "id", "size", "share_network_id", "metadata",
+            "host", "snapshot_id", "is_public",
+        ]
+        if utils.is_microversion_ge(version, '2.2'):
             expected_keys.append("snapshot_support")
+        if utils.is_microversion_ge(version, '2.4'):
+            expected_keys.extend(["consistency_group_id",
+                                  "source_cgsnapshot_member_id"])
+        if utils.is_microversion_ge(version, '2.5'):
+            expected_keys.append("share_type_name")
         actual_keys = list(share.keys())
         [self.assertIn(key, actual_keys) for key in expected_keys]
 
@@ -103,12 +113,22 @@ class SharesActionsTest(base.BaseSharesTest):
         self.assertEqual(self.share_size, int(share["size"]), msg)
 
     @test.attr(type=["gate", ])
-    def test_get_share_no_snapshot_support_key(self):
-        self._get_share(2.1)
+    def test_get_share_v2_1(self):
+        self._get_share('2.1')
 
     @test.attr(type=["gate", ])
     def test_get_share_with_snapshot_support_key(self):
-        self._get_share(2.2)
+        self._get_share('2.2')
+
+    @test.attr(type=["gate", ])
+    @utils.skip_if_microversion_not_supported('2.4')
+    def test_get_share_with_consistency_groups_keys(self):
+        self._get_share('2.4')
+
+    @test.attr(type=["gate", ])
+    @utils.skip_if_microversion_not_supported('2.6')
+    def test_get_share_with_share_type_name_key(self):
+        self._get_share('2.6')
 
     @test.attr(type=["gate", ])
     def test_list_shares(self):
@@ -135,11 +155,19 @@ class SharesActionsTest(base.BaseSharesTest):
         # verify keys
         keys = [
             "status", "description", "links", "availability_zone",
-            "created_at", "export_location", "share_proto", "host",
-            "name", "snapshot_id", "id", "size", "project_id",
+            "created_at", "export_location", "project_id",
+            "export_locations", "volume_type", "share_proto", "name",
+            "snapshot_id", "id", "size", "share_network_id", "metadata",
+            "host", "snapshot_id", "is_public", "share_type",
         ]
-        if version > 2.1:
+        if utils.is_microversion_ge(version, '2.2'):
             keys.append("snapshot_support")
+        if utils.is_microversion_ge(version, '2.4'):
+            keys.extend(["consistency_group_id",
+                         "source_cgsnapshot_member_id"])
+        if utils.is_microversion_ge(version, '2.6'):
+            keys.append("share_type_name")
+
         [self.assertIn(key, sh.keys()) for sh in shares for key in keys]
 
         # our shares in list and have no duplicates
@@ -149,12 +177,22 @@ class SharesActionsTest(base.BaseSharesTest):
             self.assertEqual(1, len(gen), msg)
 
     @test.attr(type=["gate", ])
-    def test_list_shares_with_detail_without_snapshot_support_key(self):
-        self._list_shares_with_detail(2.1)
+    def test_list_shares_with_detail_v2_1(self):
+        self._list_shares_with_detail('2.1')
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_and_snapshot_support_key(self):
-        self._list_shares_with_detail(2.2)
+        self._list_shares_with_detail('2.2')
+
+    @test.attr(type=["gate", ])
+    @utils.skip_if_microversion_not_supported('2.4')
+    def test_list_shares_with_detail_consistency_groups_keys(self):
+        self._list_shares_with_detail('2.4')
+
+    @test.attr(type=["gate", ])
+    @utils.skip_if_microversion_not_supported('2.6')
+    def test_list_shares_with_detail_share_type_name_key(self):
+        self._list_shares_with_detail('2.6')
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_metadata(self):
