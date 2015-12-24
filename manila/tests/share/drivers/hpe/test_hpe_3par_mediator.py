@@ -1172,7 +1172,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
     def test_mediator_allow_ip_ro_access_cifs_error(self):
         self.init_mediator()
 
-        self.assertRaises(exception.HPE3ParInvalid,
+        self.assertRaises(exception.InvalidShareAccess,
                           self.mediator.allow_access,
                           constants.EXPECTED_PROJECT_ID,
                           constants.EXPECTED_SHARE_ID,
@@ -1216,10 +1216,20 @@ class HPE3ParMediatorTestCase(test.TestCase):
                           constants.EXPECTED_FPG,
                           constants.EXPECTED_VFS)
 
-    @ddt.data(constants.READ_ONLY, constants.READ_WRITE)
-    def test_mediator_allow_user_access_cifs(self, access_level):
+    @ddt.data((constants.READ_WRITE, True),
+              (constants.READ_WRITE, False),
+              (constants.READ_ONLY, True),
+              (constants.READ_ONLY, False))
+    @ddt.unpack
+    def test_mediator_allow_user_access_cifs(self, access_level, use_other):
         """"Allow user access to cifs share."""
         self.init_mediator()
+
+        if use_other:  # Don't find share until second attempt.
+            findings = (None,
+                        self.mock_client.getfshare.return_value['members'][0])
+            mock_find_fshare = self.mock_object(
+                self.mediator, '_find_fshare', mock.Mock(side_effect=findings))
 
         if access_level == constants.READ_ONLY:
             expected_allowperm = '+%s:read' % constants.USERNAME
@@ -1247,6 +1257,23 @@ class HPE3ParMediatorTestCase(test.TestCase):
 
         ]
         self.mock_client.assert_has_calls(expected_calls)
+        if use_other:
+            readonly = access_level == constants.READ_ONLY
+            expected_find_calls = [
+                mock.call(constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.SMB_LOWER,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS,
+                          readonly=readonly),
+                mock.call(constants.EXPECTED_PROJECT_ID,
+                          constants.EXPECTED_SHARE_ID,
+                          constants.SMB_LOWER,
+                          constants.EXPECTED_FPG,
+                          constants.EXPECTED_VFS,
+                          readonly=not readonly),
+            ]
+            mock_find_fshare.assert_has_calls(expected_find_calls)
 
     @ddt.data(constants.CIFS, constants.NFS)
     def test_mediator_deny_rw_snapshot_error(self, proto):
@@ -1329,6 +1356,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                 constants.EXPECTED_VFS,
                                 constants.EXPECTED_SHARE_ID,
                                 allowip=expected_allowip,
+                                comment=constants.EXPECTED_COMMENT,
                                 fpg=constants.EXPECTED_FPG,
                                 fstore=constants.EXPECTED_FSTORE)
         ]
@@ -1354,6 +1382,7 @@ class HPE3ParMediatorTestCase(test.TestCase):
                                 constants.EXPECTED_VFS,
                                 constants.EXPECTED_SHARE_ID,
                                 allowip=expected_denyip,
+                                comment=constants.EXPECTED_COMMENT,
                                 fpg=constants.EXPECTED_FPG,
                                 fstore=constants.EXPECTED_FSTORE)
         ]
