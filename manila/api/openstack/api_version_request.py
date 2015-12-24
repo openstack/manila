@@ -176,4 +176,3 @@ class APIVersionRequest(utils.ComparableMixin):
             raise ValueError
         return ("%(major)s.%(minor)s" %
                 {'major': self._ver_major, 'minor': self._ver_minor})
-

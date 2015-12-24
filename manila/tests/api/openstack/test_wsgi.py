@@ -1,8 +1,21 @@
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
 import ddt
-import inspect
 import mock
 import six
 import webob
+
+import inspect
 
 from manila.api.openstack import wsgi
 from manila import context
@@ -161,7 +174,8 @@ class JSONDictSerializerTest(test.TestCase):
         expected_json = six.b('{"servers":{"a":[2,3]}}')
         serializer = wsgi.JSONDictSerializer()
         result = serializer.serialize(input_dict)
-        result = result.replace(six.b('\n'), six.b('')).replace(six.b(' '), six.b(''))
+        result = result.replace(six.b('\n'),
+                                six.b('')).replace(six.b(' '), six.b(''))
         self.assertEqual(expected_json, result)
 
 
@@ -572,11 +586,13 @@ class ResourceTest(test.TestCase):
         def extension1(req):
             called.append('pre1')
             resp_obj = yield
+            self.assertIsNone(resp_obj)
             called.append('post1')
 
         def extension2(req):
             called.append('pre2')
             resp_obj = yield
+            self.assertIsNone(resp_obj)
             called.append('post2')
 
         extensions = [extension1, extension2]
@@ -699,10 +715,12 @@ class ResourceTest(test.TestCase):
 
         def extension1(req):
             resp_obj = yield
+            self.assertIsNone(resp_obj)
             called.append(1)
 
         def extension2(req):
             resp_obj = yield
+            self.assertIsNone(resp_obj)
             called.append(2)
 
         ext1 = extension1(None)
@@ -728,10 +746,12 @@ class ResourceTest(test.TestCase):
 
         def extension1(req):
             resp_obj = yield
+            self.assertIsNone(resp_obj)
             called.append(1)
 
         def extension2(req):
             resp_obj = yield
+            self.assertIsNone(resp_obj)
             called.append(2)
             yield 'foo'
 
@@ -868,6 +888,7 @@ class ValidBodyTest(test.TestCase):
     def test_is_valid_body_malformed_entity(self):
         body = {'foo': 'bar'}
         self.assertFalse(self.controller.is_valid_body(body, 'foo'))
+
 
 class AuthorizeDecoratorTest(test.TestCase):
     class FakeController(wsgi.Controller):
