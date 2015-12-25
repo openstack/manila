@@ -31,7 +31,6 @@ from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 import oslo_i18n
-from oslo_log import log
 from oslo_messaging import conffixture as messaging_conffixture
 import oslotest.base as base_test
 import six
@@ -52,8 +51,6 @@ test_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(test_opts)
-
-LOG = log.getLogger(__name__)
 
 _DB_CACHE = None
 

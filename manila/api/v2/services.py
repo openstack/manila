@@ -14,15 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log
 import webob.exc
 
 from manila.api.openstack import wsgi
 from manila.api.views import services as services_views
 from manila import db
 from manila import utils
-
-LOG = log.getLogger(__name__)
 
 
 class ServiceMixin(object):

@@ -15,12 +15,7 @@
 
 """The consistency groups API."""
 
-from oslo_log import log
-
 from manila.api import common
-
-
-LOG = log.getLogger(__name__)
 
 
 class CGViewBuilder(common.ViewBuilder):

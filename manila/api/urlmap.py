@@ -19,7 +19,6 @@ try:
 except ImportError:
     from urllib2 import parse_http_list   # noqa
 
-from oslo_log import log
 import paste.urlmap
 
 from manila.api.openstack import wsgi
@@ -30,8 +29,6 @@ _option_header_piece_re = re.compile(
     r';\s*([^\s;=]+|%s)\s*'
     r'(?:=\s*([^;]+|%s))?\s*' %
     (_quoted_string_re, _quoted_string_re))
-
-LOG = log.getLogger(__name__)
 
 
 def unquote_header_value(value):
