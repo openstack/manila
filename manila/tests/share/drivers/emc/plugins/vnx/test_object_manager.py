@@ -15,6 +15,7 @@
 
 import copy
 
+import ddt
 import mock
 from oslo_concurrency import processutils
 
@@ -1520,6 +1521,7 @@ class SnapshotTestCase(StorageObjectTestCase):
         context.conn['XML'].request.assert_has_calls(expected_calls)
 
 
+@ddt.ddt
 class MoverInterfaceTestCase(StorageObjectTestCase):
     def setUp(self):
         super(self.__class__, self).setUp()
@@ -1599,6 +1601,36 @@ class MoverInterfaceTestCase(StorageObjectTestCase):
         expected_calls = [
             mock.call(self.mover.req_get_ref()),
             mock.call(self.mover.req_create_interface()),
+        ]
+        context.conn['XML'].request.assert_has_calls(expected_calls)
+
+    @ddt.data(fakes.MoverTestData().resp_task_succeed(),
+              fakes.MoverTestData().resp_task_error())
+    def test_create_mover_interface_with_conflict_vlan_id(self, xml_resp):
+        self.hook.append(self.mover.resp_get_ref_succeed())
+        self.hook.append(
+            self.mover.resp_create_interface_with_conflicted_vlan_id())
+        self.hook.append(xml_resp)
+
+        context = self.manager.getStorageContext('MoverInterface')
+        context.conn['XML'].request = utils.EMCMock(side_effect=self.hook)
+
+        interface = {
+            'name': self.mover.interface_name1,
+            'device_name': self.mover.device_name,
+            'ip': self.mover.ip_address1,
+            'mover_name': self.mover.mover_name,
+            'net_mask': self.mover.net_mask,
+            'vlan_id': self.mover.vlan_id,
+        }
+        self.assertRaises(exception.EMCVnxXMLAPIError,
+                          context.create,
+                          interface)
+
+        expected_calls = [
+            mock.call(self.mover.req_get_ref()),
+            mock.call(self.mover.req_create_interface()),
+            mock.call(self.mover.req_delete_interface()),
         ]
         context.conn['XML'].request.assert_has_calls(expected_calls)
 

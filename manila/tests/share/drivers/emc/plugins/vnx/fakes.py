@@ -940,6 +940,25 @@ class MoverTestData(StorageObjectTestData):
             '</Status>' % {'ip': self.ip_address1}
         )
 
+    @response
+    def resp_create_interface_with_conflicted_vlan_id(self):
+        return (
+            '<Status maxSeverity="error">'
+            '<Problem messageCode="13421850371" component="CS_CORE" '
+            'message="160: Invalid VLAN change. Other interfaces on this '
+            'subnet are in a different VLAN." severity="error">'
+            '<Description>The operation cannot complete because other '
+            'interfaces on the same subnet are in a different VLAN. '
+            'The Data Mover requires all interfaces in the same subnet '
+            'to be in the same VLAN.</Description>'
+            '<Action>Specify a VLAN to match other interfaces in the same '
+            'subnet. To move multiple interfaces to a different VLAN, '
+            'first set the VLAN id on each interface to 0, '
+            'and then set their VLAN id\'s to the new VLAN number.</Action>'
+            '</Problem>'
+            '</Status>'
+        )
+
     @start_task
     def req_delete_interface(self, ip=FakeData.network_allocations_ip1):
 
