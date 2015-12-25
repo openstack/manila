@@ -133,18 +133,30 @@ class GlusterManager(object):
                 privatekey=self.path_to_private_key)
         else:
             gluster_execf = ganesha_utils.RootExecutor(execf)
-        return lambda *args, **kwargs: gluster_execf(*(('gluster',) + args),
-                                                     **kwargs)
+
+        def _gluster_call(*args, **kwargs):
+            logmsg = kwargs.pop('log', None)
+            raw_error = kwargs.pop('raw_error', False)
+            try:
+                return gluster_execf(*(('gluster',) + args), **kwargs)
+            except exception.ProcessExecutionError as exc:
+                if raw_error:
+                    raise
+                if logmsg:
+                    LOG.error(_LE("%s: GlusterFS instrumentation failed.") %
+                              logmsg)
+                raise exception.GlusterfsException(
+                    _("GlusterFS management command '%(cmd)s' failed "
+                      "with details as follows:\n%(details)s.") % {
+                        'cmd': ' '.join(args),
+                        'details': exc.args[0]})
+
+        return _gluster_call
 
     def get_gluster_vol_option(self, option):
         """Get the value of an option set on a GlusterFS volume."""
         args = ('--xml', 'volume', 'info', self.volume)
-        try:
-            out, err = self.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error retrieving volume info: %s"), exc.stderr)
-            raise exception.GlusterfsException("gluster %s failed" %
-                                               ' '.join(args))
+        out, err = self.gluster_call(*args, log=_LE("retrieving volume info"))
 
         if not out:
             raise exception.GlusterfsException(
@@ -165,13 +177,8 @@ class GlusterManager(object):
 
         :returns: version (as tuple of strings, example: ('3', '6', '0beta2'))
         """
-        try:
-            out, err = self.gluster_call('--version')
-        except exception.ProcessExecutionError as exc:
-            raise exception.GlusterfsException(
-                _("'gluster version' failed on server "
-                  "%(server)s: %(message)s") %
-                {'server': self.host, 'message': six.text_type(exc)})
+        out, err = self.gluster_call('--version',
+                                     log=_LE("GlusterFS version query"))
         try:
             owords = out.split()
             if owords[0] != 'glusterfs':
@@ -262,28 +269,16 @@ def _restart_gluster_vol(gluster_mgr):
     :param gluster_mgr: GlusterManager instance
     """
 
-    try:
-        # TODO(csaba): '--mode=script' ensures that the Gluster CLI runs in
-        # script mode. This seems unnecessary as the Gluster CLI is
-        # expected to run in non-interactive mode when the stdin is not
-        # a terminal, as is the case below. But on testing, found the
-        # behaviour of Gluster-CLI to be the contrary. Need to investigate
-        # this odd-behaviour of Gluster-CLI.
-        gluster_mgr.gluster_call(
-            'volume', 'stop', gluster_mgr.volume, '--mode=script')
-    except exception.ProcessExecutionError as exc:
-        msg = (_("Error stopping gluster volume. "
-                 "Volume: %(volname)s, Error: %(error)s") %
-               {'volname': gluster_mgr.volume, 'error': exc.stderr})
-        LOG.error(msg)
-        raise exception.GlusterfsException(msg)
+    # TODO(csaba): '--mode=script' ensures that the Gluster CLI runs in
+    # script mode. This seems unnecessary as the Gluster CLI is
+    # expected to run in non-interactive mode when the stdin is not
+    # a terminal, as is the case below. But on testing, found the
+    # behaviour of Gluster-CLI to be the contrary. Need to investigate
+    # this odd-behaviour of Gluster-CLI.
+    gluster_mgr.gluster_call(
+        'volume', 'stop', gluster_mgr.volume, '--mode=script',
+        log=_LE("stopping GlusterFS volume %s") % gluster_mgr.volume)
 
-    try:
-        gluster_mgr.gluster_call(
-            'volume', 'start', gluster_mgr.volume)
-    except exception.ProcessExecutionError as exc:
-        msg = (_("Error starting gluster volume. "
-                 "Volume: %(volname)s, Error: %(error)s") %
-               {'volname': gluster_mgr.volume, 'error': exc.stderr})
-        LOG.error(msg)
-        raise exception.GlusterfsException(msg)
+    gluster_mgr.gluster_call(
+        'volume', 'start', gluster_mgr.volume,
+        log=_LE("starting GlusterFS volume %s") % gluster_mgr.volume)

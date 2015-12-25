@@ -110,7 +110,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
 
     def test_do_setup_error_enabling_creation_share_specific_size(self):
         attrs = {'volume': 'testvol',
-                 'gluster_call.side_effect': exception.ProcessExecutionError,
+                 'gluster_call.side_effect': exception.GlusterfsException,
                  'get_gluster_vol_option.return_value': 'off'}
         fake_gluster_manager = mock.Mock(**attrs)
         self.mock_object(layout_directory.LOG, 'error')
@@ -133,13 +133,13 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             'volume', 'quota', 'testvol', 'enable')
         (self._layout.gluster_manager.get_gluster_vol_option.
          assert_called_once_with('features.quota'))
-        layout_directory.LOG.error.assert_called_once_with(mock.ANY, mock.ANY)
+        layout_directory.LOG.error.assert_called_once_with(mock.ANY)
         self._layout._check_mount_glusterfs.assert_called_once_with()
         self.assertFalse(self._layout._ensure_gluster_vol_mounted.called)
 
     def test_do_setup_error_already_enabled_creation_share_specific_size(self):
         attrs = {'volume': 'testvol',
-                 'gluster_call.side_effect': exception.ProcessExecutionError,
+                 'gluster_call.side_effect': exception.GlusterfsException,
                  'get_gluster_vol_option.return_value': 'on'}
         fake_gluster_manager = mock.Mock(**attrs)
         self.mock_object(layout_directory.LOG, 'error')
@@ -260,9 +260,10 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             {'share': self.share, 'manager': gmgr})
         self.assertEqual(expected_ret, ret)
 
-    def test_create_share_unable_to_create_share(self):
+    @ddt.data(exception.ProcessExecutionError, exception.GlusterfsException)
+    def test_create_share_unable_to_create_share(self, trouble):
         def exec_runner(*ignore_args, **ignore_kw):
-            raise exception.ProcessExecutionError
+            raise trouble
 
         self.mock_object(
             self._layout, '_get_local_share_path',
@@ -282,6 +283,26 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             fake_local_share_path, self.share['name'])
         layout_directory.LOG.error.assert_called_once_with(
             mock.ANY, mock.ANY)
+
+    def test_create_share_unable_to_create_share_weird(self):
+        def exec_runner(*ignore_args, **ignore_kw):
+            raise RuntimeError
+
+        self.mock_object(
+            self._layout, '_get_local_share_path',
+            mock.Mock(return_value=fake_local_share_path))
+        self.mock_object(self._layout, '_cleanup_create_share')
+        self.mock_object(layout_directory.LOG, 'error')
+        expected_exec = ['mkdir %s' % fake_local_share_path]
+        fake_utils.fake_execute_set_repliers([(expected_exec[0],
+                                               exec_runner)])
+
+        self.assertRaises(
+            RuntimeError, self._layout.create_share,
+            self._context, self.share)
+
+        self._layout._get_local_share_path.called_once_with(self.share)
+        self.assertFalse(self._layout._cleanup_create_share.called)
 
     def test_cleanup_create_share_local_share_path_exists(self):
         expected_exec = ['rm -rf %s' % fake_local_share_path]

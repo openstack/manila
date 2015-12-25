@@ -110,13 +110,10 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
             # to not to defeat access control
             setting = [NFS_EXPORT_VOL, 'off']
         args = ['volume', 'set', gluster_manager.volume] + setting
-        try:
-            gluster_manager.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error in tuning GlusterFS volume to prevent "
-                          "exporting the entire volume: %s"), exc.stderr)
-            raise exception.GlusterfsException("gluster %s failed" %
-                                               ' '.join(args))
+        gluster_manager.gluster_call(
+            *args,
+            log=_LE("Tuning the GlusterFS volume to prevent exporting the "
+                    "entire volume"))
         return self.nfs_helper(self._execute, self.configuration,
                                gluster_manager=gluster_manager).get_export(
             share_manager['share'])
@@ -227,11 +224,9 @@ class GlusterNFSHelper(ganesha.NASHelperBase):
         else:
             args = ('volume', 'reset', self.gluster_manager.volume,
                     NFS_EXPORT_DIR)
-        try:
-            self.gluster_manager.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error in gluster volume set: %s"), exc.stderr)
-            raise
+        self.gluster_manager.gluster_call(
+            *args,
+            log=_LE("Tuning GlusterFS volume options"))
 
     def allow_access(self, base, share, access):
         """Allow access to a share."""
@@ -307,12 +302,10 @@ class GlusterNFSVolHelper(GlusterNFSHelper):
                        NFS_RPC_AUTH_ALLOW),
                       ('volume', 'set', self.gluster_manager.volume,
                        NFS_RPC_AUTH_REJECT, '*'))
-        try:
-            for args in argseq:
-                self.gluster_manager.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error in gluster volume set: %s"), exc.stderr)
-            raise
+        for args in argseq:
+            self.gluster_manager.gluster_call(
+                *args,
+                log=_LE("Tuning GlusterFS volume options"))
 
     def allow_access(self, base, share, access):
         """Allow access to a share."""
