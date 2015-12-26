@@ -1267,6 +1267,8 @@ class GenericShareDriverTestCase(test.TestCase):
                 self._driver.admin_context, server_details)
 
     def test_ssh_exec_connection_not_exist(self):
+        ssh_conn_timeout = 30
+        CONF.set_default('ssh_conn_timeout', ssh_conn_timeout)
         ssh_output = 'fake_ssh_output'
         cmd = ['fake', 'command']
         ssh = mock.Mock()
@@ -1282,7 +1284,7 @@ class GenericShareDriverTestCase(test.TestCase):
         result = self._driver._ssh_exec(self.server, cmd)
 
         utils.SSHPool.assert_called_once_with(
-            self.server['ip'], 22, None, self.server['username'],
+            self.server['ip'], 22, ssh_conn_timeout, self.server['username'],
             self.server['password'], self.server['pk_path'], max_size=1)
         ssh_pool.create.assert_called_once_with()
         processutils.ssh_execute.assert_called_once_with(ssh, 'fake command')
