@@ -32,19 +32,26 @@ echo "MANILA_BACKEND2_CONFIG_GROUP_NAME=paris" >> $localrc_path
 echo "MANILA_SHARE_BACKEND1_NAME=LONDON" >> $localrc_path
 echo "MANILA_SHARE_BACKEND2_NAME=PARIS" >> $localrc_path
 
-driver_handles_share_servers=$1
-driver_handles_share_servers=$(trueorfalse True driver_handles_share_servers)
+# === Handle script arguments ===
+# First argument is expected to be a boolean-like value for DHSS.
+DHSS=$1
+DHSS=$(trueorfalse True DHSS)
 
-echo "MANILA_OPTGROUP_london_driver_handles_share_servers=$driver_handles_share_servers" >> $localrc_path
-echo "MANILA_OPTGROUP_paris_driver_handles_share_servers=$driver_handles_share_servers" >> $localrc_path
+# Second argument is expected to have codename of a share driver.
+DRIVER=$2
+
+# Third argument is expected to contain value equal either to 'singlebackend'
+# or 'multibackend' that defines how many back-ends should be configured.
+BACK_END_TYPE=$3
+
+echo "MANILA_OPTGROUP_london_driver_handles_share_servers=$DHSS" >> $localrc_path
+echo "MANILA_OPTGROUP_paris_driver_handles_share_servers=$DHSS" >> $localrc_path
 
 echo "MANILA_USE_SERVICE_INSTANCE_PASSWORD=True" >> $localrc_path
 
 echo "MANILA_USE_DOWNGRADE_MIGRATIONS=True" >> $localrc_path
 
-# JOB_NAME is defined in openstack-infra/config project
-# used by CI/CD, where this script is intended to be used.
-if [[ "$JOB_NAME" =~ "multibackend" ]]; then
+if [[ "$BACK_END_TYPE" == "multibackend" ]]; then
     echo "MANILA_MULTI_BACKEND=True" >> $localrc_path
 else
     echo "MANILA_MULTI_BACKEND=False" >> $localrc_path
@@ -65,4 +72,3 @@ git checkout $TEMPEST_COMMIT
 
 # Print current Tempest status
 git status
-
