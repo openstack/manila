@@ -37,13 +37,15 @@ class APIVersionRequestTests(test.TestCase):
     def test_min_version(self):
 
         self.assertEqual(
-            api_version_request.APIVersionRequest(api_version_request._MIN_API_VERSION),
+            api_version_request.APIVersionRequest(
+                api_version_request._MIN_API_VERSION),
             api_version_request.min_api_version())
 
     def test_max_api_version(self):
 
         self.assertEqual(
-            api_version_request.APIVersionRequest(api_version_request._MAX_API_VERSION),
+            api_version_request.APIVersionRequest(
+                api_version_request._MAX_API_VERSION),
             api_version_request.max_api_version())
 
     @ddt.data(

@@ -136,9 +136,10 @@ class Request(webob.Request):
         return resources.get(resource_id)
 
     def cache_db_items(self, key, items, item_key='id'):
-        """Allow API methods to store objects from a DB query to be
-        used by API extensions within the same API request.
+        """Cache db items.
 
+        Allow API methods to store objects from a DB query to be
+        used by API extensions within the same API request.
         An instance of this class only lives for the lifetime of a
         single API request, so there's no need to implement full
         cache management.
@@ -146,17 +147,19 @@ class Request(webob.Request):
         self.cache_resource(items, item_key, key)
 
     def get_db_items(self, key):
-        """Allow an API extension to get previously stored objects within
-        the same API request.
+        """Get db item by key.
 
+        Allow an API extension to get previously stored objects within
+        the same API request.
         Note that the object data will be slightly stale.
         """
         return self.cached_resource(key)
 
     def get_db_item(self, key, item_key):
-        """Allow an API extension to get a previously stored object
-        within the same API request.
+        """Get db item by key and item key.
 
+        Allow an API extension to get a previously stored object
+        within the same API request.
         Note that the object data will be slightly stale.
         """
         return self.get_db_items(key).get(item_key)
@@ -261,7 +264,7 @@ class ActionDispatcher(object):
 
 
 class TextDeserializer(ActionDispatcher):
-    """Default request body deserialization"""
+    """Default request body deserialization."""
 
     def deserialize(self, datastring, action='default'):
         return self.dispatch(datastring, action=action)
@@ -284,7 +287,7 @@ class JSONDeserializer(TextDeserializer):
 
 
 class DictSerializer(ActionDispatcher):
-    """Default request body serialization"""
+    """Default request body serialization."""
 
     def serialize(self, data, action='default'):
         return self.dispatch(data, action=action)
@@ -294,7 +297,7 @@ class DictSerializer(ActionDispatcher):
 
 
 class JSONDictSerializer(DictSerializer):
-    """Default JSON request body serialization"""
+    """Default JSON request body serialization."""
 
     def default(self, data):
         return six.b(jsonutils.dumps(data))
@@ -554,7 +557,8 @@ class Resource(wsgi.Application):
     support_api_request_version = True
 
     def __init__(self, controller, action_peek=None, **deserializers):
-        """
+        """init method of Resource.
+
         :param controller: object that implement methods created by routes lib
         :param action_peek: dictionary of routines for peeking into an action
                             request body to determine the desired action
@@ -730,8 +734,8 @@ class Resource(wsgi.Application):
     def __call__(self, request):
         """WSGI method that controls (de)serialization and method dispatch."""
 
-        LOG.info("%(method)s %(url)s" % {"method": request.method,
-                                         "url": request.url})
+        LOG.info(_LI("%(method)s %(url)s") % {"method": request.method,
+                                              "url": request.url})
         if self.support_api_request_version:
             # Set the version of the API requested based on the header
             try:
@@ -1059,7 +1063,7 @@ class Controller(object):
             return object.__getattribute__(self, key)
 
         if (version_meth_dict and
-                    key in object.__getattribute__(self, VER_METHOD_ATTR)):
+                key in object.__getattribute__(self, VER_METHOD_ATTR)):
             return version_select
 
         return object.__getattribute__(self, key)
@@ -1194,8 +1198,8 @@ class AdminActionsMixin(object):
         except (TypeError, KeyError):
             raise webob.exc.HTTPBadRequest(explanation="Must specify 'status'")
         if update['status'] not in self.valid_statuses:
-            expl = _("Invalid state. Valid states: " +
-                     ", ".join(self.valid_statuses) + ".")
+            expl = (_("Invalid state. Valid states: %s.") %
+                    ", ".join(self.valid_statuses))
             raise webob.exc.HTTPBadRequest(explanation=expl)
         return update
 
@@ -1318,7 +1322,6 @@ class OverLimitFault(webob.exc.HTTPException):
         error format.
         """
         content_type = request.best_match_content_type()
-        metadata = {"attributes": {"overLimitFault": "code"}}
 
         serializer = {
             'application/json': JSONDictSerializer(),
