@@ -214,11 +214,11 @@ class ShareDriver(object):
             There are two possible approaches for share drivers in Manila.
             First is when share driver is able to handle share-servers and
             second when not.
-            Drivers can support either both or only one of these approaches.
-            So, it is allowed to be 'True' when share driver does support
-            handling of share servers and allowed to be 'False' when does
-            support usage of unhandled share-servers that are not tracked by
-            Manila.
+            Drivers can support either both (indicated by a tuple/set/list with
+            (True, False)) or only one of these approaches. So, it is allowed
+            to be 'True' when share driver does support handling of share
+            servers and allowed to be 'False' when it does support usage of
+            unhandled share-servers that are not tracked by Manila.
             Share drivers are allowed to work only in one of two possible
             driver modes, that is why only one should be chosen.
         """
@@ -254,6 +254,7 @@ class ShareDriver(object):
         return CONF.driver_handles_share_servers
 
     def _verify_share_server_handling(self, driver_handles_share_servers):
+        """Verifies driver_handles_share_servers and given configuration."""
         if not isinstance(self.driver_handles_share_servers, bool):
             raise exception.ManilaException(
                 "Config opt 'driver_handles_share_servers' has improper "
@@ -368,6 +369,18 @@ class ShareDriver(object):
     def copy_share_data(self, context, helper, share, share_instance,
                         share_server, new_share_instance, new_share_server,
                         migration_info_src, migration_info_dest):
+        """Copies share data of a given share to a new share.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param helper: instance of a share migration helper.
+        :param share: the share to copy.
+        :param share_instance: current instance holding the share.
+        :param share_server: current share_server hosting the share.
+        :param new_share_instance: share instance to copy data to.
+        :param new_share_server: share server that hosts destination share.
+        :param migration_info_src: migration information (source).
+        :param migration_info_dest: migration information (destination).
+        """
 
         # NOTE(ganso): This method is here because it is debatable if it can
         # be overridden by a driver or not. Personally I think it should not,
