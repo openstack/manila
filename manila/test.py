@@ -328,7 +328,7 @@ class TestCase(base_test.BaseTestCase):
         try:
             f = super(TestCase, self).assertIsInstance
         except AttributeError:
-            self.assertTrue(isinstance(a, b))
+            self.assertIsInstance(a, b)
         else:
             f(a, b, *args, **kwargs)
 

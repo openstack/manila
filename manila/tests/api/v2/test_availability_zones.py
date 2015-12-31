@@ -76,9 +76,9 @@ class AvailabilityZonesAPITest(test.TestCase):
             assert_called_once_with(ctxt)
         mock_policy_check.assert_called_once_with(
             ctxt, controller.resource_name, 'index')
-        self.assertTrue(isinstance(result, dict))
+        self.assertIsInstance(result, dict)
         self.assertEqual(["availability_zones"], list(result.keys()))
-        self.assertTrue(isinstance(result["availability_zones"], list))
+        self.assertIsInstance(result["availability_zones"], list)
         self.assertEqual(2, len(result["availability_zones"]))
         self.assertTrue(azs[0] in result["availability_zones"])
         azs[1].pop("deleted")

@@ -193,5 +193,5 @@ class SchedulerStatsTestCase(test.TestCase):
 
     def test_create_resource(self):
         result = scheduler_stats.create_resource()
-        self.assertTrue(isinstance(result.controller,
-                                   scheduler_stats.SchedulerStatsController))
+        self.assertIsInstance(result.controller,
+                              scheduler_stats.SchedulerStatsController)
