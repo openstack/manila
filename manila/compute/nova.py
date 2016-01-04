@@ -149,15 +149,20 @@ def translate_server_exception(method):
 
     Note: keeps its traceback intact.
     """
+
+    @six.wraps(method)
     def wrapper(self, ctx, instance_id, *args, **kwargs):
         try:
             res = method(self, ctx, instance_id, *args, **kwargs)
+            return res
         except nova_exception.ClientException as e:
             if isinstance(e, nova_exception.NotFound):
                 raise exception.InstanceNotFound(instance_id=instance_id)
             elif isinstance(e, nova_exception.BadRequest):
                 raise exception.InvalidInput(reason=six.text_type(e))
-        return res
+            else:
+                raise exception.ManilaException(e)
+
     return wrapper
 
 
