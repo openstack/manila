@@ -67,12 +67,12 @@ class WindowsSMBDriver(generic.GenericShareDriver):
                                                   security_service['user'],
                                                   security_service['password'])
             except Exception as exc:
-                LOG.warn(_LW("Failed to remove service instance "
-                             "%(instance_id)s from domain %(domain)s. "
-                             "Exception: %(exc)s"),
-                         dict(instance_id=server_details['instance_id'],
-                              domain=security_service['domain'],
-                              exc=exc))
+                LOG.warning(_LW("Failed to remove service instance "
+                                "%(instance_id)s from domain %(domain)s. "
+                                "Exception: %(exc)s."),
+                            dict(instance_id=server_details['instance_id'],
+                                 domain=security_service['domain'],
+                                 exc=exc))
         super(WindowsSMBDriver, self)._teardown_server(server_details,
                                                        security_services)
 

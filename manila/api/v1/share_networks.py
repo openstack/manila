@@ -260,12 +260,13 @@ class ShareNetworkController(wsgi.Controller):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
             if 'share_networks' in overs:
-                LOG.warn(_LW("Quota exceeded for %(s_pid)s, tried to create "
-                             "share-network (%(d_consumed)d of %(d_quota)d "
-                             "already consumed)"), {
-                                 's_pid': context.project_id,
-                                 'd_consumed': _consumed('share_networks'),
-                                 'd_quota': quotas['share_networks']})
+                LOG.warning(_LW("Quota exceeded for %(s_pid)s, "
+                                "tried to create "
+                                "share-network (%(d_consumed)d of %(d_quota)d "
+                                "already consumed)."), {
+                                    's_pid': context.project_id,
+                                    'd_consumed': _consumed('share_networks'),
+                                    'd_quota': quotas['share_networks']})
                 raise exception.ShareNetworksLimitExceeded(
                     allowed=quotas['share_networks'])
         else:

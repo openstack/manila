@@ -57,8 +57,8 @@ class RequestContext(object):
         user = kwargs.pop('user', None)
         tenant = kwargs.pop('tenant', None)
         if kwargs:
-            LOG.warn(_LW('Arguments dropped when creating context: %s'),
-                     str(kwargs))
+            LOG.warning(_LW('Arguments dropped when creating context: %s.'),
+                        str(kwargs))
 
         self.user_id = user_id or user
         self.project_id = project_id or tenant

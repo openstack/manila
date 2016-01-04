@@ -492,7 +492,7 @@ class HostManager(object):
 
             # Warn about down services and remove them from host_state_map
             if not utils.service_is_up(service) or service['disabled']:
-                LOG.warn(_LW("Share service is down. (host: %s)") % host)
+                LOG.warning(_LW("Share service is down. (host: %s).") % host)
                 if self.host_state_map.pop(host, None):
                     LOG.info(_LI("Removing non-active host: %s from "
                                  "scheduler cache.") % host)

@@ -122,8 +122,9 @@ class APIRouter(base_wsgi.Router):
 
 class FaultWrapper(base_wsgi.Middleware):
     def __init__(self, application):
-        LOG.warn(_LW('manila.api.openstack:FaultWrapper is deprecated. Please '
-                     'use manila.api.middleware.fault:FaultWrapper instead.'))
+        LOG.warning(_LW('manila.api.openstack:FaultWrapper is deprecated. '
+                        'Please use '
+                        'manila.api.middleware.fault:FaultWrapper instead.'))
         # Avoid circular imports from here.
         from manila.api.middleware import fault
         super(FaultWrapper, self).__init__(fault.FaultWrapper(application))

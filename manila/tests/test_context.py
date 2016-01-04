@@ -69,7 +69,7 @@ class ContextTestCase(test.TestCase):
         def fake_warn(log_msg, other_args):
             info['log_msg'] = log_msg % other_args
 
-        self.mock_object(context.LOG, 'warn', fake_warn)
+        self.mock_object(context.LOG, 'warning', fake_warn)
 
         c = context.RequestContext('user',
                                    'project',

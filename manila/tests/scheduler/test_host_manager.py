@@ -169,7 +169,7 @@ class HostManagerTestCase(test.TestCase):
         self.mock_object(
             db, 'service_get_all_by_topic',
             mock.Mock(return_value=fakes.SHARE_SERVICES_NO_POOLS))
-        host_manager.LOG.warn = mock.Mock()
+        host_manager.LOG.warning = mock.Mock()
 
         with mock.patch.dict(self.host_manager.service_states,
                              fakes.SERVICE_STATES_NO_POOLS):
@@ -259,7 +259,7 @@ class HostManagerTestCase(test.TestCase):
         self.mock_object(
             db, 'service_get_all_by_topic',
             mock.Mock(return_value=fakes.SHARE_SERVICES_WITH_POOLS))
-        host_manager.LOG.warn = mock.Mock()
+        host_manager.LOG.warning = mock.Mock()
 
         with mock.patch.dict(self.host_manager.service_states,
                              fakes.SHARE_SERVICE_STATES_WITH_POOLS):
@@ -401,7 +401,7 @@ class HostManagerTestCase(test.TestCase):
         self.mock_object(
             db, 'service_get_all_by_topic',
             mock.Mock(return_value=fakes.SHARE_SERVICES_NO_POOLS))
-        host_manager.LOG.warn = mock.Mock()
+        host_manager.LOG.warning = mock.Mock()
 
         with mock.patch.dict(self.host_manager.service_states,
                              fakes.SERVICE_STATES_NO_POOLS):
@@ -483,7 +483,7 @@ class HostManagerTestCase(test.TestCase):
         self.mock_object(
             db, 'service_get_all_by_topic',
             mock.Mock(return_value=fakes.SHARE_SERVICES_WITH_POOLS))
-        host_manager.LOG.warn = mock.Mock()
+        host_manager.LOG.warning = mock.Mock()
 
         with mock.patch.dict(self.host_manager.service_states,
                              fakes.SHARE_SERVICE_STATES_WITH_POOLS):

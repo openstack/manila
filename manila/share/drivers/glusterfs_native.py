@@ -179,11 +179,11 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
         ssl_allow = re.split('[ ,]', ssl_allow_opt)
         access_to = access['access_to']
         if access_to in ssl_allow:
-            LOG.warn(_LW("Access to %(share)s at %(export)s is already "
-                         "granted for %(access_to)s. GlusterFS volume "
-                         "options might have been changed externally."),
-                     {'share': share['id'], 'export': gluster_mgr.qualified,
-                      'access_to': access_to})
+            LOG.warning(_LW("Access to %(share)s at %(export)s is already "
+                            "granted for %(access_to)s. GlusterFS volume "
+                            "options might have been changed externally."),
+                        {'share': share['id'], 'export': gluster_mgr.qualified,
+                         'access_to': access_to})
             return
 
         ssl_allow.append(access_to)
@@ -219,11 +219,11 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
         ssl_allow = re.split('[ ,]', ssl_allow_opt)
         access_to = access['access_to']
         if access_to not in ssl_allow:
-            LOG.warn(_LW("Access to %(share)s at %(export)s is already "
-                         "denied for %(access_to)s. GlusterFS volume "
-                         "options might have been changed externally."),
-                     {'share': share['id'], 'export': gluster_mgr.qualified,
-                      'access_to': access_to})
+            LOG.warning(_LW("Access to %(share)s at %(export)s is already "
+                            "denied for %(access_to)s. GlusterFS volume "
+                            "options might have been changed externally."),
+                        {'share': share['id'], 'export': gluster_mgr.qualified,
+                         'access_to': access_to})
             return
 
         ssl_allow.remove(access_to)

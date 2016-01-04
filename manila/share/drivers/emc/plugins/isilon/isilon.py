@@ -141,7 +141,7 @@ class IsilonStorageConnection(base.StorageConnection):
         if share_id is None:
             lw = _LW('Attempted to delete NFS Share "%s", but the share does '
                      'not appear to exist.')
-            LOG.warn(lw, share['name'])
+            LOG.warning(lw, share['name'])
         else:
             # attempt to delete the share
             export_deleted = self._isilon_api.delete_nfs_share(share_id)
@@ -156,7 +156,7 @@ class IsilonStorageConnection(base.StorageConnection):
         if smb_share is None:
             lw = _LW('Attempted to delete CIFS Share "%s", but the share does '
                      'not appear to exist.')
-            LOG.warn(lw, share['name'])
+            LOG.warning(lw, share['name'])
         else:
             share_deleted = self._isilon_api.delete_smb_share(share['name'])
             if not share_deleted:

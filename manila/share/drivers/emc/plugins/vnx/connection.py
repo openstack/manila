@@ -230,9 +230,9 @@ class VNXStorageConnection(driver.StorageConnection):
     def delete_share(self, context, share, share_server=None):
         """Delete a share."""
         if share_server is None:
-            LOG.warn(_LW("Driver does not support share deletion without "
-                         "share network specified. Return directly because "
-                         "there is nothing to clean."))
+            LOG.warning(_LW("Driver does not support share deletion without "
+                            "share network specified. Return directly because "
+                            "there is nothing to clean."))
             return
 
         share_proto = share['share_proto']
