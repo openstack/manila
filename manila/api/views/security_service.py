@@ -31,7 +31,7 @@ class ViewBuilder(common.ViewBuilder):
         return self._list_view(self.detail, request, security_services)
 
     def summary(self, request, security_service):
-        """Generic, non-detailed view of an security service."""
+        """Generic, non-detailed view of a security service."""
         return {
             'security_service': {
                 'id': security_service.get('id'),
