@@ -441,6 +441,7 @@ elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
     init_manila
     echo_summary "Installing extra libraries"
     install_libraries
+    iniset $Q_DHCP_CONF_FILE DEFAULT dnsmasq_local_resolv False
 elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     echo_summary "Creating Manila entities for auth service"
     create_manila_accounts
