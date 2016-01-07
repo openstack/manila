@@ -385,7 +385,7 @@ class ManilaExceptionResponseCode404(test.TestCase):
     def test_share_snapshot_not_found(self):
         # Verify response code for exception.ShareSnapshotNotFound
         snapshot_id = "fake_snapshot_id"
-        e = exception.VolumeSnapshotNotFound(snapshot_id=snapshot_id)
+        e = exception.ShareSnapshotNotFound(snapshot_id=snapshot_id)
         self.assertEqual(404, e.code)
         self.assertIn(snapshot_id, e.msg)
 
