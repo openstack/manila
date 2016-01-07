@@ -171,7 +171,7 @@ class V3StorageConnection(driver.HuaweiBase):
             LOG.error(err_msg)
             raise exception.InvalidShare(reason=err_msg)
 
-        if fs_info['ALLOCTYPE'] != '1':
+        if fs_info['ALLOCTYPE'] != constants.ALLOC_TYPE_THIN_FLAG:
             err_msg = (_("Share (%s) can not be shrunk. only 'Thin' shares "
                          "support shrink.")
                        % share_name)
