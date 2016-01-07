@@ -83,7 +83,13 @@ netapp_provisioning_opts = [
     cfg.StrOpt('netapp_root_volume',
                deprecated_name='netapp_root_volume_name',
                default='root',
-               help='Root volume name.'), ]
+               help='Root volume name.'),
+    cfg.IntOpt('netapp_volume_snapshot_reserve_percent',
+               min=0,
+               max=90,
+               default=5,
+               help='The percentage of share space set aside as reserve for '
+                    'snapshot usage; valid values range from 0 to 90.'), ]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',

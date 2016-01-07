@@ -2055,7 +2055,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             fake.SHARE_AGGREGATE_NAME, fake.SHARE_NAME, 100,
             thin_provisioned=True, language='en-US',
             snapshot_policy='default', dedup_enabled=True,
-            compression_enabled=True, max_files=5000)
+            compression_enabled=True, max_files=5000, snapshot_reserve=15)
 
         volume_create_args = {
             'containing-aggr-name': fake.SHARE_AGGREGATE_NAME,
@@ -2065,6 +2065,7 @@ class NetAppClientCmodeTestCase(test.TestCase):
             'space-reserve': 'none',
             'language-code': 'en-US',
             'snapshot-policy': 'default',
+            'percentage-snapshot-reserve': '15',
         }
 
         self.client.send_request.assert_called_with('volume-create',
