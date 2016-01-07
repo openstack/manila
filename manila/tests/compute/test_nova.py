@@ -86,6 +86,51 @@ class FakeNovaClient(object):
         self.fixed_ips = self.FixedIPs()
 
 
+@nova.translate_server_exception
+def decorated_by_translate_server_exception(self, context, instance_id, exc):
+    if exc:
+        raise exc(instance_id)
+    else:
+        return 'OK'
+
+
+@ddt.ddt
+class TranslateServerExceptionTestCase(test.TestCase):
+
+    def test_translate_server_exception(self):
+        result = decorated_by_translate_server_exception(
+            'foo_self', 'foo_ctxt', 'foo_instance_id', None)
+        self.assertEqual('OK', result)
+
+    def test_translate_server_exception_not_found(self):
+        self.assertRaises(
+            exception.InstanceNotFound,
+            decorated_by_translate_server_exception,
+            'foo_self', 'foo_ctxt', 'foo_instance_id', nova_exception.NotFound)
+
+    def test_translate_server_exception_bad_request(self):
+        self.assertRaises(
+            exception.InvalidInput,
+            decorated_by_translate_server_exception,
+            'foo_self', 'foo_ctxt', 'foo_instance_id',
+            nova_exception.BadRequest)
+
+    @ddt.data(
+        nova_exception.HTTPNotImplemented,
+        nova_exception.RetryAfterException,
+        nova_exception.Unauthorized,
+        nova_exception.Forbidden,
+        nova_exception.MethodNotAllowed,
+        nova_exception.OverLimit,
+        nova_exception.RateLimit,
+    )
+    def test_translate_server_exception_other_exception(self, exc):
+        self.assertRaises(
+            exception.ManilaException,
+            decorated_by_translate_server_exception,
+            'foo_self', 'foo_ctxt', 'foo_instance_id', exc)
+
+
 @ddt.ddt
 class NovaApiTestCase(test.TestCase):
     def setUp(self):
