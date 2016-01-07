@@ -114,7 +114,7 @@ class RequestContext(object):
                 'read_deleted': self.read_deleted,
                 'roles': self.roles,
                 'remote_address': self.remote_address,
-                'timestamp': timeutils.strtime(self.timestamp),
+                'timestamp': self.timestamp.isoformat(),
                 'request_id': self.request_id,
                 'auth_token': self.auth_token,
                 'quota_class': self.quota_class,
