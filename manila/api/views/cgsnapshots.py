@@ -15,12 +15,7 @@
 
 """The consistency groups snapshot API."""
 
-from oslo_log import log
-
 from manila.api import common
-
-
-LOG = log.getLogger(__name__)
 
 
 class CGSnapshotViewBuilder(common.ViewBuilder):

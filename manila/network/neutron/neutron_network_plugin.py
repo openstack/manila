@@ -15,7 +15,6 @@
 #    under the License.
 
 from oslo_config import cfg
-from oslo_log import log
 
 from manila.common import constants
 from manila import exception
@@ -41,7 +40,6 @@ neutron_single_network_plugin_opts = [
 ]
 
 CONF = cfg.CONF
-LOG = log.getLogger(__name__)
 
 
 class NeutronNetworkPlugin(network.NetworkBaseAPI):

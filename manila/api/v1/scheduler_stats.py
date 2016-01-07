@@ -12,13 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log
-
 from manila.api.openstack import wsgi
 from manila.api.views import scheduler_stats as scheduler_stats_views
 from manila.scheduler import rpcapi
-
-LOG = log.getLogger(__name__)
 
 
 class SchedulerStatsController(wsgi.Controller):
