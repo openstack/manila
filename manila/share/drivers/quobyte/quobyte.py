@@ -68,9 +68,15 @@ CONF.register_opts(quobyte_manila_share_opts)
 
 
 class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
-    """Map share commands to Quobyte volumes."""
+    """Map share commands to Quobyte volumes.
 
-    DRIVER_VERSION = '1.0.1'
+    Version history:
+        1.0     - Initial driver.
+        1.0.1   - Adds ensure_share() implementation.
+        1.1     - Adds extend_share() and shrink_share() implementation.
+    """
+
+    DRIVER_VERSION = '1.1'
 
     def __init__(self, *args, **kwargs):
         super(QuobyteShareDriver, self).__init__(False, *args, **kwargs)
@@ -135,6 +141,12 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         to store and use in the backend for better usability.
         """
         return project_id
+
+    def _resize_share(self, share, new_size):
+        # TODO(kaisers): check and update existing quota if already present
+        self.rpc.call('setQuota', {"consumer": {"type": 3,
+                                                "identifier": share["name"]},
+                                   "limits": {"type": 5, "value": new_size}})
 
     def _resolve_volume_name(self, volume_name, tenant_domain):
         """Resolve a volume name to the global volume uuid."""
@@ -249,3 +261,25 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         self.rpc.call('exportVolume', dict(
             volume_uuid=volume_uuid,
             remove_allow_ip=access['access_to']))
+
+    def extend_share(self, ext_share, ext_size, share_server=None):
+        """Uses resize_share to extend a share.
+
+        :param ext_share: Share model.
+        :param ext_size: New size of share (new_size > share['size']).
+        :param share_server: Currently not used.
+        """
+        self._resize_share(share=ext_share, new_size=ext_size)
+
+    def shrink_share(self, shrink_share, shrink_size, share_server=None):
+        """Uses resize_share to shrink a share.
+
+        Quobyte uses soft quotas. If a shares current size is bigger than
+        the new shrunken size no data is lost. Data can be continuously read
+        from the share but new writes receive out of disk space replies.
+
+        :param shrink_share: Share model.
+        :param shrink_size: New size of share (new_size < share['size']).
+        :param share_server: Currently not used.
+        """
+        self._resize_share(share=shrink_share, new_size=shrink_size)
