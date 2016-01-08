@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import uuid
-
 import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
@@ -23,67 +21,13 @@ import webob
 
 from manila.api.v1 import share_metadata
 from manila.api.v1 import shares
-import manila.db
-from manila import exception
+from manila import context
+from manila import db
+from manila.share import api
 from manila import test
 from manila.tests.api import fakes
 
-
 CONF = cfg.CONF
-
-
-def return_create_share_metadata_max(context, share_id, metadata, delete):
-    return stub_max_share_metadata()
-
-
-def return_create_share_metadata(context, share_id, metadata, delete):
-    return stub_share_metadata()
-
-
-def return_share_metadata(context, share_id):
-    if not isinstance(share_id, str) or not len(share_id) == 36:
-        msg = 'id %s must be a uuid in return share metadata' % share_id
-        raise Exception(msg)
-    return stub_share_metadata()
-
-
-def return_empty_share_metadata(context, share_id):
-    return {}
-
-
-def delete_share_metadata(context, share_id, key):
-    pass
-
-
-def stub_share_metadata():
-    metadata = {
-        "key1": "value1",
-        "key2": "value2",
-        "key3": "value3",
-    }
-    return metadata
-
-
-def stub_max_share_metadata():
-    metadata = {"metadata": {}}
-    for num in range(CONF.quota_metadata_items):
-        metadata['metadata']['key%i' % num] = "blah"
-    return metadata
-
-
-def return_share(context, share_id):
-    return {'id': '0cc3346e-9fef-4445-abe6-5d2b2690ec64',
-            'name': 'fake',
-            'metadata': {},
-            'is_public': False}
-
-
-def return_share_nonexistent(context, share_id):
-    raise exception.NotFound('bogus test message')
-
-
-def fake_update_share_metadata(self, context, share, diff):
-    pass
 
 
 @ddt.ddt
@@ -91,32 +35,24 @@ class ShareMetaDataTest(test.TestCase):
 
     def setUp(self):
         super(ShareMetaDataTest, self).setUp()
-        self.share_api = manila.share.api.API()
-        self.mock_object(manila.db, 'share_get', return_share)
-        self.mock_object(manila.db, 'share_metadata_get',
-                         return_share_metadata)
-
-        self.mock_object(self.share_api, 'update_share_metadata',
-                         fake_update_share_metadata)
-
+        self.share_api = api.API()
         self.share_controller = shares.ShareController()
         self.controller = share_metadata.ShareMetadataController()
-        self.req_id = str(uuid.uuid4())
-        self.url = '/shares/%s/metadata' % self.req_id
-
-        sh = {"size": 1,
-              "name": "Share Test Name",
-              "share_proto": "nfs",
-              "display_name": "Updated Desc",
-              "display_description": "Share Test Desc",
-              "metadata": {}}
-        body = {"share": sh}
-        req = fakes.HTTPRequest.blank('/shares')
-        self.share_controller.create(req, body)
+        self.ctxt = context.RequestContext('admin', 'fake', True)
+        self.origin_metadata = {
+            "key1": "value1",
+            "key2": "value2",
+            "key3": "value3",
+        }
+        self.share = db.share_create(self.ctxt, {})
+        self.share_id = self.share['id']
+        self.url = '/shares/%s/metadata' % self.share_id
+        db.share_metadata_update(
+            self.ctxt, self.share_id, self.origin_metadata, delete=False)
 
     def test_index(self):
         req = fakes.HTTPRequest.blank(self.url)
-        res_dict = self.controller.index(req, self.req_id)
+        res_dict = self.controller.index(req, self.share_id)
 
         expected = {
             'metadata': {
@@ -128,94 +64,79 @@ class ShareMetaDataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_index_nonexistent_share(self):
-        self.mock_object(manila.db, 'share_metadata_get',
-                         return_share_nonexistent)
         req = fakes.HTTPRequest.blank(self.url)
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.index, req, self.url)
 
     def test_index_no_data(self):
-        self.mock_object(manila.db, 'share_metadata_get',
-                         return_empty_share_metadata)
+        db.share_metadata_update(
+            self.ctxt, self.share_id, {}, delete=True)
         req = fakes.HTTPRequest.blank(self.url)
-        res_dict = self.controller.index(req, self.req_id)
+        res_dict = self.controller.index(req, self.share_id)
         expected = {'metadata': {}}
         self.assertEqual(expected, res_dict)
 
     def test_show(self):
         req = fakes.HTTPRequest.blank(self.url + '/key2')
-        res_dict = self.controller.show(req, self.req_id, 'key2')
+
+        res_dict = self.controller.show(req, self.share_id, 'key2')
+
         expected = {'meta': {'key2': 'value2'}}
         self.assertEqual(expected, res_dict)
 
     def test_show_nonexistent_share(self):
-        self.mock_object(manila.db, 'share_metadata_get',
-                         return_share_nonexistent)
         req = fakes.HTTPRequest.blank(self.url + '/key2')
-        self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.show, req, self.req_id, 'key2')
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.show,
+            req, "nonexistent_share", 'key2')
 
     def test_show_meta_not_found(self):
-        self.mock_object(manila.db, 'share_metadata_get',
-                         return_empty_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.show, req, self.req_id, 'key6')
+                          self.controller.show, req, self.share_id, 'key6')
 
     def test_delete(self):
-        self.mock_object(manila.db, 'share_metadata_get',
-                         return_share_metadata)
-        self.mock_object(manila.db, 'share_metadata_delete',
-                         delete_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key2')
         req.method = 'DELETE'
-        res = self.controller.delete(req, self.req_id, 'key2')
+        res = self.controller.delete(req, self.share_id, 'key2')
 
         self.assertEqual(200, res.status_int)
 
     def test_delete_nonexistent_share(self):
-        self.mock_object(manila.db, 'share_get',
-                         return_share_nonexistent)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'DELETE'
-        self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.delete, req, self.req_id, 'key1')
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.delete,
+            req, "nonexistent_share", 'key1')
 
     def test_delete_meta_not_found(self):
-        self.mock_object(manila.db, 'share_metadata_get',
-                         return_empty_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         req.method = 'DELETE'
         self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.delete, req, self.req_id, 'key6')
+                          self.controller.delete, req, self.share_id, 'key6')
 
     def test_create(self):
-        self.mock_object(manila.db, 'share_metadata_get',
-                         return_empty_share_metadata)
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
-
         req = fakes.HTTPRequest.blank('/v1/share_metadata')
         req.method = 'POST'
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
         req.body = six.b(jsonutils.dumps(body))
-        res_dict = self.controller.create(req, self.req_id, body)
-        self.assertEqual(body, res_dict)
+        res_dict = self.controller.create(req, self.share_id, body)
+        expected = self.origin_metadata
+        expected.update(body['metadata'])
+        self.assertEqual({'metadata': expected}, res_dict)
 
     def test_create_empty_body(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, None)
+                          self.controller.create, req, self.share_id, None)
 
     def test_create_item_empty_key(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"": "value1"}}
@@ -223,11 +144,9 @@ class ShareMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, body)
+                          self.controller.create, req, self.share_id, body)
 
     def test_create_item_key_too_long(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {("a" * 260): "value1"}}
@@ -236,27 +155,20 @@ class ShareMetaDataTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
-                          req, self.req_id, body)
+                          req, self.share_id, body)
 
     def test_create_nonexistent_share(self):
-        self.mock_object(manila.db, 'share_get',
-                         return_share_nonexistent)
-        self.mock_object(manila.db, 'share_metadata_get',
-                         return_share_metadata)
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
-
         req = fakes.HTTPRequest.blank('/v1/share_metadata')
         req.method = 'POST'
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
         req.body = six.b(jsonutils.dumps(body))
-        self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.create, req, self.req_id, body)
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.create,
+            req, "nonexistent_share", body)
 
     def test_update_all(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -267,25 +179,21 @@ class ShareMetaDataTest(test.TestCase):
             },
         }
         req.body = six.b(jsonutils.dumps(expected))
-        res_dict = self.controller.update_all(req, self.req_id, expected)
+        res_dict = self.controller.update_all(req, self.share_id, expected)
 
         self.assertEqual(expected, res_dict)
 
     def test_update_all_empty_container(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
         expected = {'metadata': {}}
         req.body = six.b(jsonutils.dumps(expected))
-        res_dict = self.controller.update_all(req, self.req_id, expected)
+        res_dict = self.controller.update_all(req, self.share_id, expected)
 
         self.assertEqual(expected, res_dict)
 
     def test_update_all_malformed_container(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -293,7 +201,7 @@ class ShareMetaDataTest(test.TestCase):
         req.body = six.b(jsonutils.dumps(expected))
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update_all, req, self.req_id,
+                          self.controller.update_all, req, self.share_id,
                           expected)
 
     @ddt.data(['asdf'],
@@ -301,8 +209,6 @@ class ShareMetaDataTest(test.TestCase):
               {None: 'value'},
               {None: None})
     def test_update_all_malformed_data(self, metadata):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -310,11 +216,10 @@ class ShareMetaDataTest(test.TestCase):
         req.body = six.b(jsonutils.dumps(expected))
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update_all, req, self.req_id,
+                          self.controller.update_all, req, self.share_id,
                           expected)
 
     def test_update_all_nonexistent_share(self):
-        self.mock_object(manila.db, 'share_get', return_share_nonexistent)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -325,44 +230,37 @@ class ShareMetaDataTest(test.TestCase):
                           self.controller.update_all, req, '100', body)
 
     def test_update_item(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
         req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
-        res_dict = self.controller.update(req, self.req_id, 'key1', body)
+        res_dict = self.controller.update(req, self.share_id, 'key1', body)
         expected = {'meta': {'key1': 'value1'}}
         self.assertEqual(expected, res_dict)
 
     def test_update_item_nonexistent_share(self):
-        self.mock_object(manila.db, 'share_get',
-                         return_share_nonexistent)
         req = fakes.HTTPRequest.blank('/v1.1/fake/shares/asdf/metadata/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
         req.body = six.b(jsonutils.dumps(body))
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPNotFound,
-                          self.controller.update, req, self.req_id, 'key1',
-                          body)
+        self.assertRaises(
+            webob.exc.HTTPNotFound,
+            self.controller.update,
+            req, "nonexistent_share", 'key1', body)
 
     def test_update_item_empty_body(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, self.req_id, 'key1',
+                          self.controller.update, req, self.share_id, 'key1',
                           None)
 
     def test_update_item_empty_key(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"": "value1"}}
@@ -370,11 +268,9 @@ class ShareMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, self.req_id, '', body)
+                          self.controller.update, req, self.share_id, '', body)
 
     def test_update_item_key_too_long(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {("a" * 260): "value1"}}
@@ -383,11 +279,9 @@ class ShareMetaDataTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
-                          req, self.req_id, ("a" * 260), body)
+                          req, self.share_id, ("a" * 260), body)
 
     def test_update_item_value_too_long(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": ("a" * 1025)}}
@@ -396,11 +290,9 @@ class ShareMetaDataTest(test.TestCase):
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
-                          req, self.req_id, "key1", body)
+                          req, self.share_id, "key1", body)
 
     def test_update_item_too_many_keys(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1", "key2": "value2"}}
@@ -408,12 +300,10 @@ class ShareMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, self.req_id, 'key1',
+                          self.controller.update, req, self.share_id, 'key1',
                           body)
 
     def test_update_item_body_uri_mismatch(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/bad')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
@@ -421,12 +311,10 @@ class ShareMetaDataTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, req, self.req_id, 'bad',
+                          self.controller.update, req, self.share_id, 'bad',
                           body)
 
     def test_invalid_metadata_items_on_create(self):
-        self.mock_object(manila.db, 'share_metadata_update',
-                         return_create_share_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
@@ -435,16 +323,16 @@ class ShareMetaDataTest(test.TestCase):
         data = {"metadata": {"a" * 260: "value1"}}
         req.body = six.b(jsonutils.dumps(data))
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, data)
+                          self.controller.create, req, self.share_id, data)
 
         # test for long value
         data = {"metadata": {"key": "v" * 1025}}
         req.body = six.b(jsonutils.dumps(data))
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, data)
+                          self.controller.create, req, self.share_id, data)
 
         # test for empty key.
         data = {"metadata": {"": "value1"}}
         req.body = six.b(jsonutils.dumps(data))
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.create, req, self.req_id, data)
+                          self.controller.create, req, self.share_id, data)
