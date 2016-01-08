@@ -96,7 +96,7 @@ File system fake_fs successfully mounted."""
 
 HNAS_RESULT_quota = """Type            : Explicit
 Target          : ViVol: vvol_test
-Usage           : 0 B
+Usage           : 1 GB
   Limit         : 5 GB (Hard)
   Warning       : Unset
   Critical      : Unset
@@ -112,7 +112,7 @@ Last modified   : 2015-06-23 22:37:17.363660800+00:00 """
 
 HNAS_RESULT_quota_tb = """Type            : Explicit
 Target          : ViVol: vvol_test
-Usage           : 0 B
+Usage           : 1 TB
   Limit         : 1 TB (Hard)
   Warning       : Unset
   Critical      : Unset
@@ -128,7 +128,7 @@ Last modified   : 2015-06-23 22:37:17.363660800+00:00  """
 
 HNAS_RESULT_quota_mb = """Type            : Explicit
 Target          : ViVol: vvol_test
-Usage           : 0 B
+Usage           : 20 MB
   Limit         : 500 MB (Hard)
   Warning       : Unset
   Critical      : Unset
@@ -796,6 +796,32 @@ class HNASSSHTestCase(test.TestCase):
 
         self.assertRaises(exception.HNASBackendException,
                           self._driver_ssh.get_share_quota, "vvol_test")
+
+    def test_get_share_usage(self):
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            return_value=(HNAS_RESULT_quota, '')))
+
+        self.assertEqual(1, self._driver_ssh.get_share_usage("vvol_test"))
+
+    def test_get_share_usage_error(self):
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            return_value=(HNAS_RESULT_quota_err, '')))
+
+        self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh.get_share_usage, "vvol_test")
+
+    def test_get_share_usage_mb(self):
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            return_value=(HNAS_RESULT_quota_mb, '')))
+
+        self.assertEqual(0.01953125, self._driver_ssh.get_share_usage(
+            "vvol_test"))
+
+    def test_get_share_usage_tb(self):
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            return_value=(HNAS_RESULT_quota_tb, '')))
+
+        self.assertEqual(1024, self._driver_ssh.get_share_usage("vvol_test"))
 
     def test__get_share_export(self):
         self.mock_object(ssh.HNASSSHBackend, '_execute',

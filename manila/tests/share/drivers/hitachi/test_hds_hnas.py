@@ -379,6 +379,31 @@ class HDSHNASTestCase(test.TestCase):
         ssh.HNASSSHBackend.check_quota.assert_called_once_with(share['id'])
         ssh.HNASSSHBackend.check_export.assert_called_once_with(share['id'])
 
+    def test_shrink_share(self):
+        self.mock_object(hds_hnas.HDSHNASDriver, "_get_hnas_share_id",
+                         mock.Mock(return_value=share['id']))
+        self.mock_object(hds_hnas.HDSHNASDriver, "_ensure_share", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "get_share_usage", mock.Mock(
+            return_value=10))
+        self.mock_object(ssh.HNASSSHBackend, "modify_quota", mock.Mock())
+
+        self._driver.shrink_share(share, 11)
+
+        ssh.HNASSSHBackend.get_share_usage.assert_called_once_with(share['id'])
+        ssh.HNASSSHBackend.modify_quota.assert_called_once_with(share['id'],
+                                                                11)
+
+    def test_shrink_share_new_size_lower_than_usage(self):
+        self.mock_object(hds_hnas.HDSHNASDriver, "_get_hnas_share_id",
+                         mock.Mock(return_value=share['id']))
+        self.mock_object(hds_hnas.HDSHNASDriver, "_ensure_share", mock.Mock())
+        self.mock_object(ssh.HNASSSHBackend, "get_share_usage", mock.Mock(
+            return_value=10))
+
+        self.assertRaises(exception.ShareShrinkingPossibleDataLoss,
+                          self._driver.shrink_share, share, 9)
+        ssh.HNASSSHBackend.get_share_usage.assert_called_once_with(share['id'])
+
     def test_extend_share(self):
         self.mock_object(hds_hnas.HDSHNASDriver, "_get_hnas_share_id",
                          mock.Mock(return_value=share['id']))
