@@ -181,6 +181,13 @@ Known Restrictions
   currently created within a single GlusterFS volume of a GlusterFS storage
   pool.
 - The driver does not provide read-only access level for shares.
+- Assume that share S is exported through Gluster NFS, and tenant machine T
+  has mounted S. If at this point access of T to S is revoked through
+  `access-deny`, the pre-existing mount will be still usable and T will still
+  be able to access the data in S as long as that mount is in place.
+  (This violates the principle *Access deny should always result
+  in immediate loss of access to the share*, see
+  http://lists.openstack.org/pipermail/openstack-dev/2015-July/069109.html.)
 
 The :mod:`manila.share.drivers.glusterfs` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
