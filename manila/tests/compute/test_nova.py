@@ -288,7 +288,7 @@ class NovaApiTestCase(test.TestCase):
     def test_fixed_ip_get(self):
         fixed_ip = 'fake_fixed_ip'
         result = self.api.fixed_ip_get(self.ctx, fixed_ip)
-        self.assertTrue(isinstance(result, dict))
+        self.assertIsInstance(result, dict)
         self.assertEqual(fixed_ip, result['address'])
 
     def test_fixed_ip_reserve(self):
@@ -304,7 +304,7 @@ class NovaApiTestCase(test.TestCase):
     def test_network_get(self):
         net_id = 'fake_net_id'
         net = self.api.network_get(self.ctx, net_id)
-        self.assertTrue(isinstance(net, dict))
+        self.assertIsInstance(net, dict)
         self.assertEqual(net_id, net['id'])
 
 

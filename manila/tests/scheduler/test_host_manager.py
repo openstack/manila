@@ -248,7 +248,7 @@ class HostManagerTestCase(test.TestCase):
                     },
                 },
             ]
-            self.assertTrue(isinstance(res, list))
+            self.assertIsInstance(res, list)
             self.assertEqual(len(expected), len(res))
             for pool in expected:
                 self.assertIn(pool, res)
@@ -389,8 +389,8 @@ class HostManagerTestCase(test.TestCase):
                     },
                 },
             ]
-            self.assertTrue(isinstance(res, list))
-            self.assertTrue(isinstance(self.host_manager.host_state_map, dict))
+            self.assertIsInstance(res, list)
+            self.assertIsInstance(self.host_manager.host_state_map, dict)
             self.assertEqual(len(expected), len(res))
             for pool in expected:
                 self.assertIn(pool, res)
@@ -469,8 +469,8 @@ class HostManagerTestCase(test.TestCase):
                     },
                 },
             ]
-            self.assertTrue(isinstance(res, list))
-            self.assertTrue(isinstance(self.host_manager.host_state_map, dict))
+            self.assertIsInstance(res, list)
+            self.assertIsInstance(self.host_manager.host_state_map, dict)
             self.assertEqual(len(expected), len(res))
             self.assertEqual(len(expected),
                              len(self.host_manager.host_state_map))

@@ -196,7 +196,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
         # share_network_name is not empty
         self.assertTrue(len(server["share_network_name"]) > 0)
         # backend_details should be a dict
-        self.assertTrue(isinstance(server["backend_details"], dict))
+        self.assertIsInstance(server["backend_details"], dict)
 
     @test.attr(type=["gate", "smoke", ])
     def test_show_share_server_details(self):
@@ -205,8 +205,8 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             servers[0]["id"])
         # If details are present they and their values should be only strings
         for k, v in details.iteritems():
-            self.assertTrue(isinstance(k, six.string_types))
-            self.assertTrue(isinstance(v, six.string_types))
+            self.assertIsInstance(k, six.string_types)
+            self.assertIsInstance(v, six.string_types)
 
     @test.attr(type=["gate", "smoke", ])
     def _delete_share_server(self, delete_share_network):

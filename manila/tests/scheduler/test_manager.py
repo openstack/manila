@@ -54,8 +54,7 @@ class SchedulerManagerTestCase(test.TestCase):
     def test_1_correct_init(self):
         # Correct scheduler driver
         manager = self.manager
-        self.assertTrue(isinstance(manager.driver,
-                                   self.driver_cls))
+        self.assertIsInstance(manager.driver, self.driver_cls)
 
     @ddt.data('manila.scheduler.filter_scheduler.FilterScheduler',
               'manila.scheduler.drivers.filter.FilterScheduler')
@@ -63,8 +62,7 @@ class SchedulerManagerTestCase(test.TestCase):
 
         test_manager = manager.SchedulerManager(scheduler_driver=driver_class)
 
-        self.assertTrue(isinstance(test_manager.driver,
-                                   filter.FilterScheduler))
+        self.assertIsInstance(test_manager.driver, filter.FilterScheduler)
 
     def test_init_host(self):
 
