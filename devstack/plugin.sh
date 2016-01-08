@@ -196,17 +196,14 @@ function configure_manila {
     MANILA_CONFIGURE_GROUPS=${MANILA_CONFIGURE_GROUPS:-"$MANILA_ENABLED_BACKENDS"}
     set_config_opts $MANILA_CONFIGURE_GROUPS
     set_config_opts DEFAULT
-
-    if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
-        configure_manila_ui
-    fi
 }
 
 
 function configure_manila_ui {
-    setup_develop $MANILA_UI_DIR
-
-    cp $MANILA_UI_DIR/manila_ui/enabled/_90_manila_*.py $HORIZON_DIR/openstack_dashboard/local/enabled
+    if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
+        setup_develop $MANILA_UI_DIR
+        cp $MANILA_UI_DIR/manila_ui/enabled/_90_manila_*.py $HORIZON_DIR/openstack_dashboard/local/enabled
+    fi
 }
 
 
@@ -477,6 +474,9 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
 
     echo_summary "Update Tempest config"
     update_tempest
+
+    echo_summary "Configuring Manila UI"
+    configure_manila_ui
 fi
 
 if [[ "$1" == "unstack" ]]; then
