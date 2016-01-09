@@ -209,7 +209,7 @@ class TestBridgeInterfaceDriver(TestBase):
 
     def test_plug_dev_exists(self):
         self.device_exists.return_value = True
-        with mock.patch('manila.network.linux.interface.LOG.warn') as log:
+        with mock.patch('manila.network.linux.interface.LOG.warning') as log:
             br = interface.BridgeInterfaceDriver()
             br.plug('port-1234',
                     'tap0',

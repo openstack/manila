@@ -24,14 +24,15 @@ LOG = log.getLogger(__name__)
 
 class ManilaKeystoneContext(auth.ManilaKeystoneContext):
     def __init__(self, application):
-        LOG.warn(_LW('manila.api.auth:ManilaKeystoneContext is deprecated. '
-                     'Please use '
-                     'manila.api.middleware.auth:ManilaKeystoneContext '
-                     'instead.'))
+        LOG.warning(_LW('manila.api.auth:ManilaKeystoneContext is deprecated. '
+                        'Please use '
+                        'manila.api.middleware.auth:ManilaKeystoneContext '
+                        'instead.'))
         super(ManilaKeystoneContext, self).__init__(application)
 
 
 def pipeline_factory(loader, global_conf, **local_conf):
-    LOG.warn(_LW('manila.api.auth:pipeline_factory is deprecated. Please use '
-                 'manila.api.middleware.auth:pipeline_factory instead.'))
+    LOG.warning(_LW('manila.api.auth:pipeline_factory is deprecated. '
+                    'Please use manila.api.middleware.auth:pipeline_factory '
+                    'instead.'))
     auth.pipeline_factory(loader, global_conf, **local_conf)

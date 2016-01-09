@@ -347,14 +347,14 @@ class GlusterFSCommonTestCase(test.TestCase):
         def exec_runner(*ignore_args, **ignore_kwargs):
             raise exception.ProcessExecutionError(stderr='already mounted')
         expected_exec = self._mount_exec(fakeexport, fakemnt)
-        common.LOG.warn = mock.Mock()
+        common.LOG.warning = mock.Mock()
         fake_utils.fake_execute_set_repliers([('mount', exec_runner)])
         ret = common._mount_gluster_vol(self._execute, fakeexport, fakemnt,
                                         True)
         self.assertEqual(fake_utils.fake_execute_get_log(), expected_exec)
         self.assertIsNone(ret)
-        common.LOG.warn.assert_called_with(
-            "%s is already mounted", fakeexport)
+        common.LOG.warning.assert_called_with(
+            "%s is already mounted.", fakeexport)
 
     @ddt.data(True, False)
     def test_mount_gluster_vol_fail(self, ensure):

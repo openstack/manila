@@ -613,8 +613,8 @@ class BaseSharesTest(test.BaseTestCase):
                         client.delete_cgsnapshot(res_id)
                         client.wait_for_resource_deletion(cgsnapshot_id=res_id)
                     else:
-                        LOG.warn("Provided unsupported resource type for "
-                                 "cleanup '%s'. Skipping." % res["type"])
+                        LOG.warning("Provided unsupported resource type for "
+                                    "cleanup '%s'. Skipping." % res["type"])
                 res["deleted"] = True
 
     @classmethod

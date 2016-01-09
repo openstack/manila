@@ -156,7 +156,7 @@ class OVSInterfaceDriver(LinuxInterfaceDriver):
                 namespace_obj.add_device_to_namespace(ns_dev)
 
         else:
-            LOG.warn(_LW("Device %s already exists"), device_name)
+            LOG.warning(_LW("Device %s already exists."), device_name)
         ns_dev.link.set_up()
 
     @device_name_synchronized
@@ -201,7 +201,7 @@ class BridgeInterfaceDriver(LinuxInterfaceDriver):
         else:
             ns_veth = ip.device(device_name)
             root_veth = ip.device(tap_name)
-            LOG.warn(_LW("Device %s already exists"), device_name)
+            LOG.warning(_LW("Device %s already exists."), device_name)
 
         root_veth.link.set_up()
         ns_veth.link.set_up()

@@ -232,7 +232,7 @@ def _mount_gluster_vol(execute, gluster_export, mount_path, ensure=False):
         execute(*command, run_as_root=True)
     except exception.ProcessExecutionError as exc:
         if ensure and 'already mounted' in exc.stderr:
-            LOG.warn(_LW("%s is already mounted"), gluster_export)
+            LOG.warning(_LW("%s is already mounted."), gluster_export)
         else:
             raise exception.GlusterfsException(
                 'Unable to mount Gluster volume'

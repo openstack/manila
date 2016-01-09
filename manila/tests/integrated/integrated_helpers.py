@@ -83,7 +83,7 @@ class _IntegratedTestBase(test.TestCase):
         # FIXME(ja): this is not the auth url - this is the service url
         # FIXME(ja): this needs fixed in nova as well
         self.auth_url = 'http://%s:%s/v1' % (self.osapi.host, self.osapi.port)
-        LOG.warn(self.auth_url)
+        LOG.warning(self.auth_url)
 
     def _get_flags(self):
         """An opportunity to setup flags, before the services are started."""

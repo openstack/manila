@@ -110,7 +110,7 @@ class QuotaSetsMixin(object):
                 except (ValueError, TypeError):
                     msg = _("Quota '%(value)s' for %(key)s should be "
                             "integer.") % {'value': value, 'key': key}
-                    LOG.warn(msg)
+                    LOG.warning(msg)
                     raise webob.exc.HTTPBadRequest(explanation=msg)
 
         LOG.debug("Force update quotas: %s.", force_update)
@@ -136,7 +136,7 @@ class QuotaSetsMixin(object):
             except (ValueError, TypeError):
                 msg = _("Quota '%(value)s' for %(key)s should be "
                         "integer.") % {'value': value, 'key': key}
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise webob.exc.HTTPBadRequest(explanation=msg)
 
             if force_update is False and value >= 0:

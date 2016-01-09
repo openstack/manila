@@ -257,11 +257,11 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
 
         if not unused_vols:
             # No volumes available for use as share. Warn user.
-            LOG.warn(_LW("No unused gluster volumes available for use as "
-                         "share! Create share won't be supported unless "
-                         "existing shares are deleted or some gluster "
-                         "volumes are created with names matching "
-                         "'glusterfs_volume_pattern'."))
+            LOG.warning(_LW("No unused gluster volumes available for use as "
+                            "share! Create share won't be supported unless "
+                            "existing shares are deleted or some gluster "
+                            "volumes are created with names matching "
+                            "'glusterfs_volume_pattern'."))
         else:
             LOG.info(_LI("Number of gluster volumes in use:  "
                          "%(inuse-numvols)s. Number of gluster volumes "

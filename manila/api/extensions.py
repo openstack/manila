@@ -220,11 +220,11 @@ class ExtensionManager(object):
                             'standard_extensions')
         new_contrib_path = 'manila.api.contrib.standard_extensions'
         if old_contrib_path in extensions:
-            LOG.warn(_LW('osapi_share_extension is set to deprecated path: '
-                         '%s'),
-                     old_contrib_path)
-            LOG.warn(_LW('Please set your flag or manila.conf settings for '
-                         'osapi_share_extension to: %s'), new_contrib_path)
+            LOG.warning(_LW('osapi_share_extension is set to deprecated path: '
+                            '%s.'),
+                        old_contrib_path)
+            LOG.warning(_LW('Please set your flag or manila.conf settings for '
+                            'osapi_share_extension to: %s.'), new_contrib_path)
             extensions = [e.replace(old_contrib_path, new_contrib_path)
                           for e in extensions]
 
@@ -232,9 +232,9 @@ class ExtensionManager(object):
             try:
                 self.load_extension(ext_factory)
             except Exception as exc:
-                LOG.warn(_LW('Failed to load extension %(ext_factory)s: '
-                             '%(exc)s'),
-                         {"ext_factory": ext_factory, "exc": exc})
+                LOG.warning(_LW('Failed to load extension %(ext_factory)s: '
+                                '%(exc)s.'),
+                            {"ext_factory": ext_factory, "exc": exc})
 
 
 class ControllerExtension(object):
@@ -301,9 +301,9 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
             try:
                 ext_mgr.load_extension(classpath)
             except Exception as exc:
-                logger.warn(_LW('Failed to load extension %(classpath)s: '
-                                '%(exc)s'),
-                            {"classpath": classpath, "exc": exc})
+                logger.warning(_LW('Failed to load extension %(classpath)s: '
+                                   '%(exc)s.'),
+                               {"classpath": classpath, "exc": exc})
 
         # Now, let's consider any subdirectories we may have...
         subdirs = []
@@ -326,9 +326,9 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                 try:
                     ext(ext_mgr)
                 except Exception as exc:
-                    logger.warn(_LW('Failed to load extension %(ext_name)s: '
-                                    '%(exc)s'),
-                                {"ext_name": ext_name, "exc": exc})
+                    logger.warning(_LW('Failed to load extension '
+                                       '%(ext_name)s: %(exc)s.'),
+                                   {"ext_name": ext_name, "exc": exc})
 
         # Update the list of directories we'll explore...
         dirnames[:] = subdirs

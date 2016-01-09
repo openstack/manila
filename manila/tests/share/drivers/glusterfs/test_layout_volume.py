@@ -278,7 +278,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
                          mock.Mock(return_value=self.glusterfs_volumes_dict))
         self.mock_object(self._layout, '_check_mount_glusterfs')
         self._layout.gluster_used_vols = self.glusterfs_used_vols
-        self.mock_object(layout_volume.LOG, 'warn')
+        self.mock_object(layout_volume.LOG, 'warning')
 
         self._layout.do_setup(self._context)
 

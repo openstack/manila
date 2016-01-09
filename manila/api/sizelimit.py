@@ -24,8 +24,10 @@ LOG = log.getLogger(__name__)
 
 class RequestBodySizeLimiter(sizelimit.RequestBodySizeLimiter):
     def __init__(self, *args, **kwargs):
-        LOG.warn(_LW('manila.api.sizelimit:RequestBodySizeLimiter and '
-                     'manila.api.middleware.sizelimit:RequestBodySizeLimiter '
-                     'are deprecated. Please use oslo_middleware.sizelimit: '
-                     'RequestBodySizeLimiter instead.'))
+        LOG.warning(_LW('manila.api.sizelimit:RequestBodySizeLimiter and '
+                        'manila.api.middleware.sizelimit:'
+                        'RequestBodySizeLimiter '
+                        'are deprecated. Please use '
+                        'oslo_middleware.sizelimit: '
+                        'RequestBodySizeLimiter instead.'))
         super(RequestBodySizeLimiter, self).__init__(*args, **kwargs)
