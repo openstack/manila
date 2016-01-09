@@ -77,6 +77,7 @@ CONF.register_opts(glusterfs_volume_mapped_opts)
 # Currently we handle only #{size}.
 PATTERN_DICT = {'size': {'pattern': '(?P<size>\d+)', 'trans': int}}
 USER_MANILA_SHARE = 'user.manila-share'
+USER_CLONED_FROM = 'user.manila-cloned-from'
 UUID_RE = re.compile('\A[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}\Z', re.I)
 
 
@@ -424,8 +425,27 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         volume back in the available list.
         """
         gmgr = self._share_manager(share)
+        clone_of = gmgr.get_gluster_vol_option(USER_CLONED_FROM) or ''
         try:
-            self._wipe_gluster_vol(gmgr)
+            if UUID_RE.search(clone_of):
+                # We take responsibility for the lifecycle
+                # management of those volumes which were
+                # created by us (as snapshot clones) ...
+                args = ('volume', 'delete', gmgr.volume)
+            else:
+                # ... for volumes that come from the pool, we return
+                # them to the pool (after some purification rituals)
+                self._wipe_gluster_vol(gmgr)
+                args = ('volume', 'set', gmgr.volume, USER_MANILA_SHARE,
+                        'NONE')
+            try:
+                gmgr.gluster_call(*args)
+            except exception.ProcessExecutionError as exc:
+                LOG.error(_LE("Gluster command failed: %s"), exc.stderr)
+                raise exception.GlusterfsException(
+                    _("gluster %(cmd)s failed on %(vol)s") %
+                    {'cmd': ' '.join(args), 'vol': gmgr.qualified})
+
             self._push_gluster_vol(gmgr.qualified)
         except exception.GlusterfsException:
             msg = (_LE("Error during delete_share request for "
@@ -434,15 +454,6 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             raise
 
         self.private_storage.delete(share['id'])
-
-        args = ('volume', 'set', gmgr.volume, USER_MANILA_SHARE, 'NONE')
-        try:
-            gmgr.gluster_call(*args)
-        except exception.ProcessExecutionError:
-            raise exception.GlusterfsException(
-                _("gluster %(cmd)s failed on %(vol)s") %
-                {'cmd': ' '.join(args), 'vol': gmgr.qualified})
-
         # TODO(deepakcs): Disable quota.
 
     @staticmethod
@@ -498,8 +509,11 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             for args in args_tuple:
                 out, err = old_gmgr.gluster_call(*args)
         except exception.ProcessExecutionError as exc:
-            LOG.error(_LE("Error creating share from snapshot: %s"),
-                      exc.stderr)
+            LOG.error(_LE("Error creating share from snapshot "
+                          "%(snap)s of share %(share)s: %(err)s"),
+                      {'snap': snapshot['id'],
+                       'share': snapshot['share_instance']['id'],
+                       'err': exc.stderr})
             raise exception.GlusterfsException(_("gluster %s failed") %
                                                ' '.join(args))
 
@@ -511,26 +525,25 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             {'share': share, 'manager': gmgr},
             {'share': snapshot['share_instance'], 'manager': old_gmgr})
 
-        try:
-            gmgr.gluster_call(
-                'volume', 'start', gmgr.volume)
-        except exception.ProcessExecutionError as exc:
-            msg = (_("Error starting gluster volume. "
-                     "Volume: %(volname)s, Error: %(error)s") %
-                   {'volname': gmgr.volume, 'error': exc.stderr})
-            LOG.error(msg)
-            raise exception.GlusterfsException(msg)
+        argseq = (('set',
+                   [USER_CLONED_FROM, snapshot['share_id']]),
+                  ('set', [USER_MANILA_SHARE, share['id']]),
+                  ('start', []))
+        for op, opargs in argseq:
+            args = ['volume', op, gmgr.volume] + opargs
+            try:
+                gmgr.gluster_call(*args)
+            except exception.ProcessExecutionError as exc:
+                LOG.error(_LE("Error creating share from snapshot "
+                              "%(snap)s of share %(share)s: %(err)s."),
+                          {'snap': snapshot['id'],
+                           'share': snapshot['share_instance']['id'],
+                           'err': exc.stderr})
+                raise exception.GlusterfsException(_("gluster %s failed.") %
+                                                   ' '.join(args))
 
         self.gluster_used_vols.add(gmgr.qualified)
         self.private_storage.update(share['id'], {'volume': gmgr.qualified})
-
-        args = ('volume', 'set', gmgr.volume, USER_MANILA_SHARE, share['id'])
-        try:
-            gmgr.gluster_call(*args)
-        except exception.ProcessExecutionError:
-            raise exception.GlusterfsException(
-                _("gluster %(cmd)s failed on %(vol)s") %
-                {'cmd': ' '.join(args), 'vol': gmgr.qualified})
 
         return export
 
