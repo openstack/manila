@@ -95,6 +95,9 @@ class V3StorageConnection(driver.HuaweiBase):
                                'running': fs['RUNNINGSTATUS']}))
         except Exception as err:
             if fs_id is not None:
+                qos_id = self.helper.get_qosid_by_fsid(fs_id)
+                if qos_id:
+                    self.remove_qos_fs(fs_id, qos_id)
                 self.helper._delete_fs(fs_id)
             message = (_('Failed to create share %(name)s.'
                          'Reason: %(err)s.')
@@ -106,6 +109,9 @@ class V3StorageConnection(driver.HuaweiBase):
             self.helper._create_share(share_name, fs_id, share_proto)
         except Exception as err:
             if fs_id is not None:
+                qos_id = self.helper.get_qosid_by_fsid(fs_id)
+                if qos_id:
+                    self.remove_qos_fs(fs_id, qos_id)
                 self.helper._delete_fs(fs_id)
             raise exception.InvalidShare(
                 reason=(_('Failed to create share %(name)s. Reason: %(err)s.')
@@ -277,7 +283,7 @@ class V3StorageConnection(driver.HuaweiBase):
                         self.configuration.safe_get(
                             'max_over_subscription_ratio')),
                     allocated_capacity_gb=capacity['CONSUMEDCAPACITY'],
-                    qos=False,
+                    qos=True,
                     reserved_percentage=0,
                     thin_provisioning=[True, False],
                     dedupe=[True, False],
@@ -315,6 +321,9 @@ class V3StorageConnection(driver.HuaweiBase):
             self.helper._delete_share_by_id(share_id, share_url_type)
 
         if share_fs_id:
+            qos_id = self.helper.get_qosid_by_fsid(share_fs_id)
+            if qos_id:
+                self.remove_qos_fs(share_fs_id, qos_id)
             self.helper._delete_fs(share_fs_id)
 
         return share
@@ -498,12 +507,16 @@ class V3StorageConnection(driver.HuaweiBase):
         smartx_opts = constants.OPTS_CAPABILITIES
         if opts is not None:
             smart = smartx.SmartX()
-            smartx_opts = smart.get_smartx_extra_specs_opts(opts)
+            smartx_opts, qos = smart.get_smartx_extra_specs_opts(opts)
 
         fileParam = self._init_filesys_para(share, poolinfo, smartx_opts)
         fsid = self.helper._create_filesystem(fileParam)
 
         try:
+            if qos:
+                smart_qos = smartx.SmartQos(self.helper)
+                smart_qos.create_qos(qos, fsid)
+
             smartpartition = smartx.SmartPartition(self.helper)
             smartpartition.add(opts, fsid)
 
@@ -511,6 +524,9 @@ class V3StorageConnection(driver.HuaweiBase):
             smartcache.add(opts, fsid)
         except Exception as err:
             if fsid is not None:
+                qos_id = self.helper.get_qosid_by_fsid(fsid)
+                if qos_id:
+                    self.remove_qos_fs(fsid, qos_id)
                 self.helper._delete_fs(fsid)
             message = (_('Failed to add smartx. Reason: %(err)s.')
                        % {'err': err})
@@ -651,7 +667,7 @@ class V3StorageConnection(driver.HuaweiBase):
         smartx_opts = constants.OPTS_CAPABILITIES
         if opts is not None:
             smart = smartx.SmartX()
-            smartx_opts = smart.get_smartx_extra_specs_opts(opts)
+            smartx_opts, qos = smart.get_smartx_extra_specs_opts(opts)
 
         old_compression = fs['COMPRESSION']
         new_compression = smartx_opts['compression']
@@ -755,6 +771,17 @@ class V3StorageConnection(driver.HuaweiBase):
                           "old_compression": old_compression,
                           "new_compression": new_compression})
                 LOG.info(msg)
+
+    def remove_qos_fs(self, fs_id, qos_id):
+        fs_list = self.helper.get_fs_list_in_qos(qos_id)
+        fs_count = len(fs_list)
+        if fs_count <= 1:
+            qos = smartx.SmartQos(self.helper)
+            qos.delete_qos(qos_id)
+        else:
+            self.helper.remove_fs_from_qos(fs_id,
+                                           fs_list,
+                                           qos_id)
 
     def _get_location_path(self, share_name, share_proto, ip=None):
         location = None

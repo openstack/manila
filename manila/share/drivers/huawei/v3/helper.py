@@ -14,6 +14,7 @@
 #    under the License.
 
 import base64
+import time
 from xml.etree import ElementTree as ET
 
 from oslo_log import log
@@ -811,6 +812,161 @@ class RestHelper(object):
 
         self._assert_rest_result(result, _('Add filesystem to cache error.'))
 
+    def get_qos(self):
+        url = "/ioclass"
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get QoS information error.'))
+        return result
+
+    def find_available_qos(self, qos):
+        """"Find available QoS on the array."""
+        qos_id = None
+        fs_list = []
+        result = self.get_qos()
+
+        if 'data' in result:
+            for item in result['data']:
+                qos_flag = 0
+                for key in qos:
+                    if ((key not in item)
+                            or qos[key] != item[key]
+                            or int(item[key]) == 0):
+                        break
+                    qos_flag = qos_flag + 1
+
+                fs_num = len(item['FSLIST'].split(","))
+                # We use this QoS only if the filesystems in it is less
+                # than 64, else we cannot add filesystem to this QoS any more.
+                if (item['RUNNINGSTATUS'] == constants.STATUS_QOS_ACTIVE
+                        and fs_num < constants.MAX_FS_NUM_IN_QOS
+                        and constants.QOS_NAME_PREFIX in item['NAME']
+                        and item['LUNLIST'] == '[""]'
+                        and qos_flag == len(qos)):
+                    qos_id = item['ID']
+                    fs_list = item['FSLIST']
+                    break
+        return (qos_id, fs_list)
+
+    def add_share_to_qos(self, qos_id, fs_id, fs_list):
+        """Add filesystem to QoS."""
+        url = "/ioclass/" + qos_id
+        new_fs_list = []
+        fs_list_string = fs_list[1:-1]
+        for fs_string in fs_list_string.split(","):
+            tmp_fs_id = fs_string[1:-1]
+            if '' != tmp_fs_id and tmp_fs_id != fs_id:
+                new_fs_list.append(tmp_fs_id)
+
+        new_fs_list.append(fs_id)
+
+        data = jsonutils.dumps({"FSLIST": new_fs_list,
+                                "TYPE": 230,
+                                "ID": qos_id})
+        result = self.call(url, data, "PUT")
+        msg = _('Associate filesystem to Qos error.')
+        self._assert_rest_result(result, msg)
+
+    def create_qos_policy(self, qos, fs_id):
+        # Get local time.
+        localtime = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+        # Package QoS name.
+        qos_name = constants.QOS_NAME_PREFIX + fs_id + '_' + localtime
+
+        mergedata = {
+            "TYPE": "230",
+            "NAME": qos_name,
+            "FSLIST": ["%s" % fs_id],
+            "CLASSTYPE": "1",
+            "SCHEDULEPOLICY": "2",
+            "SCHEDULESTARTTIME": "1410969600",
+            "STARTTIME": "08:00",
+            "DURATION": "86400",
+            "CYCLESET": "[1,2,3,4,5,6,0]",
+        }
+        mergedata.update(qos)
+        data = jsonutils.dumps(mergedata)
+        url = "/ioclass"
+
+        result = self.call(url, data)
+        self._assert_rest_result(result, _('Create QoS policy error.'))
+
+        return result['data']['ID']
+
+    def activate_deactivate_qos(self, qos_id, enablestatus):
+        """Activate or deactivate QoS.
+
+        enablestatus: true (activate)
+        enablestatus: false (deactivate)
+        """
+        url = "/ioclass/active/" + qos_id
+        data = jsonutils.dumps({
+            "TYPE": 230,
+            "ID": qos_id,
+            "ENABLESTATUS": enablestatus})
+        result = self.call(url, data, "PUT")
+        self._assert_rest_result(
+            result, _('Activate or deactivate QoS error.'))
+
+    def change_fs_priority_high(self, fs_id):
+        """Change fs priority to high."""
+        url = "/filesystem/" + fs_id
+        data = jsonutils.dumps({"IOPRIORITY": "3"})
+
+        result = self.call(url, data, "PUT")
+        self._assert_rest_result(
+            result, _('Change filesystem priority error.'))
+
+    def delete_qos_policy(self, qos_id):
+        """Delete a QoS policy."""
+        url = "/ioclass/" + qos_id
+        data = jsonutils.dumps({"TYPE": "230",
+                                "ID": qos_id})
+
+        result = self.call(url, data, 'DELETE')
+        self._assert_rest_result(result, _('Delete QoS policy error.'))
+
+    def get_qosid_by_fsid(self, fs_id):
+        """Get QoS id by fs id."""
+        url = "/filesystem/" + fs_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(
+            result, _('Get QoS id by filesystem id error.'))
+
+        return result['data']['IOCLASSID']
+
+    def get_fs_list_in_qos(self, qos_id):
+        """Get the filesystem list in QoS."""
+        qos_info = self.get_qos_info(qos_id)
+
+        fs_list = []
+        fs_string = qos_info['FSLIST'][1:-1]
+
+        for fs in fs_string.split(","):
+            fs_id = fs[1:-1]
+            fs_list.append(fs_id)
+
+        return fs_list
+
+    def get_qos_info(self, qos_id):
+        """Get QoS information."""
+        url = "/ioclass/" + qos_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get QoS information error.'))
+
+        return result['data']
+
+    def remove_fs_from_qos(self, fs_id, fs_list, qos_id):
+        """Remove filesystem from QoS."""
+        fs_list = [i for i in fs_list if i != fs_id]
+        url = "/ioclass/" + qos_id
+        data = jsonutils.dumps({"FSLIST": fs_list,
+                                "TYPE": 230,
+                                "ID": qos_id})
+        result = self.call(url, data, "PUT")
+
+        msg = _('Remove filesystem from QoS error.')
+        self._assert_rest_result(result, msg)
+
     def _remove_fs_from_cache(self, fs_id, cache_id):
         url = "/SMARTCACHEPARTITION/REMOVE_ASSOCIATE"
         data = jsonutils.dumps({"ID": cache_id,
@@ -1094,3 +1250,9 @@ class RestHelper(object):
             return True, result['LDAPSERVER']
 
         return False, None
+
+    def find_array_version(self):
+        url = "/system/"
+        result = self.call(url, None)
+        self._assert_rest_result(result, _('Find array version error.'))
+        return result['data']['PRODUCTVERSION']

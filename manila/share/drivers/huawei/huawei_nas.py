@@ -54,6 +54,7 @@ class HuaweiNasDriver(driver.ShareDriver):
               Support multi pools in one backend.
         1.2 - Add share server support.
               Add ensure share.
+              Add QoS support.
     """
 
     def __init__(self, *args, **kwargs):
@@ -175,6 +176,7 @@ class HuaweiNasDriver(driver.ShareDriver):
             vendor_name='Huawei',
             driver_version='1.2',
             storage_protocol='NFS_CIFS',
+            qos=True,
             total_capacity_gb=0.0,
             free_capacity_gb=0.0)
 

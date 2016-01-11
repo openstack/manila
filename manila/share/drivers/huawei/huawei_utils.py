@@ -72,6 +72,6 @@ def _get_opts_from_specs(specs):
         if ((scope in constants.OPTS_CAPABILITIES) and
                 (key in constants.OPTS_VALUE)):
             if ((scope in constants.OPTS_ASSOCIATE) and
-                    (constants.OPTS_ASSOCIATE[scope] == key)):
+                    (key in constants.OPTS_ASSOCIATE[scope])):
                 opts[key] = value
     return opts

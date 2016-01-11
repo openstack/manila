@@ -81,6 +81,8 @@ def filesystem(method, data, fs_status_flag):
             data = """{"error":{"code":0},
                 "data":{"ID":"4",
                 "CAPACITY":"8388608"}}"""
+        elif data == """{"IOPRIORITY": "3"}""":
+            data = """{"error":{"code":0}}"""
     elif method == "DELETE":
         data = """{"error":{"code":0}}"""
     elif method == "GET":
@@ -94,7 +96,8 @@ def filesystem(method, data, fs_status_flag):
                 "ENABLECOMPRESSION":"false",
                 "ENABLEDEDUP":"false",
                 "CACHEPARTITIONID":"",
-                "SMARTCACHEPARTITIONID":""}}"""
+                "SMARTCACHEPARTITIONID":"",
+                "IOCLASSID":"11"}}"""
         else:
             data = """{"error":{"code":0},
                     "data":{"HEALTHSTATUS":"0",
@@ -105,7 +108,8 @@ def filesystem(method, data, fs_status_flag):
                     "ENABLECOMPRESSION":"false",
                     "ENABLEDEDUP":"false",
                     "CACHEPARTITIONID":"",
-                    "SMARTCACHEPARTITIONID":""}}"""
+                    "SMARTCACHEPARTITIONID":"",
+                    "IOCLASSID":"11"}}"""
     else:
         data = '{"error":{"code":31755596}}'
     return (data, extend_share_flag, shrink_share_flag)
@@ -148,7 +152,8 @@ def filesystem_thick(method, data, fs_status_flag):
                 "ENABLECOMPRESSION":"false",
                 "ENABLEDEDUP":"false",
                 "CACHEPARTITIONID":"",
-                "SMARTCACHEPARTITIONID":""}}"""
+                "SMARTCACHEPARTITIONID":"",
+                "IOCLASSID":"11"}}"""
         else:
             data = """{"error":{"code":0},
                     "data":{"HEALTHSTATUS":"0",
@@ -159,7 +164,8 @@ def filesystem_thick(method, data, fs_status_flag):
                     "ENABLECOMPRESSION":"false",
                     "ENABLEDEDUP":"false",
                     "CACHEPARTITIONID":"",
-                    "SMARTCACHEPARTITIONID":""}}"""
+                    "SMARTCACHEPARTITIONID":"",
+                    "IOCLASSID":"11"}}"""
     else:
         data = '{"error":{"code":31755596}}'
     return (data, extend_share_flag, shrink_share_flag)
@@ -211,7 +217,8 @@ def filesystem_inpartition(method, data, fs_status_flag):
                 "ENABLECOMPRESSION":"false",
                 "ENABLEDEDUP":"false",
                 "CACHEPARTITIONID":"1",
-                "SMARTCACHEPARTITIONID":"1"}}"""
+                "SMARTCACHEPARTITIONID":"1",
+                "IOCLASSID":"11"}}"""
         else:
             data = """{"error":{"code":0},
                     "data":{"HEALTHSTATUS":"0",
@@ -222,7 +229,8 @@ def filesystem_inpartition(method, data, fs_status_flag):
                     "ENABLECOMPRESSION":"false",
                     "ENABLEDEDUP":"false",
                     "CACHEPARTITIONID":"1",
-                    "SMARTCACHEPARTITIONID":"1"}}"""
+                    "SMARTCACHEPARTITIONID":"1",
+                    "IOCLASSID":"11"}}"""
     else:
         data = '{"error":{"code":31755596}}'
     return (data, extend_share_flag, shrink_share_flag)
@@ -270,6 +278,19 @@ def dec_driver_handles_share_servers(func):
         self.driver.plugin.helper.login()
         return func(*args, **kw)
     return wrapper
+
+
+def QoS_response(method):
+    if method == "GET":
+        data = """{"error":{"code":0},
+                    "data":[{"NAME": "OpenStack_Fake_QoS", "MAXIOPS": "100",
+                    "FSLIST": 4, "LUNLIST": ""}]}"""
+    elif method == "PUT":
+        data = """{"error":{"code":0}}"""
+    else:
+        data = """{"error":{"code":0},
+                    "data":{"ID": "11"}}"""
+    return data
 
 
 class FakeHuaweiNasHelper(helper.RestHelper):
@@ -336,11 +357,29 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "NAME":"OpenStack_Pool",
                     "USERTOTALCAPACITY":"4194304",
                     "USAGETYPE":"2",
+                    "USERCONSUMEDCAPACITY":"2097152"},
+                    {"USERFREECAPACITY":"2097152",
+                    "ID":"2",
+                    "NAME":"OpenStack_Pool_Thick",
+                    "USERTOTALCAPACITY":"4194304",
+                    "USAGETYPE":"2",
                     "USERCONSUMEDCAPACITY":"2097152"}]}"""
 
             if url == "/filesystem":
                 data = """{"error":{"code":0},"data":{
                             "ID":"4"}}"""
+
+            if url == "/system/":
+                data = """{"error":{"code":0},
+                    "data":{"PRODUCTVERSION": "V300R003C10"}}"""
+
+            if url == "/ioclass" or url == "/ioclass/11":
+                data = QoS_response(method)
+
+            if url == "/ioclass/active/11":
+                data = """{"error":{"code":0},
+                    "data":[{"ID": "11", "MAXIOPS": "100",
+                    "FSLIST": ""}]}"""
 
             if url == "/NFSHARE" or url == "/CIFSHARE":
                 if self.create_share_flag:
@@ -1361,6 +1400,106 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare,
                           self.driver.create_share,
                           self._context,
+                          self.share_nfs_thick,
+                          self.share_server)
+
+    @ddt.data({"fake_extra_specs_qos": {"qos:maxIOPS": "100",
+                                        "qos:minIOPS": "50"},
+               "fake_qos_info": {"MAXIOPS": "100", "MINIOPS": "50",
+                                 "NAME": "OpenStack_fake_qos"}},
+              {"fake_extra_specs_qos": {"qos:maxIOPS": "100",
+                                        "qos:minIOPS": "50"},
+               "fake_qos_info": {"NAME": "fake_qos", "MAXIOPS": "100"}})
+    @ddt.unpack
+    def test_create_share_with_qos(self, fake_extra_specs_qos, fake_qos_info):
+        fake_share_type_id = 'fooid-2'
+        fake_extra_specs = {"capabilities:qos": "<is> True"}
+        fake_extra_specs.update(fake_extra_specs_qos)
+
+        fake_type_error_extra = {
+            'test_with_extra': {
+                'created_at': 'fake_time',
+                'deleted': '0',
+                'deleted_at': None,
+                'extra_specs': fake_extra_specs,
+                'required_extra_specs': {},
+                'id': fake_share_type_id,
+                'name': 'test_with_extra',
+                'updated_at': None
+            }
+        }
+
+        fake_qos_info_respons = {
+            "error": {
+                "code": 0
+            },
+            "data": [{
+                "ID": "11",
+                "FSLIST": u'["1", "2", "3", "4"]',
+                "LUNLIST": '[""]',
+                "RUNNINGSTATUS": "2",
+            }]
+        }
+
+        fake_qos_info_respons["data"][0].update(fake_qos_info)
+        share_type = fake_type_error_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.mock_object(helper.RestHelper,
+                         'get_qos',
+                         mock.Mock(return_value=fake_qos_info_respons))
+
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+
+    @ddt.data({'capabilities:qos': '<is> True',
+               'qos:maxIOPS': -1},
+              {'capabilities:qos': '<is> True',
+               'qos:IOTYPE': 4},
+              {'capabilities:qos': '<is> True',
+               'qos:IOTYPE': 100},
+              {'capabilities:qos': '<is> True',
+               'qos:maxIOPS': 0},
+              {'capabilities:qos': '<is> True',
+               'qos:minIOPS': 0},
+              {'capabilities:qos': '<is> True',
+               'qos:minBandWidth': 0},
+              {'capabilities:qos': '<is> True',
+               'qos:maxBandWidth': 0},
+              {'capabilities:qos': '<is> True',
+               'qos:latency': 0})
+    def test_create_share_with_invalid_qos(self, fake_extra_specs):
+        fake_share_type_id = 'fooid-2'
+        fake_type_error_extra = {
+            'test_with_extra': {
+                'created_at': 'fake_time',
+                'deleted': '0',
+                'deleted_at': None,
+                'extra_specs': fake_extra_specs,
+                'required_extra_specs': {},
+                'id': fake_share_type_id,
+                'name': 'test_with_extra',
+                'updated_at': None
+            }
+        }
+
+        share_type = fake_type_error_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share,
+                          self._context,
                           self.share_nfs,
                           self.share_server)
 
@@ -1460,12 +1599,27 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.share_nfs,
                           self.share_server)
 
-    def test_delete_share_nfs_success(self):
+    @ddt.data({"share_proto": "NFS",
+               "fake_qos_info_respons": {"ID": "11", "MAXIOPS": "100",
+                                         "IOType": "2",
+                                         "FSLIST": u'["0", "1", "4"]'}},
+              {"share_proto": "CIFS",
+               "fake_qos_info_respons": {"ID": "11", "MAXIOPS": "100",
+                                         "IOType": "2", "FSLIST": u'["4"]',
+                                         "RUNNINGSTATUS": "2"}})
+    @ddt.unpack
+    def test_delete_share_success(self, share_proto, fake_qos_info_respons):
         self.driver.plugin.helper.login()
         self.driver.plugin.helper.delete_flag = False
-        self.driver.delete_share(self._context,
-                                 self.share_nfs, self.share_server)
-        self.assertTrue(self.driver.plugin.helper.delete_flag)
+        if share_proto == 'NFS':
+            share = self.share_nfs
+        else:
+            share = self.share_cifs
+        with mock.patch.object(helper.RestHelper, 'get_qos_info',
+                               return_value=fake_qos_info_respons):
+            self.driver.delete_share(self._context,
+                                     share, self.share_server)
+            self.assertTrue(self.driver.plugin.helper.delete_flag)
 
     def test_check_snapshot_id_exist_fail(self):
         snapshot_id = "4"
@@ -1484,8 +1638,19 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertTrue(self.driver.plugin.helper.delete_flag)
 
     def test_delete_share_cifs_success(self):
-        self.driver.plugin.helper.login()
         self.driver.plugin.helper.delete_flag = False
+
+        fake_qos_info_respons = {
+            "ID": "11",
+            "FSLIST": u'["1", "2", "3", "4"]',
+            "LUNLIST": '[""]',
+            "RUNNINGSTATUS": "2",
+        }
+
+        self.mock_object(helper.RestHelper,
+                         'get_qos_info',
+                         mock.Mock(return_value=fake_qos_info_respons))
+        self.driver.plugin.helper.login()
         self.driver.delete_share(self._context, self.share_cifs,
                                  self.share_server)
         self.assertTrue(self.driver.plugin.helper.delete_flag)
@@ -1527,7 +1692,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         expected['reserved_percentage'] = 0
         expected['total_capacity_gb'] = 0.0
         expected['free_capacity_gb'] = 0.0
-        expected['qos'] = False
+        expected['qos'] = True
         expected["snapshot_support"] = False
         expected["pools"] = []
         pool = dict(
@@ -1535,7 +1700,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             total_capacity_gb=2.0,
             free_capacity_gb=1.0,
             allocated_capacity_gb=1.0,
-            qos=False,
+            qos=True,
             reserved_percentage=0,
             compression=[True, False],
             dedupe=[True, False],

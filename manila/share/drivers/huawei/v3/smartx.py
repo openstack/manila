@@ -13,10 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import excutils
 from oslo_utils import strutils
 
 from manila import exception
 from manila.i18n import _
+from manila.share.drivers.huawei import constants
 
 
 class SmartPartition(object):
@@ -60,6 +62,49 @@ class SmartCache(object):
         self.helper._add_fs_to_cache(fsid, cache_id)
 
 
+class SmartQos(object):
+    def __init__(self, helper):
+        self.helper = helper
+
+    def create_qos(self, qos, fs_id):
+        policy_id = None
+        try:
+            # Check QoS priority.
+            if self._check_qos_high_priority(qos):
+                self.helper.change_fs_priority_high(fs_id)
+            # Create QoS policy and activate it.
+            version = self.helper.find_array_version()
+            if version >= constants.ARRAY_VERSION:
+                (qos_id, fs_list) = self.helper.find_available_qos(qos)
+                if qos_id is not None:
+                    self.helper.add_share_to_qos(qos_id, fs_id, fs_list)
+                else:
+                    policy_id = self.helper.create_qos_policy(qos, fs_id)
+                    self.helper.activate_deactivate_qos(policy_id, True)
+            else:
+                policy_id = self.helper.create_qos_policy(qos, fs_id)
+                self.helper.activate_deactivate_qos(policy_id, True)
+        except exception.InvalidInput:
+            with excutils.save_and_reraise_exception():
+                if policy_id is not None:
+                    self.helper.delete_qos_policy(policy_id)
+
+    def _check_qos_high_priority(self, qos):
+        """Check QoS priority."""
+        for key, value in qos.items():
+            if (key.find('MIN') == 0) or (key.find('LATENCY') == 0):
+                return True
+
+        return False
+
+    def delete_qos(self, qos_id):
+        qos_info = self.helper.get_qos_info(qos_id)
+        qos_status = qos_info['RUNNINGSTATUS']
+        if qos_status == constants.STATUS_QOS_ACTIVE:
+            self.helper.activate_deactivate_qos(qos_id, False)
+        self.helper.delete_qos_policy(qos_id)
+
+
 class SmartX(object):
     def get_smartx_extra_specs_opts(self, opts):
         opts = self.get_capabilities_opts(opts, 'dedupe')
@@ -67,7 +112,8 @@ class SmartX(object):
         opts = self.get_smartprovisioning_opts(opts)
         opts = self.get_smartcache_opts(opts)
         opts = self.get_smartpartition_opts(opts)
-        return opts
+        qos = self.get_qos_opts(opts)
+        return opts, qos
 
     def get_capabilities_opts(self, opts, key):
         if strutils.bool_from_string(opts[key]):
@@ -106,3 +152,24 @@ class SmartX(object):
             opts['partitionname'] = None
 
         return opts
+
+    def get_qos_opts(self, opts):
+        qos = {}
+        if not strutils.bool_from_string(opts.get('qos')):
+            return
+
+        for key, value in opts.items():
+            if (key in constants.OPTS_QOS_VALUE) and value is not None:
+                if (key.upper() != 'IOTYPE') and (int(value) <= 0):
+                    err_msg = (_('QoS config is wrong. %(key)s'
+                                 ' must be set greater than 0.')
+                               % {'key': key})
+                    raise exception.InvalidInput(reason=err_msg)
+                elif ((key.upper() == 'IOTYPE')
+                        and (value not in ['0', '1', '2'])):
+                    raise exception.InvalidInput(
+                        reason=(_('Illegal value specified for IOTYPE: '
+                                  'set to either 0, 1, or 2.')))
+                else:
+                    qos[key.upper()] = value
+        return qos
