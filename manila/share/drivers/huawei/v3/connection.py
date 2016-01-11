@@ -236,38 +236,36 @@ class V3StorageConnection(driver.HuaweiBase):
         all_pool_info = self.helper._find_all_pool_info()
         stats_dict["pools"] = []
 
-        for pool_type in ('Thin', 'Thick'):
-            pool_name_list = root.findtext(('Filesystem/%s_StoragePool'
-                                            % pool_type))
-            pool_name_list = pool_name_list.split(";")
-            for pool_name in pool_name_list:
-                pool_name = pool_name.strip().strip('\n')
-                capacity = self._get_capacity(pool_name, all_pool_info)
-                if capacity:
-                    pool = dict(
-                        pool_name=pool_name,
-                        total_capacity_gb=capacity['TOTALCAPACITY'],
-                        free_capacity_gb=capacity['CAPACITY'],
-                        provisioned_capacity_gb=(
-                            capacity['PROVISIONEDCAPACITYGB']),
-                        max_over_subscription_ratio=(
-                            self.configuration.safe_get(
-                                'max_over_subscription_ratio')),
-                        allocated_capacity_gb=capacity['CONSUMEDCAPACITY'],
-                        QoS_support=False,
-                        reserved_percentage=0,
-                        thin_provisioning=(pool_type == 'Thin'),
-                        dedupe=(pool_type == 'Thin'),
-                        compression=(pool_type == 'Thin'),
-                        huawei_smartcache=True,
-                        huawei_smartpartition=True,
-                    )
-                    stats_dict["pools"].append(pool)
+        pool_name_list = root.findtext('Filesystem/StoragePool')
+        pool_name_list = pool_name_list.split(";")
+        for pool_name in pool_name_list:
+            pool_name = pool_name.strip().strip('\n')
+            capacity = self._get_capacity(pool_name, all_pool_info)
+            if capacity:
+                pool = dict(
+                    pool_name=pool_name,
+                    total_capacity_gb=capacity['TOTALCAPACITY'],
+                    free_capacity_gb=capacity['CAPACITY'],
+                    provisioned_capacity_gb=(
+                        capacity['PROVISIONEDCAPACITYGB']),
+                    max_over_subscription_ratio=(
+                        self.configuration.safe_get(
+                            'max_over_subscription_ratio')),
+                    allocated_capacity_gb=capacity['CONSUMEDCAPACITY'],
+                    QoS_support=False,
+                    reserved_percentage=0,
+                    thin_provisioning=[True, False],
+                    dedupe=[True, False],
+                    compression=[True, False],
+                    huawei_smartcache=[True, False],
+                    huawei_smartpartition=[True, False],
+                )
+                stats_dict["pools"].append(pool)
 
         if not stats_dict["pools"]:
             err_msg = _("The StoragePool is None.")
             LOG.error(err_msg)
-            raise exception.InvalidInput(err_msg)
+            raise exception.InvalidInput(reason=err_msg)
 
     def delete_share(self, share, share_server=None):
         """Delete share."""
@@ -323,8 +321,7 @@ class V3StorageConnection(driver.HuaweiBase):
         fileparam = {
             "NAME": name.replace("-", "_"),
             "DESCRIPTION": "",
-            "ALLOCTYPE": (1 if poolinfo['type'] == 'Thin'
-                          else 0),
+            "ALLOCTYPE": constants.ALLOC_TYPE_THIN_FLAG,
             "CAPACITY": size,
             "PARENTID": poolinfo['ID'],
             "INITIALALLOCCAPACITY": units.Ki * 20,
@@ -339,6 +336,25 @@ class V3StorageConnection(driver.HuaweiBase):
             "ENABLEDEDUP": extra_specs['dedupe'],
             "ENABLECOMPRESSION": extra_specs['compression'],
         }
+
+        if 'LUNType' in extra_specs:
+            fileparam['ALLOCTYPE'] = extra_specs['LUNType']
+        else:
+            root = self.helper._read_xml()
+            fstype = root.findtext('Filesystem/AllocType')
+            if fstype:
+                fstype = fstype.strip().strip('\n')
+                if fstype == 'Thin':
+                    fileparam['ALLOCTYPE'] = constants.ALLOC_TYPE_THIN_FLAG
+                elif fstype == 'Thick':
+                    fileparam['ALLOCTYPE'] = constants.ALLOC_TYPE_THICK_FLAG
+                else:
+                    err_msg = (_(
+                        'Config file is wrong. AllocType type must be set to'
+                        ' "Thin" or "Thick". AllocType:%(fetchtype)s') %
+                        {'fetchtype': fstype})
+                    LOG.error(err_msg)
+                    raise exception.InvalidShare(reason=err_msg)
 
         if fileparam['ALLOCTYPE'] == 0:
             if (extra_specs['dedupe'] or
@@ -619,15 +635,12 @@ class V3StorageConnection(driver.HuaweiBase):
         else:
             opts['thin_provisioning'] = constants.ALLOC_TYPE_THICK
 
-        if (fs['ALLOCTYPE'] != poolinfo['type']
-                or fs['ALLOCTYPE'] != opts['thin_provisioning']):
-            msg = (_("Manage existing share fs type and pool type "
-                     "or fs type and new_share_type mismatch. "
-                     "fs type is: %(fs_type)s, pool type is: "
-                     "%(pool_type)s, new_share_type is: "
-                     "%(new_share_type)s")
+        if fs['ALLOCTYPE'] != opts['thin_provisioning']:
+            msg = (_("Manage existing share "
+                     "fs type and new_share_type mismatch. "
+                     "fs type is: %(fs_type)s, "
+                     "new_share_type is: %(new_share_type)s")
                    % {"fs_type": fs['ALLOCTYPE'],
-                      "pool_type": poolinfo['type'],
                       "new_share_type": opts['thin_provisioning']})
             raise exception.InvalidHost(reason=msg)
         else:
@@ -761,8 +774,7 @@ class V3StorageConnection(driver.HuaweiBase):
         username = root.findtext('Storage/UserName')
         pwd = root.findtext('Storage/UserPassword')
         product = root.findtext('Storage/Product')
-        thin_pool_node = root.findtext('Filesystem/Thin_StoragePool')
-        thick_pool_node = root.findtext('Filesystem/Thick_StoragePool')
+        pool_node = root.findtext('Filesystem/StoragePool')
 
         if product != "V3":
             err_msg = (_(
@@ -778,10 +790,10 @@ class V3StorageConnection(driver.HuaweiBase):
             LOG.error(err_msg)
             raise exception.InvalidInput(err_msg)
 
-        if (not thin_pool_node) and (not thick_pool_node):
+        if not pool_node:
             err_msg = (_(
                 'check_conf_file: Config file invalid. '
-                'Thin_StoragePool or Thick_StoragePool must be set.'))
+                'StoragePool must be set.'))
             LOG.error(err_msg)
             raise exception.InvalidInput(err_msg)
 

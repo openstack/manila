@@ -337,12 +337,6 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "NAME":"OpenStack_Pool",
                     "USERTOTALCAPACITY":"4194304",
                     "USAGETYPE":"2",
-                    "USERCONSUMEDCAPACITY":"2097152"},
-                    {"USERFREECAPACITY":"2097152",
-                    "ID":"2",
-                    "NAME":"OpenStack_Pool_Thick",
-                    "USERTOTALCAPACITY":"4194304",
-                    "USAGETYPE":"2",
                     "USERCONSUMEDCAPACITY":"2097152"}]}"""
 
             if url == "/filesystem":
@@ -1028,6 +1022,17 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.driver.get_backend_driver)
 
+    def test_create_share_nfs_alloctype_fail(self):
+        self.recreate_fake_conf_file(alloctype_value='alloctype_fail')
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidShare,
+                          self.driver.create_share,
+                          self._context,
+                          self.share_nfs,
+                          self.share_server)
+
     def test_create_share_storagepool_not_exist(self):
         self.driver.plugin.helper.login()
         self.assertRaises(exception.InvalidHost,
@@ -1095,6 +1100,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
                          'share_type_get',
                          mock.Mock(return_value=share_type))
         self.driver.plugin.helper.login()
+        self.recreate_fake_conf_file(alloctype_value='Thin')
         self.driver.plugin.configuration.manila_huawei_conf_file = (
             self.fake_conf_file)
         self.driver.plugin.helper.login()
@@ -1195,6 +1201,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.mock_object(db,
                          'share_type_get',
                          mock.Mock(return_value=share_type))
+        self.recreate_fake_conf_file(alloctype_value='Thin')
         self.driver.plugin.configuration.manila_huawei_conf_file = (
             self.fake_conf_file)
         self.driver.plugin.helper.login()
@@ -1237,7 +1244,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare,
                           self.driver.create_share,
                           self._context,
-                          self.share_nfs_thick,
+                          self.share_nfs,
                           self.share_server)
 
     def test_create_share_cache_not_exist(self):
@@ -1400,38 +1407,22 @@ class HuaweiShareDriverTestCase(test.TestCase):
         expected['QoS_support'] = False
         expected["snapshot_support"] = False
         expected["pools"] = []
-        pool_thin = dict(
+        pool = dict(
             pool_name='OpenStack_Pool',
             total_capacity_gb=2.0,
             free_capacity_gb=1.0,
             allocated_capacity_gb=1.0,
             QoS_support=False,
             reserved_percentage=0,
-            compression=True,
-            dedupe=True,
+            compression=[True, False],
+            dedupe=[True, False],
             max_over_subscription_ratio=1,
             provisioned_capacity_gb=1.0,
-            thin_provisioning=True,
-            huawei_smartcache=True,
-            huawei_smartpartition=True,
+            thin_provisioning=[True, False],
+            huawei_smartcache=[True, False],
+            huawei_smartpartition=[True, False],
         )
-        pool_thick = dict(
-            pool_name='OpenStack_Pool_Thick',
-            total_capacity_gb=2.0,
-            free_capacity_gb=1.0,
-            allocated_capacity_gb=1.0,
-            QoS_support=False,
-            reserved_percentage=0,
-            compression=False,
-            dedupe=False,
-            max_over_subscription_ratio=1,
-            provisioned_capacity_gb=1.0,
-            thin_provisioning=False,
-            huawei_smartcache=True,
-            huawei_smartpartition=True,
-        )
-        expected["pools"].append(pool_thin)
-        expected["pools"].append(pool_thick)
+        expected["pools"].append(pool)
         self.assertEqual(expected, self.driver._stats)
 
     def test_allow_access_proto_fail(self):
@@ -1991,6 +1982,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
                               product_flag=True, username_flag=True,
                               pool_node_flag=True, timeout_flag=True,
                               wait_interval_flag=True,
+                              alloctype_value='Thick',
                               multi_url=False,
                               logical_port_ip='100.115.10.68'):
         doc = xml.dom.minidom.Document()
@@ -2042,19 +2034,12 @@ class HuaweiShareDriverTestCase(test.TestCase):
         lun = doc.createElement('Filesystem')
         config.appendChild(lun)
 
-        thin_storagepool = doc.createElement('Thin_StoragePool')
+        storagepool = doc.createElement('StoragePool')
         if pool_node_flag:
             pool_text = doc.createTextNode('OpenStack_Pool;OpenStack_Pool2; ;')
         else:
             pool_text = doc.createTextNode('')
-        thin_storagepool.appendChild(pool_text)
-
-        thick_storagepool = doc.createElement('Thick_StoragePool')
-        if pool_node_flag:
-            pool_text = doc.createTextNode('OpenStack_Pool_Thick')
-        else:
-            pool_text = doc.createTextNode('')
-        thick_storagepool.appendChild(pool_text)
+        storagepool.appendChild(pool_text)
 
         timeout = doc.createElement('Timeout')
 
@@ -2071,10 +2056,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
             waitinterval_text = doc.createTextNode('')
         waitinterval.appendChild(waitinterval_text)
 
+        alloctype = doc.createElement('AllocType')
+        alloctype_text = doc.createTextNode(alloctype_value)
+        alloctype.appendChild(alloctype_text)
+
         lun.appendChild(timeout)
+        lun.appendChild(alloctype)
         lun.appendChild(waitinterval)
-        lun.appendChild(thin_storagepool)
-        lun.appendChild(thick_storagepool)
+        lun.appendChild(storagepool)
 
         prefetch = doc.createElement('Prefetch')
         prefetch.setAttribute('Type', '0')
@@ -2088,6 +2077,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
     def recreate_fake_conf_file(self, product_flag=True, username_flag=True,
                                 pool_node_flag=True, timeout_flag=True,
                                 wait_interval_flag=True,
+                                alloctype_value='Thick',
                                 multi_url=False,
                                 logical_port_ip='100.115.10.68'):
         self.tmp_dir = tempfile.mkdtemp()
@@ -2096,6 +2086,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.create_fake_conf_file(self.fake_conf_file, product_flag,
                                    username_flag, pool_node_flag,
                                    timeout_flag, wait_interval_flag,
-                                   multi_url,
+                                   alloctype_value, multi_url,
                                    logical_port_ip)
         self.addCleanup(os.remove, self.fake_conf_file)
