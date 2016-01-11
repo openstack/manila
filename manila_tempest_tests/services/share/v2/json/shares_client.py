@@ -377,16 +377,16 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
-    def _get_access_action_name(self, version):
+    def _get_access_action_name(self, version, action):
         if utils.is_microversion_gt(version, "2.6"):
-            return 'allow_access'
-        return 'os-allow_access'
+            return action.split('os-')[-1]
+        return action
 
     def create_access_rule(self, share_id, access_type="ip",
                            access_to="0.0.0.0", access_level=None,
                            version=LATEST_MICROVERSION, action_name=None):
         post_body = {
-            self._get_access_action_name(version): {
+            self._get_access_action_name(version, 'os-allow_access'): {
                 "access_type": access_type,
                 "access_to": access_to,
                 "access_level": access_level,
@@ -400,7 +400,7 @@ class SharesV2Client(shares_client.SharesClient):
 
     def list_access_rules(self, share_id, version=LATEST_MICROVERSION,
                           action_name=None):
-        body = {self._get_access_action_name(version): None}
+        body = {self._get_access_action_name(version, 'os-access_list'): None}
         resp, body = self.post(
             "shares/%s/action" % share_id, json.dumps(body), version=version)
         self.expected_success(200, resp.status)
@@ -409,7 +409,7 @@ class SharesV2Client(shares_client.SharesClient):
     def delete_access_rule(self, share_id, rule_id,
                            version=LATEST_MICROVERSION, action_name=None):
         post_body = {
-            self._get_access_action_name(version): {
+            self._get_access_action_name(version, 'os-deny_access'): {
                 "access_id": rule_id,
             }
         }

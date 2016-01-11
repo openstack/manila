@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config  # noqa
 from tempest import test  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
@@ -23,6 +24,7 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
+@ddt.ddt
 class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
     protocol = "nfs"
 
@@ -40,84 +42,102 @@ class ShareIpRulesForNFSNegativeTest(base.BaseSharesTest):
             cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_target_1(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_target_1(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.256")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_target_2(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_target_2(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.1.1.-")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_target_3(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_target_3(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.4/33")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_target_4(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_target_4(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.*")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_target_5(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_target_5(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.*/23")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_target_6(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_target_6(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.1|23")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_target_7(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_target_7(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.1/-1")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_target_8(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_target_8(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "ip", "1.2.3.1/")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_with_wrong_level(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_with_wrong_level(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"],
                           'ip',
                           '2.2.2.2',
                           'su')
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_duplicate_of_ip_rule(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_duplicate_of_ip_rule(self, client_name):
         # test data
         access_type = "ip"
         access_to = "1.2.3.4"
 
         # create rule
-        rule = self.shares_client.create_access_rule(
+        rule = getattr(self, client_name).create_access_rule(
             self.share["id"], access_type, access_to)
-        self.shares_client.wait_for_access_rule_status(
+        getattr(self, client_name).wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
         # try create duplicate of rule
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], access_type, access_to)
 
+        # delete rule and wait for deletion
+        getattr(self, client_name).delete_access_rule(self.share["id"],
+                                                      rule["id"])
+        getattr(self, client_name).wait_for_resource_deletion(
+            rule_id=rule["id"], share_id=self.share['id'])
 
+
+@ddt.ddt
 class ShareIpRulesForCIFSNegativeTest(ShareIpRulesForNFSNegativeTest):
     protocol = "cifs"
 
 
+@ddt.ddt
 class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
     protocol = "nfs"
 
@@ -135,69 +155,79 @@ class ShareUserRulesForNFSNegativeTest(base.BaseSharesTest):
             cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_user_with_wrong_input_2(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_user_with_wrong_input_2(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "user",
                           "try+")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_user_with_empty_key(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_user_with_empty_key(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "user", "")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_user_with_too_little_key(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_user_with_too_little_key(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "user", "abc")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_user_with_too_big_key(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_user_with_too_big_key(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "user", "a" * 33)
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_user_with_wrong_input_1(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_user_with_wrong_input_1(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "user",
                           "try+")
 
     @test.attr(type=["negative", "gate", ])
+    @ddt.data('shares_client', 'shares_v2_client')
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
-    def test_create_access_rule_user_to_snapshot(self):
+    def test_create_access_rule_user_to_snapshot(self, client_name):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.snap["id"],
                           access_type="user",
                           access_to="fakeuser")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_user_with_wrong_share_id(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_user_with_wrong_share_id(self, client_name):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           "wrong_share_id",
                           access_type="user",
                           access_to="fakeuser")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_with_wrong_level(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_with_wrong_level(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"],
                           'user',
                           CONF.share.username_for_user_rules,
                           'su')
 
 
+@ddt.ddt
 class ShareUserRulesForCIFSNegativeTest(ShareUserRulesForNFSNegativeTest):
     protocol = "cifs"
 
 
+@ddt.ddt
 class ShareCertRulesForGLUSTERFSNegativeTest(base.BaseSharesTest):
     protocol = "glusterfs"
 
@@ -215,43 +245,51 @@ class ShareCertRulesForGLUSTERFSNegativeTest(base.BaseSharesTest):
             cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_cert_with_empty_common_name(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_cert_with_empty_common_name(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "cert", "")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_cert_with_whitespace_common_name(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_cert_with_whitespace_common_name(self,
+                                                                 client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "cert", " ")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_cert_with_too_big_common_name(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_cert_with_too_big_common_name(self,
+                                                              client_name):
         # common name cannot be more than 64 characters long
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "cert", "a" * 65)
 
     @test.attr(type=["negative", "gate", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
-    def test_create_access_rule_cert_to_snapshot(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_cert_to_snapshot(self, client_name):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.snap["id"],
                           access_type="cert",
                           access_to="fakeclient1.com")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_cert_with_wrong_share_id(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_cert_with_wrong_share_id(self, client_name):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           "wrong_share_id",
                           access_type="cert",
                           access_to="fakeclient2.com")
 
 
+@ddt.ddt
 class ShareRulesNegativeTest(base.BaseSharesTest):
     # Tests independent from rule type and share protocol
 
@@ -273,27 +311,31 @@ class ShareRulesNegativeTest(base.BaseSharesTest):
             cls.snap = cls.create_snapshot_wait_for_active(cls.share["id"])
 
     @test.attr(type=["negative", "gate", ])
-    def test_delete_access_rule_with_wrong_id(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_delete_access_rule_with_wrong_id(self, client_name):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.delete_access_rule,
+                          getattr(self, client_name).delete_access_rule,
                           self.share["id"], "wrong_rule_id")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_type(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_type(self, client_name):
         self.assertRaises(lib_exc.BadRequest,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.share["id"], "wrong_type", "1.2.3.4")
 
     @test.attr(type=["negative", "gate", ])
-    def test_create_access_rule_ip_with_wrong_share_id(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_access_rule_ip_with_wrong_share_id(self, client_name):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           "wrong_share_id")
 
     @test.attr(type=["negative", "gate", ])
+    @ddt.data('shares_client', 'shares_v2_client')
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
-    def test_create_access_rule_ip_to_snapshot(self):
+    def test_create_access_rule_ip_to_snapshot(self, client_name):
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.create_access_rule,
+                          getattr(self, client_name).create_access_rule,
                           self.snap["id"])
