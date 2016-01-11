@@ -946,16 +946,20 @@ class ShareActionsTest(test.TestCase):
         expected = _fake_access_get_all()
         self.assertEqual(expected, res_dict['access_list'])
 
-    def test_extend(self):
+    @ddt.unpack
+    @ddt.data(
+        {'body': {'os-extend': {'new_size': 2}}, 'version': '2.6'},
+        {'body': {'extend': {'new_size': 2}}, 'version': '2.7'},
+    )
+    def test_extend(self, body, version):
         id = 'fake_share_id'
         share = stubs.stub_share_get(None, None, id)
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, "extend")
 
-        size = '123'
-        body = {"os-extend": {'new_size': size}}
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
-
+        size = '2'
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/action' % id, version=version)
         actual_response = self.controller._extend(req, id, body)
 
         share_api.API.get.assert_called_once_with(mock.ANY, id)
@@ -989,16 +993,20 @@ class ShareActionsTest(test.TestCase):
 
         self.assertRaises(target, self.controller._extend, req, id, body)
 
-    def test_shrink(self):
+    @ddt.unpack
+    @ddt.data(
+        {'body': {'os-shrink': {'new_size': 1}}, 'version': '2.6'},
+        {'body': {'shrink': {'new_size': 1}}, 'version': '2.7'},
+    )
+    def test_shrink(self, body, version):
         id = 'fake_share_id'
         share = stubs.stub_share_get(None, None, id)
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, "shrink")
 
-        size = '123'
-        body = {"os-shrink": {'new_size': size}}
-        req = fakes.HTTPRequest.blank('/v1/shares/%s/action' % id)
-
+        size = '1'
+        req = fakes.HTTPRequest.blank(
+            '/v2/shares/%s/action' % id, version=version)
         actual_response = self.controller._shrink(req, id, body)
 
         share_api.API.get.assert_called_once_with(mock.ANY, id)

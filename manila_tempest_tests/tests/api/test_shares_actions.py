@@ -473,12 +473,19 @@ class SharesActionsTest(base.BaseSharesTest):
         new_size = 2
 
         # extend share and wait for active status
-        self.shares_client.extend_share(share['id'], new_size)
+        self.shares_v2_client.extend_share(share['id'], new_size)
         self.shares_client.wait_for_share_status(share['id'], 'available')
 
         # check state and new size
-        share = self.shares_client.get_share(share['id'])
-        self.assertEqual(new_size, share['size'])
+        share_get = self.shares_v2_client.get_share(share['id'])
+        msg = (
+            "Share could not be extended. "
+            "Expected %(expected)s, got %(actual)s." % {
+                "expected": new_size,
+                "actual": share_get['size'],
+            }
+        )
+        self.assertEqual(new_size, share_get['size'], msg)
 
     @test.attr(type=["gate", ])
     @testtools.skipUnless(
@@ -489,12 +496,19 @@ class SharesActionsTest(base.BaseSharesTest):
         new_size = 1
 
         # shrink share and wait for active status
-        self.shares_client.shrink_share(share['id'], new_size)
+        self.shares_v2_client.shrink_share(share['id'], new_size)
         self.shares_client.wait_for_share_status(share['id'], 'available')
 
         # check state and new size
-        share = self.shares_client.get_share(share['id'])
-        self.assertEqual(new_size, share['size'])
+        share_get = self.shares_v2_client.get_share(share['id'])
+        msg = (
+            "Share could not be shrunk. "
+            "Expected %(expected)s, got %(actual)s." % {
+                "expected": new_size,
+                "actual": share_get['size'],
+            }
+        )
+        self.assertEqual(new_size, share_get['size'], msg)
 
 
 class SharesRenameTest(base.BaseSharesTest):
