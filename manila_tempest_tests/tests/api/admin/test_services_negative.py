@@ -47,7 +47,13 @@ class ServicesAdminNegativeTest(base.BaseSharesAdminTest):
         # so do not take it in account.
         for service in services + services_fake:
             service["updated_at"] = "removed_possible_difference"
-        self.assertEqual(services, services_fake)
+
+        msg = ('Unexpected service list. Expected %s, got %s.' %
+               (services, services_fake))
+        self.assertEqual(sorted(services, key=lambda service: service['id']),
+                         sorted(services_fake,
+                                key=lambda service: service['id']),
+                         msg)
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_get_service_by_invalid_host(self):
