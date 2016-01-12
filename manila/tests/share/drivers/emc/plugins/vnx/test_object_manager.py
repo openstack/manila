@@ -292,7 +292,7 @@ class FileSystemTestCase(StorageObjectTestCase):
         for prop in property_map:
             self.assertIn(prop, out)
 
-        self.assertEqual(None, out['dataServicePolicies'])
+        self.assertIsNone(out['dataServicePolicies'])
 
         id = context.get_id(self.fs.filesystem_name)
         self.assertEqual(self.fs.filesystem_id, id)
