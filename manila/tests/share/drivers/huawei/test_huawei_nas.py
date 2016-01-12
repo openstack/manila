@@ -71,6 +71,16 @@ def filesystem(method, data, fs_status_flag):
             data = """{"error":{"code":0},
                 "data":{"ID":"4",
                 "CAPACITY":"8388608"}}"""
+        elif data == jsonutils.dumps({"ENABLEDEDUP": True,
+                                      "ENABLECOMPRESSION": True}):
+            data = """{"error":{"code":0},
+                "data":{"ID":"4",
+                "CAPACITY":"8388608"}}"""
+        elif data == jsonutils.dumps({"ENABLEDEDUP": False,
+                                      "ENABLECOMPRESSION": False}):
+            data = """{"error":{"code":0},
+                "data":{"ID":"4",
+                "CAPACITY":"8388608"}}"""
     elif method == "DELETE":
         data = """{"error":{"code":0}}"""
     elif method == "GET":
@@ -80,14 +90,139 @@ def filesystem(method, data, fs_status_flag):
                 "RUNNINGSTATUS":"27",
                 "ALLOCTYPE":"1",
                 "CAPACITY":"8388608",
-                "PARENTNAME":"OpenStack_Pool"}}"""
+                "PARENTNAME":"OpenStack_Pool",
+                "ENABLECOMPRESSION":"false",
+                "ENABLEDEDUP":"false",
+                "CACHEPARTITIONID":"",
+                "SMARTCACHEPARTITIONID":""}}"""
         else:
             data = """{"error":{"code":0},
                     "data":{"HEALTHSTATUS":"0",
                     "RUNNINGSTATUS":"27",
                     "ALLOCTYPE":"0",
                     "CAPACITY":"8388608",
-                    "PARENTNAME":"OpenStack_Pool"}}"""
+                    "PARENTNAME":"OpenStack_Pool",
+                    "ENABLECOMPRESSION":"false",
+                    "ENABLEDEDUP":"false",
+                    "CACHEPARTITIONID":"",
+                    "SMARTCACHEPARTITIONID":""}}"""
+    else:
+        data = '{"error":{"code":31755596}}'
+    return (data, extend_share_flag, shrink_share_flag)
+
+
+def filesystem_thick(method, data, fs_status_flag):
+    extend_share_flag = False
+    shrink_share_flag = False
+
+    if method == "PUT":
+        if data == """{"CAPACITY": 10485760}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"5",
+                "CAPACITY":"8388608"}}"""
+            extend_share_flag = True
+        elif data == """{"CAPACITY": 2097152}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"5",
+                "CAPACITY":"2097152"}}"""
+            shrink_share_flag = True
+        elif data == """{"NAME": "share_fake_uuid_thickfs"}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"5",
+                "CAPACITY":"8388608"}}"""
+        elif data == jsonutils.dumps({"ENABLEDEDUP": False,
+                                      "ENABLECOMPRESSION": False}):
+            data = """{"error":{"code":0},
+                "data":{"ID":"5",
+                "CAPACITY":"8388608"}}"""
+    elif method == "DELETE":
+        data = """{"error":{"code":0}}"""
+    elif method == "GET":
+        if fs_status_flag:
+            data = """{"error":{"code":0},
+                "data":{"HEALTHSTATUS":"1",
+                "RUNNINGSTATUS":"27",
+                "ALLOCTYPE":"0",
+                "CAPACITY":"8388608",
+                "PARENTNAME":"OpenStack_Pool_Thick",
+                "ENABLECOMPRESSION":"false",
+                "ENABLEDEDUP":"false",
+                "CACHEPARTITIONID":"",
+                "SMARTCACHEPARTITIONID":""}}"""
+        else:
+            data = """{"error":{"code":0},
+                    "data":{"HEALTHSTATUS":"0",
+                    "RUNNINGSTATUS":"27",
+                    "ALLOCTYPE":"0",
+                    "CAPACITY":"8388608",
+                    "PARENTNAME":"OpenStack_Pool_Thick",
+                    "ENABLECOMPRESSION":"false",
+                    "ENABLEDEDUP":"false",
+                    "CACHEPARTITIONID":"",
+                    "SMARTCACHEPARTITIONID":""}}"""
+    else:
+        data = '{"error":{"code":31755596}}'
+    return (data, extend_share_flag, shrink_share_flag)
+
+
+def filesystem_inpartition(method, data, fs_status_flag):
+    extend_share_flag = False
+    shrink_share_flag = False
+
+    if method == "PUT":
+        if data == """{"CAPACITY": 10485760}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"6",
+                "CAPACITY":"8388608"}}"""
+            extend_share_flag = True
+        elif data == """{"CAPACITY": 2097152}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"6",
+                "CAPACITY":"2097152"}}"""
+            shrink_share_flag = True
+        elif data == """{"NAME": "share_fake_manage_uuid"}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"6",
+                "CAPACITY":"8388608"}}"""
+        elif data == """{"NAME": "share_fake_uuid_inpartition"}""":
+            data = """{"error":{"code":0},
+                "data":{"ID":"6",
+                "CAPACITY":"8388608"}}"""
+        elif data == jsonutils.dumps({"ENABLEDEDUP": True,
+                                      "ENABLECOMPRESSION": True}):
+            data = """{"error":{"code":0},
+                "data":{"ID":"6",
+                "CAPACITY":"8388608"}}"""
+        elif data == jsonutils.dumps({"ENABLEDEDUP": False,
+                                      "ENABLECOMPRESSION": False}):
+            data = """{"error":{"code":0},
+                "data":{"ID":"6",
+                "CAPACITY":"8388608"}}"""
+    elif method == "DELETE":
+        data = """{"error":{"code":0}}"""
+    elif method == "GET":
+        if fs_status_flag:
+            data = """{"error":{"code":0},
+                "data":{"HEALTHSTATUS":"1",
+                "RUNNINGSTATUS":"27",
+                "ALLOCTYPE":"1",
+                "CAPACITY":"8388608",
+                "PARENTNAME":"OpenStack_Pool",
+                "ENABLECOMPRESSION":"false",
+                "ENABLEDEDUP":"false",
+                "CACHEPARTITIONID":"1",
+                "SMARTCACHEPARTITIONID":"1"}}"""
+        else:
+            data = """{"error":{"code":0},
+                    "data":{"HEALTHSTATUS":"0",
+                    "RUNNINGSTATUS":"27",
+                    "ALLOCTYPE":"0",
+                    "CAPACITY":"8388608",
+                    "PARENTNAME":"OpenStack_Pool",
+                    "ENABLECOMPRESSION":"false",
+                    "ENABLEDEDUP":"false",
+                    "CACHEPARTITIONID":"1",
+                    "SMARTCACHEPARTITIONID":"1"}}"""
     else:
         data = '{"error":{"code":31755596}}'
     return (data, extend_share_flag, shrink_share_flag)
@@ -229,7 +364,15 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                         "data":[{"ID":"1",
                         "FSID":"4",
                         "NAME":"test",
-                        "SHAREPATH":"/share_fake_uuid/"}]}"""
+                        "SHAREPATH":"/share_fake_uuid/"},
+                        {"ID":"2",
+                        "FSID":"5",
+                        "NAME":"test",
+                        "SHAREPATH":"/share_fake_uuid_thickfs/"},
+                         {"ID":"3",
+                        "FSID":"6",
+                        "NAME":"test",
+                        "SHAREPATH":"/share_fake_uuid_inpartition/"}]}"""
                 else:
                     data = """{"error":{"code":0},
                         "data":[{"ID":"1",
@@ -365,6 +508,16 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     filesystem(method, data, self.fs_status_flag))
                 self.delete_flag = True
 
+            if url == "/filesystem/5":
+                data, self.extend_share_flag, self.shrink_share_flag = (
+                    filesystem_thick(method, data, self.fs_status_flag))
+                self.delete_flag = True
+
+            if url == "/filesystem/6":
+                data, self.extend_share_flag, self.shrink_share_flag = (
+                    filesystem_inpartition(method, data, self.fs_status_flag))
+                self.delete_flag = True
+
             if url == "/cachepartition":
                 if self.partition_exist:
                     data = """{"error":{"code":0},
@@ -374,6 +527,16 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     data = """{"error":{"code":0},
                     "data":[{"ID":"7",
                     "NAME":"test_partition_name_fail"}]}"""
+
+            if url == "/cachepartition/1":
+                if self.partition_exist:
+                    data = """{"error":{"code":0},
+                    "data":{"ID":"7",
+                    "NAME":"test_partition_name"}}"""
+                else:
+                    data = """{"error":{"code":0},
+                    "data":{"ID":"7",
+                    "NAME":"test_partition_name_fail"}}"""
 
             if url == "/SMARTCACHEPARTITION":
                 if self.cache_exist:
@@ -385,6 +548,16 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "data":[{"ID":"8",
                     "NAME":"test_cache_name_fail"}]}"""
 
+            if url == "/SMARTCACHEPARTITION/1":
+                if self.cache_exist:
+                    data = """{"error":{"code":0},
+                    "data":{"ID":"8",
+                    "NAME":"test_cache_name"}}"""
+                else:
+                    data = """{"error":{"code":0},
+                    "data":{"ID":"8",
+                    "NAME":"test_cache_name_fail"}}"""
+
             if url == "/filesystem/associate/cachepartition":
                 data = """{"error":{"code":0}}"""
                 self.add_fs_to_partition_flag = True
@@ -392,6 +565,12 @@ class FakeHuaweiNasHelper(helper.RestHelper):
             if url == "/SMARTCACHEPARTITION/CREATE_ASSOCIATE":
                 data = """{"error":{"code":0}}"""
                 self.add_fs_to_cache_flag = True
+
+            if url == "/SMARTCACHEPARTITION/REMOVE_ASSOCIATE":
+                data = """{"error":{"code":0}}"""
+
+            if url == "/smartPartition/removeFs":
+                data = """{"error":{"code":0}}"""
         else:
             data = '{"error":{"code":31755596}}'
 
@@ -477,6 +656,54 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'host': 'fake_host@fake_backend#OpenStack_Pool_Thick',
             'export_locations': [
                 {'path': '100.115.10.68:/share_fake_uuid'},
+            ],
+            'share_type_id': 'fake_id',
+        }
+
+        self.share_nfs_thickfs = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-uuid-thickfs',
+            'size': 1,
+            'share_proto': 'NFS',
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
+            'export_locations': [
+                {'path': '100.115.10.68:/share_fake_uuid_thickfs'},
+            ],
+            'share_type_id': 'fake_id',
+        }
+
+        self.share_nfs_thick_thickfs = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-uuid-thickfs',
+            'size': 1,
+            'share_proto': 'NFS',
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+            'host': 'fake_host@fake_backend#OpenStack_Pool_Thick',
+            'export_locations': [
+                {'path': '100.115.10.68:/share_fake_uuid_thickfs'},
+            ],
+            'share_type_id': 'fake_id',
+        }
+
+        self.share_nfs_inpartition = {
+            'id': 'fake_uuid',
+            'project_id': 'fake_tenant_id',
+            'display_name': 'fake',
+            'name': 'share-fake-uuid-inpartition',
+            'size': 1,
+            'share_proto': 'NFS',
+            'share_network_id': 'fake_net_id',
+            'share_server_id': 'fake-share-srv-id',
+            'host': 'fake_host@fake_backend#OpenStack_Pool',
+            'export_locations': [
+                {'path': '100.115.10.68:/share_fake_uuid_inpartition'},
             ],
             'share_type_id': 'fake_id',
         }
@@ -649,6 +876,56 @@ class HuaweiShareDriverTestCase(test.TestCase):
 
         fake_share_type_id = 'fooid-2'
         self.fake_type_w_extra = {
+            'test_with_extra': {
+                'created_at': 'fake_time',
+                'deleted': '0',
+                'deleted_at': None,
+                'extra_specs': fake_extra_specs,
+                'required_extra_specs': {},
+                'id': fake_share_type_id,
+                'name': 'test_with_extra',
+                'updated_at': None
+            }
+        }
+
+        fake_extra_specs = {
+            'capabilities:dedupe': '<is> True',
+            'capabilities:compression': '<is> True',
+            'capabilities:huawei_smartcache': '<is> False',
+            'huawei_smartcache:cachename': None,
+            'capabilities:huawei_smartpartition': '<is> False',
+            'huawei_smartpartition:partitionname': None,
+            'capabilities:thin_provisioning': '<is> True',
+            'test:test:test': 'test',
+        }
+
+        fake_share_type_id = 'fooid-3'
+        self.fake_type_fake_extra = {
+            'test_with_extra': {
+                'created_at': 'fake_time',
+                'deleted': '0',
+                'deleted_at': None,
+                'extra_specs': fake_extra_specs,
+                'required_extra_specs': {},
+                'id': fake_share_type_id,
+                'name': 'test_with_extra',
+                'updated_at': None
+            }
+        }
+
+        fake_extra_specs = {
+            'capabilities:dedupe': '<is> True',
+            'capabilities:compression': '<is> True',
+            'capabilities:huawei_smartcache': '<is> False',
+            'huawei_smartcache:cachename': None,
+            'capabilities:huawei_smartpartition': '<is> False',
+            'huawei_smartpartition:partitionname': None,
+            'capabilities:thin_provisioning': '<is> False',
+            'test:test:test': 'test',
+        }
+
+        fake_share_type_id = 'fooid-4'
+        self.fake_type_thin_extra = {
             'test_with_extra': {
                 'created_at': 'fake_time',
                 'deleted': '0',
@@ -1405,7 +1682,41 @@ class HuaweiShareDriverTestCase(test.TestCase):
         elif share_proto == "CIFS":
             share = self.share_manage_cifs
 
-        share_type = self.fake_type_extra['test_with_extra']
+        share_type = self.fake_type_w_extra['test_with_extra']
+        self.mock_object(db, 'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        share_info = self.driver.manage_existing(share,
+                                                 self.driver_options)
+        self.assertEqual(4, share_info["size"])
+        self.assertEqual(path, share_info["export_locations"])
+
+    @ddt.data({"fs_alloctype": "THIN",
+               "path": ["100.115.10.68:/share_fake_manage_uuid"]},
+              {"fs_alloctype": "THICK",
+               "path": ["100.115.10.68:/share_fake_uuid_thickfs"]})
+    @ddt.unpack
+    def test_manage_share_with_default_type(self, fs_alloctype, path):
+        if fs_alloctype == "THIN":
+            share = self.share_manage_nfs
+        elif fs_alloctype == "THICK":
+            share = self.share_nfs_thick_thickfs
+
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db, 'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        share_info = self.driver.manage_existing(share,
+                                                 self.driver_options)
+        self.assertEqual(4, share_info["size"])
+        self.assertEqual(path, share_info["export_locations"])
+
+    @ddt.data({"path": ["100.115.10.68:/share_fake_uuid_inpartition"]})
+    @ddt.unpack
+    def test_manage_share_remove_from_partition(self, path):
+        share = self.share_nfs_inpartition
+
+        share_type = self.fake_type_fake_extra['test_with_extra']
         self.mock_object(db,
                          'share_type_get',
                          mock.Mock(return_value=share_type))
@@ -1440,6 +1751,152 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.driver.manage_existing,
                           share,
                           self.driver_options)
+
+    def test_manage_share_thickfs_set_dedupe_fail(self):
+        share = self.share_nfs_thick_thickfs
+
+        self.driver.plugin.helper.login()
+        share_type = self.fake_type_thin_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.manage_existing,
+                          share,
+                          self.driver_options)
+
+    def test_manage_share_thickfs_not_match_thinpool_fail(self):
+        share = self.share_nfs_thickfs
+
+        self.driver.plugin.helper.login()
+        share_type = self.fake_type_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        self.assertRaises(exception.InvalidHost,
+                          self.driver.manage_existing,
+                          share,
+                          self.driver_options)
+
+    @ddt.data({"flag": "old_cache_id", "exc": exception.InvalidInput},
+              {"flag": "not_old_cache_id", "exc": exception.InvalidInput})
+    @ddt.unpack
+    def test_manage_share_cache_not_exist(self, flag, exc):
+        share = None
+        if flag == "old_cache_id":
+            share = self.share_nfs_inpartition
+        elif flag == "not_old_cache_id":
+            share = self.share_nfs
+
+        self.driver.plugin.helper.cache_exist = False
+        share_type = self.fake_type_w_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        self.assertRaises(exc,
+                          self.driver.manage_existing,
+                          share,
+                          self.share_server)
+
+    def test_manage_add_share_to_cache_fail(self):
+        opts = dict(
+            huawei_smartcache='true',
+            huawei_smartpartition='true',
+            cachename='test_cache_name_fake',
+            partitionname='test_partition_name_fake',
+        )
+        fs = dict(
+            SMARTCACHEID='6',
+            SMARTPARTITIONID=None,
+        )
+        poolinfo = dict(
+            type='Thin',
+        )
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.plugin.check_retype_change_opts,
+                          opts, poolinfo, fs)
+
+    def test_manage_notsetcache_fail(self):
+        opts = dict(
+            huawei_smartcache='true',
+            huawei_smartpartition='true',
+            cachename=None,
+            partitionname='test_partition_name_fake',
+        )
+        fs = dict(
+            SMARTCACHEID='6',
+            SMARTPARTITIONID='6',
+        )
+        poolinfo = dict(
+            type='Thin',
+        )
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.plugin.check_retype_change_opts,
+                          opts, poolinfo, fs)
+
+    @ddt.data({"flag": "old_partition_id", "exc": exception.InvalidInput},
+              {"flag": "not_old_partition_id", "exc": exception.InvalidInput})
+    @ddt.unpack
+    def test_manage_share_partition_not_exist(self, flag, exc):
+        share = None
+        if flag == "old_partition_id":
+            share = self.share_nfs_inpartition
+        elif flag == "not_old_partition_id":
+            share = self.share_nfs
+
+        self.driver.plugin.helper.partition_exist = False
+        share_type = self.fake_type_w_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        self.assertRaises(exc,
+                          self.driver.manage_existing,
+                          share,
+                          self.share_server)
+
+    def test_manage_add_share_to_partition_fail(self):
+        opts = dict(
+            huawei_smartcache='true',
+            huawei_smartpartition='true',
+            cachename='test_cache_name_fake',
+            partitionname='test_partition_name_fake',
+        )
+        fs = dict(
+            SMARTCACHEID=None,
+            SMARTPARTITIONID='6',
+        )
+        poolinfo = dict(
+            type='Thin',
+        )
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.plugin.check_retype_change_opts,
+                          opts, poolinfo, fs)
+
+    def test_manage_notset_partition_fail(self):
+        opts = dict(
+            huawei_smartcache='true',
+            huawei_smartpartition='true',
+            cachename='test_cache_name_fake',
+            partitionname=None,
+        )
+        fs = dict(
+            SMARTCACHEID=None,
+            SMARTPARTITIONID='6',
+        )
+        poolinfo = dict(
+            type='Thin',
+        )
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.plugin.check_retype_change_opts,
+                          opts, poolinfo, fs)
 
     @ddt.data({"share_proto": "NFS",
                "export_path": "fake_ip:/share_fake_uuid"},
