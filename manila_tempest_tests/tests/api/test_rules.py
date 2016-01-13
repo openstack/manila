@@ -281,7 +281,7 @@ class ShareRulesTest(base.BaseSharesTest):
         # our share id in list and have no duplicates
         gen = [r["id"] for r in rules if r["id"] in rule["id"]]
         msg = "expected id lists %s times in rule list" % (len(gen))
-        self.assertEqual(len(gen), 1, msg)
+        self.assertEqual(1, len(gen), msg)
 
     @test.attr(type=["gate", ])
     def test_access_rules_deleted_if_share_deleted(self):

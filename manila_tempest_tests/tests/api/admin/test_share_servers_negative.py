@@ -61,31 +61,31 @@ class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
     def test_list_share_servers_with_wrong_filter_key(self):
         search_opts = {'fake_filter_key': 'ACTIVE'}
         servers = self.shares_client.list_share_servers(search_opts)
-        self.assertEqual(len(servers), 0)
+        self.assertEqual(0, len(servers))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_wrong_filter_value(self):
         search_opts = {'host': 123}
         servers = self.shares_client.list_share_servers(search_opts)
-        self.assertEqual(len(servers), 0)
+        self.assertEqual(0, len(servers))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_fake_status(self):
         search_opts = {"status": data_utils.rand_name("fake_status")}
         servers = self.shares_client.list_share_servers(search_opts)
-        self.assertEqual(len(servers), 0)
+        self.assertEqual(0, len(servers))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_fake_host(self):
         search_opts = {"host": data_utils.rand_name("fake_host")}
         servers = self.shares_client.list_share_servers(search_opts)
-        self.assertEqual(len(servers), 0)
+        self.assertEqual(0, len(servers))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_fake_project(self):
         search_opts = {"project_id": data_utils.rand_name("fake_project_id")}
         servers = self.shares_client.list_share_servers(search_opts)
-        self.assertEqual(len(servers), 0)
+        self.assertEqual(0, len(servers))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_list_share_servers_with_fake_share_network(self):
@@ -93,7 +93,7 @@ class ShareServersNegativeAdminTest(base.BaseSharesAdminTest):
             "share_network": data_utils.rand_name("fake_share_network"),
         }
         servers = self.shares_client.list_share_servers(search_opts)
-        self.assertEqual(len(servers), 0)
+        self.assertEqual(0, len(servers))
 
     @test.attr(type=["gate", "smoke", "negative", ])
     def test_delete_share_server_with_nonexistent_id(self):

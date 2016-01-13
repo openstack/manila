@@ -277,14 +277,14 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         # verify response
         self.assertTrue(len(shares) > 0)
         sorted_list = [share['created_at'] for share in shares]
-        self.assertEqual(sorted_list, sorted(sorted_list))
+        self.assertEqual(sorted(sorted_list), sorted_list)
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_existed_name(self):
         # list shares by name, at least one share is expected
         params = {"name": self.share_name}
         shares = self.shares_client.list_shares_with_detail(params)
-        self.assertEqual(shares[0]["name"], self.share_name)
+        self.assertEqual(self.share_name, shares[0]["name"])
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_fake_name(self):
@@ -300,7 +300,7 @@ class SharesActionsAdminTest(base.BaseSharesAdminTest):
         shares = self.shares_client.list_shares_with_detail(params)
         self.assertTrue(len(shares) > 0)
         for share in shares:
-            self.assertEqual(share["status"], params["status"])
+            self.assertEqual(params["status"], share["status"])
 
     @test.attr(type=["gate", ])
     def test_list_shares_with_detail_filter_by_fake_status(self):

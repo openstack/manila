@@ -251,7 +251,7 @@ class GenericUtilsTestCase(test.TestCase):
         with tempfile.NamedTemporaryFile() as f:
             with utils.temporary_chown(f.name, owner_uid=2):
                 self.assertEqual(2, fake_execute.uid)
-            self.assertEqual(os.getuid(), fake_execute.uid)
+            self.assertEqual(fake_execute.uid, os.getuid())
 
     def test_service_is_up(self):
         fts_func = datetime.datetime.fromtimestamp

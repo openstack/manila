@@ -251,7 +251,7 @@ class ShareServersAdminTest(base.BaseSharesAdminTest):
             # List shares by share server id, we expect empty list
             params = {"share_server_id": serv["id"]}
             empty = self.shares_client.list_shares_with_detail(params)
-            self.assertEqual(len(empty), 0)
+            self.assertEqual(0, len(empty))
 
             if delete_share_network:
                 # Delete share network, it should trigger share server deletion
