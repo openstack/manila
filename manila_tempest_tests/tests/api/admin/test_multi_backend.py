@@ -81,26 +81,6 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
             self.assertEqual(get["share_type_name"], self.sts[i]["name"])
 
     @test.attr(type=["gate", ])
-    def test_share_export_locations(self):
-        # Different backends have different IPs on interfaces
-        # and export locations should be different too.
-        if CONF.share.backend_names[0] == CONF.share.backend_names[1]:
-            raise self.skipException("Share backends "
-                                     "configured with same name. Skipping.")
-        ips = []
-        for share in self.shares:
-            get = self.shares_client.get_share(share['id'])
-            if get["share_proto"].lower() == "nfs":
-                # %ip%:/%share_path%
-                ip = get["export_location"].split(":")[0]
-                ips.append(ip)
-            elif get["share_proto"].lower() == "cifs":
-                # //%ip%/%share_path%
-                ip = get["export_location"][2:].split("/")[0]
-                ips.append(ip)
-        self.assertNotEqual(ips[0], ips[1])
-
-    @test.attr(type=["gate", ])
     def test_share_backend_name_distinction(self):
         # Different share backends should have different host records
         if CONF.share.backend_names[0] == CONF.share.backend_names[1]:

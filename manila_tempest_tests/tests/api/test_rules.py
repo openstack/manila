@@ -230,28 +230,20 @@ class ShareRulesTest(base.BaseSharesTest):
                     for p in cls.protocols)):
             cls.message = "Rule tests are disabled"
             raise cls.skipException(cls.message)
-        cls.share = cls.create_share()
-
-    def setUp(self):
-        # Here we choose protocol and rule type for
-        # testing common rules functionality,
-        # that isn't dependent on protocol or rule type.
-        super(ShareRulesTest, self).setUp()
         if CONF.share.enable_ip_rules_for_protocols:
-            self.access_type = "ip"
-            self.access_to = "8.8.8.8"
-            protocol = CONF.share.enable_ip_rules_for_protocols[0]
+            cls.protocol = CONF.share.enable_ip_rules_for_protocols[0]
+            cls.access_type = "ip"
+            cls.access_to = "8.8.8.8"
         elif CONF.share.enable_user_rules_for_protocols:
-            self.access_type = "user"
-            self.access_to = CONF.share.username_for_user_rules
-            protocol = CONF.share.enable_user_rules_for_protocols[0]
+            cls.protocol = CONF.share.enable_user_rules_for_protocols[0]
+            cls.access_type = "user"
+            cls.access_to = CONF.share.username_for_user_rules
         elif CONF.share.enable_cert_rules_for_protocols:
-            self.access_type = "cert"
-            self.access_to = "client3.com"
-            protocol = CONF.share.enable_cert_rules_for_protocols[0]
-        else:
-            raise self.skipException(self.message)
-        self.shares_client.protocol = protocol
+            cls.protocol = CONF.share.enable_cert_rules_for_protocols[0]
+            cls.access_type = "cert"
+            cls.access_to = "client3.com"
+        cls.shares_v2_client.share_protocol = cls.protocol
+        cls.share = cls.create_share()
 
     @test.attr(type=["gate", ])
     def test_list_access_rules(self):
