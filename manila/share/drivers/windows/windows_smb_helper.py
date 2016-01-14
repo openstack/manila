@@ -20,13 +20,13 @@ from oslo_log import log
 from manila.common import constants
 from manila import exception
 from manila.i18n import _, _LI
-from manila.share.drivers import generic
+from manila.share.drivers import helpers
 from manila.share.drivers.windows import windows_utils
 
 LOG = log.getLogger(__name__)
 
 
-class WindowsSMBHelper(generic.NASHelperBase):
+class WindowsSMBHelper(helpers.NASHelperBase):
     _SHARE_ACCESS_RIGHT_MAP = {
         constants.ACCESS_LEVEL_RW: "Change",
         constants.ACCESS_LEVEL_RO: "Read"}

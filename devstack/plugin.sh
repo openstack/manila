@@ -8,12 +8,42 @@ set -o xtrace
 # Entry Points
 # ------------
 
+function _clean_share_group {
+    local vg=$1
+    local vg_prefix=$2
+    # Clean out existing shares
+    for lv in `sudo lvs --noheadings -o lv_name $vg`; do
+        # vg_prefix prefixes the LVs we want
+        if [[ "${lv#$vg_prefix}" != "$lv" ]]; then
+            sudo umount -f $MANILA_MNT_DIR/$lv
+            sudo lvremove -f $vg/$lv
+            sudo rm -rf $MANILA_MNT_DIR/$lv
+        fi
+    done
+}
+
+function _clean_manila_lvm_backing_file {
+    local vg=$1
+
+    # if there is no logical volume left, it's safe to attempt a cleanup
+    # of the backing file
+    if [ -z "`sudo lvs --noheadings -o lv_name $vg`" ]; then
+        # if the backing physical device is a loop device, it was probably setup by devstack
+        VG_DEV=$(sudo losetup -j $DATA_DIR/${vg}-backing-file | awk -F':' '/backing-file/ { print $1
+}')
+        if [[ -n "$VG_DEV" ]]; then
+            sudo losetup -d $VG_DEV
+            rm -f $DATA_DIR/${vg}-backing-file
+        fi
+    fi
+}
+
 # cleanup_manila - Remove residual data files, anything left over from previous
 # runs that a clean run would need to clean up
 function cleanup_manila {
-    # This is placeholder.
-    # All stuff, that are created by Generic driver will be cleaned up by other services.
-    :
+    # All stuff, that are created by share drivers will be cleaned up by other services.
+    _clean_share_group $SHARE_GROUP $SHARE_NAME_PREFIX
+    _clean_manila_lvm_backing_file $SHARE_GROUP
 }
 
 # configure_default_backends - configures default Manila backends with generic driver.
@@ -150,6 +180,8 @@ function configure_manila {
     iniset $MANILA_CONF oslo_concurrency lock_path $MANILA_LOCK_PATH
 
     iniset $MANILA_CONF DEFAULT wsgi_keep_alive False
+
+    iniset $MANILA_CONF DEFAULT lvm_share_volume_group $SHARE_GROUP
 
     # Note: set up config group does not mean that this backend will be enabled.
     # To enable it, specify its name explicitly using "enabled_share_backends" opt.
@@ -363,6 +395,32 @@ function init_manila {
         $MANILA_BIN_DIR/manila-manage db version
     fi
 
+    if [ "$SHARE_DRIVER" == "manila.share.drivers.lvm.LVMShareDriver" ]; then
+        if is_service_enabled m-shr; then
+            # Configure a default volume group called '`lvm-shares`' for the share
+            # service if it does not yet exist.  If you don't wish to use a file backed
+            # volume group, create your own volume group called ``stack-volumes`` before
+            # invoking ``stack.sh``.
+            #
+            # By default, the backing file is 8G in size, and is stored in ``/opt/stack/data``.
+
+            if ! sudo vgs $SHARE_GROUP; then
+                if [ "$CONFIGURE_BACKING_FILE" = "True" ]; then
+                    SHARE_BACKING_FILE=${SHARE_BACKING_FILE:-$DATA_DIR/${SHARE_GROUP}-backing-file}
+                    # Only create if the file doesn't already exists
+                    [[ -f $SHARE_BACKING_FILE ]] || truncate -s $SHARE_BACKING_FILE_SIZE $SHARE_BACKING_FILE
+                    DEV=`sudo losetup -f --show $SHARE_BACKING_FILE`
+                else
+                    DEV=$SHARE_BACKING_FILE
+                fi
+                # Only create if the loopback device doesn't contain $SHARE_GROUP
+                if ! sudo vgs $SHARE_GROUP; then sudo vgcreate $SHARE_GROUP $DEV; fi
+            fi
+
+            mkdir -p $MANILA_STATE_PATH/shares
+        fi
+    fi
+
     # Create cache dir
     sudo mkdir -p $MANILA_AUTH_CACHE_DIR
     sudo chown $STACK_USER $MANILA_AUTH_CACHE_DIR
@@ -373,9 +431,46 @@ function init_manila {
 function install_manila {
     git_clone $MANILACLIENT_REPO $MANILACLIENT_DIR $MANILACLIENT_BRANCH
 
+    if [ "$SHARE_DRIVER" == "manila.share.drivers.lvm.LVMShareDriver" ]; then
+        if is_service_enabled m-shr; then
+            if is_ubuntu; then
+                sudo apt-get install -y nfs-kernel-server nfs-common samba
+            elif is_fedora; then
+                sudo yum install -y nfs-utils nfs-utils-lib samba
+            fi
+        fi
+    fi
+
     # install manila-ui if horizon is enabled
     if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
         git_clone $MANILA_UI_REPO $MANILA_UI_DIR $MANILA_UI_BRANCH
+    fi
+}
+
+#configure_samba - Configure node as Samba server
+function configure_samba {
+    if [ "$SHARE_DRIVER" == "manila.share.drivers.lvm.LVMShareDriver" ]; then
+        samba_daemon_name=smbd
+        if is_service_enabled m-shr; then
+            if is_fedora; then
+                samba_daemon_name=smb
+            fi
+            sudo service $samba_daemon_name restart || echo "Couldn't restart '$samba_daemon_name' service"
+        fi
+
+        sudo cp /usr/share/samba/smb.conf $SMB_CONF
+        sudo chown stack -R /etc/samba
+        iniset $SMB_CONF global include registry
+        iniset $SMB_CONF global security user
+        if [ ! -d "$SMB_PRIVATE_DIR" ]; then
+            sudo mkdir $SMB_PRIVATE_DIR
+            sudo touch $SMB_PRIVATE_DIR/secrets.tdb
+        fi
+
+        for backend_name in ${MANILA_ENABLED_BACKENDS//,/ }; do
+            iniset $MANILA_CONF $backend_name driver_handles_share_servers False
+            iniset $MANILA_CONF $backend_name lvm_share_export_ip $MANILA_SERVICE_HOST
+        done
     fi
 }
 
@@ -467,6 +562,9 @@ elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     echo_summary "Creating Manila service VMs for generic driver \
         backends for which handlng of share servers is disabled."
     create_service_share_servers
+
+    echo_summary "Configure Samba server"
+    configure_samba
 
     echo_summary "Starting Manila"
     start_manila
