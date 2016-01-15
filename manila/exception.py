@@ -565,6 +565,7 @@ class StorageResourceException(ManilaException):
 
 class StorageResourceNotFound(StorageResourceException):
     message = _("Storage resource %(name)s not found.")
+    code = 404
 
 
 class SnapshotNotFound(StorageResourceNotFound):

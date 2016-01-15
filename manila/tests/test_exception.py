@@ -448,11 +448,25 @@ class ManilaExceptionResponseCode404(test.TestCase):
         self.assertEqual(404, e.code)
         self.assertIn(instance_id, e.msg)
 
+    def test_storage_resource_not_found(self):
+        # verify response code for exception.StorageResourceNotFound
+        name = "fake_name"
+        e = exception.StorageResourceNotFound(name=name)
+        self.assertEqual(404, e.code)
+        self.assertIn(name, e.msg)
+
+    def test_snapshot_not_found(self):
+        # verify response code for exception.SnapshotNotFound
+        name = "fake_name"
+        e = exception.SnapshotNotFound(name=name)
+        self.assertEqual(404, e.code)
+        self.assertIn(name, e.msg)
+
     def test_share_resource_not_found(self):
-        # verify response code for exception.ShareNotFound
+        # verify response code for exception.ShareResourceNotFound
         share_id = "fake_share_id"
         e = exception.ShareResourceNotFound(share_id=share_id)
-        self.assertEqual(500, e.code)
+        self.assertEqual(404, e.code)
         self.assertIn(share_id, e.msg)
 
 
