@@ -17,6 +17,7 @@ import ddt
 import mock
 import netaddr
 from oslo_config import cfg
+import six
 
 from manila.common import constants
 from manila import context
@@ -307,7 +308,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.db.share_network_update.assert_called_once_with(
             fake_context, fake_share_network['id'],
             dict(network_type=None, segmentation_id=None,
-                 cidr=instance.net.cidr, ip_version=4))
+                 cidr=six.text_type(instance.net.cidr), ip_version=4))
 
     def test_allocate_network_zero_addresses_ipv6(self):
         data = {
@@ -328,7 +329,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.db.share_network_update.assert_called_once_with(
             fake_context, fake_share_network['id'],
             dict(network_type=None, segmentation_id=None,
-                 cidr=instance.net.cidr, ip_version=6))
+                 cidr=six.text_type(instance.net.cidr), ip_version=6))
 
     def test_allocate_network_one_ip_address_ipv4_no_usages_exist(self):
         data = {
@@ -354,7 +355,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.db.share_network_update.assert_called_once_with(
             fake_context, fake_share_network['id'],
             dict(network_type='vlan', segmentation_id='1003',
-                 cidr=instance.net.cidr, ip_version=4))
+                 cidr=six.text_type(instance.net.cidr), ip_version=4))
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(fake_context, '10.0.0.2')])
         instance.db.network_allocation_create.assert_called_once_with(
@@ -393,7 +394,7 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.db.share_network_update.assert_called_once_with(
             ctxt, fake_share_network['id'],
             dict(network_type=None, segmentation_id=None,
-                 cidr=instance.net.cidr, ip_version=4))
+                 cidr=six.text_type(instance.net.cidr), ip_version=4))
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(ctxt, '10.0.0.2'), mock.call(ctxt, '10.0.0.3'),
              mock.call(ctxt, '10.0.0.4'), mock.call(ctxt, '10.0.0.5')])
@@ -431,6 +432,6 @@ class StandaloneNetworkPluginTest(test.TestCase):
         instance.db.share_network_update.assert_called_once_with(
             fake_context, fake_share_network['id'],
             dict(network_type=None, segmentation_id=None,
-                 cidr=instance.net.cidr, ip_version=4))
+                 cidr=six.text_type(instance.net.cidr), ip_version=4))
         instance.db.network_allocations_get_by_ip_address.assert_has_calls(
             [mock.call(fake_context, '10.0.0.2')])
