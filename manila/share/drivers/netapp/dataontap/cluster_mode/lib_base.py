@@ -260,7 +260,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 'total_capacity_gb': total_capacity_gb,
                 'free_capacity_gb': free_capacity_gb,
                 'allocated_capacity_gb': allocated_capacity_gb,
-                'QoS_support': 'False',
+                'qos': 'False',
                 'reserved_percentage': 0,
                 'dedupe': [True, False],
                 'compression': [True, False],

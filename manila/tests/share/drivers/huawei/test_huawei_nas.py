@@ -1404,7 +1404,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         expected['reserved_percentage'] = 0
         expected['total_capacity_gb'] = 0.0
         expected['free_capacity_gb'] = 0.0
-        expected['QoS_support'] = False
+        expected['qos'] = False
         expected["snapshot_support"] = False
         expected["pools"] = []
         pool = dict(
@@ -1412,7 +1412,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
             total_capacity_gb=2.0,
             free_capacity_gb=1.0,
             allocated_capacity_gb=1.0,
-            QoS_support=False,
+            qos=False,
             reserved_percentage=0,
             compression=[True, False],
             dedupe=[True, False],

@@ -351,7 +351,7 @@ class HDSHNASDriver(driver.ShareDriver):
             'total_capacity_gb': total_space,
             'free_capacity_gb': free_space,
             'reserved_percentage': reserved,
-            'QoS_support': False,
+            'qos': False,
         }
 
         LOG.info(_LI("HNAS Capabilities: %(data)s."),

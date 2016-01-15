@@ -121,7 +121,7 @@ class EMCShareFrameworkTestCase(test.TestCase):
         data['total_capacity_gb'] = 'unknown'
         data['free_capacity_gb'] = 'unknown'
         data['reserved_percentage'] = 0
-        data['QoS_support'] = False
+        data['qos'] = False
         data['pools'] = None
         data['snapshot_support'] = True
         self.assertEqual(data, self.driver._stats)

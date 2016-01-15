@@ -408,7 +408,7 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
             'driver_version': '1.1',
             'storage_protocol': 'glusterfs',
             'reserved_percentage': 0,
-            'QoS_support': False,
+            'qos': False,
             'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',
             'pools': None,

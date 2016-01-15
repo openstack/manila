@@ -422,7 +422,7 @@ class HPE3ParShareDriver(driver.ShareDriver):
             'provisioned_capacity_gb': 0,
             'reserved_percentage': reserved_share_percentage,
             'max_over_subscription_ratio': max_over_subscription_ratio,
-            'QoS_support': False,
+            'qos': False,
             'thin_provisioning': True,  # 3PAR default is thin
         }
 

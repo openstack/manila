@@ -166,7 +166,7 @@ class GPFSShareDriverTestCase(test.TestCase):
             mock.Mock(return_value=(11111.0, 12345.0)))
         result = self._driver.get_share_stats(True)
         expected_keys = [
-            'QoS_support', 'driver_version', 'share_backend_name',
+            'qos', 'driver_version', 'share_backend_name',
             'free_capacity_gb', 'total_capacity_gb',
             'driver_handles_share_servers',
             'reserved_percentage', 'vendor_name', 'storage_protocol',

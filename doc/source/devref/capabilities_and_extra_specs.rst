@@ -85,6 +85,17 @@ be created.
   thick. So, a Manila pool will always report thin_provisioning as True or
   False. Added in Liberty.
 
+* `qos` - indicates that a backend/pool can provide shares using some
+  QoS (Quality of Service) specification. The default value of the qos
+  capability (if a driver doesn't report it) is False. Administrators
+  can make a share type use QoS by setting this extra-spec to '<is> True' and
+  also setting the relevant QoS-related extra specs for the drivers being used.
+  Administrators can prevent a share type from using QoS by setting this
+  extra-spec to '<is> False'. Different drivers have different ways of specifying
+  QoS limits (or guarantees) and this extra spec merely allows the scheduler to
+  filter by pools that either have or don't have QoS support enabled. Added in
+  Mitaka.
+
 Reporting Capabilities
 ----------------------
 Drivers report capabilities as part of the updated stats (e.g. capacity)
@@ -113,15 +124,15 @@ example vendor prefix:
         'my_capability_2': True,                 # stats & capabilities
                                                  #/
         'pools': [
-            {'pool_name': 
+            {'pool_name':
                'thin-dedupe-compression pool',   #\
              'total_capacity_gb': 500,           #  mandatory stats for
              'free_capacity_gb': 230,            #  pools
-             'QoS_support': 'False',             # |
              'reserved_percentage': 0,           #/
                                                  #\
              'dedupe': True,                     # common capabilities
              'compression': True,                #
+             'qos': True,                        # this backend supports QoS
              'thin_provisioning': True,          #
              'max_over_subscription_ratio': 10,  # (mandatory for thin)
              'provisioned_capacity_gb': 270,     # (mandatory for thin)
@@ -134,7 +145,7 @@ example vendor prefix:
             {'pool_name': 'thick pool',
              'total_capacity_gb': 1024,
              'free_capacity_gb': 1024,
-             'QoS_support': 'False',
+             'qos': False,
              'reserved_percentage': 0,
              'dedupe': False,
              'compression': False,
