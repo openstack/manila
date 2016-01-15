@@ -46,7 +46,6 @@ provided by Neutron.
 
 Prerequisites
 -------------
-- Ubuntu 14.04
 - MySQL database
 - RabbitMQ message bus
 - OpenStack Keystone
