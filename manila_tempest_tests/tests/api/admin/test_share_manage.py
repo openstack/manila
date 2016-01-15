@@ -147,6 +147,13 @@ class ManageNFSShareTest(base.BaseSharesAdminTest):
 
     @test.attr(type=["gate", "smoke"])
     def test_manage(self):
+        # After 'unmanage' operation, share instance should be deleted.
+        # Assert not related to 'manage' test, but placed here for
+        # resource optimization.
+        share_instance_list = self.shares_v2_client.list_share_instances()
+        share_ids = [si['share_id'] for si in share_instance_list]
+        self.assertNotIn(self.shares[0]['id'], share_ids)
+
         self._test_manage(share=self.shares[0])
 
     @test.attr(type=["gate", "smoke"])

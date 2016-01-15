@@ -939,9 +939,8 @@ class ShareManager(manager.SchedulerDependentManager):
                     _LE("Can not remove access rules of share: %s."), e)
                 return
 
-        self.db.share_update(context, share_id,
-                             {'status': constants.STATUS_UNMANAGED,
-                              'deleted': True})
+        self.db.share_instance_delete(context, share_instance['id'])
+        LOG.info(_LI("Share %s: unmanaged successfully."), share_id)
 
     @add_hooks
     @utils.require_driver_initialized
