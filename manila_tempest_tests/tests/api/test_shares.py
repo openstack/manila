@@ -55,6 +55,10 @@ class SharesNFSTest(base.BaseSharesTest):
         self.assertTrue(detailed_elements.issubset(share.keys()), msg)
         self.assertFalse(share['is_public'])
 
+        # The 'status' of the share returned by the create API must be
+        # the default value - 'creating'.
+        self.assertEqual('creating', share['status'])
+
         # Get share using v 2.1 - we expect key 'snapshot_support' to be absent
         share_get = self.shares_v2_client.get_share(share['id'], version='2.1')
         self.assertTrue(detailed_elements.issubset(share_get.keys()), msg)
@@ -107,6 +111,10 @@ class SharesNFSTest(base.BaseSharesTest):
         s2 = self.create_share(
             self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
 
+        # The 'status' of the share returned by the create API must be
+        # the default value - 'creating'.
+        self.assertEqual('creating', s2['status'])
+
         # verify share, created from snapshot
         get = self.shares_client.get_share(s2["id"])
         msg = "Expected snapshot_id %s as "\
@@ -132,6 +140,10 @@ class SharesNFSTest(base.BaseSharesTest):
         # create share from snapshot
         child = self.create_share(
             self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
+
+        # The 'status' of the share returned by the create API must be
+        # the default value - 'creating'.
+        self.assertEqual('creating', child['status'])
 
         # verify share, created from snapshot
         get = self.shares_client.get_share(child["id"])
