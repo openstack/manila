@@ -56,6 +56,10 @@ class SharesNFSTest(base.BaseSharesTest):
                             "actual": share.keys()})
         self.assertFalse(share['is_public'])
 
+        # The 'status' of the share returned by the create API must be
+        # the default value - 'creating'.
+        self.assertEqual('creating', share['status'])
+
         # delete share
         self.shares_client.delete_share(share['id'])
         self.shares_client.wait_for_resource_deletion(share_id=share['id'])
@@ -107,6 +111,10 @@ class SharesNFSTest(base.BaseSharesTest):
         s2 = self.create_share(
             self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
 
+        # The 'status' of the share returned by the create API must be
+        # the default value - 'creating'.
+        self.assertEqual('creating', s2['status'])
+
         # verify share, created from snapshot
         get = self.shares_client.get_share(s2["id"])
         msg = "Expected snapshot_id %s as "\
@@ -132,6 +140,10 @@ class SharesNFSTest(base.BaseSharesTest):
         # create share from snapshot
         child = self.create_share(
             self.protocol, snapshot_id=snap["id"], cleanup_in_class=False)
+
+        # The 'status' of the share returned by the create API must be
+        # the default value - 'creating'.
+        self.assertEqual('creating', child['status'])
 
         # verify share, created from snapshot
         get = self.shares_client.get_share(child["id"])

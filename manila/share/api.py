@@ -252,6 +252,9 @@ class API(base.Base):
                              consistency_group=consistency_group,
                              cgsnapshot_member=cgsnapshot_member)
 
+        # Retrieve the share with instance details
+        share = self.db.share_get(context, share['id'])
+
         return share
 
     def create_instance(self, context, share, share_network_id=None,
