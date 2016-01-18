@@ -25,6 +25,7 @@ from six.moves.urllib import request as urlreq  # pylint: disable=E0611
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
+from manila.i18n import _LW
 from manila.share.drivers.huawei import constants
 from manila import utils
 
@@ -419,38 +420,92 @@ class RestHelper(object):
         self._assert_rest_result(result, 'Get access id by share error!')
 
         for item in result.get('data', []):
-            if access_to == item['NAME']:
+            if item['NAME'] in (access_to, '@' + access_to):
                 return item['ID']
 
     def _allow_access_rest(self, share_id, access_to,
                            share_proto, access_level):
         """Allow access to the share."""
-        access_type = self._get_share_client_type(share_proto)
-        url = "/" + access_type
+        if share_proto == 'NFS':
+            self._allow_nfs_access_rest(share_id, access_to, access_level)
+        elif share_proto == 'CIFS':
+            self._allow_cifs_access_rest(share_id, access_to, access_level)
+        else:
+            raise exception.InvalidInput(
+                reason=(_('Invalid NAS protocol supplied: %s.')
+                        % share_proto))
 
-        access = {}
-        if access_type == "NFS_SHARE_AUTH_CLIENT":
-            access = {
-                "TYPE": "16409",
-                "NAME": access_to,
-                "PARENTID": share_id,
-                "ACCESSVAL": access_level,
-                "SYNC": "0",
-                "ALLSQUASH": "1",
-                "ROOTSQUASH": "0",
-            }
-        elif access_type == "CIFS_SHARE_AUTH_CLIENT":
-            access = {
-                "NAME": access_to,
-                "PARENTID": share_id,
-                "PERMISSION": access_level,
-                "DOMAINTYPE": "2",
-            }
+    def _allow_nfs_access_rest(self, share_id, access_to, access_level):
+        url = "/NFS_SHARE_AUTH_CLIENT"
+        access = {
+            "TYPE": "16409",
+            "NAME": access_to,
+            "PARENTID": share_id,
+            "ACCESSVAL": access_level,
+            "SYNC": "0",
+            "ALLSQUASH": "1",
+            "ROOTSQUASH": "0",
+        }
         data = jsonutils.dumps(access)
         result = self.call(url, data, "POST")
 
         msg = 'Allow access error.'
         self._assert_rest_result(result, msg)
+
+    def _allow_cifs_access_rest(self, share_id, access_to, access_level):
+        url = "/CIFS_SHARE_AUTH_CLIENT"
+        domain_type = {
+            'local': '2',
+            'ad': '0'
+        }
+        error_msg = 'Allow access error.'
+        access_info = ('Access info (access_to: %(access_to)s, '
+                       'access_level: %(access_level)s, share_id: %(id)s)'
+                       % {'access_to': access_to,
+                          'access_level': access_level,
+                          'id': share_id})
+
+        def send_rest(access_to, domain_type):
+            access = {
+                "NAME": access_to,
+                "PARENTID": share_id,
+                "PERMISSION": access_level,
+                "DOMAINTYPE": domain_type,
+            }
+            data = jsonutils.dumps(access)
+            result = self.call(url, data, "POST")
+            error_code = result['error']['code']
+            if error_code == 0:
+                return True
+            elif error_code != constants.ERROR_USER_OR_GROUP_NOT_EXIST:
+                self._assert_rest_result(result, error_msg)
+            return False
+
+        if '\\' not in access_to:
+            # First, try to add user access.
+            LOG.debug('Try to add user access. %s.', access_info)
+            if send_rest(access_to, domain_type['local']):
+                return
+            # Second, if add user access failed,
+            # try to add group access.
+            LOG.debug('Failed with add user access, '
+                      'try to add group access. %s.', access_info)
+            # Group name starts with @.
+            if send_rest('@' + access_to, domain_type['local']):
+                return
+        else:
+            LOG.debug('Try to add domain user access. %s.', access_info)
+            if send_rest(access_to, domain_type['ad']):
+                return
+            # If add domain user access failed,
+            # try to add domain group access.
+            LOG.debug('Failed with add domain user access, '
+                      'try to add domain group access. %s.', access_info)
+            # Group name starts with @.
+            if send_rest('@' + access_to, domain_type['ad']):
+                return
+
+        raise exception.InvalidShare(reason=error_msg)
 
     def _get_share_client_type(self, share_proto):
         share_client_type = None
@@ -766,3 +821,276 @@ class RestHelper(object):
 
         self._assert_rest_result(result,
                                  _('Remove filesystem from cache error.'))
+
+    def get_all_eth_port(self):
+        url = "/ETH_PORT"
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get all eth port error.'))
+
+        all_eth = {}
+        if "data" in result:
+            all_eth = result['data']
+
+        return all_eth
+
+    def get_eth_port_by_id(self, port_id):
+        url = "/ETH_PORT/" + port_id
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get eth port by id error.'))
+
+        if "data" in result:
+            return result['data']
+
+        return None
+
+    def get_all_bond_port(self):
+        url = "/BOND_PORT"
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get all bond port error.'))
+
+        all_bond = {}
+        if "data" in result:
+            all_bond = result['data']
+
+        return all_bond
+
+    def get_port_id(self, port_name, port_type):
+        if port_type == constants.PORT_TYPE_ETH:
+            all_eth = self.get_all_eth_port()
+            for item in all_eth:
+                if port_name == item['LOCATION']:
+                    return item['ID']
+        elif port_type == constants.PORT_TYPE_BOND:
+            all_bond = self.get_all_bond_port()
+            for item in all_bond:
+                if port_name == item['NAME']:
+                    return item['ID']
+
+        return None
+
+    def get_all_vlan(self):
+        url = "/vlan"
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get all vlan error.'))
+
+        all_vlan = {}
+        if "data" in result:
+            all_vlan = result['data']
+
+        return all_vlan
+
+    def get_vlan(self, port_id, vlan_tag):
+        url = "/vlan"
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get vlan error.'))
+
+        vlan_tag = six.text_type(vlan_tag)
+        if "data" in result:
+            for item in result['data']:
+                if port_id == item['PORTID'] and vlan_tag == item['TAG']:
+                    return True, item['ID']
+
+        return False, None
+
+    def create_vlan(self, port_id, port_type, vlan_tag):
+        url = "/vlan"
+        data = jsonutils.dumps({"PORTID": port_id,
+                                "PORTTYPE": port_type,
+                                "TAG": six.text_type(vlan_tag),
+                                "TYPE": "280"})
+        result = self.call(url, data, "POST")
+        self._assert_rest_result(result, _('Create vlan error.'))
+
+        return result['data']['ID']
+
+    def check_vlan_exists_by_id(self, vlan_id):
+        all_vlan = self.get_all_vlan()
+        return any(vlan['ID'] == vlan_id for vlan in all_vlan)
+
+    def delete_vlan(self, vlan_id):
+        url = "/vlan/" + vlan_id
+        result = self.call(url, None, 'DELETE')
+        if result['error']['code'] == constants.ERROR_LOGICAL_PORT_EXIST:
+            LOG.warning(_LW('Cannot delete vlan because there is '
+                            'a logical port on vlan.'))
+            return
+
+        self._assert_rest_result(result, _('Delete vlan error.'))
+
+    def get_logical_port(self, home_port_id, ip, subnet):
+        url = "/LIF"
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get logical port error.'))
+
+        if "data" not in result:
+            return False, None
+
+        for item in result['data']:
+            if (home_port_id == item['HOMEPORTID']
+                    and ip == item['IPV4ADDR']
+                    and subnet == item['IPV4MASK']):
+                if item['OPERATIONALSTATUS'] != 'true':
+                    self._activate_logical_port(item['ID'])
+                return True, item['ID']
+
+        return False, None
+
+    def _activate_logical_port(self, logical_port_id):
+        url = "/LIF/" + logical_port_id
+        data = jsonutils.dumps({"OPERATIONALSTATUS": "true"})
+        result = self.call(url, data, 'PUT')
+        self._assert_rest_result(result, _('Activate logical port error.'))
+
+    def create_logical_port(self, home_port_id, home_port_type, ip, subnet):
+        url = "/LIF"
+        info = {
+            "ADDRESSFAMILY": 0,
+            "CANFAILOVER": "true",
+            "HOMEPORTID": home_port_id,
+            "HOMEPORTTYPE": home_port_type,
+            "IPV4ADDR": ip,
+            "IPV4GATEWAY": "",
+            "IPV4MASK": subnet,
+            "NAME": ip,
+            "OPERATIONALSTATUS": "true",
+            "ROLE": 2,
+            "SUPPORTPROTOCOL": 3,
+            "TYPE": "279",
+        }
+
+        data = jsonutils.dumps(info)
+        result = self.call(url, data, 'POST')
+        self._assert_rest_result(result, _('Create logical port error.'))
+
+        return result['data']['ID']
+
+    def check_logical_port_exists_by_id(self, logical_port_id):
+        all_logical_port = self.get_all_logical_port()
+        return any(port['ID'] == logical_port_id for port in all_logical_port)
+
+    def get_all_logical_port(self):
+        url = "/LIF"
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get all logical port error.'))
+
+        all_logical_port = {}
+        if "data" in result:
+            all_logical_port = result['data']
+
+        return all_logical_port
+
+    def delete_logical_port(self, logical_port_id):
+        url = "/LIF/" + logical_port_id
+        result = self.call(url, None, 'DELETE')
+        self._assert_rest_result(result, _('Delete logical port error.'))
+
+    def set_DNS_ip_address(self, dns_ip_list):
+        if len(dns_ip_list) > 3:
+            message = _('Most three ips can be set to DNS.')
+            LOG.error(message)
+            raise exception.InvalidInput(reason=message)
+
+        url = "/DNS_Server"
+        dns_info = {
+            "ADDRESS": jsonutils.dumps(dns_ip_list),
+            "TYPE": "260",
+        }
+        data = jsonutils.dumps(dns_info)
+        result = self.call(url, data, 'PUT')
+        self._assert_rest_result(result, _('Set DNS ip address error.'))
+
+        if "data" in result:
+            return result['data']
+
+        return None
+
+    def get_DNS_ip_address(self):
+        url = "/DNS_Server"
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get DNS ip address error.'))
+
+        ip_address = {}
+        if "data" in result:
+            ip_address = jsonutils.loads(result['data']['ADDRESS'])
+
+        return ip_address
+
+    def add_AD_config(self, user, password, domain, system_name):
+        url = "/AD_CONFIG"
+        info = {
+            "ADMINNAME": user,
+            "ADMINPWD": password,
+            "DOMAINSTATUS": 1,
+            "FULLDOMAINNAME": domain,
+            "OU": "",
+            "SYSTEMNAME": system_name,
+            "TYPE": "16414",
+        }
+        data = jsonutils.dumps(info)
+        result = self.call(url, data, 'PUT')
+        self._assert_rest_result(result, _('Add AD config error.'))
+
+    def delete_AD_config(self, user, password):
+        url = "/AD_CONFIG"
+        info = {
+            "ADMINNAME": user,
+            "ADMINPWD": password,
+            "DOMAINSTATUS": 0,
+            "TYPE": "16414",
+        }
+        data = jsonutils.dumps(info)
+        result = self.call(url, data, 'PUT')
+        self._assert_rest_result(result, _('Delete AD config error.'))
+
+    def get_AD_config(self):
+        url = "/AD_CONFIG"
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get AD config error.'))
+
+        if "data" in result:
+            return result['data']
+
+        return None
+
+    def get_AD_domain_name(self):
+        result = self.get_AD_config()
+        if result and result['DOMAINSTATUS'] == '1':
+            return True, result['FULLDOMAINNAME']
+
+        return False, None
+
+    def add_LDAP_config(self, server, domain):
+        url = "/LDAP_CONFIG"
+        info = {
+            "BASEDN": domain,
+            "LDAPSERVER": server,
+            "PORTNUM": 389,
+            "TRANSFERTYPE": "1",
+            "TYPE": "16413",
+            "USERNAME": "",
+        }
+        data = jsonutils.dumps(info)
+        result = self.call(url, data, 'PUT')
+        self._assert_rest_result(result, _('Add LDAP config error.'))
+
+    def delete_LDAP_config(self):
+        url = "/LDAP_CONFIG"
+        result = self.call(url, None, 'DELETE')
+        self._assert_rest_result(result, _('Delete LDAP config error.'))
+
+    def get_LDAP_config(self):
+        url = "/LDAP_CONFIG"
+        result = self.call(url, None, 'GET')
+        self._assert_rest_result(result, _('Get LDAP config error.'))
+
+        if "data" in result:
+            return result['data']
+
+        return None
+
+    def get_LDAP_domain_server(self):
+        result = self.get_LDAP_config()
+        if result and result['LDAPSERVER']:
+            return True, result['LDAPSERVER']
+
+        return False, None

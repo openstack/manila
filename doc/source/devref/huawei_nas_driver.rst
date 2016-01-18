@@ -40,7 +40,7 @@ The following operations is supported on V3 storage:
 - Delete CIFS/NFS Share
 - Allow CIFS/NFS Share access
 
-  * Only IP access type is supported for NFS(ro/rw).
+  * IP and USER access types are supported for NFS(ro/rw).
   * Only USER access type is supported for CIFS(ro/rw).
 - Deny CIFS/NFS Share access
 - Create snapshot
@@ -70,6 +70,7 @@ storage systems, the driver configuration file is as follows:
         <Storage>
             <Product>V3</Product>
             <LogicalPortIP>x.x.x.x</LogicalPortIP>
+            <Port>abc;CTE0.A.H1</Port>
             <RestURL>https://x.x.x.x:8088/deviceManager/rest/;
             https://x.x.x.x:8088/deviceManager/rest/</RestURL>
             <UserName>xxxxxxxxx</UserName>
@@ -85,6 +86,10 @@ storage systems, the driver configuration file is as follows:
 
 - `Product` is a type of a storage product. Set it to `V3`.
 - `LogicalPortIP` is an IP address of the logical port.
+- `Port` is a port name list of bond port or ETH port, used to
+  create vlan and logical port. Multi Ports can be configured in
+  <Port>(separated by ";"). If <Port> is not configured, then will choose
+  an online port on the array.
 - `RestURL` is an access address of the REST interface. Multi RestURLs
   can be configured in <RestURL>(separated by ";"). When one of the RestURL
   failed to connect, driver will retry another automatically.
@@ -105,14 +110,16 @@ Example for configuring a storage system:
 
 - `share_driver` = manila.share.drivers.huawei.huawei_nas.HuaweiNasDriver
 - `manila_huawei_conf_file` = /etc/manila/manila_huawei_conf.xml
-- `driver_handles_share_servers` = False
+- `driver_handles_share_servers` = True or False
 
 .. note::
-    As far as Manila requires `share type` for creation of shares, make sure that
-    used `share type` has extra spec `driver_handles_share_servers` set to `False`
-    otherwise Huawei backend will be filtered by `manila-scheduler`.
-    If you do not provide `share type` with share creation request then default
-    `share type` and its extra specs will be used.
+    - If `driver_handles_share_servers` is True, the driver will choose a port
+      in <Port> to create vlan and logical port for each tenant network.
+      And the share type with the DHSS extra spec should be set to True when
+      creating shares.
+    - If `driver_handles_share_servers` is False, then will use the IP in
+      <LogicalPortIP>. Also the share type with the DHSS extra spec should be
+      set to False when creating shares.
 
 Restart of manila-share service is needed for the configuration changes to take
 effect.
@@ -195,9 +202,13 @@ Restrictions
 
 The Huawei driver has the following restrictions:
 
-- Only IP access type is supported for NFS.
+- IP and USER access types are supported for NFS.
+
+- Only LDAP domain is supported for NFS.
 
 - Only USER access type is supported for CIFS.
+
+- Only AD domain is supported for CIFS.
 
 The :mod:`manila.share.drivers.huawei.huawei_nas` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
