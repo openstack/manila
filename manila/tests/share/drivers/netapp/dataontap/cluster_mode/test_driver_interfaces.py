@@ -17,7 +17,6 @@ Mock unit tests for the NetApp file share driver interfaces
 
 
 import mock
-import six
 
 from manila.share.drivers.netapp.dataontap.cluster_mode import drv_multi_svm
 from manila.share.drivers.netapp.dataontap.cluster_mode import drv_single_svm
@@ -59,5 +58,5 @@ class NetAppFileStorageDriverInterfaceTestCase(test.TestCase):
 
     def _get_local_functions(self, obj):
         """Get function names of an object without superclass functions."""
-        return set([key for key, value in six.iteritems(type(obj).__dict__)
+        return set([key for key, value in type(obj).__dict__.items()
                     if callable(value)])

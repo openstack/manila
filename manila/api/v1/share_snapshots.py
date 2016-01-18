@@ -16,7 +16,6 @@
 """The share snapshots api."""
 
 from oslo_log import log
-import six
 import webob
 from webob import exc
 
@@ -208,7 +207,7 @@ class ShareSnapshotsController(wsgi.Controller, wsgi.AdminActionsMixin):
             snapshot.get('display_name'),
             snapshot.get('display_description'))
         return self._view_builder.detail(
-            req, dict(six.iteritems(new_snapshot)))
+            req, dict(new_snapshot.items()))
 
 
 def create_resource():

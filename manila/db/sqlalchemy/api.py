@@ -1292,7 +1292,7 @@ def _share_get_query(context, session=None):
 def _metadata_refs(metadata_dict, meta_class):
     metadata_refs = []
     if metadata_dict:
-        for k, v in six.iteritems(metadata_dict):
+        for k, v in metadata_dict.items():
             value = six.text_type(v) if isinstance(v, bool) else v
 
             metadata_ref = meta_class()
@@ -1978,7 +1978,7 @@ def _share_metadata_update(context, share_id, metadata, delete, session=None):
         if delete:
             original_metadata = _share_metadata_get(context, share_id,
                                                     session=session)
-            for meta_key, meta_value in six.iteritems(original_metadata):
+            for meta_key, meta_value in original_metadata.items():
                 if meta_key not in metadata:
                     meta_ref = _share_metadata_get_item(context, share_id,
                                                         meta_key,
@@ -2900,7 +2900,7 @@ def share_type_extra_specs_update_or_create(context, share_type_id, specs):
     session = get_session()
     with session.begin():
         spec_ref = None
-        for key, value in six.iteritems(specs):
+        for key, value in specs.items():
             try:
                 spec_ref = _share_type_extra_specs_get_item(
                     context, share_type_id, key, session)

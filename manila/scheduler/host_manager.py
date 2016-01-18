@@ -505,12 +505,12 @@ class HostManager(object):
                 host_state = self.host_state_cls(
                     host,
                     capabilities=capabilities,
-                    service=dict(six.iteritems(service)))
+                    service=dict(service.items()))
                 self.host_state_map[host] = host_state
 
             # Update capabilities and attributes in host_state
             host_state.update_from_share_capability(
-                capabilities, service=dict(six.iteritems(service)))
+                capabilities, service=dict(service.items()))
 
     def get_all_host_states_share(self, context):
         """Returns a dict of all the hosts the HostManager knows about.
@@ -579,7 +579,7 @@ class HostManager(object):
         if not filter_dict:
             return True
 
-        for filter_key, filter_value in six.iteritems(filter_dict):
+        for filter_key, filter_value in filter_dict.items():
             if filter_key not in dict_to_check:
                 return False
             if not re.match(filter_value, dict_to_check.get(filter_key)):

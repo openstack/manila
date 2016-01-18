@@ -22,7 +22,6 @@ SQLAlchemy models for Manila data.
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
 from oslo_log import log
-import six
 from sqlalchemy import Column, Integer, String, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import orm
@@ -45,7 +44,7 @@ class ManilaBase(models.ModelBase,
 
     def to_dict(self):
         model_dict = {}
-        for k, v in six.iteritems(self):
+        for k, v in self.items():
             if not issubclass(type(v), ManilaBase):
                 model_dict[k] = v
         return model_dict

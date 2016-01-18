@@ -17,7 +17,6 @@ Fakes For Scheduler tests.
 """
 
 from oslo_utils import timeutils
-import six
 
 from manila.scheduler.drivers import filter
 from manila.scheduler import host_manager
@@ -237,7 +236,7 @@ class FakeHostManager(host_manager.HostManager):
 class FakeHostState(host_manager.HostState):
     def __init__(self, host, attribute_dict):
         super(FakeHostState, self).__init__(host)
-        for (key, val) in six.iteritems(attribute_dict):
+        for (key, val) in attribute_dict.items():
             setattr(self, key, val)
 
 

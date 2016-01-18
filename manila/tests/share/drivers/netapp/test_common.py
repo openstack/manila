@@ -116,7 +116,7 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         registry = na_common.NETAPP_UNIFIED_DRIVER_REGISTRY
 
         for family in six.iterkeys(registry):
-            for mode, full_class_name in six.iteritems(registry[family]):
+            for mode, full_class_name in registry[family].items():
 
                 config = na_fakes.create_configuration()
                 config.local_conf.set_override('driver_handles_share_servers',

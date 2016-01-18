@@ -33,7 +33,6 @@ from oslo_config import fixture as config_fixture
 import oslo_i18n
 from oslo_messaging import conffixture as messaging_conffixture
 import oslotest.base as base_test
-import six
 
 from manila.db import migration
 from manila.db.sqlalchemy import api as db_api
@@ -171,7 +170,7 @@ class TestCase(base_test.BaseTestCase):
 
     def flags(self, **kw):
         """Override flag variables for a test."""
-        for k, v in six.iteritems(kw):
+        for k, v in kw.items():
             CONF.set_override(k, v)
 
     def start_service(self, name, host=None, **kwargs):

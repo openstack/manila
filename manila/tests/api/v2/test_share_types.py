@@ -18,7 +18,6 @@ import datetime
 import ddt
 import mock
 from oslo_utils import timeutils
-import six
 import webob
 
 from manila.api.v2 import share_types as types
@@ -406,7 +405,7 @@ def fake_share_type_get_all(context, inactive=False, filters=None):
     if filters is None or filters.get('is_public', None) is None:
         return SHARE_TYPES
     res = {}
-    for k, v in six.iteritems(SHARE_TYPES):
+    for k, v in SHARE_TYPES.items():
         if filters['is_public'] and _has_type_access(k, context.project_id):
             res.update({k: v})
             continue

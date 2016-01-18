@@ -16,7 +16,6 @@
 """The security service api."""
 
 from oslo_log import log
-import six
 import webob
 from webob import exc
 
@@ -124,7 +123,7 @@ class SecurityServiceController(wsgi.Controller):
             not_found = object()
             for ss in security_services:
                 if all(ss.get(opt, not_found) == value for opt, value in
-                       six.iteritems(search_opts)):
+                       search_opts.items()):
                     results.append(ss)
             security_services = results
 

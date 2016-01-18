@@ -128,7 +128,7 @@ def _conf2json(conf):
 def _dump_to_conf(confdict, out=sys.stdout, indent=0):
     """Output confdict in Ganesha config format."""
     if isinstance(confdict, dict):
-        for k, v in six.iteritems(confdict):
+        for k, v in confdict.items():
             if v is None:
                 continue
             out.write(' ' * (indent * IWIDTH) + k + ' ')

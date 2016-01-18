@@ -164,7 +164,7 @@ class ShareNetworkController(wsgi.Controller):
         for opt in opts_to_remove:
             search_opts.pop(opt, None)
         if search_opts:
-            for key, value in six.iteritems(search_opts):
+            for key, value in search_opts.items():
                 if key in ['ip_version', 'segmentation_id']:
                     value = int(value)
                 networks = [network for network in networks
@@ -284,7 +284,7 @@ class ShareNetworkController(wsgi.Controller):
             'add_security_service': self._add_security_service,
             'remove_security_service': self._remove_security_service
         }
-        for action, data in six.iteritems(body):
+        for action, data in body.items():
             try:
                 return _actions[action](req, id, data)
             except KeyError:

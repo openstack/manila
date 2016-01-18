@@ -15,8 +15,6 @@
 
 import logging
 
-import six
-
 from manila.scheduler.filters import base_host
 from manila.scheduler.filters import extra_specs_ops
 
@@ -36,7 +34,7 @@ class CapabilitiesFilter(base_host.BaseHostFilter):
         if not extra_specs:
             return True
 
-        for key, req in six.iteritems(extra_specs):
+        for key, req in extra_specs.items():
 
             # Either not scoped format, or in capabilities scope
             scope = key.split(':')

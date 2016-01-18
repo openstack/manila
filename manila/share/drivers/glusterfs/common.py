@@ -91,7 +91,7 @@ class GlusterManager(object):
 
         self.components = (address if isinstance(address, dict) else
                            self.parse(address))
-        for k, v in six.iteritems(requires):
+        for k, v in requires.items():
             if v is None:
                 continue
             if (self.components.get(k) is not None) != v:

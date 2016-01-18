@@ -18,7 +18,6 @@ import re
 
 from oslo_config import cfg
 from oslo_log import log
-import six
 from six.moves.urllib import parse
 import webob
 
@@ -193,7 +192,7 @@ def dict_to_query_str(params):
     # TODO(throughnothing): we should just use urllib.urlencode instead of this
     # But currently we don't work with urlencoded url's
     param_str = ""
-    for key, val in six.iteritems(params):
+    for key, val in params.items():
         param_str = param_str + '='.join([str(key), str(val)]) + '&'
 
     return param_str.rstrip('&')

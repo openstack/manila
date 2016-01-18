@@ -109,7 +109,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         """
 
         subdict = {}
-        for key, val in six.iteritems(PATTERN_DICT):
+        for key, val in PATTERN_DICT.items():
             subdict[key] = val['pattern']
 
         # Using templates with placeholder syntax #{<var>}
@@ -131,7 +131,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             except exception.GlusterfsException as exc:
                 exceptions[srvaddr] = six.text_type(exc)
         if exceptions:
-            for srvaddr, excmsg in six.iteritems(exceptions):
+            for srvaddr, excmsg in exceptions.items():
                 LOG.error(_LE("'gluster version' failed on server "
                               "%(server)s with: %(message)s"),
                           {'server': srvaddr, 'message': excmsg})
@@ -139,7 +139,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 "'gluster version' failed on servers %s") % (
                 ','.join(exceptions.keys())))
         notsupp_servers = []
-        for srvaddr, vers in six.iteritems(glusterfs_versions):
+        for srvaddr, vers in glusterfs_versions.items():
             if common.GlusterManager.numreduct(
                vers) < self.driver.GLUSTERFS_VERSION_MIN:
                 notsupp_servers.append(srvaddr)

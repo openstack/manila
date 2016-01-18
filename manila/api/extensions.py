@@ -96,7 +96,7 @@ class ExtensionsResource(wsgi.Resource):
 
     def index(self, req):
         extensions = []
-        for _alias, ext in six.iteritems(self.extension_manager.extensions):
+        for _alias, ext in self.extension_manager.extensions.items():
             extensions.append(self._translate(ext))
         return dict(extensions=extensions)
 

@@ -213,7 +213,7 @@ class CGController(wsgi.Controller, wsgi.AdminActionsMixin):
         except (exception.CGSnapshotNotFound, exception.InvalidInput) as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
-        return self._view_builder.detail(req, dict(six.iteritems(new_cg)))
+        return self._view_builder.detail(req, dict(new_cg.items()))
 
     def _update(self, *args, **kwargs):
         db.consistency_group_update(*args, **kwargs)

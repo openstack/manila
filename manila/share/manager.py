@@ -873,7 +873,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
     def _update_quota_usages(self, context, project_id, usages):
         user_id = context.user_id
-        for resource, usage in six.iteritems(usages):
+        for resource, usage in usages.items():
             try:
                 current_usage = self.db.quota_usage_get(
                     context, project_id, resource, user_id)

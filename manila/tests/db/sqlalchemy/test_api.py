@@ -859,8 +859,8 @@ class ShareNetworkDatabaseAPITestCase(BaseDatabaseAPITestCase):
                                               self.share_nw_dict['id'])
 
         self.assertEqual(new_name, result_update['name'])
-        self._check_fields(expected=dict(six.iteritems(result_update)),
-                           actual=dict(six.iteritems(result_get)))
+        self._check_fields(expected=dict(result_update.items()),
+                           actual=dict(result_get.items()))
 
     def test_update_not_found(self):
         self.assertRaises(exception.ShareNetworkNotFound,

@@ -33,7 +33,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
     def _get_extra_specs(self, context, type_id):
         extra_specs = db.share_type_extra_specs_get(context, type_id)
         specs_dict = {}
-        for key, value in six.iteritems(extra_specs):
+        for key, value in extra_specs.items():
             specs_dict[key] = value
         return dict(extra_specs=specs_dict)
 
@@ -62,7 +62,7 @@ class ShareTypeExtraSpecsController(wsgi.Controller):
                     and valid_type
                     and valid_required_extra_spec)
 
-        for k, v in six.iteritems(extra_specs):
+        for k, v in extra_specs.items():
             if is_valid_string(k) and isinstance(v, dict):
                 self._verify_extra_specs(v)
             elif not is_valid_extra_spec(k, v):

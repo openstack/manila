@@ -17,7 +17,6 @@ import os
 import pipes
 
 from oslo_concurrency import processutils
-import six
 
 from manila import utils
 
@@ -25,7 +24,7 @@ from manila import utils
 def patch(base, *overlays):
     """Recursive dictionary patching."""
     for ovl in overlays:
-        for k, v in six.iteritems(ovl):
+        for k, v in ovl.items():
             if isinstance(v, dict) and isinstance(base.get(k), dict):
                 patch(base[k], v)
             else:
@@ -35,7 +34,7 @@ def patch(base, *overlays):
 
 def walk(dct):
     """Recursive iteration over dictionary."""
-    for k, v in six.iteritems(dct):
+    for k, v in dct.items():
         if isinstance(v, dict):
             for w in walk(v):
                 yield w
