@@ -243,7 +243,7 @@ class StandaloneNetworkPlugin(network.NetworkBaseAPI):
         data = dict(
             network_type=self.network_type,
             segmentation_id=self.segmentation_id,
-            cidr=self.net.cidr,
+            cidr=six.text_type(self.net.cidr),
             ip_version=self.ip_version)
         self.db.share_network_update(context, share_network['id'], data)
 
