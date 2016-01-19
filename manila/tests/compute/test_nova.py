@@ -170,6 +170,20 @@ class NovaApiTestCase(test.TestCase):
         self.assertEqual(instance_id, result['id'])
         utils.find_resource.assert_called_once_with(mock.ANY, instance_id)
 
+    def test_server_get_by_name_or_id_failed(self):
+        instance_id = 'instance_id1'
+        server = {'id': instance_id, 'fake_key': 'fake_value'}
+        self.mock_object(utils, 'find_resource',
+                         mock.Mock(return_value=server,
+                                   side_effect=nova_exception.CommandError))
+
+        self.assertRaises(exception.ManilaException,
+                          self.api.server_get_by_name_or_id,
+                          self.ctx, instance_id)
+        utils.find_resource.assert_any_call(mock.ANY, instance_id)
+        utils.find_resource.assert_called_with(mock.ANY, instance_id,
+                                               all_tenants=True)
+
     @ddt.data(
         {'nova_e': nova_exception.NotFound(404),
          'manila_e': exception.InstanceNotFound},

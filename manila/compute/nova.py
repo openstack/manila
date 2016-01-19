@@ -201,9 +201,16 @@ class API(base.Base):
         try:
             server = utils.find_resource(
                 novaclient(context).servers, instance_name_or_id)
-        except nova_exception.CommandError as e:
-            msg = _("Failed to get Nova VM. %s") % e
-            raise exception.ManilaException(msg)
+        except nova_exception.CommandError:
+            # we did not find the server in the current tenant,
+            # and proceed searching in all tenants
+            try:
+                server = utils.find_resource(
+                    novaclient(context).servers, instance_name_or_id,
+                    all_tenants=True)
+            except nova_exception.CommandError as e:
+                msg = _("Failed to get Nova VM. %s") % e
+                raise exception.ManilaException(msg)
         return _untranslate_server_summary_view(server)
 
     @translate_server_exception
