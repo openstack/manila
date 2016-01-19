@@ -182,10 +182,6 @@ class NovaApiTestCase(test.TestCase):
         instance_id = 'instance_id'
         self.assertRaises(manila_e, self.api.server_get, self.ctx, instance_id)
 
-    def test_server_list(self):
-        self.assertEqual([{'id': 'id1'}, {'id': 'id2'}],
-                         self.api.server_list(self.ctx))
-
     def test_server_pause(self):
         self.mock_object(self.novaclient.servers, 'pause')
         self.api.server_pause(self.ctx, 'id1')
