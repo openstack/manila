@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from tempest import config  # noqa
 from tempest import test  # noqa
 from tempest_lib import exceptions as lib_exc  # noqa
@@ -23,24 +24,25 @@ from manila_tempest_tests.tests.api import base
 CONF = config.CONF
 
 
-def _create_delete_ro_access_rule(self):
+def _create_delete_ro_access_rule(self, client_name):
     """Common test case for usage in test suites with different decorators.
 
     :param self: instance of test class
     """
-    rule = self.shares_client.create_access_rule(
+    rule = getattr(self, client_name).create_access_rule(
         self.share["id"], self.access_type, self.access_to, 'ro')
 
     self.assertEqual('ro', rule['access_level'])
     for key in ('deleted', 'deleted_at', 'instance_mappings'):
         self.assertNotIn(key, rule.keys())
-    self.shares_client.wait_for_access_rule_status(
+    getattr(self, client_name).wait_for_access_rule_status(
         self.share["id"], rule["id"], "active")
-    self.shares_client.delete_access_rule(self.share["id"], rule["id"])
-    self.shares_client.wait_for_resource_deletion(
+    getattr(self, client_name).delete_access_rule(self.share["id"], rule["id"])
+    getattr(self, client_name).wait_for_resource_deletion(
         rule_id=rule["id"], share_id=self.share['id'])
 
 
+@ddt.ddt
 class ShareIpRulesForNFSTest(base.BaseSharesTest):
     protocol = "nfs"
 
@@ -56,55 +58,61 @@ class ShareIpRulesForNFSTest(base.BaseSharesTest):
         cls.access_to = "2.2.2.2"
 
     @test.attr(type=["gate", ])
-    def test_create_delete_access_rules_with_one_ip(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_delete_access_rules_with_one_ip(self, client_name):
 
         # test data
         access_to = "1.1.1.1"
 
         # create rule
-        rule = self.shares_client.create_access_rule(
+        rule = getattr(self, client_name).create_access_rule(
             self.share["id"], self.access_type, access_to)
 
         self.assertEqual('rw', rule['access_level'])
         for key in ('deleted', 'deleted_at', 'instance_mappings'):
             self.assertNotIn(key, rule.keys())
-        self.shares_client.wait_for_access_rule_status(
+        getattr(self, client_name).wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
         # delete rule and wait for deletion
-        self.shares_client.delete_access_rule(self.share["id"], rule["id"])
-        self.shares_client.wait_for_resource_deletion(
+        getattr(self, client_name).delete_access_rule(self.share["id"],
+                                                      rule["id"])
+        getattr(self, client_name).wait_for_resource_deletion(
             rule_id=rule["id"], share_id=self.share['id'])
 
     @test.attr(type=["gate", ])
-    def test_create_delete_access_rule_with_cidr(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_delete_access_rule_with_cidr(self, client_name):
 
         # test data
         access_to = "1.2.3.4/32"
 
         # create rule
-        rule = self.shares_client.create_access_rule(
+        rule = getattr(self, client_name).create_access_rule(
             self.share["id"], self.access_type, access_to)
 
         for key in ('deleted', 'deleted_at', 'instance_mappings'):
             self.assertNotIn(key, rule.keys())
         self.assertEqual('rw', rule['access_level'])
-        self.shares_client.wait_for_access_rule_status(
+        getattr(self, client_name).wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
         # delete rule and wait for deletion
-        self.shares_client.delete_access_rule(self.share["id"], rule["id"])
-        self.shares_client.wait_for_resource_deletion(
+        getattr(self, client_name).delete_access_rule(self.share["id"],
+                                                      rule["id"])
+        getattr(self, client_name).wait_for_resource_deletion(
             rule_id=rule["id"], share_id=self.share['id'])
 
     @test.attr(type=["gate", ])
     @testtools.skipIf(
         "nfs" not in CONF.share.enable_ro_access_level_for_protocols,
         "RO access rule tests are disabled for NFS protocol.")
-    def test_create_delete_ro_access_rule(self):
-        _create_delete_ro_access_rule(self)
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_delete_ro_access_rule(self, client_name):
+        _create_delete_ro_access_rule(self, client_name)
 
 
+@ddt.ddt
 class ShareIpRulesForCIFSTest(ShareIpRulesForNFSTest):
     protocol = "cifs"
 
@@ -112,10 +120,12 @@ class ShareIpRulesForCIFSTest(ShareIpRulesForNFSTest):
     @testtools.skipIf(
         "cifs" not in CONF.share.enable_ro_access_level_for_protocols,
         "RO access rule tests are disabled for CIFS protocol.")
-    def test_create_delete_ro_access_rule(self):
-        _create_delete_ro_access_rule(self)
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_delete_ro_access_rule(self, client_name):
+        _create_delete_ro_access_rule(self, client_name)
 
 
+@ddt.ddt
 class ShareUserRulesForNFSTest(base.BaseSharesTest):
     protocol = "nfs"
 
@@ -132,31 +142,35 @@ class ShareUserRulesForNFSTest(base.BaseSharesTest):
         cls.access_to = CONF.share.username_for_user_rules
 
     @test.attr(type=["gate", ])
-    def test_create_delete_user_rule(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_delete_user_rule(self, client_name):
 
         # create rule
-        rule = self.shares_client.create_access_rule(
+        rule = getattr(self, client_name).create_access_rule(
             self.share["id"], self.access_type, self.access_to)
 
         self.assertEqual('rw', rule['access_level'])
         for key in ('deleted', 'deleted_at', 'instance_mappings'):
             self.assertNotIn(key, rule.keys())
-        self.shares_client.wait_for_access_rule_status(
+        getattr(self, client_name).wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
         # delete rule and wait for deletion
-        self.shares_client.delete_access_rule(self.share["id"], rule["id"])
-        self.shares_client.wait_for_resource_deletion(
+        getattr(self, client_name).delete_access_rule(self.share["id"],
+                                                      rule["id"])
+        getattr(self, client_name).wait_for_resource_deletion(
             rule_id=rule["id"], share_id=self.share['id'])
 
     @test.attr(type=["gate", ])
     @testtools.skipIf(
         "nfs" not in CONF.share.enable_ro_access_level_for_protocols,
         "RO access rule tests are disabled for NFS protocol.")
-    def test_create_delete_ro_access_rule(self):
-        _create_delete_ro_access_rule(self)
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_delete_ro_access_rule(self, client_name):
+        _create_delete_ro_access_rule(self, client_name)
 
 
+@ddt.ddt
 class ShareUserRulesForCIFSTest(ShareUserRulesForNFSTest):
     protocol = "cifs"
 
@@ -164,10 +178,12 @@ class ShareUserRulesForCIFSTest(ShareUserRulesForNFSTest):
     @testtools.skipIf(
         "cifs" not in CONF.share.enable_ro_access_level_for_protocols,
         "RO access rule tests are disabled for CIFS protocol.")
-    def test_create_delete_ro_access_rule(self):
-        _create_delete_ro_access_rule(self)
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_delete_ro_access_rule(self, client_name):
+        _create_delete_ro_access_rule(self, client_name)
 
 
+@ddt.ddt
 class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
     protocol = "glusterfs"
 
@@ -186,37 +202,42 @@ class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
         cls.access_to = "client1.com"
 
     @test.attr(type=["gate", ])
-    def test_create_delete_cert_rule(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_delete_cert_rule(self, client_name):
 
         # create rule
-        rule = self.shares_client.create_access_rule(
+        rule = getattr(self, client_name).create_access_rule(
             self.share["id"], self.access_type, self.access_to)
 
         self.assertEqual('rw', rule['access_level'])
         for key in ('deleted', 'deleted_at', 'instance_mappings'):
             self.assertNotIn(key, rule.keys())
-        self.shares_client.wait_for_access_rule_status(
+        getattr(self, client_name).wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
         # delete rule
-        self.shares_client.delete_access_rule(self.share["id"], rule["id"])
+        getattr(self, client_name).delete_access_rule(self.share["id"],
+                                                      rule["id"])
 
     @test.attr(type=["gate", ])
     @testtools.skipIf(
         "glusterfs" not in CONF.share.enable_ro_access_level_for_protocols,
         "RO access rule tests are disabled for GLUSTERFS protocol.")
-    def test_create_delete_cert_ro_access_rule(self):
-        rule = self.shares_client.create_access_rule(
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_create_delete_cert_ro_access_rule(self, client_name):
+        rule = getattr(self, client_name).create_access_rule(
             self.share["id"], 'cert', 'client2.com', 'ro')
 
         self.assertEqual('ro', rule['access_level'])
         for key in ('deleted', 'deleted_at', 'instance_mappings'):
             self.assertNotIn(key, rule.keys())
-        self.shares_client.wait_for_access_rule_status(
+        getattr(self, client_name).wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
-        self.shares_client.delete_access_rule(self.share["id"], rule["id"])
+        getattr(self, client_name).delete_access_rule(self.share["id"],
+                                                      rule["id"])
 
 
+@ddt.ddt
 class ShareRulesTest(base.BaseSharesTest):
 
     @classmethod
@@ -246,17 +267,18 @@ class ShareRulesTest(base.BaseSharesTest):
         cls.share = cls.create_share()
 
     @test.attr(type=["gate", ])
-    def test_list_access_rules(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_list_access_rules(self, client_name):
 
         # create rule
-        rule = self.shares_client.create_access_rule(
+        rule = getattr(self, client_name).create_access_rule(
             self.share["id"], self.access_type, self.access_to)
 
-        self.shares_client.wait_for_access_rule_status(
+        getattr(self, client_name).wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
         # list rules
-        rules = self.shares_client.list_access_rules(self.share["id"])
+        rules = getattr(self, client_name).list_access_rules(self.share["id"])
 
         # verify keys
         for key in ("state", "id", "access_type", "access_to", "access_level"):
@@ -275,23 +297,31 @@ class ShareRulesTest(base.BaseSharesTest):
         msg = "expected id lists %s times in rule list" % (len(gen))
         self.assertEqual(len(gen), 1, msg)
 
+        getattr(self, client_name).delete_access_rule(
+            self.share['id'], rule['id'])
+
+        getattr(self, client_name).wait_for_resource_deletion(
+            rule_id=rule["id"], share_id=self.share['id'])
+
     @test.attr(type=["gate", ])
-    def test_access_rules_deleted_if_share_deleted(self):
+    @ddt.data('shares_client', 'shares_v2_client')
+    def test_access_rules_deleted_if_share_deleted(self, client_name):
 
         # create share
         share = self.create_share()
 
         # create rule
-        rule = self.shares_client.create_access_rule(
+        rule = getattr(self, client_name).create_access_rule(
             share["id"], self.access_type, self.access_to)
-        self.shares_client.wait_for_access_rule_status(
+        getattr(self, client_name).wait_for_access_rule_status(
             share["id"], rule["id"], "active")
 
         # delete share
-        self.shares_client.delete_share(share['id'])
-        self.shares_client.wait_for_resource_deletion(share_id=share['id'])
+        getattr(self, client_name).delete_share(share['id'])
+        getattr(self, client_name).wait_for_resource_deletion(
+            share_id=share['id'])
 
         # verify absence of rules for nonexistent share id
         self.assertRaises(lib_exc.NotFound,
-                          self.shares_client.list_access_rules,
+                          getattr(self, client_name).list_access_rules,
                           share['id'])
