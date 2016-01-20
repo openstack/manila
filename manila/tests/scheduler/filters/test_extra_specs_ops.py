@@ -16,222 +16,60 @@
 """
 Tests For Scheduler Host Filters.
 """
+import ddt
 
 from manila.scheduler.filters import extra_specs_ops
 from manila import test
 
 
+@ddt.ddt
 class ExtraSpecsOpsTestCase(test.TestCase):
     def _do_extra_specs_ops_test(self, value, req, matches):
         assertion = self.assertTrue if matches else self.assertFalse
         assertion(extra_specs_ops.match(value, req))
 
-    def test_extra_specs_matches_simple(self):
+    @ddt.unpack
+    @ddt.data(
+        ('1', '1', True),
+        ('', '1', False),
+        ('3', '1', False),
+        ('222', '2', False),
+        ('4', '> 2', False),
+        ('123', '= 123', True),
+        ('124', '= 123', True),
+        ('34', '=234', False),
+        ('34', '=', False),
+        ('123', 's== 123', True),
+        ('1234', 's== 123', False),
+        ('1234', 's!= 123', True),
+        ('123', 's!= 123', False),
+        ('1000', 's>= 234', False),
+        ('1234', 's<= 1000', False),
+        ('2', 's< 12', False),
+        ('12', 's> 2', False),
+        ('12311321', '<in> 11', True),
+        ('12311321', '<in> 12311321', True),
+        ('12311321', '<in> 12311321 <in>', True),
+        ('12310321', '<in> 11', False),
+        ('12310321', '<in> 11 <in>', False),
+        (True, 'True', True),
+        (True, '<is> True', True),
+        (True, '<is> False', False),
+        (False, 'False', True),
+        (False, '<is> False', True),
+        (False, '<is> True', False),
+        (False, 'Nonsense', False),
+        (False, '<is> Nonsense', True),
+        (True, 'False', False),
+        (False, 'True', False),
+        ('12', '<or> 11 <or> 12', True),
+        ('13', '<or> 11 <or> 12', False),
+        ('13', '<or> 11 <or> 12 <or>', False),
+        ('2', '<= 10', True),
+        ('3', '<= 2', False),
+        ('3', '>= 1', True),
+        ('2', '>= 3', False),
+    )
+    def test_extra_specs_matches_simple(self, value, req, matches):
         self._do_extra_specs_ops_test(
-            value='1',
-            req='1',
-            matches=True)
-
-    def test_extra_specs_fails_simple(self):
-        self._do_extra_specs_ops_test(
-            value='',
-            req='1',
-            matches=False)
-
-    def test_extra_specs_fails_simple2(self):
-        self._do_extra_specs_ops_test(
-            value='3',
-            req='1',
-            matches=False)
-
-    def test_extra_specs_fails_simple3(self):
-        self._do_extra_specs_ops_test(
-            value='222',
-            req='2',
-            matches=False)
-
-    def test_extra_specs_fails_with_bogus_ops(self):
-        self._do_extra_specs_ops_test(
-            value='4',
-            req='> 2',
-            matches=False)
-
-    def test_extra_specs_matches_with_op_eq(self):
-        self._do_extra_specs_ops_test(
-            value='123',
-            req='= 123',
-            matches=True)
-
-    def test_extra_specs_matches_with_op_eq2(self):
-        self._do_extra_specs_ops_test(
-            value='124',
-            req='= 123',
-            matches=True)
-
-    def test_extra_specs_fails_with_op_eq(self):
-        self._do_extra_specs_ops_test(
-            value='34',
-            req='= 234',
-            matches=False)
-
-    def test_extra_specs_fails_with_op_eq3(self):
-        self._do_extra_specs_ops_test(
-            value='34',
-            req='=',
-            matches=False)
-
-    def test_extra_specs_matches_with_op_seq(self):
-        self._do_extra_specs_ops_test(
-            value='123',
-            req='s== 123',
-            matches=True)
-
-    def test_extra_specs_fails_with_op_seq(self):
-        self._do_extra_specs_ops_test(
-            value='1234',
-            req='s== 123',
-            matches=False)
-
-    def test_extra_specs_matches_with_op_sneq(self):
-        self._do_extra_specs_ops_test(
-            value='1234',
-            req='s!= 123',
-            matches=True)
-
-    def test_extra_specs_fails_with_op_sneq(self):
-        self._do_extra_specs_ops_test(
-            value='123',
-            req='s!= 123',
-            matches=False)
-
-    def test_extra_specs_fails_with_op_sge(self):
-        self._do_extra_specs_ops_test(
-            value='1000',
-            req='s>= 234',
-            matches=False)
-
-    def test_extra_specs_fails_with_op_sle(self):
-        self._do_extra_specs_ops_test(
-            value='1234',
-            req='s<= 1000',
-            matches=False)
-
-    def test_extra_specs_fails_with_op_sl(self):
-        self._do_extra_specs_ops_test(
-            value='2',
-            req='s< 12',
-            matches=False)
-
-    def test_extra_specs_fails_with_op_sg(self):
-        self._do_extra_specs_ops_test(
-            value='12',
-            req='s> 2',
-            matches=False)
-
-    def test_extra_specs_matches_with_op_in(self):
-        self._do_extra_specs_ops_test(
-            value='12311321',
-            req='<in> 11',
-            matches=True)
-
-    def test_extra_specs_matches_with_op_in2(self):
-        self._do_extra_specs_ops_test(
-            value='12311321',
-            req='<in> 12311321',
-            matches=True)
-
-    def test_extra_specs_matches_with_op_in3(self):
-        self._do_extra_specs_ops_test(
-            value='12311321',
-            req='<in> 12311321 <in>',
-            matches=True)
-
-    def test_extra_specs_fails_with_op_in(self):
-        self._do_extra_specs_ops_test(
-            value='12310321',
-            req='<in> 11',
-            matches=False)
-
-    def test_extra_specs_fails_with_op_in2(self):
-        self._do_extra_specs_ops_test(
-            value='12310321',
-            req='<in> 11 <in>',
-            matches=False)
-
-    def test_extra_specs_matches_with_op_is(self):
-        self._do_extra_specs_ops_test(
-            value=True,
-            req='<is> True',
-            matches=True)
-
-    def test_extra_specs_matches_with_op_is2(self):
-        self._do_extra_specs_ops_test(
-            value=False,
-            req='<is> False',
-            matches=True)
-
-    def test_extra_specs_matches_with_op_is3(self):
-        self._do_extra_specs_ops_test(
-            value=False,
-            req='<is> Nonsense',
-            matches=True)
-
-    def test_extra_specs_fails_with_op_is(self):
-        self._do_extra_specs_ops_test(
-            value=True,
-            req='<is> False',
-            matches=False)
-
-    def test_extra_specs_fails_with_op_is2(self):
-        self._do_extra_specs_ops_test(
-            value=False,
-            req='<is> True',
-            matches=False)
-
-    def test_extra_specs_matches_with_op_or(self):
-        self._do_extra_specs_ops_test(
-            value='12',
-            req='<or> 11 <or> 12',
-            matches=True)
-
-    def test_extra_specs_matches_with_op_or2(self):
-        self._do_extra_specs_ops_test(
-            value='12',
-            req='<or> 11 <or> 12 <or>',
-            matches=True)
-
-    def test_extra_specs_fails_with_op_or(self):
-        self._do_extra_specs_ops_test(
-            value='13',
-            req='<or> 11 <or> 12',
-            matches=False)
-
-    def test_extra_specs_fails_with_op_or2(self):
-        self._do_extra_specs_ops_test(
-            value='13',
-            req='<or> 11 <or> 12 <or>',
-            matches=False)
-
-    def test_extra_specs_matches_with_op_le(self):
-        self._do_extra_specs_ops_test(
-            value='2',
-            req='<= 10',
-            matches=True)
-
-    def test_extra_specs_fails_with_op_le(self):
-        self._do_extra_specs_ops_test(
-            value='3',
-            req='<= 2',
-            matches=False)
-
-    def test_extra_specs_matches_with_op_ge(self):
-        self._do_extra_specs_ops_test(
-            value='3',
-            req='>= 1',
-            matches=True)
-
-    def test_extra_specs_fails_with_op_ge(self):
-        self._do_extra_specs_ops_test(
-            value='2',
-            req='>= 3',
-            matches=False)
+            value, req, matches)
