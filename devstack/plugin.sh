@@ -130,7 +130,6 @@ function configure_manila {
 
     iniset $MANILA_CONF DEFAULT auth_strategy keystone
     iniset $MANILA_CONF DEFAULT debug True
-    iniset $MANILA_CONF DEFAULT verbose True
     iniset $MANILA_CONF DEFAULT scheduler_driver $MANILA_SCHEDULER_DRIVER
     iniset $MANILA_CONF DEFAULT share_name_template ${SHARE_NAME_PREFIX}%s
     iniset $MANILA_CONF DATABASE connection `database_connection_url manila`

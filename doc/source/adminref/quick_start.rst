@@ -318,8 +318,7 @@ Open Manila configuration file `/etc/manila/manila.conf`::
     # Set scheduler driver with usage of filters. Recommended.
     scheduler_driver = manila.scheduler.drivers.filter.FilterScheduler
 
-    # Set following two opts to ‘True’ to get maximum info in logging.
-    verbose = True
+    # Set following opt to ‘True’ to get more info in logging.
     debug = True
 
     [london]
