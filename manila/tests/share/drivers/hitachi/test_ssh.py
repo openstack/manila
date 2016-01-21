@@ -15,15 +15,18 @@
 
 import time
 
+import ddt
 import mock
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 import paramiko
+import six
 
 from manila import exception
 from manila.share.drivers.hitachi import ssh
 from manila import test
-from manila import utils
+from manila import utils as mutils
+
 
 CONF = cfg.CONF
 
@@ -60,8 +63,9 @@ Instance name      Dev   On span            State   EVS  Cap/GiB Confined Flag
 -----------------  ----  -------            ------  ---  ------- -------- ----
 Filesystem 8e6e2c85-fake-long-filesystem-b9b4-e4b09993841e:
 8e6e2c8..9993841e  1057  fake_span           Mount   2        4        3
+fake_fs            1051  fake_span           NoEVS   -      100     1024
 file_system        1055  fake_span           Mount   2        4        5    1
-fake_fs            1051  fake_span           Mount   2      100     1024   """
+"""
 
 HNAS_RESULT_u_fs = """ \
 Instance name      Dev   On span            State   EVS  Cap/GiB Confined Flag
@@ -157,8 +161,7 @@ Last modified   : 2015-06-23 22:37:17.363660800+00:00  """
 HNAS_RESULT_quota_err = """No quotas matching specified filter criteria.
 """
 
-HNAS_RESULT_export = """
-Export name: vvol_test
+HNAS_RESULT_export = """Export name: vvol_test
             Export path: /vvol_test
       File system label: file_system
        File system size: 3.969 GB
@@ -178,8 +181,7 @@ Disaster recovery setting:
 127.0.0.2
 """
 
-HNAS_RESULT_wrong_export = """
-Export name: wrong_name
+HNAS_RESULT_wrong_export = """Export name: wrong_name
             Export path: /vvol_test
       File system label: file_system
        File system size: 3.969 GB
@@ -415,7 +417,16 @@ HNAS_RESULT_df_tb = """
 18.3 GB (25%)    No                       4 KB,WFS-2,128 DSBs
 """
 
+HNAS_RESULT_mounted_filesystem = """
+file_system        1055  fake_span           Mount   2        4        5    1
+"""
 
+HNAS_RESULT_unmounted_filesystem = """
+file_system        1055  fake_span          Umount   2        4        5    1
+"""
+
+
+@ddt.ddt
 class HNASSSHTestCase(test.TestCase):
     def setUp(self):
         super(HNASSSHTestCase, self).setUp()
@@ -434,11 +445,12 @@ class HNASSSHTestCase(test.TestCase):
 
         self.mock_log = self.mock_object(ssh, 'LOG')
 
-        self._driver = ssh.HNASSSHBackend(self.ip, self.user, self.password,
-                                          self.ssh_private_key,
-                                          self.cluster_admin_ip0, self.evs_id,
-                                          self.evs_ip, self.fs_name,
-                                          self.job_timeout)
+        self._driver_ssh = ssh.HNASSSHBackend(self.ip, self.user,
+                                              self.password,
+                                              self.ssh_private_key,
+                                              self.cluster_admin_ip0,
+                                              self.evs_id, self.evs_ip,
+                                              self.fs_name, self.job_timeout)
 
         self.vvol = {
             'id': 'vvol_test',
@@ -457,727 +469,366 @@ class HNASSSHTestCase(test.TestCase):
 
     def test_get_stats(self):
         fake_list_command = ['df', '-a', '-f', 'file_system']
-        expected_debug_calls = [
-            ('Total space in file system: %(total)s GB.', {'total': 7168.0}),
-            ('Used space in the file system: %(used)s GB.', {'used': 2048.0}),
-            ('Available space in the file system: %(space)s GB.',
-             {'space': 5120.0})
-        ]
 
         self.mock_object(ssh.HNASSSHBackend, '_execute',
                          mock.Mock(return_value=(HNAS_RESULT_df_tb, "")))
 
-        total, free = self._driver.get_stats()
+        total, free = self._driver_ssh.get_stats()
 
         ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-        self.mock_log.debug.assert_has_calls([mock.call(*a) for a in
-                                              expected_debug_calls])
         self.assertEqual(7168.0, total)
         self.assertEqual(5120.0, free)
 
-    def test_get_stats_terabytes(self):
-        fake_list_command = ['df', '-a', '-f', 'file_system']
-        expected_debug_calls = [
-            ('Total space in file system: %(total)s GB.', {'total': 7168.0}),
-            ('Used space in the file system: %(used)s GB.', {'used': 2048.0}),
-            ('Available space in the file system: %(space)s GB.',
-             {'space': 5120.0})
-        ]
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(return_value=(HNAS_RESULT_df_tb, "")))
-
-        total, free = self._driver.get_stats()
-
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-        self.mock_log.debug.assert_has_calls([mock.call(*a) for a in
-                                              expected_debug_calls])
-        self.assertEqual(7168.0, total)
-        self.assertEqual(5120.0, free)
-
-    def test_allow_access(self):
-        fake_mod_command = ['nfs-export', 'mod', '-c',
-                            '"127.0.0.2,127.0.0.1(rw)"', '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_expmod, "")]))
-
-        self._driver.allow_access(self.vvol['id'], self.vvol['host'],
-                                  self.vvol['share_proto'])
-
-        # Assert that _execute sent the right mod command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_mod_command)
-
-    def test_allow_access_host_allowed(self):
-        fake_mod_command = ['nfs-export', 'list ', '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_export_ip, "")]))
-
-        self._driver.allow_access(self.vvol['id'], self.vvol['host'],
-                                  self.vvol['share_proto'])
-
-        self.assertTrue(self.mock_log.debug.called)
-        # Assert that _execute sent the right list command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_mod_command)
-
-    def test_allow_access_host_with_other_permission(self):
-        fake_mod_command = ['nfs-export', 'mod', '-c', '"127.0.0.1(rw)"',
+    def test_nfs_export_add(self):
+        fake_nfs_command = ['nfs-export', 'add', '-S', 'disable', '-c',
+                            '127.0.0.1', '/shares/vvol_test', self.fs_name,
                             '/shares/vvol_test']
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
 
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_export_ip2, ""),
-                                                (HNAS_RESULT_expmod, "")]))
+        self._driver_ssh.nfs_export_add('vvol_test')
 
-        self._driver.allow_access(self.vvol['id'], self.vvol['host'],
-                                  self.vvol['share_proto'])
+        self._driver_ssh._execute.assert_called_with(fake_nfs_command)
 
-        # Assert that _execute sent the right mod command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_mod_command)
+    def test_nfs_export_del(self):
+        fake_nfs_command = ['nfs-export', 'del', '/shares/vvol_test']
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
 
-    def test_allow_access_wrong_permission(self):
-        fake_list_command = ['nfs-export', 'list ', '/shares/vvol_test']
+        self._driver_ssh.nfs_export_del('vvol_test')
 
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_export, "")]))
+        self._driver_ssh._execute.assert_called_with(fake_nfs_command)
 
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.allow_access, self.vvol['id'],
-                          self.vvol['host'], self.vvol['share_proto'],
-                          'fake_permission')
+    def test_nfs_export_del_inexistent_export(self):
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='does not exist')]))
 
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_deny_access(self):
-        fake_mod_command = ['nfs-export', 'mod', '-c', '127.0.0.1',
-                            '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_export_ip2, ""),
-                                                (HNAS_RESULT_expmod, "")]))
-
-        self._driver.deny_access(self.vvol['id'], self.vvol['host'],
-                                 self.vvol['share_proto'], 'ro')
-
-        # Assert that _execute sent the right mod command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_mod_command)
-
-    def test_deny_access_host_not_allowed(self):
-        fake_list_command = ['nfs-export', 'list ', '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_expmod, "")]))
-
-        self._driver.deny_access(self.vvol['id'], self.vvol['host'],
-                                 self.vvol['share_proto'], 'rw')
-
-        # Assert that _execute sent the right list command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_deny_access_export_modified(self):
-        fake_mod_command = ['nfs-export', 'mod', '-c', '127.0.0.1',
-                            '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_export_ip2, ""),
-                                                (HNAS_RESULT_expnotmod, "")]))
-
-        self._driver.deny_access(self.vvol['id'], self.vvol['host'],
-                                 self.vvol['share_proto'], 'ro')
-
-        # Assert that _execute sent the right mod command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_mod_command)
-
-    def test_deny_access_wrong_permission(self):
-        fake_list_command = ['nfs-export', 'list ', '/shares/vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_export, "")]))
-
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.deny_access, self.vvol['id'],
-                          self.vvol['host'], self.vvol['share_proto'],
-                          'fake_permission')
-
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_delete_share(self):
-        fake_delete_command = ['tree-delete-job-submit', '--confirm', '-f',
-                               'file_system', '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_expdel, ""),
-                                                (HNAS_RESULT_job, "")]))
-
-        self._driver.delete_share(self.vvol['id'], self.vvol['share_proto'])
-
-        self.assertTrue(self.mock_log.debug.called)
-        # Assert that _execute sent the right tree-delete command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_delete_command)
-
-    def test_delete_inexistent_share(self):
-        fake_delete_command = ['tree-delete-job-submit', '--confirm', '-f',
-                               'file_system', '/shares/vvol_test']
-        msg = 'Share does not exists.'
-        msg_err = 'Source path: Cannot access'
-
-        self.mock_object(ssh.HNASSSHBackend, 'ensure_share',
-                         mock.Mock(side_effect=exception.HNASBackendException
-                                   (msg)))
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[exception.HNASBackendException
-                                                (msg_err),
-                                                putils.ProcessExecutionError
-                                                (stderr=msg_err)]))
-
-        self._driver.delete_share(self.vvol['id'], self.vvol['share_proto'])
-
-        self.assertTrue(self.mock_log.warning.called)
-        self.assertTrue(self.mock_log.debug.called)
-        # Assert that _execute sent the right tree-delete command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_delete_command)
-
-    def test_delete_share_fails(self):
-        msg = 'Share does not exists.'
-        msg_err = 'Cannot delete share'
-        fake_tree_command = ['tree-delete-job-submit', '--confirm', '-f',
-                             'file_system', '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, 'ensure_share',
-                         mock.Mock(side_effect=exception.HNASBackendException
-                                   (msg)))
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_expdel, ""),
-                                                putils.ProcessExecutionError
-                                                (stderr=msg_err)]))
-
-        self.assertRaises(putils.ProcessExecutionError,
-                          self._driver.delete_share, self.vvol['id'],
-                          self.vvol['share_proto'])
-
-        self.assertTrue(self.mock_log.warning.called)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_tree_command)
-
-    def test_ensure_share(self):
-        fake_list_command = ['nfs-export', 'list ', '/shares/vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, "")]))
-
-        path = self._driver.ensure_share(self.vvol['id'],
-                                         self.vvol['share_proto'])
-
-        self.assertEqual('/shares/' + self.vvol['id'], path)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_ensure_share_umounted_fs(self):
-        fake_list_command = ['nfs-export', 'list ', '/shares/vvol_test']
-        # Tests when filesystem is unmounted
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_u_fs, ""),
-                                                (HNAS_RESULT_mount, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, "")]))
-
-        path = self._driver.ensure_share(self.vvol['id'],
-                                         self.vvol['share_proto'])
-
-        self.assertTrue(self.mock_log.debug.called)
-        self.assertEqual('/shares/' + self.vvol['id'], path)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_ensure_share_inexistent_vvol(self):
-        fake_list_command = ['virtual-volume', 'list', '--verbose',
-                             'file_system', 'vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                putils.ProcessExecutionError]))
-
-        # Raise exception when vvol doesnt exist
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.ensure_share, self.vvol['id'],
-                          self.vvol['share_proto'])
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_ensure_share_quota_unset(self):
-        fake_quota_list_command = ['quota', 'list', '--verbose', 'file_system',
-                                   'vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota_err, "")
-                                                ]))
-
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.ensure_share, self.vvol['id'],
-                          self.vvol['share_proto'])
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_quota_list_command)
-
-    def test_ensure_share_wrong_export_name(self):
-        fake_list_command = ['nfs-export', 'list ', '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_wrong_export, "")
-                                                ]))
-
-        # Raise exception when vvol name != export name
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.ensure_share, self.vvol['id'],
-                          self.vvol['share_proto'])
-
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_ensure_share_export_with_no_fs(self):
-        fake_list_command = ['nfs-export', 'list ', '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_exp_no_fs, "")]))
-
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.ensure_share, self.vvol['id'],
-                          self.vvol['share_proto'])
-
-        # Assert that _execute sent the right list command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_create_share(self):
-        fake_list_command = ['nfs-export', 'add', '-S', 'disable', '-c',
-                             '127.0.0.1', '/shares/vvol_test', 'file_system',
-                             '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (HNAS_RESULT_expadd, "")]))
-
-        path = self._driver.create_share(self.vvol['id'],
-                                         self.vvol['size'],
-                                         self.vvol['share_proto'])
-
-        self.assertEqual('/shares/' + self.vvol['id'], path)
-        # Assert that _execute sent the right export add command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-        self.assertTrue(self.mock_log.debug.called)
-
-    def test_create_share_without_fs(self):
-        fake_list_command = ['filesystem-list']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_one_fs, "")]))
-
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.create_share, self.vvol['id'],
-                          self.vvol['size'], self.vvol['share_proto'])
-
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_create_share_fails(self):
-        fake_tree_command = ['tree-delete-job-submit', '--confirm', '-f',
-                             'file_system', '/shares/vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                putils.ProcessExecutionError,
-                                                (HNAS_RESULT_empty, "")]))
-
-        self.assertRaises(putils.ProcessExecutionError,
-                          self._driver.create_share, self.vvol['id'],
-                          self.vvol['size'],
-                          self.vvol['share_proto'])
-
-        self.assertTrue(self.mock_log.debug.called)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_tree_command)
-
-    def test_create_share_without_size(self):
-        fake_add_command = ['nfs-export', 'add', '-S', 'disable', '-c',
-                            '127.0.0.1', '/shares/vvol_test', 'file_system',
-                            '/shares/vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (HNAS_RESULT_expadd, "")]))
-
-        path = self._driver.create_share(self.vvol['id'],
-                                         0, self.vvol['share_proto'])
-
-        self.assertEqual('/shares/' + self.vvol['id'], path)
-        self.assertTrue(self.mock_log.debug.called)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_add_command)
-
-    def test_extend_share(self):
-        fake_quota_mod_command = ['quota', 'mod', '--usage-limit', '4G',
-                                  'file_system', 'vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_df, ""),
-                                                (HNAS_RESULT_empty, "")]))
-
-        self._driver.extend_share(self.vvol['id'],
-                                  self.vvol['size'],
-                                  self.vvol['share_proto'])
-
-        self.assertTrue(self.mock_log.debug.called)
-        # Assert that _execute sent the right quota modify command
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_quota_mod_command)
-
-    def test_extend_share_no_space(self):
-        fake_list_command = ['df', '-a', '-f', 'file_system']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_df, "")]))
-
-        # Tests when try to create a share bigger than available free space
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.extend_share, self.vvol['id'],
-                          100, self.vvol['share_proto'])
-
-        self.assertTrue(self.mock_log.debug.called)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_manage_existing(self):
-        fake_list_command = ['quota', 'list', 'file_system', 'vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_quota_tb, "")]))
-
-        output = self._driver.manage_existing(self.vvol, self.vvol['id'])
-
-        self.assertEqual({'export_locations':
-                          ['172.24.44.1:/shares/vvol_test'],
-                          'size': 1024.0}, output)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_manage_existing_share_without_size(self):
-        fake_list_command = ['quota', 'list', 'file_system', 'vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_quota_err, "")]))
-
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.manage_existing,
-                          self.vvol, self.vvol['id'])
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_manage_existing_share_invalid_size(self):
-        fake_list_command = ['quota', 'list', 'file_system', 'vvol_test']
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_vvol, ""),
-                                                (HNAS_RESULT_quota, ""),
-                                                (HNAS_RESULT_export, ""),
-                                                (HNAS_RESULT_quota_mb, "")]))
-
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.manage_existing,
-                          self.vvol, self.vvol['id'])
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_list_command)
-
-    def test_create_snapshot(self):
-        fake_create_command = ['tree-clone-job-submit', '-e',
-                               '-f', 'file_system', '/shares/vvol_test',
-                               '/snapshots/vvol_test/snapshot_test']
-        fake_progress_command = ['tree-clone-job-status',
-                                 'd933100a-b5f6-11d0-91d9-836896aada5d']
-
-        # Tests when a tree job is successfully submitted
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[
-                             (HNAS_RESULT_export, ""),
-                             (HNAS_RESULT_empty, ""),
-                             (HNAS_RESULT_job, ""),
-                             (HNAS_RESULT_job_completed, ""),
-                             (HNAS_RESULT_empty, "")]))
-
-        self._driver.create_snapshot(self.vvol['id'],
-                                     self.snapshot['id'])
-
-        self.assertTrue(self.mock_log.debug.called)
-
-        # Assert that _execute sent the right tree-clone command
-        ssh.HNASSSHBackend._execute.assert_any_call(fake_create_command)
-        ssh.HNASSSHBackend._execute.assert_any_call(fake_progress_command)
-
-    def test_create_snapshot_hnas_timeout(self):
-        self.mock_object(time, 'time', mock.Mock(side_effect=[1, 1, 200, 300]))
-        self.mock_object(time, 'sleep')
-
-        # Tests when a running tree job stalls at HNAS
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[
-                             (HNAS_RESULT_export, ""),
-                             (HNAS_RESULT_empty, ""),
-                             (HNAS_RESULT_job, ""),
-                             (HNAS_RESULT_job_running, ""),
-                             (HNAS_RESULT_job_running, ""),
-                             (HNAS_RESULT_job_running, ""),
-                             (HNAS_RESULT_empty, ""),
-                             (HNAS_RESULT_empty, "")]))
-
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.create_snapshot,
-                          self.vvol['id'], self.snapshot['id'])
-
-    def test_create_snapshot_job_fails(self):
-        # Tests when running a tree job fails
-        fake_create_command = ['tree-clone-job-status',
-                               'd933100a-b5f6-11d0-91d9-836896aada5d']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[
-                             (HNAS_RESULT_export, ""),
-                             (HNAS_RESULT_empty, ""),
-                             (HNAS_RESULT_job, ""),
-                             (HNAS_RESULT_tree_job_status_fail, ""),
-                             (HNAS_RESULT_empty, "")]))
-        mock_log = self.mock_object(ssh, 'LOG')
-
-        self.assertRaises(exception.HNASBackendException,
-                          self._driver.create_snapshot, self.vvol['id'],
-                          self.snapshot['id'])
-        self.assertTrue(mock_log.error.called)
-
-        ssh.HNASSSHBackend._execute.assert_any_call(fake_create_command)
-
-    def test_create_empty_snapshot(self):
-        fake_create_command = ['selectfs', 'file_system', '\n', 'ssc',
-                               '127.0.0.1', 'console-context',
-                               '--evs', '2', 'mkdir', '-p',
-                               '/snapshots/vvol_test/snapshot_test']
-        # Tests when submit a tree job of an empty directory
-        msg = 'Cannot find any clonable files in the source directory'
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[
-                             (HNAS_RESULT_export, ""),
-                             (HNAS_RESULT_empty, ""),
-                             (putils.ProcessExecutionError(stderr=msg)),
-                             (HNAS_RESULT_empty, ""),
-                             (HNAS_RESULT_empty, "")]))
-
-        self._driver.create_snapshot(self.vvol['id'], self.snapshot['id'])
+        self._driver_ssh.nfs_export_del('vvol_test')
 
         self.assertTrue(self.mock_log.warning.called)
 
-        # Assert that _execute sent the right command to select fs and create
-        # a directory.
-        ssh.HNASSSHBackend._execute.assert_any_call(fake_create_command)
-
-    def test_create_snapshot_submit_fails(self):
-        fake_create_command = ['tree-clone-job-submit', '-e', '-f',
-                               'file_system', '/shares/vvol_test',
-                               '/snapshots/vvol_test/snapshot_test']
-        # Tests when submit a tree job fails
-        msg = 'Cannot create copy from this directory'
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[
-                             (HNAS_RESULT_export, ""),
-                             (HNAS_RESULT_empty, ""),
-                             putils.ProcessExecutionError(stderr=msg),
-                             (HNAS_RESULT_empty, "")]))
+    def test_nfs_export_del_error(self):
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(stderr='')]))
 
         self.assertRaises(exception.HNASBackendException,
-                          self._driver.create_snapshot, self.vvol['id'],
-                          self.snapshot['id'])
-
+                          self._driver_ssh.nfs_export_del, 'vvol_test')
         self.assertTrue(self.mock_log.exception.called)
-        ssh.HNASSSHBackend._execute.assert_any_call(fake_create_command)
 
-    def test_delete_snapshot(self):
-        fake_delete_command = ['selectfs', 'file_system', '\n', 'ssc',
-                               '127.0.0.1', 'console-context', '--evs', '2',
-                               'rmdir', '/snapshots/vvol_test']
+    def test_get_host_list(self):
+        self.mock_object(ssh.HNASSSHBackend, "_get_share_export", mock.Mock(
+            return_value=[ssh.Export(HNAS_RESULT_export)]))
 
-        # Tests when successfully delete the snapshot
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_job, ""),
-                                                putils.ProcessExecutionError]))
+        host_list = self._driver_ssh.get_host_list('fake_id')
 
-        self._driver.delete_snapshot(self.vvol['id'],
-                                     self.snapshot['id'])
+        self.assertEqual(['127.0.0.2'], host_list)
 
-        self.assertTrue(self.mock_log.debug.called)
-        # Assert that _execute sent the right command to select fs and
-        # delete the directory.
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_delete_command)
+    def test_update_access_rule_empty_host_list(self):
+        fake_export_command = ['nfs-export', 'mod', '-c', '127.0.0.1',
+                               '/shares/fake_id']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
 
-    def test_delete_snapshot_last_snapshot(self):
-        fake_delete_command = ['selectfs', 'file_system', '\n', 'ssc',
-                               '127.0.0.1', 'console-context', '--evs', '2',
-                               'rmdir', '/snapshots/vvol_test']
+        self._driver_ssh.update_access_rule("fake_id", [])
 
-        # Tests when successfully delete the last snapshot (it requires delete
-        # the parent directory).
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(return_value=(HNAS_RESULT_job, "")))
+        self._driver_ssh._execute.assert_called_with(fake_export_command)
 
-        self._driver.delete_snapshot(self.vvol['id'],
-                                     self.snapshot['id'])
+    def test_update_access_rule(self):
+        fake_export_command = ['nfs-export', 'mod', '-c',
+                               u'"127.0.0.1,127.0.0.2"', '/shares/fake_id']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
 
-        # Assert that _execute sent the right command to select fs and
-        # delete the directory.
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_delete_command)
+        self._driver_ssh.update_access_rule("fake_id", ['127.0.0.1',
+                                                        '127.0.0.2'])
 
-    def test_delete_snapshot_submit_fails(self):
-        msg = 'Cannot delete snapshot.'
-        fake_tree_del_command = ['tree-delete-job-submit', '--confirm',
-                                 '-f', 'file_system',
-                                 '/snapshots/vvol_test/snapshot_test']
+        self._driver_ssh._execute.assert_called_with(fake_export_command)
 
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=putils.ProcessExecutionError
-                                   (stderr=msg)))
+    def test_tree_clone_nothing_to_clone(self):
+        fake_tree_clone_command = ['tree-clone-job-submit', '-e', '-f',
+                                   self.fs_name, '/src', '/dst']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='Cannot find any clonable files in the source directory'
+            )]))
 
-        self.assertRaises(putils.ProcessExecutionError,
-                          self._driver.delete_snapshot,
-                          self.vvol['id'], self.snapshot['id'])
+        self.assertRaises(exception.HNASNothingToCloneException,
+                          self._driver_ssh.tree_clone, "/src", "/dst")
+        self._driver_ssh._execute.assert_called_with(fake_tree_clone_command)
 
-        self.assertTrue(self.mock_log.exception.called)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_tree_del_command)
-
-    def test_create_share_from_snapshot(self):
-        fake_export_command = ['nfs-export', 'add', '-S', 'disable', '-c',
-                               '127.0.0.1', '/shares/vvol_test', 'file_system',
-                               '/shares/vvol_test']
-        # Tests when successfully creates a share from snapshot
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (HNAS_RESULT_job, ""),
-                                                (HNAS_RESULT_export, "")]))
-
-        output = self._driver.create_share_from_snapshot(self.vvol,
-                                                         self.snapshot)
-
-        self.assertEqual('/shares/' + self.vvol['id'], output)
-        self.assertTrue(self.mock_log.debug.called)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_export_command)
-
-    def test_create_share_from_empty_snapshot(self):
-        msg = 'Cannot find any clonable files in the source directory'
-        fake_export_command = ['nfs-export', 'add', '-S', 'disable', '-c',
-                               '127.0.0.1', '/shares/vvol_test',
-                               'file_system', '/shares/vvol_test']
-
-        # Tests when successfully creates a share from snapshot
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (putils.ProcessExecutionError
-                                                 (stderr=msg)),
-                                                (HNAS_RESULT_export, "")]))
-
-        output = self._driver.create_share_from_snapshot(self.vvol,
-                                                         self.snapshot)
-
-        self.assertEqual('/shares/' + self.vvol['id'], output)
-        self.assertTrue(self.mock_log.debug.called)
-        self.assertTrue(self.mock_log.warning.called)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_export_command)
-
-    def test_create_share_from_snapshot_fails(self):
-        msg = 'Cannot copy from source directory'
-        fake_submit_command = ['tree-clone-job-submit', '-f', 'file_system',
-                               '/snapshots/vvol_test/snapshot_test',
-                               '/shares/vvol_test']
-
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[(HNAS_RESULT_fs, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (HNAS_RESULT_empty, ""),
-                                                (putils.ProcessExecutionError
-                                                 (stderr=msg)),
-                                                (HNAS_RESULT_export, "")]))
+    def test_tree_clone_error_cloning(self):
+        fake_tree_clone_command = ['tree-clone-job-submit', '-e', '-f',
+                                   self.fs_name, '/src', '/dst']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=[putils.ProcessExecutionError(stderr='')]))
 
         self.assertRaises(exception.HNASBackendException,
-                          self._driver.create_share_from_snapshot,
-                          self.vvol, self.snapshot)
+                          self._driver_ssh.tree_clone, "/src", "/dst")
+        self._driver_ssh._execute.assert_called_with(fake_tree_clone_command)
+        self.assertTrue(self.mock_log.exception.called)
+
+    def test_tree_clone(self):
+        fake_tree_clone_command = ['tree-clone-job-submit', '-e', '-f',
+                                   self.fs_name, '/src', '/dst']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=[(HNAS_RESULT_job, ''),
+                         (HNAS_RESULT_job_completed, '')]))
+
+        self._driver_ssh.tree_clone("/src", "/dst")
+
+        self._driver_ssh._execute.assert_any_call(fake_tree_clone_command)
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test_tree_clone_job_failed(self):
+        fake_tree_clone_command = ['tree-clone-job-submit', '-e', '-f',
+                                   self.fs_name, '/src', '/dst']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=[(HNAS_RESULT_job, ''),
+                         (HNAS_RESULT_tree_job_status_fail, '')]))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.tree_clone, "/src", "/dst")
+        self._driver_ssh._execute.assert_any_call(fake_tree_clone_command)
+        self.assertTrue(self.mock_log.error.called)
+
+    def test_tree_clone_job_timeout(self):
+        fake_tree_clone_command = ['tree-clone-job-submit', '-e', '-f',
+                                   self.fs_name, '/src', '/dst']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=[(HNAS_RESULT_job, ''),
+                         (HNAS_RESULT_job_running, ''),
+                         (HNAS_RESULT_job_running, ''),
+                         (HNAS_RESULT_job_running, ''),
+                         (HNAS_RESULT_empty, '')]))
+        self.mock_object(time, "time", mock.Mock(side_effect=[0, 0, 200, 200]))
+        self.mock_object(time, "sleep", mock.Mock())
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.tree_clone, "/src", "/dst")
+        self._driver_ssh._execute.assert_any_call(fake_tree_clone_command)
+        self.assertTrue(self.mock_log.error.called)
+
+    def test_tree_delete_path_does_not_exist(self):
+        fake_tree_delete_command = ['tree-delete-job-submit', '--confirm',
+                                    '-f', self.fs_name, '/path']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='Source path: Cannot access')]
+        ))
+
+        self._driver_ssh.tree_delete("/path")
+
+        self.assertTrue(self.mock_log.warning.called)
+        self._driver_ssh._execute.assert_called_with(fake_tree_delete_command)
+
+    def test_tree_delete_error(self):
+        fake_tree_delete_command = ['tree-delete-job-submit', '--confirm',
+                                    '-f', self.fs_name, '/path']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='')]
+        ))
+
+        self.assertRaises(putils.ProcessExecutionError,
+                          self._driver_ssh.tree_delete, "/path")
+        self.assertTrue(self.mock_log.exception.called)
+        self._driver_ssh._execute.assert_called_with(fake_tree_delete_command)
+
+    def test_create_directory(self):
+        locked_selectfs_args = ['create', '/path']
+        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs", mock.Mock())
+
+        self._driver_ssh.create_directory("/path")
+
+        self._driver_ssh._locked_selectfs.assert_called_with(
+            *locked_selectfs_args)
+
+    def test_delete_directory(self):
+        locked_selectfs_args = ['delete', '/path']
+        self.mock_object(ssh.HNASSSHBackend, "_locked_selectfs", mock.Mock())
+
+        self._driver_ssh.delete_directory("/path")
+
+        self._driver_ssh._locked_selectfs.assert_called_with(
+            *locked_selectfs_args)
+
+    def test_check_fs_mounted_true(self):
+        self.mock_object(ssh.HNASSSHBackend, "_get_filesystem_list",
+                         mock.Mock(return_value=[ssh.FileSystem(
+                             HNAS_RESULT_mounted_filesystem)]))
+
+        self.assertTrue(self._driver_ssh.check_fs_mounted())
+
+    def test_check_fs_mounted_false(self):
+        self.mock_object(ssh.HNASSSHBackend, "_get_filesystem_list",
+                         mock.Mock(return_value=[ssh.FileSystem(
+                             HNAS_RESULT_unmounted_filesystem)]))
+
+        self.assertFalse(self._driver_ssh.check_fs_mounted())
+
+    def test_check_fs_mounted_eror(self):
+        self.mock_object(ssh.HNASSSHBackend, "_get_filesystem_list",
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh.check_fs_mounted)
+
+    def test_mount_already_mounted(self):
+        fake_mount_command = ['mount', self.fs_name]
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=putils.ProcessExecutionError(stderr='')))
+
+        self.assertRaises(putils.ProcessExecutionError, self._driver_ssh.mount)
+        self._driver_ssh._execute.assert_called_with(fake_mount_command)
+
+    def test_vvol_create(self):
+        fake_vvol_create_command = ['virtual-volume', 'add', '--ensure',
+                                    self.fs_name, 'vvol', '/shares/vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
+
+        self._driver_ssh.vvol_create("vvol")
+
+        self._driver_ssh._execute.assert_called_with(fake_vvol_create_command)
+
+    def test_vvol_delete_vvol_does_not_exist(self):
+        fake_vvol_delete_command = ['tree-delete-job-submit', '--confirm',
+                                    '-f', self.fs_name, '/shares/vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='Source path: Cannot access')]
+        ))
+
+        self._driver_ssh.vvol_delete("vvol")
 
         self.assertTrue(self.mock_log.debug.called)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_submit_command)
+        self._driver_ssh._execute.assert_called_with(fake_vvol_delete_command)
+
+    def test_vvol_delete_error(self):
+        fake_vvol_delete_command = ['tree-delete-job-submit', '--confirm',
+                                    '-f', self.fs_name, '/shares/vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=[putils.ProcessExecutionError(
+                stderr='')]
+        ))
+
+        self.assertRaises(putils.ProcessExecutionError,
+                          self._driver_ssh.vvol_delete, "vvol")
+        self.assertTrue(self.mock_log.exception.called)
+        self._driver_ssh._execute.assert_called_with(fake_vvol_delete_command)
+
+    def test_quota_add(self):
+        fake_add_quota_command = ['quota', 'add', '--usage-limit', '1G',
+                                  '--usage-hard-limit', 'yes',
+                                  self.fs_name, 'vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
+
+        self._driver_ssh.quota_add('vvol', 1)
+
+        self._driver_ssh._execute.assert_called_with(fake_add_quota_command)
+
+    def test_modify_quota(self):
+        fake_modify_quota_command = ['quota', 'mod', '--usage-limit', '1G',
+                                     self.fs_name, 'vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock())
+
+        self._driver_ssh.modify_quota('vvol', 1)
+
+        self._driver_ssh._execute.assert_called_with(fake_modify_quota_command)
+
+    def test_check_vvol(self):
+        fake_check_vvol_command = ['virtual-volume', 'list', '--verbose',
+                                   self.fs_name, 'vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            side_effect=putils.ProcessExecutionError(stderr='')))
+
+        self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh.check_vvol, 'vvol')
+        self._driver_ssh._execute.assert_called_with(fake_check_vvol_command)
+
+    def test_check_quota(self):
+        fake_check_quota_command = ['quota', 'list', '--verbose',
+                                    self.fs_name, 'vvol']
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            return_value=('No quotas matching specified filter criteria', '')))
+
+        self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh.check_quota, 'vvol')
+        self._driver_ssh._execute.assert_called_with(fake_check_quota_command)
+
+    def test_check_export(self):
+        self.mock_object(ssh.HNASSSHBackend, "_get_share_export", mock.Mock(
+            return_value=[ssh.Export(HNAS_RESULT_export)]))
+
+        self._driver_ssh.check_export("vvol_test")
+
+    def test_check_export_error(self):
+        self.mock_object(ssh.HNASSSHBackend, "_get_share_export", mock.Mock(
+            return_value=[ssh.Export(HNAS_RESULT_wrong_export)]))
+
+        self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh.check_export, "vvol_test")
+
+    def test_get_share_quota(self):
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            return_value=(HNAS_RESULT_quota, '')))
+
+        result = self._driver_ssh.get_share_quota("vvol_test")
+
+        self.assertEqual(5, result)
+
+    @ddt.data(HNAS_RESULT_quota_unset, HNAS_RESULT_quota_err)
+    def test_get_share_quota_errors(self, hnas_output):
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            return_value=(hnas_output, '')))
+
+        result = self._driver_ssh.get_share_quota("vvol_test")
+
+        self.assertEqual(None, result)
+
+    def test_get_share_quota_tb(self):
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            return_value=(HNAS_RESULT_quota_tb, '')))
+
+        result = self._driver_ssh.get_share_quota("vvol_test")
+
+        self.assertEqual(1024, result)
+
+    def test_get_share_quota_mb(self):
+        self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
+            return_value=(HNAS_RESULT_quota_mb, '')))
+
+        self.assertRaises(exception.HNASBackendException,
+                          self._driver_ssh.get_share_quota, "vvol_test")
+
+    def test__get_share_export(self):
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(return_value=[HNAS_RESULT_export_ip, '']))
+
+        export_list = self._driver_ssh._get_share_export('fake_id')
+
+        self.assertEqual('vvol_test', export_list[0].export_name)
+        self.assertEqual('/vvol_test', export_list[0].export_path)
+        self.assertEqual('fake_fs', export_list[0].file_system_label)
+        self.assertEqual('Yes', export_list[0].mounted)
+
+    def test__get_share_export_exception(self):
+        output_msg = 'No exports are currently configured'
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(return_value=[output_msg, '']))
+
+        self.assertRaises(exception.HNASItemNotFoundException,
+                          self._driver_ssh._get_share_export, 'fake_id')
+
+    def test__get_filesystem_list(self):
+        self.mock_object(ssh.HNASSSHBackend, '_execute',
+                         mock.Mock(return_value=[HNAS_RESULT_fs, '']))
+
+        out = self._driver_ssh._get_filesystem_list()
+
+        self.assertEqual('8e6e2c85-fake-long-filesystem-b9b4-e4b09993841e',
+                         out[0].name)
+        self.assertEqual('fake_span', out[0].on_span)
+        self.assertEqual('Mount', out[0].state)
+        self.assertEqual(2, out[0].evs)
+        self.assertTrue(self.mock_log.debug.called)
 
     def test__execute(self):
         key = self.ssh_private_key
@@ -1188,7 +839,7 @@ class HNASSSHTestCase(test.TestCase):
         self.mock_object(putils, 'ssh_execute',
                          mock.Mock(return_value=[HNAS_RESULT_job, '']))
 
-        output, err = self._driver._execute(commands)
+        output, err = self._driver_ssh._execute(commands)
 
         putils.ssh_execute.assert_called_once_with(mock.ANY, concat_command,
                                                    check_exit_code=True)
@@ -1201,77 +852,65 @@ class HNASSSHTestCase(test.TestCase):
                                                       port=self.port)
         self.assertIn('Request submitted successfully.', output)
 
-    def test__execute_retry(self):
+    def test__execute_ssh_exception(self):
         commands = ['tree-clone-job-submit', '-e', '/src', '/dst']
         concat_command = ('ssc --smuauth fake console-context --evs 2 '
                           'tree-clone-job-submit -e /src /dst')
         msg = 'Failed to establish SSC connection'
 
-        item_mock = mock.Mock()
-        self.mock_object(utils.pools.Pool, 'item',
-                         mock.Mock(return_value=item_mock))
-        setattr(item_mock, '__enter__', mock.Mock())
-        setattr(item_mock, '__exit__', mock.Mock())
-
         self.mock_object(paramiko.SSHClient, 'connect')
-        # testing retrying 3 times
-        self.mock_object(putils, 'ssh_execute', mock.Mock(
-            side_effect=[putils.ProcessExecutionError(stderr=msg),
-                         putils.ProcessExecutionError(stderr=msg),
-                         putils.ProcessExecutionError(stderr=msg),
-                         (HNAS_RESULT_job, '')]))
+        self.mock_object(putils, 'ssh_execute',
+                         mock.Mock(side_effect=[
+                             putils.ProcessExecutionError(stderr=msg),
+                             putils.ProcessExecutionError(stderr='Invalid!')]))
+        self.mock_object(mutils.SSHPool, "item",
+                         mock.Mock(return_value=paramiko.SSHClient()))
+        self.mock_object(paramiko.SSHClient, "set_missing_host_key_policy")
 
-        self._driver._execute(commands)
+        self.assertRaises(putils.ProcessExecutionError,
+                          self._driver_ssh._execute, commands)
 
         putils.ssh_execute.assert_called_with(mock.ANY, concat_command,
                                               check_exit_code=True)
-
-    def test__execute_ssh_exception(self):
-        key = self.ssh_private_key
-        commands = ['tree-clone-job-submit', '-e', '/src', '/dst']
-        concat_command = ('ssc --smuauth fake console-context --evs 2 '
-                          'tree-clone-job-submit -e /src /dst')
-        self.mock_object(paramiko.SSHClient, 'connect')
-        self.mock_object(putils, 'ssh_execute',
-                         mock.Mock(side_effect=putils.ProcessExecutionError
-                                   (stderr='Error')))
-
-        self.assertRaises(putils.ProcessExecutionError,
-                          self._driver._execute, commands)
-
-        putils.ssh_execute.assert_called_once_with(mock.ANY, concat_command,
-                                                   check_exit_code=True)
-        paramiko.SSHClient.connect.assert_called_with(self.ip,
-                                                      username=self.user,
-                                                      key_filename=key,
-                                                      look_for_keys=False,
-                                                      timeout=None,
-                                                      password=self.password,
-                                                      port=self.port)
         self.assertTrue(self.mock_log.debug.called)
         self.assertTrue(self.mock_log.error.called)
 
-    def test_mount_fs_already_mounted(self):
-        msg = 'file system is already mounted'
-        fake_mount_command = ['mount', 'file_system']
+    def test__locked_selectfs_create_operation(self):
+        exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
+                        'console-context', '--evs', six.text_type(self.evs_id),
+                        'mkdir', '-p', '/path']
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
 
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[putils.ProcessExecutionError
-                                                (stderr=msg)]))
+        self._driver_ssh._locked_selectfs('create', '/path')
 
-        output = self._driver._mount(self.fs_name)
+        self._driver_ssh._execute.assert_called_with(exec_command)
 
-        self.assertTrue(output)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_mount_command)
+    def test__locked_selectfs_delete_operation_successfull(self):
+        exec_command = ['selectfs', self.fs_name, '\n', 'ssc', '127.0.0.1',
+                        'console-context', '--evs', six.text_type(self.evs_id),
+                        'rmdir', '/path']
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock())
 
-    def test_error_mount_fs(self):
-        msg = 'File system not found.'
-        fake_mount_command = ['mount', 'file_system']
+        self._driver_ssh._locked_selectfs('delete', '/path')
 
-        self.mock_object(ssh.HNASSSHBackend, '_execute',
-                         mock.Mock(side_effect=[putils.ProcessExecutionError
-                                                (stderr=msg)]))
+        self._driver_ssh._execute.assert_called_with(exec_command)
+
+    def test__locked_selectfs_deleting_not_empty_directory(self):
+        msg = 'This path has more snapshot. Currenty DirectoryNotEmpty'
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(stderr=msg)]))
+
+        self._driver_ssh._locked_selectfs('delete', '/path')
+
+        self.assertTrue(self.mock_log.debug.called)
+
+    def test__locked_selectfs_delete_exception(self):
+        msg = 'rmdir: cannot remove \'/path\': NotFound'
+
+        self.mock_object(ssh.HNASSSHBackend, '_execute', mock.Mock(
+            side_effect=[putils.ProcessExecutionError(stderr=msg)]))
 
         self.assertRaises(putils.ProcessExecutionError,
-                          self._driver._mount, self.fs_name)
-        ssh.HNASSSHBackend._execute.assert_called_with(fake_mount_command)
+                          self._driver_ssh._locked_selectfs, 'delete', 'path')
+        self.assertTrue(self.mock_log.exception.called)

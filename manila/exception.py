@@ -664,6 +664,14 @@ class HNASConnException(ManilaException):
     message = _("HNAS Connection Exception: %(msg)s")
 
 
+class HNASItemNotFoundException(StorageResourceNotFound):
+    message = _("HNAS Item Not Found Exception: %(msg)s")
+
+
+class HNASNothingToCloneException(ManilaException):
+    message = _("HNAS Nothing To Clone Exception: %(msg)s")
+
+
 # ConsistencyGroup
 class ConsistencyGroupNotFound(NotFound):
     message = _("ConsistencyGroup %(consistency_group_id)s could not be "
