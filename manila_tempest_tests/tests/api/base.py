@@ -208,8 +208,8 @@ class BaseSharesTest(test.BaseTestCase):
 
     def setUp(self):
         super(BaseSharesTest, self).setUp()
-        self.addCleanup(self.clear_resources)
         self.addCleanup(self.clear_isolated_creds)
+        self.addCleanup(self.clear_resources)
 
     @classmethod
     def resource_cleanup(cls):
