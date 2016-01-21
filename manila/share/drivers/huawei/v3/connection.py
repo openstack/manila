@@ -203,6 +203,17 @@ class V3StorageConnection(driver.HuaweiBase):
         else:
             return False
 
+    def assert_filesystem(self, fsid):
+        fs = self.helper._get_fs_info_by_id(fsid)
+        if not self.check_fs_status(fs['HEALTHSTATUS'],
+                                    fs['RUNNINGSTATUS']):
+            err_msg = (_('Invalid status of filesystem: '
+                         'HEALTHSTATUS=%(health)s '
+                         'RUNNINGSTATUS=%(running)s.')
+                       % {'health': fs['HEALTHSTATUS'],
+                          'running': fs['RUNNINGSTATUS']})
+            raise exception.StorageResourceException(reason=err_msg)
+
     def create_snapshot(self, snapshot, share_server=None):
         """Create a snapshot."""
         snap_name = snapshot['id']
@@ -1214,3 +1225,22 @@ class V3StorageConnection(driver.HuaweiBase):
                     if (LDAP_config['LDAPSERVER'] == server
                             and LDAP_config['BASEDN'] == domain):
                         self.helper.delete_LDAP_config()
+
+    def ensure_share(self, share, share_server=None):
+        """Ensure that share is exported."""
+        share_proto = share['share_proto']
+        share_name = share['name']
+        share_id = share['id']
+        share_url_type = self.helper._get_share_url_type(share_proto)
+
+        share_storage = self.helper._get_share_by_name(share_name,
+                                                       share_url_type)
+        if not share_storage:
+            raise exception.ShareResourceNotFound(share_id=share_id)
+
+        fs_id = share_storage['FSID']
+        self.assert_filesystem(fs_id)
+
+        ip = self._get_share_ip(share_server)
+        location = self._get_location_path(share_name, share_proto, ip)
+        return [location]
