@@ -2473,7 +2473,13 @@ class ShareManagerTestCase(test.TestCase):
         status_success = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_SUCCESS
         }
-        share_server = 'fake-share-server'
+        share_server = {
+            'id': 'fake_share_server_id',
+            'share_network_id': 'fake_share_network_id',
+            'host': 'fake_host',
+            'status': 'fake_status',
+            'backend_details': {'foo': 'bar'},
+        }
         migration_info = 'fake-info'
 
         manager = self.share_manager
@@ -2519,7 +2525,13 @@ class ShareManagerTestCase(test.TestCase):
         status_success = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_SUCCESS
         }
-        share_server = 'fake-share-server'
+        share_server = {
+            'id': 'fake_share_server_id',
+            'share_network_id': 'fake_share_network_id',
+            'host': 'fake_host',
+            'status': 'fake_status',
+            'backend_details': {'foo': 'bar'},
+        }
         migration_info = 'fake-info'
 
         manager = self.share_manager
@@ -2560,7 +2572,13 @@ class ShareManagerTestCase(test.TestCase):
         status_success = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_SUCCESS
         }
-        share_server = 'fake-share-server'
+        share_server = {
+            'id': 'fake_share_server_id',
+            'share_network_id': 'fake_share_network_id',
+            'host': 'fake_host',
+            'status': 'fake_status',
+            'backend_details': {'foo': 'bar'},
+        }
         migration_info = 'fake-info'
 
         manager = self.share_manager
@@ -2605,7 +2623,13 @@ class ShareManagerTestCase(test.TestCase):
         status_error = {
             'task_state': constants.STATUS_TASK_STATE_MIGRATION_ERROR
         }
-        share_server = 'fake-share-server'
+        share_server = {
+            'id': 'fake_share_server_id',
+            'share_network_id': 'fake_share_network_id',
+            'host': 'fake_host',
+            'status': 'fake_status',
+            'backend_details': {'foo': 'bar'},
+        }
         migration_info = 'fake-info'
 
         manager = self.share_manager
@@ -2724,8 +2748,20 @@ class ShareManagerTestCase(test.TestCase):
         }
         status_inactive = {'status': constants.STATUS_INACTIVE}
         status_available = {'status': constants.STATUS_AVAILABLE}
-        share_server = 'fake-server'
-        new_share_server = 'new-fake-server'
+        share_server = {
+            'id': 'fake_share_server_id',
+            'share_network_id': 'fake_share_network_id',
+            'host': 'fake_host',
+            'status': 'fake_status',
+            'backend_details': {'foo': 'bar'},
+        }
+        new_share_server = {
+            'id': 'fake_share_server_id2',
+            'share_network_id': 'fake_share_network_id2',
+            'host': 'fake_host2',
+            'status': 'fake_status2',
+            'backend_details': {'foo2': 'bar2'},
+        }
         src_migration_info = 'fake-src-migration-info'
         dest_migration_info = 'fake-dest-migration-info'
 

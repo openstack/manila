@@ -1629,10 +1629,32 @@ class ShareAPITestCase(test.TestCase):
         share = db_utils.create_share(
             status=constants.STATUS_AVAILABLE,
             host='fake@backend#pool', share_type_id='fake_type_id')
-        request_spec = {'share_properties': share,
-                        'share_instance_properties': share.instance.to_dict(),
-                        'share_type': 'fake_type',
-                        'share_id': share['id']}
+        request_spec = {
+            'share_properties': {
+                'size': share['size'],
+                'user_id': share['user_id'],
+                'project_id': share['project_id'],
+                'share_server_id': share['share_server_id'],
+                'snapshot_support': share['snapshot_support'],
+                'share_proto': share['share_proto'],
+                'share_type_id': share['share_type_id'],
+                'is_public': share['is_public'],
+                'consistency_group_id': share['consistency_group_id'],
+                'source_cgsnapshot_member_id': share[
+                    'source_cgsnapshot_member_id'],
+                'snapshot_id': share['snapshot_id'],
+            },
+            'share_instance_properties': {
+                'availability_zone_id': share.instance['availability_zone_id'],
+                'share_network_id': share.instance['share_network_id'],
+                'share_server_id': share.instance['share_server_id'],
+                'share_id': share.instance['share_id'],
+                'host': share.instance['host'],
+                'status': share.instance['status'],
+            },
+            'share_type': 'fake_type',
+            'share_id': share['id'],
+        }
 
         self.mock_object(self.scheduler_rpcapi, 'migrate_share_to_host')
         self.mock_object(share_types, 'get_share_type',

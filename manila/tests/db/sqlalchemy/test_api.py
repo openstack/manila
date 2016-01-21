@@ -573,8 +573,7 @@ class ShareSnapshotDatabaseAPITestCase(test.TestCase):
 class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
 
     def setUp(self):
-        """Run before each test."""
-        super(ShareExportLocationsDatabaseAPITestCase, self).setUp()
+        super(self.__class__, self).setUp()
         self.ctxt = context.get_admin_context()
 
     def test_update_valid_order(self):
@@ -604,6 +603,187 @@ class ShareExportLocationsDatabaseAPITestCase(test.TestCase):
                                                           share['id'])
 
         self.assertTrue(actual_result == [initial_location])
+
+    def test_get_admin_export_locations(self):
+        ctxt_user = context.RequestContext(
+            user_id='fake user', project_id='fake project', is_admin=False)
+        share = db_utils.create_share()
+        locations = [
+            {'path': 'fake1/1/', 'is_admin_only': True},
+            {'path': 'fake2/2/', 'is_admin_only': True},
+            {'path': 'fake3/3/', 'is_admin_only': True},
+        ]
+
+        db_api.share_export_locations_update(
+            self.ctxt, share.instance['id'], locations, delete=False)
+
+        user_result = db_api.share_export_locations_get(ctxt_user, share['id'])
+        self.assertEqual([], user_result)
+
+        admin_result = db_api.share_export_locations_get(
+            self.ctxt, share['id'])
+        self.assertEqual(3, len(admin_result))
+        for location in locations:
+            self.assertIn(location['path'], admin_result)
+
+    def test_get_user_export_locations(self):
+        ctxt_user = context.RequestContext(
+            user_id='fake user', project_id='fake project', is_admin=False)
+        share = db_utils.create_share()
+        locations = [
+            {'path': 'fake1/1/', 'is_admin_only': False},
+            {'path': 'fake2/2/', 'is_admin_only': False},
+            {'path': 'fake3/3/', 'is_admin_only': False},
+        ]
+
+        db_api.share_export_locations_update(
+            self.ctxt, share.instance['id'], locations, delete=False)
+
+        user_result = db_api.share_export_locations_get(ctxt_user, share['id'])
+        self.assertEqual(3, len(user_result))
+        for location in locations:
+            self.assertIn(location['path'], user_result)
+
+        admin_result = db_api.share_export_locations_get(
+            self.ctxt, share['id'])
+        self.assertEqual(3, len(admin_result))
+        for location in locations:
+            self.assertIn(location['path'], admin_result)
+
+    def test_get_user_export_locations_old_view(self):
+        ctxt_user = context.RequestContext(
+            user_id='fake user', project_id='fake project', is_admin=False)
+        share = db_utils.create_share()
+        locations = ['fake1/1/', 'fake2/2', 'fake3/3']
+
+        db_api.share_export_locations_update(
+            self.ctxt, share.instance['id'], locations, delete=False)
+
+        user_result = db_api.share_export_locations_get(ctxt_user, share['id'])
+        self.assertEqual(locations, user_result)
+
+        admin_result = db_api.share_export_locations_get(
+            self.ctxt, share['id'])
+        self.assertEqual(locations, admin_result)
+
+
+@ddt.ddt
+class ShareInstanceExportLocationsMetadataDatabaseAPITestCase(test.TestCase):
+
+    def setUp(self):
+        super(self.__class__, self).setUp()
+        self.ctxt = context.get_admin_context()
+        self.share = db_utils.create_share()
+        self.initial_locations = ['/fake/foo/', '/fake/bar', '/fake/quuz']
+        db_api.share_export_locations_update(
+            self.ctxt, self.share.instance['id'], self.initial_locations,
+            delete=False)
+
+    def _get_export_location_uuid_by_path(self, path):
+        els = db_api.share_export_locations_get_by_share_id(
+            self.ctxt, self.share.id)
+        export_location_uuid = None
+        for el in els:
+            if el.path == path:
+                export_location_uuid = el.uuid
+        self.assertFalse(export_location_uuid is None)
+        return export_location_uuid
+
+    def test_get_export_locations_by_share_id(self):
+        els = db_api.share_export_locations_get_by_share_id(
+            self.ctxt, self.share.id)
+        self.assertEqual(3, len(els))
+        for path in self.initial_locations:
+            self.assertTrue(any([path in el.path for el in els]))
+
+    def test_get_export_locations_by_share_instance_id(self):
+        els = db_api.share_export_locations_get_by_share_instance_id(
+            self.ctxt, self.share.instance.id)
+        self.assertEqual(3, len(els))
+        for path in self.initial_locations:
+            self.assertTrue(any([path in el.path for el in els]))
+
+    def test_export_location_metadata_update_delete(self):
+        export_location_uuid = self._get_export_location_uuid_by_path(
+            self.initial_locations[0])
+        metadata = {
+            'foo_key': 'foo_value',
+            'bar_key': 'bar_value',
+            'quuz_key': 'quuz_value',
+        }
+
+        db_api.export_location_metadata_update(
+            self.ctxt, export_location_uuid, metadata, False)
+
+        db_api.export_location_metadata_delete(
+            self.ctxt, export_location_uuid, list(metadata.keys())[0:-1])
+
+        result = db_api.export_location_metadata_get(
+            self.ctxt, export_location_uuid)
+
+        key = list(metadata.keys())[-1]
+        self.assertEqual({key: metadata[key]}, result)
+
+        db_api.export_location_metadata_delete(
+            self.ctxt, export_location_uuid)
+
+        result = db_api.export_location_metadata_get(
+            self.ctxt, export_location_uuid)
+        self.assertEqual({}, result)
+
+    def test_export_location_metadata_update_get(self):
+
+        # Write metadata for target export location
+        export_location_uuid = self._get_export_location_uuid_by_path(
+            self.initial_locations[0])
+        metadata = {'foo_key': 'foo_value', 'bar_key': 'bar_value'}
+        db_api.export_location_metadata_update(
+            self.ctxt, export_location_uuid, metadata, False)
+
+        # Write metadata for some concurrent export location
+        other_export_location_uuid = self._get_export_location_uuid_by_path(
+            self.initial_locations[1])
+        other_metadata = {'key_from_other_el': 'value_of_key_from_other_el'}
+        db_api.export_location_metadata_update(
+            self.ctxt, other_export_location_uuid, other_metadata, False)
+
+        result = db_api.export_location_metadata_get(
+            self.ctxt, export_location_uuid)
+
+        self.assertEqual(metadata, result)
+
+        updated_metadata = {
+            'foo_key': metadata['foo_key'],
+            'quuz_key': 'quuz_value',
+        }
+
+        db_api.export_location_metadata_update(
+            self.ctxt, export_location_uuid, updated_metadata, True)
+
+        result = db_api.export_location_metadata_get(
+            self.ctxt, export_location_uuid)
+
+        self.assertEqual(updated_metadata, result)
+
+    @ddt.data(
+        ("k", "v"),
+        ("k" * 256, "v"),
+        ("k", "v" * 1024),
+        ("k" * 256, "v" * 1024),
+    )
+    @ddt.unpack
+    def test_set_metadata_with_different_length(self, key, value):
+        export_location_uuid = self._get_export_location_uuid_by_path(
+            self.initial_locations[1])
+        metadata = {key: value}
+
+        db_api.export_location_metadata_update(
+            self.ctxt, export_location_uuid, metadata, False)
+
+        result = db_api.export_location_metadata_get(
+            self.ctxt, export_location_uuid)
+
+        self.assertEqual(metadata, result)
 
 
 @ddt.ddt

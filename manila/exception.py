@@ -422,6 +422,10 @@ class ShareBackendException(ManilaException):
     message = _("Share backend error: %(msg)s.")
 
 
+class ExportLocationNotFound(NotFound):
+    message = _("Export location %(uuid)s could not be found.")
+
+
 class ShareSnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
 

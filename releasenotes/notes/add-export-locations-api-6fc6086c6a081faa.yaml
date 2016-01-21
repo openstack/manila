@@ -1,0 +1,6 @@
+---
+features:
+  - Added APIs for listing export locations per share and share instances.
+deprecations:
+  - Removed 'export_location' and 'export_locations' attributes from share
+    and share instance views starting with microversion '2.9'.

@@ -289,10 +289,29 @@ class API(base.Base):
             # NOTE(ameade): Do not cast to driver if creating from cgsnapshot
             return
 
-        share_dict = share.to_dict()
-        share_dict.update(
-            {'metadata': self.db.share_metadata_get(context, share['id'])}
-        )
+        share_properties = {
+            'size': share['size'],
+            'user_id': share['user_id'],
+            'project_id': share['project_id'],
+            'metadata': self.db.share_metadata_get(context, share['id']),
+            'share_server_id': share['share_server_id'],
+            'snapshot_support': share['snapshot_support'],
+            'share_proto': share['share_proto'],
+            'share_type_id': share['share_type_id'],
+            'is_public': share['is_public'],
+            'consistency_group_id': share['consistency_group_id'],
+            'source_cgsnapshot_member_id': share[
+                'source_cgsnapshot_member_id'],
+            'snapshot_id': share['snapshot_id'],
+        }
+        share_instance_properties = {
+            'availability_zone_id': share_instance['availability_zone_id'],
+            'share_network_id': share_instance['share_network_id'],
+            'share_server_id': share_instance['share_server_id'],
+            'share_id': share_instance['share_id'],
+            'host': share_instance['host'],
+            'status': share_instance['status'],
+        }
 
         share_type = None
         if share['share_type_id']:
@@ -300,8 +319,8 @@ class API(base.Base):
                 context, share['share_type_id'])
 
         request_spec = {
-            'share_properties': share_dict,
-            'share_instance_properties': share_instance.to_dict(),
+            'share_properties': share_properties,
+            'share_instance_properties': share_instance_properties,
             'share_proto': share['share_proto'],
             'share_id': share['id'],
             'snapshot_id': share['snapshot_id'],
@@ -599,8 +618,31 @@ class API(base.Base):
         share_type_id = share['share_type_id']
         if share_type_id:
             share_type = share_types.get_share_type(context, share_type_id)
-        request_spec = {'share_properties': share,
-                        'share_instance_properties': share_instance.to_dict(),
+
+        share_properties = {
+            'size': share['size'],
+            'user_id': share['user_id'],
+            'project_id': share['project_id'],
+            'share_server_id': share['share_server_id'],
+            'snapshot_support': share['snapshot_support'],
+            'share_proto': share['share_proto'],
+            'share_type_id': share['share_type_id'],
+            'is_public': share['is_public'],
+            'consistency_group_id': share['consistency_group_id'],
+            'source_cgsnapshot_member_id': share[
+                'source_cgsnapshot_member_id'],
+            'snapshot_id': share['snapshot_id'],
+        }
+        share_instance_properties = {
+            'availability_zone_id': share_instance['availability_zone_id'],
+            'share_network_id': share_instance['share_network_id'],
+            'share_server_id': share_instance['share_server_id'],
+            'share_id': share_instance['share_id'],
+            'host': share_instance['host'],
+            'status': share_instance['status'],
+        }
+        request_spec = {'share_properties': share_properties,
+                        'share_instance_properties': share_instance_properties,
                         'share_type': share_type,
                         'share_id': share['id']}
 

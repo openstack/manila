@@ -814,6 +814,19 @@ class ShareAPITest(test.TestCase):
         expected['shares'][0]['task_state'] = None
         self._list_detail_test_common(req, expected)
 
+    def test_share_list_detail_without_export_locations(self):
+        env = {'QUERY_STRING': 'name=Share+Test+Name'}
+        req = fakes.HTTPRequest.blank('/shares/detail', environ=env,
+                                      version="2.9")
+        expected = self._list_detail_common_expected()
+        expected['shares'][0]['consistency_group_id'] = None
+        expected['shares'][0]['source_cgsnapshot_member_id'] = None
+        expected['shares'][0]['task_state'] = None
+        expected['shares'][0]['share_type_name'] = None
+        expected['shares'][0].pop('export_location')
+        expected['shares'][0].pop('export_locations')
+        self._list_detail_test_common(req, expected)
+
     def test_remove_invalid_options(self):
         ctx = context.RequestContext('fakeuser', 'fakeproject', is_admin=False)
         search_opts = {'a': 'a', 'b': 'b', 'c': 'c', 'd': 'd'}

@@ -33,6 +33,8 @@
     "share:unmanage": "rule:admin_api",
     "share:force_delete": "rule:admin_api",
     "share:reset_status": "rule:admin_api",
+    "share_export_location:index": "rule:default",
+    "share_export_location:show": "rule:default",
 
     "share_type:index": "rule:default",
     "share_type:show": "rule:default",
@@ -53,6 +55,8 @@
     "share_instance:show": "rule:admin_api",
     "share_instance:force_delete": "rule:admin_api",
     "share_instance:reset_status": "rule:admin_api",
+    "share_instance_export_location:index": "rule:admin_api",
+    "share_instance_export_location:show": "rule:admin_api",
 
     "share_snapshot:force_delete": "rule:admin_api",
     "share_snapshot:reset_status": "rule:admin_api",

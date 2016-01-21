@@ -573,6 +573,13 @@ class ShareManager(manager.SchedulerDependentManager):
 
                 share_server = self._get_share_server(ctxt.elevated(),
                                                       share_instance)
+                share_server = {
+                    'id': share_server['id'],
+                    'share_network_id': share_server['share_network_id'],
+                    'host': share_server['host'],
+                    'status': share_server['status'],
+                    'backend_details': share_server['backend_details'],
+                } if share_server else share_server
 
                 dest_driver_migration_info = rpcapi.get_driver_migration_info(
                     ctxt, share_instance, share_server)
@@ -663,6 +670,13 @@ class ShareManager(manager.SchedulerDependentManager):
                                                   share_instance)
             new_share_server = self._get_share_server(context.elevated(),
                                                       new_share_instance)
+            new_share_server = {
+                'id': new_share_server['id'],
+                'share_network_id': new_share_server['share_network_id'],
+                'host': new_share_server['host'],
+                'status': new_share_server['status'],
+                'backend_details': new_share_server['backend_details'],
+            } if new_share_server else new_share_server
 
             src_migration_info = self.driver.get_migration_info(
                 context, share_instance, share_server)

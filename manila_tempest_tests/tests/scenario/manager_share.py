@@ -38,6 +38,7 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
 
         # Manila clients
         cls.shares_client = clients_share.Manager().shares_client
+        cls.shares_v2_client = clients_share.Manager().shares_v2_client
         cls.shares_admin_client = clients_share.AdminManager().shares_client
         cls.shares_admin_v2_client = (
             clients_share.AdminManager().shares_v2_client)

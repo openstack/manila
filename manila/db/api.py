@@ -597,17 +597,58 @@ def share_metadata_update(context, share, metadata, delete):
 
 ###################
 
+def share_export_location_get_by_uuid(context, export_location_uuid):
+    """Get specific export location of a share."""
+    return IMPL.share_export_location_get_by_uuid(
+        context, export_location_uuid)
+
+
 def share_export_locations_get(context, share_id):
-    """Get all exports_locations of share."""
+    """Get all export locations of a share."""
     return IMPL.share_export_locations_get(context, share_id)
+
+
+def share_export_locations_get_by_share_id(context, share_id,
+                                           include_admin_only=True):
+    """Get all export locations of a share by its ID."""
+    return IMPL.share_export_locations_get_by_share_id(
+        context, share_id, include_admin_only=include_admin_only)
+
+
+def share_export_locations_get_by_share_instance_id(context,
+                                                    share_instance_id):
+    """Get all export locations of a share instance by its ID."""
+    return IMPL.share_export_locations_get_by_share_instance_id(
+        context, share_instance_id)
 
 
 def share_export_locations_update(context, share_instance_id, export_locations,
                                   delete=True):
-    """Update export locations of share."""
-    return IMPL.share_export_locations_update(context, share_instance_id,
-                                              export_locations, delete)
+    """Update export locations of a share instance."""
+    return IMPL.share_export_locations_update(
+        context, share_instance_id, export_locations, delete)
 
+
+####################
+
+def export_location_metadata_get(context, export_location_uuid, session=None):
+    """Get all metadata of an export location."""
+    return IMPL.export_location_metadata_get(
+        context, export_location_uuid, session=session)
+
+
+def export_location_metadata_delete(context, export_location_uuid, keys,
+                                    session=None):
+    """Delete metadata of an export location."""
+    return IMPL.export_location_metadata_delete(
+        context, export_location_uuid, keys, session=session)
+
+
+def export_location_metadata_update(context, export_location_uuid, metadata,
+                                    delete, session=None):
+    """Update metadata of an export location."""
+    return IMPL.export_location_metadata_update(
+        context, export_location_uuid, metadata, delete, session=session)
 
 ####################
 

@@ -17,6 +17,7 @@ from oslo_serialization import jsonutils
 import six
 from webob import exc as webob_exc
 
+from manila.api.openstack import api_version_request
 from manila.api.v2 import share_instances
 from manila.common import constants
 from manila import context
@@ -56,10 +57,10 @@ class ShareInstancesAPITest(test.TestCase):
             version=version)
         return instance, req
 
-    def _get_request(self, uri, context=None):
+    def _get_request(self, uri, context=None, version="2.3"):
         if context is None:
             context = self.admin_context
-        req = fakes.HTTPRequest.blank('/shares', version="2.3")
+        req = fakes.HTTPRequest.blank('/shares', version=version)
         req.environ['manila.context'] = context
         return req
 
@@ -94,10 +95,37 @@ class ShareInstancesAPITest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.admin_context, self.resource_name, 'show')
 
-    def test_get_share_instances(self):
+    def test_show_with_export_locations(self):
+        test_instance = db_utils.create_share(size=1).instance
+        req = self._get_request('fake', version="2.8")
+        id = test_instance['id']
+
+        actual_result = self.controller.show(req, id)
+
+        self.assertEqual(id, actual_result['share_instance']['id'])
+        self.assertIn("export_location", actual_result['share_instance'])
+        self.assertIn("export_locations", actual_result['share_instance'])
+        self.mock_policy_check.assert_called_once_with(
+            self.admin_context, self.resource_name, 'show')
+
+    def test_show_without_export_locations(self):
+        test_instance = db_utils.create_share(size=1).instance
+        req = self._get_request('fake', version="2.9")
+        id = test_instance['id']
+
+        actual_result = self.controller.show(req, id)
+
+        self.assertEqual(id, actual_result['share_instance']['id'])
+        self.assertNotIn("export_location", actual_result['share_instance'])
+        self.assertNotIn("export_locations", actual_result['share_instance'])
+        self.mock_policy_check.assert_called_once_with(
+            self.admin_context, self.resource_name, 'show')
+
+    @ddt.data("2.3", "2.8", "2.9")
+    def test_get_share_instances(self, version):
         test_share = db_utils.create_share(size=1)
         id = test_share['id']
-        req = self._get_request('fake')
+        req = self._get_request('fake', version=version)
         req_context = req.environ['manila.context']
         share_policy_check_call = mock.call(
             req_context, 'share', 'get', mock.ANY)
@@ -110,6 +138,15 @@ class ShareInstancesAPITest(test.TestCase):
             [test_share.instance],
             actual_result['share_instances']
         )
+        self.assertEqual(1, len(actual_result.get("share_instances", 0)))
+        for instance in actual_result["share_instances"]:
+            if (api_version_request.APIVersionRequest(version) >
+                    api_version_request.APIVersionRequest("2.8")):
+                assert_method = self.assertNotIn
+            else:
+                assert_method = self.assertIn
+            assert_method("export_location", instance)
+            assert_method("export_locations", instance)
         self.mock_policy_check.assert_has_calls([
             get_instances_policy_check_call, share_policy_check_call])
 
