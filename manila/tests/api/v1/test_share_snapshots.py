@@ -57,6 +57,20 @@ class ShareSnapshotAPITest(test.TestCase):
         }
         self.maxDiff = None
 
+    def test_snapshot_show_status_none(self):
+        return_snapshot = {
+            'share_id': 100,
+            'name': 'fake_share_name',
+            'description': 'fake_share_description',
+            'status': None,
+        }
+        self.mock_object(share_api.API, 'get_snapshot',
+                         mock.Mock(return_value=return_snapshot))
+        req = fakes.HTTPRequest.blank('/snapshots/200')
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.show,
+                          req, '200')
+
     @ddt.data('true', 'True', '<is> True', '1')
     def test_snapshot_create(self, snapshot_support):
         self.mock_object(share_api.API, 'create_snapshot',
@@ -224,9 +238,12 @@ class ShareSnapshotAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
 
         snapshots = [
-            {'id': 'id1', 'display_name': 'n1'},
-            {'id': 'id2', 'display_name': 'n2'},
-            {'id': 'id3', 'display_name': 'n3'},
+            {'id': 'id1', 'display_name': 'n1',
+             'status': 'fake_status', 'share_id': 'fake_share_id'},
+            {'id': 'id2', 'display_name': 'n2',
+             'status': 'fake_status', 'share_id': 'fake_share_id'},
+            {'id': 'id3', 'display_name': 'n3',
+             'status': 'fake_status', 'share_id': 'fake_share_id'},
         ]
         self.mock_object(share_api.API, 'get_all_snapshots',
                          mock.Mock(return_value=snapshots))
@@ -274,14 +291,24 @@ class ShareSnapshotAPITest(test.TestCase):
         req = fakes.HTTPRequest.blank(url, use_admin_context=use_admin_context)
 
         snapshots = [
-            {'id': 'id1', 'display_name': 'n1'},
+            {
+                'id': 'id1',
+                'display_name': 'n1',
+                'status': 'fake_status',
+                'share_id': 'fake_share_id',
+            },
             {
                 'id': 'id2',
                 'display_name': 'n2',
                 'status': 'fake_status',
                 'share_id': 'fake_share_id',
             },
-            {'id': 'id3', 'display_name': 'n3'},
+            {
+                'id': 'id3',
+                'display_name': 'n3',
+                'status': 'fake_status',
+                'share_id': 'fake_share_id',
+            },
         ]
 
         self.mock_object(share_api.API, 'get_all_snapshots',
@@ -348,6 +375,32 @@ class ShareSnapshotAPITest(test.TestCase):
             ]
         }
         self.assertEqual(expected, res_dict)
+
+    def test_snapshot_list_status_none(self):
+        snapshots = [
+            {
+                'id': 2,
+                'share_id': 'fakeshareid',
+                'size': 1,
+                'status': 'fakesnapstatus',
+                'name': 'displaysnapname',
+                'description': 'displaysnapdesc',
+            },
+            {
+                'id': 3,
+                'share_id': 'fakeshareid',
+                'size': 1,
+                'status': None,
+                'name': 'displaysnapname',
+                'description': 'displaysnapdesc',
+            }
+        ]
+        self.mock_object(share_api.API, 'get_all_snapshots',
+                         mock.Mock(return_value=snapshots))
+        req = fakes.HTTPRequest.blank('/snapshots')
+        result = self.controller.index(req)
+        self.assertEqual(1, len(result['snapshots']))
+        self.assertEqual(snapshots[0]['id'], result['snapshots'][0]['id'])
 
     def test_snapshot_updates_description(self):
         snp = self.snp_example
