@@ -337,7 +337,7 @@ def share_instances_get_all_by_share_network(context, share_network_id):
 
 def share_instances_get_all_by_share(context, share_id):
     """Returns list of shares that belong to given share."""
-    return IMPL.share_instances_get_all_by_share_network(context, share_id)
+    return IMPL.share_instances_get_all_by_share(context, share_id)
 
 
 def share_instances_get_all_by_consistency_group_id(context, cg_id):
@@ -391,14 +391,6 @@ def share_get_all_by_consistency_group_id(context, cg_id,
     return IMPL.share_get_all_by_consistency_group_id(
         context, cg_id, filters=filters,
         sort_key=sort_key, sort_dir=sort_dir)
-
-
-def share_get_all_by_share_network(context, share_network_id, filters=None,
-                                   sort_key=None, sort_dir=None):
-    """Returns list of shares that belong to given share network."""
-    return IMPL.share_get_all_by_share_network(
-        context, share_network_id, filters=filters, sort_key=sort_key,
-        sort_dir=sort_dir)
 
 
 def share_get_all_by_share_server(context, share_server_id, filters=None,
@@ -752,20 +744,6 @@ def share_server_get(context, id, session=None):
     return IMPL.share_server_get(context, id, session=session)
 
 
-def share_server_get_by_host(context, host, share_net_id, session=None):
-    """Get share server DB records by host."""
-    return IMPL.share_server_get_by_host(context, host, share_net_id,
-                                         session=session)
-
-
-def share_server_get_by_host_and_share_net(context, host, share_net_id,
-                                           session=None):
-    """Get share server DB records by host and share net."""
-    return IMPL.share_server_get_by_host_and_share_net(context, host,
-                                                       share_net_id,
-                                                       session=session)
-
-
 def share_server_get_all_by_host_and_share_net_valid(context, host,
                                                      share_net_id,
                                                      session=None):
@@ -852,11 +830,6 @@ def share_type_access_add(context, type_id, project_id):
 def share_type_access_remove(context, type_id, project_id):
     """Remove share type access for project."""
     return IMPL.share_type_access_remove(context, type_id, project_id)
-
-
-def share_type_qos_specs_get(context, type_id):
-    """Get all qos specs for given share type."""
-    return IMPL.share_type_qos_specs_get(context, type_id)
 
 
 def share_type_destroy(context, id):
