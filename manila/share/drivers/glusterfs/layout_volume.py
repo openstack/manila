@@ -218,7 +218,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 comp_vol.update({'volume': volname})
                 gluster_mgr_vol = self._glustermanager(comp_vol)
                 if filter_used:
-                    vshr = gluster_mgr_vol.get_gluster_vol_option(
+                    vshr = gluster_mgr_vol.get_vol_option(
                         USER_MANILA_SHARE) or ''
                     if UUID_RE.search(vshr):
                         continue
@@ -398,8 +398,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             {'share': share, 'manager': gmgr})
         self.private_storage.update(share['id'], {'volume': vol})
 
-        args = ('volume', 'set', gmgr.volume, USER_MANILA_SHARE, share['id'])
-        gmgr.gluster_call(*args)
+        gmgr.set_vol_option(USER_MANILA_SHARE, share['id'])
 
         # TODO(deepakcs): Enable quota and set it to the share size.
 
@@ -416,20 +415,18 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         volume back in the available list.
         """
         gmgr = self._share_manager(share)
-        clone_of = gmgr.get_gluster_vol_option(USER_CLONED_FROM) or ''
+        clone_of = gmgr.get_vol_option(USER_CLONED_FROM) or ''
         try:
             if UUID_RE.search(clone_of):
                 # We take responsibility for the lifecycle
                 # management of those volumes which were
                 # created by us (as snapshot clones) ...
-                args = ('volume', 'delete', gmgr.volume)
+                gmgr.gluster_call('volume', 'delete', gmgr.volume)
             else:
                 # ... for volumes that come from the pool, we return
                 # them to the pool (after some purification rituals)
                 self._wipe_gluster_vol(gmgr)
-                args = ('volume', 'set', gmgr.volume, USER_MANILA_SHARE,
-                        'NONE')
-            gmgr.gluster_call(*args)
+                gmgr.set_vol_option(USER_MANILA_SHARE, 'NONE')
 
             self._push_gluster_vol(gmgr.qualified)
         except exception.GlusterfsException:
@@ -594,8 +591,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         gmgr = self._share_manager(share)
         self.gluster_used_vols.add(gmgr.qualified)
 
-        args = ('volume', 'set', gmgr.volume, USER_MANILA_SHARE, share['id'])
-        gmgr.gluster_call(*args)
+        gmgr.set_vol_option(USER_MANILA_SHARE, share['id'])
 
     # Debt...
 

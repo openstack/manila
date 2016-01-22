@@ -111,7 +111,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
     def test_do_setup_error_enabling_creation_share_specific_size(self):
         attrs = {'volume': 'testvol',
                  'gluster_call.side_effect': exception.GlusterfsException,
-                 'get_gluster_vol_option.return_value': 'off'}
+                 'get_vol_option.return_value': 'off'}
         fake_gluster_manager = mock.Mock(**attrs)
         self.mock_object(layout_directory.LOG, 'error')
         methods = ('_check_mount_glusterfs', '_ensure_gluster_vol_mounted')
@@ -131,7 +131,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             requires={'volume': True})
         self._layout.gluster_manager.gluster_call.assert_called_once_with(
             'volume', 'quota', 'testvol', 'enable')
-        (self._layout.gluster_manager.get_gluster_vol_option.
+        (self._layout.gluster_manager.get_vol_option.
          assert_called_once_with('features.quota'))
         layout_directory.LOG.error.assert_called_once_with(mock.ANY)
         self._layout._check_mount_glusterfs.assert_called_once_with()
@@ -140,7 +140,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
     def test_do_setup_error_already_enabled_creation_share_specific_size(self):
         attrs = {'volume': 'testvol',
                  'gluster_call.side_effect': exception.GlusterfsException,
-                 'get_gluster_vol_option.return_value': 'on'}
+                 'get_vol_option.return_value': 'on'}
         fake_gluster_manager = mock.Mock(**attrs)
         self.mock_object(layout_directory.LOG, 'error')
         methods = ('_check_mount_glusterfs', '_ensure_gluster_vol_mounted')
@@ -159,7 +159,7 @@ class GlusterfsDirectoryMappedLayoutTestCase(test.TestCase):
             requires={'volume': True})
         self._layout.gluster_manager.gluster_call.assert_called_once_with(
             'volume', 'quota', 'testvol', 'enable')
-        (self._layout.gluster_manager.get_gluster_vol_option.
+        (self._layout.gluster_manager.get_vol_option.
          assert_called_once_with('features.quota'))
         self.assertFalse(layout_directory.LOG.error.called)
         self._layout._check_mount_glusterfs.assert_called_once_with()

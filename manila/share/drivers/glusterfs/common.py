@@ -50,6 +50,17 @@ CONF = cfg.CONF
 CONF.register_opts(glusterfs_common_opts)
 
 
+def _check_volume_presence(f):
+
+    def wrapper(self, *args, **kwargs):
+        if not self.components.get('volume'):
+            raise exception.GlusterfsException(
+                _("Gluster address does not have a volume component."))
+        return f(self, *args, **kwargs)
+
+    return wrapper
+
+
 class GlusterManager(object):
     """Interface with a GlusterFS volume."""
 
@@ -136,12 +147,22 @@ class GlusterManager(object):
 
         def _gluster_call(*args, **kwargs):
             logmsg = kwargs.pop('log', None)
-            raw_error = kwargs.pop('raw_error', False)
+            error_policy = kwargs.pop('error_policy', 'coerce')
+            if (error_policy not in ('raw', 'coerce', 'suppress') and
+               not isinstance(error_policy[0], int)):
+                raise TypeError(_("undefined error_policy %s") %
+                                repr(error_policy))
+
             try:
                 return gluster_execf(*(('gluster',) + args), **kwargs)
             except exception.ProcessExecutionError as exc:
-                if raw_error:
+                if error_policy == 'raw':
                     raise
+                elif error_policy == 'coerce':
+                    pass
+                elif (error_policy == 'suppress' or
+                      exc.exit_code in error_policy):
+                    return
                 if logmsg:
                     LOG.error(_LE("%s: GlusterFS instrumentation failed.") %
                               logmsg)
@@ -153,7 +174,8 @@ class GlusterManager(object):
 
         return _gluster_call
 
-    def get_gluster_vol_option(self, option):
+    @_check_volume_presence
+    def get_vol_option(self, option):
         """Get the value of an option set on a GlusterFS volume."""
         args = ('--xml', 'volume', 'info', self.volume)
         out, err = self.gluster_call(*args, log=_LE("retrieving volume info"))
@@ -171,6 +193,18 @@ class GlusterManager(object):
             o, v = (e.find(a).text for a in ('name', 'value'))
             if o == option:
                 return v
+
+    @_check_volume_presence
+    def set_vol_option(self, option, value, ignore_failure=False):
+        if value is True:
+            value
+        value = {True: 'on', False: 'off'}.get(value, value)
+        if value is None:
+            args = ('reset', (option,))
+        else:
+            args = ('set', (option, value))
+        self.gluster_call(
+            'volume', args[0], self.volume, *args[1], error_policy=(1,))
 
     def get_gluster_version(self):
         """Retrieve GlusterFS version.
