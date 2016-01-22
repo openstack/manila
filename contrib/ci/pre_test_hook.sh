@@ -57,6 +57,11 @@ else
     echo "MANILA_MULTI_BACKEND=False" >> $localrc_path
 fi
 
+if [[ "$DRIVER" == "lvm" ]]; then
+    echo "SHARE_DRIVER=manila.share.drivers.lvm.LVMShareDriver" >> $localrc_path
+    echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localrc_path
+fi
+
 # Enabling isolated metadata in Neutron is required because
 # Tempest creates isolated networks and created vm's in scenario tests don't
 # have access to Nova Metadata service. This leads to unavailability of

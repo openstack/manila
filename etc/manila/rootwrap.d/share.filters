@@ -7,6 +7,49 @@ chown: CommandFilter, chown, root
 # manila/utils.py : 'cat', '%s'
 cat: CommandFilter, cat, root
 
+# manila/share/drivers/lvm.py: 'mkfs.ext4', '/dev/mapper/%s'
+mkfs.ext4: CommandFilter, /sbin/mkfs.ext4, root
+
+# manila/share/drivers/lvm.py: 'mkfs.ext3', '/dev/mapper/%s'
+mkfs.ext3: CommandFilter, /sbin/mkfs.ext3, root
+
+# manila/share/drivers/lvm.py: 'smbd', '-s', '%s', '-D'
+smbd: CommandFilter, /usr/sbin/smbd, root
+smb: CommandFilter, /usr/sbin/smb, root
+
+# manila/share/drivers/lvm.py: 'rmdir', '%s'
+rmdir: CommandFilter, /bin/rmdir, root
+
+# manila/share/drivers/lvm.py: 'dd' 'count=0', 'if=%s' % srcstr, 'of=%s'
+dd: CommandFilter, dd, root
+
+# manila/share/drivers/lvm.py: 'fsck', '-pf', %s
+fsck: CommandFilter, fsck, root
+
+# manila/share/drivers/lvm.py: 'resize2fs', %s
+resize2fs: CommandFilter, resize2fs, root
+
+# manila/share/drivers/helpers.py: 'smbcontrol', 'all', 'close-share', '%s'
+smbcontrol: CommandFilter, /usr/bin/smbcontrol, root
+
+# manila/share/drivers/helpers.py: 'net', 'conf', 'addshare', '%s', '%s', 'writeable=y', 'guest_ok=y
+# manila/share/drivers/helpers.py: 'net', 'conf', 'delshare', '%s'
+# manila/share/drivers/helpers.py: 'net', 'conf', 'setparm', '%s', '%s', '%s'
+# manila/share/drivers/helpers.py: 'net', 'conf', 'getparm', '%s', 'hosts allow'
+net: CommandFilter, /usr/bin/net, root
+
+# manila/share/drivers/lvm.py: 'lvremove', '-f', "%s/%s
+lvremove: CommandFilter, lvremove, root
+
+# manila/share/drivers/lvm.py: 'lvextend', '-L', '%sG''-n', %s
+lvextend: CommandFilter, lvextend, root
+
+# manila/share/drivers/lvm.py: 'lvcreate', '-L', %s, '-n', %s
+lvcreate: CommandFilter, lvcreate, root
+
+# manila/share/drivers/lvm.py: 'vgs', %s, '--rows'
+vgs: CommandFilter, vgs, root
+
 # manila/share/drivers/glusterfs.py: 'mkdir', '%s'
 # manila/share/drivers/ganesha/manager.py: 'mkdir', '-p', '%s'
 mkdir: CommandFilter, mkdir, root

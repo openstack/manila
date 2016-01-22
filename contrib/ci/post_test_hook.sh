@@ -61,13 +61,11 @@ iniset $TEMPEST_CONFIG share share_creation_retry_number 2
 SUPPRESS_ERRORS=${SUPPRESS_ERRORS_IN_CLEANUP:-True}
 iniset $TEMPEST_CONFIG share suppress_errors_in_cleanup $SUPPRESS_ERRORS
 
-# Enable consistency group tests
-RUN_MANILA_CG_TESTS=${RUN_MANILA_CG_TESTS:-True}
-iniset $TEMPEST_CONFIG share run_consistency_group_tests $RUN_MANILA_CG_TESTS
+USERNAME_FOR_USER_RULES=${USERNAME_FOR_USER_RULES:-"manila"}
+PASSWORD_FOR_SAMBA_USER=${PASSWORD_FOR_SAMBA_USER:-$USERNAME_FOR_USER_RULES}
 
-# Enable manage/unmanage tests
+RUN_MANILA_CG_TESTS=${RUN_MANILA_CG_TESTS:-True}
 RUN_MANILA_MANAGE_TESTS=${RUN_MANILA_MANAGE_TESTS:-True}
-iniset $TEMPEST_CONFIG share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS
 
 MANILA_CONF=${MANILA_CONF:-/etc/manila/manila.conf}
 
@@ -140,6 +138,32 @@ elif [[ "$DRIVER" == "generic" ]]; then
         iniset $TEMPEST_CONFIG share enable_protocols nfs
     fi
 fi
+
+if [[ "$DRIVER" == "lvm"  ]]; then
+    MANILA_TEMPEST_CONCURRENCY=8
+    RUN_MANILA_CG_TESTS=False
+    RUN_MANILA_MANAGE_TESTS=False
+    iniset $TEMPEST_CONFIG share run_shrink_tests False
+    iniset $TEMPEST_CONFIG share run_migration_tests False
+    iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
+    iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
+    if ! grep $USERNAME_FOR_USER_RULES "/etc/passwd"; then
+        sudo useradd $USERNAME_FOR_USER_RULES
+    fi
+    (echo $PASSWORD_FOR_SAMBA_USER; echo $PASSWORD_FOR_SAMBA_USER) | sudo smbpasswd -s -a $USERNAME_FOR_USER_RULES
+    sudo smbpasswd -e $USERNAME_FOR_USER_RULES
+    samba_daemon_name=smbd
+    if is_fedora; then
+        samba_daemon_name=smb
+    fi
+    sudo service $samba_daemon_name restart
+fi
+
+# Enable consistency group tests
+iniset $TEMPEST_CONFIG share run_consistency_group_tests $RUN_MANILA_CG_TESTS
+
+# Enable manage/unmanage tests
+iniset $TEMPEST_CONFIG share run_manage_unmanage_tests $RUN_MANILA_MANAGE_TESTS
 
 # Also, we should wait until service VM is available
 # before running Tempest tests using Generic driver in DHSS=False mode.
