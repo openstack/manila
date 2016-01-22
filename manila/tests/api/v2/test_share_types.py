@@ -227,7 +227,7 @@ class ShareTypesAPITest(test.TestCase):
     def test_view_builder_show(self, version, prefix):
         view_builder = views_types.ViewBuilder()
 
-        now = timeutils.isotime()
+        now = timeutils.utcnow().isoformat()
         raw_share_type = dict(
             name='new_type',
             deleted=False,
@@ -257,7 +257,7 @@ class ShareTypesAPITest(test.TestCase):
     def test_view_builder_list(self):
         view_builder = views_types.ViewBuilder()
 
-        now = timeutils.isotime()
+        now = timeutils.utcnow().isoformat()
         raw_share_types = []
         for i in range(0, 10):
             raw_share_types.append(
