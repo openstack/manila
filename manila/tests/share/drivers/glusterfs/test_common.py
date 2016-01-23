@@ -159,6 +159,36 @@ class GlusterManagerTestCase(test.TestCase):
         fake_obj.assert_called_once_with(
             *(('gluster',) + fake_args), **fake_kwargs)
 
+    @ddt.data({'trouble': exception.ProcessExecutionError,
+               '_exception': exception.GlusterfsException, 'xkw': {}},
+              {'trouble': exception.ProcessExecutionError,
+               '_exception': exception.GlusterfsException,
+               'xkw': {'raw_error': False}},
+              {'trouble': exception.ProcessExecutionError,
+               '_exception': exception.ProcessExecutionError,
+               'xkw': {'raw_error': True}},
+              {'trouble': RuntimeError, '_exception': RuntimeError, 'xkw': {}})
+    @ddt.unpack
+    def test_gluster_manager_make_gluster_call_error(self, trouble,
+                                                     _exception, xkw):
+        fake_obj = mock.Mock(side_effect=trouble)
+        fake_execute = mock.Mock()
+        kwargs = fake_kwargs.copy()
+        kwargs.update(xkw)
+        with mock.patch.object(common.ganesha_utils, 'RootExecutor',
+                               mock.Mock(return_value=fake_obj)):
+            gluster_manager = common.GlusterManager(
+                '127.0.0.1:/testvol', self.fake_execf)
+
+            self.assertRaises(_exception,
+                              gluster_manager.make_gluster_call(fake_execute),
+                              *fake_args, **kwargs)
+
+            common.ganesha_utils.RootExecutor.assert_called_with(
+                fake_execute)
+        fake_obj.assert_called_once_with(
+            *(('gluster',) + fake_args), **fake_kwargs)
+
     def test_get_gluster_vol_option_empty_volinfo(self):
         args = ('--xml', 'volume', 'info', self._gluster_manager.volume)
         self.mock_object(self._gluster_manager, 'gluster_call',
@@ -167,26 +197,7 @@ class GlusterManagerTestCase(test.TestCase):
                           self._gluster_manager.get_gluster_vol_option,
                           NFS_EXPORT_DIR)
         self._gluster_manager.gluster_call.assert_called_once_with(
-            *args)
-
-    @ddt.data({'inner_excp': RuntimeError, 'outer_excp': RuntimeError},
-              {'inner_excp': exception.ProcessExecutionError,
-               'outer_excp': exception.GlusterfsException})
-    @ddt.unpack
-    def test_get_gluster_vol_option_failing_volinfo(self, inner_excp,
-                                                    outer_excp):
-
-        def raise_exception(*ignore_args, **ignore_kwargs):
-            raise inner_excp('fake error')
-
-        args = ('--xml', 'volume', 'info', self._gluster_manager.volume)
-        self.mock_object(self._gluster_manager, 'gluster_call',
-                         mock.Mock(side_effect=raise_exception))
-        self.assertRaises(outer_excp,
-                          self._gluster_manager.get_gluster_vol_option,
-                          NFS_EXPORT_DIR)
-        self._gluster_manager.gluster_call.assert_called_once_with(
-            *args)
+            *args, log=mock.ANY)
 
     def test_get_gluster_vol_option_ambiguous_volinfo(self):
 
@@ -206,7 +217,8 @@ class GlusterManagerTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare,
                           self._gluster_manager.get_gluster_vol_option,
                           NFS_EXPORT_DIR)
-        self._gluster_manager.gluster_call.assert_called_once_with(*args)
+        self._gluster_manager.gluster_call.assert_called_once_with(
+            *args, log=mock.ANY)
 
     def test_get_gluster_vol_option_trivial_volinfo(self):
 
@@ -227,7 +239,8 @@ class GlusterManagerTestCase(test.TestCase):
                          mock.Mock(side_effect=xml_output))
         ret = self._gluster_manager.get_gluster_vol_option(NFS_EXPORT_DIR)
         self.assertIsNone(ret)
-        self._gluster_manager.gluster_call.assert_called_once_with(*args)
+        self._gluster_manager.gluster_call.assert_called_once_with(
+            *args, log=mock.ANY)
 
     def test_get_gluster_vol_option(self):
 
@@ -254,7 +267,8 @@ class GlusterManagerTestCase(test.TestCase):
                          mock.Mock(side_effect=xml_output))
         ret = self._gluster_manager.get_gluster_vol_option(NFS_EXPORT_DIR)
         self.assertEqual('/foo(10.0.0.1|10.0.0.2),/bar(10.0.0.1)', ret)
-        self._gluster_manager.gluster_call.assert_called_once_with(*args)
+        self._gluster_manager.gluster_call.assert_called_once_with(
+            *args, log=mock.ANY)
 
     def test_get_gluster_version(self):
         self.mock_object(self._gluster_manager, 'gluster_call',
@@ -262,7 +276,7 @@ class GlusterManagerTestCase(test.TestCase):
         ret = self._gluster_manager.get_gluster_version()
         self.assertEqual(['3', '6', '2beta3'], ret)
         self._gluster_manager.gluster_call.assert_called_once_with(
-            '--version')
+            '--version', log=mock.ANY)
 
     @ddt.data("foo 1.1.1", "glusterfs 3-6", "glusterfs 3.6beta3")
     def test_get_gluster_version_exception(self, versinfo):
@@ -271,18 +285,7 @@ class GlusterManagerTestCase(test.TestCase):
         self.assertRaises(exception.GlusterfsException,
                           self._gluster_manager.get_gluster_version)
         self._gluster_manager.gluster_call.assert_called_once_with(
-            '--version')
-
-    def test_get_gluster_version_process_error(self):
-        def raise_exception(*args, **kwargs):
-            raise exception.ProcessExecutionError()
-
-        self.mock_object(self._gluster_manager, 'gluster_call',
-                         mock.Mock(side_effect=raise_exception))
-        self.assertRaises(exception.GlusterfsException,
-                          self._gluster_manager.get_gluster_version)
-        self._gluster_manager.gluster_call.assert_called_once_with(
-            '--version')
+            '--version', log=mock.ANY)
 
     def test_check_gluster_version(self):
         self.mock_object(self._gluster_manager, 'get_gluster_version',
@@ -387,45 +390,11 @@ class GlusterFSCommonTestCase(test.TestCase):
 
     def test_restart_gluster_vol(self):
         gmgr = common.GlusterManager(fakeexport, self._execute, None, None)
-        test_args = [('volume', 'stop', fakevol, '--mode=script'),
-                     ('volume', 'start', fakevol)]
+        test_args = [(('volume', 'stop', fakevol, '--mode=script'),
+                      {'log': mock.ANY}),
+                     (('volume', 'start', fakevol), {'log': mock.ANY})]
 
         common._restart_gluster_vol(gmgr)
         self.assertEqual(
-            [mock.call(*test_args[0]), mock.call(*test_args[1])],
-            gmgr.gluster_call.call_args_list)
-
-    def test_restart_gluster_vol_excp1(self):
-        gmgr = common.GlusterManager(fakeexport, self._execute, None, None)
-        test_args = ('volume', 'stop', fakevol, '--mode=script')
-
-        def raise_exception(*args, **kwargs):
-            if(args == test_args):
-                raise exception.ProcessExecutionError()
-
-        self.mock_object(gmgr, 'gluster_call',
-                         mock.Mock(side_effect=raise_exception))
-
-        self.assertRaises(exception.GlusterfsException,
-                          common._restart_gluster_vol, gmgr)
-        self.assertEqual(
-            [mock.call(*test_args)],
-            gmgr.gluster_call.call_args_list)
-
-    def test_restart_gluster_vol_excp2(self):
-        gmgr = common.GlusterManager(fakeexport, self._execute, None, None)
-        test_args = [('volume', 'stop', fakevol, '--mode=script'),
-                     ('volume', 'start', fakevol)]
-
-        def raise_exception(*args, **kwargs):
-            if(args == test_args[1]):
-                raise exception.ProcessExecutionError()
-
-        self.mock_object(gmgr, 'gluster_call',
-                         mock.Mock(side_effect=raise_exception))
-
-        self.assertRaises(exception.GlusterfsException,
-                          common._restart_gluster_vol, gmgr)
-        self.assertEqual(
-            [mock.call(*test_args[0]), mock.call(*test_args[1])],
+            [mock.call(*arg[0], **arg[1]) for arg in test_args],
             gmgr.gluster_call.call_args_list)

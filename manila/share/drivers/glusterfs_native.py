@@ -31,6 +31,7 @@ from oslo_log import log
 
 from manila import exception
 from manila.i18n import _
+from manila.i18n import _LE
 from manila.i18n import _LW
 from manila.share import driver
 from manila.share.drivers.glusterfs import common
@@ -123,29 +124,33 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
             gluster_actions.append((AUTH_SSL_ALLOW, access_to))
 
         for option, value in (
-            (NFS_EXPORT_VOL, 'off'), (CLIENT_SSL, 'on'), (SERVER_SSL, 'on'),
-            (DYNAMIC_AUTH, 'on')
+            (NFS_EXPORT_VOL, 'off'), (CLIENT_SSL, 'on'), (SERVER_SSL, 'on')
         ):
             gluster_actions.append((option, value))
 
         for action in gluster_actions:
-            try:
-                gluster_mgr.gluster_call(
-                    'volume', 'set', gluster_mgr.volume, *action)
-            except exception.ProcessExecutionError as exc:
-                if action[0] == DYNAMIC_AUTH and exc.exit_code == 1:
-                    # 'dynamic-auth' is not supported by gluster backend,
-                    # that's OK
-                    pass
-                else:
-                    msg = (_("Error in gluster volume set during volume "
-                             "setup. volume: %(volname)s, option: %(option)s, "
-                             "value: %(value)s, error: %(error)s") %
-                           {'volname': gluster_mgr.volume,
-                            'option': option, 'value': value,
-                            'error': exc.stderr})
-                    LOG.error(msg)
-                    raise exception.GlusterfsException(msg)
+            gluster_mgr.gluster_call(
+                'volume', 'set', gluster_mgr.volume, *action,
+                log=_LE('Setting up GlusterFS volume'))
+
+        try:
+            gluster_mgr.gluster_call(
+                'volume', 'set', gluster_mgr.volume, DYNAMIC_AUTH, 'on',
+                raw_error=True)
+        except exception.ProcessExecutionError as exc:
+            if exc.exit_code == 1:
+                # 'dynamic-auth' is not supported by gluster backend,
+                # that's OK
+                pass
+            else:
+                msg = (_("Error in gluster volume set during volume "
+                         "setup. volume: %(volname)s, option: %(option)s, "
+                         "value: %(value)s, error: %(error)s") %
+                       {'volname': gluster_mgr.volume,
+                        'option': option, 'value': value,
+                        'error': exc.stderr})
+                LOG.error(msg)
+                raise exception.GlusterfsException(msg)
 
         # SSL enablement requires a fresh volume start
         # to take effect
@@ -188,19 +193,10 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
 
         ssl_allow.append(access_to)
         ssl_allow_opt = ','.join(ssl_allow)
-        try:
-            gluster_mgr.gluster_call(
-                'volume', 'set', gluster_mgr.volume,
-                AUTH_SSL_ALLOW, ssl_allow_opt)
-        except exception.ProcessExecutionError as exc:
-            msg = (_("Error in gluster volume set during allow access. "
-                     "Volume: %(volname)s, Option: %(option)s, "
-                     "access_to: %(access_to)s, Error: %(error)s") %
-                   {'volname': gluster_mgr.volume,
-                    'option': AUTH_SSL_ALLOW, 'access_to': access_to,
-                    'error': exc.stderr})
-            LOG.error(msg)
-            raise exception.GlusterfsException(msg)
+        gluster_mgr.gluster_call(
+            'volume', 'set', gluster_mgr.volume,
+            AUTH_SSL_ALLOW, ssl_allow_opt,
+            log=_LE("Tuning GlusterFS volume in allow-access"))
 
     @utils.synchronized("glusterfs_native_access", external=False)
     def _deny_access_via_manager(self, gluster_mgr, context, share, access,
@@ -228,30 +224,12 @@ class GlusterfsNativeShareDriver(driver.ExecuteMixin,
 
         ssl_allow.remove(access_to)
         ssl_allow_opt = ','.join(ssl_allow)
-        try:
-            gluster_mgr.gluster_call(
-                'volume', 'set', gluster_mgr.volume,
-                AUTH_SSL_ALLOW, ssl_allow_opt)
-        except exception.ProcessExecutionError as exc:
-            msg = (_("Error in gluster volume set during deny access. "
-                     "Volume: %(volname)s, Option: %(option)s, "
-                     "access_to: %(access_to)s, Error: %(error)s") %
-                   {'volname': gluster_mgr.volume,
-                    'option': AUTH_SSL_ALLOW, 'access_to': access_to,
-                    'error': exc.stderr})
-            LOG.error(msg)
-            raise exception.GlusterfsException(msg)
+        gluster_mgr.gluster_call(
+            'volume', 'set', gluster_mgr.volume,
+            AUTH_SSL_ALLOW, ssl_allow_opt,
+            log=_LE("Tuning GlusterFS volume in deny-access"))
 
-        try:
-            dynauth = gluster_mgr.get_gluster_vol_option(DYNAMIC_AUTH) or 'off'
-        except exception.ProcessExecutionError as exc:
-            msg = (_("Error in querying gluster volume. "
-                     "Volume: %(volname)s, Option: %(option)s, "
-                     "Error: %(error)s") %
-                   {'volname': gluster_mgr.volume,
-                    'option': DYNAMIC_AUTH, 'error': exc.stderr})
-            LOG.error(msg)
-            raise exception.GlusterfsException(msg)
+        dynauth = gluster_mgr.get_gluster_vol_option(DYNAMIC_AUTH) or 'off'
         # TODO(csaba): boolean option processing shoud be done in common
         if dynauth.lower() not in ('on', '1', 'true', 'yes', 'enable'):
             common._restart_gluster_vol(gluster_mgr)

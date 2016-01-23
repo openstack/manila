@@ -80,13 +80,12 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         args = ('volume', 'quota', self.gluster_manager.volume, 'enable')
         try:
             self.gluster_manager.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
+        except exception.GlusterfsException:
             if (self.gluster_manager.
                     get_gluster_vol_option('features.quota')) != 'on':
                 LOG.error(_LE("Error in tuning GlusterFS volume to enable "
-                              "creation of shares of specific size: %s"),
-                          exc.stderr)
-                raise exception.GlusterfsException(exc)
+                              "creation of shares of specific size."))
+                raise
 
         self._ensure_gluster_vol_mounted()
 
@@ -149,10 +148,13 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
         try:
             self.driver._execute(*cmd, run_as_root=True)
             self.gluster_manager.gluster_call(*args)
-        except exception.ProcessExecutionError as exc:
-            self._cleanup_create_share(local_share_path, share['name'])
-            LOG.error(_LE('Unable to create share %s'), share['name'])
-            raise exception.GlusterfsException(exc)
+        except Exception as exc:
+            if isinstance(exc, exception.ProcessExecutionError):
+                exc = exception.GlusterfsException(exc)
+            if isinstance(exc, exception.GlusterfsException):
+                self._cleanup_create_share(local_share_path, share['name'])
+                LOG.error(_LE('Unable to create share %s'), share['name'])
+            raise exc
 
         comp_share = self.gluster_manager.components.copy()
         comp_share['path'] = '/' + share['name']
