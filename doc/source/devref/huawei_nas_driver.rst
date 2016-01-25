@@ -17,7 +17,7 @@
 Huawei Driver
 =============
 
-Huawei NAS Driver is a plugin based the OpenStack Manila service. The Huawei NAS
+Huawei NAS Driver is a plugin based the OpenStack manila service. The Huawei NAS
 Driver can be used to provide functions such as the share and snapshot for virtual
 machines(instances) in OpenStack. Huawei NAS Driver enables the OceanStor V3 series
 V300R002 storage system to provide only network filesystems for OpenStack.
@@ -104,7 +104,7 @@ storage systems, the driver configuration file is as follows:
 Backend Configuration
 ---------------------
 
-Modify the `manila.conf` Manila configuration file and add share_driver and
+Modify the `manila.conf` manila configuration file and add share_driver and
 manila_huawei_conf_file items.
 Example for configuring a storage system:
 
@@ -129,14 +129,14 @@ Share Types
 
 When creating a share, a share type can be specified to determine where and
 how the share will be created. If a share type is not specified, the
-`default_share_type` set in the Manila configuration file is used.
+`default_share_type` set in the manila configuration file is used.
 
 Manila requires that the share type includes the `driver_handles_share_servers`
 extra-spec. This ensures that the share will be created on a backend that
 supports the requested driver_handles_share_servers (share networks) capability.
 For the Huawei driver, this must be set to False.
 
-Another common Manila extra-spec used to determine where a share is created
+Another common manila extra-spec used to determine where a share is created
 is `share_backend_name`. When this extra-spec is defined in the share type,
 the share will be created on a backend with a matching share_backend_name.
 
@@ -171,7 +171,7 @@ type uses one or more of the following extra-specs:
   * huawei_smartpartition:partitionname=test_partition_name
 
 `thin_provisioning` will be reported as True for backends that use thin
-provisioned pool. Backends that use thin provisioning also support Manila's
+provisioned pool. Backends that use thin provisioning also support manila's
 over-subscription feature. 'thin_provisioning' will be reported as False for
 backends that use thick provisioned pool.
 

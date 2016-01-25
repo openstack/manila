@@ -19,9 +19,9 @@
 Manila System Architecture
 ==========================
 
-The Manila Shared Filesystem Management Service is intended to be ran on one or more nodes.
+The Shared File Systems service is intended to be ran on one or more nodes.
 
-Manila uses a sql-based central database that is shared by all Manila services in the system.  The amount and depth of the data fits into a sql database quite well.  For small deployments this seems like an optimal solution.  For larger deployments, and especially if security is a concern, Manila will be moving towards multiple data stores with some kind of aggregation system.
+Manila uses a sql-based central database that is shared by all manila services in the system.  The amount and depth of the data fits into a sql database quite well.  For small deployments this seems like an optimal solution.  For larger deployments, and especially if security is a concern, manila will be moving towards multiple data stores with some kind of aggregation system.
 
 Components
 ----------

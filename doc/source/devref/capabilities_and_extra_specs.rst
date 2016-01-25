@@ -9,7 +9,7 @@ specs) are not exposed to users -- only Administrators.
 
 Share Types
 -----------
-Refer to the Manila client command-line help for information on how to
+Refer to the manila client command-line help for information on how to
 create a share type and set "extra-spec" key/value pairs for a share type.
 
 Extra-Specs
@@ -82,7 +82,7 @@ be created.
   If an array can technically support both thin and thick provisioning in a
   pool, the driver still needs to programmatically determine which to use.
   This should be done by configuring one pool for thin and another pool for
-  thick. So, a Manila pool will always report thin_provisioning as True or
+  thick. So, a manila pool will always report thin_provisioning as True or
   False. Added in Liberty.
 
 * `qos` - indicates that a backend/pool can provide shares using some

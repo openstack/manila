@@ -1,6 +1,6 @@
 Internationalization
 ====================
-manila uses `gettext <http://docs.python.org/library/gettext.html>`_ so that
+Manila uses `gettext <http://docs.python.org/library/gettext.html>`_ so that
 user-facing strings such as log messages appear in the appropriate
 language in different locales.
 

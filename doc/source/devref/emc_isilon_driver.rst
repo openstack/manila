@@ -17,12 +17,12 @@
 Isilon Driver
 =============
 
-The EMC Manila driver framework (EMCShareDriver) utilizes EMC storage products
-to provide shared filesystems to OpenStack. The EMC Manila driver is a plugin
+The EMC manila driver framework (EMCShareDriver) utilizes EMC storage products
+to provide shared filesystems to OpenStack. The EMC manila driver is a plugin
 based driver which is designed to use different plugins to manage different EMC
 storage products.
 
-The Isilon manila driver is a plugin for the EMC Manila driver framework which
+The Isilon manila driver is a plugin for the EMC manila driver framework which
 allows manila to interface with an Isilon backend to provide a shared
 filesystem. The EMC driver framework with the Isilon plugin is referred to as
 the "Isilon Driver" in this document.

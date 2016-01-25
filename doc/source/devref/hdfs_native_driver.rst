@@ -17,7 +17,7 @@
 HDFS native driver
 ==================
 
-HDFS native driver is a plugin based on the OpenStack Manila service, which uses
+HDFS native driver is a plugin based on the OpenStack manila service, which uses
 Hadoop distributed file system (HDFS), a distributed file system designed to hold
 very large amounts of data, and provide high-throughput access to the data.
 
@@ -29,7 +29,7 @@ support access control of multiple users and groups.
 Network configuration
 ---------------------
 
-The storage backend and Manila hosts should be in a flat network, otherwise, the L3
+The storage backend and manila hosts should be in a flat network, otherwise, the L3
 connectivity between them should exist.
 
 Supported shared filesystems
@@ -56,7 +56,7 @@ Requirements
 
 - Install HDFS package, version >= 2.4.x, on the storage backend
 - To enable access control, the HDFS file system must have ACLs enabled
-- Establish network connection between the Manila host and storage backend
+- Establish network connection between the manila host and storage backend
 
 Manila driver configuration
 ---------------------------
@@ -69,7 +69,7 @@ Manila driver configuration
 - `hdfs_ssh_name` = HDFS namenode SSH login name
 - `hdfs_ssh_pw` = HDFS namenode SSH login password, this parameter is not
     necessary, if the following `hdfs_ssh_private_key` is configured
-- `hdfs_ssh_private_key` = Path to the HDFS namenode private key to ssh login 
+- `hdfs_ssh_private_key` = Path to the HDFS namenode private key to ssh login
 
 Known Restrictions
 ------------------

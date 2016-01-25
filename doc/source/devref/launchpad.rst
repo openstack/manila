@@ -1,7 +1,7 @@
 Project hosting with Launchpad
 ==============================
 
-`Launchpad`_ hosts the Manila project. The Manila project homepage on Launchpad is
+`Launchpad`_ hosts the manila project. The manila project homepage on Launchpad is
 http://launchpad.net/manila.
 
 Launchpad credentials
@@ -30,7 +30,7 @@ The mailing list archives are at https://lists.launchpad.net/openstack.
 Bug tracking
 ------------
 
-Report Manila bugs at https://bugs.launchpad.net/manila
+Report manila bugs at https://bugs.launchpad.net/manila
 
 Feature requests (Blueprints)
 -----------------------------
@@ -41,7 +41,7 @@ https://blueprints.launchpad.net/manila.
 Technical support (Answers)
 ---------------------------
 
-Manila uses Launchpad Answers to track Manila technical support questions. The Manila
+Manila uses Launchpad Answers to track manila technical support questions. The manila
 Answers page is at https://answers.launchpad.net/manila.
 
 Note that the `OpenStack Forums`_ (which are not hosted on Launchpad) can also

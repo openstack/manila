@@ -18,7 +18,7 @@
 Common and Misc Libraries
 =========================
 
-Libraries common throughout Manila or just ones that haven't yet been
+Libraries common throughout manila or just ones that haven't yet been
 categorized in depth.
 
 

@@ -19,7 +19,7 @@ GPFS Driver
 
 GPFS driver uses IBM General Parallel File System (GPFS), a high-performance,
 clustered file system, developed by IBM, as the storage backend for serving
-file shares to the Manila clients.
+file shares to the manila clients.
 
 Supported shared filesystems
 ----------------------------
@@ -48,19 +48,19 @@ Requirements
 - Install Kernel NFS or Ganesha NFS server on the storage backend servers.
 - If using Ganesha NFS, currently NFS Ganesha v1.5 and v2.0 are supported.
 - Create a GPFS cluster and create a filesystem on the cluster, that will be
-  used to create the Manila shares.
+  used to create the manila shares.
 - Enable quotas for the GPFS file system (`mmchfs -Q yes`).
-- Establish network connection between the Manila host and the storage backend.
+- Establish network connection between the manila host and the storage backend.
 
 
 Manila driver configuration setting
 -----------------------------------
 
-The following parameters in the Manila configuration file need to be set:
+The following parameters in the manila configuration file need to be set:
 
 - `share_driver` = manila.share.drivers.ibm.gpfs.GPFSShareDriver
 - `gpfs_share_export_ip` = <IP to be added to GPFS export string>
-- If the backend GPFS server is not running on the Manila host machine, the
+- If the backend GPFS server is not running on the manila host machine, the
   following options are required to SSH to the remote GPFS backend server:
 
   - `gpfs_ssh_login` = <GPFS server SSH login name>
@@ -89,7 +89,7 @@ Known Restrictions
   instead works over a flat network where the tenants share a network.
 - While using remote GPFS node, with Ganesha NFS, 'gpfs_ssh_private_key' for
   remote login to the GPFS node must be specified and there must be a
-  passwordless authentication already setup between the Manila share service
+  passwordless authentication already setup between the manila share service
   and the remote GPFS node.
 
 The :mod:`manila.share.drivers.ibm.gpfs` Module

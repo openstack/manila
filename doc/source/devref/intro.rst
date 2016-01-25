@@ -11,7 +11,7 @@
       License for the specific language governing permissions and limitations
       under the License.
 
-Introduction to Manila Shared Filesystem Management Service
+Introduction to the Shared File Systems service
 ===========================================================
 
 Manila is the file share service project for OpenStack. Manila provides the
@@ -19,19 +19,19 @@ management of file shares for example, NFS and CIFS as a core service to
 OpenStack. Manila currently works with NetApp, Red Hat storage (GlusterFS)
 and EMC VNX, as well as on a base Linux NFS or Samba server. There are
 a number of concepts that will help in better understanding of the
-solutions provided by Manila. One aspect can be to explore the
-different service possibilities provided by Manila.
+solutions provided by manila. One aspect can be to explore the
+different service possibilities provided by manila.
 
 Manila, depending on the driver, requires the user by default to create a
 share network using neutron-net-id and neutron-subnet-id (GlusterFS native
 driver does not require it). After creation of the share network, the user
-can proceed to create the shares. Users in Manila can configure multiple
+can proceed to create the shares. Users in manila can configure multiple
 back-ends just like Cinder. Manila has a share server assigned to every
 tenant. This is the solution for all back-ends except for GlusterFS. The
 customer in this scenario is prompted to create a share server using neutron
 net-id and subnet-id before even trying to create a share.
 
-The current low-level services available in Manila are:
+The current low-level services available in manila are:
 
 - :term:`manila-api`
 

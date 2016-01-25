@@ -17,16 +17,16 @@
 Manila minimum requirements and features since Mitaka
 =====================================================
 
-In order for a driver to be accepted into Manila code base, there are certain
+In order for a driver to be accepted into manila code base, there are certain
 minimum requirements and features that must be met, in order to ensure
-interoperability and standardized Manila functionality among cloud providers.
+interoperability and standardized manila functionality among cloud providers.
 
 At least one driver mode (:term:`DHSS` true/false)
 --------------------------------------------------
 
 Driver modes determine if the driver is managing network resources
 (:term:`DHSS` = true) in an automated way, in order to segregate tenants and
-private networks by making use of Manila Share Networks, or if it is up to the
+private networks by making use of manila Share Networks, or if it is up to the
 administrator to manually configure all networks (:term:`DHSS` = false) and be
 responsible for segregation, if that is desired. At least one driver mode must
 be supported. In :term:`DHSS` = true mode, Share Server entities are used, so
@@ -71,8 +71,8 @@ increased.
 Capabilities
 ------------
 
-In order for Manila to function accordingly to the driver being used, the
-driver must provide a set of information to Manila, known as capabilities, as
+In order for manila to function accordingly to the driver being used, the
+driver must provide a set of information to manila, known as capabilities, as
 follows:
 
 - share_backend_name: a name for the backend;
@@ -88,7 +88,7 @@ follows:
   used.
 
 Certain features, if supported by drivers, need to be reported in order to
-function correctly in Manila, such as:
+function correctly in manila, such as:
 
 - dedupe: whether the backend supports deduplication;
 - compression: whether the backend supports compressed shares;
@@ -128,7 +128,7 @@ Documentation
 Drivers submitted must provide and maintain related documentation on
 openstack-manuals, containing instructions on how to properly install and
 configure. The intended audience for this manual is cloud operators and
-administrators. Also, driver maintainers must update the Manila share features
+administrators. Also, driver maintainers must update the manila share features
 support mapping documentation found at
 http://docs.openstack.org/developer/manila/devref/share_back_ends_feature_support_mapping.html
 
@@ -136,15 +136,15 @@ http://docs.openstack.org/developer/manila/devref/share_back_ends_feature_suppor
 Manila optional requirements and features since Mitaka
 ======================================================
 
-Additional to the minimum required features supported by Manila, other optional
-features can be supported by drivers as they are already supported in Manila
+Additional to the minimum required features supported by manila, other optional
+features can be supported by drivers as they are already supported in manila
 and can be accessed through the API.
 
 Snapshots
 ---------
 
 Share Snapshots allow for data respective to a particular point in time to be
-saved in order to be used later. In Manila API, share snapshots taken can only
+saved in order to be used later. In manila API, share snapshots taken can only
 be restored by creating new shares from them, thus the original share remains
 unaffected. If Snapshots are supported by drivers, they must be
 crash-consistent.
@@ -154,9 +154,9 @@ Managing/Unmanaging shares
 
 If :term:`DHSS` = false mode is used, then drivers may implement a function
 that supports reading existing shares in the backend that were not created by
-Manila. After the previously existing share is registered in Manila, it is
-completely controlled by Manila and should not be handled externally anymore.
-Additionally, a function that de-registers such shares from Manila but do
+manila. After the previously existing share is registered in manila, it is
+completely controlled by manila and should not be handled externally anymore.
+Additionally, a function that de-registers such shares from manila but do
 not delete from backend may also be supported.
 
 Share shrinking
@@ -169,7 +169,7 @@ is compromised.
 Share ensuring
 --------------
 
-In some situations, such as when the driver is restarted, Manila attempts to
+In some situations, such as when the driver is restarted, manila attempts to
 perform maintenance on created shares, on the purpose of ensuring previously
 created shares are available and being serviced correctly. The driver can
 implement this function by checking shares' status and performing maintenance
@@ -198,4 +198,4 @@ Shares can be created within Consistency Groups in order to guarantee snapshot
 consistency of multiple shares. In order to make use of this feature, driver
 vendors must report this capability and implement its functions to work
 according to the backend, so the feature can be properly invoked through
-Manila API.
+manila API.

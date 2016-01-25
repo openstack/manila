@@ -16,7 +16,7 @@
 HPE 3PAR Driver
 ==============
 
-The HPE 3PAR Manila driver provides NFS and CIFS shared file systems to
+The HPE 3PAR manila driver provides NFS and CIFS shared file systems to
 OpenStack using HPE 3PAR's File Persona capabilities.
 
 .. note::
@@ -56,12 +56,12 @@ The following operations are supported with HPE 3PAR File Persona:
 
 Share networks are not supported. Shares are created directly on the 3PAR
 without the use of a share server or service VM. Network connectivity is
-setup outside of Manila.
+setup outside of manila.
 
 Requirements
 ------------
 
-On the system running the Manila share service:
+On the system running the manila share service:
 
 - python-3parclient 4.0.0 or newer from PyPI.
 
@@ -75,7 +75,7 @@ Pre-Configuration on the HPE 3PAR
 --------------------------------
 
 - HPE 3PAR File Persona must be initialized and started (:code:`startfs`)
-- A File Provisioning Group (FPG) must be created for use with Manila
+- A File Provisioning Group (FPG) must be created for use with manila
 - A Virtual File Server (VFS) must be created for the FPG
 - The VFS must be configured with an appropriate share export IP address
 - A local user in the Administrators group is needed for CIFS shares
@@ -83,7 +83,7 @@ Pre-Configuration on the HPE 3PAR
 Backend Configuration
 ---------------------
 
-The following parameters need to be configured in the Manila configuration
+The following parameters need to be configured in the manila configuration
 file for the HPE 3PAR driver:
 
 - `share_backend_name` = <backend name to enable>
@@ -110,7 +110,7 @@ effect.
 Network Approach
 ----------------
 
-Connectivity between the storage array (SSH/CLI and WSAPI) and the Manila host
+Connectivity between the storage array (SSH/CLI and WSAPI) and the manila host
 is required for share management.
 
 Connectivity between the clients and the VFS is required for mounting
@@ -118,7 +118,7 @@ and using the shares. This includes:
 
 - Routing from the client to the external network
 - Assigning the client an external IP address (e.g., a floating IP)
-- Configuring the Manila host networking properly for IP forwarding
+- Configuring the manila host networking properly for IP forwarding
 - Configuring the VFS networking properly for client subnets
 
 Share Types
@@ -126,7 +126,7 @@ Share Types
 
 When creating a share, a share type can be specified to determine where and
 how the share will be created. If a share type is not specified, the
-`default_share_type` set in the Manila configuration file is used.
+`default_share_type` set in the manila configuration file is used.
 
 Manila requires that the share type includes the
 `driver_handles_share_servers` extra-spec. This ensures that the share
@@ -134,7 +134,7 @@ will be created on a backend that supports the requested
 driver_handles_share_servers (share networks) capability.
 For the HPE 3PAR driver, this must be set to False.
 
-Another common Manila extra-spec used to determine where a share is created
+Another common manila extra-spec used to determine where a share is created
 is `share_backend_name`. When this extra-spec is defined in the share type,
 the share will be created on a backend with a matching share_backend_name.
 
@@ -153,7 +153,7 @@ the capabilities filter and the HPE 3PAR driver:
 
 `thin_provisioning` will be reported as True for backends that use thin
 provisioned volumes. FPGs that use fully provisioned volumes will report
-False. Backends that use thin provisioning also support Manila's
+False. Backends that use thin provisioning also support manila's
 over-subscription feature.
 
 `dedupe` will be reported as True for backends that use deduplication
@@ -201,7 +201,7 @@ The following HPE 3PAR extra-specs are used when creating NFS shares:
 
 The NFS export options have the following limitations:
 
-  * `ro` and `rw` are not allowed (Manila will determine the read-only option)
+  * `ro` and `rw` are not allowed (manila will determine the read-only option)
   * `no_subtree_check` and `fsid` are not allowed per HPE 3PAR CLI support
   * `(in)secure` and `(no_)root_squash` are not allowed because the HPE 3PAR
     driver controls those settings

@@ -19,14 +19,14 @@ Setting Up a Development Environment
 ====================================
 
 This page describes how to setup a working Python development
-environment that can be used in developing Manila on Ubuntu, Fedora or
+environment that can be used in developing manila on Ubuntu, Fedora or
 Mac OS X. These instructions assume you're already familiar with
 git. Refer to GettingTheCode_ for additional information.
 
 .. _GettingTheCode: http://wiki.openstack.org/GettingTheCode
 
-Following these instructions will allow you to run the Manila unit
-tests. If you want to be able to run Manila (i.e., create NFS/CIFS shares),
+Following these instructions will allow you to run the manila unit
+tests. If you want to be able to run manila (i.e., create NFS/CIFS shares),
 you will also need to install dependent projects: Nova, Neutron, Cinder and Glance.
 For this purpose 'devstack' project can be used (A documented shell script to build complete OpenStack development environments).
 
@@ -38,7 +38,7 @@ Virtual environments
 Manila development uses `virtualenv <http://pypi.python.org/pypi/virtualenv>`__ to track and manage Python
 dependencies while in development and testing. This allows you to
 install all of the Python package dependencies in a virtual
-environment or "virtualenv" (a special subdirectory of your Manila
+environment or "virtualenv" (a special subdirectory of your manila
 directory), instead of installing the packages at the system level.
 
 .. note::
@@ -51,7 +51,7 @@ Linux Systems
 
 .. note::
 
-  This section is tested for Manila on Ubuntu (12.04-64) and
+  This section is tested for manila on Ubuntu (12.04-64) and
   Fedora-based (RHEL 6.1) distributions. Feel free to add notes and
   change according to your experiences or operating system.
 
@@ -82,7 +82,7 @@ MacPorts package for OpenSSL, you will see an error when running
 ``manila.tests.auth_unittest.AuthTestCase.test_209_can_generate_x509``.
 
 The stock version of OpenSSL that ships with Mac OS X 10.6 (OpenSSL 0.9.8l)
-or Mac OS X 10.7 (OpenSSL 0.9.8r) works fine with Manila.
+or Mac OS X 10.7 (OpenSSL 0.9.8r) works fine with manila.
 
 
 Getting the code
@@ -126,7 +126,7 @@ If all goes well, you should get a message something like this::
 
   Manila development environment setup is complete.
 
-To activate the Manila virtualenv for the extent of your current shell session
+To activate the manila virtualenv for the extent of your current shell session
 you can run::
 
      $ source .venv/bin/activate

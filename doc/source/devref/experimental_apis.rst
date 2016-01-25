@@ -10,16 +10,16 @@ ship APIs that are experimental in nature, are expected to change at any
 time, and could even be removed entirely without a typical deprecation
 period.
 
-In conjunction with microversions, Manila has added a facility for marking
+In conjunction with microversions, manila has added a facility for marking
 individual REST APIs as experimental.  To call an experimental API, clients
 must include a specific HTTP header, ``X-OpenStack-Manila-API-Experimental``,
 with a value of ``True``.  If a user calls an experimental API without
 including the experimental header, the server would respond with ``HTTP/404``.
 This forces the client to acknowledge the experimental status of the API and
-prevents anyone from building an application around a Manila feature without
+prevents anyone from building an application around a manila feature without
 realizing the feature could change significantly or even disappear.
 
-On the other hand, if a request is made to a non-experimental Manila API with
+On the other hand, if a request is made to a non-experimental manila API with
 ``X-OpenStack-Manila-API-Experimental: True``, the server would respond as if
 the header had not been included.  This is a convenience mechanism, as it
 allows the client to specify both the requested API version as well as the
@@ -50,7 +50,7 @@ flag. The maturation period can vary between features, but experimental is NOT
 a stable state, and an experimental feature should not be left in that state
 any longer than necessary.
 
-Because experimental APIs have no conventional deprecation period, the Manila
+Because experimental APIs have no conventional deprecation period, the manila
 core team may optionally choose to remove any experimental versions of an API
 at the same time that a microversioned stable version is added.
 

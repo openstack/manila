@@ -17,8 +17,8 @@
 VNX Driver
 ==========
 
-EMC Manila driver framework (EMCShareDriver) utilizes the EMC storage products
-to provide the shared filesystems to OpenStack. The EMC Manila driver is a
+EMC manila driver framework (EMCShareDriver) utilizes the EMC storage products
+to provide the shared filesystems to OpenStack. The EMC manila driver is a
 plugin based driver which is designed to use different plugins to manage
 different EMC storage products.
 
@@ -27,7 +27,7 @@ EMC driver framework with VNX plugin is referred to as VNX driver in this
 document.
 
 This driver performs the operations on VNX by XMLAPI and the File command line.
-Each backend manages one Data Mover of VNX. Multiple Manila backends need to
+Each backend manages one Data Mover of VNX. Multiple manila backends need to
 be configured to manage multiple Data Movers.
 
 Requirements
@@ -245,10 +245,10 @@ The VNX driver has the following restrictions:
 
 - VNX has limitations on the overall numbers of Virtual Data Movers,
   filesystems, shares, checkpoints, and etc. Virtual Data Mover(VDM) is created
-  by the VNX driver on the VNX to serve as the Manila share server. Similarly,
+  by the VNX driver on the VNX to serve as the manila share server. Similarly,
   filesystem is created, mounted, and exported from the VDM over CIFS or NFS
-  protocol to serve as the Manila share. The VNX checkpoint serves as the
-  Manila share snapshot. Refer to the `NAS Support Matrix` document on [EMC
+  protocol to serve as the manila share. The VNX checkpoint serves as the
+  manila share snapshot. Refer to the `NAS Support Matrix` document on [EMC
   support site](http://support.emc.com) for the limitations and configure the
   quotas accordingly.
 

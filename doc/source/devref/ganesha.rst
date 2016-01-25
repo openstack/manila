@@ -46,19 +46,19 @@ Note that Ganesha's concept of storage backend modules is called FSAL ("File
 System Abstraction Layer"). The FSAL the driver intends to leverage needs to be
 enabled in Ganesha config.
 
-Beyond that (with default Manila config) the following line is needed to be
+Beyond that (with default manila config) the following line is needed to be
 present in the Ganesha config file (that defaults to
 /etc/ganesha/ganesha.conf):
 
 ``%include /etc/ganesha/export.d/INDEX.conf``
 
-The above paths can be customized through Manila configuration as follows:
+The above paths can be customized through manila configuration as follows:
 
 - `ganesha_config_dir` = toplevel directory for Ganesha configuration,
      defaults to /etc/ganesha
 - `ganesha_config_path` = location of the Ganesha config file, defaults
     to ganesha.conf in `ganesha_config_dir`
-- `ganesha_export_dir` = directory where Manila generated config bits are
+- `ganesha_export_dir` = directory where manila generated config bits are
     stored, defaults to `export.d` in `ganesha_config_dir`. The following
     line is required to be included (with value expanded) in the Ganesha
     config file (at `ganesha_config_path`):
@@ -66,10 +66,10 @@ The above paths can be customized through Manila configuration as follows:
     ``%include <ganesha_export_dir>/INDEX.conf``
 
 
-Further Ganesha related Manila configuration
+Further Ganesha related manila configuration
 --------------------------------------------
 
-There are further Ganesha related options in Manila (which affect the
+There are further Ganesha related options in manila (which affect the
 behavior of Ganesha, but do not affect how to set up the Ganesha service
 itself).
 
@@ -126,7 +126,7 @@ template*. They are syntactically either Ganesha export blocks,
 or isomorphic JSON (as Ganesha export blocks are by-and-large
 equivalent to arrayless JSON), with two special placeholders
 for values: ``@config`` and ``@runtime``. ``@config`` means a
-value that shall be filled from Manila config, and ``@runtime``
+value that shall be filled from manila config, and ``@runtime``
 means a value that's filled at runtime with dynamic data.
 
 As an example, we show the library's defaults in JSON format
@@ -168,7 +168,7 @@ method as follows:
    either by
 
    -  using a predefined export block dict stored in code
-   -  loading a predefined export block from the Manila source tree
+   -  loading a predefined export block from the manila source tree
    -  loading an export block from an user exposed location (to allow
       user configuration)
 

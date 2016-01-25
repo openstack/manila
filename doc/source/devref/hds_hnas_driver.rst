@@ -15,19 +15,19 @@
       under the License.
 
 ==========================
-Hitachi HNAS Manila Driver
+Hitachi HNAS manila driver
 ==========================
 ------------------
 Driver Version 1.0
 ------------------
 
-This OpenStack Manila driver provides support for Hitachi Data Systems (HDS)
+This OpenStack manila driver provides support for Hitachi Data Systems (HDS)
 NAS Platform Models 3080, 3090, 4040, 4060, 4080 and 4100.
 
 HNAS Storage Requirements
 '''''''''''''''''''''''''
 
-Before using Hitachi HNAS Manila driver, use the HNAS configuration and
+Before using Hitachi HNAS manila driver, use the HNAS configuration and
 management utilities, such as GUI (SMU) or SSC CLI to create a storage pool
 (span) and an EVS. Also, check that HNAS/SMU software version is
 12.2 or higher.
@@ -35,7 +35,7 @@ management utilities, such as GUI (SMU) or SSC CLI to create a storage pool
 Supported Operations
 ''''''''''''''''''''
 
-The following operations are supported in this version of Manila HNAS driver:
+The following operations are supported in this version of manila HNAS driver:
  - Create and delete NFS shares;
  - Extend NFS shares;
  - Manage rules to NFS shares (allow/deny access);
@@ -52,11 +52,11 @@ access to the data ports (EVS IPs or aggregations). If manila-share service
 is not running on controller node, it must have access to the management port.
 The driver configuration can be summarized in the following steps:
 
-| 1) Create a file system to be used by Manila on HNAS. Make sure that the
+| 1) Create a file system to be used by manila on HNAS. Make sure that the
  filesystem is not created as a replication target. Refer to Hitachi HNAS
  reference for detailed steps on how to do this;
-| 2) Install and configure an OpenStack environment with default Manila
- parameters and services. Refer to OpenStack Manila configuration reference;
+| 2) Install and configure an OpenStack environment with default manila
+ parameters and services. Refer to OpenStack manila configuration reference;
 | 3) Configure HNAS parameters on manila.conf;
 | 4) Prepare the network;
 | 5) Configure/create share type;
@@ -97,7 +97,7 @@ The following parameters need to be configured in the [backend] section of */etc
 | driver_handles_share_servers  | DHSS, Driver working mode. For Hitachi driver **this must be**:                                     |
 |                               | *False*                                                                                             |
 +-------------------------------+-----------------------------------------------------------------------------------------------------+
-| hds_hnas_ip                   | HNAS management interface IP for communication between Manila node and HNAS.                        |
+| hds_hnas_ip                   | HNAS management interface IP for communication between manila node and HNAS.                        |
 +-------------------------------+-----------------------------------------------------------------------------------------------------+
 | hds_hnas_password             | This field is used to provide password credential to HNAS.                                          |
 |                               | Either hds_hnas_password or hds_hnas_ssh_private_key must be set.                                   |
@@ -203,7 +203,7 @@ Step 5 - Share Type Configuration
 Manila requires that the share type includes the driver_handles_share_servers
 extra-spec. This ensures that the share will be created on a backend that
 supports the requested driver_handles_share_servers capability. For the Hitachi
-HNAS Manila driver, this must be set to False.
+HNAS manila driver, this must be set to False.
 
 ``$ manila type-create hitachi False``
 
@@ -248,10 +248,10 @@ Manage and Unmanage Shares
 ''''''''''''''''''''''''''
 Manila has the ability to manage and unmanage shares. If there is a share in
 the storage and it is not in OpenStack, you can manage that share and use it
-as a Manila Share. HNAS drivers use virtual-volumes (V-VOL) to create shares.
+as a manila Share. HNAS drivers use virtual-volumes (V-VOL) to create shares.
 Only V-VOL shares can be used by the driver. If the NFS export is an ordinary
-FS export, it is not possible to use it in Manila. The unmanage operation
-only unlinks the share from Manila. All data is preserved.
+FS export, it is not possible to use it in manila. The unmanage operation
+only unlinks the share from manila. All data is preserved.
 
 | To **manage** shares use:
 | ``$ manila manage [--name <name>] [--description <description>]``
@@ -293,7 +293,7 @@ Additional Notes:
 | - HNAS has some restrictions about the number of EVSs, filesystems,
  virtual-volumes and simultaneous SSC connections. Check the manual
  specification for your system.
-| - Shares and snapshots are thin provisioned. It is reported to Manila only the
+| - Shares and snapshots are thin provisioned. It is reported to manila only the
  real used space in HNAS. Also, a snapshot does not initially take any space in
  HNAS, it only stores the difference between the share and the snapshot, so it
  grows when share data is changed.

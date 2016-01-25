@@ -18,7 +18,7 @@ GlusterFS driver
 ================
 
 GlusterFS driver uses GlusterFS, an open source distributed file system,
-as the storage backend for serving file shares to Manila clients.
+as the storage backend for serving file shares to manila clients.
 
 Supported shared filesystems
 ----------------------------
@@ -45,15 +45,15 @@ Requirements
 - Install glusterfs-server package, version >= 3.5.x, on the storage backend.
 - Install NFS-Ganesha, version >=2.1, if using NFS-Ganesha as the NFS server
   for the GlusterFS backend.
-- Install glusterfs and glusterfs-fuse package, version >=3.5.x, on the Manila
+- Install glusterfs and glusterfs-fuse package, version >=3.5.x, on the manila
   host.
-- Establish network connection between the Manila host and the storage backend.
+- Establish network connection between the manila host and the storage backend.
 
 
 Manila driver configuration setting
 -----------------------------------
 
-The following parameters in the Manila's configuration file need to be
+The following parameters in the manila's configuration file need to be
 set:
 
 - `share_driver` = manila.share.drivers.glusterfs.GlusterfsShareDriver
@@ -63,11 +63,11 @@ The following configuration parameters are optional:
 - `glusterfs_nfs_server_type` = <NFS server type used by the GlusterFS
      backend, `Gluster` or `Ganesha`. `Gluster` is the default type>
 - `glusterfs_share_layout` = <share layout used>; cf. :ref:`glusterfs_layouts`
-- `glusterfs_path_to_private_key` = <path to Manila host's private key file>
+- `glusterfs_path_to_private_key` = <path to manila host's private key file>
 - `glusterfs_server_password` = <password of remote GlusterFS server machine>
 
 If Ganesha NFS server is used (``glusterfs_nfs_server_type = Ganesha``),
-then by default the Ganesha server is supposed to run on the Manila host
+then by default the Ganesha server is supposed to run on the manila host
 and is managed by local commands. If it's deployed somewhere else, then
 it's managed via ssh, which can be configured by the following parameters:
 
@@ -108,14 +108,14 @@ backends for shares. Currently there are two layouts implemented:
 
   - `glusterfs_target`: address of the volume that hosts the directories.
     If it's of the format `<glustervolserver>:/<glustervolid>`, then the
-    Manila host is expected to be part of the GlusterFS cluster of the volume
+    manila host is expected to be part of the GlusterFS cluster of the volume
     and GlusterFS management happens through locally calling the ``gluster``
     utility. If it's of the format `<username>@<glustervolserver>:/<glustervolid>`,
     then we ssh to `<username>@<glustervolserver>` to execute ``gluster``
     (`<username>` is supposed to have administrative privileges on
     `<glustervolserver>`).
   - `glusterfs_mount_point_base` =  <base path of GlusterFS volume mounted on
-     Manila host> (optional; defaults to *$state_path*\ ``/mnt``, where
+     manila host> (optional; defaults to *$state_path*\ ``/mnt``, where
      *$state_path* defaults to ``/var/lib/manila``)
 
   Limitations:
@@ -160,12 +160,12 @@ the same time.
 There is another caveat with ``nfs.export-volumes``: setting it to ``on``
 without enough care is a security risk, as the default access control
 for the volume exports is "allow all". For this reason, while the
-``nfs.export-volumes = off`` setting is automatically set by Manila
+``nfs.export-volumes = off`` setting is automatically set by manila
 for all other share backend configurations, ``nfs.export-volumes = on``
-is *not* set by Manila in case of a Gluster NFS with volume layout
+is *not* set by manila in case of a Gluster NFS with volume layout
 setup. It's left to the GlusterFS admin to make this setting in conjunction
 with the associated safeguards (that is, for those volumes of the cluster
-which are not used by Manila, access restrictions have to be manually
+which are not used by manila, access restrictions have to be manually
 configured through the ``nfs.rpc-auth-{allow,reject}`` options).
 
 Known Restrictions
@@ -177,7 +177,7 @@ Known Restrictions
   shares can be accessed by NFSv3 and v4 protocols. However, if Gluster NFS is
   used by the GlusterFS backend, then the shares can only be accessed by NFSv3
   protocol.
-- All Manila shares, which map to subdirectories within a GlusterFS volume, are
+- All manila shares, which map to subdirectories within a GlusterFS volume, are
   currently created within a single GlusterFS volume of a GlusterFS storage
   pool.
 - The driver does not provide read-only access level for shares.

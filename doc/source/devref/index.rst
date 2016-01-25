@@ -18,7 +18,7 @@
 Developer Guide
 ===============
 
-In this section you will find information on Manila's lower level programming APIs.
+In this section you will find information on manila's lower level programming APIs.
 
 
 Programming HowTos and Tutorials
@@ -31,7 +31,7 @@ Programming HowTos and Tutorials
     addmethod.openstackapi
 
 
-Background Concepts for Manila
+Background Concepts for manila
 ------------------------------
 .. toctree::
    :maxdepth: 3

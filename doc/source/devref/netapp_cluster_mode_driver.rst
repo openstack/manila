@@ -17,7 +17,7 @@
 NetApp Clustered Data ONTAP
 ===========================
 
-The Manila Shared Filesystem Management Service can be configured to use
+The Shared File Systems service can be configured to use
 NetApp Clustered Data ONTAP (cDOT) version 8.2 and later.
 
 Supported Operations
@@ -63,15 +63,15 @@ network and provision each of a tenant's shares into that SVM.  This requires
 the user to specify both a share network as well as a share type with the DHSS
 extra spec set to True when creating shares.
 
-If 'driver_handles_share_servers' is False, the Manila admin must configure a
+If 'driver_handles_share_servers' is False, the manila admin must configure a
 single SVM, along with associated LIFs and protocol services, that will be
-used for provisioning shares.  The SVM is specified in the Manila config file.
+used for provisioning shares.  The SVM is specified in the manila config file.
 
 Network approach
 ----------------
 
-L3 connectivity between the storage cluster and Manila host must exist, and
-VLAN segmentation may be configured.  All of Manila's network plug-ins are
+L3 connectivity between the storage cluster and manila host must exist, and
+VLAN segmentation may be configured.  All of manila's network plug-ins are
 supported with the cDOT driver.
 
 Supported shared filesystems
@@ -91,7 +91,7 @@ Known restrictions
 ------------------
 
 - For CIFS shares an external Active Directory (AD) service is required. The AD
-  details should be provided via a Manila security service that is attached to
+  details should be provided via a manila security service that is attached to
   the specified share network.
 - Share access rules for CIFS shares may be created only for existing users
   in Active Directory.

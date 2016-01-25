@@ -17,8 +17,8 @@
 Generic approach for share provisioning
 =======================================
 
-The Manila Shared Filesystem Management Service can be configured to use Nova
-VMs and Cinder volumes. There are two modules that handle them in Manila:
+The Shared File Systems service can be configured to use Nova
+VMs and Cinder volumes. There are two modules that handle them in manila:
 1) 'service_instance' module creates VMs in Nova with predefined image called
 service image. This module can be used by any backend driver for provisioning
 of service VMs to be able to separate share resources among tenants.

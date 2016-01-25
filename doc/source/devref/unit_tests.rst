@@ -28,7 +28,7 @@ flags by doing::
 This will show the following help information::
 
     Usage: ./run_tests.sh [OPTION]...
-    Run Manila's test suite(s)
+    Run manila's test suite(s)
 
       -V, --virtual-env        Always use virtualenv.  Install automatically if not present
       -N, --no-virtual-env     Don't use virtualenv.  Run tests in local environment
