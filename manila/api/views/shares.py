@@ -37,7 +37,7 @@ class ViewBuilder(common.ViewBuilder):
         return self._list_view(self.detail, request, shares)
 
     def summary(self, request, share):
-        """Generic, non-detailed view of an share."""
+        """Generic, non-detailed view of a share."""
         return {
             'share': {
                 'id': share.get('id'),

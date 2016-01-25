@@ -21,7 +21,7 @@ class ViewBuilder(common.ViewBuilder):
     _collection_name = "availability_zones"
 
     def _detail(self, availability_zone):
-        """Detailed view of an single availability zone."""
+        """Detailed view of a single availability zone."""
         keys = ('id', 'name', 'created_at', 'updated_at')
         return {key: availability_zone.get(key) for key in keys}
 
