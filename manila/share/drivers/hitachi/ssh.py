@@ -232,7 +232,7 @@ class HNASSSHBackend(object):
         except processutils.ProcessExecutionError as e:
             if 'Source path: Cannot access' in e.stderr:
                 LOG.debug("Share %(shr)s does not exist.",
-                          {'shr': six.text_type(vvol_name)})
+                          {'shr': vvol_name})
             else:
                 msg = six.text_type(e)
                 LOG.exception(msg)
@@ -280,7 +280,7 @@ class HNASSSHBackend(object):
             raise exception.HNASItemNotFoundException(msg=msg)
 
     def get_share_quota(self, share_id):
-        command = ['quota', 'list', self.fs_name, six.text_type(share_id)]
+        command = ['quota', 'list', self.fs_name, share_id]
         output, err = self._execute(command)
 
         quota = Quota(output)
@@ -299,7 +299,7 @@ class HNASSSHBackend(object):
 
     def _get_share_export(self, share_id):
         share_id = '/shares/' + share_id
-        command = ['nfs-export', 'list ', six.text_type(share_id)]
+        command = ['nfs-export', 'list ', share_id]
         output, err = self._execute(command)
         export_list = []
 

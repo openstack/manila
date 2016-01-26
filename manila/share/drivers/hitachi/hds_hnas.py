@@ -157,7 +157,7 @@ class HDSHNASDriver(driver.ShareDriver):
                            access['access_level'])
 
         LOG.info(_LI("Access allowed successfully to share: %(shr)s."),
-                 {'shr': six.text_type(share['id'])})
+                 {'shr': share['id']})
 
     def deny_access(self, context, share, access, share_server=None):
         """Deny access to a share.
@@ -177,7 +177,7 @@ class HDSHNASDriver(driver.ShareDriver):
 
         LOG.debug("Sending HNAS request to deny access to share:"
                   " %(shr_id)s.",
-                  {'shr_id': six.text_type(share['id'])})
+                  {'shr_id': share['id']})
 
         share_id = self._get_hnas_share_id(share['id'])
 
@@ -185,7 +185,7 @@ class HDSHNASDriver(driver.ShareDriver):
                           access['access_level'])
 
         LOG.info(_LI("Access denied successfully to share: %(shr)s."),
-                 {'shr': six.text_type(share['id'])})
+                 {'shr': share['id']})
 
     def create_share(self, context, share, share_server=None):
         """Creates share.
@@ -198,7 +198,7 @@ class HDSHNASDriver(driver.ShareDriver):
         of share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
         """
         LOG.debug("Creating share in HNAS: %(shr)s.",
-                  {'shr': six.text_type(share['id'])})
+                  {'shr': share['id']})
 
         if share['share_proto'].lower() != 'nfs':
             msg = _("Only NFS protocol is currently supported.")
@@ -222,7 +222,7 @@ class HDSHNASDriver(driver.ShareDriver):
         share_id = self._get_hnas_share_id(share['id'])
 
         LOG.debug("Deleting share in HNAS: %(shr)s.",
-                  {'shr': six.text_type(share['id'])})
+                  {'shr': share['id']})
 
         self._delete_share(share_id)
 
@@ -276,7 +276,7 @@ class HDSHNASDriver(driver.ShareDriver):
         of new share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
         """
         LOG.debug("Creating a new share from snapshot: %(ss_id)s.",
-                  {'ss_id': six.text_type(snapshot['id'])})
+                  {'ss_id': snapshot['id']})
 
         path = self._create_share_from_snapshot(share, snapshot)
         uri = self.hnas_evs_ip + ":" + path
@@ -296,7 +296,7 @@ class HDSHNASDriver(driver.ShareDriver):
         of share in the filesystem (e.g. ['172.24.44.10:/shares/id']).
         """
         LOG.debug("Ensuring share in HNAS: %(shr)s.",
-                  {'shr': six.text_type(share['id'])})
+                  {'shr': share['id']})
 
         share_id = self._get_hnas_share_id(share['id'])
 
@@ -306,7 +306,7 @@ class HDSHNASDriver(driver.ShareDriver):
         export_list = [export]
 
         LOG.debug("Share ensured in HNAS: %(shr)s.",
-                  {'shr': six.text_type(share['id'])})
+                  {'shr': share['id']})
         return export_list
 
     def extend_share(self, share, new_size, share_server=None):
@@ -320,12 +320,12 @@ class HDSHNASDriver(driver.ShareDriver):
         share_id = self._get_hnas_share_id(share['id'])
 
         LOG.debug("Expanding share in HNAS: %(shr_id)s.",
-                  {'shr_id': six.text_type(share['id'])})
+                  {'shr_id': share['id']})
 
         self._extend_share(share_id, share['size'], new_size)
         LOG.info(_LI("Share %(shr_id)s successfully extended to "
                      "%(shr_size)s."),
-                 {'shr_id': six.text_type(share['id']),
+                 {'shr_id': share['id'],
                   'shr_size': six.text_type(new_size)})
 
     # TODO(alyson): Implement in DHSS = true mode
@@ -378,9 +378,8 @@ class HDSHNASDriver(driver.ShareDriver):
             raise exception.HNASBackendException(msg=msg)
 
         LOG.info(_LI("Share %(shr_path)s will be managed with ID %(shr_id)s."),
-                 {'shr_path': six.text_type(
-                     share['export_locations'][0]['path']),
-                  'shr_id': six.text_type(share['id'])})
+                 {'shr_path': share['export_locations'][0]['path'],
+                  'shr_id': share['id']})
 
         old_path_info = share['export_locations'][0]['path'].split(':')
         old_path = old_path_info[1].split('/')
@@ -395,10 +394,10 @@ class HDSHNASDriver(driver.ShareDriver):
 
         if evs_ip != self.hnas_evs_ip:
             msg = _("The EVS IP %(evs)s is not "
-                    "configured.") % {'evs': six.text_type(evs_ip)}
+                    "configured.") % {'evs': evs_ip}
             raise exception.ShareBackendException(msg=msg)
 
-        if six.text_type(self.backend_name) not in share['host']:
+        if self.backend_name not in share['host']:
             msg = _("The backend passed in the host parameter (%(shr)s) is "
                     "not configured.") % {'shr': share['host']}
             raise exception.ShareBackendException(msg=msg)
@@ -418,13 +417,12 @@ class HDSHNASDriver(driver.ShareDriver):
 
         if len(share['export_locations']) == 0:
             LOG.info(_LI("The share with ID %(shr_id)s is no longer being "
-                         "managed."), {'shr_id': six.text_type(share['id'])})
+                         "managed."), {'shr_id': share['id']})
         else:
             LOG.info(_LI("The share with current path %(shr_path)s and ID "
                          "%(shr_id)s is no longer being managed."),
-                     {'shr_path': six.text_type(
-                         share['export_locations'][0]['path']),
-                         'shr_id': six.text_type(share['id'])})
+                     {'shr_path': share['export_locations'][0]['path'],
+                         'shr_id': share['id']})
 
     def _get_hnas_share_id(self, share_id):
         hnas_id = self.private_storage.get(share_id, 'hnas_id')
@@ -602,7 +600,7 @@ class HDSHNASDriver(driver.ShareDriver):
                      "quota limit, please set it before manage.") % share_id)
             raise exception.ManageInvalidShare(msg)
 
-        path = six.text_type(self.hnas_evs_ip) + ':/shares/' + share_id
+        path = self.hnas_evs_ip + ':/shares/' + share_id
 
         return {'size': share_size, 'export_locations': [path]}
 
