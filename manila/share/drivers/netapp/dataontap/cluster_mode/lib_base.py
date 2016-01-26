@@ -1020,9 +1020,9 @@ class NetAppCmodeFileStorageLibrary(object):
             return
 
         raid_types = self._client.get_aggregate_raid_types(aggregate_names)
-        for aggregate_name, raid_type in six.iteritems(raid_types):
+        for aggregate_name, raid_type in raid_types.items():
             ssc_stats[aggregate_name]['netapp_raid_type'] = raid_type
 
         disk_types = self._client.get_aggregate_disk_types(aggregate_names)
-        for aggregate_name, disk_type in six.iteritems(disk_types):
+        for aggregate_name, disk_type in disk_types.items():
             ssc_stats[aggregate_name]['netapp_disk_type'] = disk_type

@@ -757,7 +757,7 @@ class API(base.Base):
     def get_snapshot(self, context, snapshot_id):
         policy.check_policy(context, 'share_snapshot', 'get_snapshot')
         rv = self.db.share_snapshot_get(context, snapshot_id)
-        return dict(six.iteritems(rv))
+        return dict(rv.items())
 
     def get_all_snapshots(self, context, search_opts=None,
                           sort_key='share_id', sort_dir='desc'):
@@ -793,7 +793,7 @@ class API(base.Base):
             results = []
             not_found = object()
             for snapshot in snapshots:
-                for opt, value in six.iteritems(search_opts):
+                for opt, value in search_opts.items():
                     if snapshot.get(opt, not_found) != value:
                         break
                 else:
@@ -914,7 +914,7 @@ class API(base.Base):
     def get_share_metadata(self, context, share):
         """Get all metadata associated with a share."""
         rv = self.db.share_metadata_get(context, share['id'])
-        return dict(six.iteritems(rv))
+        return dict(rv.items())
 
     @policy.wrap_check_policy('share')
     def delete_share_metadata(self, context, share, key):
@@ -935,7 +935,7 @@ class API(base.Base):
         if not metadata:
             metadata = {}
 
-        for k, v in six.iteritems(metadata):
+        for k, v in metadata.items():
             if not k:
                 msg = _("Metadata property key is blank.")
                 LOG.warning(msg)

@@ -20,7 +20,6 @@ import copy
 
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-import six
 
 from manila.common import constants
 from manila import context
@@ -132,7 +131,7 @@ class ShareRpcAPITestCase(test.TestCase):
         for arg, expected_arg in zip(self.fake_args, expected_args):
             self.assertEqual(expected_arg, arg)
 
-        for kwarg, value in six.iteritems(self.fake_kwargs):
+        for kwarg, value in self.fake_kwargs.items():
             self.assertEqual(expected_msg[kwarg], value)
 
     def test_create_share_instance(self):

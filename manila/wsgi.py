@@ -35,7 +35,6 @@ from oslo_service import service
 from oslo_utils import excutils
 from paste import deploy
 import routes.middleware
-import six
 import webob.dec
 import webob.exc
 
@@ -440,7 +439,7 @@ class Debug(Middleware):
         resp = req.get_response(self.application)
 
         print(('*' * 40) + ' RESPONSE HEADERS')
-        for (key, value) in six.iteritems(resp.headers):
+        for (key, value) in resp.headers.items():
             print(key, '=', value)
         print()
 

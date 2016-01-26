@@ -81,7 +81,7 @@ class ManilaException(Exception):
                 self.kwargs['code'] = self.code
             except AttributeError:
                 pass
-        for k, v in six.iteritems(self.kwargs):
+        for k, v in self.kwargs.items():
             if isinstance(v, Exception):
                 self.kwargs[k] = six.text_type(v)
 
@@ -93,7 +93,7 @@ class ManilaException(Exception):
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
                 LOG.exception(_LE('Exception in string format operation.'))
-                for name, value in six.iteritems(kwargs):
+                for name, value in kwargs.items():
                     LOG.error(_LE("%(name)s: %(value)s"), {
                         'name': name, 'value': value})
                 if CONF.fatal_exception_format_errors:

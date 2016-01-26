@@ -64,7 +64,6 @@ i18n.enable_lazy()
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import uuidutils
-import six
 
 from manila.common import config  # Need to register global_opts  # noqa
 from manila import context
@@ -256,7 +255,7 @@ class ConfigCommands(object):
     """Class for exposing the flags defined by flag_file(s)."""
 
     def list(self):
-        for key, value in six.iteritems(CONF):
+        for key, value in CONF.items():
             if value is not None:
                 print('%s = %s' % (key, value))
 

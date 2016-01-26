@@ -55,7 +55,7 @@ class ShareServerController(wsgi.Controller):
             else:
                 s.share_network_name = s.share_network_id
         if search_opts:
-            for k, v in six.iteritems(search_opts):
+            for k, v in search_opts.items():
                 share_servers = [s for s in share_servers if
                                  (hasattr(s, k) and
                                   s[k] == v or k == 'share_network' and

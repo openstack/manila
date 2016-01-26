@@ -179,8 +179,7 @@ class CGSnapshotController(wsgi.Controller, wsgi.AdminActionsMixin):
         except exception.InvalidConsistencyGroup as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
 
-        return self._view_builder.detail(req, dict(six.iteritems(
-                                         new_snapshot)))
+        return self._view_builder.detail(req, dict(new_snapshot.items()))
 
     @wsgi.Controller.api_version('2.4', experimental=True)
     @wsgi.Controller.authorize('get_cgsnapshot')

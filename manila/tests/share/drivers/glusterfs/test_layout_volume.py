@@ -23,7 +23,6 @@ import tempfile
 import ddt
 import mock
 from oslo_config import cfg
-import six
 
 from manila.common import constants
 from manila import context
@@ -185,7 +184,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         self.mock_object(self._layout, '_glustermanager',
                          mock.Mock(side_effect=_glustermanager_calls))
         expected_output = {}
-        for q, d in six.iteritems(self.glusterfs_volumes_dict):
+        for q, d in self.glusterfs_volumes_dict.items():
             if sharemark[q] not in (FAKE_UUID1, FAKE_UUID2):
                 expected_output[q] = d
 
