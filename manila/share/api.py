@@ -110,7 +110,7 @@ class API(base.Base):
             share_type_id = share_type['id'] if share_type else None
         else:
             source_share = self.db.share_get(context, snapshot['share_id'])
-            availability_zone = source_share['availability_zone']
+            availability_zone = source_share['instance']['availability_zone']
             if share_type is None:
                 share_type_id = source_share['share_type_id']
             else:
@@ -250,7 +250,7 @@ class API(base.Base):
         if snapshot and not CONF.use_scheduler_creating_share_from_snapshot:
             # Shares from snapshots with restriction - source host only.
             # It is common situation for different types of backends.
-            host = snapshot['share']['host']
+            host = snapshot['share']['instance']['host']
 
         self.create_instance(context, share, share_network_id=share_network_id,
                              host=host, availability_zone=availability_zone,
@@ -327,7 +327,7 @@ class API(base.Base):
             'user_id': share['user_id'],
             'project_id': share['project_id'],
             'metadata': self.db.share_metadata_get(context, share['id']),
-            'share_server_id': share['share_server_id'],
+            'share_server_id': share_instance['share_server_id'],
             'snapshot_support': share['snapshot_support'],
             'share_proto': share['share_proto'],
             'share_type_id': share['share_type_id'],
@@ -753,7 +753,7 @@ class API(base.Base):
             'size': share['size'],
             'user_id': share['user_id'],
             'project_id': share['project_id'],
-            'share_server_id': share['share_server_id'],
+            'share_server_id': share_instance['share_server_id'],
             'snapshot_support': share['snapshot_support'],
             'share_proto': share['share_proto'],
             'share_type_id': share['share_type_id'],
@@ -797,7 +797,8 @@ class API(base.Base):
         self.db.share_snapshot_update(context, snapshot['id'],
                                       {'status': constants.STATUS_DELETING})
         share = self.db.share_get(context, snapshot['share_id'])
-        self.share_rpcapi.delete_snapshot(context, snapshot, share['host'])
+        self.share_rpcapi.delete_snapshot(context, snapshot,
+                                          share['instance']['host'])
 
     @policy.wrap_check_policy('share')
     def update(self, context, share, fields):
