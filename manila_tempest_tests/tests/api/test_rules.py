@@ -215,9 +215,11 @@ class ShareCertRulesForGLUSTERFSTest(base.BaseSharesTest):
         getattr(self, client_name).wait_for_access_rule_status(
             self.share["id"], rule["id"], "active")
 
-        # delete rule
+        # delete rule and wait for deletion
         getattr(self, client_name).delete_access_rule(self.share["id"],
                                                       rule["id"])
+        getattr(self, client_name).wait_for_resource_deletion(
+            rule_id=rule["id"], share_id=self.share['id'])
 
     @test.attr(type=["gate", ])
     @testtools.skipIf(
