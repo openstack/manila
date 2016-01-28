@@ -481,7 +481,7 @@ class ShareManagerTestCase(test.TestCase):
 
         shr = db.share_get(self.context, share_id)
         self.assertEqual(constants.STATUS_AVAILABLE, shr['status'])
-        self.assertEqual(server['id'], shr['share_server_id'])
+        self.assertEqual(server['id'], shr['instance']['share_server_id'])
 
     def test_create_share_instance_from_snapshot_with_server_not_found(self):
         """Test creation from snapshot fails if server not found."""
@@ -1543,7 +1543,13 @@ class ShareManagerTestCase(test.TestCase):
         fake_parent_id = "fake_server_id"
         fake_exception = exception.ShareServerNotFound("fake")
         share = db_utils.create_share()
-        fake_snapshot = {'share': {'share_server_id': fake_parent_id}}
+        fake_snapshot = {
+            'share': {
+                'instance': {
+                    'share_server_id': fake_parent_id
+                }
+            }
+        }
         self.mock_object(db, 'share_server_get',
                          mock.Mock(side_effect=fake_exception))
 
@@ -1558,7 +1564,13 @@ class ShareManagerTestCase(test.TestCase):
     def test_provide_share_server_for_share_parent_ss_invalid(self):
         fake_parent_id = "fake_server_id"
         share = db_utils.create_share()
-        fake_snapshot = {'share': {'share_server_id': fake_parent_id}}
+        fake_snapshot = {
+            'share': {
+                'instance': {
+                    'share_server_id': fake_parent_id
+                }
+            }
+        }
         fake_parent_share_server = {'status': 'fake'}
         self.mock_object(db, 'share_server_get',
                          mock.Mock(return_value=fake_parent_share_server))

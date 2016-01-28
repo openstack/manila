@@ -357,7 +357,8 @@ class ShareManager(manager.SchedulerDependentManager):
                                           {'status': constants.STATUS_ERROR})
 
         if snapshot:
-            parent_share_server_id = snapshot['share']['share_server_id']
+            parent_share_server_id = (
+                snapshot['share']['instance']['share_server_id'])
             try:
                 parent_share_server = self.db.share_server_get(
                     context, parent_share_server_id)
@@ -764,7 +765,8 @@ class ShareManager(manager.SchedulerDependentManager):
 
         if snapshot_id is not None:
             snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
-            parent_share_server_id = snapshot_ref['share']['share_server_id']
+            parent_share_server_id = (
+                snapshot_ref['share']['instance']['share_server_id'])
         else:
             snapshot_ref = None
             parent_share_server_id = None
@@ -1291,7 +1293,7 @@ class ShareManager(manager.SchedulerDependentManager):
         context = context.elevated()
         share_ref = self.db.share_get(context, share_id)
         share_instance = self._get_share_instance(context, share_ref)
-        share_server = self._get_share_server(context, share_ref)
+        share_server = self._get_share_server(context, share_instance)
         project_id = share_ref['project_id']
 
         def share_manage_set_error_status(msg, exception):
@@ -1403,8 +1405,8 @@ class ShareManager(manager.SchedulerDependentManager):
     def create_snapshot(self, context, share_id, snapshot_id):
         """Create snapshot for share."""
         snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
-        share_server = self._get_share_server(context,
-                                              snapshot_ref['share'])
+        share_server = self._get_share_server(
+            context, snapshot_ref['share']['instance'])
         snapshot_instance = self.db.share_snapshot_instance_get(
             context, snapshot_ref.instance['id'], with_share_data=True
         )
@@ -1441,8 +1443,8 @@ class ShareManager(manager.SchedulerDependentManager):
         context = context.elevated()
         snapshot_ref = self.db.share_snapshot_get(context, snapshot_id)
 
-        share_server = self._get_share_server(context,
-                                              snapshot_ref['share'])
+        share_server = self._get_share_server(
+            context, snapshot_ref['share']['instance'])
         snapshot_instance = self.db.share_snapshot_instance_get(
             context, snapshot_ref.instance['id'], with_share_data=True
         )
@@ -1772,7 +1774,7 @@ class ShareManager(manager.SchedulerDependentManager):
         context = context.elevated()
         share = self.db.share_get(context, share_id)
         share_instance = self._get_share_instance(context, share)
-        share_server = self._get_share_server(context, share)
+        share_server = self._get_share_server(context, share_instance)
         project_id = share['project_id']
 
         try:
@@ -1809,7 +1811,7 @@ class ShareManager(manager.SchedulerDependentManager):
         context = context.elevated()
         share = self.db.share_get(context, share_id)
         share_instance = self._get_share_instance(context, share)
-        share_server = self._get_share_server(context, share)
+        share_server = self._get_share_server(context, share_instance)
         project_id = share['project_id']
         new_size = int(new_size)
 
