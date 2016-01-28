@@ -63,6 +63,9 @@ global_opts = [
     cfg.StrOpt('share_topic',
                default='manila-share',
                help='The topic share nodes listen on.'),
+    cfg.StrOpt('data_topic',
+               default='manila-data',
+               help='The topic data nodes listen on.'),
     cfg.BoolOpt('enable_v1_api',
                 default=False,
                 help=_('Deploy v1 of the Manila API. This option is '
@@ -106,6 +109,9 @@ global_opts = [
     cfg.StrOpt('share_manager',
                default='manila.share.manager.ShareManager',
                help='Full class name for the share manager.'),
+    cfg.StrOpt('data_manager',
+               default='manila.data.manager.DataManager',
+               help='Full class name for the data manager.'),
     cfg.StrOpt('host',
                default=socket.gethostname(),
                help='Name of this node.  This can be an opaque identifier.  '

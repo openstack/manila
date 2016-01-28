@@ -62,7 +62,8 @@ def main():
     except (Exception, SystemExit):
         LOG.exception(_LE('Failed to load osapi_share'))
 
-    for binary in ['manila-share', 'manila-scheduler', 'manila-api']:
+    for binary in ['manila-share', 'manila-scheduler', 'manila-api',
+                   'manila-data']:
         try:
             launcher.launch_service(service.Service.create(binary=binary))
         except (Exception, SystemExit):
