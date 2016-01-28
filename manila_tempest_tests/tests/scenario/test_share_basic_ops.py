@@ -48,7 +48,7 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         if not hasattr(self, 'flavor_ref'):
             self.flavor_ref = CONF.share.client_vm_flavor_ref
         if CONF.share.image_with_share_tools:
-            images = self.images_client.list_images()["images"]
+            images = self.compute_images_client.list_images()["images"]
             for img in images:
                 if img["name"] == CONF.share.image_with_share_tools:
                     self.image_ref = img['id']
@@ -69,12 +69,12 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         create_kwargs = {
             'key_name': self.keypair['name'],
             'security_groups': security_groups,
+            'wait_until': 'ACTIVE',
         }
         if CONF.share.multitenancy_enabled:
             create_kwargs['networks'] = [{'uuid': self.net['id']}, ]
-        instance = self.create_server(image=self.image_ref,
-                                      create_kwargs=create_kwargs,
-                                      flavor=self.flavor_ref)
+        instance = self.create_server(
+            image_id=self.image_ref, flavor=self.flavor_ref, **create_kwargs)
         return instance
 
     def init_ssh(self, instance, do_ping=False):
