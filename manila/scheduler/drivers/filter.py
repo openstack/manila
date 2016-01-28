@@ -111,10 +111,14 @@ class FilterScheduler(base.Scheduler):
         elevated = context.elevated()
 
         share_properties = request_spec['share_properties']
+        share_instance_properties = (request_spec.get(
+            'share_instance_properties', {}))
+
         # Since Manila is using mixed filters from Oslo and it's own, which
         # takes 'resource_XX' and 'volume_XX' as input respectively, copying
         # 'volume_XX' to 'resource_XX' will make both filters happy.
         resource_properties = share_properties.copy()
+        resource_properties.update(share_instance_properties.copy())
         share_type = request_spec.get("share_type", {})
         if not share_type:
             msg = _("You must create a share type in advance,"

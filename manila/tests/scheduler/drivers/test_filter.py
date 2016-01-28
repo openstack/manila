@@ -213,6 +213,26 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
                           sched._schedule_share,
                           self.context, request_spec)
 
+    @mock.patch('manila.db.service_get_all_by_topic')
+    def test_schedule_share_with_instance_properties(
+            self, _mock_service_get_all_by_topic):
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fake_context = context.RequestContext('user', 'project',
+                                              is_admin=True)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+        share_type = {'name': 'foo'}
+        request_spec = {
+            'share_type': share_type,
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {'availability_zone_id': "fake_az"},
+        }
+
+        weighed_host = sched._schedule_share(fake_context, request_spec, {})
+
+        self.assertIsNone(weighed_host)
+        self.assertTrue(_mock_service_get_all_by_topic.called)
+
     def test_max_attempts(self):
         self.flags(scheduler_max_attempts=4)
         sched = fakes.FakeFilterScheduler()

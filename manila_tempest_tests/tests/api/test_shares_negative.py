@@ -114,6 +114,12 @@ class SharesNegativeTest(base.BaseSharesTest):
                           self.shares_client.create_share, size=0)
 
     @test.attr(type=["negative", "gate", ])
+    def test_create_share_non_existent_az(self):
+        self.assertRaises(lib_exc.NotFound,
+                          self.shares_v2_client.create_share,
+                          availability_zone='fake_az')
+
+    @test.attr(type=["negative", "gate", ])
     @testtools.skipUnless(CONF.share.run_snapshot_tests,
                           "Snapshot tests are disabled.")
     def test_try_delete_share_with_existing_snapshot(self):

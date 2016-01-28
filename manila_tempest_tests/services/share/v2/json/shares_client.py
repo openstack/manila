@@ -187,7 +187,8 @@ class SharesV2Client(shares_client.SharesClient):
                      name=None, snapshot_id=None, description=None,
                      metadata=None, share_network_id=None,
                      share_type_id=None, is_public=False,
-                     consistency_group_id=None, version=LATEST_MICROVERSION):
+                     consistency_group_id=None, availability_zone=None,
+                     version=LATEST_MICROVERSION):
         metadata = metadata or {}
         if name is None:
             name = data_utils.rand_name("tempest-created-share")
@@ -208,6 +209,8 @@ class SharesV2Client(shares_client.SharesClient):
                 "is_public": is_public,
             }
         }
+        if availability_zone:
+            post_body["share"]["availability_zone"] = availability_zone
         if share_network_id:
             post_body["share"]["share_network_id"] = share_network_id
         if share_type_id:
