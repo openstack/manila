@@ -233,8 +233,16 @@ function configure_manila {
 
 function configure_manila_ui {
     if is_service_enabled horizon && [ "$MANILA_UI_ENABLED" = "True" ]; then
+        # NOTE(vponomaryov): workaround for devstack bug: 1540328
+        # where devstack install 'test-requirements' but should not do it
+        # for manila-ui project as it installs Horizon from url.
+        # Remove following two 'mv' commands when mentioned bug is fixed.
+        mv $MANILA_UI_DIR/test-requirements.txt $MANILA_UI_DIR/_test-requirements.txt
+
         setup_develop $MANILA_UI_DIR
         cp $MANILA_UI_DIR/manila_ui/enabled/_90_manila_*.py $HORIZON_DIR/openstack_dashboard/local/enabled
+
+        mv $MANILA_UI_DIR/_test-requirements.txt $MANILA_UI_DIR/test-requirements.txt
     fi
 }
 
