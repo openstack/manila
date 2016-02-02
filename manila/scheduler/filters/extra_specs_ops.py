@@ -47,7 +47,11 @@ def match(value, req):
         method = _op_methods.get(op)
 
     if op != '<or>' and not method:
-        return value == req
+        if type(value) is bool:
+            return value == strutils.bool_from_string(
+                req, strict=False, default=req)
+        else:
+            return value == req
 
     if value is None:
         return False
