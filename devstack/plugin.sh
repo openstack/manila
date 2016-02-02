@@ -541,8 +541,20 @@ elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
     init_manila
     echo_summary "Installing extra libraries"
     install_libraries
+
+    # Neutron config update
     if is_service_enabled neutron; then
         iniset $Q_DHCP_CONF_FILE DEFAULT dnsmasq_local_resolv False
+    fi
+
+    # Cinder config update
+    if [[ -n "$CINDER_OVERSUBSCRIPTION_RATIO" ]]; then
+        CINDER_CONF=${CINDER_CONF:-/etc/cinder/cinder.conf}
+        CINDER_ENABLED_BACKENDS=$(iniget $CINDER_CONF DEFAULT enabled_backends)
+        for BN in ${CINDER_ENABLED_BACKENDS//,/ }; do
+            iniset $CINDER_CONF $BN lvm_max_over_subscription_ratio $CINDER_OVERSUBSCRIPTION_RATIO
+        done
+        iniset $CINDER_CONF DEFAULT max_over_subscription_ratio $CINDER_OVERSUBSCRIPTION_RATIO
     fi
 elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
     echo_summary "Creating Manila entities for auth service"
