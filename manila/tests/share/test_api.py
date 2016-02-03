@@ -25,12 +25,14 @@ from oslo_utils import timeutils
 
 from manila.common import constants
 from manila import context
+from manila.data import rpcapi as data_rpc
 from manila import db as db_api
 from manila.db.sqlalchemy import models
 from manila import exception
 from manila import quota
 from manila import share
 from manila.share import api as share_api
+from manila.share import rpcapi as share_rpc
 from manila.share import share_types
 from manila import test
 from manila.tests import db_utils
@@ -837,7 +839,7 @@ class ShareAPITestCase(test.TestCase):
             status=constants.STATUS_AVAILABLE,
             user_id=self.context.user_id,
             project_id=self.context.project_id,
-            task_state=constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS)
+            task_state=constants.TASK_STATE_MIGRATION_IN_PROGRESS)
 
         self.assertRaises(exception.ShareBusyException, self.api.unmanage,
                           self.context, share)
@@ -970,7 +972,7 @@ class ShareAPITestCase(test.TestCase):
     def test_create_snapshot_invalid_task_state(self):
         share = db_utils.create_share(
             status=constants.STATUS_AVAILABLE,
-            task_state=constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS)
+            task_state=constants.TASK_STATE_MIGRATION_IN_PROGRESS)
         self.assertRaises(exception.ShareBusyException,
                           self.api.create_snapshot,
                           self.context,
@@ -1129,7 +1131,7 @@ class ShareAPITestCase(test.TestCase):
     def test_delete_share_invalid_task_state(self):
         share = db_utils.create_share(
             status=constants.STATUS_AVAILABLE,
-            task_state=constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS)
+            task_state=constants.TASK_STATE_MIGRATION_IN_PROGRESS)
 
         self.assertRaises(exception.ShareBusyException,
                           self.api.delete,
@@ -1562,7 +1564,7 @@ class ShareAPITestCase(test.TestCase):
     def test_extend_invalid_task_state(self):
         share = db_utils.create_share(
             status=constants.STATUS_AVAILABLE,
-            task_state=constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS)
+            task_state=constants.TASK_STATE_MIGRATION_IN_PROGRESS)
         new_size = 123
 
         self.assertRaises(exception.ShareBusyException,
@@ -1613,7 +1615,7 @@ class ShareAPITestCase(test.TestCase):
     def test_shrink_invalid_task_state(self):
         share = db_utils.create_share(
             status=constants.STATUS_AVAILABLE,
-            task_state=constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS)
+            task_state=constants.TASK_STATE_MIGRATION_IN_PROGRESS)
 
         self.assertRaises(exception.ShareBusyException,
                           self.api.shrink, self.context, share, 123)
@@ -1642,7 +1644,7 @@ class ShareAPITestCase(test.TestCase):
             self.context, share, new_size
         )
 
-    def test_migrate_share(self):
+    def test_migration_start(self):
         host = 'fake2@backend#pool'
         share = db_utils.create_share(
             status=constants.STATUS_AVAILABLE,
@@ -1679,39 +1681,40 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value='fake_type'))
         self.mock_object(utils, 'validate_service_host')
 
-        self.api.migrate_share(self.context, share, host, True)
+        self.api.migration_start(self.context, share, host, True, True)
 
         self.scheduler_rpcapi.migrate_share_to_host.assert_called_once_with(
-            self.context, share['id'], host, True, request_spec)
+            self.context, share['id'], host, True, True, request_spec)
 
-    def test_migrate_share_status_unavailable(self):
+    def test_migration_start_status_unavailable(self):
         host = 'fake2@backend#pool'
         share = db_utils.create_share(
             status=constants.STATUS_ERROR)
 
-        self.assertRaises(exception.InvalidShare, self.api.migrate_share,
-                          self.context, share, host, True)
+        self.assertRaises(exception.InvalidShare, self.api.migration_start,
+                          self.context, share, host, True, True)
 
-    def test_migrate_share_task_state_invalid(self):
+    def test_migration_start_task_state_invalid(self):
         host = 'fake2@backend#pool'
         share = db_utils.create_share(
             status=constants.STATUS_AVAILABLE,
-            task_state=constants.STATUS_TASK_STATE_MIGRATION_IN_PROGRESS)
+            task_state=constants.TASK_STATE_MIGRATION_IN_PROGRESS)
 
-        self.assertRaises(exception.ShareBusyException, self.api.migrate_share,
-                          self.context, share, host, True)
+        self.assertRaises(exception.ShareBusyException,
+                          self.api.migration_start,
+                          self.context, share, host, True, True)
 
-    def test_migrate_share_with_snapshots(self):
+    def test_migration_start_with_snapshots(self):
         host = 'fake2@backend#pool'
         share = db_utils.create_share(
             host='fake@backend#pool', status=constants.STATUS_AVAILABLE)
         self.mock_object(db_api, 'share_snapshot_get_all_for_share',
                          mock.Mock(return_value=True))
 
-        self.assertRaises(exception.InvalidShare, self.api.migrate_share,
-                          self.context, share, host, True)
+        self.assertRaises(exception.InvalidShare, self.api.migration_start,
+                          self.context, share, host, True, True)
 
-    def test_migrate_share_has_replicas(self):
+    def test_migration_start_has_replicas(self):
         host = 'fake2@backend#pool'
         share = db_utils.create_share(
             host='fake@backend#pool', status=constants.STATUS_AVAILABLE,
@@ -1727,12 +1730,12 @@ class ShareAPITestCase(test.TestCase):
         # Share was updated after adding replicas, grabbing it again.
         share = db_api.share_get(self.context, share['id'])
 
-        self.assertRaises(exception.Conflict, self.api.migrate_share,
+        self.assertRaises(exception.Conflict, self.api.migration_start,
                           self.context, share, host, True)
         self.assertTrue(mock_log.error.called)
         self.assertFalse(mock_snapshot_get_call.called)
 
-    def test_migrate_share_invalid_host(self):
+    def test_migration_start_invalid_host(self):
         host = 'fake@backend#pool'
         share = db_utils.create_share(
             host='fake2@backend', status=constants.STATUS_AVAILABLE)
@@ -1741,19 +1744,19 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(return_value=False))
 
         self.assertRaises(exception.ServiceNotFound,
-                          self.api.migrate_share,
-                          self.context, share, host, True)
+                          self.api.migration_start,
+                          self.context, share, host, True, True)
 
-    def test_migrate_share_same_host(self):
+    def test_migration_start_same_host(self):
         host = 'fake@backend#pool'
         share = db_utils.create_share(
             host='fake@backend#pool', status=constants.STATUS_AVAILABLE)
 
         self.assertRaises(exception.InvalidHost,
-                          self.api.migrate_share,
-                          self.context, share, host, True)
+                          self.api.migration_start,
+                          self.context, share, host, True, True)
 
-    def test_migrate_share_exception(self):
+    def test_migration_start_exception(self):
         host = 'fake2@backend#pool'
         share = db_utils.create_share(
             host='fake@backend#pool', status=constants.STATUS_AVAILABLE)
@@ -1766,9 +1769,9 @@ class ShareAPITestCase(test.TestCase):
                          mock.Mock(side_effect=exception.ShareMigrationFailed(
                              reason='fake')))
 
-        self.assertRaises(exception.ShareMigrationFailed,
-                          self.api.migrate_share,
-                          self.context, share, host, True)
+        self.assertRaises(exception.InvalidHost,
+                          self.api.migration_start,
+                          self.context, share, host, True, True)
 
         db_api.share_update.assert_any_call(
             mock.ANY, share['id'], mock.ANY)
@@ -1984,6 +1987,128 @@ class ShareAPITestCase(test.TestCase):
 
         self.assertTrue(mock_rpcapi_update_share_replica_call.called)
         self.assertIsNone(retval)
+
+    def test_migration_complete(self):
+
+        instance1 = db_utils.create_share_instance(
+            share_id='fake_id', status=constants.STATUS_MIGRATING)
+        instance2 = db_utils.create_share_instance(
+            share_id='fake_id', status=constants.STATUS_MIGRATING_TO)
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_DATA_COPYING_COMPLETED,
+            instances=[instance1, instance2])
+
+        self.mock_object(share_rpc.ShareAPI, 'migration_complete')
+
+        self.api.migration_complete(self.context, share)
+
+        share_rpc.ShareAPI.migration_complete.assert_called_once_with(
+            self.context, share, instance1['id'], instance2['id'])
+
+    def test_migration_complete_task_state_invalid(self):
+
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_DATA_COPYING_IN_PROGRESS)
+
+        self.assertRaises(exception.InvalidShare, self.api.migration_complete,
+                          self.context, share)
+
+    def test_migration_complete_status_invalid(self):
+
+        instance1 = db_utils.create_share_instance(
+            share_id='fake_id', status=constants.STATUS_ERROR)
+        instance2 = db_utils.create_share_instance(
+            share_id='fake_id', status=constants.STATUS_ERROR)
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_DATA_COPYING_COMPLETED,
+            instances=[instance1, instance2])
+
+        self.assertRaises(exception.ShareMigrationFailed,
+                          self.api.migration_complete, self.context,
+                          share)
+
+    def test_migration_cancel(self):
+
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_DATA_COPYING_IN_PROGRESS)
+
+        self.mock_object(data_rpc.DataAPI, 'data_copy_cancel')
+
+        self.api.migration_cancel(self.context, share)
+
+        data_rpc.DataAPI.data_copy_cancel.assert_called_once_with(
+            self.context, share['id'])
+
+    def test_migration_cancel_driver(self):
+
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS)
+
+        self.mock_object(share_rpc.ShareAPI, 'migration_cancel')
+
+        self.api.migration_cancel(self.context, share)
+
+        share_rpc.ShareAPI.migration_cancel.assert_called_once_with(
+            self.context, share)
+
+    def test_migration_cancel_task_state_invalid(self):
+
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_DATA_COPYING_STARTING)
+
+        self.assertRaises(exception.InvalidShare, self.api.migration_cancel,
+                          self.context, share)
+
+    def test_migration_get_progress(self):
+
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_DATA_COPYING_IN_PROGRESS)
+
+        expected = 'fake_progress'
+
+        self.mock_object(data_rpc.DataAPI, 'data_copy_get_progress',
+                         mock.Mock(return_value=expected))
+
+        result = self.api.migration_get_progress(self.context, share)
+
+        self.assertEqual(expected, result)
+
+        data_rpc.DataAPI.data_copy_get_progress.assert_called_once_with(
+            self.context, share['id'])
+
+    def test_migration_get_progress_driver(self):
+
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_MIGRATION_DRIVER_IN_PROGRESS)
+
+        expected = 'fake_progress'
+
+        self.mock_object(share_rpc.ShareAPI, 'migration_get_progress',
+                         mock.Mock(return_value=expected))
+
+        result = self.api.migration_get_progress(self.context, share)
+
+        self.assertEqual(expected, result)
+
+        share_rpc.ShareAPI.migration_get_progress.assert_called_once_with(
+            self.context, share)
+
+    def test_migration_get_progress_task_state_invalid(self):
+
+        share = db_utils.create_share(
+            id='fake_id',
+            task_state=constants.TASK_STATE_DATA_COPYING_STARTING)
+
+        self.assertRaises(exception.InvalidShare,
+                          self.api.migration_get_progress, self.context, share)
 
 
 class OtherTenantsShareActionsTestCase(test.TestCase):

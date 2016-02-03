@@ -17,6 +17,7 @@ from tempest import config  # noqa
 from tempest import test  # noqa
 
 from manila_tempest_tests.tests.api import base
+from manila_tempest_tests import utils
 
 CONF = config.CONF
 
@@ -39,7 +40,44 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
             raise cls.skipException("Migration tests disabled. Skipping.")
 
     @test.attr(type=["gate", ])
+    @base.skip_if_microversion_lt("2.5")
     def test_migration_empty_v2_5(self):
+
+        share, dest_pool = self._setup_migration()
+
+        old_exports = share['export_locations']
+
+        share = self.migrate_share(share['id'], dest_pool, version='2.5')
+
+        self._validate_migration_successful(dest_pool, share, old_exports,
+                                            version='2.5')
+
+    @test.attr(type=["gate", ])
+    @base.skip_if_microversion_lt("2.15")
+    def test_migration_completion_empty_v2_15(self):
+
+        share, dest_pool = self._setup_migration()
+
+        old_exports = self.shares_v2_client.list_share_export_locations(
+            share['id'], version='2.15')
+        self.assertNotEmpty(old_exports)
+        old_exports = [x['path'] for x in old_exports
+                       if x['is_admin_only'] is False]
+        self.assertNotEmpty(old_exports)
+
+        share = self.migrate_share(
+            share['id'], dest_pool, version='2.15', notify=False,
+            wait_for_status='data_copying_completed')
+
+        self._validate_migration_successful(dest_pool, share,
+                                            old_exports, '2.15', notify=False)
+
+        share = self.migration_complete(share['id'], dest_pool, version='2.15')
+
+        self._validate_migration_successful(dest_pool, share, old_exports,
+                                            version='2.15')
+
+    def _setup_migration(self):
 
         pools = self.shares_client.list_pools()['pools']
 
@@ -51,6 +89,18 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
         share = self.create_share(self.protocol)
         share = self.shares_client.get_share(share['id'])
 
+        self.shares_v2_client.create_access_rule(
+            share['id'], access_to="50.50.50.50", access_level="rw")
+
+        self.shares_v2_client.wait_for_share_status(
+            share['id'], 'active', status_attr='access_rules_status')
+
+        self.shares_v2_client.create_access_rule(
+            share['id'], access_to="51.51.51.51", access_level="ro")
+
+        self.shares_v2_client.wait_for_share_status(
+            share['id'], 'active', status_attr='access_rules_status')
+
         dest_pool = next((x for x in pools if x['name'] != share['host']),
                          None)
 
@@ -59,10 +109,30 @@ class MigrationNFSTest(base.BaseSharesAdminTest):
 
         dest_pool = dest_pool['name']
 
-        old_export_location = share['export_locations'][0]
+        return share, dest_pool
 
-        share = self.migrate_share(share['id'], dest_pool, version='2.5')
+    def _validate_migration_successful(self, dest_pool, share,
+                                       old_exports, version, notify=True):
+        if utils.is_microversion_lt(version, '2.9'):
+            new_exports = share['export_locations']
+            self.assertNotEmpty(new_exports)
+        else:
+            new_exports = self.shares_v2_client.list_share_export_locations(
+                share['id'], version='2.9')
+            self.assertNotEmpty(new_exports)
+            new_exports = [x['path'] for x in new_exports if
+                           x['is_admin_only'] is False]
+            self.assertNotEmpty(new_exports)
 
-        self.assertEqual(dest_pool, share['host'])
-        self.assertNotEqual(old_export_location, share['export_locations'][0])
-        self.assertEqual('migration_success', share['task_state'])
+        # Share migrated
+        if notify:
+            self.assertEqual(dest_pool, share['host'])
+            for export in old_exports:
+                self.assertFalse(export in new_exports)
+            self.assertEqual('migration_success', share['task_state'])
+        # Share not migrated yet
+        else:
+            self.assertNotEqual(dest_pool, share['host'])
+            for export in old_exports:
+                self.assertTrue(export in new_exports)
+            self.assertEqual('data_copying_completed', share['task_state'])

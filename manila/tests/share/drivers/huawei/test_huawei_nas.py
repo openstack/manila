@@ -27,6 +27,7 @@ import mock
 from oslo_serialization import jsonutils
 
 from manila import context
+from manila.data import utils as data_utils
 from manila import db
 from manila import exception
 from manila.share import configuration as conf
@@ -35,7 +36,6 @@ from manila.share.drivers.huawei import huawei_nas
 from manila.share.drivers.huawei.v3 import connection
 from manila.share.drivers.huawei.v3 import helper
 from manila.share.drivers.huawei.v3 import smartx
-from manila.share import utils as share_utils
 from manila import test
 from manila import utils
 
@@ -1906,6 +1906,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
 
     def test_create_cifsshare_from_nfssnapshot_success(self):
         share_type = self.fake_type_not_extra['test_with_extra']
+
         self.mock_object(db,
                          'share_type_get',
                          mock.Mock(return_value=share_type))
@@ -1914,7 +1915,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
                          mock.Mock(return_value={}))
         self.mock_object(utils,
                          'execute',
-                         mock.Mock(return_value={}))
+                         mock.Mock(return_value=("", "")))
         self.driver.plugin.helper.login()
         self.driver.plugin.helper.snapshot_flag = True
 
@@ -1926,7 +1927,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertTrue(db.share_type_get.called)
         self.assertTrue(self.driver.plugin.
                         _get_access_id.called)
-        self.assertEqual(4, utils.execute.call_count)
+        self.assertEqual(7, utils.execute.call_count)
         self.assertEqual("\\\\100.115.10.68\\share_fake_uuid", location)
 
     def test_create_share_from_snapshot_nonefs(self):
@@ -2065,7 +2066,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.mock_object(self.driver.plugin,
                          'mount_share_to_host',
                          mock.Mock(return_value={}))
-        self.mock_object(share_utils,
+        self.mock_object(data_utils,
                          'Copy',
                          mock.Mock(side_effect=Exception('err')))
         self.mock_object(utils,
@@ -2081,7 +2082,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertTrue(db.share_type_get.called)
         self.assertEqual(2, self.driver.plugin.
                          mount_share_to_host.call_count)
-        self.assertTrue(share_utils.Copy.called)
+        self.assertTrue(data_utils.Copy.called)
         self.assertEqual(2, utils.execute.call_count)
 
     def test_create_nfsshare_from_nfssnapshot_umountshare_fail(self):

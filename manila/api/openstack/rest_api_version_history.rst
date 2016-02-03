@@ -100,3 +100,9 @@ ____
   field to identify which export locations are most efficient and should be
   used preferentially by clients.  Also, change 'uuid' field to 'id', move
   timestamps to detail view, and return all non-admin fields to users.
+
+2.15
+----
+  Added Share migration 'migration_cancel', 'migration_get_progress',
+  'migration_complete' APIs, renamed 'migrate_share' to 'migration_start' and
+  added notify parameter to 'migration_start'.

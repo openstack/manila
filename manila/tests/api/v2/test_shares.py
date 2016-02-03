@@ -258,94 +258,357 @@ class ShareAPITest(test.TestCase):
         self.assertEqual("fakenetid",
                          create_mock.call_args[1]['share_network_id'])
 
-    @ddt.data('2.5', '2.6', '2.7')
-    def test_migrate_share(self, version):
+    @ddt.data('2.6', '2.7', '2.14', '2.15')
+    def test_migration_start(self, version):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True)
+                                      use_admin_context=True, version=version)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request = api_version.APIVersionRequest(version)
         req.api_version_request.experimental = True
-        if float(version) > 2.6:
+
+        if api_version.APIVersionRequest(version) < (
+                api_version.APIVersionRequest("2.7")):
+            body = {'os-migrate_share': {'host': 'fake_host'}}
+            method = 'migrate_share_legacy'
+        elif api_version.APIVersionRequest(version) < (
+                api_version.APIVersionRequest("2.15")):
             body = {'migrate_share': {'host': 'fake_host'}}
             method = 'migrate_share'
         else:
-            body = {'os-migrate_share': {'host': 'fake_host'}}
-            method = 'migrate_share_legacy'
-        self.mock_object(share_api.API, 'migrate_share')
-        getattr(self.controller, method)(req, share['id'], body)
+            body = {'migration_start': {'host': 'fake_host'}}
+            method = 'migration_start'
 
-    def test_migrate_share_has_replicas(self):
+        self.mock_object(share_api.API, 'migration_start')
+        response = getattr(self.controller, method)(req, share['id'], body)
+        self.assertEqual(202, response.status_int)
+
+    def test_migration_start_has_replicas(self):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
                                       use_admin_context=True)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request = api_version.APIVersionRequest('2.10')
+        req.api_version_request = api_version.APIVersionRequest('2.11')
         req.api_version_request.experimental = True
         body = {'migrate_share': {'host': 'fake_host'}}
-        self.mock_object(share_api.API, 'migrate_share',
+        self.mock_object(share_api.API, 'migration_start',
                          mock.Mock(side_effect=exception.Conflict(err='err')))
 
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.migrate_share,
                           req, share['id'], body)
 
-    @ddt.data('2.5', '2.6', '2.7')
-    def test_migrate_share_no_share_id(self, version):
+    @ddt.data('2.6', '2.7', '2.14', '2.15')
+    def test_migration_start_no_share_id(self, version):
         req = fakes.HTTPRequest.blank('/shares/%s/action' % 'fake_id',
                                       use_admin_context=True, version=version)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
-        if float(version) > 2.6:
-            body = {'migrate_share': {}}
+
+        if api_version.APIVersionRequest(version) < (
+                api_version.APIVersionRequest("2.7")):
+            body = {'os-migrate_share': {'host': 'fake_host'}}
+            method = 'migrate_share_legacy'
+        elif api_version.APIVersionRequest(version) < (
+                api_version.APIVersionRequest("2.15")):
+            body = {'migrate_share': {'host': 'fake_host'}}
             method = 'migrate_share'
         else:
-            body = {'os-migrate_share': {}}
-            method = 'migrate_share_legacy'
-        self.mock_object(share_api.API, 'migrate_share')
+            body = {'migration_start': {'host': 'fake_host'}}
+            method = 'migration_start'
+
+        self.mock_object(share_api.API, 'migration_start')
         self.mock_object(share_api.API, 'get',
                          mock.Mock(side_effect=[exception.NotFound]))
         self.assertRaises(webob.exc.HTTPNotFound,
                           getattr(self.controller, method),
                           req, 'fake_id', body)
 
-    @ddt.data('2.5', '2.6', '2.7')
-    def test_migrate_share_no_host(self, version):
+    @ddt.data('2.6', '2.7', '2.14', '2.15')
+    def test_migration_start_no_host(self, version):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True)
+                                      use_admin_context=True, version=version)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.api_version_request = api_version.APIVersionRequest(version)
         req.api_version_request.experimental = True
-        if float(version) > 2.6:
+
+        if api_version.APIVersionRequest(version) < (
+                api_version.APIVersionRequest("2.7")):
+            body = {'os-migrate_share': {}}
+            method = 'migrate_share_legacy'
+        elif api_version.APIVersionRequest(version) < (
+                api_version.APIVersionRequest("2.15")):
             body = {'migrate_share': {}}
             method = 'migrate_share'
         else:
-            body = {'os-migrate_share': {}}
-            method = 'migrate_share_legacy'
-        self.mock_object(share_api.API, 'migrate_share')
+            body = {'migration_start': {}}
+            method = 'migration_start'
+
+        self.mock_object(share_api.API, 'migration_start')
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           getattr(self.controller, method),
                           req, share['id'], body)
 
-    def test_migrate_share_no_host_invalid_force_host_copy(self):
+    @ddt.data('2.6', '2.7', '2.14', '2.15')
+    def test_migration_start_invalid_force_host_copy(self, version):
         share = db_utils.create_share()
         req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
-                                      use_admin_context=True, version='2.7')
+                                      use_admin_context=True, version=version)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.api_version_request.experimental = True
-        body = {'os-migrate_share': {'host': 'fake_host',
-                                     'force_host_copy': 'fake'}}
-        self.mock_object(share_api.API, 'migrate_share')
+
+        if api_version.APIVersionRequest(version) < (
+                api_version.APIVersionRequest("2.7")):
+            body = {'os-migrate_share': {'host': 'fake_host',
+                                         'force_host_copy': 'fake'}}
+            method = 'migrate_share_legacy'
+        elif api_version.APIVersionRequest(version) < (
+                api_version.APIVersionRequest("2.15")):
+            body = {'migrate_share': {'host': 'fake_host',
+                                      'force_host_copy': 'fake'}}
+            method = 'migrate_share'
+        else:
+            body = {'migration_start': {'host': 'fake_host',
+                                        'force_host_copy': 'fake'}}
+            method = 'migration_start'
+
+        self.mock_object(share_api.API, 'migration_start')
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.migrate_share,
+                          getattr(self.controller, method),
                           req, share['id'], body)
+
+    def test_migration_start_invalid_notify(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {'migration_start': {'host': 'fake_host',
+                                    'notify': 'error'}}
+
+        self.mock_object(share_api.API, 'migration_start')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.migration_start, req, share['id'],
+                          body)
+
+    def test_reset_task_state(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        update = {'task_state': constants.TASK_STATE_MIGRATION_ERROR}
+        body = {'reset_task_state': update}
+
+        self.mock_object(db, 'share_update')
+
+        response = self.controller.reset_task_state(req, share['id'], body)
+
+        self.assertEqual(202, response.status_int)
+
+        db.share_update.assert_called_once_with(utils.IsAMatcher(
+            context.RequestContext), share['id'], update)
+
+    def test_reset_task_state_error_body(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        update = {'error': 'error'}
+        body = {'reset_task_state': update}
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.reset_task_state, req, share['id'],
+                          body)
+
+    def test_reset_task_state_error_empty(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        update = {'task_state': None}
+        body = {'reset_task_state': update}
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.reset_task_state, req, share['id'],
+                          body)
+
+    def test_reset_task_state_error_invalid(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        update = {'task_state': 'error'}
+        body = {'reset_task_state': update}
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.reset_task_state, req, share['id'],
+                          body)
+
+    def test_reset_task_state_not_found(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        update = {'task_state': constants.TASK_STATE_MIGRATION_ERROR}
+        body = {'reset_task_state': update}
+
+        self.mock_object(db, 'share_update',
+                         mock.Mock(side_effect=exception.NotFound()))
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.reset_task_state, req, share['id'],
+                          body)
+
+        db.share_update.assert_called_once_with(utils.IsAMatcher(
+            context.RequestContext), share['id'], update)
+
+    def test_migration_complete(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {'migration_complete': None}
+
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=share))
+
+        self.mock_object(share_api.API, 'migration_complete')
+
+        response = self.controller.migration_complete(req, share['id'], body)
+
+        self.assertEqual(202, response.status_int)
+
+        share_api.API.migration_complete.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share)
+
+    def test_migration_complete_not_found(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {'migration_complete': None}
+
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(side_effect=exception.NotFound()))
+        self.mock_object(share_api.API, 'migration_complete')
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.migration_complete, req, share['id'],
+                          body)
+
+    def test_migration_cancel(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {'migration_cancel': None}
+
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=share))
+
+        self.mock_object(share_api.API, 'migration_cancel')
+
+        response = self.controller.migration_cancel(req, share['id'], body)
+
+        self.assertEqual(202, response.status_int)
+
+        share_api.API.migration_cancel.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share)
+
+    def test_migration_cancel_not_found(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {'migration_cancel': None}
+
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(side_effect=exception.NotFound()))
+        self.mock_object(share_api.API, 'migration_cancel')
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.migration_cancel, req, share['id'],
+                          body)
+
+    def test_migration_get_progress(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {'migration_get_progress': None}
+        expected = {'total_progress': 'fake',
+                    'current_file_progress': 'fake',
+                    'current_file_path': 'fake',
+                    }
+
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(return_value=share))
+
+        self.mock_object(share_api.API, 'migration_get_progress',
+                         mock.Mock(return_value=expected))
+
+        response = self.controller.migration_get_progress(req, share['id'],
+                                                          body)
+
+        self.assertEqual(expected, response)
+
+        share_api.API.migration_get_progress.assert_called_once_with(
+            utils.IsAMatcher(context.RequestContext), share)
+
+    def test_migration_get_progress_not_found(self):
+        share = db_utils.create_share()
+        req = fakes.HTTPRequest.blank('/shares/%s/action' % share['id'],
+                                      use_admin_context=True, version='2.15')
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.api_version_request.experimental = True
+
+        body = {'migration_get_progress': None}
+
+        self.mock_object(share_api.API, 'get',
+                         mock.Mock(side_effect=exception.NotFound()))
+        self.mock_object(share_api.API, 'migration_get_progress')
+
+        self.assertRaises(webob.exc.HTTPNotFound,
+                          self.controller.migration_get_progress, req,
+                          share['id'], body)
 
     def test_share_create_from_snapshot_without_share_net_no_parent(self):
         shr = {

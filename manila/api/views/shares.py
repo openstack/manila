@@ -94,6 +94,14 @@ class ViewBuilder(common.ViewBuilder):
                 'share_server_id')
         return {'share': share_dict}
 
+    def migration_get_progress(self, progress):
+        result = {
+            'total_progress': progress['total_progress'],
+            'current_file_path': progress['current_file_path'],
+            'current_file_progress': progress['current_file_progress']
+        }
+        return result
+
     @common.ViewBuilder.versioned_method("2.2")
     def add_snapshot_support_field(self, share_dict, share):
         share_dict['snapshot_support'] = share.get('snapshot_support')

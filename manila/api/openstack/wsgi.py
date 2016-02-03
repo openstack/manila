@@ -1177,6 +1177,7 @@ class AdminActionsMixin(object):
     body_attributes = {
         'status': 'reset_status',
         'replica_state': 'reset_replica_state',
+        'task_state': 'reset_task_state',
     }
 
     valid_statuses = {
@@ -1193,6 +1194,7 @@ class AdminActionsMixin(object):
             constants.REPLICA_STATE_OUT_OF_SYNC,
             constants.STATUS_ERROR,
         ]),
+        'task_state': set(constants.TASK_STATE_STATUSES),
     }
 
     def _update(self, *args, **kwargs):

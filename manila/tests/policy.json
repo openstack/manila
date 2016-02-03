@@ -33,6 +33,10 @@
     "share:unmanage": "rule:admin_api",
     "share:force_delete": "rule:admin_api",
     "share:reset_status": "rule:admin_api",
+    "share:migration_start": "rule:admin_api",
+    "share:migration_complete": "rule:admin_api",
+    "share:migration_cancel": "rule:admin_api",
+    "share:migration_get_progress": "rule:admin_api",
     "share_export_location:index": "rule:default",
     "share_export_location:show": "rule:default",
 

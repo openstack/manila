@@ -161,7 +161,6 @@ if [[ "$DRIVER" == "lvm" ]]; then
     RUN_MANILA_CG_TESTS=False
     RUN_MANILA_MANAGE_TESTS=False
     iniset $TEMPEST_CONFIG share run_shrink_tests False
-    iniset $TEMPEST_CONFIG share run_migration_tests False
     iniset $TEMPEST_CONFIG share enable_ip_rules_for_protocols 'nfs'
     iniset $TEMPEST_CONFIG share enable_user_rules_for_protocols 'cifs'
     provide_user_rules

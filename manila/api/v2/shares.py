@@ -68,13 +68,45 @@ class ShareController(shares.ShareMixin,
 
     @wsgi.Controller.api_version('2.5', '2.6', experimental=True)
     @wsgi.action("os-migrate_share")
+    @wsgi.Controller.authorize("migration_start")
     def migrate_share_legacy(self, req, id, body):
-        return self._migrate_share(req, id, body)
+        return self._migration_start(req, id, body)
 
-    @wsgi.Controller.api_version('2.7', experimental=True)
+    @wsgi.Controller.api_version('2.7', '2.14', experimental=True)
     @wsgi.action("migrate_share")
+    @wsgi.Controller.authorize("migration_start")
     def migrate_share(self, req, id, body):
-        return self._migrate_share(req, id, body)
+        return self._migration_start(req, id, body)
+
+    @wsgi.Controller.api_version('2.15', experimental=True)
+    @wsgi.action("migration_start")
+    @wsgi.Controller.authorize
+    def migration_start(self, req, id, body):
+        return self._migration_start(req, id, body, check_notify=True)
+
+    @wsgi.Controller.api_version('2.15', experimental=True)
+    @wsgi.action("migration_complete")
+    @wsgi.Controller.authorize
+    def migration_complete(self, req, id, body):
+        return self._migration_complete(req, id, body)
+
+    @wsgi.Controller.api_version('2.15', experimental=True)
+    @wsgi.action("migration_cancel")
+    @wsgi.Controller.authorize
+    def migration_cancel(self, req, id, body):
+        return self._migration_cancel(req, id, body)
+
+    @wsgi.Controller.api_version('2.15', experimental=True)
+    @wsgi.action("migration_get_progress")
+    @wsgi.Controller.authorize
+    def migration_get_progress(self, req, id, body):
+        return self._migration_get_progress(req, id, body)
+
+    @wsgi.Controller.api_version('2.15', experimental=True)
+    @wsgi.action("reset_task_state")
+    @wsgi.Controller.authorize
+    def reset_task_state(self, req, id, body):
+        return self._reset_status(req, id, body, status_attr='task_state')
 
     @wsgi.Controller.api_version('2.0', '2.6')
     @wsgi.action('os-allow_access')

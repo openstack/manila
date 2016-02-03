@@ -166,3 +166,24 @@ class AdminActionsNegativeTest(base.BaseSharesAdminTest):
         self.assertRaises(lib_exc.Forbidden,
                           self.member_shares_v2_client.get_instances_of_share,
                           self.sh['id'])
+
+    @test.attr(type=["gate", "negative", ])
+    @base.skip_if_microversion_lt("2.15")
+    def test_reset_task_state_share_not_found(self):
+        self.assertRaises(
+            lib_exc.NotFound, self.shares_v2_client.reset_task_state,
+            'fake_share', 'migration_error')
+
+    @test.attr(type=["gate", "negative", ])
+    @base.skip_if_microversion_lt("2.15")
+    def test_reset_task_state_empty(self):
+        self.assertRaises(
+            lib_exc.BadRequest, self.shares_v2_client.reset_task_state,
+            self.sh['id'], None)
+
+    @test.attr(type=["gate", "negative", ])
+    @base.skip_if_microversion_lt("2.15")
+    def test_reset_task_state_invalid_state(self):
+        self.assertRaises(
+            lib_exc.BadRequest, self.shares_v2_client.reset_task_state,
+            self.sh['id'], 'fake_state')

@@ -203,6 +203,12 @@ class NotFound(ManilaException):
     safe = True
 
 
+class Found(ManilaException):
+    message = _("Resource was found.")
+    code = 302
+    safe = True
+
+
 class InUse(ManilaException):
     message = _("Resource is in use.")
 
@@ -234,6 +240,15 @@ class InvalidShareServer(Invalid):
 
 class ShareMigrationFailed(ManilaException):
     message = _("Share migration failed: %(reason)s")
+
+
+class ShareDataCopyFailed(ManilaException):
+    message = _("Share Data copy failed: %(reason)s")
+
+
+class ShareDataCopyCancelled(ManilaException):
+    message = _("Copy of contents from share instance %(src_instance)s "
+                "to share instance %(dest_instance)s was cancelled.")
 
 
 class ServiceIPNotFound(ManilaException):

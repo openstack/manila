@@ -222,13 +222,13 @@ class SchedulerManagerTestCase(test.TestCase):
         host = 'fake@backend#pool'
 
         self.mock_object(db, 'share_get', mock.Mock(return_value=share))
-        self.mock_object(share_rpcapi.ShareAPI, 'migrate_share')
+        self.mock_object(share_rpcapi.ShareAPI, 'migration_start')
         self.mock_object(base.Scheduler,
                          'host_passes_filters',
                          mock.Mock(return_value=host))
 
         self.manager.migrate_share_to_host(self.context, share['id'], host,
-                                           False, {}, None)
+                                           False, True, {}, None)
 
     def test_migrate_share_to_host_no_valid_host(self):
 
@@ -239,5 +239,6 @@ class SchedulerManagerTestCase(test.TestCase):
             base.Scheduler, 'host_passes_filters',
             mock.Mock(side_effect=[exception.NoValidHost('fake')]))
 
-        self.manager.migrate_share_to_host(self.context, share['id'], host,
-                                           False, {}, None)
+        self.assertRaises(
+            exception.NoValidHost, self.manager.migrate_share_to_host,
+            self.context, share['id'], host, False, True, {}, None)

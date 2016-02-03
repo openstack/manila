@@ -31,6 +31,9 @@ import paramiko
 from six.moves import builtins
 
 import manila
+from manila.common import constants
+from manila import context
+from manila.db import api as db
 from manila import exception
 from manila import test
 from manila import utils
@@ -885,3 +888,57 @@ class WaitUntilTrueTestCase(test.TestCase):
         exc = exception.ManilaException
         self.assertRaises(exception.ManilaException, utils.wait_until_true,
                           fake_predicate, 1, 1, exc)
+
+
+@ddt.ddt
+class ShareMigrationHelperTestCase(test.TestCase):
+    """Tests DataMigrationHelper."""
+
+    def setUp(self):
+        super(ShareMigrationHelperTestCase, self).setUp()
+        self.context = context.get_admin_context()
+
+    def test_wait_for_access_update(self):
+        sid = 1
+        fake_share_instances = [
+            {'id': sid, 'access_rules_status': constants.STATUS_OUT_OF_SYNC},
+            {'id': sid, 'access_rules_status': constants.STATUS_ACTIVE},
+        ]
+
+        self.mock_object(time, 'sleep')
+        self.mock_object(db, 'share_instance_get',
+                         mock.Mock(side_effect=fake_share_instances))
+
+        utils.wait_for_access_update(self.context, db,
+                                     fake_share_instances[0], 1)
+
+        db.share_instance_get.assert_has_calls(
+            [mock.call(mock.ANY, sid), mock.call(mock.ANY, sid)]
+        )
+        time.sleep.assert_called_once_with(1)
+
+    @ddt.data(
+        (
+            {'id': '1', 'access_rules_status': constants.STATUS_ERROR},
+            exception.ShareMigrationFailed
+        ),
+        (
+            {'id': '1', 'access_rules_status': constants.STATUS_OUT_OF_SYNC},
+            exception.ShareMigrationFailed
+        ),
+    )
+    @ddt.unpack
+    def test_wait_for_access_update_invalid(self, fake_instance, expected_exc):
+        self.mock_object(time, 'sleep')
+        self.mock_object(db, 'share_instance_get',
+                         mock.Mock(return_value=fake_instance))
+
+        now = time.time()
+        timeout = now + 100
+
+        self.mock_object(time, 'time',
+                         mock.Mock(side_effect=[now, timeout]))
+
+        self.assertRaises(expected_exc,
+                          utils.wait_for_access_update, self.context,
+                          db, fake_instance, 1)

@@ -122,14 +122,14 @@ class SchedulerManager(manager.Manager):
         return self.driver.get_pools(context, filters)
 
     def migrate_share_to_host(self, context, share_id, host,
-                              force_host_copy, request_spec,
+                              force_host_copy, notify, request_spec,
                               filter_properties=None):
         """Ensure that the host exists and can accept the share."""
 
         def _migrate_share_set_error(self, context, ex, request_spec):
             self._set_share_state_and_notify(
                 'migrate_share_to_host',
-                {'task_state': constants.STATUS_TASK_STATE_MIGRATION_ERROR},
+                {'task_state': constants.TASK_STATE_MIGRATION_ERROR},
                 context, ex, request_spec)
 
         try:
@@ -138,16 +138,16 @@ class SchedulerManager(manager.Manager):
                                                        filter_properties)
 
         except exception.NoValidHost as ex:
-            _migrate_share_set_error(self, context, ex, request_spec)
+            with excutils.save_and_reraise_exception():
+                _migrate_share_set_error(self, context, ex, request_spec)
         except Exception as ex:
             with excutils.save_and_reraise_exception():
                 _migrate_share_set_error(self, context, ex, request_spec)
         else:
             share_ref = db.share_get(context, share_id)
             try:
-                share_rpcapi.ShareAPI().migrate_share(context,
-                                                      share_ref, tgt_host,
-                                                      force_host_copy)
+                share_rpcapi.ShareAPI().migration_start(
+                    context, share_ref, tgt_host, force_host_copy, notify)
             except Exception as ex:
                 with excutils.save_and_reraise_exception():
                     _migrate_share_set_error(self, context, ex, request_spec)

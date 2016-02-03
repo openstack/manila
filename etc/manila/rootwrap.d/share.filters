@@ -154,3 +154,9 @@ nsenter: CommandFilter, /usr/local/bin/nsenter, root
 lxc: CommandFilter, lxc, root
 # manila/share/drivers/lxd.py
 brctl: CommandFilter, brctl, root
+
+# manila/data/utils.py: 'ls', '-pA1', '--group-directories-first', '%s'
+ls: CommandFilter, ls, root
+
+# manila/data/utils.py: 'touch', '--reference=%s', '%s'
+touch: CommandFilter, touch, root

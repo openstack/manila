@@ -238,28 +238,47 @@ class ShareRpcAPITestCase(test.TestCase):
                              cgsnapshot=self.fake_cgsnapshot,
                              host='fake_host1')
 
-    def test_migrate_share(self):
+    def test_migration_start(self):
         fake_dest_host = self.Desthost()
-        self._test_share_api('migrate_share',
+        self._test_share_api('migration_start',
                              rpc_method='cast',
                              version='1.6',
                              share=self.fake_share,
                              dest_host=fake_dest_host,
-                             force_host_copy='1')
+                             force_host_copy=True,
+                             notify=True)
 
-    def test_get_migration_info(self):
-        self._test_share_api('get_migration_info',
+    def test_migration_get_info(self):
+        self._test_share_api('migration_get_info',
                              rpc_method='call',
                              version='1.6',
-                             share_instance=self.fake_share,
-                             share_server=self.fake_share_server)
+                             share_instance=self.fake_share)
 
-    def test_get_driver_migration_info(self):
-        self._test_share_api('get_driver_migration_info',
+    def test_migration_get_driver_info(self):
+        self._test_share_api('migration_get_driver_info',
                              rpc_method='call',
                              version='1.6',
-                             share_instance=self.fake_share,
-                             share_server=self.fake_share_server)
+                             share_instance=self.fake_share)
+
+    def test_migration_complete(self):
+        self._test_share_api('migration_complete',
+                             rpc_method='cast',
+                             version='1.10',
+                             share=self.fake_share,
+                             share_instance_id='fake_ins_id',
+                             new_share_instance_id='new_fake_ins_id')
+
+    def test_migration_cancel(self):
+        self._test_share_api('migration_cancel',
+                             rpc_method='call',
+                             version='1.10',
+                             share=self.fake_share)
+
+    def test_migration_get_progress(self):
+        self._test_share_api('migration_get_progress',
+                             rpc_method='call',
+                             version='1.10',
+                             share=self.fake_share)
 
     def test_delete_share_replica(self):
         self._test_share_api('delete_share_replica',

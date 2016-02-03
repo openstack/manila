@@ -61,14 +61,17 @@ REST_API_VERSION_HISTORY = """
     * 2.12 - Manage/unmanage snapshot API.
     * 2.13 - Add "cephx" auth type to allow_access
     * 2.14 - 'Preferred' attribute in export location metadata
-
+    * 2.15 - Added Share migration 'migration_cancel',
+            'migration_get_progress', 'migration_complete' APIs, renamed
+            'migrate_share' to 'migration_start' and added notify parameter
+             to 'migration_start'.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # the minimum version of the API supported.
 _MIN_API_VERSION = "2.0"
-_MAX_API_VERSION = "2.14"
+_MAX_API_VERSION = "2.15"
 DEFAULT_API_VERSION = _MIN_API_VERSION
 
 

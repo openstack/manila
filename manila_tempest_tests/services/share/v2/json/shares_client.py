@@ -945,16 +945,19 @@ class SharesV2Client(shares_client.SharesClient):
 
 ###############
 
-    def migrate_share(self, share_id, host, version=LATEST_MICROVERSION,
-                      action_name=None):
+    def migrate_share(self, share_id, host, notify,
+                      version=LATEST_MICROVERSION, action_name=None):
         if action_name is None:
-            if utils.is_microversion_gt(version, "2.6"):
+            if utils.is_microversion_lt(version, "2.7"):
+                action_name = 'os-migrate_share'
+            elif utils.is_microversion_lt(version, "2.15"):
                 action_name = 'migrate_share'
             else:
-                action_name = 'os-migrate_share'
+                action_name = 'migration_start'
         post_body = {
             action_name: {
                 'host': host,
+                'notify': notify,
             }
         }
         body = json.dumps(post_body)
@@ -962,27 +965,72 @@ class SharesV2Client(shares_client.SharesClient):
                          headers=EXPERIMENTAL, extra_headers=True,
                          version=version)
 
-    def wait_for_migration_completed(self, share_id, dest_host,
-                                     version=LATEST_MICROVERSION):
+    def migration_complete(self, share_id, version=LATEST_MICROVERSION,
+                           action_name='migration_complete'):
+        post_body = {
+            action_name: None,
+        }
+        body = json.dumps(post_body)
+        return self.post('shares/%s/action' % share_id, body,
+                         headers=EXPERIMENTAL, extra_headers=True,
+                         version=version)
+
+    def migration_cancel(self, share_id, version=LATEST_MICROVERSION,
+                         action_name='migration_cancel'):
+        post_body = {
+            action_name: None,
+        }
+        body = json.dumps(post_body)
+        return self.post('shares/%s/action' % share_id, body,
+                         headers=EXPERIMENTAL, extra_headers=True,
+                         version=version)
+
+    def migration_get_progress(self, share_id, version=LATEST_MICROVERSION,
+                               action_name='migration_get_progress'):
+        post_body = {
+            action_name: None,
+        }
+        body = json.dumps(post_body)
+        return self.post('shares/%s/action' % share_id, body,
+                         headers=EXPERIMENTAL, extra_headers=True,
+                         version=version)
+
+    def reset_task_state(
+            self, share_id, task_state, version=LATEST_MICROVERSION,
+            action_name='reset_task_state'):
+        post_body = {
+            action_name: {
+                'task_state': task_state,
+            }
+        }
+        body = json.dumps(post_body)
+        return self.post('shares/%s/action' % share_id, body,
+                         headers=EXPERIMENTAL, extra_headers=True,
+                         version=version)
+
+    def wait_for_migration_status(self, share_id, dest_host, status,
+                                  version=LATEST_MICROVERSION):
         """Waits for a share to migrate to a certain host."""
         share = self.get_share(share_id, version=version)
         migration_timeout = CONF.share.migration_timeout
         start = int(time.time())
-        while share['task_state'] != 'migration_success':
+        while share['task_state'] != status:
             time.sleep(self.build_interval)
             share = self.get_share(share_id, version=version)
-            if share['task_state'] == 'migration_success':
+            if share['task_state'] == status:
                 return share
             elif share['task_state'] == 'migration_error':
                 raise share_exceptions.ShareMigrationException(
                     share_id=share['id'], src=share['host'], dest=dest_host)
             elif int(time.time()) - start >= migration_timeout:
-                message = ('Share %(share_id)s failed to migrate from '
-                           'host %(src)s to host %(dest)s within the required '
-                           'time %(timeout)s.' % {
+                message = ('Share %(share_id)s failed to reach status '
+                           '%(status)s when migrating from host %(src)s to '
+                           'host %(dest)s within the required time '
+                           '%(timeout)s.' % {
                                'src': share['host'],
                                'dest': dest_host,
                                'share_id': share['id'],
-                               'timeout': self.build_timeout
+                               'timeout': self.build_timeout,
+                               'status': status,
                            })
                 raise exceptions.TimeoutException(message)

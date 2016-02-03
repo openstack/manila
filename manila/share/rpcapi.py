@@ -31,27 +31,32 @@ class ShareAPI(object):
 
     API version history:
 
-        1.0 - Initial version.
-        1.1 - Add manage_share() and unmanage_share() methods
-        1.2 - Add extend_share() method
-        1.3 - Add shrink_share() method
-        1.4 - Introduce Share Instances:
+        1.0  - Initial version.
+        1.1  - Add manage_share() and unmanage_share() methods
+        1.2  - Add extend_share() method
+        1.3  - Add shrink_share() method
+        1.4  - Introduce Share Instances:
             create_share() -> create_share_instance()
             delete_share() -> delete_share_instance()
             Add share_instance argument to allow_access() & deny_access()
-        1.5 - Add create_consistency_group, delete_consistency_group
+        1.5  - Add create_consistency_group, delete_consistency_group
                 create_cgsnapshot, and delete_cgsnapshot methods
-        1.6 - Introduce Share migration:
+        1.6  - Introduce Share migration:
             migrate_share()
             get_migration_info()
             get_driver_migration_info()
-        1.7 - Update target call API in allow/deny access methods
-        1.8 - Introduce Share Replication:
+        1.7  - Update target call API in allow/deny access methods
+        1.8  - Introduce Share Replication:
             create_share_replica()
             delete_share_replica()
             promote_share_replica()
             update_share_replica()
-        1.9 - Add manage_snapshot() and unmanage_snapshot() methods
+        1.9  - Add manage_snapshot() and unmanage_snapshot() methods
+        1.10 - Add migration_complete(), migration_cancel() and
+            migration_get_progress(), rename migrate_share() to
+            migration_start(), rename get_migration_info() to
+            migration_get_info(), rename get_driver_migration_info() to
+            migration_get_driver_info()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -60,7 +65,7 @@ class ShareAPI(object):
         super(ShareAPI, self).__init__()
         target = messaging.Target(topic=CONF.share_topic,
                                   version=self.BASE_RPC_API_VERSION)
-        self.client = rpc.get_client(target, version_cap='1.9')
+        self.client = rpc.get_client(target, version_cap='1.10')
 
     def create_share_instance(self, context, share_instance, host,
                               request_spec, filter_properties,
@@ -111,32 +116,32 @@ class ShareAPI(object):
                           'delete_share_instance',
                           share_instance_id=share_instance['id'])
 
-    def migrate_share(self, context, share, dest_host, force_host_copy):
+    def migration_start(self, context, share, dest_host, force_host_copy,
+                        notify):
         new_host = utils.extract_host(share['instance']['host'])
         call_context = self.client.prepare(server=new_host, version='1.6')
         host_p = {'host': dest_host.host,
                   'capabilities': dest_host.capabilities}
         call_context.cast(context,
-                          'migrate_share',
+                          'migration_start',
                           share_id=share['id'],
                           host=host_p,
-                          force_host_copy=force_host_copy)
+                          force_host_copy=force_host_copy,
+                          notify=notify)
 
-    def get_migration_info(self, context, share_instance, share_server):
+    def migration_get_info(self, context, share_instance):
         new_host = utils.extract_host(share_instance['host'])
         call_context = self.client.prepare(server=new_host, version='1.6')
         return call_context.call(context,
-                                 'get_migration_info',
-                                 share_instance_id=share_instance['id'],
-                                 share_server=share_server)
+                                 'migration_get_info',
+                                 share_instance_id=share_instance['id'])
 
-    def get_driver_migration_info(self, context, share_instance, share_server):
+    def migration_get_driver_info(self, context, share_instance):
         new_host = utils.extract_host(share_instance['host'])
         call_context = self.client.prepare(server=new_host, version='1.6')
         return call_context.call(context,
-                                 'get_driver_migration_info',
-                                 share_instance_id=share_instance['id'],
-                                 share_server=share_server)
+                                 'migration_get_driver_info',
+                                 share_instance_id=share_instance['id'])
 
     def delete_share_server(self, context, share_server):
         host = utils.extract_host(share_server['host'])
@@ -268,3 +273,25 @@ class ShareAPI(object):
                           'update_share_replica',
                           share_replica_id=share_replica['id'],
                           share_id=share_replica['share_id'])
+
+    def migration_complete(self, context, share, share_instance_id,
+                           new_share_instance_id):
+        new_host = utils.extract_host(share['host'])
+        call_context = self.client.prepare(server=new_host, version='1.10')
+        call_context.cast(context,
+                          'migration_complete',
+                          share_id=share['id'],
+                          share_instance_id=share_instance_id,
+                          new_share_instance_id=new_share_instance_id)
+
+    def migration_cancel(self, context, share):
+        new_host = utils.extract_host(share['host'])
+        call_context = self.client.prepare(server=new_host, version='1.10')
+        call_context.call(context, 'migration_cancel', share_id=share['id'])
+
+    def migration_get_progress(self, context, share):
+        new_host = utils.extract_host(share['host'])
+        call_context = self.client.prepare(server=new_host, version='1.10')
+        return call_context.call(context,
+                                 'migration_get_progress',
+                                 share_id=share['id'])

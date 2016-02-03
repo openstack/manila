@@ -306,7 +306,6 @@ function create_service_share_servers {
                 iniset $MANILA_CONF $BE service_instance_name_or_id $vm_id
                 iniset $MANILA_CONF $BE service_net_name_or_ip private
                 iniset $MANILA_CONF $BE tenant_net_name_or_ip private
-                iniset $MANILA_CONF $BE migration_data_copy_node_ip $PUBLIC_NETWORK_GATEWAY
             else
                 if is_service_enabled neutron; then
                     if [ $created_admin_network == false ]; then
@@ -316,13 +315,26 @@ function create_service_share_servers {
                     fi
                     iniset $MANILA_CONF $BE admin_network_id $admin_net_id
                     iniset $MANILA_CONF $BE admin_subnet_id $admin_subnet_id
-                    iniset $MANILA_CONF $BE migration_data_copy_node_ip $FIXED_RANGE
                 fi
             fi
         fi
     done
+    configure_data_service_generic_driver
 }
 
+function configure_data_service_generic_driver {
+    enabled_backends=(${MANILA_ENABLED_BACKENDS//,/ })
+    share_driver=$(iniget $MANILA_CONF ${enabled_backends[0]} share_driver)
+    generic_driver='manila.share.drivers.generic.GenericShareDriver'
+    if [[ $share_driver == $generic_driver ]]; then
+        driver_handles_share_servers=$(iniget $MANILA_CONF ${enabled_backends[0]} driver_handles_share_servers)
+        if [[ $(trueorfalse False driver_handles_share_servers) == False ]]; then
+            iniset $MANILA_CONF DEFAULT data_node_access_ip $PUBLIC_NETWORK_GATEWAY
+        else
+            iniset $MANILA_CONF DEFAULT data_node_access_ip $FIXED_RANGE
+        fi
+    fi
+}
 # create_manila_service_flavor - creates flavor, that will be used by backends
 # with configured generic driver to boot Nova VMs with.
 function create_manila_service_flavor {
@@ -614,8 +626,9 @@ function configure_samba {
 
         for backend_name in ${MANILA_ENABLED_BACKENDS//,/ }; do
             iniset $MANILA_CONF $backend_name driver_handles_share_servers False
-            iniset $MANILA_CONF $backend_name lvm_share_export_ip $MANILA_SERVICE_HOST
+            iniset $MANILA_CONF $backend_name lvm_share_export_ip $HOST_IP
         done
+        iniset $MANILA_CONF DEFAULT data_node_access_ip $HOST_IP
     fi
 }
 

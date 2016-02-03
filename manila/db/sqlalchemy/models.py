@@ -264,7 +264,8 @@ class Share(BASE, ManilaBase):
         result = None
         if len(self.instances) > 0:
             order = (constants.STATUS_REPLICATION_CHANGE,
-                     constants.STATUS_AVAILABLE, constants.STATUS_ERROR)
+                     constants.STATUS_MIGRATING, constants.STATUS_AVAILABLE,
+                     constants.STATUS_ERROR)
             other_statuses = (
                 [x['status'] for x in self.instances if
                  x['status'] not in order and

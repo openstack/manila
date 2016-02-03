@@ -27,6 +27,7 @@ from oslo_utils import units
 import six
 
 from manila.common import constants as common_constants
+from manila.data import utils as data_utils
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -528,9 +529,7 @@ class V3StorageConnection(driver.HuaweiBase):
                   src_path, dst_path)
         try:
             ignore_list = ''
-            copy = share_utils.Copy(src_path,
-                                    dst_path,
-                                    ignore_list)
+            copy = data_utils.Copy(src_path, dst_path, ignore_list)
             copy.run()
             if copy.get_progress()['total_progress'] == 100:
                 copy_finish = True

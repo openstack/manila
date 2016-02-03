@@ -196,8 +196,9 @@ class ShareScenarioTest(manager.NetworkScenarioTest):
 
     def _migrate_share(self, share_id, dest_host, client=None):
         client = client or self.shares_admin_v2_client
-        client.migrate_share(share_id, dest_host)
-        share = client.wait_for_migration_completed(share_id, dest_host)
+        client.migrate_share(share_id, dest_host, True)
+        share = client.wait_for_migration_status(share_id, dest_host,
+                                                 'migration_success')
         return share
 
     def _create_share_type(self, name, is_public=True, **kwargs):

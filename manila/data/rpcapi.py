@@ -29,7 +29,10 @@ class DataAPI(object):
 
     API version history:
 
-        1.0 - Initial version.
+        1.0 - Initial version,
+              Add migration_start(),
+              data_copy_cancel(),
+              data_copy_get_progress()
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -39,3 +42,27 @@ class DataAPI(object):
         target = messaging.Target(topic=CONF.data_topic,
                                   version=self.BASE_RPC_API_VERSION)
         self.client = rpc.get_client(target, version_cap='1.0')
+
+    def migration_start(self, context, share_id, ignore_list,
+                        share_instance_id, dest_share_instance_id,
+                        migration_info_src, migration_info_dest, notify):
+        call_context = self.client.prepare(version='1.0')
+        call_context.cast(
+            context,
+            'migration_start',
+            share_id=share_id,
+            ignore_list=ignore_list,
+            share_instance_id=share_instance_id,
+            dest_share_instance_id=dest_share_instance_id,
+            migration_info_src=migration_info_src,
+            migration_info_dest=migration_info_dest,
+            notify=notify)
+
+    def data_copy_cancel(self, context, share_id):
+        call_context = self.client.prepare(version='1.0')
+        call_context.call(context, 'data_copy_cancel', share_id=share_id)
+
+    def data_copy_get_progress(self, context, share_id):
+        call_context = self.client.prepare(version='1.0')
+        return call_context.call(context, 'data_copy_get_progress',
+                                 share_id=share_id)
