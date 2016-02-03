@@ -388,7 +388,7 @@ function init_manila {
 
     if is_service_enabled $DATABASE_BACKENDS; then
         # (re)create manila database
-        recreate_database manila utf8
+        recreate_database manila
 
         $MANILA_BIN_DIR/manila-manage db sync
 
