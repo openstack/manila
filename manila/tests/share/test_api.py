@@ -583,6 +583,9 @@ class ShareAPITestCase(test.TestCase):
             availability_zone=az
         )
 
+        share['status'] = constants.STATUS_CREATING
+        share['host'] = None
+
         self.assertSubDictMatch(share_data,
                                 db_api.share_create.call_args[0][1])
 
@@ -606,6 +609,9 @@ class ShareAPITestCase(test.TestCase):
                 share_data['display_name'],
                 share_data['display_description'],
                 availability_zone=az)
+
+        share['status'] = constants.STATUS_CREATING
+        share['host'] = None
 
         self.assertSubDictMatch(share_data,
                                 db_api.share_create.call_args[0][1])
