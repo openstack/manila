@@ -68,6 +68,7 @@ import manila.share.drivers.quobyte.quobyte
 import manila.share.drivers.service_instance
 import manila.share.drivers.windows.service_instance
 import manila.share.drivers.windows.winrm_helper
+import manila.share.drivers.zfsonlinux.driver
 import manila.share.drivers.zfssa.zfssashare
 import manila.share.drivers_private_data
 import manila.share.hook
@@ -136,6 +137,7 @@ _global_opt_lists = [
     manila.share.drivers.service_instance.share_servers_handling_mode_opts,
     manila.share.drivers.windows.service_instance.windows_share_server_opts,
     manila.share.drivers.windows.winrm_helper.winrm_opts,
+    manila.share.drivers.zfsonlinux.driver.zfsonlinux_opts,
     manila.share.drivers.zfssa.zfssashare.ZFSSA_OPTS,
     manila.share.hook.hook_options,
     manila.share.manager.share_manager_opts,

@@ -353,6 +353,47 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertRaises(exception.SSHInjectionThreat,
                           utils.check_ssh_injection, cmd)
 
+    @ddt.data(
+        (("3G", "G"), 3.0),
+        (("4.1G", "G"), 4.1),
+        (("5.23G", "G"), 5.23),
+        (("9728M", "G"), 9.5),
+        (("8192K", "G"), 0.0078125),
+        (("2T", "G"), 2048.0),
+        (("2.1T", "G"), 2150.4),
+        (("3P", "G"), 3145728.0),
+        (("3.4P", "G"), 3565158.4),
+        (("9728M", "M"), 9728.0),
+        (("9728.2381T", "T"), 9728.2381),
+        (("0", "G"), 0.0),
+        (("512", "M"), 0.00048828125),
+        (("2097152.", "M"), 2.0),
+        ((".1024", "K"), 0.0001),
+        (("2048G", "T"), 2.0),
+        (("65536G", "P"), 0.0625),
+    )
+    @ddt.unpack
+    def test_translate_string_size_to_float_positive(self, request, expected):
+        actual = utils.translate_string_size_to_float(*request)
+        self.assertEqual(expected, actual)
+
+    @ddt.data(
+        (None, "G"),
+        ("fake", "G"),
+        ("1fake", "G"),
+        ("2GG", "G"),
+        ("1KM", "G"),
+        ("K1M", "G"),
+        ("M1K", "G"),
+        ("", "G"),
+        (23, "G"),
+        (23.0, "G"),
+    )
+    @ddt.unpack
+    def test_translate_string_size_to_float_negative(self, string, multiplier):
+        actual = utils.translate_string_size_to_float(string, multiplier)
+        self.assertIsNone(actual)
+
 
 class MonkeyPatchTestCase(test.TestCase):
     """Unit test for utils.monkey_patch()."""

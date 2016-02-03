@@ -118,6 +118,10 @@ class NetworkBadConfigurationException(NetworkException):
     message = _("Bad network configuration: %(reason)s.")
 
 
+class BadConfigurationException(ManilaException):
+    message = _("Bad configuration: %(reason)s.")
+
+
 class NotAuthorized(ManilaException):
     message = _("Not authorized.")
     code = 403
@@ -657,6 +661,10 @@ class SSHException(ManilaException):
 
 class HDFSException(ManilaException):
     message = _("HDFS exception occurred!")
+
+
+class ZFSonLinuxException(ManilaException):
+    message = _("ZFSonLinux exception occurred: %(msg)s")
 
 
 class QBException(ManilaException):

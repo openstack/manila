@@ -2812,10 +2812,12 @@ def share_server_backend_details_delete(context, share_server_id,
 
 def _driver_private_data_query(session, context, host, entity_id, key=None,
                                read_deleted=False):
-    query = model_query(context, models.DriverPrivateData,
-                        session=session, read_deleted=read_deleted)\
-        .filter_by(host=host)\
-        .filter_by(entity_uuid=entity_id)
+    query = model_query(
+        context, models.DriverPrivateData, session=session,
+        read_deleted=read_deleted,
+    ).filter_by(
+        entity_uuid=entity_id,
+    )
 
     if isinstance(key, list):
         return query.filter(models.DriverPrivateData.key.in_(key))

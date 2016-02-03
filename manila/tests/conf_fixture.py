@@ -43,6 +43,12 @@ def set_defaults(conf):
                       'manila.tests.fake_driver.FakeShareDriver')
     _safe_set_of_opts(conf, 'auth_strategy', 'noauth')
 
+    _safe_set_of_opts(conf, 'zfs_share_export_ip', '1.1.1.1')
+    _safe_set_of_opts(conf, 'zfs_service_ip', '2.2.2.2')
+    _safe_set_of_opts(conf, 'zfs_zpool_list', ['foo', 'bar'])
+    _safe_set_of_opts(conf, 'zfs_share_helpers', 'NFS=foo.bar.Helper')
+    _safe_set_of_opts(conf, 'zfs_replica_snapshot_prefix', 'foo_prefix_')
+
 
 def _safe_set_of_opts(conf, *args, **kwargs):
     try:

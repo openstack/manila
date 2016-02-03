@@ -64,6 +64,9 @@ fi
 if [[ "$DRIVER" == "lvm" ]]; then
     echo "SHARE_DRIVER=manila.share.drivers.lvm.LVMShareDriver" >> $localrc_path
     echo "SHARE_BACKING_FILE_SIZE=32000M" >> $localrc_path
+elif [[ "$DRIVER" == "zfsonlinux" ]]; then
+    echo "SHARE_DRIVER=manila.share.drivers.zfsonlinux.driver.ZFSonLinuxShareDriver" >> $localrc_path
+    echo "RUN_MANILA_REPLICATION_TESTS=True" >> $localrc_path
 fi
 
 # Enabling isolated metadata in Neutron is required because
