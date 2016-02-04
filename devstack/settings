@@ -20,6 +20,12 @@
 # 'MANILA_BACKEND1_CONFIG_GROUP_NAME' and 'MANILA_BACKEND2_CONFIG_GROUP_NAME'
 # to the env var 'MANILA_ENABLED_BACKENDS' or will be enabled
 # if 'MANILA_ENABLED_BACKENDS' is empty.
+#
+# 4) 'CINDER_OVERSUBSCRIPTION_RATIO' - manila devstack-plugin env var that is
+# useful for all share drivers that use Cinder. If it is set, then it will be
+# applied for two Cinder options: 'max_over_subscription_ratio' and
+# 'lvm_max_over_subscription_ratio'. Should be float. Example:
+# CINDER_OVERSUBSCRIPTION_RATIO=20.0
 
 
 # Defaults
