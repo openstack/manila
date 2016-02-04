@@ -49,7 +49,8 @@ translated_log = re.compile(
     r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)"
     "\(\s*_\(\s*('|\")")
 string_translation = re.compile(r"[^_]*_\(\s*('|\")")
-underscore_import_check = re.compile(r"(.)*import _(.)*")
+underscore_import_check = re.compile(r"(.)*import _$")
+underscore_import_check_multi = re.compile(r"(.)*import (.)*_, (.)*")
 # We need this for cases where they have created their own _ function.
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
 oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](.*)")
@@ -158,6 +159,7 @@ def check_explicit_underscore_import(logical_line, filename):
     if filename in UNDERSCORE_IMPORT_FILES:
         pass
     elif (underscore_import_check.match(logical_line) or
+          underscore_import_check_multi.match(logical_line) or
           custom_underscore_check.match(logical_line)):
         UNDERSCORE_IMPORT_FILES.append(filename)
     elif (translated_log.match(logical_line) or
