@@ -192,7 +192,7 @@ class LVMShareDriver(LVMMixin, driver.ShareDriver):
     def get_share_server_pools(self, share_server=None):
         out, err = self._execute('sudo', 'vgs',
                                  self.configuration.lvm_share_volume_group,
-                                 '--rows')
+                                 '--rows', '--units', 'g')
         total_size = re.findall("VSize\s[0-9.]+g", out)[0][6:-1]
         free_size = re.findall("VFree\s[0-9.]+g", out)[0][6:-1]
         return [{
