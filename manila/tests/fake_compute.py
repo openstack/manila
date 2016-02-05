@@ -73,9 +73,6 @@ class API(object):
     def instance_volumes_list(self, ctx, server_id):
         pass
 
-    def server_list(self, ctx, search_opts, all_tenants):
-        pass
-
     def server_create(self, *args, **kwargs):
         pass
 

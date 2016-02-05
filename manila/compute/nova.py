@@ -204,19 +204,6 @@ class API(base.Base):
             raise exception.ManilaException(msg)
         return _untranslate_server_summary_view(server)
 
-    def server_list(self, context, search_opts=None, all_tenants=False):
-        if search_opts is None:
-            search_opts = {}
-        if all_tenants:
-            search_opts['all_tenants'] = True
-        else:
-            search_opts['project_id'] = context.project_id
-        servers = [_untranslate_server_summary_view(s)
-                   for s in novaclient(context).servers.list(True,
-                                                             search_opts)]
-
-        return servers
-
     @translate_server_exception
     def server_pause(self, context, instance_id):
         novaclient(context).servers.pause(instance_id)
