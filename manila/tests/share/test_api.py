@@ -265,7 +265,9 @@ class ShareAPITestCase(test.TestCase):
 
         return snapshot, share, share_data, request_spec
 
-    def _setup_delete_mocks(self, status, snapshots=[], **kwargs):
+    def _setup_delete_mocks(self, status, snapshots=None, **kwargs):
+        if snapshots is None:
+            snapshots = []
         share = db_utils.create_share(status=status, **kwargs)
         self.mock_object(db_api, 'share_delete')
         self.mock_object(db_api, 'share_server_update')
