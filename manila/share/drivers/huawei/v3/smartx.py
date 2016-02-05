@@ -106,6 +106,9 @@ class SmartQos(object):
 
 
 class SmartX(object):
+    def __init__(self, helper):
+        self.helper = helper
+
     def get_smartx_extra_specs_opts(self, opts):
         opts = self.get_capabilities_opts(opts, 'dedupe')
         opts = self.get_capabilities_opts(opts, 'compression')
@@ -124,10 +127,29 @@ class SmartX(object):
         return opts
 
     def get_smartprovisioning_opts(self, opts):
-        if strutils.bool_from_string(opts['thin_provisioning']):
-            opts['LUNType'] = 1
+        thin_provision = opts.get('thin_provisioning')
+        if thin_provision is None:
+            root = self.helper._read_xml()
+            fstype = root.findtext('Filesystem/AllocType')
+            if fstype:
+                fstype = fstype.strip().strip('\n')
+                if fstype == 'Thin':
+                    opts['LUNType'] = constants.ALLOC_TYPE_THIN_FLAG
+                elif fstype == 'Thick':
+                    opts['LUNType'] = constants.ALLOC_TYPE_THICK_FLAG
+                else:
+                    err_msg = (_(
+                        'Huawei config file is wrong. AllocType type must be '
+                        'set to "Thin" or "Thick". AllocType:%(fetchtype)s') %
+                        {'fetchtype': fstype})
+                    raise exception.InvalidShare(reason=err_msg)
+            else:
+                opts['LUNType'] = constants.ALLOC_TYPE_THICK_FLAG
         else:
-            opts['LUNType'] = 0
+            if strutils.bool_from_string(thin_provision):
+                opts['LUNType'] = constants.ALLOC_TYPE_THIN_FLAG
+            else:
+                opts['LUNType'] = constants.ALLOC_TYPE_THICK_FLAG
 
         return opts
 

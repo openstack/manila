@@ -72,7 +72,7 @@ OPTS_CAPABILITIES = {
     'compression': False,
     'huawei_smartcache': False,
     'huawei_smartpartition': False,
-    'thin_provisioning': False,
+    'thin_provisioning': None,
     'qos': False,
 }
 
