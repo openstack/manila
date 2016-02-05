@@ -324,7 +324,7 @@ class ShareMixin(object):
                                           display_description,
                                           **kwargs)
 
-        return self._view_builder.detail(req, dict(new_share.items()))
+        return self._view_builder.detail(req, new_share)
 
     @staticmethod
     def _validate_common_name(access):
