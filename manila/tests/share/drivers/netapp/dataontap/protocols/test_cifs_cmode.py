@@ -23,7 +23,6 @@ from oslo_log import log
 
 from manila.common import constants
 from manila import exception
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
 from manila.share.drivers.netapp.dataontap.protocols import cifs_cmode
 from manila import test
 from manila.tests.share.drivers.netapp.dataontap.protocols \
@@ -83,125 +82,115 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
         self.mock_client.remove_cifs_share.assert_called_once_with(
             fake.SHARE_NAME)
 
-    def test_allow_access(self):
+    def test_update_access(self):
 
-        self.helper.allow_access(self.mock_context,
-                                 fake.CIFS_SHARE,
-                                 fake.SHARE_NAME,
-                                 fake.USER_ACCESS)
+        mock_validate_access_rule = self.mock_object(self.helper,
+                                                     '_validate_access_rule')
+        mock_get_access_rules = self.mock_object(
+            self.helper, '_get_access_rules',
+            mock.Mock(return_value=fake.EXISTING_CIFS_RULES))
+        mock_handle_added_rules = self.mock_object(self.helper,
+                                                   '_handle_added_rules')
+        mock_handle_ro_to_rw_rules = self.mock_object(self.helper,
+                                                      '_handle_ro_to_rw_rules')
+        mock_handle_rw_to_ro_rules = self.mock_object(self.helper,
+                                                      '_handle_rw_to_ro_rules')
+        mock_handle_deleted_rules = self.mock_object(self.helper,
+                                                     '_handle_deleted_rules')
 
-        self.mock_client.add_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.USER_ACCESS['access_to'], False)
+        self.helper.update_access(fake.CIFS_SHARE,
+                                  fake.SHARE_NAME,
+                                  [fake.USER_ACCESS])
 
-    def test_allow_access_readonly(self):
+        new_rules = {'fake_user': constants.ACCESS_LEVEL_RW}
+        mock_validate_access_rule.assert_called_once_with(fake.USER_ACCESS)
+        mock_get_access_rules.assert_called_once_with(fake.CIFS_SHARE,
+                                                      fake.SHARE_NAME)
+        mock_handle_added_rules.assert_called_once_with(
+            fake.SHARE_NAME, fake.EXISTING_CIFS_RULES, new_rules)
+        mock_handle_ro_to_rw_rules.assert_called_once_with(
+            fake.SHARE_NAME, fake.EXISTING_CIFS_RULES, new_rules)
+        mock_handle_rw_to_ro_rules.assert_called_once_with(
+            fake.SHARE_NAME, fake.EXISTING_CIFS_RULES, new_rules)
+        mock_handle_deleted_rules.assert_called_once_with(
+            fake.SHARE_NAME, fake.EXISTING_CIFS_RULES, new_rules)
 
-        user_access = copy.deepcopy(fake.USER_ACCESS)
-        user_access['access_level'] = constants.ACCESS_LEVEL_RO
+    def test_validate_access_rule(self):
 
-        self.helper.allow_access(self.mock_context,
-                                 fake.CIFS_SHARE,
-                                 fake.SHARE_NAME,
-                                 user_access)
+        result = self.helper._validate_access_rule(fake.USER_ACCESS)
 
-        self.mock_client.add_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.USER_ACCESS['access_to'], True)
+        self.assertIsNone(result)
 
-    def test_allow_access_preexisting(self):
+    def test_validate_access_rule_invalid_type(self):
 
-        self.mock_client.add_cifs_share_access.side_effect = (
-            netapp_api.NaApiError(code=netapp_api.EDUPLICATEENTRY))
+        rule = copy.copy(fake.USER_ACCESS)
+        rule['access_type'] = 'ip'
 
-        self.assertRaises(exception.ShareAccessExists,
-                          self.helper.allow_access,
-                          self.mock_context,
-                          fake.CIFS_SHARE,
-                          fake.SHARE_NAME,
-                          fake.USER_ACCESS)
+        self.assertRaises(exception.InvalidShareAccess,
+                          self.helper._validate_access_rule,
+                          rule)
 
-    def test_allow_access_api_error(self):
+    def test_validate_access_rule_invalid_level(self):
 
-        self.mock_client.add_cifs_share_access.side_effect = (
-            netapp_api.NaApiError())
-
-        self.assertRaises(netapp_api.NaApiError,
-                          self.helper.allow_access,
-                          self.mock_context,
-                          fake.CIFS_SHARE,
-                          fake.SHARE_NAME,
-                          fake.USER_ACCESS)
-
-    def test_allow_access_invalid_level(self):
-
-        user_access = copy.deepcopy(fake.USER_ACCESS)
-        user_access['access_level'] = 'fake_level'
+        rule = copy.copy(fake.USER_ACCESS)
+        rule['access_level'] = 'none'
 
         self.assertRaises(exception.InvalidShareAccessLevel,
-                          self.helper.allow_access,
-                          self.mock_context,
-                          fake.NFS_SHARE,
-                          fake.SHARE_NAME,
-                          user_access)
+                          self.helper._validate_access_rule,
+                          rule)
 
-    def test_allow_access_invalid_type(self):
+    def test_handle_added_rules(self):
 
-        fake_access = fake.USER_ACCESS.copy()
-        fake_access['access_type'] = 'group'
-        self.assertRaises(exception.InvalidShareAccess,
-                          self.helper.allow_access,
-                          self.mock_context,
-                          fake.CIFS_SHARE,
-                          fake.SHARE_NAME,
-                          fake_access)
+        self.helper._handle_added_rules(fake.SHARE_NAME,
+                                        fake.EXISTING_CIFS_RULES,
+                                        fake.NEW_CIFS_RULES)
 
-    def test_deny_access(self):
+        self.mock_client.add_cifs_share_access.assert_has_calls([
+            mock.call(fake.SHARE_NAME, 'user5', False),
+            mock.call(fake.SHARE_NAME, 'user6', True),
+        ], any_order=True)
 
-        self.helper.deny_access(self.mock_context,
-                                fake.CIFS_SHARE,
-                                fake.SHARE_NAME,
-                                fake.USER_ACCESS)
+    def test_handle_ro_to_rw_rules(self):
 
-        self.mock_client.remove_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.USER_ACCESS['access_to'])
+        self.helper._handle_ro_to_rw_rules(fake.SHARE_NAME,
+                                           fake.EXISTING_CIFS_RULES,
+                                           fake.NEW_CIFS_RULES)
 
-    def test_deny_access_nonexistent_user(self):
+        self.mock_client.modify_cifs_share_access.assert_has_calls([
+            mock.call(fake.SHARE_NAME, 'user2', False)
+        ])
 
-        self.mock_client.remove_cifs_share_access.side_effect = (
-            netapp_api.NaApiError(code=netapp_api.EONTAPI_EINVAL))
+    def test_handle_rw_to_ro_rules(self):
 
-        self.helper.deny_access(self.mock_context,
-                                fake.CIFS_SHARE,
-                                fake.SHARE_NAME,
-                                fake.USER_ACCESS)
+        self.helper._handle_rw_to_ro_rules(fake.SHARE_NAME,
+                                           fake.EXISTING_CIFS_RULES,
+                                           fake.NEW_CIFS_RULES)
 
-        self.mock_client.remove_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.USER_ACCESS['access_to'])
-        self.assertEqual(1, cifs_cmode.LOG.error.call_count)
+        self.mock_client.modify_cifs_share_access.assert_has_calls([
+            mock.call(fake.SHARE_NAME, 'user3', True)
+        ])
 
-    def test_deny_access_nonexistent_rule(self):
+    def test_handle_deleted_rules(self):
 
-        self.mock_client.remove_cifs_share_access.side_effect = (
-            netapp_api.NaApiError(code=netapp_api.EOBJECTNOTFOUND))
+        self.helper._handle_deleted_rules(fake.SHARE_NAME,
+                                          fake.EXISTING_CIFS_RULES,
+                                          fake.NEW_CIFS_RULES)
 
-        self.helper.deny_access(self.mock_context,
-                                fake.CIFS_SHARE,
-                                fake.SHARE_NAME,
-                                fake.USER_ACCESS)
+        self.mock_client.remove_cifs_share_access.assert_has_calls([
+            mock.call(fake.SHARE_NAME, 'user4')
+        ])
 
-        self.mock_client.remove_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, fake.USER_ACCESS['access_to'])
-        self.assertEqual(1, cifs_cmode.LOG.error.call_count)
+    def test_get_access_rules(self):
 
-    def test_deny_access_api_error(self):
+        self.mock_client.get_cifs_share_access = (
+            mock.Mock(return_value='fake_rules'))
 
-        self.mock_client.remove_cifs_share_access.side_effect = (
-            netapp_api.NaApiError())
+        result = self.helper._get_access_rules(fake.CIFS_SHARE,
+                                               fake.SHARE_NAME)
 
-        self.assertRaises(netapp_api.NaApiError,
-                          self.helper.deny_access,
-                          self.mock_context,
-                          fake.CIFS_SHARE,
-                          fake.SHARE_NAME,
-                          fake.USER_ACCESS)
+        self.assertEqual('fake_rules', result)
+        self.mock_client.get_cifs_share_access.assert_called_once_with(
+            fake.SHARE_NAME)
 
     def test_get_target(self):
 

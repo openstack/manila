@@ -956,22 +956,14 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.set_volume_size(share_name, new_size)
 
     @na_utils.trace
-    def allow_access(self, context, share, access, share_server=None):
-        """Allows access to a given NAS storage."""
+    def update_access(self, context, share, access_rules, add_rules=None,
+                      delete_rules=None, share_server=None):
+        """Updates access rules for a share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         share_name = self._get_valid_share_name(share['id'])
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
-        helper.allow_access(context, share, share_name, access)
-
-    @na_utils.trace
-    def deny_access(self, context, share, access, share_server=None):
-        """Denies access to a given NAS storage."""
-        vserver, vserver_client = self._get_vserver(share_server=share_server)
-        share_name = self._get_valid_share_name(share['id'])
-        helper = self._get_helper(share)
-        helper.set_client(vserver_client)
-        helper.deny_access(context, share, share_name, access)
+        helper.update_access(share, share_name, access_rules)
 
     def setup_server(self, network_info, metadata=None):
         raise NotImplementedError()

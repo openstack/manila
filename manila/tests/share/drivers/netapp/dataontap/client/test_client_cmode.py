@@ -3113,6 +3113,53 @@ class NetAppClientCmodeTestCase(test.TestCase):
         self.client.send_request.assert_has_calls([
             mock.call('cifs-share-create', cifs_share_create_args)])
 
+    def test_get_cifs_share_access(self):
+
+        api_response = netapp_api.NaElement(
+            fake.CIFS_SHARE_ACCESS_CONTROL_GET_ITER)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_cifs_share_access(fake.SHARE_NAME)
+
+        cifs_share_access_control_get_iter_args = {
+            'max-records': 1000,
+            'query': {
+                'cifs-share-access-control': {
+                    'share': fake.SHARE_NAME,
+                },
+            },
+            'desired-attributes': {
+                'cifs-share-access-control': {
+                    'user-or-group': None,
+                    'permission': None,
+                },
+            },
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('cifs-share-access-control-get-iter',
+                      cifs_share_access_control_get_iter_args)])
+
+        expected = {
+            'Administrator': 'full_control',
+            'Administrators': 'change',
+            'Power Users': 'read',
+            'Users': 'no_access',
+        }
+        self.assertDictEqual(expected, result)
+
+    def test_get_cifs_share_access_not_found(self):
+
+        api_response = netapp_api.NaElement(fake.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_cifs_share_access(fake.SHARE_NAME)
+
+        self.assertEqual({}, result)
+
     @ddt.data(True, False)
     def test_add_cifs_share_access(self, readonly):
 
@@ -3132,6 +3179,26 @@ class NetAppClientCmodeTestCase(test.TestCase):
             mock.call(
                 'cifs-share-access-control-create',
                 cifs_share_access_control_create_args)])
+
+    @ddt.data(True, False)
+    def test_modify_cifs_share_access(self, readonly):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.modify_cifs_share_access(fake.SHARE_NAME,
+                                             fake.USER_NAME,
+                                             readonly)
+
+        cifs_share_access_control_modify_args = {
+            'permission': 'read' if readonly else 'full_control',
+            'share': fake.SHARE_NAME,
+            'user-or-group': fake.USER_NAME
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call(
+                'cifs-share-access-control-modify',
+                cifs_share_access_control_modify_args)])
 
     def test_remove_cifs_share_access(self):
 

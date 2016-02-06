@@ -1781,6 +1781,37 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('cifs-share-create', api_args)
 
     @na_utils.trace
+    def get_cifs_share_access(self, share_name):
+        api_args = {
+            'max-records': 1000,
+            'query': {
+                'cifs-share-access-control': {
+                    'share': share_name,
+                },
+            },
+            'desired-attributes': {
+                'cifs-share-access-control': {
+                    'user-or-group': None,
+                    'permission': None,
+                },
+            },
+        }
+        result = self.send_request('cifs-share-access-control-get-iter',
+                                   api_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        rules = {}
+
+        for rule in attributes_list.get_children():
+            user_or_group = rule.get_child_content('user-or-group')
+            permission = rule.get_child_content('permission')
+            rules[user_or_group] = permission
+
+        return rules
+
+    @na_utils.trace
     def add_cifs_share_access(self, share_name, user_name, readonly):
         api_args = {
             'permission': 'read' if readonly else 'full_control',
@@ -1788,6 +1819,15 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'user-or-group': user_name,
         }
         self.send_request('cifs-share-access-control-create', api_args)
+
+    @na_utils.trace
+    def modify_cifs_share_access(self, share_name, user_name, readonly):
+        api_args = {
+            'permission': 'read' if readonly else 'full_control',
+            'share': share_name,
+            'user-or-group': user_name,
+        }
+        self.send_request('cifs-share-access-control-modify', api_args)
 
     @na_utils.trace
     def remove_cifs_share_access(self, share_name, user_name):
@@ -1799,21 +1839,22 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('cifs-share-delete', {'share-name': share_name})
 
     @na_utils.trace
-    def add_nfs_export_rule(self, policy_name, rule, readonly):
-        rule_indices = self._get_nfs_export_rule_indices(policy_name, rule)
+    def add_nfs_export_rule(self, policy_name, client_match, readonly):
+        rule_indices = self._get_nfs_export_rule_indices(policy_name,
+                                                         client_match)
         if not rule_indices:
-            self._add_nfs_export_rule(policy_name, rule, readonly)
+            self._add_nfs_export_rule(policy_name, client_match, readonly)
         else:
             # Update first rule and delete the rest
             self._update_nfs_export_rule(
-                policy_name, rule, readonly, rule_indices.pop(0))
+                policy_name, client_match, readonly, rule_indices.pop(0))
             self._remove_nfs_export_rules(policy_name, rule_indices)
 
     @na_utils.trace
-    def _add_nfs_export_rule(self, policy_name, rule, readonly):
+    def _add_nfs_export_rule(self, policy_name, client_match, readonly):
         api_args = {
             'policy-name': policy_name,
-            'client-match': rule,
+            'client-match': client_match,
             'ro-rule': {
                 'security-flavor': 'sys',
             },
@@ -1827,11 +1868,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('export-rule-create', api_args)
 
     @na_utils.trace
-    def _update_nfs_export_rule(self, policy_name, rule, readonly, rule_index):
+    def _update_nfs_export_rule(self, policy_name, client_match, readonly,
+                                rule_index):
         api_args = {
             'policy-name': policy_name,
             'rule-index': rule_index,
-            'client-match': rule,
+            'client-match': client_match,
             'ro-rule': {
                 'security-flavor': 'sys'
             },
@@ -1845,12 +1887,12 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         self.send_request('export-rule-modify', api_args)
 
     @na_utils.trace
-    def _get_nfs_export_rule_indices(self, policy_name, rule):
+    def _get_nfs_export_rule_indices(self, policy_name, client_match):
         api_args = {
             'query': {
                 'export-rule-info': {
                     'policy-name': policy_name,
-                    'client-match': rule,
+                    'client-match': client_match,
                 },
             },
             'desired-attributes': {
@@ -1874,8 +1916,9 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return [six.text_type(rule_index) for rule_index in rule_indices]
 
     @na_utils.trace
-    def remove_nfs_export_rule(self, policy_name, rule):
-        rule_indices = self._get_nfs_export_rule_indices(policy_name, rule)
+    def remove_nfs_export_rule(self, policy_name, client_match):
+        rule_indices = self._get_nfs_export_rule_indices(policy_name,
+                                                         client_match)
         self._remove_nfs_export_rules(policy_name, rule_indices)
 
     @na_utils.trace

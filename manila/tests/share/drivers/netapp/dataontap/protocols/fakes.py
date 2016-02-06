@@ -49,3 +49,26 @@ USER_ACCESS = {
 VOLUME = {
     'name': SHARE_NAME,
 }
+
+NEW_NFS_RULES = {
+    '10.10.10.0/30': constants.ACCESS_LEVEL_RW,
+    '10.10.10.0/24': constants.ACCESS_LEVEL_RO,
+    '10.10.10.10': constants.ACCESS_LEVEL_RW,
+    '10.10.20.0/24': constants.ACCESS_LEVEL_RW,
+    '10.10.20.10': constants.ACCESS_LEVEL_RW,
+}
+
+EXISTING_CIFS_RULES = {
+    'user1': constants.ACCESS_LEVEL_RW,
+    'user2': constants.ACCESS_LEVEL_RO,
+    'user3': constants.ACCESS_LEVEL_RW,
+    'user4': constants.ACCESS_LEVEL_RO,
+}
+
+NEW_CIFS_RULES = {
+    'user1': constants.ACCESS_LEVEL_RW,
+    'user2': constants.ACCESS_LEVEL_RW,
+    'user3': constants.ACCESS_LEVEL_RO,
+    'user5': constants.ACCESS_LEVEL_RW,
+    'user6': constants.ACCESS_LEVEL_RO,
+}
