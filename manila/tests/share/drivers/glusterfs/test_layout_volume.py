@@ -913,7 +913,7 @@ class GlusterfsVolumeMappedLayoutTestCase(test.TestCase):
         (self._layout._find_actual_backend_snapshot_name.
             assert_called_once_with(gmgr1, snapshot))
 
-    @ddt.data({'side_effect': (glusterXMLOut(ret=-1, errno=2),),
+    @ddt.data({'side_effect': (glusterXMLOut(ret=-1, errno=0),),
                '_exception': exception.GlusterfsException},
               {'side_effect': (('', ''),),
                '_exception': exception.GlusterfsException})

@@ -61,12 +61,30 @@ def _check_volume_presence(f):
     return wrapper
 
 
+def volxml_get(xmlout, path, *default):
+    """Extract a value by a path from XML."""
+    value = xmlout.find(path)
+    if value is None:
+        if default:
+            return default[0]
+        raise exception.InvalidShare(
+            _('Xpath %s not found in volume query response XML') % path)
+    return value.text
+
+
 class GlusterManager(object):
     """Interface with a GlusterFS volume."""
 
     scheme = re.compile('\A(?:(?P<user>[^:@/]+)@)?'
                         '(?P<host>[^:@/]+)'
                         '(?::/(?P<volume>[^/]+)(?P<path>/.*)?)?\Z')
+
+    # See this about GlusterFS' convention for Boolean interpretation
+    # of strings:
+    # https://github.com/gluster/glusterfs/blob/v3.7.8/
+    #         libglusterfs/src/common-utils.c#L1680-L1708
+    GLUSTERFS_TRUE_VALUES = ('ON', 'YES', 'TRUE', 'ENABLE', '1')
+    GLUSTERFS_FALSE_VALUES = ('OFF', 'NO', 'FALSE', 'DISABLE', '0')
 
     @classmethod
     def parse(cls, address):
@@ -174,9 +192,38 @@ class GlusterManager(object):
 
         return _gluster_call
 
-    @_check_volume_presence
-    def get_vol_option(self, option):
-        """Get the value of an option set on a GlusterFS volume."""
+    def xml_response_check(self, xmlout, command, countpath=None):
+        """Sanity check for GlusterFS XML response."""
+        commandstr = ' '.join(command)
+        ret = {}
+        for e in 'opRet', 'opErrno':
+            ret[e] = int(volxml_get(xmlout, e))
+        if ret == {'opRet': -1, 'opErrno': 0}:
+            raise exception.GlusterfsException(_(
+                'GlusterFS command %(command)s on volume %(volume)s failed'
+            ) % {'volume': self.volume, 'command': command})
+        if list(six.itervalues(ret)) != [0, 0]:
+            errdct = {'volume': self.volume, 'command': commandstr,
+                      'opErrstr': volxml_get(xmlout, 'opErrstr', None)}
+            errdct.update(ret)
+            raise exception.InvalidShare(_(
+                'GlusterFS command %(command)s on volume %(volume)s got '
+                'unexpected response: '
+                'opRet=%(opRet)s, opErrno=%(opErrno)s, opErrstr=%(opErrstr)s'
+            ) % errdct)
+        if not countpath:
+            return
+        count = volxml_get(xmlout, countpath)
+        if count != '1':
+            raise exception.InvalidShare(
+                _('GlusterFS command %(command)s on volume %(volume)s got '
+                  'ambiguous response: '
+                  '%(count)s records') % {
+                    'volume': self.volume, 'command': commandstr,
+                    'count': count})
+
+    def _get_vol_option_via_info(self, option):
+        """Get the value of an option set on a GlusterFS volume via volinfo."""
         args = ('--xml', 'volume', 'info', self.volume)
         out, err = self.gluster_call(*args, log=_LE("retrieving volume info"))
 
@@ -186,19 +233,65 @@ class GlusterManager(object):
                 self.volume
             )
 
-        vix = etree.fromstring(out)
-        if int(vix.find('./volInfo/volumes/count').text) != 1:
-            raise exception.InvalidShare('Volume name ambiguity')
-        for e in vix.findall(".//option"):
-            o, v = (e.find(a).text for a in ('name', 'value'))
+        volxml = etree.fromstring(out)
+        self.xml_response_check(volxml, args[1:], './volInfo/volumes/count')
+        for e in volxml.findall(".//option"):
+            o, v = (volxml_get(e, a) for a in ('name', 'value'))
             if o == option:
                 return v
 
     @_check_volume_presence
+    def _get_vol_user_option(self, useropt):
+        """Get the value of an user option set on a GlusterFS volume."""
+        option = '.'.join(('user', useropt))
+        return self._get_vol_option_via_info(option)
+
+    @_check_volume_presence
+    def _get_vol_regular_option(self, option):
+        """Get the value of a regular option set on a GlusterFS volume."""
+        args = ('--xml', 'volume', 'get', self.volume, option)
+
+        out, err = self.gluster_call(*args, check_exit_code=False)
+
+        if not out:
+            # all input is valid, but the option has not been set
+            # (nb. some options do come by a null value, but some
+            # don't even have that, see eg. cluster.nufa)
+            return
+
+        try:
+            optxml = etree.fromstring(out)
+        except Exception:
+            # non-xml output indicates that GlusterFS backend does not support
+            # 'vol get', we fall back to 'vol info' based retrieval (glusterfs
+            # < 3.7).
+            return self._get_vol_option_via_info(option)
+
+        self.xml_response_check(optxml, args[1:], './volGetopts/count')
+        return volxml_get(optxml, './volGetopts/Value')
+
+    def get_vol_option(self, option, boolean=False):
+        """Get the value of an option set on a GlusterFS volume."""
+        useropt = re.sub('\Auser\.', '', option)
+        if option == useropt:
+            value = self._get_vol_regular_option(option)
+        else:
+            value = self._get_vol_user_option(useropt)
+        if not boolean or value is None:
+            return value
+        if value.upper() in self.GLUSTERFS_TRUE_VALUES:
+            return True
+        if value.upper() in self.GLUSTERFS_FALSE_VALUES:
+            return False
+        raise exception.GlusterfsException(_(
+            "GlusterFS volume option on volume %(volume)s: "
+            "%(option)s=%(value)s cannot be interpreted as Boolean") % {
+                'volume': self.volume, 'option': option, 'value': value})
+
+    @_check_volume_presence
     def set_vol_option(self, option, value, ignore_failure=False):
-        if value is True:
-            value
-        value = {True: 'on', False: 'off'}.get(value, value)
+        value = {True: self.GLUSTERFS_TRUE_VALUES[0],
+                 False: self.GLUSTERFS_FALSE_VALUES[0]}.get(value, value)
         if value is None:
             args = ('reset', (option,))
         else:

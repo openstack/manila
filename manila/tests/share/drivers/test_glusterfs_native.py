@@ -227,18 +227,17 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
 
         self.assertEqual(expected_exec, fake_utils.fake_execute_get_log())
 
-    @ddt.data('on', '1', 'Yes', 'TRUE', 'enable')
-    def test_deny_access_via_manager(self, trueish):
+    def test_deny_access_via_manager(self):
         self.mock_object(common, '_restart_gluster_vol', mock.Mock())
         access = {'access_type': 'cert', 'access_to': 'client.example.com'}
         gmgr1 = common.GlusterManager(self.glusterfs_target1, self._execute,
                                       None, None)
 
-        def _get_vol_option(opt):
+        def _get_vol_option(opt, **kw):
             if opt == 'auth.ssl-allow':
                 return('some.common.name,' + access['access_to'])
             elif opt == 'server.dynamic-auth':
-                return trueish
+                return True
 
         self.mock_object(
             gmgr1, 'get_vol_option',
@@ -250,23 +249,24 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                                               self.share1, access)
 
         gmgr1.get_vol_option.assert_has_calls(
-            [mock.call(a) for a in ('auth.ssl-allow', 'server.dynamic-auth')])
+            [mock.call(a, **kw) for a, kw in (
+                ('auth.ssl-allow', {}),
+                ('server.dynamic-auth', {'boolean': True}))])
         test_args = ('auth.ssl-allow', 'some.common.name')
         gmgr1.set_vol_option.assert_called_once_with(*test_args)
         self.assertFalse(common._restart_gluster_vol.called)
 
-    @ddt.data('off', None, 'strangelove')
-    def test_deny_access_via_manager_no_dyn_auth(self, falseish):
+    def test_deny_access_via_manager_no_dyn_auth(self):
         self.mock_object(common, '_restart_gluster_vol', mock.Mock())
         access = {'access_type': 'cert', 'access_to': 'client.example.com'}
         gmgr1 = common.GlusterManager(self.glusterfs_target1, self._execute,
                                       None, None)
 
-        def _get_vol_option(opt):
+        def _get_vol_option(opt, **kw):
             if opt == 'auth.ssl-allow':
                 return('some.common.name,' + access['access_to'])
             elif opt == 'server.dynamic-auth':
-                return falseish
+                return False
 
         self.mock_object(
             gmgr1, 'get_vol_option',
@@ -278,7 +278,9 @@ class GlusterfsNativeShareDriverTestCase(test.TestCase):
                                               self.share1, access)
 
         gmgr1.get_vol_option.assert_has_calls(
-            [mock.call(a) for a in ('auth.ssl-allow', 'server.dynamic-auth')])
+            [mock.call(a, **kw) for a, kw in (
+                ('auth.ssl-allow', {}),
+                ('server.dynamic-auth', {'boolean': True}))])
         test_args = ('auth.ssl-allow', 'some.common.name')
         gmgr1.set_vol_option.assert_called_once_with(*test_args)
         common._restart_gluster_vol.assert_called_once_with(gmgr1)

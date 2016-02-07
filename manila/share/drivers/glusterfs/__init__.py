@@ -96,10 +96,10 @@ class GlusterfsShareDriver(driver.ExecuteMixin, driver.GaneshaMixin,
         gluster_manager = share_manager['manager']
         # TODO(csaba): This should be refactored into proper dispatch to helper
         if self.nfs_helper == GlusterNFSHelper and not gluster_manager.path:
-            # default is 'on'
+            # default behavior of NFS_EXPORT_VOL is as if it were 'on'
             export_vol = gluster_manager.get_vol_option(
-                NFS_EXPORT_VOL) or 'on'
-            if export_vol.lower() not in ('on', '1', 'true', 'yes', 'enable'):
+                NFS_EXPORT_VOL, boolean=True)
+            if export_vol is False:
                 raise exception.GlusterfsException(
                     _("Gluster-NFS with volume layout should be used "
                       "with `nfs.export-volumes = on`"))

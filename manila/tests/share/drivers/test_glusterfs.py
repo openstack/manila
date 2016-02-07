@@ -116,31 +116,31 @@ class GlusterfsShareDriverTestCase(test.TestCase):
             helpercls = mock.Mock(return_value=helper)
         self._driver.nfs_helper = helpercls
         if helpercls == glusterfs.GlusterNFSHelper and path is None:
-            gmgr.get_vol_option = mock.Mock(return_value='on')
+            gmgr.get_vol_option = mock.Mock(return_value=True)
 
         self._driver._setup_via_manager(
             {'manager': gmgr, 'share': self.share})
 
         if helpercls == glusterfs.GlusterNFSHelper and path is None:
             gmgr.get_vol_option.assert_called_once_with(
-                NFS_EXPORT_VOL)
+                NFS_EXPORT_VOL, boolean=True)
             args = (NFS_RPC_AUTH_REJECT, '*')
         else:
             args = (NFS_EXPORT_VOL, False)
         gmgr.set_vol_option.assert_called_once_with(*args)
 
-    @ddt.data('off', 'no', '0', 'false', 'disable', 'foobarbaz')
-    def test_setup_via_manager_export_volumes_on(self, export_vol):
+    def test_setup_via_manager_export_volumes_off(self):
         gmgr = mock.Mock()
         gmgr.path = None
-        gmgr.get_vol_option = mock.Mock(return_value=export_vol)
+        gmgr.get_vol_option = mock.Mock(return_value=False)
         self._driver.nfs_helper = glusterfs.GlusterNFSHelper
 
         self.assertRaises(exception.GlusterfsException,
                           self._driver._setup_via_manager,
                           {'manager': gmgr, 'share': self.share})
 
-        gmgr.get_vol_option.assert_called_once_with(NFS_EXPORT_VOL)
+        gmgr.get_vol_option.assert_called_once_with(NFS_EXPORT_VOL,
+                                                    boolean=True)
 
     def test_check_for_setup_error(self):
         self._driver.check_for_setup_error()

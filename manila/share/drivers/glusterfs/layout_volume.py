@@ -531,9 +531,9 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 )
 
             outxml = etree.fromstring(out)
-            opret = int(outxml.find('opRet').text)
-            operrno = int(outxml.find('opErrno').text)
-            operrstr = outxml.find('opErrstr').text
+            opret = int(common.volxml_get(outxml, 'opRet'))
+            operrno = int(common.volxml_get(outxml, 'opErrno'))
+            operrstr = common.volxml_get(outxml, 'opErrstr', None)
 
         if opret == -1:
             vers = self.glusterfs_versions[gluster_mgr.host_access]
@@ -573,18 +573,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
             )
 
         outxml = etree.fromstring(out)
-        opret = int(outxml.find('opRet').text)
-        operrno = int(outxml.find('opErrno').text)
-        operrstr = outxml.find('opErrstr').text
-
-        if opret:
-            raise exception.GlusterfsException(
-                _("Deleting snapshot %(snap_id)s of share %(share_id)s failed "
-                  "with %(errno)d: %(errstr)s") % {
-                      'snap_id': snapshot['id'],
-                      'share_id': snapshot['share_id'],
-                      'errno': operrno,
-                      'errstr': operrstr})
+        gluster_mgr.xml_response_check(outxml, args[1:])
 
     def ensure_share(self, context, share, share_server=None):
         """Invoked to ensure that share is exported."""
