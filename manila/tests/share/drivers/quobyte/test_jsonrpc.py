@@ -237,6 +237,19 @@ class QuobyteJsonRpcTestCase(test.TestCase):
             mock.Mock(side_effect=http_client.HTTPException))
         self.mock_object(jsonrpc.LOG, 'warning')
 
+        self.assertRaises(http_client.HTTPException,
+                          self.rpc.call,
+                          'method', {'param': 'value'})
+        self.rpc._connection.connect.assert_called_once_with()
+        jsonrpc.LOG.warning.assert_has_calls([])
+
+    def test_jsonrpc_call_socket_error(self):
+        self.mock_object(
+            self.rpc._connection,
+            'getresponse',
+            mock.Mock(side_effect=socket.error(23, "Test")))
+        self.mock_object(jsonrpc.LOG, 'warning')
+
         self.assertRaises(exception.QBException,
                           self.rpc.call,
                           'method', {'param': 'value'})

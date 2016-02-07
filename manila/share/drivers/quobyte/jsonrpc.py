@@ -21,17 +21,16 @@ Control Quobyte over its JSON RPC API.
 import base64
 import socket
 import ssl
-import time
 
 from oslo_log import log
 from oslo_serialization import jsonutils
+from oslo_utils import excutils
 import six
 from six.moves import http_client
 import six.moves.urllib.parse as urlparse
 
 from manila import exception
-from manila.i18n import _
-from manila.i18n import _LW
+from manila.i18n import _, _LW
 
 LOG = log.getLogger(__name__)
 
@@ -158,13 +157,26 @@ class JsonRpc(object):
                     " start with 'https://' for the URL. Failed to parse"
                     " status code from server response. Error was %s")
                     % e)
-            except (http_client.HTTPException, socket.error) as e:
+            except socket.error as se:
+                error_code = se.errno
+                error_msg = se.strerror
+                composite_msg = _("Socket error No. %(code)s (%(msg)s) "
+                                  "connecting to API with") % {
+                                      'code': (six.text_type(error_code)),
+                                      'msg': error_msg}
                 if self._fail_fast:
-                    raise exception.QBException(msg=six.text_type(e))
+                    raise exception.QBException(composite_msg)
                 else:
-                    LOG.warning(_LW("Encountered error, retrying: %s"),
-                                six.text_type(e))
-                    time.sleep(1)
+                    LOG.warning(composite_msg)
+            except http_client.HTTPException as e:
+                with excutils.save_and_reraise_exception() as ctxt:
+                    if self._fail_fast:
+                        ctxt.reraise = True
+                    else:
+                        LOG.warning(_LW("Encountered error, retrying: %s"),
+                                    six.text_type(e))
+                        ctxt.reraise = False
+
         raise exception.QBException("Unable to connect to backend after "
                                     "%s retries" %
                                     six.text_type(CONNECTION_RETRIES))
