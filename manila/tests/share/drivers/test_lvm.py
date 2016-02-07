@@ -484,6 +484,8 @@ class LVMShareDriverTestCase(test.TestCase):
 
         self.assertEqual(expected_result,
                          self._driver.get_share_server_pools())
+        self._driver._execute.assert_called_once_with(
+            'sudo', 'vgs', 'fakevg', '--rows', '--units', 'g')
 
     def test_copy_volume_error(self):
         def _fake_exec(*args, **kwargs):
