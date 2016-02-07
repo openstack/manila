@@ -60,6 +60,11 @@ class HuaweiBase(object):
         """Extends size of existing share."""
 
     @abc.abstractmethod
+    def create_share_from_snapshot(self, share, snapshot,
+                                   share_server=None):
+        """Create share from snapshot."""
+
+    @abc.abstractmethod
     def shrink_share(self, share, new_size, share_server):
         """Shrinks size of existing share."""
 

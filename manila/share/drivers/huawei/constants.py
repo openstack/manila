@@ -33,6 +33,8 @@ LOGIN_SOCKET_TIMEOUT = 4
 QOS_NAME_PREFIX = 'OpenStack_'
 SYSTEM_NAME_PREFIX = "Array-"
 ARRAY_VERSION = 'V300R003C00'
+TMP_PATH_SRC_PREFIX = "huawei_manila_tmp_path_src_"
+TMP_PATH_DST_PREFIX = "huawei_manila_tmp_path_dst_"
 
 ACCESS_NFS_RW = "1"
 ACCESS_NFS_RO = "0"

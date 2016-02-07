@@ -55,6 +55,7 @@ class HuaweiNasDriver(driver.ShareDriver):
         1.2 - Add share server support.
               Add ensure share.
               Add QoS support.
+              Add create share from snapshot.
     """
 
     def __init__(self, *args, **kwargs):
@@ -111,6 +112,13 @@ class HuaweiNasDriver(driver.ShareDriver):
     def extend_share(self, share, new_size, share_server=None):
         LOG.debug("Extend a share.")
         self.plugin.extend_share(share, new_size, share_server)
+
+    def create_share_from_snapshot(self, context, share, snapshot,
+                                   share_server=None):
+        """Create a share from snapshot."""
+        LOG.debug("Create a share from snapshot %s.", snapshot['snapshot_id'])
+        location = self.plugin.create_share_from_snapshot(share, snapshot)
+        return location
 
     def shrink_share(self, share, new_size, share_server=None):
         """Shrinks size of existing share."""

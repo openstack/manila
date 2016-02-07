@@ -706,3 +706,15 @@ class DriverNotInitialized(ManilaException):
 class ShareResourceNotFound(StorageResourceNotFound):
     message = _("Share id %(share_id)s could not be found "
                 "in storage backend.")
+
+
+class ShareUmountException(ManilaException):
+    message = _("Failed to unmount share: %(reason)s")
+
+
+class ShareMountException(ManilaException):
+    message = _("Failed to mount share: %(reason)s")
+
+
+class ShareCopyDataException(ManilaException):
+    message = _("Failed to copy data: %(reason)s")
