@@ -432,7 +432,7 @@ class ShareRulesTest(base.BaseSharesTest):
         # our share id in list and have no duplicates
         gen = [r["id"] for r in rules if r["id"] in rule["id"]]
         msg = "expected id lists %s times in rule list" % (len(gen))
-        self.assertEqual(len(gen), 1, msg)
+        self.assertEqual(1, len(gen), msg)
 
         if utils.is_microversion_eq(version, '1.0'):
             self.shares_client.delete_access_rule(self.share["id"], rule["id"])

@@ -80,7 +80,7 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
 
         # set new quota for shares
         updated = self.client.update_quotas(self.tenant_id, shares=new_quota)
-        self.assertEqual(int(updated["shares"]), new_quota)
+        self.assertEqual(new_quota, int(updated["shares"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_user_quota_shares(self):
@@ -91,7 +91,7 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         # set new quota for shares
         updated = self.client.update_quotas(
             self.tenant_id, self.user_id, shares=new_quota)
-        self.assertEqual(int(updated["shares"]), new_quota)
+        self.assertEqual(new_quota, int(updated["shares"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_tenant_quota_snapshots(self):
@@ -102,7 +102,7 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         # set new quota for snapshots
         updated = self.client.update_quotas(
             self.tenant_id, snapshots=new_quota)
-        self.assertEqual(int(updated["snapshots"]), new_quota)
+        self.assertEqual(new_quota, int(updated["snapshots"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_user_quota_snapshots(self):
@@ -113,7 +113,7 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         # set new quota for snapshots
         updated = self.client.update_quotas(
             self.tenant_id, self.user_id, snapshots=new_quota)
-        self.assertEqual(int(updated["snapshots"]), new_quota)
+        self.assertEqual(new_quota, int(updated["snapshots"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_tenant_quota_gigabytes(self):
@@ -126,7 +126,7 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         # set new quota for shares
         updated = self.client.update_quotas(
             self.tenant_id, gigabytes=gigabytes)
-        self.assertEqual(int(updated["gigabytes"]), gigabytes)
+        self.assertEqual(gigabytes, int(updated["gigabytes"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_tenant_quota_snapshot_gigabytes(self):
@@ -140,8 +140,8 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         updated = self.client.update_quotas(
             self.tenant_id,
             snapshot_gigabytes=snapshot_gigabytes)
-        self.assertEqual(
-            int(updated["snapshot_gigabytes"]), snapshot_gigabytes)
+        self.assertEqual(snapshot_gigabytes,
+                         int(updated["snapshot_gigabytes"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_user_quota_gigabytes(self):
@@ -154,7 +154,7 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         # set new quota for shares
         updated = self.client.update_quotas(
             self.tenant_id, self.user_id, gigabytes=gigabytes)
-        self.assertEqual(int(updated["gigabytes"]), gigabytes)
+        self.assertEqual(gigabytes, int(updated["gigabytes"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_user_quota_snapshot_gigabytes(self):
@@ -168,8 +168,8 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         updated = self.client.update_quotas(
             self.tenant_id, self.user_id,
             snapshot_gigabytes=snapshot_gigabytes)
-        self.assertEqual(
-            int(updated["snapshot_gigabytes"]), snapshot_gigabytes)
+        self.assertEqual(snapshot_gigabytes,
+                         int(updated["snapshot_gigabytes"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_tenant_quota_share_networks(self):
@@ -180,7 +180,7 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         # set new quota for share-networks
         updated = self.client.update_quotas(
             self.tenant_id, share_networks=new_quota)
-        self.assertEqual(int(updated["share_networks"]), new_quota)
+        self.assertEqual(new_quota, int(updated["share_networks"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_update_user_quota_share_networks(self):
@@ -193,7 +193,7 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
         updated = self.client.update_quotas(
             self.tenant_id, self.user_id,
             share_networks=new_quota)
-        self.assertEqual(int(updated["share_networks"]), new_quota)
+        self.assertEqual(new_quota, int(updated["share_networks"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_reset_tenant_quotas(self):
@@ -218,23 +218,23 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
             gigabytes=gigabytes,
             snapshot_gigabytes=snapshot_gigabytes,
             share_networks=share_networks)
-        self.assertEqual(int(updated["shares"]), shares)
-        self.assertEqual(int(updated["snapshots"]), snapshots)
-        self.assertEqual(int(updated["gigabytes"]), gigabytes)
-        self.assertEqual(
-            int(updated["snapshot_gigabytes"]), snapshot_gigabytes)
-        self.assertEqual(int(updated["share_networks"]), share_networks)
+        self.assertEqual(shares, int(updated["shares"]))
+        self.assertEqual(snapshots, int(updated["snapshots"]))
+        self.assertEqual(gigabytes, int(updated["gigabytes"]))
+        self.assertEqual(snapshot_gigabytes,
+                         int(updated["snapshot_gigabytes"]))
+        self.assertEqual(share_networks, int(updated["share_networks"]))
 
         # reset customized quotas
         self.client.reset_quotas(self.tenant_id)
 
         # verify quotas
         reseted = self.client.show_quotas(self.tenant_id)
-        self.assertEqual(int(reseted["shares"]), int(default["shares"]))
-        self.assertEqual(int(reseted["snapshots"]), int(default["snapshots"]))
-        self.assertEqual(int(reseted["gigabytes"]), int(default["gigabytes"]))
-        self.assertEqual(int(reseted["share_networks"]),
-                         int(default["share_networks"]))
+        self.assertEqual(int(default["shares"]), int(reseted["shares"]))
+        self.assertEqual(int(default["snapshots"]), int(reseted["snapshots"]))
+        self.assertEqual(int(default["gigabytes"]), int(reseted["gigabytes"]))
+        self.assertEqual(int(default["share_networks"]),
+                         int(reseted["share_networks"]))
 
     @test.attr(type=["gate", "smoke", ])
     def test_unlimited_quota_for_shares(self):

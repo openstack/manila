@@ -70,7 +70,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
 
         # Check that status was changed
         check_status = self.shares_v2_client.get_share(share["id"])
-        self.assertEqual(check_status["status"], self.bad_status)
+        self.assertEqual(self.bad_status, check_status["status"])
 
         # Share with status 'error_deleting' should be deleted
         self.shares_v2_client.force_delete(share["id"])
@@ -111,7 +111,7 @@ class AdminActionsTest(base.BaseSharesAdminTest):
 
         # Check that status was changed
         check_status = self.shares_v2_client.get_snapshot(sn["id"])
-        self.assertEqual(check_status["status"], self.bad_status)
+        self.assertEqual(self.bad_status, check_status["status"])
 
         # Snapshot with status 'error_deleting' should be deleted
         self.shares_v2_client.force_delete(sn["id"], s_type="snapshots")

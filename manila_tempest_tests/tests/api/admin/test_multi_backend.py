@@ -69,7 +69,7 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
         for i in [0, 1]:
             get = self.shares_v2_client.get_share(self.shares[i]['id'],
                                                   version="2.5")
-            self.assertEqual(get["share_type"], self.sts[i]["name"])
+            self.assertEqual(self.sts[i]["name"], get["share_type"])
 
     @test.attr(type=["gate", "smoke", ])
     def test_share_share_type_v_2_6(self):
@@ -77,8 +77,8 @@ class ShareMultiBackendTest(base.BaseSharesAdminTest):
         for i in [0, 1]:
             get = self.shares_v2_client.get_share(self.shares[i]['id'],
                                                   version="2.6")
-            self.assertEqual(get["share_type"], self.sts[i]["id"])
-            self.assertEqual(get["share_type_name"], self.sts[i]["name"])
+            self.assertEqual(self.sts[i]["id"], get["share_type"])
+            self.assertEqual(self.sts[i]["name"], get["share_type_name"])
 
     @test.attr(type=["gate", ])
     def test_share_backend_name_distinction(self):
