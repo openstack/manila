@@ -15,6 +15,7 @@
 
 from oslo_concurrency import processutils
 from oslo_log import log
+from oslo_utils import strutils
 from oslo_utils import units
 import paramiko
 import six
@@ -296,6 +297,20 @@ class HNASSSHBackend(object):
             msg = (_("Share %s does not support quota values "
                      "below 1G.") % share_id)
             raise exception.HNASBackendException(msg=msg)
+
+    def get_share_usage(self, share_id):
+        command = ['quota', 'list', self.fs_name, share_id]
+        output, err = self._execute(command)
+
+        quota = Quota(output)
+
+        if quota.usage is None:
+            msg = (_("Virtual volume %s does not have any quota.") % share_id)
+            raise exception.HNASItemNotFoundException(msg=msg)
+        else:
+            bytes_usage = strutils.string_to_bytes(six.text_type(quota.usage) +
+                                                   quota.usage_unit)
+            return bytes_usage / units.Gi
 
     def _get_share_export(self, share_id):
         share_id = '/shares/' + share_id

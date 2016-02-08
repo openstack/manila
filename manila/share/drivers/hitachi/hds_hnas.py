@@ -424,6 +424,25 @@ class HDSHNASDriver(driver.ShareDriver):
                      {'shr_path': share['export_locations'][0]['path'],
                          'shr_id': share['id']})
 
+    def shrink_share(self, share, new_size, share_server=None):
+        """Shrinks a share to new size.
+
+        :param share: Share that will be shrunk.
+        :param new_size: New size of share.
+        :param share_server: Data structure with share server information.
+        Not used by this driver.
+        """
+        share_id = self._get_hnas_share_id(share['id'])
+
+        LOG.debug("Shrinking share in HNAS: %(shr_id)s.",
+                  {'shr_id': share['id']})
+
+        self._shrink_share(share_id, share['size'], new_size)
+        LOG.info(_LI("Share %(shr_id)s successfully shrunk to "
+                     "%(shr_size)sG."),
+                 {'shr_id': share['id'],
+                  'shr_size': six.text_type(new_size)})
+
     def _get_hnas_share_id(self, share_id):
         hnas_id = self.private_storage.get(share_id, 'hnas_id')
 
@@ -548,6 +567,25 @@ class HDSHNASDriver(driver.ShareDriver):
         self.hnas.check_quota(share_id)
         self.hnas.check_export(share_id)
         return path
+
+    def _shrink_share(self, share_id, old_size, new_size):
+        """Shrinks a share to new size.
+
+        :param share_id: ID of share that will be shrunk.
+        :param old_size: Current size of share that will be shrunk.
+        :param new_size: New size of share after shrink operation.
+        """
+        self._ensure_share(share_id)
+
+        usage = self.hnas.get_share_usage(share_id)
+
+        LOG.debug("Usage space in share %(share)s: %(usage)sG",
+                  {'share': share_id, 'usage': usage})
+
+        if new_size > usage:
+            self.hnas.modify_quota(share_id, new_size)
+        else:
+            raise exception.ShareShrinkingPossibleDataLoss(share_id=share_id)
 
     def _extend_share(self, share_id, old_size, new_size):
         """Extends a share to new size.
