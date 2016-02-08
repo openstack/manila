@@ -132,60 +132,40 @@ class HDSHNASDriver(driver.ShareDriver):
                            hnas_evs_id, self.hnas_evs_ip, self.fs_name,
                            job_timeout)
 
-    def allow_access(self, context, share, access, share_server=None):
-        """Allow access to a share.
+    def update_access(self, context, share, access_rules, add_rules=None,
+                      delete_rules=None, share_server=None):
+        """Update access rules for given share.
 
         :param context: The `context.RequestContext` object for the request
-        :param share: Share to which access will be allowed.
-        :param access: Information about the access that will be allowed, e.g.
-        host allowed, type of access granted.
+        :param share: Share that will have its access rules updated.
+        :param access_rules: All access rules for given share. This list
+        is enough to update the access rules for given share.
+        :param add_rules: None or List of access rules which should be added.
+        access_rules already contains these rules. Not used by
+        this driver.
+        :param delete_rules: None or List of access rules which should be
+        removed. access_rules doesn't contain these rules. Not used by
+        this driver.
         :param share_server: Data structure with share server information.
         Not used by this driver.
         """
-        if ('nfs', 'ip') != (share['share_proto'].lower(),
-                             access['access_type'].lower()):
-            msg = _("Only NFS protocol and IP access type currently "
-                    "supported.")
-            raise exception.InvalidShareAccess(reason=msg)
-
-        LOG.debug("Sending HNAS Request to allow access to share: "
-                  "%(shr)s.", {'shr': (share['id'])})
-
+        host_list = []
         share_id = self._get_hnas_share_id(share['id'])
 
-        self._allow_access(share_id, access['access_to'],
-                           access['access_level'])
+        for rule in access_rules:
+            if rule['access_type'].lower() != 'ip':
+                msg = _("Only IP access type currently supported.")
+                raise exception.InvalidShareAccess(reason=msg)
+            host_list.append(rule['access_to'] + '(' +
+                             rule['access_level'] + ')')
 
-        LOG.info(_LI("Access allowed successfully to share: %(shr)s."),
-                 {'shr': share['id']})
+        self.hnas.update_access_rule(share_id, host_list)
 
-    def deny_access(self, context, share, access, share_server=None):
-        """Deny access to a share.
-
-        :param context: The `context.RequestContext` object for the request
-        :param share: Share to which access will be denied.
-        :param access: Information about the access that will be denied, e.g.
-        host and type of access denied.
-        :param share_server: Data structure with share server information.
-        Not used by this driver.
-        """
-        if ('nfs', 'ip') != (share['share_proto'].lower(),
-                             access['access_type'].lower()):
-            msg = _("Only NFS protocol and IP access type currently "
-                    "supported.")
-            raise exception.InvalidShareAccess(reason=msg)
-
-        LOG.debug("Sending HNAS request to deny access to share:"
-                  " %(shr_id)s.",
-                  {'shr_id': share['id']})
-
-        share_id = self._get_hnas_share_id(share['id'])
-
-        self._deny_access(share_id, access['access_to'],
-                          access['access_level'])
-
-        LOG.info(_LI("Access denied successfully to share: %(shr)s."),
-                 {'shr': share['id']})
+        if host_list:
+            LOG.debug("Share %(share)s has the rules: %(rules)s",
+                      {'share': share_id, 'rules': ', '.join(host_list)})
+        else:
+            LOG.debug("Share %(share)s has no rules.", {'share': share_id})
 
     def create_share(self, context, share, share_server=None):
         """Creates share.
@@ -468,71 +448,6 @@ class HDSHNASDriver(driver.ShareDriver):
             LOG.debug("Filesystem %(fs)s is unmounted. Mounting...",
                       {'fs': self.fs_name})
             self.hnas.mount()
-
-    def _allow_access(self, share_id, host, permission='rw'):
-        """Allow access to the share.
-
-        :param share_id: ID of share that access will be allowed.
-        :param host: Host to which access will be allowed.
-        :param permission: permission (e.g. 'rw', 'ro') that will be allowed.
-        """
-        # check if the share exists
-        self._ensure_share(share_id)
-
-        # get the list that contains all the hosts allowed on the share
-        host_list = self.hnas.get_host_list(share_id)
-
-        if permission in ('ro', 'rw'):
-            host_access = host + '(' + permission + ')'
-        else:
-            msg = (_("Permission should be 'ro' or 'rw' instead "
-                     "of %s") % permission)
-            raise exception.HNASBackendException(msg=msg)
-
-        # check if the host(s) is already allowed
-        if any(host in x for x in host_list):
-            if host_access in host_list:
-                LOG.debug("Host: %(host)s is already allowed.",
-                          {'host': host})
-            else:
-                # remove all the hosts with different permissions
-                host_list = [
-                    x for x in host_list if not x.startswith(host)]
-                # add the host with new permission
-                host_list.append(host_access)
-                self.hnas.update_access_rule(share_id, host_list)
-        else:
-            host_list.append(host_access)
-            self.hnas.update_access_rule(share_id, host_list)
-
-    def _deny_access(self, share_id, host, permission):
-        """Deny access to the share.
-
-        :param share_id: ID of share that access will be denied.
-        :param host: Host to which access will be denied.
-        :param permission: permission (e.g. 'rw', 'ro') that will be denied.
-        """
-        # check if the share exists
-        self._ensure_share(share_id)
-
-        # get the list that contains all the hosts allowed on the share
-        host_list = self.hnas.get_host_list(share_id)
-
-        if permission in ('ro', 'rw'):
-            host_access = host + '(' + permission + ')'
-        else:
-            msg = (_("Permission should be 'ro' or 'rw' instead "
-                     "of %s") % permission)
-            raise exception.HNASBackendException(msg=msg)
-
-        # check if the host(s) is already not allowed
-        if host_access not in host_list:
-            LOG.debug("Host: %(host)s is already not allowed.",
-                      {'host': host})
-        else:
-            # remove the host on host_list
-            host_list.remove(host_access)
-            self.hnas.update_access_rule(share_id, host_list)
 
     def _ensure_share(self, share_id):
         """Ensure that share is exported.
