@@ -53,7 +53,7 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
                                                        snapshot, **kwargs)
 
     def create_snapshot(self, context, snapshot, **kwargs):
-        self.library.create_snapshot(context, snapshot, **kwargs)
+        return self.library.create_snapshot(context, snapshot, **kwargs)
 
     def delete_share(self, context, share, **kwargs):
         self.library.delete_share(context, share, **kwargs)
@@ -93,6 +93,12 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
         raise NotImplementedError
 
     def unmanage(self, share):
+        raise NotImplementedError
+
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        raise NotImplementedError
+
+    def unmanage_snapshot(self, snapshot):
         raise NotImplementedError
 
     def update_access(self, context, share, access_rules, add_rules,

@@ -1683,6 +1683,27 @@ LUN_GET_ITER_RESPONSE = etree.XML("""
     'volume': SHARE_NAME,
 })
 
+VOLUME_GET_ITER_NOT_UNIQUE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(volume1)s</name>
+        </volume-id-attributes>
+      </volume-attributes>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(volume2)s</name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""" % {
+    'volume1': SHARE_NAME,
+    'volume2': SHARE_NAME_2,
+})
+
 VOLUME_GET_ITER_JUNCTIONED_VOLUMES_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>

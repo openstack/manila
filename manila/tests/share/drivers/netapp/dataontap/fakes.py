@@ -267,6 +267,14 @@ SNAPSHOT = {
     'provider_location': None,
 }
 
+SNAPSHOT_TO_MANAGE = {
+    'id': SNAPSHOT_ID,
+    'project_id': TENANT_ID,
+    'share_id': PARENT_SHARE_ID,
+    'status': constants.STATUS_CREATING,
+    'provider_location': SNAPSHOT_NAME,
+}
+
 CDOT_SNAPSHOT = {
     'name': SNAPSHOT_NAME,
     'volume': SHARE_NAME,

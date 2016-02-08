@@ -1499,6 +1499,68 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
         return self._has_records(result)
 
     @na_utils.trace
+    def get_volume(self, volume_name):
+        """Returns the volume with the specified name, if present."""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': volume_name,
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'containing-aggregate-name': None,
+                        'junction-path': None,
+                        'name': None,
+                        'owning-vserver-name': None,
+                        'type': None,
+                        'style': None,
+                    },
+                    'volume-space-attributes': {
+                        'size': None,
+                    }
+                },
+            },
+        }
+        result = self.send_request('volume-get-iter', api_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        volume_attributes_list = attributes_list.get_children()
+
+        if not self._has_records(result):
+            raise exception.StorageResourceNotFound(name=volume_name)
+        elif len(volume_attributes_list) > 1:
+            msg = _('Could not find unique volume %(vol)s.')
+            msg_args = {'vol': volume_name}
+            raise exception.NetAppException(msg % msg_args)
+
+        volume_attributes = volume_attributes_list[0]
+
+        volume_id_attributes = volume_attributes.get_child_by_name(
+            'volume-id-attributes') or netapp_api.NaElement('none')
+        volume_space_attributes = volume_attributes.get_child_by_name(
+            'volume-space-attributes') or netapp_api.NaElement('none')
+
+        volume = {
+            'aggregate': volume_id_attributes.get_child_content(
+                'containing-aggregate-name'),
+            'junction-path': volume_id_attributes.get_child_content(
+                'junction-path'),
+            'name': volume_id_attributes.get_child_content('name'),
+            'owning-vserver-name': volume_id_attributes.get_child_content(
+                'owning-vserver-name'),
+            'type': volume_id_attributes.get_child_content('type'),
+            'style': volume_id_attributes.get_child_content('style'),
+            'size': volume_space_attributes.get_child_content('size'),
+        }
+        return volume
+
+    @na_utils.trace
     def get_volume_at_junction_path(self, junction_path):
         """Returns the volume with the specified junction path, if present."""
         if not junction_path:

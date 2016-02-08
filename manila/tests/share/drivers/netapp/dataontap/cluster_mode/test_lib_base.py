@@ -1512,14 +1512,106 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.FLEXVOL_TO_MANAGE,
                           vserver_client)
 
+    def test_manage_existing_snapshot(self):
+
+        vserver_client = mock.Mock()
+        mock_get_vserver = self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
+        vserver_client.volume_has_snapmirror_relationships.return_value = False
+        result = self.library.manage_existing_snapshot(
+            fake.SNAPSHOT_TO_MANAGE, {})
+
+        share_name = self.library._get_backend_share_name(
+            fake.SNAPSHOT['share_id'])
+        new_snapshot_name = self.library._get_backend_snapshot_name(
+            fake.SNAPSHOT['id'])
+        mock_get_vserver.assert_called_once_with(share_server=None)
+        (vserver_client.volume_has_snapmirror_relationships.
+            assert_called_once_with(fake.FLEXVOL_TO_MANAGE))
+        vserver_client.rename_snapshot.assert_called_once_with(
+            share_name, fake.SNAPSHOT_NAME, new_snapshot_name)
+        self.library.private_storage.update.assert_called_once_with(
+            fake.SNAPSHOT['id'], {'original_name': fake.SNAPSHOT_NAME})
+        self.assertEqual({'size': 2, 'provider_location': new_snapshot_name},
+                         result)
+
+    def test_manage_existing_snapshot_no_snapshot_name(self):
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
+        vserver_client.volume_has_snapmirror_relationships.return_value = False
+        fake_snapshot = copy.deepcopy(fake.SNAPSHOT_TO_MANAGE)
+        fake_snapshot['provider_location'] = ''
+
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self.library.manage_existing_snapshot,
+                          fake_snapshot, {})
+
+    @ddt.data(netapp_api.NaApiError,
+              exception.NetAppException)
+    def test_manage_existing_snapshot_get_volume_error(self, exception_type):
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        vserver_client.get_volume.side_effect = exception_type
+        self.mock_object(self.client,
+                         'volume_has_snapmirror_relationships',
+                         mock.Mock(return_value=False))
+
+        self.assertRaises(exception.ShareNotFound,
+                          self.library.manage_existing_snapshot,
+                          fake.SNAPSHOT_TO_MANAGE, {})
+
+    def test_manage_existing_snapshot_mirrors_present(self):
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
+        vserver_client.volume_has_snapmirror_relationships.return_value = True
+
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self.library.manage_existing_snapshot,
+                          fake.SNAPSHOT_TO_MANAGE, {})
+
+    def test_manage_existing_snapshot_rename_snapshot_error(self):
+
+        vserver_client = mock.Mock()
+        self.mock_object(self.library,
+                         '_get_vserver',
+                         mock.Mock(return_value=(fake.VSERVER1,
+                                                 vserver_client)))
+        vserver_client.get_volume.return_value = fake.FLEXVOL_TO_MANAGE
+        vserver_client.volume_has_snapmirror_relationships.return_value = False
+        vserver_client.rename_snapshot.side_effect = netapp_api.NaApiError
+
+        self.assertRaises(exception.ManageInvalidShareSnapshot,
+                          self.library.manage_existing_snapshot,
+                          fake.SNAPSHOT_TO_MANAGE, {})
+
+    def test_unmanage_snapshot(self):
+
+        result = self.library.unmanage_snapshot(fake.SNAPSHOT)
+
+        self.assertIsNone(result)
+
     def test_validate_volume_for_manage_snapmirror_relationships_present(self):
 
         vserver_client = mock.Mock()
-        vserver_client.volume_has_luns = mock.Mock(return_value=False)
-        vserver_client.volume_has_junctioned_volumes = mock.Mock(
-            return_value=False)
-        vserver_client.volume_has_snapmirror_relationships = mock.Mock(
-            return_value=True)
+        vserver_client.volume_has_luns.return_value = False
+        vserver_client.volume_has_junctioned_volumes.return_value = False
+        vserver_client.volume_has_snapmirror_relationships.return_value = True
 
         self.assertRaises(exception.ManageInvalidShare,
                           self.library._validate_volume_for_manage,

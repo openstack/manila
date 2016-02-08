@@ -874,6 +874,59 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.ManageInvalidShare(reason=msg % msg_args)
 
     @na_utils.trace
+    def manage_existing_snapshot(self, snapshot, driver_options):
+        """Brings an existing snapshot under Manila management."""
+        vserver, vserver_client = self._get_vserver(share_server=None)
+        share_name = self._get_backend_share_name(snapshot['share_id'])
+        existing_snapshot_name = snapshot.get('provider_location')
+        new_snapshot_name = self._get_backend_snapshot_name(snapshot['id'])
+
+        if not existing_snapshot_name:
+            msg = _('provider_location not specified.')
+            raise exception.ManageInvalidShareSnapshot(reason=msg)
+
+        # Get the volume containing the snapshot so we can report its size
+        try:
+            volume = vserver_client.get_volume(share_name)
+        except (netapp_api.NaApiError,
+                exception.StorageResourceNotFound,
+                exception.NetAppException):
+            msg = _('Could not determine snapshot %(snap)s size from '
+                    'volume %(vol)s.')
+            msg_args = {'snap': existing_snapshot_name, 'vol': share_name}
+            LOG.exception(msg % msg_args)
+            raise exception.ShareNotFound(share_id=snapshot['share_id'])
+
+        # Ensure there aren't any mirrors on this volume
+        if vserver_client.volume_has_snapmirror_relationships(volume):
+            msg = _('Share %s has SnapMirror relationships.')
+            msg_args = {'vol': share_name}
+            raise exception.ManageInvalidShareSnapshot(reason=msg % msg_args)
+
+        # Rename snapshot
+        try:
+            vserver_client.rename_snapshot(share_name,
+                                           existing_snapshot_name,
+                                           new_snapshot_name)
+        except netapp_api.NaApiError:
+            msg = _('Could not rename snapshot %(snap)s in share %(vol)s.')
+            msg_args = {'snap': existing_snapshot_name, 'vol': share_name}
+            raise exception.ManageInvalidShareSnapshot(reason=msg % msg_args)
+
+        # Save original snapshot info to private storage
+        original_data = {'original_name': existing_snapshot_name}
+        self.private_storage.update(snapshot['id'], original_data)
+
+        # When calculating the size, round up to the next GB.
+        size = int(math.ceil(float(volume['size']) / units.Gi))
+
+        return {'size': size, 'provider_location': new_snapshot_name}
+
+    @na_utils.trace
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Manila management."""
+
+    @na_utils.trace
     def create_consistency_group(self, context, cg_dict, share_server=None):
         """Creates a consistency group.
 
