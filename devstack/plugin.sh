@@ -466,7 +466,7 @@ function configure_samba {
         fi
 
         sudo cp /usr/share/samba/smb.conf $SMB_CONF
-        sudo chown stack -R /etc/samba
+        sudo chown $STACK_USER -R /etc/samba
         iniset $SMB_CONF global include registry
         iniset $SMB_CONF global security user
         if [ ! -d "$SMB_PRIVATE_DIR" ]; then
