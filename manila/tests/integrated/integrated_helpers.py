@@ -54,7 +54,7 @@ def generate_new_element(items, prefix, numeric=False):
             candidate = prefix + generate_random_alphanumeric(8)
         if candidate not in items:
             return candidate
-        LOG.debug("Random collision on %s" % candidate)
+        LOG.debug("Random collision on %s.", candidate)
 
 
 class _IntegratedTestBase(test.TestCase):
@@ -109,7 +109,7 @@ class _IntegratedTestBase(test.TestCase):
         server = {}
 
         image = self.api.get_images()[0]
-        LOG.debug("Image: %s" % image)
+        LOG.debug("Image: %s.", image)
 
         if 'imageRef' in image:
             image_href = image['imageRef']
@@ -122,7 +122,7 @@ class _IntegratedTestBase(test.TestCase):
 
         # Set a valid flavorId
         flavor = self.api.get_flavors()[0]
-        LOG.debug("Using flavor: %s" % flavor)
+        LOG.debug("Using flavor: %s.", flavor)
         server['flavorRef'] = 'http://fake.server/%s' % flavor['id']
 
         # Set a valid server name

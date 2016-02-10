@@ -542,7 +542,7 @@ class ShareManager(manager.SchedulerDependentManager):
     @utils.require_driver_initialized
     def migrate_share(self, ctxt, share_id, host, force_host_copy=False):
         """Migrates a share from current host to another host."""
-        LOG.debug("Entered migrate_share method for share %s." % share_id)
+        LOG.debug("Entered migrate_share method for share %s.", share_id)
 
         # NOTE(ganso): Cinder checks if driver is initialized before doing
         # anything. This might not be needed, as this code may not be reached
@@ -577,7 +577,7 @@ class ShareManager(manager.SchedulerDependentManager):
                 dest_driver_migration_info = rpcapi.get_driver_migration_info(
                     ctxt, share_instance, share_server)
 
-                LOG.debug("Calling driver migration for share %s." % share_id)
+                LOG.debug("Calling driver migration for share %s.", share_id)
 
                 moved, model_update = self.driver.migrate_share(
                     ctxt, share_instance, host, dest_driver_migration_info)
@@ -598,7 +598,7 @@ class ShareManager(manager.SchedulerDependentManager):
         if not moved:
             try:
                 LOG.debug("Starting generic migration "
-                          "for share %s." % share_id)
+                          "for share %s.", share_id)
 
                 moved = self._migrate_share_generic(ctxt, share_ref, host)
             except Exception as e:
@@ -657,7 +657,7 @@ class ShareManager(manager.SchedulerDependentManager):
             )
 
             LOG.debug("Time to start copying in migration"
-                      " for share %s." % share['id'])
+                      " for share %s.", share['id'])
 
             share_server = self._get_share_server(context.elevated(),
                                                   share_instance)

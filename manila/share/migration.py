@@ -263,7 +263,7 @@ class ShareMigrationHelper(object):
         if readonly_support:
 
             LOG.debug("Changing all of share %s access rules "
-                      "to read-only." % self.share['id'])
+                      "to read-only.", self.share['id'])
 
             self.add_rules_and_wait(self.context, self.share,
                                     saved_rules, 'ro')
@@ -278,7 +278,7 @@ class ShareMigrationHelper(object):
                 self.context, self.share['id'])
 
             LOG.debug("Removing all of share %s read-only "
-                      "access rules." % self.share['id'])
+                      "access rules.", self.share['id'])
 
             self.deny_rules_and_wait(self.context, self.share, readonly_rules)
 

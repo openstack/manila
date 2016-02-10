@@ -364,7 +364,7 @@ class API(base.Base):
             'scheduled_at': timeutils.utcnow(),
         })
 
-        LOG.debug("Manage: Found shares %s" % len(shares))
+        LOG.debug("Manage: Found shares %s.", len(shares))
 
         retry_states = (constants.STATUS_MANAGE_ERROR,)
 
