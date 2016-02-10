@@ -53,7 +53,7 @@ class NetAppBaseHelper(object):
         return access_level == constants.ACCESS_LEVEL_RO
 
     @abc.abstractmethod
-    def create_share(self, share, share_name, export_addresses):
+    def create_share(self, share, share_name):
         """Creates NAS share."""
 
     @abc.abstractmethod

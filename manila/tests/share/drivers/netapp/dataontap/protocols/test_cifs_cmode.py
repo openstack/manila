@@ -49,27 +49,15 @@ class NetAppClusteredCIFSHelperTestCase(test.TestCase):
 
     def test_create_share(self):
 
-        result = self.helper.create_share(fake.CIFS_SHARE,
-                                          fake.SHARE_NAME,
-                                          [fake.SHARE_ADDRESS_1])
+        result = self.helper.create_share(fake.CIFS_SHARE, fake.SHARE_NAME)
 
-        expected = [r'\\%s\%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME)]
-        self.assertEqual(expected, result)
-        self.mock_client.create_cifs_share.assert_called_once_with(
-            fake.SHARE_NAME)
-        self.mock_client.remove_cifs_share_access.assert_called_once_with(
-            fake.SHARE_NAME, 'Everyone')
-
-    def test_create_share_multiple(self):
-
-        result = self.helper.create_share(fake.CIFS_SHARE,
-                                          fake.SHARE_NAME,
-                                          [fake.SHARE_ADDRESS_1,
-                                           fake.SHARE_ADDRESS_2])
-
-        expected = [r'\\%s\%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME),
-                    r'\\%s\%s' % (fake.SHARE_ADDRESS_2, fake.SHARE_NAME)]
-        self.assertEqual(expected, result)
+        export_addresses = [fake.SHARE_ADDRESS_1, fake.SHARE_ADDRESS_2]
+        export_paths = [result(address) for address in export_addresses]
+        expected_paths = [
+            r'\\%s\%s' % (fake.SHARE_ADDRESS_1, fake.SHARE_NAME),
+            r'\\%s\%s' % (fake.SHARE_ADDRESS_2, fake.SHARE_NAME),
+        ]
+        self.assertEqual(expected_paths, export_paths)
         self.mock_client.create_cifs_share.assert_called_once_with(
             fake.SHARE_NAME)
         self.mock_client.remove_cifs_share_access.assert_called_once_with(

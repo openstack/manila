@@ -599,23 +599,62 @@ class NetAppCmodeFileStorageLibrary(object):
             msg_args = {'vserver': vserver, 'proto': share['share_proto']}
             raise exception.NetAppException(msg % msg_args)
 
-        interfaces = self._sort_lifs_by_aggregate_locality(share, interfaces)
+        # Get LIF addresses with metadata
+        export_addresses = self._get_export_addresses_with_metadata(share,
+                                                                    interfaces)
+        # Create the share and get a callback for generating export locations
+        callback = helper.create_share(share, share_name)
 
-        export_addresses = [interface['address'] for interface in interfaces]
-        export_locations = helper.create_share(
-            share, share_name, export_addresses)
+        # Generate export locations using addresses, metadata and callback
+        export_locations = [
+            {
+                'path': callback(export_address),
+                'is_admin_only': metadata.pop('is_admin_only', False),
+                'metadata': metadata,
+            }
+            for export_address, metadata
+            in copy.deepcopy(export_addresses).items()
+        ]
+
+        # Sort the export locations to report preferred paths first
+        export_locations = self._sort_export_locations_by_preferred_paths(
+            export_locations)
+
         return export_locations
 
     @na_utils.trace
-    def _sort_lifs_by_aggregate_locality(self, share, interfaces):
-        """Sort LIFs by placing aggregate-local LIFs first."""
+    def _get_export_addresses_with_metadata(self, share, interfaces):
+        """Return interface addresses with locality and other metadata."""
+
         aggregate_name = share_utils.extract_host(share['host'], level='pool')
         home_node = self._get_aggregate_node(aggregate_name)
-        if not home_node:
-            return interfaces
 
-        return sorted(interfaces,
-                      key=lambda intf: intf.get('home-node') != home_node)
+        addresses = {}
+        for interface in interfaces:
+
+            address = interface['address']
+            is_admin_only = False
+
+            if home_node:
+                preferred = interface.get('home-node') == home_node
+            else:
+                preferred = None
+
+            addresses[address] = {
+                'is_admin_only': is_admin_only,
+                'preferred': preferred,
+            }
+
+        return addresses
+
+    @na_utils.trace
+    def _sort_export_locations_by_preferred_paths(self, export_locations):
+        """Sort the export locations to report preferred paths first."""
+
+        sort_key = lambda location: location.get(
+            'metadata', {}).get('preferred') is not True
+
+        return sorted(export_locations, key=sort_key)
 
     @na_utils.trace
     def _remove_export(self, share, vserver_client):

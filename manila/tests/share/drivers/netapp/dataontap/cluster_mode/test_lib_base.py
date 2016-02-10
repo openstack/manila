@@ -902,25 +902,29 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
     def test_create_export(self):
 
         protocol_helper = mock.Mock()
-        protocol_helper.create_share.return_value = fake.NFS_EXPORTS
+        callback = (lambda export_address, export_path='fake_export_path':
+                    ':'.join([export_address, export_path]))
+        protocol_helper.create_share.return_value = callback
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=protocol_helper))
         vserver_client = mock.Mock()
         vserver_client.get_network_interfaces.return_value = fake.LIFS
-        mock_sort_lifs_by_aggregate_locality = self.mock_object(
-            self.library, '_sort_lifs_by_aggregate_locality',
-            mock.Mock(return_value=fake.LIFS))
+        fake_interface_addresses_with_metadata = copy.deepcopy(
+            fake.INTERFACE_ADDRESSES_WITH_METADATA)
+        mock_get_export_addresses_with_metadata = self.mock_object(
+            self.library, '_get_export_addresses_with_metadata',
+            mock.Mock(return_value=fake_interface_addresses_with_metadata))
 
         result = self.library._create_export(fake.SHARE,
                                              fake.VSERVER1,
                                              vserver_client)
 
         self.assertEqual(fake.NFS_EXPORTS, result)
-        protocol_helper.create_share.assert_called_once_with(
-            fake.SHARE, fake.SHARE_NAME, fake.LIF_ADDRESSES)
-        mock_sort_lifs_by_aggregate_locality.assert_called_once_with(
+        mock_get_export_addresses_with_metadata.assert_called_once_with(
             fake.SHARE, fake.LIFS)
+        protocol_helper.create_share.assert_called_once_with(
+            fake.SHARE, fake.SHARE_NAME)
 
     def test_create_export_lifs_not_found(self):
 
@@ -934,36 +938,45 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           fake.VSERVER1,
                           vserver_client)
 
-    @ddt.data(fake.CLUSTER_NODES[0], fake.CLUSTER_NODES[1])
-    def test_sort_lifs_by_aggregate_locality(self, node):
+    def test_get_export_addresses_with_metadata(self):
 
         mock_get_aggregate_node = self.mock_object(
-            self.library, '_get_aggregate_node', mock.Mock(return_value=node))
+            self.library, '_get_aggregate_node',
+            mock.Mock(return_value=fake.CLUSTER_NODES[0]))
 
-        fake_share = copy.deepcopy(fake.SHARE)
-        fake_share['host'] = 'fake_host@fake_backend#fake_pool'
+        result = self.library._get_export_addresses_with_metadata(
+            fake.SHARE, fake.LIFS)
 
-        result = self.library._sort_lifs_by_aggregate_locality(fake.SHARE,
-                                                               fake.LIFS)
+        self.assertEqual(fake.INTERFACE_ADDRESSES_WITH_METADATA, result)
+        mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)
 
-        mock_get_aggregate_node.assert_called_once_with('fake_pool')
-        self.assertEqual(2, len(result))
-        self.assertEqual(node, result[0]['home-node'])
-
-    def test_sort_lifs_by_aggregate_locality_node_unknown(self):
+    def test_get_export_addresses_with_metadata_node_unknown(self):
 
         mock_get_aggregate_node = self.mock_object(
-            self.library, '_get_aggregate_node', mock.Mock(return_value=None))
+            self.library, '_get_aggregate_node',
+            mock.Mock(return_value=None))
 
-        fake_share = copy.deepcopy(fake.SHARE)
-        fake_share['host'] = 'fake_host@fake_backend#fake_pool'
+        result = self.library._get_export_addresses_with_metadata(
+            fake.SHARE, fake.LIFS)
 
-        result = self.library._sort_lifs_by_aggregate_locality(fake.SHARE,
-                                                               fake.LIFS)
+        expected = copy.deepcopy(fake.INTERFACE_ADDRESSES_WITH_METADATA)
+        for key, value in expected.items():
+            value['preferred'] = None
 
-        mock_get_aggregate_node.assert_called_once_with('fake_pool')
-        self.assertEqual(2, len(result))
-        self.assertEqual(fake.LIFS, result)
+        self.assertEqual(expected, result)
+        mock_get_aggregate_node.assert_called_once_with(fake.POOL_NAME)
+
+    @ddt.data(True, False)
+    def test_sort_export_locations_by_preferred_paths(self, reverse):
+
+        export_locations = copy.copy(fake.NFS_EXPORTS)
+        if reverse:
+            export_locations.reverse()
+
+        result = self.library._sort_export_locations_by_preferred_paths(
+            export_locations)
+
+        self.assertEqual(fake.NFS_EXPORTS, result)
 
     def test_remove_export(self):
 
