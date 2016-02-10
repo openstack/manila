@@ -215,16 +215,6 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                 "No protocol helpers selected for Generic Driver. "
                 "Please specify using config option 'share_helpers'.")
 
-    def _get_access_rule_for_data_copy(self, context, share, share_server):
-        if not self.driver_handles_share_servers:
-            service_ip = self.configuration.safe_get(
-                'migration_data_copy_node_ip')
-        else:
-            service_ip = share_server['backend_details']['service_ip']
-        return {'access_type': 'ip',
-                'access_level': 'rw',
-                'access_to': service_ip}
-
     @ensure_server
     def create_share(self, context, share, share_server=None):
         """Creates share."""
@@ -241,15 +231,28 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         location = helper.create_export(
             server_details,
             share['name'])
-        return {
+        export_list = [{
             "path": location,
             "is_admin_only": False,
             "metadata": {
-                # TODO(vponomaryov): remove this fake metadata when proper
-                # appears.
+                # TODO(vponomaryov): remove this fake metadata when
+                # proper appears.
                 "export_location_metadata_example": "example",
             },
-        }
+        }]
+        if server_details.get('admin_ip'):
+            admin_location = location.replace(
+                server_details['public_address'], server_details['admin_ip'])
+            export_list.append({
+                "path": admin_location,
+                "is_admin_only": True,
+                "metadata": {
+                    # TODO(vponomaryov): remove this fake metadata when
+                    #  proper appears.
+                    "export_location_metadata_example": "example",
+                },
+            })
+        return export_list
 
     @utils.retry(exception.ProcessExecutionError, backoff_rate=1)
     def _is_device_file_available(self, server_details, volume):
@@ -618,6 +621,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                                    share_server=None):
         """Is called to create share from snapshot."""
         helper = self._get_helper(share)
+        server_details = share_server['backend_details']
         volume = self._allocate_container(self.admin_context, share, snapshot)
         volume = self._attach_volume(
             self.admin_context, share,
@@ -625,7 +629,28 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
         self._mount_device(share, share_server['backend_details'], volume)
         location = helper.create_export(share_server['backend_details'],
                                         share['name'])
-        return location
+        export_list = [{
+            "path": location,
+            "is_admin_only": False,
+            "metadata": {
+                # TODO(vponomaryov): remove this fake metadata when
+                # proper appears.
+                "export_location_metadata_example": "example",
+            },
+        }]
+        if server_details.get('admin_ip'):
+            admin_location = location.replace(
+                server_details['public_address'], server_details['admin_ip'])
+            export_list.append({
+                "path": admin_location,
+                "is_admin_only": True,
+                "metadata": {
+                    # TODO(vponomaryov): remove this fake metadata when
+                    #  proper appears.
+                    "export_location_metadata_example": "example",
+                },
+            })
+        return export_list
 
     @ensure_server
     def extend_share(self, share, new_size, share_server=None):

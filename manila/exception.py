@@ -237,7 +237,11 @@ class ShareMigrationFailed(ManilaException):
 
 
 class ServiceIPNotFound(ManilaException):
-    message = _("Share migration failed: %(reason)s")
+    message = _("Service IP for instance not found: %(reason)s")
+
+
+class AdminIPNotFound(ManilaException):
+    message = _("Admin port IP for service instance not found: %(reason)s")
 
 
 class ShareServerNotCreated(ManilaException):

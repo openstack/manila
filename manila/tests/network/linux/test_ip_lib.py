@@ -90,6 +90,14 @@ GATEWAY_SAMPLE4 = ("""
 default via 10.35.19.254
 """)
 
+GATEWAY_SAMPLE5 = ("""
+default        via 172.24.47.1 dev eth0
+10.0.0.0/24    dev tapc226b810-a0  proto kernel  scope link  src 10.0.0.3
+10.254.0.0/28  dev tap6de90453-1c  proto kernel  scope link  src 10.254.0.4
+10.35.16.0/22  proto kernel  scope link  src 10.35.17.97
+172.24.4.0/24  via 10.35.19.254  metric 100
+""")
+
 DEVICE_ROUTE_SAMPLE = ("10.0.0.0/24  scope link  src 10.0.0.2")
 
 SUBNET_SAMPLE1 = ("10.0.0.0/24 dev qr-23380d11-d2  scope link  src 10.0.0.1\n"
@@ -618,6 +626,42 @@ class TestIpRouteCommand(TestIPCmdBase):
         self.route_cmd.pullup_route('tap1d7888a7-10')
         # Check two calls - device get and subnet get
         self.assertEqual(2, len(self.parent._run.mock_calls))
+
+    def test_list(self):
+        self.route_cmd._as_root = mock.Mock(return_value=GATEWAY_SAMPLE5)
+        expected = [{'Destination': 'default',
+                     'Device': 'eth0',
+                     'Gateway': '172.24.47.1'},
+                    {'Destination': '10.0.0.0/24',
+                     'Device': 'tapc226b810-a0'},
+                    {'Destination': '10.254.0.0/28',
+                     'Device': 'tap6de90453-1c'},
+                    {'Destination': '10.35.16.0/22'},
+                    {'Destination': '172.24.4.0/24',
+                     'Gateway': '10.35.19.254'}]
+        result = self.route_cmd.list()
+        self.assertEqual(expected, result)
+        self.route_cmd._as_root.assert_called_once_with('list')
+
+    def test_delete_net_route(self):
+        self.route_cmd._as_root = mock.Mock()
+        self.route_cmd.delete_net_route('10.0.0.0/24', 'br-ex')
+        self.route_cmd._as_root.assert_called_once_with(
+            'delete', '10.0.0.0/24', 'dev', 'br-ex')
+
+    def test_clear_outdated_routes(self):
+        self.route_cmd.delete_net_route = mock.Mock()
+        list_result = [{'Destination': 'default',
+                        'Device': 'eth0',
+                        'Gateway': '172.24.47.1'},
+                       {'Destination': '10.0.0.0/24',
+                        'Device': 'eth0'},
+                       {'Destination': '10.0.0.0/24',
+                        'Device': 'br-ex'}]
+        self.route_cmd.list = mock.Mock(return_value=list_result)
+        self.route_cmd.clear_outdated_routes('10.0.0.0/24')
+        self.route_cmd.delete_net_route.assert_called_once_with(
+            '10.0.0.0/24', 'br-ex')
 
 
 class TestIpNetnsCommand(TestIPCmdBase):

@@ -340,21 +340,30 @@ class ShareDriver(object):
         """
         return None, None
 
-    def get_driver_migration_info(self, context, share_instance, share_server):
-        """Is called to provide necessary driver migration logic."""
+    def get_driver_migration_info(self, context, share, share_server):
+        """Is called to provide necessary driver migration logic.
+
+        :param context: The 'context.RequestContext' object for the request.
+        :param share: Reference to the share being migrated.
+        :param share_server: Share server model or None.
+        :return: A dictionary with migration information.
+        """
         return None
 
-    def get_migration_info(self, context, share_instance, share_server):
-        """Is called to provide necessary generic migration logic."""
+    def get_migration_info(self, context, share, share_server):
+        """Is called to provide necessary generic migration logic.
 
-        mount_cmd = self._get_mount_command(context, share_instance,
-                                            share_server)
+        :param context: The 'context.RequestContext' object for the request.
+        :param share: Reference to the share being migrated.
+        :param share_server: Share server model or None.
+        :return: A dictionary with migration information.
+        """
+        mount_cmd = self._get_mount_command(context, share, share_server)
 
-        umount_cmd = self._get_unmount_command(context, share_instance,
-                                               share_server)
+        umount_cmd = self._get_unmount_command(context, share, share_server)
 
         access = self._get_access_rule_for_data_copy(
-            context, share_instance, share_server)
+            context, share, share_server)
         return {'mount': mount_cmd,
                 'umount': umount_cmd,
                 'access': access}
@@ -382,17 +391,18 @@ class ShareDriver(object):
             return ['mount', '-t', share_instance['share_proto'].lower()]
 
     def _get_mount_ip(self, share_instance, share_server):
-        # Note(ganso): DHSS = true drivers may need to override this method
-        # and use information saved in share_server structure.
-        mount_ip = self.configuration.safe_get('migration_mounting_backend_ip')
-        old_ip = share_instance['export_locations'][0]['path']
-        if mount_ip:
-            # NOTE(ganso): Does not currently work with hostnames and ipv6.
-            p = re.compile("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
-            new_ip = p.sub(mount_ip, old_ip)
-            return new_ip
-        else:
-            return old_ip
+
+        path = next((x['path'] for x in share_instance['export_locations']
+                    if x['is_admin_only']), None)
+        if not path:
+            mount_ip = self.configuration.safe_get(
+                'migration_mounting_backend_ip')
+            path = share_instance['export_locations'][0]['path']
+            if mount_ip:
+                # NOTE(ganso): Does not currently work with hostnames and ipv6.
+                p = re.compile("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
+                path = p.sub(mount_ip, path)
+        return path
 
     def _get_unmount_command(self, context, share_instance, share_server):
         return ['umount',

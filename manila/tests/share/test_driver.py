@@ -492,7 +492,8 @@ class ShareDriverTestCase(test.TestCase):
                                'access_to': None}}
         fake_share = {'id': 'fake_id',
                       'share_proto': 'fake_proto',
-                      'export_locations': [{'path': '/fake/fake_id'}]}
+                      'export_locations': [{'path': '/fake/fake_id',
+                                            'is_admin_only': True}]}
 
         driver.CONF.set_default('driver_handles_share_servers', False)
         share_driver = driver.ShareDriver(False)
@@ -514,7 +515,9 @@ class ShareDriverTestCase(test.TestCase):
                                'access_to': '100.100.100.100'}}
 
         fake_share = {'id': 'fake_id',
-                      'export_locations': [{'path': '/5.5.5.5/fake_id'}]}
+                      'share_proto': 'fake_proto',
+                      'export_locations': [{'path': '/5.5.5.5/fake_id',
+                                            'is_admin_only': False}]}
 
         driver.CONF.set_default('driver_handles_share_servers', False)
         driver.CONF.set_default('migration_protocol_mount_command',
