@@ -884,6 +884,7 @@ class HNASSSHTestCase(test.TestCase):
                           'tree-clone-job-submit -e /src /dst')
         msg = 'Failed to establish SSC connection'
 
+        self.mock_object(time, "sleep", mock.Mock())
         self.mock_object(paramiko.SSHClient, 'connect')
         self.mock_object(putils, 'ssh_execute',
                          mock.Mock(side_effect=[
@@ -898,6 +899,7 @@ class HNASSSHTestCase(test.TestCase):
 
         putils.ssh_execute.assert_called_with(mock.ANY, concat_command,
                                               check_exit_code=True)
+
         self.assertTrue(self.mock_log.debug.called)
         self.assertTrue(self.mock_log.error.called)
 
