@@ -98,6 +98,8 @@ class ExportLocationsTest(base.BaseSharesAdminTest):
             self.share['id'])
 
         for export_location in export_locations:
+            if export_location['is_admin_only']:
+                continue
             el = self.member_client.get_share_export_location(
                 self.share['id'], export_location['uuid'])
             self._verify_export_location_structure(el, 'member')
