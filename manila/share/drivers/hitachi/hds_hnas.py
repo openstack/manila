@@ -56,7 +56,7 @@ hds_hnas_opts = [
                help="The time (in seconds) to wait for stalled HNAS jobs "
                     "before aborting."),
     cfg.StrOpt('hds_hnas_driver_helper',
-               default='manila.share.drivers.hitachi.hds_hnas.HDSHNASDriver',
+               default='manila.share.drivers.hitachi.ssh.HNASSSHBackend',
                help="Python class to be used for driver helper."),
 ]
 
