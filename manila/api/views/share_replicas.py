@@ -43,6 +43,7 @@ class ReplicationViewBuilder(common.ViewBuilder):
 
     def detail(self, request, replica):
         """Detailed view of a single replica."""
+        context = request.environ['manila.context']
 
         replica_dict = {
             'id': replica.get('id'),
@@ -52,9 +53,12 @@ class ReplicationViewBuilder(common.ViewBuilder):
             'host': replica.get('host'),
             'status': replica.get('status'),
             'share_network_id': replica.get('share_network_id'),
-            'share_server_id': replica.get('share_server_id'),
-            'replica_state': replica.get('replica_state')
+            'replica_state': replica.get('replica_state'),
+            'updated_at': replica.get('updated_at'),
         }
+
+        if context.is_admin:
+            replica_dict['share_server_id'] = replica.get('share_server_id')
 
         return {'share_replica': replica_dict}
 
