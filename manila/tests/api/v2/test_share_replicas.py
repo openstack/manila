@@ -21,7 +21,6 @@ from webob import exc
 
 from manila.api.v2 import share_replicas
 from manila.common import constants
-from manila import context
 from manila import exception
 from manila import policy
 from manila import share
@@ -43,13 +42,16 @@ class ShareReplicasApiTest(test.TestCase):
         self.replicas_req = fakes.HTTPRequest.blank(
             '/share-replicas', version=self.api_version,
             experimental=True)
-        self.context = context.RequestContext('user', 'fake', False)
-        self.replicas_req.environ['manila.context'] = self.context
-        self.admin_context = context.RequestContext('admin', 'fake', True)
+        self.context = self.replicas_req.environ['manila.context']
+        self.replicas_req_admin = fakes.HTTPRequest.blank(
+            '/share-replicas', version=self.api_version,
+            experimental=True, use_admin_context=True)
+        self.admin_context = self.replicas_req_admin.environ['manila.context']
         self.mock_policy_check = self.mock_object(policy, 'check_policy')
 
-    def _get_fake_replica(self, summary=False, **values):
+    def _get_fake_replica(self, summary=False, admin=False, **values):
         replica = fake_share.fake_replica(**values)
+        replica['updated_at'] = '2016-02-11T19:57:56.506805'
         expected_keys = {'id', 'share_id', 'status', 'replica_state'}
         expected_replica = {key: replica[key] for key in replica if key
                             in expected_keys}
@@ -59,9 +61,12 @@ class ShareReplicasApiTest(test.TestCase):
                 'host': replica['host'],
                 'availability_zone': None,
                 'created_at': None,
-                'share_server_id': replica['share_server_id'],
                 'share_network_id': replica['share_network_id'],
+                'updated_at': replica['updated_at'],
             })
+
+        if admin:
+            expected_replica['share_server_id'] = replica['share_server_id']
 
         return replica, expected_replica
 
@@ -91,16 +96,20 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'get_all')
 
-    def test_list_replicas_detail(self):
-        fake_replica, expected_replica = self._get_fake_replica()
+    @ddt.data(True, False)
+    def test_list_replicas_detail(self, is_admin):
+        fake_replica, expected_replica = self._get_fake_replica(admin=is_admin)
         self.mock_object(share_replicas.db, 'share_replicas_get_all',
                          mock.Mock(return_value=[fake_replica]))
 
-        res_dict = self.controller.detail(self.replicas_req)
+        req = self.replicas_req if not is_admin else self.replicas_req_admin
+        req_context = req.environ['manila.context']
+
+        res_dict = self.controller.detail(req)
 
         self.assertEqual([expected_replica], res_dict['share_replicas'])
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get_all')
+            req_context, self.resource_name, 'get_all')
 
     def test_list_replicas_detail_with_limit(self):
         fake_replica_1, expected_replica_1 = self._get_fake_replica()
@@ -155,13 +164,16 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'get_all')
 
-    def test_list_share_replicas_detail(self):
-        fake_replica, expected_replica = self._get_fake_replica()
+    @ddt.data(True, False)
+    def test_list_share_replicas_detail(self, is_admin):
+        fake_replica, expected_replica = self._get_fake_replica(admin=is_admin)
         self.mock_object(share_replicas.db, 'share_replicas_get_all_by_share',
                          mock.Mock(return_value=[fake_replica]))
         req = fakes.HTTPRequest.blank(
             '/share-replicas?share_id=FAKE_SHARE_ID',
             version=self.api_version, experimental=True)
+        req.environ['manila.context'] = (
+            self.context if not is_admin else self.admin_context)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.detail(req)
@@ -208,18 +220,21 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             req_context, self.resource_name, 'get_all')
 
-    def test_show(self):
-        fake_replica, expected_replica = self._get_fake_replica()
+    @ddt.data(True, False)
+    def test_show(self, is_admin):
+        fake_replica, expected_replica = self._get_fake_replica(admin=is_admin)
         self.mock_object(
             share_replicas.db, 'share_replica_get',
             mock.Mock(return_value=fake_replica))
 
-        res_dict = self.controller.show(
-            self.replicas_req, fake_replica.get('id'))
+        req = self.replicas_req if not is_admin else self.replicas_req_admin
+        req_context = req.environ['manila.context']
+
+        res_dict = self.controller.show(req, fake_replica.get('id'))
 
         self.assertEqual(expected_replica, res_dict['share_replica'])
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'show')
+            req_context, self.resource_name, 'show')
 
     def test_show_no_replica(self):
         mock__view_builder_call = self.mock_object(
@@ -315,9 +330,10 @@ class ShareReplicasApiTest(test.TestCase):
         self.mock_policy_check.assert_called_once_with(
             self.context, self.resource_name, 'create')
 
-    def test_create(self):
+    @ddt.data(True, False)
+    def test_create(self, is_admin):
         fake_replica, expected_replica = self._get_fake_replica(
-            replication_type='writable')
+            replication_type='writable', admin=is_admin)
         body = {
             'share_replica': {
                 'share_id': 'FAKE_SHAREID',
@@ -332,11 +348,14 @@ class ShareReplicasApiTest(test.TestCase):
                          'share_replicas_get_available_active_replica',
                          mock.Mock(return_value=[{'id': 'active1'}]))
 
-        res_dict = self.controller.create(self.replicas_req, body)
+        req = self.replicas_req if not is_admin else self.replicas_req_admin
+        req_context = req.environ['manila.context']
+
+        res_dict = self.controller.create(req, body)
 
         self.assertEqual(expected_replica, res_dict['share_replica'])
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'create')
+            req_context, self.resource_name, 'create')
 
     def test_delete_invalid_replica(self):
         fake_exception = exception.ShareReplicaNotFound(
