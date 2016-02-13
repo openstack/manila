@@ -16,7 +16,9 @@
 import mock
 from oslo_log import log
 from oslo_utils import units
+import six
 
+from manila.common import constants as const
 from manila import exception
 from manila.share.drivers.emc.plugins.isilon import isilon
 from manila import test
@@ -72,11 +74,13 @@ class IsilonTest(test.TestCase):
     def test_allow_access_single_ip_nfs(self):
         # setup
         share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': '10.1.1.10'}
+        access = {'access_type': 'ip', 'access_to': '10.1.1.10',
+                  'access_level': const.ACCESS_LEVEL_RW}
         share_server = None
         fake_export_id = 1
         self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
-        self._mock_isilon_api.get_nfs_export.return_value = {'clients': []}
+        self._mock_isilon_api.get_nfs_export.return_value = {
+            'clients': []}
         self.assertFalse(self._mock_isilon_api.request.called)
 
         # call method under test
@@ -90,7 +94,59 @@ class IsilonTest(test.TestCase):
         self._mock_isilon_api.request.assert_called_once_with(
             'PUT', expected_url, data=expected_data)
 
-    def test_deny_access_ip_nfs(self):
+    def test_allow_access_with_nfs_readonly(self):
+        # setup
+        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
+        access = {'access_type': 'ip', 'access_to': '10.1.1.10',
+                  'access_level': const.ACCESS_LEVEL_RO}
+        fake_export_id = 70
+        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
+        self._mock_isilon_api.get_nfs_export.return_value = {
+            'read_only_clients': []}
+        self.assertFalse(self._mock_isilon_api.request.called)
+
+        self.storage_connection.allow_access(
+            self.mock_context, share, access, None)
+
+        # verify expected REST API call is executed
+        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
+                        six.text_type(fake_export_id))
+        expected_data = {'read_only_clients': ['10.1.1.10']}
+        self._mock_isilon_api.request.assert_called_once_with(
+            'PUT', expected_url, data=expected_data)
+
+    def test_allow_access_with_nfs_readwrite(self):
+        # setup
+        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
+        access = {'access_type': 'ip', 'access_to': '10.1.1.10',
+                  'access_level': const.ACCESS_LEVEL_RW}
+        fake_export_id = 70
+        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
+        self._mock_isilon_api.get_nfs_export.return_value = {
+            'clients': []}
+        self.assertFalse(self._mock_isilon_api.request.called)
+
+        self.storage_connection.allow_access(
+            self.mock_context, share, access, None)
+
+        # verify expected REST API call is executed
+        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
+                        six.text_type(fake_export_id))
+        expected_data = {'clients': ['10.1.1.10']}
+        self._mock_isilon_api.request.assert_called_once_with(
+            'PUT', expected_url, data=expected_data)
+
+    def test_allow_access_with_cifs_ip_readonly(self):
+        # Note: Driver does not currently support readonly access for "ip" type
+        share = {'name': self.SHARE_NAME, 'share_proto': 'CIFS'}
+        access = {'access_type': 'ip', 'access_to': '10.1.1.10',
+                  'access_level': const.ACCESS_LEVEL_RO}
+
+        self.assertRaises(
+            exception.InvalidShareAccess, self.storage_connection.allow_access,
+            self.mock_context, share, access, None)
+
+    def test_deny_access__ip_nfs_readwrite(self):
         """Verifies that an IP will be remove from a whitelist."""
         fake_export_id = 1
         self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
@@ -100,7 +156,8 @@ class IsilonTest(test.TestCase):
             'clients': [ip_addr]}
 
         share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': ip_addr}
+        access = {'access_type': 'ip', 'access_to': ip_addr,
+                  'access_level': const.ACCESS_LEVEL_RW}
         share_server = None
 
         # call method under test
@@ -112,6 +169,32 @@ class IsilonTest(test.TestCase):
         expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
                         str(fake_export_id))
         expected_data = {'clients': []}
+        self._mock_isilon_api.request.assert_called_once_with(
+            'PUT', expected_url, data=expected_data
+        )
+
+    def test_deny_access__nfs_ip_readonly(self):
+        fake_export_id = 1
+        self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
+        # simulate an IP added to the whitelist
+        ip_addr = '10.0.0.4'
+        self._mock_isilon_api.get_nfs_export.return_value = {
+            'read_only_clients': [ip_addr]}
+
+        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
+        access = {'access_type': 'ip', 'access_to': ip_addr,
+                  'access_level': const.ACCESS_LEVEL_RO}
+        share_server = None
+
+        # call method under test
+        self.assertFalse(self._mock_isilon_api.request.called)
+        self.storage_connection.deny_access(self.mock_context, share, access,
+                                            share_server)
+
+        # verify that a call is made to remove an existing IP from the list
+        expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
+                        six.text_type(fake_export_id))
+        expected_data = {'read_only_clients': []}
         self._mock_isilon_api.request.assert_called_once_with(
             'PUT', expected_url, data=expected_data
         )
@@ -131,7 +214,8 @@ class IsilonTest(test.TestCase):
         self.assertFalse(self._mock_isilon_api.request.called)
 
         # call method under test
-        access = {'access_type': 'ip', 'access_to': ip_addr}
+        access = {'access_type': 'ip', 'access_to': ip_addr,
+                  'access_level': const.ACCESS_LEVEL_RW}
         share_server = None
         self.storage_connection.deny_access(self.mock_context, share, access,
                                             share_server)
@@ -153,7 +237,8 @@ class IsilonTest(test.TestCase):
 
     def test_deny_access_invalid_share_protocol(self):
         share = {'name': self.SHARE_NAME, 'share_proto': 'FOO'}
-        access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
+        access = {'access_type': 'ip', 'access_to': '10.0.0.1',
+                  'access_level': const.ACCESS_LEVEL_RW}
 
         # This operation should return silently
         self.storage_connection.deny_access(
@@ -161,7 +246,8 @@ class IsilonTest(test.TestCase):
 
     def test_deny_access_nfs_export_does_not_exist(self):
         share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
+        access = {'access_type': 'ip', 'access_to': '10.0.0.1',
+                  'access_level': const.ACCESS_LEVEL_RW}
         self._mock_isilon_api.lookup_nfs_export.return_value = 1
         self._mock_isilon_api.get_nfs_export.return_value = None
 
@@ -173,7 +259,8 @@ class IsilonTest(test.TestCase):
 
     def test_deny_access_nfs_share_does_not_exist(self):
         share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': '10.0.0.1'}
+        access = {'access_type': 'ip', 'access_to': '10.0.0.1',
+                  'access_level': const.ACCESS_LEVEL_RW}
         self._mock_isilon_api.lookup_nfs_export.return_value = None
 
         self.assertRaises(
@@ -194,17 +281,20 @@ class IsilonTest(test.TestCase):
         new_allowed_ip = '10.7.7.8'
         self._mock_isilon_api.lookup_nfs_export.return_value = fake_export_id
         existing_ips = ['10.0.0.1', '10.1.1.1', '10.0.0.2']
-        export_json = {'clients': existing_ips}
+        export_json = {
+            'clients': existing_ips,
+            'access_level': const.ACCESS_LEVEL_RW,
+        }
         self._mock_isilon_api.get_nfs_export.return_value = export_json
         self.assertFalse(self._mock_isilon_api.request.called)
 
         # call method under test
         share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
-        access = {'access_type': 'ip', 'access_to': new_allowed_ip}
+        access = {'access_type': 'ip', 'access_to': new_allowed_ip,
+                  'access_level': const.ACCESS_LEVEL_RW}
         share_server = None
-        self.storage_connection.allow_access(self.mock_context, share,
-                                             access,
-                                             share_server)
+        self.storage_connection.allow_access(
+            self.mock_context, share, access, share_server)
 
         # verify access rule is applied
         expected_url = (self.API_URL + '/platform/1/protocols/nfs/exports/' +
@@ -239,7 +329,8 @@ class IsilonTest(test.TestCase):
 
         # call method under test
         share = {'name': share_name, 'share_proto': 'CIFS'}
-        access = {'access_type': 'ip', 'access_to': new_allowed_ip}
+        access = {'access_type': 'ip', 'access_to': new_allowed_ip,
+                  'access_level': const.ACCESS_LEVEL_RW}
         share_server = None
         self.storage_connection.allow_access(self.mock_context, share,
                                              access,
@@ -265,7 +356,8 @@ class IsilonTest(test.TestCase):
         share_name = self.SHARE_NAME
         share = {'name': share_name, 'share_proto': 'CIFS'}
         allow_ip = '10.1.1.10'
-        access = {'access_type': 'ip', 'access_to': allow_ip}
+        access = {'access_type': 'ip', 'access_to': allow_ip,
+                  'access_level': const.ACCESS_LEVEL_RW}
         share_server = None
         self._mock_isilon_api.lookup_smb_share.return_value = {
             'name': share_name, 'host_acl': []}

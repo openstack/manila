@@ -23,6 +23,7 @@ from oslo_log import log
 from oslo_utils import units
 import six
 
+from manila.common import constants as const
 from manila import exception
 from manila.i18n import _, _LW
 from manila.share.drivers.emc.plugins import base
@@ -69,7 +70,7 @@ class IsilonStorageConnection(base.StorageConnection):
             message = (_('Unsupported share protocol: %(proto)s.') %
                        {'proto': share['share_proto']})
             LOG.error(message)
-            raise exception.InvalidShare(message=message)
+            raise exception.InvalidShare(reason=message)
 
         # apply directory quota based on share size
         max_share_size = share['size'] * units.Gi
@@ -102,7 +103,7 @@ class IsilonStorageConnection(base.StorageConnection):
                 _('The requested NFS share "%(share)s" was not created.') %
                 {'share': share['name']})
             LOG.error(message)
-            raise exception.ShareBackendException(message=message)
+            raise exception.ShareBackendException(msg=message)
         location = '{0}:{1}'.format(self._server, container_path)
         return location
 
@@ -131,7 +132,7 @@ class IsilonStorageConnection(base.StorageConnection):
             message = (_('Unsupported share type: %(type)s.') %
                        {'type': share['share_proto']})
             LOG.error(message)
-            raise exception.InvalidShare(message=message)
+            raise exception.InvalidShare(reason=message)
 
     def _delete_nfs_share(self, share):
         """Is called to remove nfs share."""
@@ -148,7 +149,7 @@ class IsilonStorageConnection(base.StorageConnection):
             if not export_deleted:
                 message = _('Error deleting NFS share: %s') % share['name']
                 LOG.error(message)
-                raise exception.ShareBackendException(message=message)
+                raise exception.ShareBackendException(msg=message)
 
     def _delete_cifs_share(self, share):
         """Is called to remove CIFS share."""
@@ -162,7 +163,7 @@ class IsilonStorageConnection(base.StorageConnection):
             if not share_deleted:
                 message = _('Error deleting CIFS share: %s') % share['name']
                 LOG.error(message)
-                raise exception.ShareBackendException(message=message)
+                raise exception.ShareBackendException(msg=message)
 
     def delete_snapshot(self, context, snapshot, share_server):
         """Is called to remove snapshot."""
@@ -184,44 +185,56 @@ class IsilonStorageConnection(base.StorageConnection):
         if access['access_type'] != 'ip':
             message = _('Only ip access type allowed.')
             LOG.error(message)
-            raise exception.ShareBackendException(message=message)
+            raise exception.ShareBackendException(msg=message)
 
         access_ip = access['access_to']
 
         if share['share_proto'] == 'NFS':
             export_path = self._get_container_path(share)
-            self._nfs_allow_access(access_ip, export_path)
+            self._nfs_allow_access(
+                access_ip, export_path, access['access_level'])
         elif share['share_proto'] == 'CIFS':
-            self._cifs_allow_access(access_ip, share)
+            self._cifs_allow_access(
+                access_ip, share, access['access_level'])
         else:
             message = _(
                 'Unsupported share protocol: %s. Only "NFS" and '
                 '"CIFS" are currently supported share protocols.') % share[
                 'share_proto']
             LOG.error(message)
-            raise exception.InvalidShare(message=message)
+            raise exception.InvalidShare(reason=message)
 
-    def _nfs_allow_access(self, access_ip, export_path):
+    def _nfs_allow_access(self, access_ip, export_path, access_level):
         """Allow access to nfs share."""
 
         share_id = self._isilon_api.lookup_nfs_export(export_path)
 
+        share_access_group = 'clients'
+        if access_level == const.ACCESS_LEVEL_RO:
+            share_access_group = 'read_only_clients'
+
         # Get current allowed clients
-        export = self._isilon_api.get_nfs_export(share_id)
-        current_clients = export['clients']
+        export = self._get_existing_nfs_export(share_id)
+        current_clients = export[share_access_group]
 
         # Format of ips could be '10.0.0.2', or '10.0.0.2, 10.0.0.0/24'
         ips = list()
         ips.append(access_ip)
         ips.extend(current_clients)
-        export_params = {"clients": ips}
+        export_params = {share_access_group: ips}
         url = '{0}/platform/1/protocols/nfs/exports/{1}'.format(
             self._server_url, share_id)
         resp = self._isilon_api.request('PUT', url, data=export_params)
         resp.raise_for_status()
 
-    def _cifs_allow_access(self, ip, share):
+    def _cifs_allow_access(self, ip, share, access_level):
         """Allow access to cifs share."""
+
+        if access_level == const.ACCESS_LEVEL_RO:
+            message = _('Only RW Access allowed for CIFS Protocol when using '
+                        'the "ip" access type.')
+            LOG.error(message)
+            raise exception.InvalidShareAccess(reason=message)
 
         allowed_ip = 'allow:' + ip
         smb_share = self._isilon_api.lookup_smb_share(share['name'])
@@ -241,13 +254,18 @@ class IsilonStorageConnection(base.StorageConnection):
             return
 
         denied_ip = access['access_to']
+        access_level = access['access_level']
         if share['share_proto'] == 'NFS':
-            self._nfs_deny_access(denied_ip, share)
+            self._nfs_deny_access(denied_ip, share, access_level)
         elif share['share_proto'] == 'CIFS':
             self._cifs_deny_access(denied_ip, share)
 
-    def _nfs_deny_access(self, denied_ip, share):
+    def _nfs_deny_access(self, denied_ip, share, access_level):
         """Deny access to nfs share."""
+
+        share_access_group = 'clients'
+        if access_level == const.ACCESS_LEVEL_RO:
+            share_access_group = 'read_only_clients'
 
         # Get list of currently allowed client ips
         export_id = self._isilon_api.lookup_nfs_export(
@@ -256,27 +274,36 @@ class IsilonStorageConnection(base.StorageConnection):
             message = _('Share %s should have been created, but was not '
                         'found.') % share['name']
             LOG.error(message)
-            raise exception.ShareBackendException(message=message)
-        clients = self._get_nfs_ip_access_list(export_id)
+            raise exception.ShareBackendException(msg=message)
+        export = self._get_existing_nfs_export(export_id)
+        try:
+            clients = export[share_access_group]
+        except KeyError:
+            message = (_('Export %(export_name)s should have contained the '
+                         'JSON key %(json_key)s, but this key was not found.')
+                       % {'export_name': share['name'],
+                          'json_key': share_access_group})
+            LOG.error(message)
+            raise exception.ShareBackendException(msg=message)
         allowed_ips = set(clients)
 
         if allowed_ips.__contains__(denied_ip):
             allowed_ips.remove(denied_ip)
-            data = {"clients": list(allowed_ips)}
+            data = {share_access_group: list(allowed_ips)}
             url = ('{0}/platform/1/protocols/nfs/exports/{1}'
                    .format(self._server_url, six.text_type(export_id)))
             r = self._isilon_api.request('PUT', url, data=data)
             r.raise_for_status()
 
-    def _get_nfs_ip_access_list(self, export_id):
+    def _get_existing_nfs_export(self, export_id):
         export = self._isilon_api.get_nfs_export(export_id)
         if export is None:
             message = _('NFS share with export id %d should have been '
                         'created, but was not found.') % export_id
             LOG.error(message)
-            raise exception.ShareBackendException(message=message)
+            raise exception.ShareBackendException(msg=message)
 
-        return export["clients"]
+        return export
 
     def _cifs_deny_access(self, denied_ip, share):
         """Deny access to cifs share."""
