@@ -349,6 +349,11 @@ class ServiceInstanceManager(object):
 
     def ensure_service_instance(self, context, server):
         """Ensures that server exists and active."""
+        if 'instance_id' not in server:
+            LOG.warning(_LW("Unable to check server existence since "
+                            "'instance_id' key is not set in share server "
+                            "backend details."))
+            return False
         try:
             inst = self.compute_api.server_get(self.admin_context,
                                                server['instance_id'])

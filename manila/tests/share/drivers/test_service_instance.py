@@ -600,6 +600,12 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertFalse(self._manager._check_server_availability.called)
         self.assertFalse(result)
 
+    def test_ensure_server_no_instance_id(self):
+        # Tests that we avoid a KeyError if the share details don't have an
+        # instance_id key set (so we can't find the share instance).
+        self.assertFalse(self._manager.ensure_service_instance(
+            self._manager.admin_context, {'ip': '1.2.3.4'}))
+
     def test_get_key_create_new(self):
         keypair_name = self._manager.get_config_option(
             'manila_service_keypair_name')
