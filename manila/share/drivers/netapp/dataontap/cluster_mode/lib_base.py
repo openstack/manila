@@ -353,7 +353,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Creates new share."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         self._allocate_container(share, vserver_client)
-        return self._create_export(share, vserver, vserver_client)
+        return self._create_export(share, share_server, vserver,
+                                   vserver_client)
 
     @na_utils.trace
     def create_share_from_snapshot(self, context, share, snapshot,
@@ -361,7 +362,8 @@ class NetAppCmodeFileStorageLibrary(object):
         """Creates new share from snapshot."""
         vserver, vserver_client = self._get_vserver(share_server=share_server)
         self._allocate_container_from_snapshot(share, snapshot, vserver_client)
-        return self._create_export(share, vserver, vserver_client)
+        return self._create_export(share, share_server, vserver,
+                                   vserver_client)
 
     @na_utils.trace
     def _allocate_container(self, share, vserver_client):
@@ -584,7 +586,7 @@ class NetAppCmodeFileStorageLibrary(object):
         vserver_client.delete_volume(share_name)
 
     @na_utils.trace
-    def _create_export(self, share, vserver, vserver_client):
+    def _create_export(self, share, share_server, vserver, vserver_client):
         """Creates NAS storage."""
         helper = self._get_helper(share)
         helper.set_client(vserver_client)
@@ -600,8 +602,9 @@ class NetAppCmodeFileStorageLibrary(object):
             raise exception.NetAppException(msg % msg_args)
 
         # Get LIF addresses with metadata
-        export_addresses = self._get_export_addresses_with_metadata(share,
-                                                                    interfaces)
+        export_addresses = self._get_export_addresses_with_metadata(
+            share, share_server, interfaces)
+
         # Create the share and get a callback for generating export locations
         callback = helper.create_share(share, share_name)
 
@@ -623,17 +626,23 @@ class NetAppCmodeFileStorageLibrary(object):
         return export_locations
 
     @na_utils.trace
-    def _get_export_addresses_with_metadata(self, share, interfaces):
+    def _get_export_addresses_with_metadata(self, share, share_server,
+                                            interfaces):
         """Return interface addresses with locality and other metadata."""
 
+        # Get home node so we can identify preferred paths
         aggregate_name = share_utils.extract_host(share['host'], level='pool')
         home_node = self._get_aggregate_node(aggregate_name)
+
+        # Get admin LIF addresses so we can identify admin export locations
+        admin_addresses = self._get_admin_addresses_for_share_server(
+            share_server)
 
         addresses = {}
         for interface in interfaces:
 
             address = interface['address']
-            is_admin_only = False
+            is_admin_only = address in admin_addresses
 
             if home_node:
                 preferred = interface.get('home-node') == home_node
@@ -646,6 +655,19 @@ class NetAppCmodeFileStorageLibrary(object):
             }
 
         return addresses
+
+    @na_utils.trace
+    def _get_admin_addresses_for_share_server(self, share_server):
+
+        if not share_server:
+            return []
+
+        admin_addresses = []
+        for network_allocation in share_server.get('network_allocations'):
+            if network_allocation['label'] == 'admin':
+                admin_addresses.append(network_allocation['ip_address'])
+
+        return admin_addresses
 
     @na_utils.trace
     def _sort_export_locations_by_preferred_paths(self, export_locations):
@@ -741,7 +763,8 @@ class NetAppCmodeFileStorageLibrary(object):
     def manage_existing(self, share, driver_options):
         vserver, vserver_client = self._get_vserver(share_server=None)
         share_size = self._manage_container(share, vserver_client)
-        export_locations = self._create_export(share, vserver, vserver_client)
+        export_locations = self._create_export(share, None, vserver,
+                                               vserver_client)
         return {'size': share_size, 'export_locations': export_locations}
 
     @na_utils.trace
@@ -866,6 +889,7 @@ class NetAppCmodeFileStorageLibrary(object):
                 NetAppCmodeFileStorageLibrary._get_valid_cg_snapshot_name)
 
             export_locations = self._create_export(clone['share'],
+                                                   share_server,
                                                    vserver,
                                                    vserver_client)
             share_update_list.append({

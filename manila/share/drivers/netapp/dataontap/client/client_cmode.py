@@ -416,8 +416,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
 
     @na_utils.trace
     def create_network_interface(self, ip, netmask, vlan, node, port,
-                                 vserver_name, allocation_id,
-                                 lif_name_template, ipspace_name):
+                                 vserver_name, lif_name, ipspace_name):
         """Creates LIF on VLAN port."""
 
         home_port_name = port
@@ -429,11 +428,8 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             self._ensure_broadcast_domain_for_port(node, home_port_name,
                                                    ipspace=ipspace_name)
 
-        interface_name = (lif_name_template %
-                          {'node': node, 'net_allocation_id': allocation_id})
-
         LOG.debug('Creating LIF %(lif)s for Vserver %(vserver)s ',
-                  {'lif': interface_name, 'vserver': vserver_name})
+                  {'lif': lif_name, 'vserver': vserver_name})
 
         api_args = {
             'address': ip,
@@ -445,7 +441,7 @@ class NetAppCmodeClient(client_base.NetAppBaseClient):
             'home-node': node,
             'home-port': home_port_name,
             'netmask': netmask,
-            'interface-name': interface_name,
+            'interface-name': lif_name,
             'role': 'data',
             'vserver': vserver_name,
         }

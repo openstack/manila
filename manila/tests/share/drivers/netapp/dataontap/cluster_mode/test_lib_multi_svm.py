@@ -290,6 +290,7 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          '_create_ipspace',
                          mock.Mock(return_value=fake.IPSPACE))
         self.mock_object(self.library, '_create_vserver_lifs')
+        self.mock_object(self.library, '_create_vserver_admin_lif')
 
         self.library._create_vserver(vserver_name, fake.NETWORK_INFO)
 
@@ -299,6 +300,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
             fake.AGGREGATES, fake.IPSPACE)
         self.library._get_api_client.assert_called_with(vserver=vserver_name)
         self.library._create_vserver_lifs.assert_called_with(
+            vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE)
+        self.library._create_vserver_admin_lif.assert_called_with(
             vserver_name, vserver_client, fake.NETWORK_INFO, fake.IPSPACE)
         self.assertTrue(vserver_client.enable_nfs.called)
         self.library._client.setup_security_services.assert_called_with(
@@ -387,8 +390,8 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         self.library._client.features.IPSPACES = True
         network_info = copy.deepcopy(fake.NETWORK_INFO)
-        network_info['segmentation_id'] = None
-        network_info['network_type'] = network_type
+        network_info['network_allocations'][0]['segmentation_id'] = None
+        network_info['network_allocations'][0]['network_type'] = network_type
 
         result = self.library._create_ipspace(network_info)
 
@@ -444,36 +447,62 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          'list_cluster_nodes',
                          mock.Mock(return_value=fake.CLUSTER_NODES))
         self.mock_object(self.library,
-                         '_get_node_data_port',
-                         mock.Mock(return_value=fake.NODE_DATA_PORT))
-        self.mock_object(self.library, '_create_lif_if_nonexistent')
+                         '_get_lif_name',
+                         mock.Mock(side_effect=['fake_lif1', 'fake_lif2']))
+        self.mock_object(self.library, '_create_lif')
 
         self.library._create_vserver_lifs(fake.VSERVER1,
                                           'fake_vserver_client',
                                           fake.NETWORK_INFO,
                                           fake.IPSPACE)
 
-        self.library._create_lif_if_nonexistent.assert_has_calls([
-            mock.call(
-                fake.VSERVER1,
-                fake.NETWORK_INFO['network_allocations'][0]['id'],
-                fake.NETWORK_INFO['segmentation_id'],
-                fake.CLUSTER_NODES[0],
-                fake.NODE_DATA_PORT,
-                fake.NETWORK_INFO['network_allocations'][0]['ip_address'],
-                fake.NETWORK_INFO_NETMASK,
-                fake.IPSPACE,
-                'fake_vserver_client'),
-            mock.call(
-                fake.VSERVER1,
-                fake.NETWORK_INFO['network_allocations'][1]['id'],
-                fake.NETWORK_INFO['segmentation_id'],
-                fake.CLUSTER_NODES[1],
-                fake.NODE_DATA_PORT,
-                fake.NETWORK_INFO['network_allocations'][1]['ip_address'],
-                fake.NETWORK_INFO_NETMASK,
-                fake.IPSPACE,
-                'fake_vserver_client')])
+        self.library._create_lif.assert_has_calls([
+            mock.call('fake_vserver_client', fake.VSERVER1, fake.IPSPACE,
+                      fake.CLUSTER_NODES[0], 'fake_lif1',
+                      fake.NETWORK_INFO['network_allocations'][0]),
+            mock.call('fake_vserver_client', fake.VSERVER1, fake.IPSPACE,
+                      fake.CLUSTER_NODES[1], 'fake_lif2',
+                      fake.NETWORK_INFO['network_allocations'][1])])
+
+    def test_create_vserver_admin_lif(self):
+
+        self.mock_object(self.library._client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library,
+                         '_get_lif_name',
+                         mock.Mock(return_value='fake_admin_lif'))
+        self.mock_object(self.library, '_create_lif')
+
+        self.library._create_vserver_admin_lif(fake.VSERVER1,
+                                               'fake_vserver_client',
+                                               fake.NETWORK_INFO,
+                                               fake.IPSPACE)
+
+        self.library._create_lif.assert_has_calls([
+            mock.call('fake_vserver_client', fake.VSERVER1, fake.IPSPACE,
+                      fake.CLUSTER_NODES[0], 'fake_admin_lif',
+                      fake.NETWORK_INFO['admin_network_allocations'][0])])
+
+    def test_create_vserver_admin_lif_no_admin_network(self):
+
+        fake_network_info = copy.deepcopy(fake.NETWORK_INFO)
+        fake_network_info['admin_network_allocations'] = []
+
+        self.mock_object(self.library._client,
+                         'list_cluster_nodes',
+                         mock.Mock(return_value=fake.CLUSTER_NODES))
+        self.mock_object(self.library,
+                         '_get_lif_name',
+                         mock.Mock(return_value='fake_admin_lif'))
+        self.mock_object(self.library, '_create_lif')
+
+        self.library._create_vserver_admin_lif(fake.VSERVER1,
+                                               'fake_vserver_client',
+                                               fake_network_info,
+                                               fake.IPSPACE)
+
+        self.assertFalse(self.library._create_lif.called)
 
     def test_get_node_data_port(self):
 
@@ -499,49 +528,49 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                           self.library._get_node_data_port,
                           fake.CLUSTER_NODE)
 
-    def test_create_lif_if_nonexistent(self):
+    def test_get_lif_name(self):
+
+        result = self.library._get_lif_name(
+            'fake_node', fake.NETWORK_INFO['network_allocations'][0])
+
+        self.assertEqual('os_132dbb10-9a36-46f2-8d89-3d909830c356', result)
+
+    def test_create_lif(self):
 
         vserver_client = mock.Mock()
         vserver_client.network_interface_exists = mock.Mock(
             return_value=False)
+        self.mock_object(self.library,
+                         '_get_node_data_port',
+                         mock.Mock(return_value='fake_port'))
 
-        self.library._create_lif_if_nonexistent('fake_vserver',
-                                                'fake_allocation_id',
-                                                'fake_vlan',
-                                                'fake_node',
-                                                'fake_port',
-                                                'fake_ip',
-                                                'fake_netmask',
-                                                fake.IPSPACE,
-                                                vserver_client)
+        self.library._create_lif(vserver_client,
+                                 'fake_vserver',
+                                 'fake_ipspace',
+                                 'fake_node',
+                                 'fake_lif',
+                                 fake.NETWORK_INFO['network_allocations'][0])
 
         self.library._client.create_network_interface.assert_has_calls([
-            mock.call(
-                'fake_ip',
-                'fake_netmask',
-                'fake_vlan',
-                'fake_node',
-                'fake_port',
-                'fake_vserver',
-                'fake_allocation_id',
-                fake.LIF_NAME_TEMPLATE,
-                fake.IPSPACE)])
+            mock.call('10.10.10.10', '255.255.255.0', '1000', 'fake_node',
+                      'fake_port', 'fake_vserver', 'fake_lif',
+                      'fake_ipspace')])
 
     def test_create_lif_if_nonexistent_already_present(self):
 
         vserver_client = mock.Mock()
         vserver_client.network_interface_exists = mock.Mock(
             return_value=True)
+        self.mock_object(self.library,
+                         '_get_node_data_port',
+                         mock.Mock(return_value='fake_port'))
 
-        self.library._create_lif_if_nonexistent('fake_vserver',
-                                                'fake_allocation_id',
-                                                'fake_vlan',
-                                                'fake_node',
-                                                'fake_port',
-                                                'fake_ip',
-                                                'fake_netmask',
-                                                fake.IPSPACE,
-                                                vserver_client)
+        self.library._create_lif(vserver_client,
+                                 'fake_vserver',
+                                 fake.IPSPACE,
+                                 'fake_node',
+                                 'fake_lif',
+                                 fake.NETWORK_INFO['network_allocations'][0])
 
         self.assertFalse(self.library._client.create_network_interface.called)
 
@@ -553,6 +582,19 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
         result = self.library.get_network_allocations_number()
 
         self.assertEqual(len(fake.CLUSTER_NODES), result)
+
+    def test_get_admin_network_allocations_number(self):
+
+        result = self.library.get_admin_network_allocations_number(
+            'fake_admin_network_api')
+
+        self.assertEqual(1, result)
+
+    def test_get_admin_network_allocations_number_no_admin_network(self):
+
+        result = self.library.get_admin_network_allocations_number(None)
+
+        self.assertEqual(0, result)
 
     def test_teardown_server(self):
 

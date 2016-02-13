@@ -109,6 +109,10 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def get_network_allocations_number(self):
         return self.library.get_network_allocations_number()
 
+    def get_admin_network_allocations_number(self):
+        return self.library.get_admin_network_allocations_number(
+            self.admin_network_api)
+
     def _setup_server(self, network_info, metadata=None):
         return self.library.setup_server(network_info, metadata)
 
