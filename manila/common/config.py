@@ -81,9 +81,9 @@ global_opts = [
                 help='Specify list of extensions to load when using osapi_'
                      'share_extension option with manila.api.contrib.'
                      'select_extensions.'),
-    cfg.MultiStrOpt('osapi_share_extension',
-                    default=['manila.api.contrib.standard_extensions'],
-                    help='The osapi share extension to load.'),
+    cfg.ListOpt('osapi_share_extension',
+                default=['manila.api.contrib.standard_extensions'],
+                help='The osapi share extensions to load.'),
     cfg.StrOpt('sqlite_db',
                default='manila.sqlite',
                help='The filename to use with sqlite.'),
