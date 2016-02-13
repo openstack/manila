@@ -543,7 +543,7 @@ class ShareDriver(object):
                        'new_instance_id': new_share_instance['id']})
             raise exception.ShareMigrationFailed(reason=msg)
 
-        LOG.debug("Copying completed in migration for share %s." % share['id'])
+        LOG.debug("Copying completed in migration for share %s.", share['id'])
 
     def create_share(self, context, share, share_server=None):
         """Is called to create share."""
