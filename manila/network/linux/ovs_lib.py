@@ -23,7 +23,7 @@ from manila import utils
 LOG = log.getLogger(__name__)
 
 
-class OVSBridge:
+class OVSBridge(object):
     def __init__(self, br_name):
         self.br_name = br_name
         self.re_id = self.re_compile_id()

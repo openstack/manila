@@ -78,7 +78,7 @@ class FakeConnection(base.StorageConnection):
 FAKE_BACKEND = 'fake_backend'
 
 
-class FakeEMCExtensionManager():
+class FakeEMCExtensionManager(object):
     def __init__(self):
         self.extensions = []
         self.extensions.append(

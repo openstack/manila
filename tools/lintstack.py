@@ -110,8 +110,11 @@ class LintOutput(object):
         return json.dumps(self.__dict__)
 
     def review_str(self):
-        return ("File %(filename)s\nLine %(lineno)d:%(line_content)s\n"
-                "%(code)s: %(message)s" % self.__dict__)
+        return ("File %(filename)s\nLine %(lineno)d:"
+                "%(line_content)s\n%(code)s: %(message)s" %
+                {'filename': self.filename, 'lineno': self.lineno,
+                 'line_content': self.line_content, 'code': self.code,
+                 'message': self.message})
 
 
 class ErrorKeys(object):

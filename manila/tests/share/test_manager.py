@@ -52,7 +52,7 @@ def fake_replica(**kwargs):
 
 class LockedOperationsTestCase(test.TestCase):
 
-    class FakeManager:
+    class FakeManager(object):
 
         @manager.locked_share_replica_operation
         def fake_replica_operation(self, context, replica, share_id=None):
