@@ -264,14 +264,16 @@ class ShareAPITest(test.TestCase):
                                 display_description=shr['description'],
                                 size=shr['size'],
                                 share_proto=shr['share_proto'].upper(),
-                                availability_zone=shr['availability_zone'],
                                 snapshot_id=shr['snapshot_id'],
-                                share_network_id=shr['share_network_id']))
+                                instance=dict(
+                                    availability_zone=shr['availability_zone'],
+                                    share_network_id=shr['share_network_id'])))
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
         self.mock_object(share_api.API, 'get', mock.Mock(
-            return_value={'share_network_id': parent_share_net}))
+            return_value=mock.Mock(
+                instance={'share_network_id': parent_share_net})))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
 
@@ -300,14 +302,16 @@ class ShareAPITest(test.TestCase):
                                 display_description=shr['description'],
                                 size=shr['size'],
                                 share_proto=shr['share_proto'].upper(),
-                                availability_zone=shr['availability_zone'],
                                 snapshot_id=shr['snapshot_id'],
-                                share_network_id=shr['share_network_id']))
+                                instance=dict(
+                                    availability_zone=shr['availability_zone'],
+                                    share_network_id=shr['share_network_id'])))
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
         self.mock_object(share_api.API, 'get', mock.Mock(
-            return_value={'share_network_id': parent_share_net}))
+            return_value=mock.Mock(
+                instance={'share_network_id': parent_share_net})))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
 
@@ -608,8 +612,8 @@ class ShareAPITest(test.TestCase):
                 'status': constants.STATUS_AVAILABLE,
                 'snapshot_id': 'fake_snapshot_id',
                 'share_type_id': 'fake_share_type_id',
-                'host': 'fake_host',
-                'share_network_id': 'fake_share_network_id',
+                'instance': {'host': 'fake_host',
+                             'share_network_id': 'fake_share_network_id'},
             },
             {'id': 'id3', 'display_name': 'n3'},
         ]
@@ -651,9 +655,9 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(
             shares[1]['snapshot_id'], result['shares'][0]['snapshot_id'])
         self.assertEqual(
-            shares[1]['host'], result['shares'][0]['host'])
+            shares[1]['instance']['host'], result['shares'][0]['host'])
         self.assertEqual(
-            shares[1]['share_network_id'],
+            shares[1]['instance']['share_network_id'],
             result['shares'][0]['share_network_id'])
 
     def test_share_list_detail_with_search_opts_by_non_admin(self):

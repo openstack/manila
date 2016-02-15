@@ -52,7 +52,8 @@ class ShareUnmanageTest(test.TestCase):
             policy, 'check_policy', mock.Mock(return_value=True))
 
     def test_unmanage_share(self):
-        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
+                     instance={})
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, 'unmanage', mock.Mock())
         self.mock_object(
@@ -73,7 +74,8 @@ class ShareUnmanageTest(test.TestCase):
             self.context, self.resource_name, 'unmanage')
 
     def test_unmanage_share_that_has_snapshots(self):
-        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
+                     instance={})
         snapshots = ['foo', 'bar']
         self.mock_object(self.controller.share_api, 'unmanage')
         self.mock_object(
@@ -97,7 +99,7 @@ class ShareUnmanageTest(test.TestCase):
             self.context, self.resource_name, 'unmanage')
 
     def test_unmanage_share_based_on_share_server(self):
-        share = dict(share_server_id='foo_id', id='bar_id')
+        share = dict(instance=dict(share_server_id='foo_id'), id='bar_id')
         self.mock_object(
             self.controller.share_api, 'get',
             mock.Mock(return_value=share))
@@ -113,7 +115,7 @@ class ShareUnmanageTest(test.TestCase):
 
     @ddt.data(*constants.TRANSITIONAL_STATUSES)
     def test_unmanage_share_with_transitional_state(self, share_status):
-        share = dict(status=share_status, id='foo_id')
+        share = dict(status=share_status, id='foo_id', instance={})
         self.mock_object(
             self.controller.share_api, 'get',
             mock.Mock(return_value=share))
@@ -141,7 +143,8 @@ class ShareUnmanageTest(test.TestCase):
     @ddt.data(exception.InvalidShare(reason="fake"),
               exception.PolicyNotAuthorized(action="fake"),)
     def test_unmanage_share_invalid(self, side_effect):
-        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
+                     instance={})
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, 'unmanage', mock.Mock(
             side_effect=side_effect))

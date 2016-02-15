@@ -13,8 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import datetime
 
+from manila.common import constants
 from manila import exception as exc
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -29,9 +31,7 @@ def stub_share(id, **kwargs):
         'export_locations': ['fake_location', 'fake_location2'],
         'user_id': 'fakeuser',
         'project_id': 'fakeproject',
-        'host': 'fakehost',
         'size': 1,
-        'availability_zone': 'fakeaz',
         'access_rules_status': 'active',
         'status': 'fakestatus',
         'display_name': 'displayname',
@@ -39,27 +39,56 @@ def stub_share(id, **kwargs):
         'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
         'snapshot_id': '2',
         'share_type_id': '1',
-        'share_network_id': None,
-        'share_server_id': 'fake_share_server_id',
         'is_public': False,
         'snapshot_support': True,
         'replication_type': None,
         'has_replicas': False,
     }
+
+    share_instance = {
+        'host': 'fakehost',
+        'availability_zone': 'fakeaz',
+        'share_network_id': None,
+        'share_server_id': 'fake_share_server_id',
+    }
+    if 'instance' in kwargs:
+        share_instance.update(kwargs.pop('instance'))
+    else:
+        # remove any share instance kwargs so they don't go into the share
+        for inst_key in share_instance.keys():
+            if inst_key in kwargs:
+                share_instance[inst_key] = kwargs.pop(inst_key)
+
     share.update(kwargs)
 
     # NOTE(ameade): We must wrap the dictionary in an class in order to stub
     # object attributes.
-    class wrapper(dict):
-        def __getattr__(self, item):
-            try:
-                return self[item]
-            except KeyError:
-                raise AttributeError()
+    class wrapper(collections.Mapping):
+        def __getitem__(self, name):
+            if hasattr(self, name):
+                return getattr(self, name)
+            return self.__dict__[name]
+
+        def __iter__(self):
+            return iter(self.__dict__)
+
+        def __len__(self):
+            return len(self.__dict__)
+
+        def update(self, other):
+            self.__dict__.update(other)
 
     fake_share = wrapper()
     fake_share.instance = {'id': "fake_instance_id"}
+    fake_share.instance.update(share_instance)
     fake_share.update(share)
+
+    # stub out is_busy based on task_state, this mimics what's in the Share
+    # data model type
+    if share.get('task_state') in constants.BUSY_TASK_STATES:
+        fake_share.is_busy = True
+    else:
+        fake_share.is_busy = False
 
     return fake_share
 

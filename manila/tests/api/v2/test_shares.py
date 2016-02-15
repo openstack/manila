@@ -75,7 +75,9 @@ class ShareAPITest(test.TestCase):
                 display_description=self.share['display_description'],
                 size=100,
                 share_proto=self.share['share_proto'].upper(),
-                availability_zone=self.share['availability_zone'])
+                instance={
+                    'availability_zone': self.share['availability_zone'],
+                })
         )
         self.vt = {
             'id': 'fake_volume_type_id',
@@ -360,9 +362,10 @@ class ShareAPITest(test.TestCase):
                                 display_description=shr['description'],
                                 size=shr['size'],
                                 share_proto=shr['share_proto'].upper(),
-                                availability_zone=shr['availability_zone'],
                                 snapshot_id=shr['snapshot_id'],
-                                share_network_id=shr['share_network_id']))
+                                instance=dict(
+                                    availability_zone=shr['availability_zone'],
+                                    share_network_id=shr['share_network_id'])))
         self.mock_object(share_api.API, 'create', create_mock)
         body = {"share": copy.deepcopy(shr)}
         req = fakes.HTTPRequest.blank('/shares', version='2.7')
@@ -386,14 +389,16 @@ class ShareAPITest(test.TestCase):
                                 display_description=shr['description'],
                                 size=shr['size'],
                                 share_proto=shr['share_proto'].upper(),
-                                availability_zone=shr['availability_zone'],
                                 snapshot_id=shr['snapshot_id'],
-                                share_network_id=shr['share_network_id']))
+                                instance=dict(
+                                    availability_zone=shr['availability_zone'],
+                                    share_network_id=shr['share_network_id'])))
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
         self.mock_object(share_api.API, 'get', mock.Mock(
-            return_value={'share_network_id': parent_share_net}))
+            return_value=mock.Mock(
+                instance={'share_network_id': parent_share_net})))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
 
@@ -421,14 +426,16 @@ class ShareAPITest(test.TestCase):
                                 display_description=shr['description'],
                                 size=shr['size'],
                                 share_proto=shr['share_proto'].upper(),
-                                availability_zone=shr['availability_zone'],
                                 snapshot_id=shr['snapshot_id'],
-                                share_network_id=shr['share_network_id']))
+                                instance=dict(
+                                    availability_zone=shr['availability_zone'],
+                                    share_network_id=shr['share_network_id'])))
         self.mock_object(share_api.API, 'create', create_mock)
         self.mock_object(share_api.API, 'get_snapshot',
                          stubs.stub_snapshot_get)
         self.mock_object(share_api.API, 'get', mock.Mock(
-            return_value={'share_network_id': parent_share_net}))
+            return_value=mock.Mock(
+                instance={'share_network_id': parent_share_net})))
         self.mock_object(share_api.API, 'get_share_network', mock.Mock(
             return_value={'id': parent_share_net}))
 
@@ -758,8 +765,10 @@ class ShareAPITest(test.TestCase):
                 'status': constants.STATUS_AVAILABLE,
                 'snapshot_id': 'fake_snapshot_id',
                 'share_type_id': 'fake_share_type_id',
-                'host': 'fake_host',
-                'share_network_id': 'fake_share_network_id',
+                'instance': {
+                    'host': 'fake_host',
+                    'share_network_id': 'fake_share_network_id',
+                },
             },
             {'id': 'id3', 'display_name': 'n3'},
         ]
@@ -801,9 +810,9 @@ class ShareAPITest(test.TestCase):
         self.assertEqual(
             shares[1]['snapshot_id'], result['shares'][0]['snapshot_id'])
         self.assertEqual(
-            shares[1]['host'], result['shares'][0]['host'])
+            shares[1]['instance']['host'], result['shares'][0]['host'])
         self.assertEqual(
-            shares[1]['share_network_id'],
+            shares[1]['instance']['share_network_id'],
             result['shares'][0]['share_network_id'])
 
     def test_share_list_detail_with_search_opts_by_non_admin(self):
@@ -1315,7 +1324,8 @@ class ShareUnmanageTest(test.TestCase):
         )
 
     def test_unmanage_share(self):
-        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
+                     instance={})
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, 'unmanage', mock.Mock())
         self.mock_object(
@@ -1334,7 +1344,8 @@ class ShareUnmanageTest(test.TestCase):
             self.request.environ['manila.context'], share)
 
     def test_unmanage_share_that_has_snapshots(self):
-        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
+                     instance={})
         snapshots = ['foo', 'bar']
         self.mock_object(self.controller.share_api, 'unmanage')
         self.mock_object(
@@ -1356,7 +1367,7 @@ class ShareUnmanageTest(test.TestCase):
             self.request.environ['manila.context'], share['id'])
 
     def test_unmanage_share_based_on_share_server(self):
-        share = dict(share_server_id='foo_id', id='bar_id')
+        share = dict(instance=dict(share_server_id='foo_id'), id='bar_id')
         self.mock_object(
             self.controller.share_api, 'get',
             mock.Mock(return_value=share))
@@ -1370,7 +1381,7 @@ class ShareUnmanageTest(test.TestCase):
 
     @ddt.data(*constants.TRANSITIONAL_STATUSES)
     def test_unmanage_share_with_transitional_state(self, share_status):
-        share = dict(status=share_status, id='foo_id')
+        share = dict(status=share_status, id='foo_id', instance={})
         self.mock_object(
             self.controller.share_api, 'get',
             mock.Mock(return_value=share))
@@ -1394,7 +1405,8 @@ class ShareUnmanageTest(test.TestCase):
     @ddt.data(exception.InvalidShare(reason="fake"),
               exception.PolicyNotAuthorized(action="fake"),)
     def test_unmanage_share_invalid(self, side_effect):
-        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id')
+        share = dict(status=constants.STATUS_AVAILABLE, id='foo_id',
+                     instance={})
         self.mock_object(share_api.API, 'get', mock.Mock(return_value=share))
         self.mock_object(share_api.API, 'unmanage', mock.Mock(
             side_effect=side_effect))
@@ -1560,7 +1572,10 @@ class ShareManageTest(test.TestCase):
 
     def _test_share_manage(self, data, version):
         self._setup_manage_mocks()
-        return_share = {'share_type_id': '', 'id': 'fake'}
+        return_share = {
+            'share_type_id': '', 'id': 'fake',
+            'instance': {},
+        }
         self.mock_object(
             share_api.API, 'manage', mock.Mock(return_value=return_share))
         share = {

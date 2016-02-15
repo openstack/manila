@@ -32,7 +32,8 @@ class ViewBuilderTestCase(test.TestCase):
         fake_share = {
             'id': 'fake_id',
             'share_type_id': 'fake_share_type_id',
-            'share_type': {'name': 'fake_share_type_name'}
+            'share_type': {'name': 'fake_share_type_name'},
+            'instance': {},
         }
 
         actual_result = self.builder.detail(self.req, fake_share)
