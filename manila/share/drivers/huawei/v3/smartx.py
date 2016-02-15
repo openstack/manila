@@ -73,14 +73,9 @@ class SmartQos(object):
             if self._check_qos_high_priority(qos):
                 self.helper.change_fs_priority_high(fs_id)
             # Create QoS policy and activate it.
-            version = self.helper.find_array_version()
-            if version >= constants.ARRAY_VERSION:
-                (qos_id, fs_list) = self.helper.find_available_qos(qos)
-                if qos_id is not None:
-                    self.helper.add_share_to_qos(qos_id, fs_id, fs_list)
-                else:
-                    policy_id = self.helper.create_qos_policy(qos, fs_id)
-                    self.helper.activate_deactivate_qos(policy_id, True)
+            (qos_id, fs_list) = self.helper.find_available_qos(qos)
+            if qos_id is not None:
+                self.helper.add_share_to_qos(qos_id, fs_id, fs_list)
             else:
                 policy_id = self.helper.create_qos_policy(qos, fs_id)
                 self.helper.activate_deactivate_qos(policy_id, True)
@@ -172,4 +167,21 @@ class SmartX(object):
                                   'set to either 0, 1, or 2.')))
                 else:
                     qos[key.upper()] = value
+
+        if len(qos) <= 1 or 'IOTYPE' not in qos:
+            msg = (_('QoS config is incomplete. Please set more. '
+                     'QoS policy: %(qos_policy)s.')
+                   % {'qos_policy': qos})
+            raise exception.InvalidInput(reason=msg)
+
+        lowerlimit = constants.QOS_LOWER_LIMIT
+        upperlimit = constants.QOS_UPPER_LIMIT
+        if (set(lowerlimit).intersection(set(qos))
+                and set(upperlimit).intersection(set(qos))):
+            msg = (_('QoS policy conflict, both protection policy and '
+                     'restriction policy are set. '
+                     'QoS policy: %(qos_policy)s ')
+                   % {'qos_policy': qos})
+            raise exception.InvalidInput(reason=msg)
+
         return qos

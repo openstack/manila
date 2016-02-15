@@ -14,6 +14,7 @@
 #    under the License.
 
 import base64
+import copy
 import time
 from xml.etree import ElementTree as ET
 
@@ -826,29 +827,30 @@ class RestHelper(object):
         """"Find available QoS on the array."""
         qos_id = None
         fs_list = []
+        temp_qos = copy.deepcopy(qos)
         result = self.get_qos()
 
         if 'data' in result:
+            if 'LATENCY' not in temp_qos:
+                temp_qos['LATENCY'] = '0'
             for item in result['data']:
-                qos_flag = 0
-                for key in qos:
-                    if ((key not in item)
-                            or qos[key] != item[key]
-                            or int(item[key]) == 0):
+                for key in constants.OPTS_QOS_VALUE:
+                    if temp_qos.get(key.upper()) != item.get(key.upper()):
                         break
-                    qos_flag = qos_flag + 1
+                else:
+                    fs_num = len(item['FSLIST'].split(","))
+                    # We use this QoS only if the filesystems in it is less
+                    # than 64, else we cannot add filesystem to this QoS
+                    # any more.
+                    if (item['RUNNINGSTATUS'] == constants.STATUS_QOS_ACTIVE
+                            and fs_num < constants.MAX_FS_NUM_IN_QOS
+                            and item['NAME'].startswith(
+                                constants.QOS_NAME_PREFIX)
+                            and item['LUNLIST'] == '[""]'):
+                        qos_id = item['ID']
+                        fs_list = item['FSLIST']
+                        break
 
-                fs_num = len(item['FSLIST'].split(","))
-                # We use this QoS only if the filesystems in it is less
-                # than 64, else we cannot add filesystem to this QoS any more.
-                if (item['RUNNINGSTATUS'] == constants.STATUS_QOS_ACTIVE
-                        and fs_num < constants.MAX_FS_NUM_IN_QOS
-                        and constants.QOS_NAME_PREFIX in item['NAME']
-                        and item['LUNLIST'] == '[""]'
-                        and qos_flag == len(qos)):
-                    qos_id = item['ID']
-                    fs_list = item['FSLIST']
-                    break
         return (qos_id, fs_list)
 
     def add_share_to_qos(self, qos_id, fs_id, fs_list):
@@ -936,7 +938,7 @@ class RestHelper(object):
         self._assert_rest_result(
             result, _('Get QoS id by filesystem id error.'))
 
-        return result['data']['IOCLASSID']
+        return result['data'].get('IOCLASSID')
 
     def get_fs_list_in_qos(self, qos_id):
         """Get the filesystem list in QoS."""

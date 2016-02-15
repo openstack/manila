@@ -32,7 +32,7 @@ SOCKET_TIMEOUT = 52
 LOGIN_SOCKET_TIMEOUT = 4
 QOS_NAME_PREFIX = 'OpenStack_'
 SYSTEM_NAME_PREFIX = "Array-"
-ARRAY_VERSION = 'V300R003C00'
+MIN_ARRAY_VERSION_FOR_QOS = 'V300R003C00'
 TMP_PATH_SRC_PREFIX = "huawei_manila_tmp_path_src_"
 TMP_PATH_DST_PREFIX = "huawei_manila_tmp_path_dst_"
 
@@ -66,6 +66,9 @@ OPTS_QOS_VALUE = {
     'latency': None,
     'iotype': None
 }
+
+QOS_LOWER_LIMIT = ['MINIOPS', 'LATENCY', 'MINBANDWIDTH']
+QOS_UPPER_LIMIT = ['MAXIOPS', 'MAXBANDWIDTH']
 
 OPTS_CAPABILITIES = {
     'dedupe': False,

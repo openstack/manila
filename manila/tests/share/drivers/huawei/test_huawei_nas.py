@@ -1412,12 +1412,28 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self.share_server)
 
     @ddt.data({"fake_extra_specs_qos": {"qos:maxIOPS": "100",
-                                        "qos:minIOPS": "50"},
-               "fake_qos_info": {"MAXIOPS": "100", "MINIOPS": "50",
+                                        "qos:maxBandWidth": "50",
+                                        "qos:IOType": "0"},
+               "fake_qos_info": {"MAXIOPS": "100",
+                                 "MAXBANDWIDTH": "50",
+                                 "IOTYPE": "0",
+                                 "LATENCY": "0",
                                  "NAME": "OpenStack_fake_qos"}},
               {"fake_extra_specs_qos": {"qos:maxIOPS": "100",
-                                        "qos:minIOPS": "50"},
-               "fake_qos_info": {"NAME": "fake_qos", "MAXIOPS": "100"}})
+                                        "qos:IOType": "1"},
+               "fake_qos_info": {"NAME": "fake_qos",
+                                 "MAXIOPS": "100",
+                                 "IOTYPE": "1",
+                                 "LATENCY": "0"}},
+              {"fake_extra_specs_qos": {"qos:minIOPS": "100",
+                                        "qos:minBandWidth": "50",
+                                        'qos:latency': "50",
+                                        "qos:IOType": "0"},
+               "fake_qos_info": {"MINIOPS": "100",
+                                 "MINBANDWIDTH": "50",
+                                 "IOTYPE": "0",
+                                 "LATENCY": "50",
+                                 "NAME": "OpenStack_fake_qos"}})
     @ddt.unpack
     def test_create_share_with_qos(self, fake_extra_specs_qos, fake_qos_info):
         fake_share_type_id = 'fooid-2'
@@ -1481,7 +1497,13 @@ class HuaweiShareDriverTestCase(test.TestCase):
               {'capabilities:qos': '<is> True',
                'qos:maxBandWidth': 0},
               {'capabilities:qos': '<is> True',
-               'qos:latency': 0})
+               'qos:latency': 0},
+              {'capabilities:qos': '<is> True',
+               'qos:maxIOPS': 100},
+              {'capabilities:qos': '<is> True',
+               'qos:maxIOPS': 100,
+               'qos:minBandWidth': 100,
+               'qos:IOType': '0'})
     def test_create_share_with_invalid_qos(self, fake_extra_specs):
         fake_share_type_id = 'fooid-2'
         fake_type_error_extra = {
@@ -1628,6 +1650,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
             self.driver.delete_share(self._context,
                                      share, self.share_server)
             self.assertTrue(self.driver.plugin.helper.delete_flag)
+
+    def test_delete_share_withoutqos_success(self):
+        self.driver.plugin.helper.login()
+        self.driver.plugin.helper.delete_flag = False
+        self.driver.plugin.qos_support = True
+        self.driver.delete_share(self._context,
+                                 self.share_nfs, self.share_server)
+        self.assertTrue(self.driver.plugin.helper.delete_flag)
 
     def test_check_snapshot_id_exist_fail(self):
         snapshot_id = "4"
