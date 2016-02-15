@@ -191,7 +191,6 @@ iniset $TEMPEST_CONFIG identity alt_username ${ALT_USERNAME:-"alt_demo"}
 iniset $TEMPEST_CONFIG identity alt_password $ADMIN_PASSWORD
 iniset $TEMPEST_CONFIG identity alt_tenant_name ${ALT_TENANT_NAME:-"alt_demo"}
 iniset $TEMPEST_CONFIG validation ip_version_for_ssh 4
-iniset $TEMPEST_CONFIG validation ssh_timeout $BUILD_TIMEOUT
 iniset $TEMPEST_CONFIG validation network_for_ssh ${PRIVATE_NETWORK_NAME:-"private"}
 
 echo "Running tempest manila test suites"

@@ -173,7 +173,8 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
         self.security_group = self._create_security_group()
         self.create_share()
         instance = self.boot_instance()
-        self.allow_access_ip(self.share['id'], instance=instance)
+        self.allow_access_ip(self.share['id'], instance=instance,
+                             cleanup=False)
         ssh_client = self.init_ssh(instance)
         for location in self.share['export_locations']:
             self.mount_share(location, ssh_client)
@@ -189,7 +190,8 @@ class ShareBasicOpsBase(manager.ShareScenarioTest):
 
         # boot first VM and write data
         instance1 = self.boot_instance()
-        self.allow_access_ip(self.share['id'], instance=instance1)
+        self.allow_access_ip(self.share['id'], instance=instance1,
+                             cleanup=False)
         ssh_client_inst1 = self.init_ssh(instance1)
 
         # TODO(vponomaryov): use separate API for getting export location for
