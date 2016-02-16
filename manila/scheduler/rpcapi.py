@@ -47,66 +47,58 @@ class SchedulerAPI(object):
                                   version=self.RPC_API_VERSION)
         self.client = rpc.get_client(target, version_cap='1.5')
 
-    def create_share_instance(self, ctxt, request_spec=None,
+    def create_share_instance(self, context, request_spec=None,
                               filter_properties=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
-        cctxt = self.client.prepare(version='1.2')
-        return cctxt.cast(
-            ctxt,
-            'create_share_instance',
-            request_spec=request_spec_p,
-            filter_properties=filter_properties,
-        )
+        call_context = self.client.prepare(version='1.2')
+        return call_context.cast(context,
+                                 'create_share_instance',
+                                 request_spec=request_spec_p,
+                                 filter_properties=filter_properties)
 
-    def update_service_capabilities(self, ctxt,
+    def update_service_capabilities(self, context,
                                     service_name, host,
                                     capabilities):
-        cctxt = self.client.prepare(fanout=True, version='1.0')
-        cctxt.cast(
-            ctxt,
-            'update_service_capabilities',
-            service_name=service_name,
-            host=host,
-            capabilities=capabilities,
-        )
+        call_context = self.client.prepare(fanout=True, version='1.0')
+        call_context.cast(context,
+                          'update_service_capabilities',
+                          service_name=service_name,
+                          host=host,
+                          capabilities=capabilities)
 
-    def get_pools(self, ctxt, filters=None):
-        cctxt = self.client.prepare(version='1.1')
-        return cctxt.call(ctxt, 'get_pools',
-                          filters=filters)
+    def get_pools(self, context, filters=None):
+        call_context = self.client.prepare(version='1.1')
+        return call_context.call(context, 'get_pools', filters=filters)
 
-    def create_consistency_group(self, ctxt, cg_id, request_spec=None,
+    def create_consistency_group(self, context, cg_id, request_spec=None,
                                  filter_properties=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
-        cctxt = self.client.prepare(version='1.3')
-        return cctxt.cast(
-            ctxt,
-            'create_consistency_group',
-            cg_id=cg_id,
-            request_spec=request_spec_p,
-            filter_properties=filter_properties,
-        )
+        call_context = self.client.prepare(version='1.3')
+        return call_context.cast(context,
+                                 'create_consistency_group',
+                                 cg_id=cg_id,
+                                 request_spec=request_spec_p,
+                                 filter_properties=filter_properties)
 
-    def migrate_share_to_host(self, ctxt, share_id, host,
+    def migrate_share_to_host(self, context, share_id, host,
                               force_host_copy=False, request_spec=None,
                               filter_properties=None):
 
-        cctxt = self.client.prepare(version='1.4')
+        call_context = self.client.prepare(version='1.4')
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return cctxt.cast(ctxt, 'migrate_share_to_host',
-                          share_id=share_id,
-                          host=host,
-                          force_host_copy=force_host_copy,
-                          request_spec=request_spec_p,
-                          filter_properties=filter_properties)
+        return call_context.cast(context,
+                                 'migrate_share_to_host',
+                                 share_id=share_id,
+                                 host=host,
+                                 force_host_copy=force_host_copy,
+                                 request_spec=request_spec_p,
+                                 filter_properties=filter_properties)
 
-    def create_share_replica(self, ctxt, request_spec=None,
+    def create_share_replica(self, context, request_spec=None,
                              filter_properties=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
-        cctxt = self.client.prepare(version='1.5')
-        return cctxt.cast(
-            ctxt,
-            'create_share_replica',
-            request_spec=request_spec_p,
-            filter_properties=filter_properties,
-        )
+        call_context = self.client.prepare(version='1.5')
+        return call_context.cast(context,
+                                 'create_share_replica',
+                                 request_spec=request_spec_p,
+                                 filter_properties=filter_properties)
