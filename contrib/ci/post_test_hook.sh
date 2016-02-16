@@ -114,7 +114,7 @@ if [[ "$MULTITENANCY_ENABLED" == "False"  ]]; then
     # volume creation in Cinder using Generic driver. So, reduce amount of
     # threads to avoid errors for Cinder volume creations that appear
     # because of lack of free space.
-    MANILA_TEMPEST_CONCURRENCY=8
+    MANILA_TEMPEST_CONCURRENCY=${MANILA_TEMPEST_CONCURRENCY:-8}
 fi
 
 # let us control if we die or not
