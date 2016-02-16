@@ -59,7 +59,7 @@ mkdir: CommandFilter, mkdir, root
 rm: CommandFilter, rm, root
 
 # manila/share/drivers/glusterfs.py: 'mount', '-t', 'glusterfs', '%s', '%s'
-# manila/share/drivers/glusterfs_native.py: 'mount', '-t', 'glusterfs', '%s', '%s'
+# manila/share/drivers/glusterfs/glusterfs_native.py: 'mount', '-t', 'glusterfs', '%s', '%s'
 mount: CommandFilter, mount, root
 
 # manila/share/drivers/glusterfs.py: 'gluster', '--xml', 'volume', 'info', '%s'
@@ -72,11 +72,11 @@ ip: CommandFilter, ip, root
 # manila/network/linux/interface.py: 'ovs-vsctl', 'add-port', '%s', '%s'
 ovs-vsctl: CommandFilter, ovs-vsctl, root
 
-# manila/share/drivers/glusterfs_native.py: 'find', '%s', '-mindepth', '1', '!', '-path', '%s', '!', '-path', '%s', '-delete'
-# manila/share/drivers/glusterfs_native.py: 'find', '%s', '-mindepth', '1', '-delete'
+# manila/share/drivers/glusterfs/glusterfs_native.py: 'find', '%s', '-mindepth', '1', '!', '-path', '%s', '!', '-path', '%s', '-delete'
+# manila/share/drivers/glusterfs/glusterfs_native.py: 'find', '%s', '-mindepth', '1', '-delete'
 find: CommandFilter, find, root
 
-# manila/share/drivers/glusterfs_native.py: 'umount', '%s'
+# manila/share/drivers/glusterfs/glusterfs_native.py: 'umount', '%s'
 umount: CommandFilter, umount, root
 
 # GPFS commands

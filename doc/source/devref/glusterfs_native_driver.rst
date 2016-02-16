@@ -72,7 +72,7 @@ Manila driver configuration setting
 The following parameters in manila's configuration file need to be set:
 
 - `share_driver` =
-    manila.share.drivers.glusterfs_native.GlusterfsNativeShareDriver
+    manila.share.drivers.glusterfs.glusterfs_native.GlusterfsNativeShareDriver
 - `glusterfs_servers` = List of GlusterFS servers which provide volumes
     that can be used to create shares. The servers are expected to be of
     distinct Gluster clusters (ie. should not be gluster peers). Each server
@@ -138,10 +138,10 @@ Known Restrictions
 - For manila to use GlusterFS volumes, the name of the trashcan directory in
   GlusterFS volumes must not be changed from the default.
 
-The :mod:`manila.share.drivers.glusterfs_native.GlusterfsNativeShareDriver` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`manila.share.drivers.glusterfs.glusterfs_native.GlusterfsNativeShareDriver` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: manila.share.drivers.glusterfs_native
+.. automodule:: manila.share.drivers.glusterfs.glusterfs_native
     :noindex:
     :members:
     :undoc-members:
