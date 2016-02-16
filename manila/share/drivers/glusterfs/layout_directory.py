@@ -82,7 +82,7 @@ class GlusterfsDirectoryMappedLayout(layout.GlusterfsShareLayoutBase):
             self.gluster_manager.gluster_call(*args)
         except exception.GlusterfsException:
             if (self.gluster_manager.
-                    get_gluster_vol_option('features.quota')) != 'on':
+                    get_vol_option('features.quota')) != 'on':
                 LOG.error(_LE("Error in tuning GlusterFS volume to enable "
                               "creation of shares of specific size."))
                 raise

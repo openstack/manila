@@ -63,6 +63,16 @@ class GlusterManagerTestCase(test.TestCase):
                 'testuser@127.0.0.1:/testvol', self.fake_execf,
                 fake_path_to_private_key, fake_remote_server_password)
 
+    def test_check_volume_presence(self):
+        common._check_volume_presence(mock.Mock())(self._gluster_manager)
+
+    def test_check_volume_presence_error(self):
+        gmgr = common.GlusterManager('testuser@127.0.0.1')
+
+        self.assertRaises(
+            exception.GlusterfsException,
+            common._check_volume_presence(mock.Mock()), gmgr)
+
     def test_gluster_manager_init(self):
         self.assertEqual(fake_gluster_manager_attrs['user'],
                          self._gluster_manager.user)
@@ -128,15 +138,23 @@ class GlusterManagerTestCase(test.TestCase):
         self.assertRaises(AttributeError, getattr, self._gluster_manager,
                           'fakeprop')
 
-    def test_gluster_manager_make_gluster_call_local(self):
-        fake_obj = mock.Mock()
+    @ddt.data({'mockargs': {}, 'kwargs': {}},
+              {'mockargs': {'side_effect': exception.ProcessExecutionError},
+               'kwargs': {'error_policy': 'suppress'}},
+              {'mockargs': {
+                  'side_effect': exception.ProcessExecutionError(exit_code=2)},
+               'kwargs': {'error_policy': (2,)}})
+    @ddt.unpack
+    def test_gluster_manager_make_gluster_call_local(self, mockargs, kwargs):
+        fake_obj = mock.Mock(**mockargs)
         fake_execute = mock.Mock()
+        kwargs.update(fake_kwargs)
         with mock.patch.object(common.ganesha_utils, 'RootExecutor',
                                mock.Mock(return_value=fake_obj)):
             gluster_manager = common.GlusterManager(
                 '127.0.0.1:/testvol', self.fake_execf)
             gluster_manager.make_gluster_call(fake_execute)(*fake_args,
-                                                            **fake_kwargs)
+                                                            **kwargs)
             common.ganesha_utils.RootExecutor.assert_called_with(
                 fake_execute)
         fake_obj.assert_called_once_with(
@@ -161,12 +179,15 @@ class GlusterManagerTestCase(test.TestCase):
 
     @ddt.data({'trouble': exception.ProcessExecutionError,
                '_exception': exception.GlusterfsException, 'xkw': {}},
+              {'trouble': exception.ProcessExecutionError(exit_code=2),
+               '_exception': exception.GlusterfsException,
+               'xkw': {'error_policy': (1,)}},
               {'trouble': exception.ProcessExecutionError,
                '_exception': exception.GlusterfsException,
-               'xkw': {'raw_error': False}},
+               'xkw': {'error_policy': 'coerce'}},
               {'trouble': exception.ProcessExecutionError,
                '_exception': exception.ProcessExecutionError,
-               'xkw': {'raw_error': True}},
+               'xkw': {'error_policy': 'raw'}},
               {'trouble': RuntimeError, '_exception': RuntimeError, 'xkw': {}})
     @ddt.unpack
     def test_gluster_manager_make_gluster_call_error(self, trouble,
@@ -189,17 +210,29 @@ class GlusterManagerTestCase(test.TestCase):
         fake_obj.assert_called_once_with(
             *(('gluster',) + fake_args), **fake_kwargs)
 
-    def test_get_gluster_vol_option_empty_volinfo(self):
+    def test_gluster_manager_make_gluster_call_bad_policy(self):
+        fake_obj = mock.Mock()
+        fake_execute = mock.Mock()
+        with mock.patch.object(common.ganesha_utils, 'RootExecutor',
+                               mock.Mock(return_value=fake_obj)):
+            gluster_manager = common.GlusterManager(
+                '127.0.0.1:/testvol', self.fake_execf)
+
+            self.assertRaises(TypeError,
+                              gluster_manager.make_gluster_call(fake_execute),
+                              *fake_args, error_policy='foobar')
+
+    def test_get_vol_option_empty_volinfo(self):
         args = ('--xml', 'volume', 'info', self._gluster_manager.volume)
         self.mock_object(self._gluster_manager, 'gluster_call',
                          mock.Mock(return_value=('', {})))
         self.assertRaises(exception.GlusterfsException,
-                          self._gluster_manager.get_gluster_vol_option,
+                          self._gluster_manager.get_vol_option,
                           NFS_EXPORT_DIR)
         self._gluster_manager.gluster_call.assert_called_once_with(
             *args, log=mock.ANY)
 
-    def test_get_gluster_vol_option_ambiguous_volinfo(self):
+    def test_get_vol_option_ambiguous_volinfo(self):
 
         def xml_output(*ignore_args, **ignore_kwargs):
             return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -215,12 +248,12 @@ class GlusterManagerTestCase(test.TestCase):
         self.mock_object(self._gluster_manager, 'gluster_call',
                          mock.Mock(side_effect=xml_output))
         self.assertRaises(exception.InvalidShare,
-                          self._gluster_manager.get_gluster_vol_option,
+                          self._gluster_manager.get_vol_option,
                           NFS_EXPORT_DIR)
         self._gluster_manager.gluster_call.assert_called_once_with(
             *args, log=mock.ANY)
 
-    def test_get_gluster_vol_option_trivial_volinfo(self):
+    def test_get_vol_option_trivial_volinfo(self):
 
         def xml_output(*ignore_args, **ignore_kwargs):
             return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -237,12 +270,12 @@ class GlusterManagerTestCase(test.TestCase):
         args = ('--xml', 'volume', 'info', self._gluster_manager.volume)
         self.mock_object(self._gluster_manager, 'gluster_call',
                          mock.Mock(side_effect=xml_output))
-        ret = self._gluster_manager.get_gluster_vol_option(NFS_EXPORT_DIR)
+        ret = self._gluster_manager.get_vol_option(NFS_EXPORT_DIR)
         self.assertIsNone(ret)
         self._gluster_manager.gluster_call.assert_called_once_with(
             *args, log=mock.ANY)
 
-    def test_get_gluster_vol_option(self):
+    def test_get_vol_option(self):
 
         def xml_output(*ignore_args, **ignore_kwargs):
             return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -265,10 +298,24 @@ class GlusterManagerTestCase(test.TestCase):
         args = ('--xml', 'volume', 'info', self._gluster_manager.volume)
         self.mock_object(self._gluster_manager, 'gluster_call',
                          mock.Mock(side_effect=xml_output))
-        ret = self._gluster_manager.get_gluster_vol_option(NFS_EXPORT_DIR)
+        ret = self._gluster_manager.get_vol_option(NFS_EXPORT_DIR)
         self.assertEqual('/foo(10.0.0.1|10.0.0.2),/bar(10.0.0.1)', ret)
         self._gluster_manager.gluster_call.assert_called_once_with(
             *args, log=mock.ANY)
+
+    @ddt.data({'setting': 'some_value', 'args': ('set', 'some_value')},
+              {'setting': None, 'args': ('reset',)},
+              {'setting': True, 'args': ('set', 'on')},
+              {'setting': False, 'args': ('set', 'off')})
+    @ddt.unpack
+    def test_set_vol_option(self, setting, args):
+        self.mock_object(self._gluster_manager, 'gluster_call', mock.Mock())
+
+        self._gluster_manager.set_vol_option('an_option', setting)
+
+        self._gluster_manager.gluster_call.assert_called_once_with(
+            'volume', args[0], 'testvol', 'an_option', *args[1:],
+            error_policy=(1,))
 
     def test_get_gluster_version(self):
         self.mock_object(self._gluster_manager, 'gluster_call',
