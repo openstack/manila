@@ -141,7 +141,7 @@ class ShareTypesController(wsgi.Controller):
             share_type = body['share_type']
         else:
             share_type = body['volume_type']
-        name = share_type.get('name', None)
+        name = share_type.get('name')
         specs = share_type.get('extra_specs', {})
         is_public = share_type.get(
             'os-share-type-access:is_public',
