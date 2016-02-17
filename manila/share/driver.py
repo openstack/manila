@@ -111,6 +111,12 @@ share_opts = [
         default=True,
         help="Specify whether read only access mode is supported in this"
              "backend."),
+    cfg.StrOpt(
+        "admin_network_config_group",
+        help="If share driver requires to setup admin network for share, then "
+             "define network plugin config options in some separate config "
+             "group and set its name here. Used only with another "
+             "option 'driver_handles_share_servers' set to 'True'."),
 ]
 
 ssh_opts = [
@@ -232,13 +238,24 @@ class ShareDriver(object):
             self.configuration.append_config_values(share_opts)
             network_config_group = (self.configuration.network_config_group or
                                     self.configuration.config_group)
+            admin_network_config_group = (
+                self.configuration.admin_network_config_group)
         else:
             network_config_group = None
+            admin_network_config_group = (
+                CONF.admin_network_config_group)
 
         self._verify_share_server_handling(driver_handles_share_servers)
         if self.driver_handles_share_servers:
+            # Enable common network
             self.network_api = network.API(
                 config_group_name=network_config_group)
+
+            # Enable admin network
+            if admin_network_config_group:
+                self._admin_network_api = network.API(
+                    config_group_name=admin_network_config_group,
+                    label='admin')
 
         if hasattr(self, 'init_execute_mixin'):
             # Instance with 'ExecuteMixin'
@@ -246,6 +263,11 @@ class ShareDriver(object):
         if hasattr(self, 'init_ganesha_mixin'):
             # Instance with 'GaneshaMixin'
             self.init_ganesha_mixin(*args, **kwargs)  # pylint: disable=E1101
+
+    @property
+    def admin_network_api(self):
+        if hasattr(self, '_admin_network_api'):
+            return self._admin_network_api
 
     @property
     def driver_handles_share_servers(self):
@@ -675,6 +697,9 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
+    def get_admin_network_allocations_number(self):
+        return 0
+
     def allocate_network(self, context, share_server, share_network,
                          count=None, **kwargs):
         """Allocate network resources using given network information."""
@@ -684,6 +709,19 @@ class ShareDriver(object):
             kwargs.update(count=count)
             self.network_api.allocate_network(
                 context, share_server, share_network, **kwargs)
+
+    def allocate_admin_network(self, context, share_server, count=None,
+                               **kwargs):
+        """Allocate admin network resources using given network information."""
+        if count is None:
+            count = self.get_admin_network_allocations_number()
+        if count and not self.admin_network_api:
+            msg = _("Admin network plugin is not set up.")
+            raise exception.NetworkBadConfigurationException(reason=msg)
+        elif count:
+            kwargs.update(count=count)
+            self.admin_network_api.allocate_network(
+                context, share_server, **kwargs)
 
     def deallocate_network(self, context, share_server_id):
         """Deallocate network resources for the given share server."""

@@ -49,6 +49,8 @@ class HPE3ParDriverTestCase(test.TestCase):
         self.conf.hpe3par_fstore_per_share = False
         self.conf.hpe3par_require_cifs_ip = False
         self.conf.network_config_group = 'test_network_config_group'
+        self.conf.admin_network_config_group = (
+            'test_admin_network_config_group')
 
         def safe_get(attr):
             try:

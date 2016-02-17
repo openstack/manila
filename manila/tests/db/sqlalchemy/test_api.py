@@ -1967,3 +1967,99 @@ class AvailabilityZonesDatabaseAPITestCase(test.TestCase):
 
         self.assertEqual(1, len(actual_result))
         self.assertEqual('test2', actual_result[0]['name'])
+
+
+@ddt.ddt
+class NetworkAllocationsDatabaseAPITestCase(test.TestCase):
+
+    def setUp(self):
+        super(NetworkAllocationsDatabaseAPITestCase, self).setUp()
+        self.user_id = 'user_id'
+        self.project_id = 'project_id'
+        self.share_server_id = 'foo_share_server_id'
+        self.ctxt = context.RequestContext(
+            user_id=self.user_id, project_id=self.project_id, is_admin=True)
+        self.user_network_allocations = [
+            {'share_server_id': self.share_server_id,
+             'ip_address': '1.1.1.1',
+             'status': constants.STATUS_ACTIVE,
+             'label': None},
+            {'share_server_id': self.share_server_id,
+             'ip_address': '2.2.2.2',
+             'status': constants.STATUS_ACTIVE,
+             'label': 'user'},
+        ]
+        self.admin_network_allocations = [
+            {'share_server_id': self.share_server_id,
+             'ip_address': '3.3.3.3',
+             'status': constants.STATUS_ACTIVE,
+             'label': 'admin'},
+            {'share_server_id': self.share_server_id,
+             'ip_address': '4.4.4.4',
+             'status': constants.STATUS_ACTIVE,
+             'label': 'admin'},
+        ]
+
+    def _setup_network_allocations_get_for_share_server(self):
+        # Create share network
+        share_network_data = {
+            'id': 'foo_share_network_id',
+            'user_id': self.user_id,
+            'project_id': self.project_id,
+        }
+        db_api.share_network_create(self.ctxt, share_network_data)
+
+        # Create share server
+        share_server_data = {
+            'id': self.share_server_id,
+            'share_network_id': share_network_data['id'],
+            'host': 'fake_host',
+            'status': 'active',
+        }
+        db_api.share_server_create(self.ctxt, share_server_data)
+
+        # Create user network allocations
+        for user_network_allocation in self.user_network_allocations:
+            db_api.network_allocation_create(
+                self.ctxt, user_network_allocation)
+
+        # Create admin network allocations
+        for admin_network_allocation in self.admin_network_allocations:
+            db_api.network_allocation_create(
+                self.ctxt, admin_network_allocation)
+
+    def test_get_only_user_network_allocations(self):
+        self._setup_network_allocations_get_for_share_server()
+
+        result = db_api.network_allocations_get_for_share_server(
+            self.ctxt, self.share_server_id, label='user')
+
+        self.assertEqual(
+            len(self.user_network_allocations), len(result))
+        for na in result:
+            self.assertIn(na.label, (None, 'user'))
+
+    def test_get_only_admin_network_allocations(self):
+        self._setup_network_allocations_get_for_share_server()
+
+        result = db_api.network_allocations_get_for_share_server(
+            self.ctxt, self.share_server_id, label='admin')
+
+        self.assertEqual(
+            len(self.admin_network_allocations), len(result))
+        for na in result:
+            self.assertEqual(na.label, 'admin')
+
+    def test_get_all_network_allocations(self):
+        self._setup_network_allocations_get_for_share_server()
+
+        result = db_api.network_allocations_get_for_share_server(
+            self.ctxt, self.share_server_id, label=None)
+
+        self.assertEqual(
+            len(self.user_network_allocations +
+                self.admin_network_allocations),
+            len(result)
+        )
+        for na in result:
+            self.assertIn(na.label, ('admin', 'user', None))

@@ -2311,10 +2311,15 @@ class ShareManagerTestCase(test.TestCase):
                 self.assertEqual(1, mock_LOG.error.call_count)
 
     def test__form_server_setup_info(self):
-        fake_network_allocations = ['foo', 'bar']
+        def fake_network_allocations_get_for_share_server(*args, **kwargs):
+            if kwargs.get('label') != 'admin':
+                return ['foo', 'bar']
+            return ['admin-foo', 'admin-bar']
+
         self.mock_object(
             self.share_manager.db, 'network_allocations_get_for_share_server',
-            mock.Mock(return_value=fake_network_allocations))
+            mock.Mock(
+                side_effect=fake_network_allocations_get_for_share_server))
         fake_share_server = dict(
             id='fake_share_server_id', backend_details=dict(foo='bar'))
         fake_share_network = dict(
@@ -2333,7 +2338,10 @@ class ShareManagerTestCase(test.TestCase):
             neutron_subnet_id=fake_share_network['neutron_subnet_id'],
             nova_net_id=fake_share_network['nova_net_id'],
             security_services=fake_share_network['security_services'],
-            network_allocations=fake_network_allocations,
+            network_allocations=(
+                fake_network_allocations_get_for_share_server()),
+            admin_network_allocations=(
+                fake_network_allocations_get_for_share_server(label='admin')),
             backend_details=fake_share_server['backend_details'],
             network_type=fake_share_network['network_type'])
 
@@ -2342,7 +2350,10 @@ class ShareManagerTestCase(test.TestCase):
 
         self.assertEqual(expected, network_info)
         self.share_manager.db.network_allocations_get_for_share_server.\
-            assert_called_once_with(self.context, fake_share_server['id'])
+            assert_has_calls([
+                mock.call(self.context, fake_share_server['id'], label='user'),
+                mock.call(self.context, fake_share_server['id'], label='admin')
+            ])
 
     @ddt.data(
         {'network_info': {'network_type': 'vlan', 'segmentation_id': '100'}},
