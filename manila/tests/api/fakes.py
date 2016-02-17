@@ -208,6 +208,49 @@ fixture_reset_status_with_different_roles = (
 )
 
 
+fixture_reset_replica_status_with_different_roles = (
+    {
+        'role': 'admin',
+        'valid_code': 202,
+        'valid_status': constants.STATUS_ERROR,
+    },
+    {
+        'role': 'member',
+        'valid_code': 403,
+        'valid_status': constants.STATUS_AVAILABLE,
+    },
+)
+
+
+fixture_reset_replica_state_with_different_roles = (
+    {
+        'role': 'admin',
+        'valid_code': 202,
+        'valid_status': constants.REPLICA_STATE_ACTIVE,
+    },
+    {
+        'role': 'admin',
+        'valid_code': 202,
+        'valid_status': constants.REPLICA_STATE_OUT_OF_SYNC,
+    },
+    {
+        'role': 'admin',
+        'valid_code': 202,
+        'valid_status': constants.REPLICA_STATE_IN_SYNC,
+    },
+    {
+        'role': 'admin',
+        'valid_code': 202,
+        'valid_status': constants.STATUS_ERROR,
+    },
+    {
+        'role': 'member',
+        'valid_code': 403,
+        'valid_status': constants.REPLICA_STATE_IN_SYNC,
+    },
+)
+
+
 fixture_force_delete_with_different_roles = (
     {'role': 'admin', 'resp_code': 202, 'version': '2.6'},
     {'role': 'admin', 'resp_code': 202, 'version': '2.7'},

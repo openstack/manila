@@ -1174,13 +1174,26 @@ class Controller(object):
 class AdminActionsMixin(object):
     """Mixin class for API controllers with admin actions."""
 
-    valid_statuses = set([
-        constants.STATUS_CREATING,
-        constants.STATUS_AVAILABLE,
-        constants.STATUS_DELETING,
-        constants.STATUS_ERROR,
-        constants.STATUS_ERROR_DELETING,
-    ])
+    body_attributes = {
+        'status': 'reset_status',
+        'replica_state': 'reset_replica_state',
+    }
+
+    valid_statuses = {
+        'status': set([
+            constants.STATUS_CREATING,
+            constants.STATUS_AVAILABLE,
+            constants.STATUS_DELETING,
+            constants.STATUS_ERROR,
+            constants.STATUS_ERROR_DELETING,
+        ]),
+        'replica_state': set([
+            constants.REPLICA_STATE_ACTIVE,
+            constants.REPLICA_STATE_IN_SYNC,
+            constants.REPLICA_STATE_OUT_OF_SYNC,
+            constants.STATUS_ERROR,
+        ]),
+    }
 
     def _update(self, *args, **kwargs):
         raise NotImplementedError()
@@ -1191,24 +1204,27 @@ class AdminActionsMixin(object):
     def _delete(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def validate_update(self, body):
+    def validate_update(self, body, status_attr='status'):
         update = {}
         try:
-            update['status'] = body['status']
+            update[status_attr] = body[status_attr]
         except (TypeError, KeyError):
-            raise webob.exc.HTTPBadRequest(explanation="Must specify 'status'")
-        if update['status'] not in self.valid_statuses:
+            msg = _("Must specify '%s'") % status_attr
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        if update[status_attr] not in self.valid_statuses[status_attr]:
             expl = (_("Invalid state. Valid states: %s.") %
-                    ", ".join(self.valid_statuses))
+                    ", ".join(self.valid_statuses[status_attr]))
             raise webob.exc.HTTPBadRequest(explanation=expl)
         return update
 
     @Controller.authorize('reset_status')
-    def _reset_status(self, req, id, body):
-        """Reset status on the resource."""
+    def _reset_status(self, req, id, body, status_attr='status'):
+        """Reset the status_attr specified on the resource."""
         context = req.environ['manila.context']
+        body_attr = self.body_attributes[status_attr]
         update = self.validate_update(
-            body.get('reset_status', body.get('os-reset_status')))
+            body.get(body_attr, body.get('-'.join(('os', body_attr)))),
+            status_attr=status_attr)
         msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})

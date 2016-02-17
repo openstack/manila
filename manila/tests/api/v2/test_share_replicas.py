@@ -16,16 +16,19 @@
 import ddt
 import mock
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 import six
 from webob import exc
 
 from manila.api.v2 import share_replicas
 from manila.common import constants
+from manila import context
 from manila import exception
 from manila import policy
 from manila import share
 from manila import test
 from manila.tests.api import fakes
+from manila.tests import db_utils
 from manila.tests import fake_share
 
 CONF = cfg.CONF
@@ -42,12 +45,32 @@ class ShareReplicasApiTest(test.TestCase):
         self.replicas_req = fakes.HTTPRequest.blank(
             '/share-replicas', version=self.api_version,
             experimental=True)
-        self.context = self.replicas_req.environ['manila.context']
+        self.member_context = context.RequestContext('fake', 'fake')
+        self.replicas_req.environ['manila.context'] = self.member_context
         self.replicas_req_admin = fakes.HTTPRequest.blank(
             '/share-replicas', version=self.api_version,
             experimental=True, use_admin_context=True)
         self.admin_context = self.replicas_req_admin.environ['manila.context']
         self.mock_policy_check = self.mock_object(policy, 'check_policy')
+
+    def _get_context(self, role):
+        return getattr(self, '%s_context' % role)
+
+    def _create_replica_get_req(self, **kwargs):
+        if 'status' not in kwargs:
+            kwargs['status'] = constants.STATUS_AVAILABLE
+        if 'replica_state' not in kwargs:
+            kwargs['replica_state'] = constants.REPLICA_STATE_IN_SYNC
+        replica = db_utils.create_share_replica(**kwargs)
+        req = fakes.HTTPRequest.blank(
+            '/v2/fake/share-replicas/%s/action' % replica['id'],
+            version=self.api_version)
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        req.headers['X-Openstack-Manila-Api-Version'] = self.api_version
+        req.headers['X-Openstack-Manila-Api-Experimental'] = True
+
+        return replica, req
 
     def _get_fake_replica(self, summary=False, admin=False, **values):
         replica = fake_share.fake_replica(**values)
@@ -79,7 +102,7 @@ class ShareReplicasApiTest(test.TestCase):
 
         self.assertEqual([expected_replica], res_dict['share_replicas'])
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get_all')
+            self.member_context, self.resource_name, 'get_all')
 
     def test_list_share_replicas_summary(self):
         fake_replica, expected_replica = self._get_fake_replica(summary=True)
@@ -162,7 +185,7 @@ class ShareReplicasApiTest(test.TestCase):
                           self.controller.detail, req)
         self.assertFalse(mock__view_builder_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'get_all')
+            self.member_context, self.resource_name, 'get_all')
 
     @ddt.data(True, False)
     def test_list_share_replicas_detail(self, is_admin):
@@ -173,7 +196,7 @@ class ShareReplicasApiTest(test.TestCase):
             '/share-replicas?share_id=FAKE_SHARE_ID',
             version=self.api_version, experimental=True)
         req.environ['manila.context'] = (
-            self.context if not is_admin else self.admin_context)
+            self.member_context if not is_admin else self.admin_context)
         req_context = req.environ['manila.context']
 
         res_dict = self.controller.detail(req)
@@ -250,7 +273,7 @@ class ShareReplicasApiTest(test.TestCase):
                           'FAKE_REPLICA_ID')
         self.assertFalse(mock__view_builder_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'show')
+            self.member_context, self.resource_name, 'show')
 
     def test_create_invalid_body(self):
         body = {}
@@ -263,7 +286,7 @@ class ShareReplicasApiTest(test.TestCase):
                           self.replicas_req, body)
         self.assertEqual(0, mock__view_builder_call.call_count)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'create')
+            self.member_context, self.resource_name, 'create')
 
     def test_create_no_share_id(self):
         body = {
@@ -281,7 +304,7 @@ class ShareReplicasApiTest(test.TestCase):
                           self.replicas_req, body)
         self.assertFalse(mock__view_builder_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'create')
+            self.member_context, self.resource_name, 'create')
 
     def test_create_invalid_share_id(self):
         body = {
@@ -301,7 +324,7 @@ class ShareReplicasApiTest(test.TestCase):
                           self.replicas_req, body)
         self.assertFalse(mock__view_builder_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'create')
+            self.member_context, self.resource_name, 'create')
 
     @ddt.data(exception.AvailabilityZoneNotFound,
               exception.ReplicationException, exception.ShareBusyException)
@@ -328,7 +351,7 @@ class ShareReplicasApiTest(test.TestCase):
                           self.replicas_req, body)
         self.assertFalse(mock__view_builder_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'create')
+            self.member_context, self.resource_name, 'create')
 
     @ddt.data(True, False)
     def test_create(self, is_admin):
@@ -370,7 +393,7 @@ class ShareReplicasApiTest(test.TestCase):
             self.replicas_req, 'FAKE_REPLICA_ID')
         self.assertFalse(mock_delete_replica_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'delete')
+            self.member_context, self.resource_name, 'delete')
 
     def test_delete_exception(self):
         fake_replica_1 = self._get_fake_replica(
@@ -391,7 +414,7 @@ class ShareReplicasApiTest(test.TestCase):
         self.assertRaises(exc.HTTPBadRequest, self.controller.delete,
                           self.replicas_req, 'FAKE_REPLICA_ID')
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'delete')
+            self.member_context, self.resource_name, 'delete')
 
     def test_delete(self):
         fake_replica = self._get_fake_replica(
@@ -406,7 +429,7 @@ class ShareReplicasApiTest(test.TestCase):
 
         self.assertEqual(202, resp.status_code)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'delete')
+            self.member_context, self.resource_name, 'delete')
 
     def test_promote_invalid_replica_id(self):
         body = {'promote': None}
@@ -420,7 +443,7 @@ class ShareReplicasApiTest(test.TestCase):
                           self.replicas_req,
                           'FAKE_REPLICA_ID', body)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'promote')
+            self.member_context, self.resource_name, 'promote')
 
     def test_promote_already_active(self):
         body = {'promote': None}
@@ -436,7 +459,7 @@ class ShareReplicasApiTest(test.TestCase):
         self.assertEqual(200, resp.status_code)
         self.assertFalse(mock_api_promote_replica_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'promote')
+            self.member_context, self.resource_name, 'promote')
 
     def test_promote_replication_exception(self):
         body = {'promote': None}
@@ -456,7 +479,7 @@ class ShareReplicasApiTest(test.TestCase):
                           body)
         self.assertTrue(mock_api_promote_replica_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'promote')
+            self.member_context, self.resource_name, 'promote')
 
     def test_promote_admin_required_exception(self):
         body = {'promote': None}
@@ -475,7 +498,7 @@ class ShareReplicasApiTest(test.TestCase):
                           body)
         self.assertTrue(mock_api_promote_replica_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'promote')
+            self.member_context, self.resource_name, 'promote')
 
     def test_promote(self):
         body = {'promote': None}
@@ -492,9 +515,10 @@ class ShareReplicasApiTest(test.TestCase):
         self.assertEqual(expected_replica, resp['share_replica'])
         self.assertTrue(mock_api_promote_replica_call.called)
         self.mock_policy_check.assert_called_once_with(
-            self.context, self.resource_name, 'promote')
+            self.member_context, self.resource_name, 'promote')
 
-    @ddt.data('index', 'detail', 'show', 'create', 'delete', 'promote')
+    @ddt.data('index', 'detail', 'show', 'create', 'delete', 'promote',
+              'reset_replica_state', 'reset_status', 'resync')
     def test_policy_not_authorized(self, method_name):
 
         method = getattr(self.controller, method_name)
@@ -513,10 +537,11 @@ class ShareReplicasApiTest(test.TestCase):
             self.assertRaises(
                 exc.HTTPForbidden, method, self.replicas_req, **arguments)
 
-    @ddt.data('index', 'detail', 'show', 'create', 'delete', 'promote')
+    @ddt.data('index', 'detail', 'show', 'create', 'delete', 'promote',
+              'reset_replica_state', 'reset_status', 'resync')
     def test_upsupported_microversion(self, method_name):
 
-        unsupported_microversions = ('1.0', '2.2', '2.8')
+        unsupported_microversions = ('1.0', '2.2', '2.10')
         method = getattr(self.controller, method_name)
         arguments = {
             'id': 'FAKE_REPLICA_ID',
@@ -531,3 +556,178 @@ class ShareReplicasApiTest(test.TestCase):
                 experimental=True)
             self.assertRaises(exception.VersionNotFoundForAPIMethod,
                               method, req, **arguments)
+
+    def _reset_status(self, context, replica, req,
+                      valid_code=202, status_attr='status',
+                      valid_status=None, body=None):
+
+        if status_attr == 'status':
+            action_name = 'reset_status'
+            body = body or {action_name: {'status': constants.STATUS_ERROR}}
+        else:
+            action_name = 'reset_replica_state'
+            body = body or {
+                action_name: {'replica_state': constants.STATUS_ERROR},
+            }
+
+        req.body = six.b(jsonutils.dumps(body))
+        req.environ['manila.context'] = context
+
+        with mock.patch.object(
+                policy, 'check_policy', fakes.mock_fake_admin_check):
+            resp = req.get_response(fakes.app())
+
+        # validate response code and model status
+        self.assertEqual(valid_code, resp.status_int)
+
+        if valid_code == 404:
+            self.assertRaises(exception.ShareReplicaNotFound,
+                              share_replicas.db.share_replica_get,
+                              context,
+                              replica['id'])
+        else:
+            actual_replica = share_replicas.db.share_replica_get(
+                context, replica['id'])
+            self.assertEqual(valid_status, actual_replica[status_attr])
+
+    @ddt.data(*fakes.fixture_reset_replica_status_with_different_roles)
+    @ddt.unpack
+    def test_reset_status_with_different_roles(self, role, valid_code,
+                                               valid_status):
+        context = self._get_context(role)
+        replica, action_req = self._create_replica_get_req()
+
+        self._reset_status(context, replica, action_req,
+                           valid_code=valid_code, status_attr='status',
+                           valid_status=valid_status)
+
+    @ddt.data(
+        {'os-reset_status': {'x-status': 'bad'}},
+        {'os-reset_status': {'status': constants.STATUS_AVAILABLE}},
+        {'reset_status': {'x-status': 'bad'}},
+        {'reset_status': {'status': 'invalid'}},
+    )
+    def test_reset_status_invalid_body(self, body):
+        replica, action_req = self._create_replica_get_req()
+
+        self._reset_status(self.admin_context, replica, action_req,
+                           valid_code=400, status_attr='status',
+                           valid_status=constants.STATUS_AVAILABLE, body=body)
+
+    @ddt.data(*fakes.fixture_reset_replica_state_with_different_roles)
+    @ddt.unpack
+    def test_reset_replica_state_with_different_roles(self, role, valid_code,
+                                                      valid_status):
+        context = self._get_context(role)
+        replica, action_req = self._create_replica_get_req()
+        body = {'reset_replica_state': {'replica_state': valid_status}}
+
+        self._reset_status(context, replica, action_req,
+                           valid_code=valid_code, status_attr='replica_state',
+                           valid_status=valid_status, body=body)
+
+    @ddt.data(
+        {'os-reset_replica_state': {'x-replica_state': 'bad'}},
+        {'os-reset_replica_state': {'replica_state': constants.STATUS_ERROR}},
+        {'reset_replica_state': {'x-replica_state': 'bad'}},
+        {'reset_replica_state': {'replica_state': constants.STATUS_AVAILABLE}},
+    )
+    def test_reset_replica_state_invalid_body(self, body):
+        replica, action_req = self._create_replica_get_req()
+
+        self._reset_status(self.admin_context, replica, action_req,
+                           valid_code=400, status_attr='status',
+                           valid_status=constants.STATUS_AVAILABLE, body=body)
+
+    def _force_delete(self, context, req, valid_code=202):
+        body = {'force_delete': {}}
+        req.environ['manila.context'] = context
+        req.body = six.b(jsonutils.dumps(body))
+
+        with mock.patch.object(
+                policy, 'check_policy', fakes.mock_fake_admin_check):
+            resp = req.get_response(fakes.app())
+
+        # validate response
+        self.assertEqual(valid_code, resp.status_int)
+
+    @ddt.data(*fakes.fixture_force_delete_with_different_roles)
+    @ddt.unpack
+    def test_force_delete_replica_with_different_roles(self, role, resp_code,
+                                                       version):
+        replica, req = self._create_replica_get_req()
+        context = self._get_context(role)
+
+        self._force_delete(context, req, valid_code=resp_code)
+
+    def test_force_delete_missing_replica(self):
+        replica, req = self._create_replica_get_req()
+        share_replicas.db.share_replica_delete(
+            self.admin_context, replica['id'])
+
+        self._force_delete(self.admin_context, req, valid_code=404)
+
+    def test_resync_replica_not_found(self):
+
+        replica, req = self._create_replica_get_req()
+        share_replicas.db.share_replica_delete(
+            self.admin_context, replica['id'])
+        share_api_call = self.mock_object(self.controller.share_api,
+                                          'update_share_replica')
+
+        body = {'resync': {}}
+        req.body = six.b(jsonutils.dumps(body))
+        req.environ['manila.context'] = self.admin_context
+
+        with mock.patch.object(
+                policy, 'check_policy', fakes.mock_fake_admin_check):
+            resp = req.get_response(fakes.app())
+
+        self.assertEqual(404, resp.status_int)
+        self.assertFalse(share_api_call.called)
+
+    def test_resync_API_exception(self):
+
+        replica, req = self._create_replica_get_req(
+            replica_state=constants.REPLICA_STATE_OUT_OF_SYNC)
+        self.mock_object(share_replicas.db, 'share_replica_get',
+                         mock.Mock(return_value=replica))
+        share_api_call = self.mock_object(
+            share.API, 'update_share_replica', mock.Mock(
+                side_effect=exception.InvalidHost(reason='')))
+
+        body = {'resync': None}
+        req.body = six.b(jsonutils.dumps(body))
+        req.environ['manila.context'] = self.admin_context
+
+        with mock.patch.object(
+                policy, 'check_policy', fakes.mock_fake_admin_check):
+            resp = req.get_response(fakes.app())
+
+        self.assertEqual(400, resp.status_int)
+        share_api_call.assert_called_once_with(self.admin_context, replica)
+
+    @ddt.data(constants.REPLICA_STATE_ACTIVE,
+              constants.REPLICA_STATE_IN_SYNC,
+              constants.REPLICA_STATE_OUT_OF_SYNC,
+              constants.STATUS_ERROR)
+    def test_resync(self, replica_state):
+
+        replica, req = self._create_replica_get_req(
+            replica_state=replica_state, host='skywalker@jedi#temple')
+        share_api_call = self.mock_object(
+            share.API, 'update_share_replica', mock.Mock(return_value=None))
+        body = {'resync': {}}
+        req.body = six.b(jsonutils.dumps(body))
+        req.environ['manila.context'] = self.admin_context
+
+        with mock.patch.object(
+                policy, 'check_policy', fakes.mock_fake_admin_check):
+            resp = req.get_response(fakes.app())
+
+        if replica_state == constants.REPLICA_STATE_ACTIVE:
+            self.assertEqual(200, resp.status_int)
+            self.assertFalse(share_api_call.called)
+        else:
+            self.assertEqual(202, resp.status_int)
+            self.assertTrue(share_api_call.called)

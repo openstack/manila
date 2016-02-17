@@ -34,7 +34,7 @@ LOG = log.getLogger(__name__)
 MIN_SUPPORTED_API_VERSION = '2.11'
 
 
-class ShareReplicationController(wsgi.Controller):
+class ShareReplicationController(wsgi.Controller, wsgi.AdminActionsMixin):
     """The Share Replication API controller for the OpenStack API."""
 
     resource_name = 'share_replica'
@@ -43,6 +43,18 @@ class ShareReplicationController(wsgi.Controller):
     def __init__(self):
         super(ShareReplicationController, self).__init__()
         self.share_api = share.API()
+
+    def _update(self, *args, **kwargs):
+        db.share_replica_update(*args, **kwargs)
+
+    def _get(self, *args, **kwargs):
+        return db.share_replica_get(*args, **kwargs)
+
+    def _delete(self, context, resource, force=True):
+        try:
+            self.share_api.delete_share_replica(context, resource, force=True)
+        except exception.ReplicationException as e:
+            raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
     @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
     def index(self, req):
@@ -176,6 +188,48 @@ class ShareReplicationController(wsgi.Controller):
             raise exc.HTTPForbidden(explanation=six.text_type(e))
 
         return self._view_builder.detail(req, replica)
+
+    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    @wsgi.action('reset_status')
+    def reset_status(self, req, id, body):
+        """Reset the 'status' attribute in the database."""
+        return self._reset_status(req, id, body)
+
+    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    @wsgi.action('force_delete')
+    def force_delete(self, req, id, body):
+        """Force deletion on the database, attempt on the backend."""
+        return self._force_delete(req, id, body)
+
+    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    @wsgi.action('reset_replica_state')
+    @wsgi.Controller.authorize
+    def reset_replica_state(self, req, id, body):
+        """Reset the 'replica_state' attribute in the database."""
+        return self._reset_status(req, id, body, status_attr='replica_state')
+
+    @wsgi.Controller.api_version(MIN_SUPPORTED_API_VERSION, experimental=True)
+    @wsgi.action('resync')
+    @wsgi.response(202)
+    @wsgi.Controller.authorize
+    def resync(self, req, id, body):
+        """Attempt to update/sync the replica with its source."""
+        context = req.environ['manila.context']
+        try:
+            replica = db.share_replica_get(context, id)
+        except exception.ShareReplicaNotFound:
+            msg = _("No replica exists with ID %s.")
+            raise exc.HTTPNotFound(explanation=msg % id)
+
+        replica_state = replica.get('replica_state')
+
+        if replica_state == constants.REPLICA_STATE_ACTIVE:
+            return webob.Response(status_int=200)
+
+        try:
+            self.share_api.update_share_replica(context, replica)
+        except exception.InvalidHost as e:
+            raise exc.HTTPBadRequest(explanation=six.text_type(e))
 
 
 def create_resource():

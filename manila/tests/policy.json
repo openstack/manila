@@ -98,5 +98,15 @@
     "consistency_group:get_all_cgsnapshots": "rule:default",
 
     "cgsnapshot:force_delete": "rule:admin_api",
-    "cgsnapshot:reset_status": "rule:admin_api"
+    "cgsnapshot:reset_status": "rule:admin_api",
+
+    "share_replica:get_all": "rule:default",
+    "share_replica:show": "rule:default",
+    "share_replica:create" : "rule:default",
+    "share_replica:delete": "rule:default",
+    "share_replica:promote": "rule:default",
+    "share_replica:resync": "rule:admin_api",
+    "share_replica:reset_status": "rule:admin_api",
+    "share_replica:force_delete": "rule:admin_api",
+    "share_replica:reset_replica_state": "rule:admin_api"
 }
