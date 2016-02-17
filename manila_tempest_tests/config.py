@@ -135,6 +135,9 @@ ShareGroup = [
                      "enabling this opt."),
 
     # Switching ON/OFF test suites filtered by features
+    cfg.BoolOpt("run_quota_tests",
+                default=True,
+                help="Defines whether to run quota tests or not."),
     cfg.BoolOpt("run_extend_tests",
                 default=True,
                 help="Defines whether to run share extend tests or not. "

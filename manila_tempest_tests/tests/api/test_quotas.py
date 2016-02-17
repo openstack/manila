@@ -14,9 +14,12 @@
 #    under the License.
 
 import ddt
-from tempest import test  # noqa
+from tempest import config
+from tempest import test
 
 from manila_tempest_tests.tests.api import base
+
+CONF = config.CONF
 
 
 @ddt.data
@@ -24,6 +27,9 @@ class SharesQuotasTest(base.BaseSharesTest):
 
     @classmethod
     def resource_setup(cls):
+        if not CONF.share.run_quota_tests:
+            msg = "Quota tests are disabled."
+            raise cls.skipException(msg)
         super(SharesQuotasTest, cls).resource_setup()
         cls.user_id = cls.shares_v2_client.user_id
         cls.tenant_id = cls.shares_v2_client.tenant_id
