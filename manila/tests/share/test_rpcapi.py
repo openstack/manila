@@ -50,6 +50,9 @@ class ShareRpcAPITestCase(test.TestCase):
         cgsnapshot = {'id': 'fake_cg_id'}
         host = {'host': 'fake_host', 'capabilities': 1}
         self.fake_share = jsonutils.to_primitive(share)
+        # mock out the getattr on the share db model object since jsonutils
+        # doesn't know about those extra attributes to pull in
+        self.fake_share['instance'] = jsonutils.to_primitive(share.instance)
         self.fake_share_replica = jsonutils.to_primitive(share_replica)
         self.fake_access = jsonutils.to_primitive(access)
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
