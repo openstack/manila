@@ -612,7 +612,7 @@ class GlusterManagerTestCase(test.TestCase):
               ('3', '6', '2beta'),
               ('3', '6', '2beta', '4'))
     def test_numreduct(self, vers):
-        ret = common.GlusterManager.numreduct(vers)
+        ret = common.numreduct(vers)
         self.assertEqual((3, 6), ret)
 
 

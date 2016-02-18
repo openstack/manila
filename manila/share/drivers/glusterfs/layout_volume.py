@@ -140,8 +140,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
                 ','.join(exceptions.keys())))
         notsupp_servers = []
         for srvaddr, vers in glusterfs_versions.items():
-            if common.GlusterManager.numreduct(
-               vers) < self.driver.GLUSTERFS_VERSION_MIN:
+            if common.numreduct(vers) < self.driver.GLUSTERFS_VERSION_MIN:
                 notsupp_servers.append(srvaddr)
         if notsupp_servers:
             gluster_version_min_str = '.'.join(
@@ -356,8 +355,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         # delete the paths of the two directories, but delete their contents
         # along with the rest of the contents of the volume.
         srvaddr = gluster_mgr.host_access
-        if common.GlusterManager.numreduct(self.glusterfs_versions[srvaddr]
-                                           ) < (3, 7):
+        if common.numreduct(self.glusterfs_versions[srvaddr]) < (3, 7):
             cmd = ['find', tmpdir, '-mindepth', '1', '-delete']
         else:
             ignored_dirs = map(lambda x: os.path.join(tmpdir, *x),
@@ -465,7 +463,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
         # a version check.
         vers = self.glusterfs_versions[old_gmgr.host_access]
         minvers = (3, 7)
-        if common.GlusterManager.numreduct(vers) < minvers:
+        if common.numreduct(vers) < minvers:
             minvers_str = '.'.join(six.text_type(c) for c in minvers)
             vers_str = '.'.join(vers)
             msg = (_("GlusterFS version %(version)s on server %(server)s does "
@@ -537,7 +535,7 @@ class GlusterfsVolumeMappedLayout(layout.GlusterfsShareLayoutBase):
 
         if opret == -1:
             vers = self.glusterfs_versions[gluster_mgr.host_access]
-            if common.GlusterManager.numreduct(vers) > (3, 6):
+            if common.numreduct(vers) > (3, 6):
                 # This logic has not yet been implemented in GlusterFS 3.6
                 if operrno == 0:
                     self.gluster_nosnap_vols_dict[
