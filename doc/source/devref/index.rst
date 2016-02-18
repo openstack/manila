@@ -85,6 +85,7 @@ Capabilities and Extra-Specs
    :maxdepth: 3
 
    capabilities_and_extra_specs
+   export_location_metadata
 
 Share backends feature support mapping
 --------------------------------------
