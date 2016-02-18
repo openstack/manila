@@ -17,7 +17,6 @@
 Isilon specific NAS backend plugin.
 """
 import os
-
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
@@ -181,21 +180,10 @@ class IsilonStorageConnection(base.StorageConnection):
     def allow_access(self, context, share, access, share_server):
         """Allow access to the share."""
 
-        # TODO(sedwards): Look into supporting ro/rw access to shares
-        if access['access_type'] != 'ip':
-            message = _('Only ip access type allowed.')
-            LOG.error(message)
-            raise exception.ShareBackendException(msg=message)
-
-        access_ip = access['access_to']
-
         if share['share_proto'] == 'NFS':
-            export_path = self._get_container_path(share)
-            self._nfs_allow_access(
-                access_ip, export_path, access['access_level'])
+            self._nfs_allow_access(share, access)
         elif share['share_proto'] == 'CIFS':
-            self._cifs_allow_access(
-                access_ip, share, access['access_level'])
+            self._cifs_allow_access(share, access)
         else:
             message = _(
                 'Unsupported share protocol: %s. Only "NFS" and '
@@ -204,9 +192,18 @@ class IsilonStorageConnection(base.StorageConnection):
             LOG.error(message)
             raise exception.InvalidShare(reason=message)
 
-    def _nfs_allow_access(self, access_ip, export_path, access_level):
+    def _nfs_allow_access(self, share, access):
         """Allow access to nfs share."""
+        access_type = access['access_type']
+        if access_type != 'ip':
+            message = _('Only "ip" access type allowed for the NFS'
+                        'protocol.')
+            LOG.error(message)
+            raise exception.InvalidShareAccess(reason=message)
 
+        export_path = self._get_container_path(share)
+        access_ip = access['access_to']
+        access_level = access['access_level']
         share_id = self._isilon_api.lookup_nfs_export(export_path)
 
         share_access_group = 'clients'
@@ -227,9 +224,22 @@ class IsilonStorageConnection(base.StorageConnection):
         resp = self._isilon_api.request('PUT', url, data=export_params)
         resp.raise_for_status()
 
-    def _cifs_allow_access(self, ip, share, access_level):
-        """Allow access to cifs share."""
+    def _cifs_allow_access(self, share, access):
+        access_type = access['access_type']
+        access_to = access['access_to']
+        access_level = access['access_level']
+        if access_type == 'ip':
+            access_ip = access['access_to']
+            self._cifs_allow_access_ip(access_ip, share, access_level)
+        elif access_type == 'user':
+            self._cifs_allow_access_user(access_to, share, access_level)
+        else:
+            message = _('Only "ip" and "user" access types allowed for '
+                        'CIFS protocol.')
+            LOG.error(message)
+            raise exception.InvalidShareAccess(reason=message)
 
+    def _cifs_allow_access_ip(self, ip, share, access_level):
         if access_level == const.ACCESS_LEVEL_RO:
             message = _('Only RW Access allowed for CIFS Protocol when using '
                         'the "ip" access type.')
@@ -247,22 +257,34 @@ class IsilonStorageConnection(base.StorageConnection):
             r = self._isilon_api.request('PUT', url, data=data)
             r.raise_for_status()
 
+    def _cifs_allow_access_user(self, user, share, access_level):
+        if access_level == const.ACCESS_LEVEL_RW:
+            smb_permission = isilon_api.SmbPermission.rw
+        elif access_level == const.ACCESS_LEVEL_RO:
+            smb_permission = isilon_api.SmbPermission.ro
+        else:
+            message = _('Only "RW" and "RO" access levels are supported.')
+            LOG.error(message)
+            raise exception.InvalidShareAccess(reason=message)
+
+        self._isilon_api.smb_permissions_add(share['name'], user,
+                                             smb_permission)
+
     def deny_access(self, context, share, access, share_server):
         """Deny access to the share."""
 
+        if share['share_proto'] == 'NFS':
+            self._nfs_deny_access(share, access)
+        elif share['share_proto'] == 'CIFS':
+            self._cifs_deny_access(share, access)
+
+    def _nfs_deny_access(self, share, access):
+        """Deny access to nfs share."""
         if access['access_type'] != 'ip':
             return
 
         denied_ip = access['access_to']
         access_level = access['access_level']
-        if share['share_proto'] == 'NFS':
-            self._nfs_deny_access(denied_ip, share, access_level)
-        elif share['share_proto'] == 'CIFS':
-            self._cifs_deny_access(denied_ip, share)
-
-    def _nfs_deny_access(self, denied_ip, share, access_level):
-        """Deny access to nfs share."""
-
         share_access_group = 'clients'
         if access_level == const.ACCESS_LEVEL_RO:
             share_access_group = 'read_only_clients'
@@ -305,7 +327,20 @@ class IsilonStorageConnection(base.StorageConnection):
 
         return export
 
-    def _cifs_deny_access(self, denied_ip, share):
+    def _cifs_deny_access(self, share, access):
+        access_type = access['access_type']
+        if access_type == 'ip':
+            self._cifs_deny_access_ip(access['access_to'], share)
+        elif access_type == 'user':
+            self._cifs_deny_access_user(share, access)
+        else:
+            message = _('Access type for CIFS deny access request was '
+                        '"%(access_type)s". Only "user" and "ip" access types '
+                        'are supported for CIFS protocol access.') % {
+                'access_type': access_type}
+            LOG.warning(message)
+
+    def _cifs_deny_access_ip(self, denied_ip, share):
         """Deny access to cifs share."""
 
         share_json = self._isilon_api.lookup_smb_share(share['name'])
@@ -318,6 +353,10 @@ class IsilonStorageConnection(base.StorageConnection):
                    .format(self._server_url, share['name']))
             resp = self._isilon_api.request('PUT', url, data=share_params)
             resp.raise_for_status()
+
+    def _cifs_deny_access_user(self, share, access):
+        self._isilon_api.smb_permissions_remove(share['name'], access[
+            'access_to'])
 
     def check_for_setup_error(self):
         """Check for setup error."""

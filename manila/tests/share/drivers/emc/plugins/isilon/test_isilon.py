@@ -13,6 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import ddt
 import mock
 from oslo_log import log
 from oslo_utils import units
@@ -21,11 +22,13 @@ import six
 from manila.common import constants as const
 from manila import exception
 from manila.share.drivers.emc.plugins.isilon import isilon
+from manila.share.drivers.emc.plugins.isilon.isilon_api import SmbPermission
 from manila import test
 
 LOG = log.getLogger(__name__)
 
 
+@ddt.ddt
 class IsilonTest(test.TestCase):
     """Integration test for the Isilon Manila driver."""
 
@@ -227,13 +230,21 @@ class IsilonTest(test.TestCase):
         self._mock_isilon_api.request.assert_called_once_with(
             'PUT', expected_url, data=expected_data)
 
-    def test_deny_access_invalid_access_type(self):
+    def test_deny_access_nfs_invalid_access_type(self):
         share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
         access = {'access_type': 'foo_access_type', 'access_to': '10.0.0.1'}
 
         # This operation should return silently
         self.storage_connection.deny_access(
             self.mock_context, share, access, None)
+
+    def test_deny_access_cifs_invalid_access_type(self):
+        share = {'name': self.SHARE_NAME, 'share_proto': 'CIFS'}
+        access = {'access_type': 'foo_access_type', 'access_to': '10.0.0.1'}
+
+        # This operation should return silently
+        self.storage_connection.deny_access(self.mock_context, share, access,
+                                            None)
 
     def test_deny_access_invalid_share_protocol(self):
         share = {'name': self.SHARE_NAME, 'share_proto': 'FOO'}
@@ -267,6 +278,18 @@ class IsilonTest(test.TestCase):
             exception.ShareBackendException,
             self.storage_connection.deny_access,
             self.mock_context, share, access, None)
+
+    def test_deny_access_nfs_share_does_not_contain_required_key(self):
+        share = {'name': self.SHARE_NAME, 'share_proto': 'NFS'}
+        access = {
+            'access_type': 'ip',
+            'access_to': '10.0.0.1',
+            'access_level': const.ACCESS_LEVEL_RW,
+        }
+        self._mock_isilon_api.get_nfs_export.return_value = {}
+        self.assertRaises(exception.ShareBackendException,
+                          self.storage_connection.deny_access,
+                          self.mock_context, share, access, None)
 
     def test_allow_access_multiple_ip_nfs(self):
         """Verifies adding an IP to a whitelist with pre-existing ips.
@@ -374,6 +397,63 @@ class IsilonTest(test.TestCase):
         self._mock_isilon_api.request.assert_called_once_with(
             'PUT', expected_url, data=expected_data)
 
+    @ddt.data(
+        ('foo', const.ACCESS_LEVEL_RW, SmbPermission.rw),
+        ('testuser', const.ACCESS_LEVEL_RO, SmbPermission.ro),
+    )
+    def test_allow_access_with_cifs_user(self, data):
+        # setup
+        share_name = self.SHARE_NAME
+        user, access_level, expected_smb_perm = data
+        share = {'name': share_name, 'share_proto': 'CIFS'}
+        access = {'access_type': 'user',
+                  'access_to': user,
+                  'access_level': access_level}
+
+        self.storage_connection.allow_access(self.mock_context, share,
+                                             access, None)
+
+        self._mock_isilon_api.smb_permissions_add.assert_called_once_with(
+            share_name, user, expected_smb_perm)
+
+    def test_allow_access_with_cifs_user_invalid_access_level(self):
+        share = {'name': self.SHARE_NAME, 'share_proto': 'CIFS'}
+        access = {
+            'access_type': 'user',
+            'access_to': 'foo',
+            'access_level': 'everything',
+        }
+
+        self.assertRaises(exception.InvalidShareAccess,
+                          self.storage_connection.allow_access,
+                          self.mock_context, share, access, None)
+
+    def test_allow_access_with_cifs_invalid_access_type(self):
+        share_name = self.SHARE_NAME
+        share = {'name': share_name, 'share_proto': 'CIFS'}
+        access = {'access_type': 'fooaccesstype',
+                  'access_to': 'testuser',
+                  'access_level': const.ACCESS_LEVEL_RW}
+
+        self.assertRaises(exception.InvalidShareAccess,
+                          self.storage_connection.allow_access,
+                          self.mock_context, share, access, None)
+
+    def test_deny_access_with_cifs_user(self):
+        share_name = self.SHARE_NAME
+        user_to_remove = 'testuser'
+        share = {'name': share_name, 'share_proto': 'CIFS'}
+        access = {'access_type': 'user',
+                  'access_to': user_to_remove,
+                  'access_level': const.ACCESS_LEVEL_RW}
+        self.assertFalse(self._mock_isilon_api.smb_permissions_remove.called)
+
+        self.storage_connection.deny_access(self.mock_context, share, access,
+                                            None)
+
+        self._mock_isilon_api.smb_permissions_remove.assert_called_with(
+            share_name, user_to_remove)
+
     def test_allow_access_invalid_access_type(self):
         # setup
         share_name = self.SHARE_NAME
@@ -383,7 +463,7 @@ class IsilonTest(test.TestCase):
 
         # verify method under test throws the expected exception
         self.assertRaises(
-            exception.ShareBackendException,
+            exception.InvalidShareAccess,
             self.storage_connection.allow_access,
             self.mock_context, share, access, None)
 
