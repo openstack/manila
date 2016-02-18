@@ -90,5 +90,5 @@ class ExportLocationsNegativeTest(base.BaseSharesAdminTest):
                 self.assertRaises(
                     lib_exc.Forbidden,
                     self.member_client.get_share_instance_export_location,
-                    share_instance['id'], el['uuid'],
+                    share_instance['id'], el['id'],
                 )

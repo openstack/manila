@@ -93,3 +93,10 @@ user documentation.
 2.13
 ----
   Add 'cephx' authentication type for the CephFS Native driver.
+
+2.14
+____
+  Added attribute 'preferred' to export locations.  Drivers may use this
+  field to identify which export locations are most efficient and should be
+  used preferentially by clients.  Also, change 'uuid' field to 'id', move
+  timestamps to detail view, and return all non-admin fields to users.
