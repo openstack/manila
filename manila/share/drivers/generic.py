@@ -406,9 +406,13 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         _('Failed to attach volume %s') % volume['id'])
                 time.sleep(1)
             else:
+                err_msg = {
+                    'volume_id': volume['id'],
+                    'max_time': self.configuration.max_time_to_attach
+                }
                 raise exception.ManilaException(
-                    _('Volume have not been attached in %ss. Giving up') %
-                    self.configuration.max_time_to_attach)
+                    _('Volume %(volume_id)s has not been attached in '
+                      '%(max_time)ss. Giving up.') % err_msg)
         return do_attach(volume)
 
     def _get_volume_name(self, share_id):
@@ -499,9 +503,13 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
                         break
                     time.sleep(1)
                 else:
+                    err_msg = {
+                        'volume_id': volume['id'],
+                        'max_time': self.configuration.max_time_to_attach
+                    }
                     raise exception.ManilaException(
-                        _('Volume have not been detached in %ss. Giving up')
-                        % self.configuration.max_time_to_attach)
+                        _('Volume %(volume_id)s has not been detached in '
+                          '%(max_time)ss. Giving up.') % err_msg)
         do_detach()
 
     def _allocate_container(self, context, share, snapshot=None):
