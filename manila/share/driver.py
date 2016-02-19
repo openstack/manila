@@ -1394,6 +1394,8 @@ class ShareDriver(object):
 
         :param context: Current context
         :param replica: Dictionary of the replica being updated.
+        Replica state will always be 'in_sync', 'out_of_sync', or 'error'.
+        Replicas in 'active' state will not be passed via this parameter.
             EXAMPLE:
              .. code::
 
@@ -1406,7 +1408,7 @@ class ShareDriver(object):
             'scheduled_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
             'launched_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
             'terminated_at': None,
-            'replica_state': 'active',
+            'replica_state': 'in_sync',
             'availability_zone_id': 'e2c2db5c-cb2f-4697-9966-c06fb200cb80',
             'export_locations': [
                 models.ShareInstanceExportLocations,
