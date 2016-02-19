@@ -168,7 +168,7 @@ class SharesNFSTest(base.BaseSharesTest):
             "actual_sn": get["share_network_id"],
             "expected_sn": parent["share_network_id"],
         }
-        msg = ("Expected share_network_id %(expected_sn)s for"
+        msg = ("Expected share_network_id %(expected_sn)s for "
                "share %(share)s, but %(actual_sn)s found." % keys)
         self.assertEqual(
             get["share_network_id"], parent["share_network_id"], msg)
