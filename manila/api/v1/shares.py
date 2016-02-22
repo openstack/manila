@@ -281,7 +281,7 @@ class ShareMixin(object):
             # If share_network_id is empty than update it with
             # share_network_id of parent share.
             parent_share = self.share_api.get(context, snapshot['share_id'])
-            parent_share_net_id = parent_share['share_network_id']
+            parent_share_net_id = parent_share.instance['share_network_id']
             if share_network_id:
                 if share_network_id != parent_share_net_id:
                     msg = "Share network ID should be the same as snapshot's" \

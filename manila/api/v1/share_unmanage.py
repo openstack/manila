@@ -37,7 +37,7 @@ class ShareUnmanageMixin(object):
 
         try:
             share = self.share_api.get(context, id)
-            if share.get('share_server_id'):
+            if share['instance'].get('share_server_id'):
                 msg = _("Operation 'unmanage' is not supported for shares "
                         "that are created on top of share servers "
                         "(created with share-networks).")
