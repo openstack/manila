@@ -46,58 +46,67 @@ share_servers_handling_mode_opts = [
         "service_image_name",
         default="manila-service-image",
         help="Name of image in Glance, that will be used for service instance "
-             "creation."),
+             "creation. Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "service_instance_name_template",
         default="manila_service_instance_%s",
-        help="Name of service instance."),
+        help="Name of service instance. "
+             "Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "manila_service_keypair_name",
         default="manila-service",
         help="Keypair name that will be created and used for service "
-             "instances."),
+             "instances. Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "path_to_public_key",
         default="~/.ssh/id_rsa.pub",
-        help="Path to hosts public key."),
+        help="Path to hosts public key. "
+             "Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "service_instance_security_group",
         default="manila-service",
         help="Security group name, that will be used for "
-             "service instance creation."),
+             "service instance creation. "
+             "Only used if driver_handles_share_servers=True."),
     cfg.IntOpt(
         "service_instance_flavor_id",
         default=100,
         help="ID of flavor, that will be used for service instance "
-             "creation."),
+             "creation. Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "service_network_name",
         default="manila_service_network",
-        help="Name of manila service network. Used only with Neutron."),
+        help="Name of manila service network. Used only with Neutron. "
+             "Only used if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "service_network_cidr",
         default="10.254.0.0/16",
-        help="CIDR of manila service network. Used only with Neutron."),
+        help="CIDR of manila service network. Used only with Neutron and "
+             "if driver_handles_share_servers=True."),
     cfg.IntOpt(
         "service_network_division_mask",
         default=28,
         help="This mask is used for dividing service network into "
              "subnets, IP capacity of subnet with this mask directly "
              "defines possible amount of created service VMs "
-             "per tenant's subnet. Used only with Neutron."),
+             "per tenant's subnet. Used only with Neutron "
+             "and if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "interface_driver",
         default="manila.network.linux.interface.OVSInterfaceDriver",
-        help="Vif driver. Used only with Neutron."),
+        help="Vif driver. Used only with Neutron and "
+             "if driver_handles_share_servers=True."),
     cfg.BoolOpt(
         "connect_share_server_to_tenant_network",
         default=False,
         help="Attach share server directly to share network. "
-             "Used only with Neutron."),
+             "Used only with Neutron and "
+             "if driver_handles_share_servers=True."),
     cfg.StrOpt(
         "service_instance_network_helper_type",
         default=NEUTRON_NAME,
-        help="Allowed values are %s." % [NOVA_NAME, NEUTRON_NAME])
+        help="Allowed values are %s. " % [NOVA_NAME, NEUTRON_NAME] +
+             "Only used if driver_handles_share_servers=True.")
 ]
 
 no_share_servers_handling_mode_opts = [
