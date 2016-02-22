@@ -671,7 +671,8 @@ class ShareManager(manager.SchedulerDependentManager):
         readonly_support = self.driver.configuration.safe_get(
             'migration_readonly_support')
 
-        saved_rules = helper.change_to_read_only(readonly_support)
+        saved_rules = helper.change_to_read_only(readonly_support,
+                                                 share_instance)
 
         try:
 
@@ -713,10 +714,12 @@ class ShareManager(manager.SchedulerDependentManager):
             LOG.exception(six.text_type(e))
             LOG.error(_LE("Share migration failed, reverting access rules for "
                           "share %s.") % share['id'])
-            helper.revert_access_rules(readonly_support, saved_rules)
+            helper.revert_access_rules(readonly_support, share_instance, None,
+                                       saved_rules)
             raise
 
-        helper.revert_access_rules(readonly_support, saved_rules)
+        helper.revert_access_rules(readonly_support, share_instance,
+                                   new_share_instance, saved_rules)
 
         self.db.share_update(
             context, share['id'],

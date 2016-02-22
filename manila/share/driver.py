@@ -429,8 +429,8 @@ class ShareDriver(object):
 
         # NOTE(ganso): Removing any previously conflicting access rules, which
         # would cause the following access_allow to fail for one instance.
-        helper.deny_migration_access(None, src_access, False)
-        helper.deny_migration_access(None, dest_access, False)
+        helper.deny_migration_access(None, src_access, share_instance)
+        helper.deny_migration_access(None, dest_access, new_share_instance)
 
         # NOTE(ganso): I would rather allow access to instances separately,
         # but I require an access_id since it is a new access rule and
@@ -439,7 +439,8 @@ class ShareDriver(object):
         # or ignore duplicate access rule errors for some specific scenarios.
 
         try:
-            src_access_ref = helper.allow_migration_access(src_access)
+            src_access_ref = helper.allow_migration_access(
+                src_access, share_instance)
         except Exception as e:
             LOG.error(_LE("Share migration failed attempting to allow "
                           "access of %(access_to)s to share "
@@ -451,7 +452,8 @@ class ShareDriver(object):
             raise exception.ShareMigrationFailed(reason=msg)
 
         try:
-            dest_access_ref = helper.allow_migration_access(dest_access)
+            dest_access_ref = helper.allow_migration_access(
+                dest_access, new_share_instance)
         except Exception as e:
             LOG.error(_LE("Share migration failed attempting to allow "
                           "access of %(access_to)s to share "
@@ -460,7 +462,8 @@ class ShareDriver(object):
                 'instance_id': new_share_instance['id']})
             msg = six.text_type(e)
             LOG.exception(msg)
-            helper.cleanup_migration_access(src_access_ref, src_access)
+            helper.cleanup_migration_access(
+                src_access_ref, src_access, share_instance)
             raise exception.ShareMigrationFailed(reason=msg)
 
         # NOTE(ganso): From here we have the possibility of not cleaning
@@ -483,9 +486,9 @@ class ShareDriver(object):
                     'share_instance_id': share_instance['id'],
                     'new_share_instance_id': new_share_instance['id']})
                 helper.cleanup_migration_access(
-                    src_access_ref, src_access)
+                    src_access_ref, src_access, share_instance)
                 helper.cleanup_migration_access(
-                    dest_access_ref, dest_access)
+                    dest_access_ref, dest_access, new_share_instance)
                 raise
 
         utils.execute('mkdir', '-p',
@@ -555,8 +558,10 @@ class ShareDriver(object):
         utils.execute('rmdir', ''.join((mount_path, new_share_instance['id'])),
                       check_exit_code=False)
 
-        helper.deny_migration_access(src_access_ref, src_access)
-        helper.deny_migration_access(dest_access_ref, dest_access)
+        helper.deny_migration_access(
+            src_access_ref, src_access, share_instance)
+        helper.deny_migration_access(
+            dest_access_ref, dest_access, new_share_instance)
 
         if not migrated:
             msg = ("Copying from share instance %(instance_id)s "

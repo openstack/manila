@@ -101,27 +101,27 @@ class ShareMigrationHelper(object):
 
         return new_share_instance
 
-    def deny_rules_and_wait(self, context, share, saved_rules):
+    def deny_rules_and_wait(self, context, share_instance, saved_rules):
 
         api = share_api.API()
-        api.deny_access_to_instance(context, share.instance, saved_rules)
+        api.deny_access_to_instance(context, share_instance, saved_rules)
 
-        self.wait_for_access_update(share.instance)
+        self.wait_for_access_update(share_instance)
 
-    def add_rules_and_wait(self, context, share, saved_rules,
+    def add_rules_and_wait(self, context, share_instance, access_rules,
                            access_level=None):
         rules = []
-        for access in saved_rules:
+        for access in access_rules:
             values = {
-                'share_id': share['id'],
+                'share_id': share_instance['share_id'],
                 'access_type': access['access_type'],
                 'access_level': access_level or access['access_level'],
                 'access_to': access['access_to'],
             }
             rules.append(self.db.share_access_create(context, values))
 
-        self.api.allow_access_to_instance(context, share.instance, rules)
-        self.wait_for_access_update(share.instance)
+        self.api.allow_access_to_instance(context, share_instance, rules)
+        self.wait_for_access_update(share_instance)
 
     def wait_for_access_update(self, share_instance):
         starttime = time.time()
@@ -151,32 +151,32 @@ class ShareMigrationHelper(object):
             else:
                 time.sleep(tries ** 2)
 
-    def allow_migration_access(self, access):
-        allowed = False
-        access_ref = None
-        try:
-            access_ref = self.api.allow_access(
-                self.context, self.share,
-                access['access_type'], access['access_to'])
-            allowed = True
-        except exception.ShareAccessExists:
-            LOG.warning(_LW("Access rule already allowed. "
-                            "Access %(access_to)s - Share "
-                            "%(share_id)s") % {
-                                'access_to': access['access_to'],
-                                'share_id': self.share['id']})
-            access_list = self.api.access_get_all(self.context, self.share)
-            for access_item in access_list:
-                if access_item['access_to'] == access['access_to']:
-                    access_ref = access_item
+    def allow_migration_access(self, access, share_instance):
 
-        if access_ref and allowed:
-            self.wait_for_access_update(self.share.instance)
+        values = {
+            'share_id': self.share['id'],
+            'access_type': access['access_type'],
+            'access_level': access['access_level'],
+            'access_to': access['access_to']
+        }
+
+        share_access_list = self.db.share_access_get_all_by_type_and_access(
+            self.context, self.share['id'], access['access_type'],
+            access['access_to'])
+
+        if len(share_access_list) == 0:
+            access_ref = self.db.share_access_create(self.context, values)
+        else:
+            access_ref = share_access_list[0]
+
+        self.api.allow_access_to_instance(
+            self.context, share_instance, access_ref)
+
+        self.wait_for_access_update(share_instance)
 
         return access_ref
 
-    def deny_migration_access(self, access_ref, access, throw_not_found=True):
-        denied = False
+    def deny_migration_access(self, access_ref, access, share_instance):
         if access_ref:
             try:
                 # Update status
@@ -196,29 +196,17 @@ class ShareMigrationHelper(object):
                     access_ref = access_item
                     break
         if access_ref:
-            try:
-                self.api.deny_access(self.context, self.share, access_ref)
-                denied = True
-            except (exception.InvalidShareAccess, exception.NotFound) as e:
-                LOG.exception(six.text_type(e))
-                LOG.warning(_LW("Access rule not found. "
-                                "Access %(access_to)s - Share "
-                                "%(share_id)s") % {
-                                    'access_to': access['access_to'],
-                                    'share_id': self.share['id']})
-                if throw_not_found:
-                    raise
-
-            if denied:
-                self.wait_for_access_update(self.share.instance)
+            self.api.deny_access_to_instance(
+                self.context, share_instance, access_ref)
+            self.wait_for_access_update(share_instance)
 
     # NOTE(ganso): Cleanup methods do not throw exception, since the
     # exceptions that should be thrown are the ones that call the cleanup
 
-    def cleanup_migration_access(self, access_ref, access):
+    def cleanup_migration_access(self, access_ref, access, share_instance):
 
         try:
-            self.deny_migration_access(access_ref, access)
+            self.deny_migration_access(access_ref, access, share_instance)
         except Exception as mae:
             LOG.exception(six.text_type(mae))
             LOG.error(_LE("Could not cleanup access rule of share "
@@ -250,7 +238,7 @@ class ShareMigrationHelper(object):
                               'instance_id': instance['id'],
                               'share_id': self.share['id']})
 
-    def change_to_read_only(self, readonly_support):
+    def change_to_read_only(self, readonly_support, share_instance):
 
         # NOTE(ganso): If the share does not allow readonly mode we
         # should remove all access rules and prevent any access
@@ -258,28 +246,37 @@ class ShareMigrationHelper(object):
         saved_rules = self.db.share_access_get_all_for_share(
             self.context, self.share['id'])
 
-        self.deny_rules_and_wait(self.context, self.share, saved_rules)
+        if len(saved_rules) > 0:
+            self.deny_rules_and_wait(self.context, share_instance, saved_rules)
 
-        if readonly_support:
+            if readonly_support:
 
-            LOG.debug("Changing all of share %s access rules "
-                      "to read-only.", self.share['id'])
+                LOG.debug("Changing all of share %s access rules "
+                          "to read-only.", self.share['id'])
 
-            self.add_rules_and_wait(self.context, self.share,
-                                    saved_rules, 'ro')
+                self.add_rules_and_wait(self.context, share_instance,
+                                        saved_rules, 'ro')
 
         return saved_rules
 
-    def revert_access_rules(self, readonly_support, saved_rules):
+    def revert_access_rules(self, readonly_support, share_instance,
+                            new_share_instance, saved_rules):
 
-        if readonly_support:
+        if len(saved_rules) > 0:
+            if readonly_support:
 
-            readonly_rules = self.db.share_access_get_all_for_share(
-                self.context, self.share['id'])
+                readonly_rules = self.db.share_access_get_all_for_share(
+                    self.context, self.share['id'])
 
-            LOG.debug("Removing all of share %s read-only "
-                      "access rules.", self.share['id'])
+                LOG.debug("Removing all of share %s read-only "
+                          "access rules.", self.share['id'])
 
-            self.deny_rules_and_wait(self.context, self.share, readonly_rules)
+                self.deny_rules_and_wait(self.context, share_instance,
+                                         readonly_rules)
 
-        self.add_rules_and_wait(self.context, self.share, saved_rules)
+        if new_share_instance:
+            self.add_rules_and_wait(self.context, new_share_instance,
+                                    saved_rules)
+        else:
+            self.add_rules_and_wait(self.context, share_instance,
+                                    saved_rules)

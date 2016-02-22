@@ -577,10 +577,10 @@ class ShareDriverTestCase(test.TestCase):
                                      fake_share_instance, None,
                                      local, remote)
 
-        args = ((None, local['access'], False),
-                (None, remote['access'], False),
-                ('fake_access_ref', local['access']),
-                ('fake_access_ref', remote['access']))
+        args = ((None, local['access'], fake_share_instance),
+                (None, remote['access'], fake_share_instance),
+                ('fake_access_ref', local['access'], fake_share_instance),
+                ('fake_access_ref', remote['access'], fake_share_instance))
         migration.ShareMigrationHelper.deny_migration_access.assert_has_calls(
             [mock.call(*a) for a in args])
 
@@ -613,8 +613,8 @@ class ShareDriverTestCase(test.TestCase):
                           fake_share, fake_share_instance, None,
                           fake_share_instance, None, local, remote)
 
-        args = ((None, local['access'], False),
-                (None, remote['access'], False))
+        args = ((None, local['access'], fake_share_instance),
+                (None, remote['access'], fake_share_instance))
         migration.ShareMigrationHelper.deny_migration_access.assert_has_calls(
             [mock.call(*a) for a in args])
 
@@ -646,8 +646,8 @@ class ShareDriverTestCase(test.TestCase):
                           fake_share, fake_share_instance, None,
                           fake_share_instance, None, local, remote)
 
-        args = ((None, local['access'], False),
-                (None, remote['access'], False))
+        args = ((None, local['access'], fake_share_instance),
+                (None, remote['access'], fake_share_instance))
         migration.ShareMigrationHelper.deny_migration_access.assert_has_calls(
             [mock.call(*a) for a in args])
 
@@ -682,8 +682,8 @@ class ShareDriverTestCase(test.TestCase):
                           fake_share, fake_share_instance, None,
                           fake_share_instance, None, local, remote)
 
-        args = ((None, local['access'], False),
-                (None, remote['access'], False))
+        args = ((None, local['access'], fake_share_instance),
+                (None, remote['access'], fake_share_instance))
         migration.ShareMigrationHelper.deny_migration_access.assert_has_calls(
             [mock.call(*a) for a in args])
 
@@ -723,8 +723,8 @@ class ShareDriverTestCase(test.TestCase):
                           fake_share_instance, None,
                           fake_share_instance, None,
                           local, remote)
-        args = ((None, local['access'], False),
-                (None, remote['access'], False))
+        args = ((None, local['access'], fake_share_instance),
+                (None, remote['access'], fake_share_instance))
         migration.ShareMigrationHelper.deny_migration_access.assert_has_calls(
             [mock.call(*a) for a in args])
 
@@ -767,8 +767,8 @@ class ShareDriverTestCase(test.TestCase):
                           fake_share_instance, None,
                           fake_share_instance, None,
                           local, remote)
-        args = ((None, local['access'], False),
-                (None, remote['access'], False))
+        args = ((None, local['access'], fake_share_instance),
+                (None, remote['access'], fake_share_instance))
         migration.ShareMigrationHelper.deny_migration_access.assert_has_calls(
             [mock.call(*a) for a in args])
 
