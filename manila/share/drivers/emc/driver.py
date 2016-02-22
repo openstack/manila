@@ -50,7 +50,6 @@ EMC_NAS_OPTS = [
                help='Container of share servers.'),
     cfg.StrOpt('emc_nas_pool_names',
                deprecated_name='emc_nas_pool_name',
-               default=None,
                help='EMC pool names.'),
     cfg.StrOpt('emc_nas_root_dir',
                help='The root directory where shares will be located.'),
