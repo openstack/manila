@@ -725,10 +725,15 @@ class SharesV2Client(shares_client.SharesClient):
                     consistency_group_id=consistency_group_id)
 
             if int(time.time()) - start >= self.build_timeout:
+                consistency_group_name = (
+                    consistency_group_name if consistency_group_name else
+                    consistency_group_id
+                )
                 message = ('Consistency Group %s failed to reach %s status '
-                           'within the required time (%s s).' %
+                           'within the required time (%s s). '
+                           'Current status: %s' %
                            (consistency_group_name, status,
-                            self.build_timeout))
+                            self.build_timeout, consistency_group_status))
                 raise exceptions.TimeoutException(message)
 
 ###############
