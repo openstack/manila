@@ -74,7 +74,7 @@ class ShareAPI(object):
                           snapshot_id=snapshot_id)
 
     def manage_share(self, context, share, driver_options=None):
-        host = utils.extract_host(share['host'])
+        host = utils.extract_host(share['instance']['host'])
         call_context = self.client.prepare(server=host, version='1.1')
         call_context.cast(context,
                           'manage_share',
@@ -82,7 +82,7 @@ class ShareAPI(object):
                           driver_options=driver_options)
 
     def unmanage_share(self, context, share):
-        host = utils.extract_host(share['host'])
+        host = utils.extract_host(share['instance']['host'])
         call_context = self.client.prepare(server=host, version='1.1')
         call_context.cast(context, 'unmanage_share', share_id=share['id'])
 
@@ -94,7 +94,7 @@ class ShareAPI(object):
                           share_instance_id=share_instance['id'])
 
     def migrate_share(self, context, share, dest_host, force_host_copy):
-        new_host = utils.extract_host(share['host'])
+        new_host = utils.extract_host(share['instance']['host'])
         call_context = self.client.prepare(server=new_host, version='1.6')
         host_p = {'host': dest_host.host,
                   'capabilities': dest_host.capabilities}
@@ -128,7 +128,7 @@ class ShareAPI(object):
                           share_server=share_server)
 
     def create_snapshot(self, context, share, snapshot):
-        host = utils.extract_host(share['host'])
+        host = utils.extract_host(share['instance']['host'])
         call_context = self.client.prepare(server=host)
         call_context.cast(context,
                           'create_snapshot',
@@ -170,7 +170,7 @@ class ShareAPI(object):
         call_context.cast(context, 'publish_service_capabilities')
 
     def extend_share(self, context, share, new_size, reservations):
-        host = utils.extract_host(share['host'])
+        host = utils.extract_host(share['instance']['host'])
         call_context = self.client.prepare(server=host, version='1.2')
         call_context.cast(context,
                           'extend_share',
@@ -179,7 +179,7 @@ class ShareAPI(object):
                           reservations=reservations)
 
     def shrink_share(self, context, share, new_size):
-        host = utils.extract_host(share['host'])
+        host = utils.extract_host(share['instance']['host'])
         call_context = self.client.prepare(server=host, version='1.3')
         call_context.cast(context,
                           'shrink_share',
