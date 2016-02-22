@@ -65,7 +65,7 @@ class FilterScheduler(base.Scheduler):
         In the event that the request gets re-scheduled, this entry
         will signal that the given backend has already been tried.
         """
-        retry = filter_properties.get('retry', None)
+        retry = filter_properties.get('retry')
         if not retry:
             return
         hosts = retry['hosts']
@@ -278,7 +278,7 @@ class FilterScheduler(base.Scheduler):
         if not exc:
             return  # no exception info from a previous attempt, skip
 
-        hosts = retry.get('hosts', None)
+        hosts = retry.get('hosts')
         if not hosts:
             return  # no previously attempted hosts, skip
 
@@ -388,7 +388,7 @@ class FilterScheduler(base.Scheduler):
         """
         elevated = context.elevated()
 
-        shr_types = request_spec.get("share_types", None)
+        shr_types = request_spec.get("share_types")
 
         weighed_hosts = []
 

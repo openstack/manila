@@ -36,9 +36,9 @@ class ShareManageMixin(object):
         # DB layers for 'name' and 'description' API params that are
         # represented in DB as 'display_name' and 'display_description'
         # appropriately.
-        name = share_data.get('display_name', share_data.get('name', None))
+        name = share_data.get('display_name', share_data.get('name'))
         description = share_data.get(
-            'display_description', share_data.get('description', None))
+            'display_description', share_data.get('description'))
 
         share = {
             'host': share_data['service_host'],
