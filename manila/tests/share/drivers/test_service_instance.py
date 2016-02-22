@@ -1928,6 +1928,16 @@ class NeutronNetworkHelperTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test__get_set_of_device_cidrs_exception(self):
+        device = fake_network.FakeDevice('foo')
+        self.mock_object(device.addr, 'list', mock.Mock(
+            side_effect=Exception('foo does not exist')))
+        instance = self._init_neutron_network_plugin()
+
+        result = instance._get_set_of_device_cidrs(device)
+
+        self.assertEqual(set(), result)
+
     def test__remove_outdated_interfaces(self):
         device = fake_network.FakeDevice(
             'foobarquuz', [dict(ip_version=4, cidr='1.0.0.0/27')])

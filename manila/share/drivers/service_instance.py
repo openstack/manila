@@ -915,7 +915,18 @@ class NeutronNetworkHelper(BaseNetworkhelper):
 
     def _get_set_of_device_cidrs(self, device):
         cidrs = set()
-        for addr in device.addr.list():
+        addr_list = []
+        try:
+            # NOTE(ganso): I could call ip_lib.device_exists here, but since
+            # this is a concurrency problem, it would not fix the problem.
+            addr_list = device.addr.list()
+        except Exception as e:
+            if 'does not exist' in six.text_type(e):
+                LOG.warning(_LW(
+                    "Device %s does not exist anymore.") % device.name)
+            else:
+                raise
+        for addr in addr_list:
             if addr['ip_version'] == 4:
                 cidrs.add(six.text_type(netaddr.IPNetwork(addr['cidr']).cidr))
         return cidrs
