@@ -62,6 +62,16 @@ class GlusterManagerTestCase(test.TestCase):
             self._gluster_manager = common.GlusterManager(
                 'testuser@127.0.0.1:/testvol', self.fake_execf,
                 fake_path_to_private_key, fake_remote_server_password)
+            fake_gluster_manager_dict = {
+                'host': '127.0.0.1',
+                'user': 'testuser',
+                'volume': 'testvol'
+            }
+            self._gluster_manager_dict = common.GlusterManager(
+                fake_gluster_manager_dict, self.fake_execf,
+                fake_path_to_private_key, fake_remote_server_password)
+            self._gluster_manager_array = [self._gluster_manager,
+                                           self._gluster_manager_dict]
 
     def test_check_volume_presence(self):
         common._check_volume_presence(mock.Mock())(self._gluster_manager)
@@ -99,28 +109,65 @@ class GlusterManagerTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare, common.volxml_get,
                           xmlout, 'some/path')
 
-    def test_gluster_manager_init(self):
-        self.assertEqual(fake_gluster_manager_attrs['user'],
-                         self._gluster_manager.user)
-        self.assertEqual(fake_gluster_manager_attrs['host'],
-                         self._gluster_manager.host)
-        self.assertEqual(fake_gluster_manager_attrs['volume'],
-                         self._gluster_manager.volume)
-        self.assertEqual(fake_gluster_manager_attrs['qualified'],
-                         self._gluster_manager.qualified)
-        self.assertEqual(fake_gluster_manager_attrs['export'],
-                         self._gluster_manager.export)
-        self.assertEqual(fake_gluster_manager_attrs['path_to_private_key'],
-                         self._gluster_manager.path_to_private_key)
-        self.assertEqual(fake_gluster_manager_attrs['remote_server_password'],
-                         self._gluster_manager.remote_server_password)
-        self.assertEqual(self.fake_executor,
-                         self._gluster_manager.gluster_call)
+    def test_gluster_manager_common_init(self):
+        for gmgr in self._gluster_manager_array:
+            self.assertEqual(
+                fake_gluster_manager_attrs['user'],
+                gmgr.user)
+            self.assertEqual(
+                fake_gluster_manager_attrs['host'],
+                gmgr.host)
+            self.assertEqual(
+                fake_gluster_manager_attrs['volume'],
+                gmgr.volume)
+            self.assertEqual(
+                fake_gluster_manager_attrs['qualified'],
+                gmgr.qualified)
+            self.assertEqual(
+                fake_gluster_manager_attrs['export'],
+                gmgr.export)
+            self.assertEqual(
+                fake_gluster_manager_attrs['path_to_private_key'],
+                gmgr.path_to_private_key)
+            self.assertEqual(
+                fake_gluster_manager_attrs['remote_server_password'],
+                gmgr.remote_server_password)
+            self.assertEqual(
+                self.fake_executor,
+                gmgr.gluster_call)
+
+    @ddt.data({'user': 'testuser', 'host': '127.0.0.1',
+               'volume': 'testvol', 'path': None},
+              {'user': None, 'host': '127.0.0.1',
+               'volume': 'testvol', 'path': '/testpath'},
+              {'user': None, 'host': '127.0.0.1',
+               'volume': 'testvol', 'path': None},
+              {'user': None, 'host': '127.0.0.1',
+               'volume': None, 'path': None},
+              {'user': 'testuser', 'host': '127.0.0.1',
+               'volume': None, 'path': None},
+              {'user': 'testuser', 'host': '127.0.0.1',
+               'volume': 'testvol', 'path': '/testpath'})
+    def test_gluster_manager_init_check(self, test_addr_dict):
+        test_gluster_manager = common.GlusterManager(
+            test_addr_dict, self.fake_execf)
+        self.assertEqual(test_addr_dict, test_gluster_manager.components)
 
     @ddt.data(None, True)
     def test_gluster_manager_init_has_vol(self, has_volume):
         test_gluster_manager = common.GlusterManager(
             'testuser@127.0.0.1:/testvol', self.fake_execf,
+            requires={'volume': has_volume})
+        self.assertEqual('testvol', test_gluster_manager.volume)
+
+    @ddt.data(None, True)
+    def test_gluster_manager_dict_init_has_vol(self, has_volume):
+        test_addr_dict = {'user': 'testuser',
+                          'host': '127.0.0.1',
+                          'volume': 'testvol',
+                          'path': '/testdir'}
+        test_gluster_manager = common.GlusterManager(
+            test_addr_dict, self.fake_execf,
             requires={'volume': has_volume})
         self.assertEqual('testvol', test_gluster_manager.volume)
 
@@ -131,10 +178,28 @@ class GlusterManagerTestCase(test.TestCase):
             requires={'volume': has_volume})
         self.assertIsNone(test_gluster_manager.volume)
 
+    @ddt.data(None, False)
+    def test_gluster_manager_dict_init_no_vol(self, has_volume):
+        test_addr_dict = {'user': 'testuser',
+                          'host': '127.0.0.1'}
+        test_gluster_manager = common.GlusterManager(
+            test_addr_dict, self.fake_execf,
+            requires={'volume': has_volume})
+        self.assertIsNone(test_gluster_manager.volume)
+
     def test_gluster_manager_init_has_shouldnt_have_vol(self):
         self.assertRaises(exception.GlusterfsException,
                           common.GlusterManager,
                           'testuser@127.0.0.1:/testvol',
+                          self.fake_execf, requires={'volume': False})
+
+    def test_gluster_manager_dict_init_has_shouldnt_have_vol(self):
+        test_addr_dict = {'user': 'testuser',
+                          'host': '127.0.0.1',
+                          'volume': 'testvol'}
+        self.assertRaises(exception.GlusterfsException,
+                          common.GlusterManager,
+                          test_addr_dict,
                           self.fake_execf, requires={'volume': False})
 
     def test_gluster_manager_hasnt_should_have_vol(self):
@@ -142,9 +207,35 @@ class GlusterManagerTestCase(test.TestCase):
                           common.GlusterManager, 'testuser@127.0.0.1',
                           self.fake_execf, requires={'volume': True})
 
+    def test_gluster_manager_dict_hasnt_should_have_vol(self):
+        test_addr_dict = {'user': 'testuser',
+                          'host': '127.0.0.1'}
+        self.assertRaises(exception.GlusterfsException,
+                          common.GlusterManager, test_addr_dict,
+                          self.fake_execf, requires={'volume': True})
+
     def test_gluster_manager_invalid(self):
         self.assertRaises(exception.GlusterfsException,
                           common.GlusterManager, '127.0.0.1:vol',
+                          'self.fake_execf')
+
+    def test_gluster_manager_dict_invalid_req_host(self):
+        test_addr_dict = {'user': 'testuser',
+                          'volume': 'testvol'}
+        self.assertRaises(exception.GlusterfsException,
+                          common.GlusterManager, test_addr_dict,
+                          'self.fake_execf')
+
+    @ddt.data({'user': 'testuser'},
+              {'host': 'johndoe@example.com'},
+              {'host': 'example.com/so', 'volume': 'me/path'},
+              {'user': 'user@error', 'host': "example.com", 'volume': 'vol'},
+              {'host': 'example.com', 'volume': 'vol', 'pith': '/path'},
+              {'host': 'example.com', 'path': '/path'},
+              {'user': 'user@error', 'host': "example.com", 'path': '/path'})
+    def test_gluster_manager_dict_invalid_input(self, test_addr_dict):
+        self.assertRaises(exception.GlusterfsException,
+                          common.GlusterManager, test_addr_dict,
                           'self.fake_execf')
 
     def test_gluster_manager_getattr(self):
