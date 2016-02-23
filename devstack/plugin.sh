@@ -153,7 +153,7 @@ function configure_manila {
     rm -f $MANILA_CONF
 
     iniset $MANILA_CONF keystone_authtoken identity_uri $KEYSTONE_AUTH_URI
-    iniset $MANILA_CONF keystone_authtoken admin_tenant_name $SERVICE_TENANT_NAME
+    iniset $MANILA_CONF keystone_authtoken admin_tenant_name $SERVICE_PROJECT_NAME
     iniset $MANILA_CONF keystone_authtoken admin_user manila
     iniset $MANILA_CONF keystone_authtoken admin_password $SERVICE_PASSWORD
     iniset $MANILA_CONF keystone_authtoken signing_dir $MANILA_AUTH_CACHE_DIR
