@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from enum import Enum
 from oslo_serialization import jsonutils
 import requests
 import six
@@ -164,7 +165,7 @@ class IsilonApi(object):
         otherwise
         """
 
-        data = {}
+        data = {'permissions': []}
         data['name'] = share_name
         data['path'] = share_path
         url = self.host_url + '/platform/1/protocols/smb/shares'
@@ -264,9 +265,73 @@ class IsilonApi(object):
             quota_id = quota_json['id']
             self.quota_modify_size(quota_id, size)
 
+    def smb_permissions_add(self, share_name, user, smb_permission):
+        smb_share = self.lookup_smb_share(share_name)
+        permissions = smb_share['permissions']
+
+        # lookup given user string
+        user_json = self.auth_lookup_user(user)
+        auth_mappings = user_json['mapping']
+        if len(auth_mappings) > 1:
+            message = (_('More than one mapping found for user "%(user)s".')
+                       % {'user': user})
+            raise exception.ShareBackendException(msg=message)
+        user_sid = auth_mappings[0]['user']['sid']
+        new_permission = {
+            'permission': smb_permission.value,
+            'permission_type': 'allow',
+            'trustee': user_sid
+        }
+
+        url = '{0}/platform/1/protocols/smb/shares/{1}'.format(
+            self.host_url, share_name)
+        new_permissions = list(permissions)
+        new_permissions.append(new_permission)
+        data = {'permissions': new_permissions}
+
+        r = self.request('PUT', url, data=data)
+        r.raise_for_status()
+
+    def smb_permissions_remove(self, share_name, user):
+        smb_share = self.lookup_smb_share(share_name)
+        permissions = smb_share['permissions']
+
+        # find the perm to remove
+        perm_to_remove = None
+        for perm in list(permissions):
+            if perm['trustee']['name'] == user:
+                perm_to_remove = perm
+
+        if perm_to_remove is not None:
+            permissions.remove(perm)
+        else:
+            message = _('Attempting to remove permission for user "%(user)s", '
+                        'but this user was not found in the share\'s '
+                        '(%(share)s) permissions list.') % {'user': user,
+                                                            'share': smb_share}
+            raise exception.ShareBackendException(msg=message)
+
+        self.request('PUT', '{0}/platform/1/protocols/smb/shares/{1}'.format(
+            self.host_url, share_name), data={'permissions': permissions})
+
+    def auth_lookup_user(self, user_string):
+        url = '{0}/platform/1/auth/mapping/users/lookup'.format(self.host_url)
+        r = self.request('GET', url, params={"user": user_string})
+        if r.status_code == 404:
+            raise exception.ShareBackendException(msg='user not found')
+        elif r.status_code != 200:
+            r.raise_for_status()
+        return r.json()
+
     def request(self, method, url, headers=None, data=None, params=None):
         if data is not None:
             data = jsonutils.dumps(data)
         r = self.session.request(method, url, headers=headers, data=data,
                                  verify=self.verify_ssl_cert, params=params)
         return r
+
+
+class SmbPermission(Enum):
+    full = 'full'
+    rw = 'change'
+    ro = 'read'
