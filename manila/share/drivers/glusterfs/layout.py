@@ -29,6 +29,7 @@ import six
 from manila import exception
 from manila.i18n import _
 from manila.share import driver
+from manila.share.drivers.ganesha import utils as ganesha_utils
 
 glusterfs_share_layout_opts = [
     cfg.StrOpt(
@@ -48,6 +49,8 @@ class GlusterfsShareDriverBase(driver.ShareDriver):
 
     supported_layouts = ()
     supported_protocols = ()
+    _supported_access_types = ()
+    _supported_access_levels = ()
 
     GLUSTERFS_VERSION_MIN = (0, 0)
 
@@ -95,22 +98,58 @@ class GlusterfsShareDriverBase(driver.ShareDriver):
         :returns: export location for share_mgr['share'].
         """
 
-    def allow_access(self, context, share, access, share_server=None):
+    @property
+    def supported_access_levels(self):
+        return self._supported_access_levels
+
+    @property
+    def supported_access_types(self):
+        return self._supported_access_types
+
+    def _access_rule_validator(self, abort):
+
+        def validator(rule):
+            return ganesha_utils.validate_access_rule(
+                self.supported_access_types, self.supported_access_levels,
+                rule, abort)
+
+        return validator
+
+    def update_access(self, context, share, access_rules, add_rules,
+                      delete_rules, share_server=None):
+        """Update access rules for given share.
+
+        Driver supports 2 different cases in this method:
+        1. Recovery after error - 'access_rules' contains all access_rules,
+        'add_rules' and 'delete_rules' are []. Driver should clear any
+        existent access rules and apply all access rules for given share.
+        This recovery is made at driver start up.
+
+        2. Adding/Deleting of several access rules - 'access_rules' contains
+        all access_rules, 'add_rules' and 'delete_rules' contain rules which
+        should be added/deleted. Driver can ignore rules in 'access_rules' and
+        apply only rules from 'add_rules' and 'delete_rules'.
+        """
         gluster_mgr = self.layout._share_manager(share)
-        return self._allow_access_via_manager(gluster_mgr, context, share,
-                                              access, share_server)
 
-    def deny_access(self, context, share, access, share_server=None):
-        gluster_mgr = self.layout._share_manager(share)
-        return self._deny_access_via_manager(gluster_mgr, context, share,
-                                             access, share_server)
+        access_rules, add_rules, delete_rules = (
+            list(filter(self._access_rule_validator(abort), rules)) for (
+                rules, abort) in ((access_rules, True),
+                                  (add_rules, True),
+                                  (delete_rules, False)))
 
-    def _allow_access_via_manager(self, gluster_mgr, context, share, access,
-                                  share_server):
-        raise NotImplementedError()
+        # Recovery mode.
+        if not (add_rules or delete_rules):
+            ruleop, recovery = (access_rules, []), True
+        else:
+            ruleop, recovery = (add_rules, delete_rules), False
 
-    def _deny_access_via_manager(self, gluster_mgr, context, share, access,
-                                 share_server):
+        self._update_access_via_manager(gluster_mgr, context, share,
+                                        *ruleop, recovery=recovery)
+
+    def _update_access_via_manager(self, gluster_mgr, context, share,
+                                   add_rules, delete_rules, recovery=False,
+                                   share_server=None):
         raise NotImplementedError()
 
     def do_setup(self, *a, **kw):
