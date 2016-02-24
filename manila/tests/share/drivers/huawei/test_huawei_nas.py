@@ -2990,6 +2990,44 @@ class HuaweiShareDriverTestCase(test.TestCase):
                          backend_details['ip'])
 
     @dec_driver_handles_share_servers
+    def test_setup_server_choose_least_logic_port(self):
+        self.recreate_fake_conf_file(
+            logical_port='CTE0.A.H0;CTE0.A.H2;CTE0.B.H0;BOND0')
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        fake_network_info = {
+            'server_id': '0',
+            'segmentation_id': None,
+            'cidr': '111.111.111.0/24',
+            'network_allocations': self.fake_network_allocations,
+            'network_type': None,
+        }
+        self.mock_object(self.driver.plugin, '_get_online_port',
+                         mock.Mock(return_value=(['CTE0.A.H0', 'CTE0.A.H2',
+                                                  'CTE0.B.H0'], ['BOND0'])))
+        self.mock_object(self.driver.plugin.helper, 'get_all_logical_port',
+                         mock.Mock(return_value=[
+                             {'HOMEPORTTYPE': constants.PORT_TYPE_ETH,
+                              'HOMEPORTNAME': 'CTE0.A.H0'},
+                             {'HOMEPORTTYPE': constants.PORT_TYPE_VLAN,
+                              'HOMEPORTNAME': 'CTE0.B.H0.10'},
+                             {'HOMEPORTTYPE': constants.PORT_TYPE_BOND,
+                              'HOMEPORTNAME': 'BOND0'}]))
+        self.mock_object(self.driver.plugin.helper,
+                         'get_port_id',
+                         mock.Mock(return_value=4))
+
+        backend_details = self.driver.setup_server(fake_network_info)
+
+        self.assertEqual(self.fake_network_allocations[0]['ip_address'],
+                         backend_details['ip'])
+        self.driver.plugin._get_online_port.assert_called_once_with(
+            ['CTE0.A.H0', 'CTE0.A.H2',  'CTE0.B.H0', 'BOND0'])
+        self.assertTrue(self.driver.plugin.helper.get_all_logical_port.called)
+        self.driver.plugin.helper.get_port_id.assert_called_once_with(
+            'CTE0.A.H2', constants.PORT_TYPE_ETH)
+
+    @dec_driver_handles_share_servers
     def test_setup_server_create_vlan_fail(self):
         def call_create_vlan_fail(*args, **kwargs):
             url = args[0]
