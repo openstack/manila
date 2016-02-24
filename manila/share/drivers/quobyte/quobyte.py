@@ -25,8 +25,9 @@ import math
 from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
+import six
 
-import manila.common.constants
+from manila.common import constants
 from manila import exception
 from manila.i18n import _
 from manila.i18n import _LE
@@ -74,15 +75,39 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         1.0     - Initial driver.
         1.0.1   - Adds ensure_share() implementation.
         1.1     - Adds extend_share() and shrink_share() implementation.
+        1.2     - Adds update_access() implementation and related methods
     """
 
-    DRIVER_VERSION = '1.1'
+    DRIVER_VERSION = '1.2'
 
     def __init__(self, *args, **kwargs):
         super(QuobyteShareDriver, self).__init__(False, *args, **kwargs)
         self.configuration.append_config_values(quobyte_manila_share_opts)
         self.backend_name = (self.configuration.safe_get('share_backend_name')
                              or CONF.share_backend_name or 'Quobyte')
+
+    def _fetch_existing_access(self, context, share):
+        volume_uuid = self._resolve_volume_name(
+            share['name'],
+            self._get_project_name(context, share['project_id']))
+        result = self.rpc.call('getConfiguration', {})
+        if result is None:
+            raise exception.QBException(
+                "Could not retrieve Quobyte configuration data!")
+        tenant_configs = result['tenant_configuration']
+        qb_access_list = []
+        for tc in tenant_configs:
+            for va in tc['volume_access']:
+                if va['volume_uuid'] == volume_uuid:
+                    a_level = constants.ACCESS_LEVEL_RW
+                    if va['read_only']:
+                        a_level = constants.ACCESS_LEVEL_RO
+                    qb_access_list.append({
+                        'access_to': va['restrict_to_network'],
+                        'access_level': a_level,
+                        'access_type': 'ip'
+                    })
+        return qb_access_list
 
     def do_setup(self, context):
         """Prepares the backend."""
@@ -156,6 +181,23 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         if result:
             return result['volume_uuid']
         return None  # not found
+
+    def _subtract_access_lists(self, list_a, list_b):
+        """Returns a list of elements in list_a that are not in list_b
+
+        :param list_a: Base list of access rules
+        :param list_b:  List of access rules not to be returned
+        :return: List of elements of list_a not present in
+        list_b
+        """
+        sub_tuples_list = [{"to": s.get('access_to'),
+                            "type": s.get('access_type'),
+                            "level": s.get('access_level')}
+                           for s in list_b]
+        return [r for r in list_a if (
+            {"to": r.get("access_to"),
+             "type": r.get("access_type"),
+             "level": r.get("access_level")} not in sub_tuples_list)]
 
     def create_share(self, context, share, share_server=None):
         """Create or export a volume that is usable as a Manila share."""
@@ -231,7 +273,7 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
 
         return '%(nfs_server_ip)s:%(nfs_export_path)s' % result
 
-    def allow_access(self, context, share, access, share_server=None):
+    def _allow_access(self, context, share, access, share_server=None):
         """Allow access to a share."""
         if access['access_type'] != 'ip':
             raise exception.InvalidShareAccess(
@@ -240,13 +282,14 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         volume_uuid = self._resolve_volume_name(
             share['name'],
             self._get_project_name(context, share['project_id']))
-        self.rpc.call('exportVolume', dict(
-            volume_uuid=volume_uuid,
-            read_only=access['access_level'] == (manila.common.constants.
-                                                 ACCESS_LEVEL_RO),
-            add_allow_ip=access['access_to']))
+        ro = access['access_level'] == (constants.ACCESS_LEVEL_RO)
+        call_params = {
+            "volume_uuid": volume_uuid,
+            "read_only": ro,
+            "add_allow_ip": access['access_to']}
+        self.rpc.call('exportVolume', call_params)
 
-    def deny_access(self, context, share, access, share_server=None):
+    def _deny_access(self, context, share, access, share_server=None):
         """Remove white-list ip from a share."""
         if access['access_type'] != 'ip':
             LOG.debug('Quobyte driver only supports ip access control. '
@@ -258,9 +301,10 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         volume_uuid = self._resolve_volume_name(
             share['name'],
             self._get_project_name(context, share['project_id']))
-        self.rpc.call('exportVolume', dict(
-            volume_uuid=volume_uuid,
-            remove_allow_ip=access['access_to']))
+        call_params = {
+            "volume_uuid": volume_uuid,
+            "remove_allow_ip": access['access_to']}
+        self.rpc.call('exportVolume', call_params)
 
     def extend_share(self, ext_share, ext_size, share_server=None):
         """Uses resize_share to extend a share.
@@ -283,3 +327,55 @@ class QuobyteShareDriver(driver.ExecuteMixin, driver.ShareDriver,):
         :param share_server: Currently not used.
         """
         self._resize_share(share=shrink_share, new_size=shrink_size)
+
+    def update_access(self, context, share, access_rules, add_rules=None,
+                      delete_rules=None, share_server=None):
+        """Update access rules for given share.
+
+        Two different cases are supported in here:
+        1. Recovery after error - 'access_rules' contains all access_rules,
+        'add_rules' and 'delete_rules' are None. Driver should apply all
+        access rules for given share.
+
+        2. Adding/Deleting of several access rules - 'access_rules' contains
+        all access_rules, 'add_rules' and 'delete_rules' contain rules which
+        should be added/deleted. Driver can ignore rules in 'access_rules' and
+        apply only rules from 'add_rules' and 'delete_rules'.
+
+        :param context: Current context
+        :param share: Share model with share data.
+        :param access_rules: All access rules for given share
+        :param add_rules: None or List of access rules which should be added
+               access_rules already contains these rules.
+        :param delete_rules: None or List of access rules which should be
+               removed. access_rules doesn't contain these rules.
+        :param share_server: None or Share server model
+        :raises If all of the *_rules params are None the method raises an
+        InvalidShareAccess exception
+        """
+        if (add_rules or delete_rules):
+            # Handling access rule update
+            for d_rule in delete_rules:
+                self._deny_access(context, share, d_rule)
+            for a_rule in add_rules:
+                self._allow_access(context, share, a_rule)
+        else:
+            if not access_rules:
+                LOG.warning(_LW("No access rules provided in update_access."))
+            else:
+                # Handling access rule recovery
+                existing_rules = self._fetch_existing_access(context, share)
+
+                missing_rules = self._subtract_access_lists(access_rules,
+                                                            existing_rules)
+                for a_rule in missing_rules:
+                    LOG.debug("Adding rule %s in recovery.",
+                              six.text_type(a_rule))
+                    self._allow_access(context, share, a_rule)
+
+                superfluous_rules = self._subtract_access_lists(existing_rules,
+                                                                access_rules)
+                for d_rule in superfluous_rules:
+                    LOG.debug("Removing rule %s in recovery.",
+                              six.text_type(d_rule))
+                    self._deny_access(context, share, d_rule)

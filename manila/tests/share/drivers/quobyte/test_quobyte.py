@@ -37,6 +37,49 @@ def fake_rpc_handler(name, *args):
     elif name == 'exportVolume':
         return {'nfs_server_ip': 'fake_location',
                 'nfs_export_path': '/fake_share'}
+    elif name == 'getConfiguration':
+        return {
+            "tenant_configuration": [{
+                "domain_name": "fake_domain_name",
+                "volume_access": [
+                    {"volume_uuid": "fake_id_1",
+                     "restrict_to_network": "10.0.0.1",
+                     "read_only": False},
+                    {"volume_uuid": "fake_id_1",
+                     "restrict_to_network": "10.0.0.2",
+                     "read_only": False},
+                    {"volume_uuid": "fake_id_2",
+                     "restrict_to_network": "10.0.0.3",
+                     "read_only": False}
+                ]},
+                {"domain_name": "fake_domain_name_2",
+                 "volume_access": [
+                     {"volume_uuid": "fake_id_3",
+                      "restrict_to_network": "10.0.0.4",
+                      "read_only": False},
+                     {"volume_uuid": "fake_id_3",
+                      "restrict_to_network": "10.0.0.5",
+                      "read_only": True},
+                     {"volume_uuid": "fake_id_4",
+                      "restrict_to_network": "10.0.0.6",
+                      "read_only": False}
+                 ]}
+            ]
+        }
+    else:
+        return "Unknown fake rpc handler call"
+
+
+def create_fake_access(access_adr,
+                       access_id='fake_access_id',
+                       access_type='ip',
+                       access_level='rw'):
+    return {
+        'access_id': access_id,
+        'access_type': access_type,
+        'access_to': access_adr,
+        'access_level': access_level
+    }
 
 
 class QuobyteShareDriverTestCase(test.TestCase):
@@ -163,7 +206,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
         self._driver.rpc.call = mock.Mock(wraps=rpc_handler)
 
-        self._driver.allow_access(self._context, self.share, self.access)
+        self._driver._allow_access(self._context, self.share, self.access)
 
         self._driver.rpc.call.assert_called_with(
             'exportVolume', {'volume_uuid': 'voluuid',
@@ -181,7 +224,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self._driver.rpc.call = mock.Mock(wraps=rpc_handler)
         ro_access = fake_share.fake_access(access_level='ro')
 
-        self._driver.allow_access(self._context, self.share, ro_access)
+        self._driver._allow_access(self._context, self.share, ro_access)
 
         self._driver.rpc.call.assert_called_with(
             'exportVolume', {'volume_uuid': 'voluuid',
@@ -195,7 +238,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
                                                 "non_existant_access_type"})
 
         self.assertRaises(exception.InvalidShareAccess,
-                          self._driver.allow_access,
+                          self._driver._allow_access,
                           self._context, self.share, self.access)
 
     def test_deny_access(self):
@@ -208,7 +251,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
 
         self._driver.rpc.call = mock.Mock(wraps=rpc_handler)
 
-        self._driver.deny_access(self._context, self.share, self.access)
+        self._driver._deny_access(self._context, self.share, self.access)
 
         self._driver.rpc.call.assert_called_with(
             'exportVolume',
@@ -220,7 +263,7 @@ class QuobyteShareDriverTestCase(test.TestCase):
         self.access = fake_share.fake_access(
             access_type="non_existant_access_type")
 
-        self._driver.deny_access(self._context, self.share, self.access)
+        self._driver._deny_access(self._context, self.share, self.access)
 
         mock_debug.assert_called_with(
             'Quobyte driver only supports ip access control. '
@@ -332,6 +375,27 @@ class QuobyteShareDriverTestCase(test.TestCase):
                                     "identifier": self.share["name"]},
                        "limits": {"type": 5, "value": 7}})])
 
+    @mock.patch.object(quobyte.QuobyteShareDriver,
+                       "_resolve_volume_name",
+                       return_value="fake_id_3")
+    def test_fetch_existing_access(self, mock_qb_resolve_volname):
+        self._driver.rpc.call = mock.Mock(wraps=fake_rpc_handler)
+        old_access_1 = create_fake_access(access_id="old_1",
+                                          access_adr="10.0.0.4")
+        old_access_2 = create_fake_access(access_id="old_2",
+                                          access_adr="10.0.0.5")
+
+        exist_list = self._driver._fetch_existing_access(context=self._context,
+                                                         share=self.share)
+
+        # assert expected result here
+        self.assertEqual([old_access_1['access_to'],
+                          old_access_2['access_to']],
+                         [e.get('access_to') for e in exist_list])
+        (mock_qb_resolve_volname.
+         assert_called_once_with(self.share['name'],
+                                 self.share['project_id']))
+
     @mock.patch.object(quobyte.QuobyteShareDriver, "_resize_share")
     def test_shrink_share(self, mock_qsd_resize_share):
         self._driver.shrink_share(shrink_share=self.share,
@@ -339,3 +403,196 @@ class QuobyteShareDriverTestCase(test.TestCase):
                                   share_server=None)
         mock_qsd_resize_share.assert_called_once_with(share=self.share,
                                                       new_size=3)
+
+    def test_subtract_access_lists(self):
+        access_1 = create_fake_access(access_id="new_1",
+                                      access_adr="10.0.0.5",
+                                      access_type="rw",)
+        access_2 = create_fake_access(access_id="old_1",
+                                      access_adr="10.0.0.1",
+                                      access_type="rw")
+        access_3 = create_fake_access(access_id="old_2",
+                                      access_adr="10.0.0.3",
+                                      access_type="ro")
+        access_4 = create_fake_access(access_id="new_2",
+                                      access_adr="10.0.0.6",
+                                      access_type="rw")
+        access_5 = create_fake_access(access_id="old_3",
+                                      access_adr="10.0.0.4",
+                                      access_type="rw")
+        min_list = [access_1, access_2, access_3, access_4]
+        sub_list = [access_5, access_3, access_2]
+
+        self.assertEqual([access_1, access_4],
+                         self._driver._subtract_access_lists(min_list,
+                                                             sub_list))
+
+    def test_subtract_access_lists_level(self):
+        access_1 = create_fake_access(access_id="new_1",
+                                      access_adr="10.0.0.5",
+                                      access_level="rw")
+        access_2 = create_fake_access(access_id="old_1",
+                                      access_adr="10.0.0.1",
+                                      access_level="rw")
+        access_3 = create_fake_access(access_id="old_2",
+                                      access_adr="10.0.0.3",
+                                      access_level="rw")
+        access_4 = create_fake_access(access_id="new_2",
+                                      access_adr="10.0.0.6",
+                                      access_level="rw")
+        access_5 = create_fake_access(access_id="old_2_ro",
+                                      access_adr="10.0.0.3",
+                                      access_level="ro")
+        min_list = [access_1, access_2, access_3, access_4]
+        sub_list = [access_5, access_2]
+
+        self.assertEqual([access_1, access_3, access_4],
+                         self._driver._subtract_access_lists(min_list,
+                                                             sub_list))
+
+    def test_subtract_access_lists_type(self):
+        access_1 = create_fake_access(access_id="new_1",
+                                      access_adr="10.0.0.5",
+                                      access_type="ip")
+        access_2 = create_fake_access(access_id="old_1",
+                                      access_adr="10.0.0.1",
+                                      access_type="ip")
+        access_3 = create_fake_access(access_id="old_2",
+                                      access_adr="10.0.0.3",
+                                      access_type="ip")
+        access_4 = create_fake_access(access_id="new_2",
+                                      access_adr="10.0.0.6",
+                                      access_type="ip")
+        access_5 = create_fake_access(access_id="old_2_ro",
+                                      access_adr="10.0.0.3",
+                                      access_type="other")
+        min_list = [access_1, access_2, access_3, access_4]
+        sub_list = [access_5, access_2]
+
+        self.assertEqual([access_1, access_3, access_4],
+                         self._driver._subtract_access_lists(min_list,
+                                                             sub_list))
+
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_allow_access")
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_deny_access")
+    def test_update_access_add_delete(self, qb_deny_mock, qb_allow_mock):
+        access_1 = create_fake_access(access_id="new_1",
+                                      access_adr="10.0.0.5",
+                                      access_level="rw")
+        access_2 = create_fake_access(access_id="old_1",
+                                      access_adr="10.0.0.1",
+                                      access_level="rw")
+        access_3 = create_fake_access(access_id="old_2",
+                                      access_adr="10.0.0.3",
+                                      access_level="rw")
+
+        self._driver.update_access(self._context,
+                                   self.share,
+                                   access_rules=None,
+                                   add_rules=[access_1],
+                                   delete_rules=[access_2, access_3])
+
+        qb_allow_mock.assert_called_once_with(self._context,
+                                              self.share, access_1)
+        deny_calls = [mock.call(self._context, self.share, access_2),
+                      mock.call(self._context, self.share, access_3)]
+        qb_deny_mock.assert_has_calls(deny_calls)
+
+    @mock.patch.object(quobyte.LOG, "warning")
+    def test_update_access_no_rules(self, qb_log_mock):
+        self._driver.update_access(context=None, share=None, access_rules=[])
+
+        qb_log_mock.assert_has_calls([mock.ANY])
+
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_subtract_access_lists")
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_fetch_existing_access")
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_allow_access")
+    def test_update_access_recovery_additionals(self,
+                                                qb_allow_mock,
+                                                qb_exist_mock,
+                                                qb_subtr_mock):
+        new_access_1 = create_fake_access(access_id="new_1",
+                                          access_adr="10.0.0.2")
+        old_access = create_fake_access(access_id="fake_access_id",
+                                        access_adr="10.0.0.1")
+        new_access_2 = create_fake_access(access_id="new_2",
+                                          access_adr="10.0.0.3")
+        add_access_rules = [new_access_1,
+                            old_access,
+                            new_access_2]
+        qb_exist_mock.return_value = [old_access]
+        qb_subtr_mock.side_effect = [[new_access_1, new_access_2], []]
+
+        self._driver.update_access(self._context, self.share,
+                                   access_rules=add_access_rules)
+
+        assert_calls = [mock.call(self._context, self.share, new_access_1),
+                        mock.call(self._context, self.share, new_access_2)]
+        qb_allow_mock.assert_has_calls(assert_calls, any_order=True)
+        qb_exist_mock.assert_called_once_with(self._context, self.share)
+
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_subtract_access_lists")
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_fetch_existing_access")
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_deny_access")
+    def test_update_access_recovery_superfluous(self,
+                                                qb_deny_mock,
+                                                qb_exist_mock,
+                                                qb_subtr_mock):
+
+        old_access_1 = create_fake_access(access_id="old_1",
+                                          access_adr="10.0.0.1")
+        missing_access_1 = create_fake_access(access_id="mis_1",
+                                              access_adr="10.0.0.2")
+        old_access_2 = create_fake_access(access_id="old_2",
+                                          access_adr="10.0.0.3")
+        qb_exist_mock.side_effect = [[old_access_1, old_access_2]]
+        qb_subtr_mock.side_effect = [[], [missing_access_1]]
+        old_access_rules = [old_access_1, old_access_2]
+
+        self._driver.update_access(self._context, self.share,
+                                   access_rules=old_access_rules)
+
+        qb_deny_mock.assert_called_once_with(self._context,
+                                             self.share,
+                                             (missing_access_1))
+        qb_exist_mock.assert_called_once_with(self._context, self.share)
+
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_subtract_access_lists")
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_fetch_existing_access")
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_deny_access")
+    @mock.patch.object(quobyte.QuobyteShareDriver, "_allow_access")
+    def test_update_access_recovery_add_superfluous(self,
+                                                    qb_allow_mock,
+                                                    qb_deny_mock,
+                                                    qb_exist_mock,
+                                                    qb_subtr_mock):
+        new_access_1 = create_fake_access(access_id="new_1",
+                                          access_adr="10.0.0.5")
+        old_access_1 = create_fake_access(access_id="old_1",
+                                          access_adr="10.0.0.1")
+        old_access_2 = create_fake_access(access_id="old_2",
+                                          access_adr="10.0.0.3")
+        old_access_3 = create_fake_access(access_id="old_3",
+                                          access_adr="10.0.0.4")
+        miss_access_1 = create_fake_access(access_id="old_3",
+                                           access_adr="10.0.0.4")
+        new_access_2 = create_fake_access(access_id="new_2",
+                                          access_adr="10.0.0.3",
+                                          access_level="ro")
+        new_access_rules = [new_access_1, old_access_1, old_access_2,
+                            old_access_3, new_access_2]
+        qb_exist_mock.return_value = [old_access_1, old_access_2,
+                                      old_access_3, miss_access_1]
+        qb_subtr_mock.side_effect = [[new_access_1, new_access_2],
+                                     [miss_access_1, old_access_2]]
+
+        self._driver.update_access(self._context, self.share,
+                                   new_access_rules)
+
+        a_calls = [mock.call(self._context, self.share, new_access_1),
+                   mock.call(self._context, self.share, new_access_2)]
+        qb_allow_mock.assert_has_calls(a_calls)
+        b_calls = [mock.call(self._context, self.share, miss_access_1),
+                   mock.call(self._context, self.share, old_access_2)]
+        qb_deny_mock.assert_has_calls(b_calls)
+        qb_exist_mock.assert_called_once_with(self._context, self.share)
