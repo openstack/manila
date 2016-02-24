@@ -221,7 +221,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
         self.assertEqual(
             True,
             self._manager.get_config_option("driver_handles_share_servers"))
-        self.assertNotEqual(None, self._manager.driver_config)
+        self.assertIsNotNone(self._manager.driver_config)
         self.assertTrue(hasattr(self._manager, 'network_helper'))
         self.assertTrue(service_instance.NovaNetworkHelper.called)
         self.assertFalse(service_instance.NeutronNetworkHelper.called)
@@ -237,7 +237,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self.config = configuration.Configuration(opts, 'CUSTOM')
             self._manager = service_instance.ServiceInstanceManager(
                 self.config)
-        self.assertNotEqual(None, self._manager.driver_config)
+        self.assertIsNotNone(self._manager.driver_config)
         self.assertFalse(hasattr(self._manager, 'network_helper'))
         self.assertFalse(service_instance.NovaNetworkHelper.called)
         self.assertFalse(service_instance.NeutronNetworkHelper.called)
@@ -299,7 +299,7 @@ class ServiceInstanceManagerTestCase(test.TestCase):
             self._manager = service_instance.ServiceInstanceManager(
                 self.config)
         result = self._manager._get_service_instance_name(fake_server_id)
-        self.assertNotEqual(None, self._manager.driver_config)
+        self.assertIsNotNone(self._manager.driver_config)
         self.assertEqual(
             self._manager.get_config_option(
                 "service_instance_name_template") % "%s_%s" % (
