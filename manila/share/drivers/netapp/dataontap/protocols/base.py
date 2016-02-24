@@ -27,7 +27,7 @@ def access_rules_synchronized(f):
     def wrapped_func(self, *args, **kwargs):
 
         # The first argument is always a share, which has an ID
-        key = "cifs-access-%s" % args[0]['id']
+        key = "share-access-%s" % args[0]['id']
 
         @utils.synchronized(key)
         def source_func(self, *args, **kwargs):

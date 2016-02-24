@@ -1745,27 +1745,84 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
     def test_update_access(self):
 
+        vserver_client = mock.Mock()
+        mock_get_vserver = self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
         protocol_helper = mock.Mock()
         protocol_helper.update_access.return_value = None
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=protocol_helper))
-        vserver_client = mock.Mock()
-        self.mock_object(self.library,
-                         '_get_vserver',
-                         mock.Mock(return_value=(fake.VSERVER1,
-                                                 vserver_client)))
+        mock_share_exists = self.mock_object(self.library,
+                                             '_share_exists',
+                                             mock.Mock(return_value=True))
 
         self.library.update_access(self.context,
                                    fake.SHARE,
                                    [fake.SHARE_ACCESS],
                                    share_server=fake.SHARE_SERVER)
 
+        mock_get_vserver.assert_called_once_with(
+            share_server=fake.SHARE_SERVER)
+        share_name = self.library._get_valid_share_name(fake.SHARE['id'])
+        mock_share_exists.assert_called_once_with(share_name, vserver_client)
         protocol_helper.set_client.assert_called_once_with(vserver_client)
         protocol_helper.update_access.assert_called_once_with(
-            fake.SHARE,
-            fake.SHARE_NAME,
-            [fake.SHARE_ACCESS])
+            fake.SHARE, fake.SHARE_NAME, [fake.SHARE_ACCESS])
+
+    @ddt.data(exception.InvalidInput(reason='fake_reason'),
+              exception.VserverNotSpecified(),
+              exception.VserverNotFound(vserver='fake_vserver'))
+    def test_update_access_no_share_server(self, get_vserver_exception):
+
+        mock_get_vserver = self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(side_effect=get_vserver_exception))
+        protocol_helper = mock.Mock()
+        protocol_helper.update_access.return_value = None
+        self.mock_object(self.library,
+                         '_get_helper',
+                         mock.Mock(return_value=protocol_helper))
+        mock_share_exists = self.mock_object(self.library, '_share_exists')
+
+        self.library.update_access(self.context,
+                                   fake.SHARE,
+                                   [fake.SHARE_ACCESS],
+                                   share_server=fake.SHARE_SERVER)
+
+        mock_get_vserver.assert_called_once_with(
+            share_server=fake.SHARE_SERVER)
+        self.assertFalse(mock_share_exists.called)
+        self.assertFalse(protocol_helper.set_client.called)
+        self.assertFalse(protocol_helper.update_access.called)
+
+    def test_update_access_share_not_found(self):
+
+        vserver_client = mock.Mock()
+        mock_get_vserver = self.mock_object(
+            self.library, '_get_vserver',
+            mock.Mock(return_value=(fake.VSERVER1, vserver_client)))
+        protocol_helper = mock.Mock()
+        protocol_helper.update_access.return_value = None
+        self.mock_object(self.library,
+                         '_get_helper',
+                         mock.Mock(return_value=protocol_helper))
+        mock_share_exists = self.mock_object(self.library,
+                                             '_share_exists',
+                                             mock.Mock(return_value=False))
+
+        self.library.update_access(self.context,
+                                   fake.SHARE,
+                                   [fake.SHARE_ACCESS],
+                                   share_server=fake.SHARE_SERVER)
+
+        mock_get_vserver.assert_called_once_with(
+            share_server=fake.SHARE_SERVER)
+        share_name = self.library._get_valid_share_name(fake.SHARE['id'])
+        mock_share_exists.assert_called_once_with(share_name, vserver_client)
+        self.assertFalse(protocol_helper.set_client.called)
+        self.assertFalse(protocol_helper.update_access.called)
 
     def test_setup_server(self):
         self.assertRaises(NotImplementedError,

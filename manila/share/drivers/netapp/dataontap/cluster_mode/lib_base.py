@@ -959,11 +959,26 @@ class NetAppCmodeFileStorageLibrary(object):
     def update_access(self, context, share, access_rules, add_rules=None,
                       delete_rules=None, share_server=None):
         """Updates access rules for a share."""
-        vserver, vserver_client = self._get_vserver(share_server=share_server)
+        try:
+            vserver, vserver_client = self._get_vserver(
+                share_server=share_server)
+        except (exception.InvalidInput,
+                exception.VserverNotSpecified,
+                exception.VserverNotFound) as error:
+            LOG.warning(_LW("Could not determine share server for share "
+                            "%(share)s during access rules update. "
+                            "Error: %(error)s"),
+                        {'share': share['id'], 'error': error})
+            return
+
         share_name = self._get_valid_share_name(share['id'])
-        helper = self._get_helper(share)
-        helper.set_client(vserver_client)
-        helper.update_access(share, share_name, access_rules)
+        if self._share_exists(share_name, vserver_client):
+            helper = self._get_helper(share)
+            helper.set_client(vserver_client)
+            helper.update_access(share, share_name, access_rules)
+        else:
+            LOG.warning(_LW("Could not update access rules, share %s does "
+                            "not exist."), share['id'])
 
     def setup_server(self, network_info, metadata=None):
         raise NotImplementedError()
