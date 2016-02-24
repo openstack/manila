@@ -492,18 +492,31 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                       "filter=PARENTID::1&range=[100-200]":
                 data = """{"error":{"code":0},
                     "data":[{"ID":"5",
-                    "NAME":"100.112.0.1"}]}"""
+                    "NAME":"100.112.0.2"}]}"""
 
             if url == "/CIFS_SHARE_AUTH_CLIENT?"\
                       "filter=PARENTID::2&range=[100-200]":
                 data = """{"error":{"code":0},
                     "data":[{"ID":"6",
-                    "NAME":"user_name"}]}"""
+                    "NAME":"user_exist"}]}"""
 
-            if url == "/NFS_SHARE_AUTH_CLIENT/5"\
-                      or url == "/CIFS_SHARE_AUTH_CLIENT/6":
-                data = """{"error":{"code":0}}"""
-                self.deny_flag = True
+            if url in ("/NFS_SHARE_AUTH_CLIENT/0",
+                       "/NFS_SHARE_AUTH_CLIENT/5",
+                       "/CIFS_SHARE_AUTH_CLIENT/0",
+                       "/CIFS_SHARE_AUTH_CLIENT/6"):
+                if method == "DELETE":
+                    data = """{"error":{"code":0}}"""
+                    self.deny_flag = True
+                elif method == "GET":
+                    if 'CIFS' in url:
+                        data = """{"error":{"code":0},
+                            "data":{"'PERMISSION'":"0"}}"""
+                    else:
+                        data = """{"error":{"code":0},
+                            "data":{"ACCESSVAL":"0"}}"""
+                else:
+                    data = """{"error":{"code":0}}"""
+                    self.allow_rw_flagg = True
 
             if url == "/NFSHARE/count" or url == "/CIFSHARE/count":
                 data = """{"error":{"code":0},"data":{
@@ -944,9 +957,21 @@ class HuaweiShareDriverTestCase(test.TestCase):
             'access_level': 'rw',
         }
 
+        self.access_ip_exist = {
+            'access_type': 'ip',
+            'access_to': '100.112.0.2',
+            'access_level': 'rw',
+        }
+
         self.access_user = {
             'access_type': 'user',
             'access_to': 'user_name',
+            'access_level': 'rw',
+        }
+
+        self.access_user_exist = {
+            'access_type': 'user',
+            'access_to': 'user_exist',
             'access_level': 'rw',
         }
 
@@ -2243,6 +2268,59 @@ class HuaweiShareDriverTestCase(test.TestCase):
                           self._context, self.share_cifs,
                           access_fail, self.share_server)
 
+    def test_update_access_add_delete(self):
+        self.driver.plugin.helper.login()
+        self.allow_flag = False
+        self.allow_rw_flag = False
+        self.deny_flag = False
+        add_rules = [self.access_ip]
+        delete_rules = [self.access_ip_exist]
+        self.driver.update_access(self._context,
+                                  self.share_nfs,
+                                  None,
+                                  add_rules,
+                                  delete_rules,
+                                  self.share_server)
+        self.assertTrue(self.driver.plugin.helper.allow_flag)
+        self.assertTrue(self.driver.plugin.helper.allow_rw_flag)
+        self.assertTrue(self.driver.plugin.helper.deny_flag)
+
+    def test_update_access_nfs(self):
+        self.driver.plugin.helper.login()
+        self.allow_flag = False
+        self.allow_rw_flag = False
+        rules = [self.access_ip, self.access_ip_exist]
+        self.driver.update_access(self._context,
+                                  self.share_nfs,
+                                  rules,
+                                  None,
+                                  None,
+                                  self.share_server)
+        self.assertTrue(self.driver.plugin.helper.allow_flag)
+        self.assertTrue(self.driver.plugin.helper.allow_rw_flag)
+
+    def test_update_access_cifs(self):
+        self.driver.plugin.helper.login()
+        self.allow_flag = False
+        self.allow_rw_flag = False
+        rules = [self.access_user, self.access_user_exist]
+        self.driver.update_access(self._context,
+                                  self.share_cifs,
+                                  rules,
+                                  None,
+                                  None,
+                                  self.share_server)
+        self.assertTrue(self.driver.plugin.helper.allow_flag)
+        self.assertTrue(self.driver.plugin.helper.allow_rw_flag)
+
+    def test_update_access_rules_share_not_exist(self):
+        self.driver.plugin.helper.login()
+        rules = [self.access_ip]
+        self.driver.plugin.helper.share_exist = False
+        self.assertRaises(exception.InvalidShareAccess,
+                          self.driver.update_access, self._context,
+                          self.share_nfs, rules, None, None, self.share_server)
+
     def test_get_share_client_type_fail(self):
         share_proto = 'fake_proto'
         self.assertRaises(exception.InvalidInput,
@@ -2329,14 +2407,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.driver.plugin.helper.login()
         self.deny_flag = False
         self.driver.deny_access(self._context, self.share_nfs,
-                                self.access_ip, self.share_server)
+                                self.access_ip_exist, self.share_server)
         self.assertTrue(self.driver.plugin.helper.deny_flag)
 
     def test_deny_access_user_success(self):
         self.driver.plugin.helper.login()
         self.deny_flag = False
         self.driver.deny_access(self._context, self.share_cifs,
-                                self.access_user, self.share_server)
+                                self.access_user_exist, self.share_server)
         self.assertTrue(self.driver.plugin.helper.deny_flag)
 
     def test_deny_access_ip_fail(self):
