@@ -16,10 +16,12 @@ Mock unit tests for the NetApp driver protocols NFS class module.
 """
 
 import copy
+import uuid
 
+import ddt
 import mock
+import netaddr
 
-from manila.common import constants
 from manila import exception
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila import test
@@ -27,6 +29,7 @@ from manila.tests.share.drivers.netapp.dataontap.protocols \
     import fakes as fake
 
 
+@ddt.ddt
 class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
     def setUp(self):
@@ -50,8 +53,8 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
         expected = [':'.join([fake.SHARE_ADDRESS_1, fake.NFS_SHARE_PATH])]
         self.assertEqual(expected, result)
-        self.mock_client.clear_nfs_export_policy_for_volume.\
-            assert_called_once_with(fake.SHARE_NAME)
+        (self.mock_client.clear_nfs_export_policy_for_volume.
+            assert_called_once_with(fake.SHARE_NAME))
         self.assertTrue(mock_ensure_export_policy.called)
 
     def test_create_share_multiple(self):
@@ -82,90 +85,86 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
         self.mock_client.soft_delete_nfs_export_policy.assert_called_once_with(
             fake.EXPORT_POLICY_NAME)
 
-    def test_allow_access(self):
+    def test_update_access(self):
 
-        mock_ensure_export_policy = self.mock_object(self.helper,
-                                                     '_ensure_export_policy')
+        self.mock_object(self.helper, '_ensure_export_policy')
+        self.mock_object(self.helper,
+                         '_get_export_policy_name',
+                         mock.Mock(return_value='fake_export_policy'))
+        self.mock_object(self.helper,
+                         '_get_temp_export_policy_name',
+                         mock.Mock(side_effect=['fake_new_export_policy',
+                                                'fake_old_export_policy']))
 
-        self.helper.allow_access(self.mock_context,
-                                 fake.NFS_SHARE,
-                                 fake.SHARE_NAME,
-                                 fake.IP_ACCESS)
+        self.helper.update_access(fake.CIFS_SHARE,
+                                  fake.SHARE_NAME,
+                                  [fake.IP_ACCESS])
 
-        self.assertTrue(mock_ensure_export_policy.called)
+        self.mock_client.create_nfs_export_policy.assert_called_once_with(
+            'fake_new_export_policy')
         self.mock_client.add_nfs_export_rule.assert_called_once_with(
-            fake.EXPORT_POLICY_NAME, fake.CLIENT_ADDRESS_1, False)
+            'fake_new_export_policy', fake.CLIENT_ADDRESS_1, False)
+        (self.mock_client.set_nfs_export_policy_for_volume.
+            assert_called_once_with(fake.SHARE_NAME, 'fake_new_export_policy'))
+        (self.mock_client.soft_delete_nfs_export_policy.
+            assert_called_once_with('fake_old_export_policy'))
+        self.mock_client.rename_nfs_export_policy.assert_has_calls([
+            mock.call('fake_export_policy', 'fake_old_export_policy'),
+            mock.call('fake_new_export_policy', 'fake_export_policy'),
+        ])
 
-    def test_allow_access_readonly(self):
+    def test_validate_access_rule(self):
 
-        ip_access = copy.deepcopy(fake.IP_ACCESS)
-        ip_access['access_level'] = constants.ACCESS_LEVEL_RO
+        result = self.helper._validate_access_rule(fake.IP_ACCESS)
 
-        mock_ensure_export_policy = self.mock_object(self.helper,
-                                                     '_ensure_export_policy')
+        self.assertIsNone(result)
 
-        self.helper.allow_access(self.mock_context,
-                                 fake.NFS_SHARE,
-                                 fake.SHARE_NAME,
-                                 ip_access)
+    def test_validate_access_rule_invalid_type(self):
 
-        self.assertTrue(mock_ensure_export_policy.called)
-        self.mock_client.add_nfs_export_rule.assert_called_once_with(
-            fake.EXPORT_POLICY_NAME, fake.CLIENT_ADDRESS_1, True)
-
-    def test_allow_access_invalid_level(self):
-
-        ip_access = copy.deepcopy(fake.IP_ACCESS)
-        ip_access['access_level'] = 'fake_level'
-
-        self.assertRaises(exception.InvalidShareAccessLevel,
-                          self.helper.allow_access,
-                          self.mock_context,
-                          fake.NFS_SHARE,
-                          fake.SHARE_NAME,
-                          ip_access)
-
-    def test_allow_access_invalid_type(self):
-
-        ip_access = copy.deepcopy(fake.IP_ACCESS)
-        ip_access['access_type'] = 'user'
+        rule = copy.copy(fake.IP_ACCESS)
+        rule['access_type'] = 'user'
 
         self.assertRaises(exception.InvalidShareAccess,
-                          self.helper.allow_access,
-                          self.mock_context,
-                          fake.NFS_SHARE,
-                          fake.SHARE_NAME,
-                          ip_access)
+                          self.helper._validate_access_rule,
+                          rule)
 
-    def test_deny_access(self):
+    def test_validate_access_rule_invalid_level(self):
 
-        mock_ensure_export_policy = self.mock_object(self.helper,
-                                                     '_ensure_export_policy')
+        rule = copy.copy(fake.IP_ACCESS)
+        rule['access_level'] = 'none'
 
-        self.helper.deny_access(self.mock_context,
-                                fake.NFS_SHARE,
-                                fake.SHARE_NAME,
-                                fake.IP_ACCESS)
+        self.assertRaises(exception.InvalidShareAccessLevel,
+                          self.helper._validate_access_rule,
+                          rule)
 
-        self.assertTrue(mock_ensure_export_policy.called)
-        self.mock_client.remove_nfs_export_rule.assert_called_once_with(
-            fake.EXPORT_POLICY_NAME, fake.CLIENT_ADDRESS_1)
+    def test_get_sorted_access_rule_addresses(self):
 
-    def test_deny_access_invalid_type(self):
+        result = self.helper._get_sorted_access_rule_addresses(
+            fake.NEW_NFS_RULES)
 
-        ip_access = copy.deepcopy(fake.IP_ACCESS)
-        ip_access['access_type'] = 'user'
+        expected = [
+            '10.10.20.10',
+            '10.10.20.0/24',
+            '10.10.10.10',
+            '10.10.10.0/30',
+            '10.10.10.0/24',
+        ]
+        self.assertEqual(expected, result)
 
-        mock_ensure_export_policy = self.mock_object(self.helper,
-                                                     '_ensure_export_policy')
+    @ddt.data({'rule': '1.2.3.4', 'out': netaddr.IPAddress('1.2.3.4')},
+              {'rule': '1.2.3.4/32', 'out': netaddr.IPNetwork('1.2.3.4/32')})
+    @ddt.unpack
+    def test_get_network_object_from_rule(self, rule, out):
 
-        self.helper.deny_access(self.mock_context,
-                                fake.NFS_SHARE,
-                                fake.SHARE_NAME,
-                                ip_access)
+        result = self.helper._get_network_object_from_rule(rule)
 
-        self.assertFalse(mock_ensure_export_policy.called)
-        self.assertFalse(self.mock_client.remove_nfs_export_rule.called)
+        self.assertEqual(out, result)
+
+    def test_get_network_object_from_rule_invalid(self):
+
+        self.assertRaises(netaddr.AddrFormatError,
+                          self.helper._get_network_object_from_rule,
+                          'invalid')
 
     def test_get_target(self):
 
@@ -214,6 +213,14 @@ class NetAppClusteredNFSHelperTestCase(test.TestCase):
 
         self.assertEqual('', host_ip)
         self.assertEqual('', export_path)
+
+    def test_get_temp_export_policy_name(self):
+
+        self.mock_object(uuid, 'uuid1', mock.Mock(return_value='fake-uuid'))
+
+        result = self.helper._get_temp_export_policy_name()
+
+        self.assertEqual('temp_fake_uuid', result)
 
     def test_get_export_policy_name(self):
 

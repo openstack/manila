@@ -1264,6 +1264,38 @@ SNAPSHOT_MULTIDELETE_ERROR_RESPONSE = etree.XML("""
   </results>
 """ % {'volume': SHARE_NAME})
 
+CIFS_SHARE_ACCESS_CONTROL_GET_ITER = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <cifs-share-access-control>
+        <permission>full_control</permission>
+        <share>%(volume)s</share>
+        <user-or-group>Administrator</user-or-group>
+        <vserver>manila_svm_cifs</vserver>
+      </cifs-share-access-control>
+      <cifs-share-access-control>
+        <permission>change</permission>
+        <share>%(volume)s</share>
+        <user-or-group>Administrators</user-or-group>
+        <vserver>manila_svm_cifs</vserver>
+      </cifs-share-access-control>
+      <cifs-share-access-control>
+        <permission>read</permission>
+        <share>%(volume)s</share>
+        <user-or-group>Power Users</user-or-group>
+        <vserver>manila_svm_cifs</vserver>
+      </cifs-share-access-control>
+      <cifs-share-access-control>
+        <permission>no_access</permission>
+        <share>%(volume)s</share>
+        <user-or-group>Users</user-or-group>
+        <vserver>manila_svm_cifs</vserver>
+      </cifs-share-access-control>
+    </attributes-list>
+    <num-records>4</num-records>
+  </results>
+""" % {'volume': SHARE_NAME})
+
 NFS_EXPORT_RULES = ('10.10.10.10', '10.10.10.20')
 
 NFS_EXPORTFS_LIST_RULES_2_NO_RULES_RESPONSE = etree.XML("""

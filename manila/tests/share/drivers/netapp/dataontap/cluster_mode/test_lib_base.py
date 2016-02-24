@@ -1743,10 +1743,10 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
 
         mock_set_volume_size.assert_called_once_with(fake.SHARE_NAME, new_size)
 
-    def test_allow_access(self):
+    def test_update_access(self):
 
         protocol_helper = mock.Mock()
-        protocol_helper.allow_access.return_value = None
+        protocol_helper.update_access.return_value = None
         self.mock_object(self.library,
                          '_get_helper',
                          mock.Mock(return_value=protocol_helper))
@@ -1756,42 +1756,16 @@ class NetAppFileStorageLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=(fake.VSERVER1,
                                                  vserver_client)))
 
-        self.library.allow_access(self.context,
-                                  fake.SHARE,
-                                  fake.SHARE_ACCESS,
-                                  share_server=fake.SHARE_SERVER)
+        self.library.update_access(self.context,
+                                   fake.SHARE,
+                                   [fake.SHARE_ACCESS],
+                                   share_server=fake.SHARE_SERVER)
 
         protocol_helper.set_client.assert_called_once_with(vserver_client)
-        protocol_helper.allow_access.assert_called_once_with(
-            self.context,
+        protocol_helper.update_access.assert_called_once_with(
             fake.SHARE,
             fake.SHARE_NAME,
-            fake.SHARE_ACCESS)
-
-    def test_deny_access(self):
-
-        protocol_helper = mock.Mock()
-        protocol_helper.deny_access.return_value = None
-        self.mock_object(self.library,
-                         '_get_helper',
-                         mock.Mock(return_value=protocol_helper))
-        vserver_client = mock.Mock()
-        self.mock_object(self.library,
-                         '_get_vserver',
-                         mock.Mock(return_value=(fake.VSERVER1,
-                                                 vserver_client)))
-
-        self.library.deny_access(self.context,
-                                 fake.SHARE,
-                                 fake.SHARE_ACCESS,
-                                 share_server=fake.SHARE_SERVER)
-
-        protocol_helper.set_client.assert_called_once_with(vserver_client)
-        protocol_helper.deny_access.assert_called_once_with(
-            self.context,
-            fake.SHARE,
-            fake.SHARE_NAME,
-            fake.SHARE_ACCESS)
+            [fake.SHARE_ACCESS])
 
     def test_setup_server(self):
         self.assertRaises(NotImplementedError,

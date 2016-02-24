@@ -95,11 +95,8 @@ class NetAppCmodeMultiSvmShareDriver(driver.ShareDriver):
     def unmanage(self, share):
         raise NotImplementedError
 
-    def allow_access(self, context, share, access, **kwargs):
-        self.library.allow_access(context, share, access, **kwargs)
-
-    def deny_access(self, context, share, access, **kwargs):
-        self.library.deny_access(context, share, access, **kwargs)
+    def update_access(self, context, share, access_rules, **kwargs):
+        self.library.update_access(context, share, access_rules, **kwargs)
 
     def _update_share_stats(self, data=None):
         data = self.library.get_share_stats()

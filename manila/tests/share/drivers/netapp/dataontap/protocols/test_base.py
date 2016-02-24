@@ -15,10 +15,14 @@
 Mock unit tests for the NetApp driver protocols base class module.
 """
 
+import ddt
+
+from manila.common import constants
 from manila.share.drivers.netapp.dataontap.protocols import nfs_cmode
 from manila import test
 
 
+@ddt.ddt
 class NetAppNASHelperBaseTestCase(test.TestCase):
 
     def test_set_client(self):
@@ -29,3 +33,15 @@ class NetAppNASHelperBaseTestCase(test.TestCase):
 
         helper.set_client('fake_client')
         self.assertEqual('fake_client', helper._client)
+
+    @ddt.data(
+        {'level': constants.ACCESS_LEVEL_RW, 'readonly': False},
+        {'level': constants.ACCESS_LEVEL_RO, 'readonly': True})
+    @ddt.unpack
+    def test_is_readonly(self, level, readonly):
+
+        helper = nfs_cmode.NetAppCmodeNFSHelper()
+
+        result = helper._is_readonly(level)
+
+        self.assertEqual(readonly, result)

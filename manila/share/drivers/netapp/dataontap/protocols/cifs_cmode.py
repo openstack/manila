@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-NetApp CIFS protocol helper class.
+NetApp cDOT CIFS protocol helper class.
 """
 
 import re
@@ -21,8 +21,7 @@ from oslo_log import log
 
 from manila.common import constants
 from manila import exception
-from manila.i18n import _, _LE
-from manila.share.drivers.netapp.dataontap.client import api as netapp_api
+from manila.i18n import _
 from manila.share.drivers.netapp.dataontap.protocols import base
 from manila.share.drivers.netapp import utils as na_utils
 
@@ -31,7 +30,7 @@ LOG = log.getLogger(__name__)
 
 
 class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
-    """Netapp specific cluster-mode CIFS sharing driver."""
+    """NetApp cDOT CIFS protocol helper class."""
 
     @na_utils.trace
     def create_share(self, share, share_name, export_addresses):
@@ -48,49 +47,96 @@ class NetAppCmodeCIFSHelper(base.NetAppBaseHelper):
         self._client.remove_cifs_share(share_name)
 
     @na_utils.trace
-    def allow_access(self, context, share, share_name, access):
-        """Allows access to the CIFS share for a given user."""
-        if access['access_type'] != 'user':
-            msg = _("Cluster Mode supports only 'user' type for share access"
-                    " rules with CIFS protocol.")
-            raise exception.InvalidShareAccess(reason=msg)
+    @base.access_rules_synchronized
+    def update_access(self, share, share_name, rules):
+        """Replaces the list of access rules known to the backend storage."""
 
-        user_name = access['access_to']
+        # Ensure rules are valid
+        for rule in rules:
+            self._validate_access_rule(rule)
 
-        if access['access_level'] == constants.ACCESS_LEVEL_RW:
-            readonly = False
-        elif access['access_level'] == constants.ACCESS_LEVEL_RO:
-            readonly = True
-        else:
-            raise exception.InvalidShareAccessLevel(
-                level=access['access_level'])
+        new_rules = {rule['access_to']: rule['access_level'] for rule in rules}
 
-        target, share_name = self._get_export_location(share)
-        try:
-            self._client.add_cifs_share_access(share_name,
-                                               user_name,
-                                               readonly)
-        except netapp_api.NaApiError as e:
-            if e.code == netapp_api.EDUPLICATEENTRY:
-                # Duplicate entry, so use specific exception.
-                raise exception.ShareAccessExists(
-                    access_type=access['access_type'], access=access)
-            raise e
+        # Get rules from share
+        existing_rules = self._get_access_rules(share, share_name)
+
+        # Update rules in an order that will prevent transient disruptions
+        self._handle_added_rules(share_name, existing_rules, new_rules)
+        self._handle_ro_to_rw_rules(share_name, existing_rules, new_rules)
+        self._handle_rw_to_ro_rules(share_name, existing_rules, new_rules)
+        self._handle_deleted_rules(share_name, existing_rules, new_rules)
 
     @na_utils.trace
-    def deny_access(self, context, share, share_name, access):
-        """Denies access to the CIFS share for a given user."""
-        host_ip, share_name = self._get_export_location(share)
-        user_name = access['access_to']
-        try:
-            self._client.remove_cifs_share_access(share_name, user_name)
-        except netapp_api.NaApiError as e:
-            if e.code == netapp_api.EONTAPI_EINVAL:
-                LOG.error(_LE("User %s does not exist."), user_name)
-            elif e.code == netapp_api.EOBJECTNOTFOUND:
-                LOG.error(_LE("Rule %s does not exist."), user_name)
-            else:
-                raise e
+    def _validate_access_rule(self, rule):
+        """Checks whether access rule type and level are valid."""
+
+        if rule['access_type'] != 'user':
+            msg = _("Clustered Data ONTAP supports only 'user' type for "
+                    "share access rules with CIFS protocol.")
+            raise exception.InvalidShareAccess(reason=msg)
+
+        if rule['access_level'] not in constants.ACCESS_LEVELS:
+            raise exception.InvalidShareAccessLevel(level=rule['access_level'])
+
+    @na_utils.trace
+    def _handle_added_rules(self, share_name, existing_rules, new_rules):
+        """Updates access rules added between two rule sets."""
+        added_rules = {
+            user_or_group: permission
+            for user_or_group, permission in new_rules.items()
+            if user_or_group not in existing_rules
+        }
+
+        for user_or_group, permission in added_rules.items():
+            self._client.add_cifs_share_access(
+                share_name, user_or_group, self._is_readonly(permission))
+
+    @na_utils.trace
+    def _handle_ro_to_rw_rules(self, share_name, existing_rules, new_rules):
+        """Updates access rules modified (RO-->RW) between two rule sets."""
+        modified_rules = {
+            user_or_group: permission
+            for user_or_group, permission in new_rules.items()
+            if (user_or_group in existing_rules and
+                permission == constants.ACCESS_LEVEL_RW and
+                existing_rules[user_or_group] != 'full_control')
+        }
+
+        for user_or_group, permission in modified_rules.items():
+            self._client.modify_cifs_share_access(
+                share_name, user_or_group, self._is_readonly(permission))
+
+    @na_utils.trace
+    def _handle_rw_to_ro_rules(self, share_name, existing_rules, new_rules):
+        """Returns access rules modified (RW-->RO) between two rule sets."""
+        modified_rules = {
+            user_or_group: permission
+            for user_or_group, permission in new_rules.items()
+            if (user_or_group in existing_rules and
+                permission == constants.ACCESS_LEVEL_RO and
+                existing_rules[user_or_group] != 'read')
+        }
+
+        for user_or_group, permission in modified_rules.items():
+            self._client.modify_cifs_share_access(
+                share_name, user_or_group, self._is_readonly(permission))
+
+    @na_utils.trace
+    def _handle_deleted_rules(self, share_name, existing_rules, new_rules):
+        """Returns access rules deleted between two rule sets."""
+        deleted_rules = {
+            user_or_group: permission
+            for user_or_group, permission in existing_rules.items()
+            if user_or_group not in new_rules
+        }
+
+        for user_or_group, permission in deleted_rules.items():
+            self._client.remove_cifs_share_access(share_name, user_or_group)
+
+    @na_utils.trace
+    def _get_access_rules(self, share, share_name):
+        """Returns the list of access rules known to the backend storage."""
+        return self._client.get_cifs_share_access(share_name)
 
     @na_utils.trace
     def get_target(self, share):

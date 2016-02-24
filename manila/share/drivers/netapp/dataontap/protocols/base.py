@@ -17,6 +17,26 @@ import abc
 
 import six
 
+from manila.common import constants
+from manila import utils
+
+
+def access_rules_synchronized(f):
+    """Decorator for synchronizing share access rule modification methods."""
+
+    def wrapped_func(self, *args, **kwargs):
+
+        # The first argument is always a share, which has an ID
+        key = "cifs-access-%s" % args[0]['id']
+
+        @utils.synchronized(key)
+        def source_func(self, *args, **kwargs):
+            return f(self, *args, **kwargs)
+
+        return source_func(self, *args, **kwargs)
+
+    return wrapped_func
+
 
 @six.add_metaclass(abc.ABCMeta)
 class NetAppBaseHelper(object):
@@ -28,6 +48,10 @@ class NetAppBaseHelper(object):
     def set_client(self, client):
         self._client = client
 
+    def _is_readonly(self, access_level):
+        """Returns whether an access rule specifies read-only access."""
+        return access_level == constants.ACCESS_LEVEL_RO
+
     @abc.abstractmethod
     def create_share(self, share, share_name, export_addresses):
         """Creates NAS share."""
@@ -37,12 +61,8 @@ class NetAppBaseHelper(object):
         """Deletes NAS share."""
 
     @abc.abstractmethod
-    def allow_access(self, context, share, share_name, access):
-        """Allows new_rules to a given NAS storage in new_rules."""
-
-    @abc.abstractmethod
-    def deny_access(self, context, share, share_name, access):
-        """Denies new_rules to a given NAS storage in new_rules."""
+    def update_access(self, share, share_name, rules):
+        """Replaces the list of access rules known to the backend storage."""
 
     @abc.abstractmethod
     def get_target(self, share):
