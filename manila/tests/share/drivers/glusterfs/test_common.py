@@ -315,7 +315,35 @@ class GlusterManagerTestCase(test.TestCase):
 
         self._gluster_manager.gluster_call.assert_called_once_with(
             'volume', args[0], 'testvol', 'an_option', *args[1:],
-            error_policy=(1,))
+            error_policy=mock.ANY)
+
+    @ddt.data({}, {'ignore_failure': False})
+    def test_set_vol_option_error(self, kwargs):
+        fake_obj = mock.Mock(
+            side_effect=exception.ProcessExecutionError(exit_code=1))
+        with mock.patch.object(common.ganesha_utils, 'RootExecutor',
+                               mock.Mock(return_value=fake_obj)):
+            gluster_manager = common.GlusterManager(
+                '127.0.0.1:/testvol', self.fake_execf)
+
+            self.assertRaises(exception.GlusterfsException,
+                              gluster_manager.set_vol_option,
+                              'an_option', "some_value", **kwargs)
+
+            self.assertTrue(fake_obj.called)
+
+    def test_set_vol_option_error_relaxed(self):
+        fake_obj = mock.Mock(
+            side_effect=exception.ProcessExecutionError(exit_code=1))
+        with mock.patch.object(common.ganesha_utils, 'RootExecutor',
+                               mock.Mock(return_value=fake_obj)):
+            gluster_manager = common.GlusterManager(
+                '127.0.0.1:/testvol', self.fake_execf)
+
+            gluster_manager.set_vol_option('an_option', "some_value",
+                                           ignore_failure=True)
+
+            self.assertTrue(fake_obj.called)
 
     def test_get_gluster_version(self):
         self.mock_object(self._gluster_manager, 'gluster_call',

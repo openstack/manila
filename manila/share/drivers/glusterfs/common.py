@@ -203,8 +203,9 @@ class GlusterManager(object):
             args = ('reset', (option,))
         else:
             args = ('set', (option, value))
+        policy = (1,) if ignore_failure else 'coerce'
         self.gluster_call(
-            'volume', args[0], self.volume, *args[1], error_policy=(1,))
+            'volume', args[0], self.volume, *args[1], error_policy=policy)
 
     def get_gluster_version(self):
         """Retrieve GlusterFS version.
