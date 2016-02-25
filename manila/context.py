@@ -19,19 +19,18 @@
 
 import copy
 
-from oslo_context import context as common_context
+from oslo_context import context
 from oslo_log import log
 from oslo_utils import timeutils
 import six
 
-from manila.i18n import _
-from manila.i18n import _LW
+from manila.i18n import _, _LW
 from manila import policy
 
 LOG = log.getLogger(__name__)
 
 
-class RequestContext(object):
+class RequestContext(context.RequestContext):
     """Security context and request information.
 
     Represents the user taking a given action within the system.
@@ -54,16 +53,24 @@ class RequestContext(object):
         :param kwargs: Extra arguments that might be present, but we ignore
             because they possibly came in from older rpc messages.
         """
+
         user = kwargs.pop('user', None)
         tenant = kwargs.pop('tenant', None)
         if kwargs:
             LOG.warning(_LW('Arguments dropped when creating context: %s.'),
                         str(kwargs))
 
-        self.user_id = user_id or user
-        self.project_id = project_id or tenant
+        super(RequestContext, self).__init__(auth_token=auth_token,
+                                             user=user_id or user,
+                                             tenant=project_id or tenant,
+                                             is_admin=is_admin,
+                                             request_id=request_id,
+                                             overwrite=overwrite)
+
+        self.user_id = self.user
+        self.project_id = self.tenant
         self.roles = roles or []
-        self.is_admin = is_admin
+
         if self.is_admin is None:
             self.is_admin = policy.check_is_admin(self.roles)
         elif self.is_admin and 'admin' not in self.roles:
@@ -81,13 +88,7 @@ class RequestContext(object):
         else:
             self.service_catalog = []
 
-        if not request_id:
-            request_id = common_context.generate_request_id()
-        self.request_id = request_id
-        self.auth_token = auth_token
         self.quota_class = quota_class
-        if overwrite or not common_context.get_current():
-            self.update_store()
 
     def _get_read_deleted(self):
         return self._read_deleted
@@ -104,23 +105,18 @@ class RequestContext(object):
     read_deleted = property(_get_read_deleted, _set_read_deleted,
                             _del_read_deleted)
 
-    def update_store(self):
-        common_context._request_store.context = self
-
     def to_dict(self):
-        return {'user_id': self.user_id,
-                'project_id': self.project_id,
-                'is_admin': self.is_admin,
-                'read_deleted': self.read_deleted,
-                'roles': self.roles,
-                'remote_address': self.remote_address,
-                'timestamp': self.timestamp.isoformat(),
-                'request_id': self.request_id,
-                'auth_token': self.auth_token,
-                'quota_class': self.quota_class,
-                'tenant': self.tenant,
-                'service_catalog': self.service_catalog,
-                'user': self.user}
+        values = super(RequestContext, self).to_dict()
+        values.update({
+            'user_id': self.user_id,
+            'project_id': self.project_id,
+            'read_deleted': self.read_deleted,
+            'roles': self.roles,
+            'remote_address': self.remote_address,
+            'timestamp': self.timestamp.isoformat(),
+            'quota_class': self.quota_class,
+            'service_catalog': self.service_catalog})
+        return values
 
     @classmethod
     def from_dict(cls, values):
@@ -128,29 +124,16 @@ class RequestContext(object):
 
     def elevated(self, read_deleted=None, overwrite=False):
         """Return a version of this context with admin flag set."""
-        context = copy.deepcopy(self)
-        context.is_admin = True
+        ctx = copy.deepcopy(self)
+        ctx.is_admin = True
 
-        if 'admin' not in context.roles:
-            context.roles.append('admin')
+        if 'admin' not in ctx.roles:
+            ctx.roles.append('admin')
 
         if read_deleted is not None:
-            context.read_deleted = read_deleted
+            ctx.read_deleted = read_deleted
 
-        return context
-
-    # NOTE(sirp): the openstack/common version of RequestContext uses
-    # tenant/user whereas the Manila version uses project_id/user_id. We need
-    # this shim in order to use context-aware code from openstack/common, like
-    # logging, until we make the switch to using openstack/common's version of
-    # RequestContext.
-    @property
-    def tenant(self):
-        return self.project_id
-
-    @property
-    def user(self):
-        return self.user_id
+        return ctx
 
 
 def get_admin_context(read_deleted="no"):

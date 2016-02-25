@@ -20,8 +20,9 @@ class ContextTestCase(test.TestCase):
 
     def test_request_context_elevated(self):
         user_context = context.RequestContext(
-            'fake_user', 'fake_project', admin=False)
+            'fake_user', 'fake_project', is_admin=False)
         self.assertFalse(user_context.is_admin)
+        self.assertEqual([], user_context.roles)
         admin_context = user_context.elevated()
         self.assertFalse(user_context.is_admin)
         self.assertTrue(admin_context.is_admin)
