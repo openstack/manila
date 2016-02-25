@@ -14,14 +14,24 @@
 #    under the License.
 
 import ddt
+from tempest import config
 from tempest import test
 from tempest_lib import exceptions as lib_exc
 
 from manila_tempest_tests.tests.api import base
 
+CONF = config.CONF
+
 
 @ddt.ddt
 class SharesQuotasNegativeTest(base.BaseSharesTest):
+
+    @classmethod
+    def resource_setup(cls):
+        if not CONF.share.run_quota_tests:
+            msg = "Quota tests are disabled."
+            raise cls.skipException(msg)
+        super(SharesQuotasNegativeTest, cls).resource_setup()
 
     @test.attr(type=["gate", "smoke", "negative"])
     def test_get_quotas_with_empty_tenant_id(self):

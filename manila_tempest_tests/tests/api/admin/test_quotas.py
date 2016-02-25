@@ -26,6 +26,9 @@ class SharesAdminQuotasTest(base.BaseSharesAdminTest):
 
     @classmethod
     def resource_setup(cls):
+        if not CONF.share.run_quota_tests:
+            msg = "Quota tests are disabled."
+            raise cls.skipException(msg)
         cls.os = clients.AdminManager()
         super(SharesAdminQuotasTest, cls).resource_setup()
         cls.user_id = cls.shares_v2_client.user_id
@@ -64,6 +67,14 @@ class SharesAdminQuotasUpdateTest(base.BaseSharesAdminTest):
 
     force_tenant_isolation = True
     client_version = '2'
+
+    @classmethod
+    def resource_setup(cls):
+        if not CONF.share.run_quota_tests:
+            msg = "Quota tests are disabled."
+            raise cls.skipException(msg)
+        cls.os = clients.AdminManager()
+        super(SharesAdminQuotasUpdateTest, cls).resource_setup()
 
     def setUp(self):
         super(self.__class__, self).setUp()

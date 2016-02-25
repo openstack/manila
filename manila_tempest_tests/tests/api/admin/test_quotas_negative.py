@@ -30,6 +30,9 @@ class SharesAdminQuotasNegativeTest(base.BaseSharesAdminTest):
 
     @classmethod
     def resource_setup(cls):
+        if not CONF.share.run_quota_tests:
+            msg = "Quota tests are disabled."
+            raise cls.skipException(msg)
         cls.os = clients.AdminManager()
         super(SharesAdminQuotasNegativeTest, cls).resource_setup()
         cls.user_id = cls.shares_client.user_id
