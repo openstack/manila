@@ -257,7 +257,7 @@ def allow_access(type, method, data):
         if request_data['PERMISSION'] == '0':
             allow_ro_flag = True
             ret = success_data
-        elif request_data['PERMISSION'] == '5':
+        elif request_data['PERMISSION'] == '1':
             allow_rw_flag = True
             ret = success_data
     # Group name should start with '@'.
