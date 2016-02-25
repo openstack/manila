@@ -65,11 +65,11 @@ class RequestContext(context.RequestContext):
                                              tenant=project_id or tenant,
                                              is_admin=is_admin,
                                              request_id=request_id,
-                                             overwrite=overwrite)
+                                             overwrite=overwrite,
+                                             roles=roles)
 
         self.user_id = self.user
         self.project_id = self.tenant
-        self.roles = roles or []
 
         if self.is_admin is None:
             self.is_admin = policy.check_is_admin(self.roles)
@@ -111,7 +111,6 @@ class RequestContext(context.RequestContext):
             'user_id': self.user_id,
             'project_id': self.project_id,
             'read_deleted': self.read_deleted,
-            'roles': self.roles,
             'remote_address': self.remote_address,
             'timestamp': self.timestamp.isoformat(),
             'quota_class': self.quota_class,
