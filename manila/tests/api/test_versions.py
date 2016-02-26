@@ -16,6 +16,7 @@
 import ddt
 import mock
 from oslo_serialization import jsonutils
+from oslo_utils import encodeutils
 
 from manila.api.openstack import api_version_request
 from manila.api.openstack import wsgi
@@ -153,6 +154,110 @@ class VersionsControllerTestCase(test.TestCase):
         self.assertEqual(406, response.status_int)
         self.assertEqual('3.0', response.headers[version_header_name])
         self.assertEqual(version_header_name, response.headers['Vary'])
+
+    @ddt.data(['2.5', 200], ['2.55', 404])
+    @ddt.unpack
+    def test_req_version_matches(self, version, HTTP_ret):
+        version_request = api_version_request.APIVersionRequest(version)
+        self.mock_object(api_version_request,
+                         'max_api_version',
+                         mock.Mock(return_value=version_request))
+
+        class Controller(wsgi.Controller):
+
+            @wsgi.Controller.api_version('2.0', '2.6')
+            def index(self, req):
+                return 'off'
+
+        req = fakes.HTTPRequest.blank('/tests', base_url='http://localhost/v2')
+        req.headers = {version_header_name: version}
+        app = fakes.TestRouter(Controller())
+
+        response = req.get_response(app)
+
+        if HTTP_ret == 200:
+            self.assertEqual(b'off', response.body)
+        elif HTTP_ret == 404:
+            self.assertNotEqual(b'off', response.body)
+        self.assertEqual(HTTP_ret, response.status_int)
+
+    @ddt.data(['2.5', 'older'], ['2.37', 'newer'])
+    @ddt.unpack
+    def test_req_version_matches_with_if(self, version, ret_val):
+        version_request = api_version_request.APIVersionRequest(version)
+        self.mock_object(api_version_request,
+                         'max_api_version',
+                         mock.Mock(return_value=version_request))
+
+        class Controller(wsgi.Controller):
+
+            def index(self, req):
+                req_version = req.api_version_request
+                if req_version.matches('2.1', '2.8'):
+                    return 'older'
+                if req_version.matches('2.9', '2.88'):
+                    return 'newer'
+
+        req = fakes.HTTPRequest.blank('/tests', base_url='http://localhost/v2')
+        req.headers = {version_header_name: version}
+        app = fakes.TestRouter(Controller())
+
+        response = req.get_response(app)
+
+        resp = encodeutils.safe_decode(response.body, incoming='utf-8')
+        self.assertEqual(ret_val, resp)
+        self.assertEqual(200, response.status_int)
+
+    @ddt.data(['2.5', 'older'], ['2.37', 'newer'])
+    @ddt.unpack
+    def test_req_version_matches_with_None(self, version, ret_val):
+        version_request = api_version_request.APIVersionRequest(version)
+        self.mock_object(api_version_request,
+                         'max_api_version',
+                         mock.Mock(return_value=version_request))
+
+        class Controller(wsgi.Controller):
+
+            def index(self, req):
+                req_version = req.api_version_request
+                if req_version.matches(None, '2.8'):
+                    return 'older'
+                if req_version.matches('2.9', None):
+                    return 'newer'
+
+        req = fakes.HTTPRequest.blank('/tests', base_url='http://localhost/v2')
+        req.headers = {version_header_name: version}
+        app = fakes.TestRouter(Controller())
+
+        response = req.get_response(app)
+
+        resp = encodeutils.safe_decode(response.body, incoming='utf-8')
+        self.assertEqual(ret_val, resp)
+        self.assertEqual(200, response.status_int)
+
+    def test_req_version_matches_with_None_None(self):
+        version_request = api_version_request.APIVersionRequest('2.39')
+        self.mock_object(api_version_request,
+                         'max_api_version',
+                         mock.Mock(return_value=version_request))
+
+        class Controller(wsgi.Controller):
+
+            def index(self, req):
+                req_version = req.api_version_request
+                # This case is artificial, and will return True
+                if req_version.matches(None, None):
+                    return "Pass"
+
+        req = fakes.HTTPRequest.blank('/tests', base_url='http://localhost/v2')
+        req.headers = {version_header_name: '2.39'}
+        app = fakes.TestRouter(Controller())
+
+        response = req.get_response(app)
+
+        resp = encodeutils.safe_decode(response.body, incoming='utf-8')
+        self.assertEqual("Pass", resp)
+        self.assertEqual(200, response.status_int)
 
 
 @ddt.ddt
