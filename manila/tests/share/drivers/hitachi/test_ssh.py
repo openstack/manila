@@ -780,7 +780,7 @@ class HNASSSHTestCase(test.TestCase):
 
         result = self._driver_ssh.get_share_quota("vvol_test")
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_get_share_quota_tb(self):
         self.mock_object(ssh.HNASSSHBackend, "_execute", mock.Mock(
