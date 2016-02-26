@@ -49,6 +49,7 @@ class V3StorageConnection(driver.HuaweiBase):
 
     def __init__(self, configuration):
         super(V3StorageConnection, self).__init__(configuration)
+        self.qos_support = False
 
     def connect(self):
         """Try to connect to V3 server."""
@@ -288,7 +289,7 @@ class V3StorageConnection(driver.HuaweiBase):
                         self.configuration.safe_get(
                             'max_over_subscription_ratio')),
                     allocated_capacity_gb=capacity['CONSUMEDCAPACITY'],
-                    qos=True,
+                    qos=self._get_qos_capability(),
                     reserved_percentage=0,
                     thin_provisioning=[True, False],
                     dedupe=[True, False],
@@ -302,6 +303,14 @@ class V3StorageConnection(driver.HuaweiBase):
             err_msg = _("The StoragePool is None.")
             LOG.error(err_msg)
             raise exception.InvalidInput(reason=err_msg)
+
+    def _get_qos_capability(self):
+        version = self.helper.find_array_version()
+        if version.upper() >= constants.MIN_ARRAY_VERSION_FOR_QOS:
+            self.qos_support = True
+        else:
+            self.qos_support = False
+        return self.qos_support
 
     def delete_share(self, share, share_server=None):
         """Delete share."""
@@ -326,9 +335,10 @@ class V3StorageConnection(driver.HuaweiBase):
             self.helper._delete_share_by_id(share_id, share_url_type)
 
         if share_fs_id:
-            qos_id = self.helper.get_qosid_by_fsid(share_fs_id)
-            if qos_id:
-                self.remove_qos_fs(share_fs_id, qos_id)
+            if self.qos_support:
+                qos_id = self.helper.get_qosid_by_fsid(share_fs_id)
+                if qos_id:
+                    self.remove_qos_fs(share_fs_id, qos_id)
             self.helper._delete_fs(share_fs_id)
 
         return share
