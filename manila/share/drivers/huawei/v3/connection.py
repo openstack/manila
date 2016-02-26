@@ -598,7 +598,7 @@ class V3StorageConnection(driver.HuaweiBase):
         fileparam = {
             "NAME": name.replace("-", "_"),
             "DESCRIPTION": "",
-            "ALLOCTYPE": constants.ALLOC_TYPE_THIN_FLAG,
+            "ALLOCTYPE": extra_specs['LUNType'],
             "CAPACITY": size,
             "PARENTID": poolinfo['ID'],
             "INITIALALLOCCAPACITY": units.Ki * 20,
@@ -614,26 +614,7 @@ class V3StorageConnection(driver.HuaweiBase):
             "ENABLECOMPRESSION": extra_specs['compression'],
         }
 
-        if 'LUNType' in extra_specs:
-            fileparam['ALLOCTYPE'] = extra_specs['LUNType']
-        else:
-            root = self.helper._read_xml()
-            fstype = root.findtext('Filesystem/AllocType')
-            if fstype:
-                fstype = fstype.strip().strip('\n')
-                if fstype == 'Thin':
-                    fileparam['ALLOCTYPE'] = constants.ALLOC_TYPE_THIN_FLAG
-                elif fstype == 'Thick':
-                    fileparam['ALLOCTYPE'] = constants.ALLOC_TYPE_THICK_FLAG
-                else:
-                    err_msg = (_(
-                        'Config file is wrong. AllocType type must be set to'
-                        ' "Thin" or "Thick". AllocType:%(fetchtype)s') %
-                        {'fetchtype': fstype})
-                    LOG.error(err_msg)
-                    raise exception.InvalidShare(reason=err_msg)
-
-        if fileparam['ALLOCTYPE'] == 0:
+        if fileparam['ALLOCTYPE'] == constants.ALLOC_TYPE_THICK_FLAG:
             if (extra_specs['dedupe'] or
                     extra_specs['compression']):
                 err_msg = _(
@@ -744,10 +725,10 @@ class V3StorageConnection(driver.HuaweiBase):
         opts = huawei_utils.get_share_extra_specs_params(
             share['share_type_id'])
 
-        smartx_opts = constants.OPTS_CAPABILITIES
-        if opts is not None:
-            smart = smartx.SmartX()
-            smartx_opts, qos = smart.get_smartx_extra_specs_opts(opts)
+        if opts is None:
+            opts = constants.OPTS_CAPABILITIES
+        smart = smartx.SmartX(self.helper)
+        smartx_opts, qos = smart.get_smartx_extra_specs_opts(opts)
 
         fileParam = self._init_filesys_para(share, poolinfo, smartx_opts)
         fsid = self.helper._create_filesystem(fileParam)
@@ -906,7 +887,7 @@ class V3StorageConnection(driver.HuaweiBase):
         # SmartDedupe&SmartCompression
         smartx_opts = constants.OPTS_CAPABILITIES
         if opts is not None:
-            smart = smartx.SmartX()
+            smart = smartx.SmartX(self.helper)
             smartx_opts, qos = smart.get_smartx_extra_specs_opts(opts)
 
         old_compression = fs['COMPRESSION']

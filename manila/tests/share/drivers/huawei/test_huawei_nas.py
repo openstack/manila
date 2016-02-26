@@ -30,6 +30,7 @@ from manila import context
 from manila import db
 from manila import exception
 from manila.share import configuration as conf
+from manila.share.drivers.huawei import constants
 from manila.share.drivers.huawei import huawei_nas
 from manila.share.drivers.huawei.v3 import connection
 from manila.share.drivers.huawei.v3 import helper
@@ -322,6 +323,7 @@ class FakeHuaweiNasHelper(helper.RestHelper):
         self.test_multi_url_flag = 0
         self.cache_exist = True
         self.partition_exist = True
+        self.alloc_type = None
 
     def _change_file_mode(self, filepath):
         pass
@@ -368,6 +370,8 @@ class FakeHuaweiNasHelper(helper.RestHelper):
                     "USERCONSUMEDCAPACITY":"2097152"}]}"""
 
             if url == "/filesystem":
+                request_data = jsonutils.loads(data)
+                self.alloc_type = request_data.get('ALLOCTYPE')
                 data = """{"error":{"code":0},"data":{
                             "ID":"4"}}"""
 
@@ -1188,7 +1192,11 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.driver.get_backend_driver)
 
-    def test_create_share_nfs_alloctype_fail(self):
+    def test_create_share_alloctype_fail(self):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
         self.recreate_fake_conf_file(alloctype_value='alloctype_fail')
         self.driver.plugin.configuration.manila_huawei_conf_file = (
             self.fake_conf_file)
@@ -1260,7 +1268,7 @@ class HuaweiShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare,
                           self.driver.check_for_setup_error)
 
-    def test_create_share_nfs_alloctype_thin_success(self):
+    def test_create_share_alloctype_thin_success(self):
         share_type = self.fake_type_not_extra['test_with_extra']
         self.mock_object(db,
                          'share_type_get',
@@ -1273,6 +1281,72 @@ class HuaweiShareDriverTestCase(test.TestCase):
         location = self.driver.create_share(self._context, self.share_nfs,
                                             self.share_server)
         self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+        self.assertEqual(constants.ALLOC_TYPE_THIN_FLAG,
+                         self.driver.plugin.helper.alloc_type)
+
+    def test_create_share_alloctype_thick_success(self):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        self.recreate_fake_conf_file(alloctype_value='Thick')
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+        self.assertEqual(constants.ALLOC_TYPE_THICK_FLAG,
+                         self.driver.plugin.helper.alloc_type)
+
+    def test_create_share_no_alloctype_no_extra(self):
+        share_type = self.fake_type_not_extra['test_with_extra']
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        self.recreate_fake_conf_file(alloctype_value=None)
+        self.driver.plugin.configuration.manila_huawei_conf_file = (
+            self.fake_conf_file)
+        self.driver.plugin.helper.login()
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+        self.assertEqual(constants.ALLOC_TYPE_THICK_FLAG,
+                         self.driver.plugin.helper.alloc_type)
+
+    def test_create_share_with_extra_thin(self):
+        share_type = {
+            'extra_specs': {
+                'capabilities:thin_provisioning': '<is> True'
+            },
+        }
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+        self.assertEqual(constants.ALLOC_TYPE_THIN_FLAG,
+                         self.driver.plugin.helper.alloc_type)
+
+    def test_create_share_with_extra_thick(self):
+        share_type = {
+            'extra_specs': {
+                'capabilities:thin_provisioning': '<is> False'
+            },
+        }
+        self.mock_object(db,
+                         'share_type_get',
+                         mock.Mock(return_value=share_type))
+        self.driver.plugin.helper.login()
+        location = self.driver.create_share(self._context, self.share_nfs,
+                                            self.share_server)
+        self.assertEqual("100.115.10.68:/share_fake_uuid", location)
+        self.assertEqual(constants.ALLOC_TYPE_THICK_FLAG,
+                         self.driver.plugin.helper.alloc_type)
 
     def test_shrink_share_success(self):
         self.driver.plugin.helper.shrink_share_flag = False
@@ -3331,10 +3405,6 @@ class HuaweiShareDriverTestCase(test.TestCase):
             waitinterval_text = doc.createTextNode('')
         waitinterval.appendChild(waitinterval_text)
 
-        alloctype = doc.createElement('AllocType')
-        alloctype_text = doc.createTextNode(alloctype_value)
-        alloctype.appendChild(alloctype_text)
-
         NFSClient = doc.createElement('NFSClient')
 
         virtualip = doc.createElement('IP')
@@ -3356,9 +3426,14 @@ class HuaweiShareDriverTestCase(test.TestCase):
         lun.appendChild(NFSClient)
         lun.appendChild(CIFSClient)
         lun.appendChild(timeout)
-        lun.appendChild(alloctype)
         lun.appendChild(waitinterval)
         lun.appendChild(storagepool)
+
+        if alloctype_value:
+            alloctype = doc.createElement('AllocType')
+            alloctype_text = doc.createTextNode(alloctype_value)
+            alloctype.appendChild(alloctype_text)
+            lun.appendChild(alloctype)
 
         prefetch = doc.createElement('Prefetch')
         prefetch.setAttribute('Type', '0')
