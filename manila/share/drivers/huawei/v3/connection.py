@@ -696,7 +696,7 @@ class V3StorageConnection(driver.HuaweiBase):
         elif share_proto == 'CIFS':
             if access_type == 'user':
                 if access_level == common_constants.ACCESS_LEVEL_RW:
-                    access_level = constants.ACCESS_CIFS_RW
+                    access_level = constants.ACCESS_CIFS_FULLCONTROL
                 else:
                     access_level = constants.ACCESS_CIFS_RO
             else:
