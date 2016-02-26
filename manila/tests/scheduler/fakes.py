@@ -193,6 +193,7 @@ class FakeHostManager(host_manager.HostManager):
                       'timestamp': None,
                       'snapshot_support': True,
                       'replication_type': 'writable',
+                      'replication_domain': 'endor',
                       },
             'host2': {'total_capacity_gb': 2048,
                       'free_capacity_gb': 300,
@@ -204,6 +205,7 @@ class FakeHostManager(host_manager.HostManager):
                       'timestamp': None,
                       'snapshot_support': True,
                       'replication_type': 'readable',
+                      'replication_domain': 'kashyyyk',
                       },
             'host3': {'total_capacity_gb': 512,
                       'free_capacity_gb': 256,
@@ -226,6 +228,7 @@ class FakeHostManager(host_manager.HostManager):
                       'timestamp': None,
                       'snapshot_support': True,
                       'replication_type': 'dr',
+                      'replication_domain': 'naboo',
                       },
             'host5': {'total_capacity_gb': 2048,
                       'free_capacity_gb': 500,
@@ -255,6 +258,10 @@ class FakeHostState(host_manager.HostState):
         super(FakeHostState, self).__init__(host)
         for (key, val) in attribute_dict.items():
             setattr(self, key, val)
+
+FAKE_HOST_STRING_1 = 'openstack@BackendA#PoolX'
+FAKE_HOST_STRING_2 = 'openstack@BackendB#PoolY'
+FAKE_HOST_STRING_3 = 'openstack@BackendC#PoolZ'
 
 
 def mock_host_manager_db_calls(mock_obj, disabled=None):

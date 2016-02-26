@@ -117,6 +117,16 @@ share_opts = [
              "define network plugin config options in some separate config "
              "group and set its name here. Used only with another "
              "option 'driver_handles_share_servers' set to 'True'."),
+    # Replication option/s
+    cfg.StrOpt(
+        "replication_domain",
+        default=None,
+        help="A string specifying the replication domain that the backend "
+             "belongs to. This option needs to be specified the same in the "
+             "configuration sections of all backends that support "
+             "replication between each other. If this option is not "
+             "specified in the group, it means that replication is not "
+             "enabled on the backend."),
 ]
 
 ssh_opts = [
@@ -274,6 +284,12 @@ class ShareDriver(object):
         if self.configuration:
             return self.configuration.safe_get('driver_handles_share_servers')
         return CONF.driver_handles_share_servers
+
+    @property
+    def replication_domain(self):
+        if self.configuration:
+            return self.configuration.safe_get('replication_domain')
+        return CONF.replication_domain
 
     def _verify_share_server_handling(self, driver_handles_share_servers):
         """Verifies driver_handles_share_servers and given configuration."""
@@ -899,6 +915,7 @@ class ShareDriver(object):
             qos=False,
             pools=self.pools or None,
             snapshot_support=self.snapshots_are_supported,
+            replication_domain=self.replication_domain,
         )
         if isinstance(data, dict):
             common.update(data)

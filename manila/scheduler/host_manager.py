@@ -46,6 +46,7 @@ host_manager_opts = [
                     'CapacityFilter',
                     'CapabilitiesFilter',
                     'ConsistencyGroupFilter',
+                    'ShareReplicationFilter',
                 ],
                 help='Which filter class names to use for filtering hosts '
                      'when not specified in the request.'),
@@ -128,6 +129,7 @@ class HostState(object):
         self.dedupe = False
         self.compression = False
         self.replication_type = None
+        self.replication_domain = None
 
         # PoolState for all pools
         self.pools = {}
@@ -296,6 +298,9 @@ class HostState(object):
         if not pool_cap.get('replication_type'):
             pool_cap['replication_type'] = self.replication_type
 
+        if not pool_cap.get('replication_domain'):
+            pool_cap['replication_domain'] = self.replication_domain
+
     def update_backend(self, capability):
         self.share_backend_name = capability.get('share_backend_name')
         self.vendor_name = capability.get('vendor_name')
@@ -308,6 +313,7 @@ class HostState(object):
             'consistency_group_support', False)
         self.updated = capability['timestamp']
         self.replication_type = capability.get('replication_type')
+        self.replication_domain = capability.get('replication_domain')
 
     def consume_from_share(self, share):
         """Incrementally update host state from an share."""
@@ -372,6 +378,8 @@ class PoolState(HostState):
                 'compression', False)
             self.replication_type = capability.get(
                 'replication_type', self.replication_type)
+            self.replication_domain = capability.get(
+                'replication_domain')
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet

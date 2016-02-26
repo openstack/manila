@@ -520,6 +520,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'total_capacity_gb': 0,
             'vendor_name': 'HPE',
             'pools': None,
+            'replication_domain': None,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -577,6 +578,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'hpe3par_flash_cache': False,
             'hp3par_flash_cache': False,
             'snapshot_support': True,
+            'replication_domain': None,
         }
 
         result = self.driver.get_share_stats(refresh=True)
@@ -610,6 +612,7 @@ class HPE3ParDriverTestCase(test.TestCase):
             'total_capacity_gb': 0,
             'vendor_name': 'HPE',
             'snapshot_support': True,
+            'replication_domain': None,
         }
 
         result = self.driver.get_share_stats(refresh=True)

@@ -39,6 +39,27 @@ class FilterSchedulerTestCase(test_base.SchedulerTestCase):
 
     driver_cls = filter.FilterScheduler
 
+    def test___format_filter_properties_active_replica_host_is_provided(self):
+        sched = fakes.FakeFilterScheduler()
+        fake_context = context.RequestContext('user', 'project')
+        request_spec = {
+            'share_properties': {'project_id': 1, 'size': 1},
+            'share_instance_properties': {},
+            'share_type': {'name': 'NFS'},
+            'share_id': ['fake-id1'],
+            'active_replica_host': 'fake_ar_host',
+        }
+        hosts = [fakes.FakeHostState(host, {'replication_domain': 'xyzzy'})
+                 for host in ('fake_ar_host', 'fake_host_2')]
+        self.mock_object(sched.host_manager, 'get_all_host_states_share',
+                         mock.Mock(return_value=hosts))
+        self.mock_object(sched, 'populate_filter_properties_share')
+
+        retval = sched._format_filter_properties(
+            fake_context, {}, request_spec)
+
+        self.assertTrue('replication_domain' in retval[0])
+
     def test_create_share_no_hosts(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.
         sched = fakes.FakeFilterScheduler()
