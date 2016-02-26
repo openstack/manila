@@ -47,7 +47,8 @@ lvextend: CommandFilter, lvextend, root
 # manila/share/drivers/lvm.py: 'lvcreate', '-L', %s, '-n', %s
 lvcreate: CommandFilter, lvcreate, root
 
-# manila/share/drivers/lvm.py: 'vgs', %s, '--rows'
+# manila/share/drivers/lvm.py: 'vgs', '--noheadings', '-o', 'name'
+# manila/share/drivers/lvm.py: 'vgs', %s, '--rows', '--units', 'g'
 vgs: CommandFilter, vgs, root
 
 # manila/share/drivers/glusterfs.py: 'mkdir', '%s'
