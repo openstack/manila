@@ -17,7 +17,6 @@ from oslo_log import log
 import six
 
 from manila.common import constants
-from manila import exception
 from manila.i18n import _LI
 
 LOG = log.getLogger(__name__)
@@ -86,14 +85,12 @@ class ShareInstanceAccess(object):
                 self._update_access_fallback(add_rules, context, delete_rules,
                                              remove_rules, share_instance,
                                              share_server)
-        except Exception as e:
-            error = six.text_type(e)
-            LOG.exception(error)
+        except Exception:
             self.db.share_instance_update_access_status(
                 context,
                 share_instance['id'],
                 constants.STATUS_ERROR)
-            raise exception.ManilaException(message=error)
+            raise
 
         # NOTE(ganso): remove rules after maintenance is complete
         if remove_rules:

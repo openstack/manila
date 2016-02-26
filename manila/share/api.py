@@ -641,7 +641,8 @@ class API(base.Base):
              'terminated_at': timeutils.utcnow()}
         )
 
-        self.share_rpcapi.delete_share_instance(context, share_instance)
+        self.share_rpcapi.delete_share_instance(context, share_instance,
+                                                force=force)
 
         # NOTE(u_glide): 'updated_at' timestamp is used to track last usage of
         # share server. This is required for automatic share servers cleanup

@@ -1685,7 +1685,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
     @add_hooks
     @utils.require_driver_initialized
-    def delete_share_instance(self, context, share_instance_id):
+    def delete_share_instance(self, context, share_instance_id, force=False):
         """Delete a share instance."""
         context = context.elevated()
         share_instance = self._get_share_instance(context, share_instance_id)
@@ -1698,14 +1698,44 @@ class ShareManager(manager.SchedulerDependentManager):
                 delete_rules="all",
                 share_server=share_server
             )
+        except exception.ShareResourceNotFound:
+            LOG.warning(_LW("Share instance %s does not exist in the "
+                            "backend."), share_instance_id)
+        except Exception:
+            with excutils.save_and_reraise_exception() as exc_context:
+                if force:
+                    msg = _LE("The driver was unable to delete access rules "
+                              "for the instance: %s. Will attempt to delete "
+                              "the instance anyway.")
+                    LOG.error(msg, share_instance_id)
+                    exc_context.reraise = False
+                else:
+                    self.db.share_instance_update(
+                        context,
+                        share_instance_id,
+                        {'status': constants.STATUS_ERROR_DELETING})
+
+        try:
             self.driver.delete_share(context, share_instance,
                                      share_server=share_server)
+        except exception.ShareResourceNotFound:
+            LOG.warning(_LW("Share instance %s does not exist in the "
+                            "backend."), share_instance_id)
         except Exception:
-            with excutils.save_and_reraise_exception():
-                self.db.share_instance_update(
-                    context,
-                    share_instance_id,
-                    {'status': constants.STATUS_ERROR_DELETING})
+            with excutils.save_and_reraise_exception() as exc_context:
+                if force:
+                    msg = _LE("The driver was unable to delete the share "
+                              "instance: %s on the backend. Since this "
+                              "operation is forced, the instance will be "
+                              "deleted from Manila's database. A cleanup on "
+                              "the backend may be necessary.")
+                    LOG.error(msg, share_instance_id)
+                    exc_context.reraise = False
+                else:
+                    self.db.share_instance_update(
+                        context,
+                        share_instance_id,
+                        {'status': constants.STATUS_ERROR_DELETING})
 
         self.db.share_instance_delete(context, share_instance_id)
         LOG.info(_LI("Share instance %s: deleted successfully."),

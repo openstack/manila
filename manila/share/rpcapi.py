@@ -109,12 +109,13 @@ class ShareAPI(object):
                           'unmanage_snapshot',
                           snapshot_id=snapshot['id'])
 
-    def delete_share_instance(self, context, share_instance):
+    def delete_share_instance(self, context, share_instance, force=False):
         host = utils.extract_host(share_instance['host'])
         call_context = self.client.prepare(server=host, version='1.4')
         call_context.cast(context,
                           'delete_share_instance',
-                          share_instance_id=share_instance['id'])
+                          share_instance_id=share_instance['id'],
+                          force=force)
 
     def migration_start(self, context, share, dest_host, force_host_copy,
                         notify):
