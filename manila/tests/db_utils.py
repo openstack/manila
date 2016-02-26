@@ -106,6 +106,10 @@ def create_share_replica(**kwargs):
     }
     replica.update(kwargs)
 
+    if 'share_id' not in kwargs:
+        share = create_share()
+        kwargs['share_id'] = share['id']
+
     return db.share_instance_create(context.get_admin_context(),
                                     kwargs.pop('share_id'), kwargs)
 

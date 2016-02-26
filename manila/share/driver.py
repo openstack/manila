@@ -1171,34 +1171,44 @@ class ShareDriver(object):
         """
         return share_instances
 
-    def create_replica(self, context, active_replica, new_replica,
+    def create_replica(self, context, replica_list, new_replica,
                        access_rules, share_server=None):
         """Replicate the active replica to a new replica on this backend.
 
         :param context: Current context
-        :param active_replica: A current active replica instance dictionary.
+        :param replica_list: List of all replicas for a particular share.
+        This list also contains the replica to be created. The 'active'
+        replica will have its 'replica_state' attr set to 'active'.
             EXAMPLE:
              .. code::
 
-            {
-            'id': 'd487b88d-e428-4230-a465-a800c2cce5f8',
-            'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
-            'deleted': False,
-            'host': 'openstack2@cmodeSSVMNFS1',
-            'status': 'available',
-            'scheduled_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
-            'launched_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
-            'terminated_at': None,
-            'replica_state': 'active',
-            'availability_zone_id': 'e2c2db5c-cb2f-4697-9966-c06fb200cb80',
-            'export_locations': [
-                <models.ShareInstanceExportLocations>,
-            ],
-            'access_rules_status': 'in_sync',
-            'share_network_id': '4ccd5318-65f1-11e5-9d70-feff819cdc9f',
-            'share_server_id': '4ce78e7b-0ef6-4730-ac2a-fd2defefbd05',
-            'share_server': <models.ShareServer> or None,
-            }
+            [
+                {
+                'id': 'd487b88d-e428-4230-a465-a800c2cce5f8',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'in_sync',
+                    ...
+                'share_server_id': '4ce78e7b-0ef6-4730-ac2a-fd2defefbd05',
+                'share_server': <models.ShareServer> or None,
+                },
+                {
+                'id': '10e49c3e-aca9-483b-8c2d-1c337b38d6af',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'active',
+                    ...
+                'share_server_id': 'f63629b3-e126-4448-bec2-03f788f76094',
+                'share_server': <models.ShareServer> or None,
+                },
+                {
+                'id': 'e82ff8b6-65f0-11e5-9d70-feff819cdc9f',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'in_sync',
+                    ...
+                'share_server_id': '07574742-67ea-4dfd-9844-9fbd8ada3d87',
+                'share_server': <models.ShareServer> or None,
+                },
+                ...
+            ]
         :param new_replica: The share replica dictionary.
             EXAMPLE:
              .. code::
@@ -1259,34 +1269,44 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
-    def delete_replica(self, context, active_replica, replica,
+    def delete_replica(self, context, replica_list, replica,
                        share_server=None):
         """Delete a replica. This is called on the destination backend.
 
         :param context: Current context
-        :param active_replica: A current active replica instance dictionary.
+        :param replica_list: List of all replicas for a particular share.
+        This list also contains the replica to be deleted. The 'active'
+        replica will have its 'replica_state' attr set to 'active'.
             EXAMPLE:
              .. code::
 
-            {
-            'id': 'd487b88d-e428-4230-a465-a800c2cce5f8',
-            'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
-            'deleted': False,
-            'host': 'openstack2@cmodeSSVMNFS1',
-            'status': 'available',
-            'scheduled_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
-            'launched_at': datetime.datetime(2015, 8, 10, 0, 5, 58),
-            'terminated_at': None,
-            'replica_state': 'active',
-            'availability_zone_id': 'e2c2db5c-cb2f-4697-9966-c06fb200cb80',
-            'export_locations': [
-                models.ShareInstanceExportLocations,
-            ],
-            'access_rules_status': 'in_sync',
-            'share_network_id': '4ccd5318-65f1-11e5-9d70-feff819cdc9f',
-            'share_server_id': '4ce78e7b-0ef6-4730-ac2a-fd2defefbd05',
-            'share_server': <models.ShareServer> or None,
-            }
+            [
+                {
+                'id': 'd487b88d-e428-4230-a465-a800c2cce5f8',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'in_sync',
+                    ...
+                'share_server_id': '4ce78e7b-0ef6-4730-ac2a-fd2defefbd05',
+                'share_server': <models.ShareServer> or None,
+                },
+                {
+                'id': '10e49c3e-aca9-483b-8c2d-1c337b38d6af',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'active',
+                    ...
+                'share_server_id': 'f63629b3-e126-4448-bec2-03f788f76094',
+                'share_server': <models.ShareServer> or None,
+                },
+                {
+                'id': 'e82ff8b6-65f0-11e5-9d70-feff819cdc9f',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'in_sync',
+                    ...
+                'share_server_id': '07574742-67ea-4dfd-9844-9fbd8ada3d87',
+                'share_server': <models.ShareServer> or None,
+                },
+                ...
+            ]
         :param replica: Dictionary of the share replica being deleted.
             EXAMPLE:
              .. code::
@@ -1407,14 +1427,50 @@ class ShareDriver(object):
         """
         raise NotImplementedError()
 
-    def update_replica_state(self, context, replica,
+    def update_replica_state(self, context, replica_list, replica,
                              access_rules, share_server=None):
         """Update the replica_state of a replica.
 
         Drivers should fix replication relationships that were broken if
         possible inside this method.
 
+        This method is called periodically by the share manager; and
+        whenever requested by the administrator through the 'resync' API.
+
         :param context: Current context
+        :param replica_list: List of all replicas for a particular share.
+        This list also contains the replica to be updated. The 'active'
+        replica will have its 'replica_state' attr set to 'active'.
+            EXAMPLE:
+             .. code::
+
+            [
+                {
+                'id': 'd487b88d-e428-4230-a465-a800c2cce5f8',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'in_sync',
+                    ...
+                'share_server_id': '4ce78e7b-0ef6-4730-ac2a-fd2defefbd05',
+                'share_server': <models.ShareServer> or None,
+                },
+                {
+                'id': '10e49c3e-aca9-483b-8c2d-1c337b38d6af',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'active',
+                    ...
+                'share_server_id': 'f63629b3-e126-4448-bec2-03f788f76094',
+                'share_server': <models.ShareServer> or None,
+                },
+                {
+                'id': 'e82ff8b6-65f0-11e5-9d70-feff819cdc9f',
+                'share_id': 'f0e4bb5e-65f0-11e5-9d70-feff819cdc9f',
+                'replica_state': 'in_sync',
+                    ...
+                'share_server_id': '07574742-67ea-4dfd-9844-9fbd8ada3d87',
+                'share_server': <models.ShareServer> or None,
+                },
+                ...
+            ]
         :param replica: Dictionary of the replica being updated.
         Replica state will always be 'in_sync', 'out_of_sync', or 'error'.
         Replicas in 'active' state will not be passed via this parameter.

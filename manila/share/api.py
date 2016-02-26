@@ -400,7 +400,8 @@ class API(base.Base):
         return share_replica
 
     def delete_share_replica(self, context, share_replica, force=False):
-        # Disallow deletion of ONLY active replica
+        # Disallow deletion of ONLY active replica, *even* when this
+        # operation is forced.
         replicas = self.db.share_replicas_get_all_by_share(
             context, share_replica['share_id'])
         active_replicas = list(filter(
@@ -418,20 +419,15 @@ class API(base.Base):
                                          {'terminated_at': timeutils.utcnow()})
             self.db.share_replica_delete(context, share_replica['id'])
         else:
-            host = share_utils.extract_host(share_replica['host'])
-
             self.db.share_replica_update(
                 context, share_replica['id'],
                 {'status': constants.STATUS_DELETING,
                  'terminated_at': timeutils.utcnow()}
             )
 
-            self.share_rpcapi.delete_share_replica(
-                context,
-                share_replica['id'],
-                host,
-                share_id=share_replica['share_id'],
-                force=force)
+            self.share_rpcapi.delete_share_replica(context,
+                                                   share_replica,
+                                                   force=force)
 
     def promote_share_replica(self, context, share_replica):
 
@@ -452,17 +448,21 @@ class API(base.Base):
             raise exception.AdminRequired(
                 message=msg % replica_state)
 
-        host = share_utils.extract_host(share_replica['host'])
-
         self.db.share_replica_update(
             context, share_replica['id'],
             {'status': constants.STATUS_REPLICATION_CHANGE})
 
-        self.share_rpcapi.promote_share_replica(
-            context, share_replica['id'], host,
-            share_id=share_replica['share_id'])
+        self.share_rpcapi.promote_share_replica(context, share_replica)
 
         return self.db.share_replica_get(context, share_replica['id'])
+
+    def update_share_replica(self, context, share_replica):
+
+        if not share_replica['host']:
+            msg = _("Share replica does not have a valid host.")
+            raise exception.InvalidHost(reason=msg)
+
+        self.share_rpcapi.update_share_replica(context, share_replica)
 
     def manage(self, context, share_data, driver_options):
         policy.check_policy(context, 'share', 'manage')

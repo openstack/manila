@@ -879,18 +879,18 @@ class ShareManager(manager.SchedulerDependentManager):
                 with_share_data=True
             )
 
-        current_active_replica = (
+        _active_replica = (
             self.db.share_replicas_get_available_active_replica(
                 context, share_replica['share_id'], with_share_data=True,
                 with_share_server=True))
 
-        if not current_active_replica:
+        if not _active_replica:
             self.db.share_replica_update(
                 context, share_replica['id'],
                 {'status': constants.STATUS_ERROR,
                  'replica_state': constants.STATUS_ERROR})
-            msg = _("An active instance with 'available' status does "
-                    "not exist to add replica to share %s.")
+            msg = _("An 'active' replica must exist in 'available' "
+                    "state to create a new replica for share %s.")
             raise exception.ReplicationException(
                 reason=msg % share_replica['share_id'])
 
@@ -930,13 +930,19 @@ class ShareManager(manager.SchedulerDependentManager):
         share_access_rules = self.db.share_instance_access_copy(
             context, share_replica['share_id'], share_replica['id'])
 
-        current_active_replica = self._get_share_replica_dict(
-            context, current_active_replica)
+        replica_list = (
+            self.db.share_replicas_get_all_by_share(
+                context, share_replica['share_id'],
+                with_share_data=True, with_share_server=True)
+        )
+
+        replica_list = [self._get_share_replica_dict(context, r)
+                        for r in replica_list]
         share_replica = self._get_share_replica_dict(context, share_replica)
 
         try:
             replica_ref = self.driver.create_replica(
-                context, current_active_replica, share_replica,
+                context, replica_list, share_replica,
                 share_access_rules, share_server=share_server)
 
         except Exception:
@@ -988,16 +994,15 @@ class ShareManager(manager.SchedulerDependentManager):
             context, share_replica_id, with_share_data=True,
             with_share_server=True)
 
-        # Get the active replica
-        current_active_replica = (
-            self.db.share_replicas_get_available_active_replica(
+        replica_list = (
+            self.db.share_replicas_get_all_by_share(
                 context, share_replica['share_id'],
                 with_share_data=True, with_share_server=True)
         )
-        share_server = self._get_share_server(context, share_replica)
 
-        current_active_replica = self._get_share_replica_dict(
-            context, current_active_replica)
+        replica_list = [self._get_share_replica_dict(context, r)
+                        for r in replica_list]
+        share_server = self._get_share_server(context, share_replica)
         share_replica = self._get_share_replica_dict(context, share_replica)
 
         try:
@@ -1023,7 +1028,7 @@ class ShareManager(manager.SchedulerDependentManager):
 
         try:
             self.driver.delete_replica(
-                context, current_active_replica, share_replica,
+                context, replica_list, share_replica,
                 share_server=share_server)
         except Exception:
             with excutils.save_and_reraise_exception() as exc_context:
@@ -1121,23 +1126,26 @@ class ShareManager(manager.SchedulerDependentManager):
             for updated_replica in updated_replica_list:
                 updated_export_locs = updated_replica.get(
                     'export_locations')
-                if(updated_export_locs and
-                        isinstance(updated_export_locs, list)):
+                if(updated_export_locs is not None
+                   and isinstance(updated_export_locs, list)):
                     self.db.share_export_locations_update(
                         context, updated_replica['id'],
                         updated_export_locs)
 
                 updated_replica_state = updated_replica.get(
                     'replica_state')
-                updates = {'replica_state': updated_replica_state}
+                updates = {}
                 # Change the promoted replica's status from 'available' to
                 # 'replication_change'.
                 if updated_replica['id'] == share_replica['id']:
                     updates['status'] = constants.STATUS_AVAILABLE
                 if updated_replica_state == constants.STATUS_ERROR:
                     updates['status'] = constants.STATUS_ERROR
-                self.db.share_replica_update(
-                    context, updated_replica['id'], updates)
+                if updated_replica_state is not None:
+                    updates['replica_state'] = updated_replica_state
+                if updates:
+                    self.db.share_replica_update(
+                        context, updated_replica['id'], updates)
 
                 if updated_replica.get('access_rules_status'):
                     self._update_share_replica_access_rules_state(
@@ -1164,15 +1172,28 @@ class ShareManager(manager.SchedulerDependentManager):
             self._share_replica_update(
                 context, replica, share_id=replica['share_id'])
 
+    @add_hooks
+    @utils.require_driver_initialized
+    def update_share_replica(self, context, share_replica_id, share_id=None):
+        """Initiated by the force_update API."""
+        share_replica = self.db.share_replica_get(
+            context, share_replica_id, with_share_data=True,
+            with_share_server=True)
+        self._share_replica_update(context, share_replica, share_id=share_id)
+
     @locked_share_replica_operation
     def _share_replica_update(self, context, share_replica, share_id=None):
         share_server = self._get_share_server(context, share_replica)
         replica_state = None
 
         # Re-grab the replica:
-        share_replica = self.db.share_replica_get(
-            context, share_replica['id'], with_share_data=True,
-            with_share_server=True)
+        try:
+            share_replica = self.db.share_replica_get(
+                context, share_replica['id'], with_share_data=True,
+                with_share_server=True)
+        except exception.ShareReplicaNotFound:
+            # Replica may have been deleted, nothing to do here
+            return
 
         # We don't poll for replicas that are busy in some operation,
         # or if they are the 'active' instance.
@@ -1187,12 +1208,22 @@ class ShareManager(manager.SchedulerDependentManager):
         LOG.debug("Updating status of share share_replica %s: ",
                   share_replica['id'])
 
+        replica_list = (
+            self.db.share_replicas_get_all_by_share(
+                context, share_replica['share_id'],
+                with_share_data=True, with_share_server=True)
+        )
+
+        replica_list = [self._get_share_replica_dict(context, r)
+                        for r in replica_list]
+
         share_replica = self._get_share_replica_dict(context, share_replica)
 
         try:
 
             replica_state = self.driver.update_replica_state(
-                context, share_replica, access_rules, share_server)
+                context, replica_list, share_replica, access_rules,
+                share_server=share_server)
 
         except Exception:
             # If the replica_state was previously in 'error', it is
@@ -2129,7 +2160,7 @@ class ShareManager(manager.SchedulerDependentManager):
             'status': share_replica.get('status'),
             'replica_state': share_replica.get('replica_state'),
             'availability_zone_id': share_replica.get('availability_zone_id'),
-            'export_locations': share_replica.get('export_locations'),
+            'export_locations': share_replica.get('export_locations') or [],
             'share_network_id': share_replica.get('share_network_id'),
             'share_server_id': share_replica.get('share_server_id'),
             'deleted': share_replica.get('deleted'),
