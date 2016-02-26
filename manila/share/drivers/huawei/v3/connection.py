@@ -73,7 +73,7 @@ class V3StorageConnection(driver.HuaweiBase):
         result = self.helper._find_all_pool_info()
         poolinfo = self.helper._find_pool_info(pool_name, result)
         if not poolinfo:
-            msg = (_("Can not find pool info by pool name: %s") % pool_name)
+            msg = (_("Can not find pool info by pool name: %s.") % pool_name)
             raise exception.InvalidHost(reason=msg)
 
         fs_id = None
@@ -95,8 +95,9 @@ class V3StorageConnection(driver.HuaweiBase):
             if not self.check_fs_status(fs['HEALTHSTATUS'],
                                         fs['RUNNINGSTATUS']):
                 raise exception.InvalidShare(
-                    reason=(_('Invalid status of filesystem: %(health)s '
-                              '%(running)s.')
+                    reason=(_('Invalid status of filesystem: '
+                              'HEALTHSTATUS=%(health)s '
+                              'RUNNINGSTATUS=%(running)s.')
                             % {'health': fs['HEALTHSTATUS'],
                                'running': fs['RUNNINGSTATUS']}))
         except Exception as err:
@@ -156,8 +157,8 @@ class V3StorageConnection(driver.HuaweiBase):
         fs_info = self.helper._get_fs_info_by_id(fsid)
 
         current_size = int(fs_info['CAPACITY']) / units.Mi / 2
-        if current_size > new_size:
-            err_msg = (_("New size for extend must be equal or bigger than "
+        if current_size >= new_size:
+            err_msg = (_("New size for extend must be bigger than "
                          "current size on array. (current: %(size)s, "
                          "new: %(new_size)s).")
                        % {'size': current_size, 'new_size': new_size})
@@ -191,7 +192,7 @@ class V3StorageConnection(driver.HuaweiBase):
             raise exception.InvalidShare(reason=err_msg)
 
         current_size = int(fs_info['CAPACITY']) / units.Mi / 2
-        if current_size < new_size:
+        if current_size <= new_size:
             err_msg = (_("New size for shrink must be less than current "
                          "size on array. (current: %(size)s, "
                          "new: %(new_size)s).")
@@ -224,7 +225,7 @@ class V3StorageConnection(driver.HuaweiBase):
                          'RUNNINGSTATUS=%(running)s.')
                        % {'health': fs['HEALTHSTATUS'],
                           'running': fs['RUNNINGSTATUS']})
-            raise exception.StorageResourceException(reason=err_msg)
+            raise exception.StorageResourceException(err_msg)
 
     def create_snapshot(self, snapshot, share_server=None):
         """Create a snapshot."""
@@ -427,9 +428,9 @@ class V3StorageConnection(driver.HuaweiBase):
             except exception.ManilaException as err:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to add access to share %(name)s. '
-                                  'Reason: %(err)s.')
-                              % {'name': old_share['name'],
-                                 'err': six.text_type(err)})
+                                  'Reason: %(err)s.'),
+                              {'name': old_share['name'],
+                               'err': six.text_type(err)})
 
         new_access = self.get_access(new_share)
         try:
@@ -438,9 +439,9 @@ class V3StorageConnection(driver.HuaweiBase):
             except exception.ShareMountException as err:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to mount old share %(name)s. '
-                                  'Reason: %(err)s.')
-                              % {'name': old_share['name'],
-                                 'err': six.text_type(err)})
+                                  'Reason: %(err)s.'),
+                              {'name': old_share['name'],
+                               'err': six.text_type(err)})
 
             try:
                 self.allow_access(new_share, new_access)
@@ -449,9 +450,9 @@ class V3StorageConnection(driver.HuaweiBase):
                 with excutils.save_and_reraise_exception():
                     self.umount_share_from_host(old_share)
                     LOG.error(_LE('Failed to mount new share %(name)s. '
-                                  'Reason: %(err)s.')
-                              % {'name': new_share['name'],
-                                 'err': six.text_type(err)})
+                                  'Reason: %(err)s.'),
+                              {'name': new_share['name'],
+                               'err': six.text_type(err)})
 
             copied = self.copy_snapshot_data(old_share, new_share)
 
@@ -459,11 +460,10 @@ class V3StorageConnection(driver.HuaweiBase):
                 try:
                     self.umount_share_from_host(item)
                 except exception.ShareUmountException as err:
-                    err_msg = (_('Failed to unmount share %(name)s. '
-                                 'Reason: %(err)s.')
-                               % {'name': item['name'],
-                                  'err': six.text_type(err)})
-                    LOG.warning(err_msg)
+                    LOG.warning(_LW('Failed to unmount share %(name)s. '
+                                    'Reason: %(err)s.'),
+                                {'name': item['name'],
+                                 'err': six.text_type(err)})
 
             self.deny_access(new_share, new_access)
 
@@ -830,8 +830,9 @@ class V3StorageConnection(driver.HuaweiBase):
         if not self.check_fs_status(fs['HEALTHSTATUS'],
                                     fs['RUNNINGSTATUS']):
             raise exception.InvalidShare(
-                reason=(_('Invalid status of filesystem: %(health)s '
-                          '%(running)s.')
+                reason=(_('Invalid status of filesystem: '
+                          'HEALTHSTATUS=%(health)s '
+                          'RUNNINGSTATUS=%(running)s.')
                         % {'health': fs['HEALTHSTATUS'],
                            'running': fs['RUNNINGSTATUS']}))
 

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
+
 from oslo_log import log
 
 from manila.i18n import _LE
@@ -36,7 +38,7 @@ def get_share_extra_specs_params(type_id):
 
 
 def _get_opts_from_specs(specs):
-    opts = constants.OPTS_CAPABILITIES.copy()
+    opts = copy.deepcopy(constants.OPTS_CAPABILITIES)
     opts.update(constants.OPTS_VALUE)
 
     for key, value in specs.items():
