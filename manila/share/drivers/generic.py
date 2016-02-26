@@ -250,8 +250,15 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
             },
         }
 
+    @utils.retry(exception.ProcessExecutionError, backoff_rate=1)
+    def _is_device_file_available(self, server_details, volume):
+        """Checks whether the device file is available"""
+        command = ['sudo', 'test', '-b', volume['mountpoint']]
+        self._ssh_exec(server_details, command)
+
     def _format_device(self, server_details, volume):
         """Formats device attached to the service vm."""
+        self._is_device_file_available(server_details, volume)
         command = ['sudo', 'mkfs.%s' % self.configuration.share_volume_fstype,
                    volume['mountpoint']]
         self._ssh_exec(server_details, command)

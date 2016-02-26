@@ -369,11 +369,26 @@ class GenericShareDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidShare, self._driver.create_share,
                           self._context, self.share, share_server=self.server)
 
+    def test_is_device_file_available(self):
+        volume = {'mountpoint': 'fake_mount_point'}
+        self.mock_object(self._driver, '_ssh_exec',
+                         mock.Mock(return_value=None))
+
+        self._driver._is_device_file_available(self.server, volume)
+
+        self._driver._ssh_exec.assert_called_once_with(
+            self.server, ['sudo', 'test', '-b', volume['mountpoint']])
+
     def test_format_device(self):
         volume = {'mountpoint': 'fake_mount_point'}
         self.mock_object(self._driver, '_ssh_exec',
                          mock.Mock(return_value=('', '')))
+        self.mock_object(self._driver, '_is_device_file_available')
+
         self._driver._format_device(self.server, volume)
+
+        self._driver._is_device_file_available.assert_called_once_with(
+            self.server, volume)
         self._driver._ssh_exec.assert_called_once_with(
             self.server,
             ['sudo', 'mkfs.%s' % self.fake_conf.share_volume_fstype,
